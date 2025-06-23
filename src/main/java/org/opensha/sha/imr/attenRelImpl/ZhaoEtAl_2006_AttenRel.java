@@ -290,12 +290,9 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 	 *             Thrown if the Site object doesn't contain a Vs30 parameter
 	 */
 	public void setSite(Site site) throws ParameterException {	 	
-    	
-//		System.out.println("Zhao et al --->"+site.getParameter(SITE_TYPE_NAME).getValue());
-		
-		siteTypeParam.setValue((String) site.getParameter(SITE_TYPE_NAME).getValue());
-		this.site = site;
-		setPropagationEffectParams();
+		super.setSite(site); // will call setPropagationEffectParams
+		if (site != null)
+			siteTypeParam.setValue((String) site.getParameter(SITE_TYPE_NAME).getValue());
 	}
 
 	/**

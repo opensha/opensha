@@ -18,6 +18,7 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.earthquake.PointSource.PoissonPointSource;
 import org.opensha.sha.earthquake.ProbEqkRupture;
+import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.oldClasses.UCERF2_Final_RelativeLocation;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.FrankelGriddedSurface;
@@ -227,13 +228,9 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 			double depth = magnitude <= 6.5 ? 5.0 : 1.0;
 
 			if(magnitude <= magCutOff) { // set the point surface
-				PointSurface ptSurface = new PointSurface(
-						Location.backwardsCompatible(loc.getLatitude(), loc.getLongitude(), depth));
-				ptSurface.setAveStrike(strike);
-				ptSurface.setAveDip(mech.dip());
-				double width = calcWidth(magnitude, depth, mech.dip());
-				ptSurface.setAveWidth(width);
-				return ptSurface;
+				// old model, use the old location that had a messy conversion
+				Location ptLoc = Location.backwardsCompatible(loc.getLatitude(), loc.getLongitude(), depth);
+				return PointSourceNshm.SURF_BUILDER_DEFAULT.getSurface(ptLoc, magnitude, mech, 0);
 			}
 			else { // set finite surface
 				FrankelGriddedSurface finiteFault;
@@ -467,17 +464,6 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 	
 	public Location getLocation() {
 		return loc;
-	}
-
-	/*
-	 * Returns the minimum of the aspect ratio width (based on WC94) length
-	 * and the allowable down-dip width.
-	 */
-	private double calcWidth(double mag, double depth, double dip) {
-		double length = WC94.getMedianLength(mag);
-		double aspectWidth = length / 1.5;
-		double ddWidth = (14.0 - depth) / sin(dip * GeoTools.TO_RAD);
-		return min(aspectWidth, ddWidth);
 	}
 
 }

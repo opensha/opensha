@@ -76,7 +76,9 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	private double dipDeg;
 	private double dipRad;
 	private double width;
+	private double horzWidth;
 	private double avgUpperDepth;
+	private double avgLowerDepth;
 	private double avgDipDirRad;
 	private double avgDipDirDeg;
 	
@@ -182,6 +184,7 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 		this.dipDeg = dip;
 		this.dipRad = dip * TO_RAD;
 		this.width = width;
+		this.horzWidth = width*Math.cos(dipRad);
 		rots = new ArrayList<Rotation>();
 		surfs = new ArrayList<Path2D>();
 		
@@ -192,13 +195,17 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 		
 		traceBelowSeis = true;
 		avgUpperDepth = 0d;
-		// TODO weight average
+		// TODO weight average?
 		for (Location loc : trace) {
 			if (loc.getDepth() <= GriddedSurfaceUtils.SEIS_DEPTH)
 				traceBelowSeis = false;
 			avgUpperDepth += loc.getDepth();
 		}
 		avgUpperDepth /= (double)trace.size();
+		if (dip < 90d)
+			avgLowerDepth = avgUpperDepth + width * Math.sin(dipRad);
+		else
+			avgLowerDepth = avgUpperDepth + width;
 	}
 
 	private static void initSegments(double dipRad, double avgDipDirRad, double width,
@@ -675,6 +682,11 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	}
 
 	@Override
+	public double getAveHorizontalWidth() {
+		return horzWidth;
+	}
+
+	@Override
 	public double getArea() {
 		return getAveLength()*getAveWidth();
 	}
@@ -775,6 +787,11 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	@Override
 	public double getAveRupTopDepth() {
 		return avgUpperDepth;
+	}
+
+	@Override
+	public double getAveRupBottomDepth() {
+		return avgLowerDepth;
 	}
 
 	@Override

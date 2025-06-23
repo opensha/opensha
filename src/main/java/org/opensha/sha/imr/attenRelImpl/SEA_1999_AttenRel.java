@@ -133,11 +133,9 @@ public class SEA_1999_AttenRel extends AttenuationRelationship {
 	 * @throws ParameterException Thrown if the Site object doesn't contain the parameter
 	 */
 	public void setSite(Site site) throws ParameterException {
-
-		siteTypeParam.setValue((String)site.getParameter(SITE_TYPE_NAME).getValue());
-		this.site = site;
-		setPropagationEffectParams();
-
+		super.setSite(site); // will call setPropagationEffectParams
+		if (site != null)
+			siteTypeParam.setValue((String)site.getParameter(SITE_TYPE_NAME).getValue());
 	}
 
 

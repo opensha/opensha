@@ -28,15 +28,6 @@ public interface EqkRupSelectorGuiBeanAPI {
 
     /**
      *
-     * @return the panel which allows user to select Eqk rupture from existing
-     * ERF models
-     */
-    public EqkRupSelectorGuiBeanAPI getEqkRuptureSelectorPanel();
-
-
-
-    /**
-     *
      * @return the Metadata String of parameters that constitute the making of this
      * ERF_RupSelectorGUI  bean.
      */

@@ -77,7 +77,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	public static final GridCellSupersamplingSettings GRID_SUPERSAMPLE_DEFAULT = null;
 	public static final GriddedSeismicitySettings GRID_SETTINGS_DEFAULT = GriddedSeismicitySettings.DEFAULT
 			.forSurfaceType(BG_RUP_TYPE_DEFAULT)
-			.forDistanceCorrections(DIST_CORR_TYPE_DEFAULT)
+			.forDistanceCorrection(DIST_CORR_TYPE_DEFAULT.get())
 			.forSupersamplingSettings(GRID_SUPERSAMPLE_DEFAULT);
 	public static final boolean ASEIS_REDUCES_AREA_DEAFULT = true;
 	public static final boolean USE_RUP_MFDS_DEAFULT = true;

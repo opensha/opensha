@@ -11,6 +11,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.util.io.archive.ArchiveInput;
 import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
+import org.opensha.sha.earthquake.PointSource;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
@@ -66,7 +67,7 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 	}
 
 	@Override
-	protected ProbEqkSource buildSource(int gridIndex, IncrementalMagFreqDist mfd, double duration,
+	protected PointSource buildSource(int gridIndex, IncrementalMagFreqDist mfd, double duration,
 			GriddedSeismicitySettings gridSourceSettings) {
 		Location loc = getLocation(gridIndex);
 		
@@ -89,7 +90,7 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 	 * @param fracReverse
 	 * @return
 	 */
-	public static ProbEqkSource buildSource(IncrementalMagFreqDist mfd, double duration,
+	public static PointSource buildSource(IncrementalMagFreqDist mfd, double duration,
 			GriddedSeismicitySettings gridSourceSettings, Location loc,
 			double fracStrikeSlip, double fracNormal, double fracReverse) {
 		switch (gridSourceSettings.surfaceType) {
@@ -103,12 +104,9 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 			mechMap.put(FocalMech.STRIKE_SLIP, fracStrikeSlip);
 			mechMap.put(FocalMech.REVERSE, fracReverse);
 			mechMap.put(FocalMech.NORMAL, fracNormal);
-			if (gridSourceSettings.supersamplingSettings != null)
-				return new PointSourceNshm.Supersampled(loc, mfd, duration, mechMap,
-						gridSourceSettings.distanceCorrections, gridSourceSettings.pointSourceMagnitudeCutoff,
-						gridSourceSettings.supersamplingSettings);
-			return new PointSourceNshm(loc, mfd, duration, mechMap, gridSourceSettings.distanceCorrections,
-					gridSourceSettings.pointSourceMagnitudeCutoff);
+			return new PointSourceNshm(loc, mfd, duration, mechMap,
+					gridSourceSettings.distanceCorrection, gridSourceSettings.pointSourceMagnitudeCutoff,
+					gridSourceSettings.supersamplingSettings);
 
 		default:
 			throw new IllegalStateException("Unknown Background Rup Type: "+gridSourceSettings.surfaceType);
@@ -151,7 +149,7 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 		}
 
 		@Override
-		protected ProbEqkSource buildSource(int gridIndex, IncrementalMagFreqDist mfd, double duration,
+		protected PointSource buildSource(int gridIndex, IncrementalMagFreqDist mfd, double duration,
 				GriddedSeismicitySettings gridSourceSettings) {
 			Location loc = getGriddedRegion().locationForIndex(gridIndex);
 			

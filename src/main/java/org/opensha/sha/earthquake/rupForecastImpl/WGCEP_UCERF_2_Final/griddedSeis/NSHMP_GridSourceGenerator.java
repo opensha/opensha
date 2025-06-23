@@ -73,11 +73,11 @@ public class NSHMP_GridSourceGenerator implements Serializable {
 	
 	private double magCutOff = Double.NaN;
 	
-	private WeightedList<? extends PointSourceDistanceCorrection> distCorrs;
+	private PointSourceDistanceCorrection distCorr;
 
-	public NSHMP_GridSourceGenerator(WeightedList<? extends PointSourceDistanceCorrection> distCorrs) {
+	public NSHMP_GridSourceGenerator(PointSourceDistanceCorrection distCorr) {
 		region = new CaliforniaRegions.RELM_GRIDDED();
-		this.distCorrs = distCorrs;
+		this.distCorr = distCorr;
 		//LocationList locList = getLocationList();
 
 		// make polygon from the location list
@@ -118,8 +118,8 @@ public class NSHMP_GridSourceGenerator implements Serializable {
 		else this.magCutOff = 6.0;
 	}
 	
-	public void setDistanceCorrections(WeightedList<? extends PointSourceDistanceCorrection> distCorrs) {
-		this.distCorrs = distCorrs;
+	public void setDistanceCorrection(PointSourceDistanceCorrection distCorr) {
+		this.distCorr = distCorr;
 	}
 	
 	/**
@@ -347,7 +347,7 @@ public class NSHMP_GridSourceGenerator implements Serializable {
 		mechMap.put(FocalMech.NORMAL, fracNormal[srcIndex]);
 		mechMap.put(FocalMech.REVERSE, fracReverse[srcIndex]);
 		return new PointSourceNshm(region.locationForIndex(srcIndex), mfdAtLoc,
-			duration, mechMap, distCorrs, 6d);
+			duration, mechMap, distCorr, 6d);
 	}
 	
 

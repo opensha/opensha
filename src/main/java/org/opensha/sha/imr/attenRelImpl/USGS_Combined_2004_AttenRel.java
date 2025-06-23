@@ -256,18 +256,18 @@ public class USGS_Combined_2004_AttenRel extends AttenuationRelationship {
 	 * Wills site parameter
 	 */
 	public void setSite(Site site) throws ParameterException {
-
-		vs30Param.setValueIgnoreWarning((Double)site.getParameter(Vs30_Param.NAME).getValue());
-		this.site = site;
-
-		// set the location of the BC bounday site object
-		site_BC.setLocation(site.getLocation());
-
-		as_1997_attenRel.setSite(site_BC);
-		bjf_1997_attenRel.setSite(site_BC);
-		scemy_1997_attenRel.setSite(site_BC);
-		cb_2003_attenRel.setSite(site_BC);
-
+		super.setSite(site); // will call setPropagationEffectParams
+		if (site != null) {
+			vs30Param.setValueIgnoreWarning((Double)site.getParameter(Vs30_Param.NAME).getValue());
+			
+			// set the location of the BC bounday site object
+			site_BC.setLocation(site.getLocation());
+			
+			as_1997_attenRel.setSite(site_BC);
+			bjf_1997_attenRel.setSite(site_BC);
+			scemy_1997_attenRel.setSite(site_BC);
+			cb_2003_attenRel.setSite(site_BC);
+		}
 	}
 
 	/**
@@ -275,10 +275,7 @@ public class USGS_Combined_2004_AttenRel extends AttenuationRelationship {
 	 */
 	public void setSiteLocation(Location loc) {
 		//if site is null create a new Site
-		if (site == null) {
-			site = new Site();
-		}
-		site.setLocation(loc);
+		super.setSiteLocation(loc);
 		site_BC.setLocation(loc);
 		as_1997_attenRel.setSite(site_BC);
 		bjf_1997_attenRel.setSite(site_BC);

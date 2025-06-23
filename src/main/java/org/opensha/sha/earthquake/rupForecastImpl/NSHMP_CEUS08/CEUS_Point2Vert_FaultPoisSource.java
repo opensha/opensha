@@ -335,7 +335,7 @@ public class CEUS_Point2Vert_FaultPoisSource extends ProbEqkSource implements ja
 
 		// set the rupture surface
 		if(mag <= this.magCutOff) { // set the point surface
-			if(ptSurface.getDepth()!=depth) ptSurface.setDepth(depth);
+			if(ptSurface.getAveRupTopDepth()!=depth) ptSurface.setDepth(depth);
 			ptSurface.setAveDip(dip);
 			probEqkRupture.setRuptureSurface(ptSurface);
 		}

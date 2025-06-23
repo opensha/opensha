@@ -306,6 +306,16 @@ public class RectangularSurface implements CacheEnabledSurface {
 	}
 
 	@Override
+	public double getAveHorizontalWidth() {
+		return horzWidth;
+	}
+
+	@Override
+	public double getAveRupBottomDepth() {
+		return zBot;
+	}
+
+	@Override
 	public double getAveDipDirection() {
 		return strike + 90d;
 	}

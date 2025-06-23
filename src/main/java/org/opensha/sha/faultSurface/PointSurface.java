@@ -1,7 +1,12 @@
 package org.opensha.sha.faultSurface;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.ListIterator;
 
+import org.apache.commons.math3.util.Precision;
+import org.opensha.commons.data.WeightedList;
+import org.opensha.commons.data.WeightedValue;
 import org.opensha.commons.exceptions.InvalidRangeException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
@@ -9,9 +14,13 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.FaultUtils;
-import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.earthquake.PointSource;
+import org.opensha.sha.faultSurface.cache.CacheEnabledSurface;
+import org.opensha.sha.faultSurface.cache.SingleLocDistanceCache;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
@@ -42,64 +51,172 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	
 	final static double SEIS_DEPTH = GriddedSurfaceUtils.SEIS_DEPTH;   // minimum depth for Campbell model
 	
-	// variables for the point-source distance correction; these
-	// are set by HazardCurveCalcs
-	protected double magForDistCorr = Double.NaN;
-	protected PointSourceDistanceCorrection distCorr = null;
+	/*
+	 * Finite approximation parameters.
+	 * 
+	 * Although this is a point surface, it may have values set that contain information on its finite extend. These are
+	 * usually used by PointSourceDistanceCorrection instances, are generally initialized to NaN unless explicitly set,
+	 * or if the values needed to compute them have been set.
+	 * 
+	 * If not explicitly set, depths are set using the passed in location's depth with upper = lower, and widths are
+	 * set to 0.
+	 * 
+	 * Length is initialized to 0 until set
+	 */
 
 	/**
-	 * The average strike of this surface on the Earth. Even though this is a
-	 * point source, an average strike can be assigned to it to assist with
-	 * particular scientific calculations. Initially set to NaN.
+	 * The average strike of this surface, e.g., if the strike is known but we're using a simple point surface
+	 * representation anyway
 	 */
-	protected double aveStrike=Double.NaN;
+	private double aveStrike = Double.NaN;
 
 	/**
-	 * The average dip of this surface into the Earth. Even though this is a
-	 * point source, an average dip can be assigned to it to assist with
-	 * particular scientific calculations. Initially set to NaN.
+	 * The average dip of this surface, used to compute the down-dip width, and often by a PointSourceDistanceCorrection
+	 * to handle footwall and hanging wall terms.
 	 */
-	protected double aveDip=Double.NaN;
+	private double aveDip = Double.NaN;
 	
 	/**
 	 * The average width of the surface. Although older ground motion models
 	 * are not concerned with rupture width, some newer models require a
 	 * reasonable estimate to function properly (e.g. ASK_2014). */
-	protected double aveWidth = 0.0;
+	private double aveWidth;
+	/**
+	 * The horizontal component of the average width
+	 */
+	private double aveHorzWidth;
+	
+	/**
+	 * The length of the surface, often used by a PointSourceDistanceCorrection to approximate the distance to a spinning
+	 * fault with this length
+	 */
+	private double aveLength;
+	
+	/**
+	 * Upper depth of the surface, used to compute the down-dip width, and often by a PointSourceDistanceCorrection
+	 */
+	private double upperDepth;
+	
+	/**
+	 * Lower depth of the surface, used to compute the down-dip width, and often by a PointSourceDistanceCorrection
+	 */
+	private double lowerDepth;
 
 	/** The name of this point source.  */
 	protected String name;
 
 	/**
-	 *  Constructor for the PointSurface object. Sets all the fields
-	 *  for a Location object. Mirrors the Location constructor.
-	 *
-	 * @param  lat    latitude for the Location of this point source.
-	 * @param  lon    longitude for the Location of this point source.
-	 * @param  depth  depth below the earth for the Location of this point source.
-	 */
-	public PointSurface( double lat, double lon, double depth ) {
-		this(new Location(lat, lon, depth));
-	}
-
-	/**
-	 *  Constructor for the PointSurface object. Sets all the fields
-	 *  for a Location object.
+	 *  Constructor for the PointSurface object. Sets all the fields for a true point source.
 	 *
 	 * @param  loc    the Location object for this point source.
 	 */
 	public PointSurface( Location loc ) {
-		setLocation(loc);
+		this(loc, Double.NaN, loc.depth, loc.depth, 0d);
 	}
-
+	
 	/**
-	 *  Constructor for the PointSurface object. Sets all the fields
-	 *  for a Location object.
-	 *
-	 *  OAF needs to have a default constructor.
+	 * Constructor that sets the location and all approximately-finite parameters that might be used for
+	 * distance-corrections: dip, depths, and length
+	 * 
+	 * @param loc
+	 * @param dip
+	 * @param upperDepth
+	 * @param lowerDepth
+	 * @param length
 	 */
-	public PointSurface() {
-		setLocation(null);
+	public PointSurface(Location loc, double dip, double upperDepth, double lowerDepth, double length) {
+		Preconditions.checkNotNull(loc, "Location cannot be null");
+		this.pointLocation = loc;
+		if (Double.isFinite(aveDip))
+			// can be NaN, but validate if not
+			FaultUtils.assertValidDip( aveDip );
+		this.aveDip = dip;
+		setDepths(upperDepth, lowerDepth); // this will compute widths
+		this.aveLength = length;
+	}
+	
+	protected PointSurface(PointSurface other) {
+		this.pointLocation = other.pointLocation;
+		this.aveStrike = other.aveStrike;
+		this.aveDip = other.aveDip;
+		this.aveWidth = other.aveWidth;
+		this.aveHorzWidth = other.aveHorzWidth;
+		this.aveLength = other.aveLength;
+		this.upperDepth = other.upperDepth;
+		this.lowerDepth = other.lowerDepth;
+		this.name = other.name;
+	}
+	
+	/**
+	 * 
+	 * @param siteLoc
+	 * @param singleCorr
+	 * @param trt
+	 * @param magnitude
+	 * @return distance-corrected view of this surface with distances pre-computed for the specified location and single
+	 * distance correction
+	 */
+	public DistanceCorrected getForDistanceCorrection(Location siteLoc,
+			PointSourceDistanceCorrection.Single singleCorr, TectonicRegionType trt, double magnitude) {
+		double horzDist = LocationUtils.horzDistanceFast(pointLocation, siteLoc);
+		SurfaceDistances corrDists = singleCorr.getCorrectedDistance(siteLoc, this, trt, magnitude, horzDist);
+		return new DistanceCorrected(this, siteLoc, corrDists);
+	}
+	
+	/**
+	 * 
+	 * @param siteLoc
+	 * @param siteDistances
+	 * @return distance-corrected view of this surfaces with distances to the given location already passed in, likely
+	 * from a {@link PointSourceDistanceCorrection}
+	 */
+	public DistanceCorrected getForDistances(Location siteLoc, SurfaceDistances siteDistances) {
+		return new DistanceCorrected(this, siteLoc, siteDistances);
+	}
+	
+	/**
+	 * 
+	 * @param singleCorr
+	 * @param trt
+	 * @param magnitude
+	 * @return on-the-fly distance correcting view of this point source for the given single distance correction
+	 */
+	public DistanceCorrecting getForDistanceCorrection(
+			PointSourceDistanceCorrection.Single singleCorr, TectonicRegionType trt, double magnitude) {
+		return new DistanceCorrecting(this, singleCorr, trt, magnitude);
+	}
+	
+	/**
+	 * 
+	 * @param siteLoc
+	 * @param distCorr
+	 * @param trt
+	 * @param magnitude
+	 * @return weighted list of distance-corrected views of this surface with distances pre-computed for the specified
+	 * location and distance correction
+	 */
+	public WeightedList<DistanceCorrected> getForDistanceCorrection(Location siteLoc,
+			PointSourceDistanceCorrection distCorr, TectonicRegionType trt, double magnitude) {
+		double horzDist = LocationUtils.horzDistanceFast(pointLocation, siteLoc);
+		WeightedList<SurfaceDistances> corrDists = distCorr.getCorrectedDistances(siteLoc, this, trt, magnitude, horzDist);
+		Preconditions.checkState(corrDists.isNormalized(), "Returned corrected distances aren't normalized for %s", distCorr);
+		List<WeightedValue<DistanceCorrected>> surfs = new ArrayList<>(corrDists.size());
+		for (int i=0; i<corrDists.size(); i++) {
+			SurfaceDistances dists = corrDists.getValue(i);
+			double weight = corrDists.getWeight(i);
+			surfs.add(new WeightedValue<DistanceCorrected>(
+					new DistanceCorrected(this, siteLoc, dists), weight));
+		}
+		return WeightedList.of(surfs);
+	}
+	
+	/**
+	 * 
+	 * @return a version of this source that blocks access to all distance metrics, used to ensure that raw distances
+	 * are never used when distance corrections are enabled
+	 */
+	public DistanceProtected getDistancedProtected() {
+		return new DistanceProtected(this);
 	}
 
 	/**
@@ -127,26 +244,60 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	public void setAveDip( double aveDip ) throws InvalidRangeException {
 		FaultUtils.assertValidDip( aveDip );
 		this.aveDip =  aveDip ;
+		computeWidths();
 	}
 
 	/** Returns the average dip of this surface into the Earth.  */
 	public double getAveDip() { return aveDip; }
-
-
-	/** Since this is a point source, the single Location can be set without indexes. */
-	public void setLocation(Location location) {
-		pointLocation = location;
-	}
 	
-
-	public double getDepth() { return pointLocation.getDepth(); }
-
-	
+	/**
+	 * Sets both the upper and lower depths to equal the passed in depth.
+	 * 
+	 * @param depth
+	 */
 	public void setDepth(double depth) {
-		Location newLocation = new Location(pointLocation.getLatitude(), pointLocation.getLongitude(), depth);
-		setLocation(newLocation);
+		pointLocation = new Location(pointLocation.getLatitude(), pointLocation.getLongitude(), depth);
+		this.upperDepth = depth;
+		this.lowerDepth = depth;
+		computeWidths();
+	}
+	
+	/**
+	 * Sets both the upper and lower depths to equal the passed in depth.
+	 * @param depth
+	 */
+	public void setDepths(double upperDepth, double lowerDepth) {
+		Preconditions.checkState(Double.isFinite(upperDepth), "Upper depth (%s) must be finite", upperDepth);
+		Preconditions.checkState(Double.isFinite(lowerDepth), "Lower depth (%s) must be finite", lowerDepth);
+		Preconditions.checkState(lowerDepth >= upperDepth,
+				"Lower depth (%s) must be >= upper depth (%s)", lowerDepth, upperDepth);
+		if (!Precision.equals(upperDepth, pointLocation.depth, 1e-5))
+			// relocate it to the top
+			pointLocation = new Location(pointLocation.getLatitude(), pointLocation.getLongitude(), upperDepth);
+		this.upperDepth = upperDepth;
+		this.lowerDepth = lowerDepth;
+		computeWidths();
+	}
+	
+	private void computeWidths() {
+		if (upperDepth == lowerDepth) {
+			aveWidth = 0d;
+			aveHorzWidth = 0d;
+		} else if (Double.isFinite(aveDip) && !Precision.equals(aveDip, 90d, 1e-4)) {
+			// dipping
+			double dipRad = Math.toRadians(aveDip);
+			aveWidth = (lowerDepth-upperDepth)/Math.sin(dipRad);
+			aveHorzWidth = aveWidth * Math.cos(dipRad);
+		} else {
+			// we have depths, but no dip, assume vertical
+			aveWidth = upperDepth - lowerDepth;
+			aveHorzWidth = 0d;
+		}
 	}
 
+	public void setAveLength(double aveLength) {
+		this.aveLength = aveLength;
+	}
 
 	/**
 	 * Gets the location for this point source.
@@ -208,16 +359,22 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 
 	@Override
 	public double getAveRupTopDepth() {
-		return pointLocation.getDepth();
+		return upperDepth;
+	}
+	
+	@Override
+	public double getAveRupBottomDepth() {
+		return lowerDepth;
 	}
 
 	@Override
 	public LocationList getPerimeter() {
-		return getEvenlyDiscritizedPerimeter();
+		return getLocationList();
 	}
 	
 	private FaultTrace getFaultTrace() {
 		FaultTrace trace = new FaultTrace(null);
+		// this was set to the upper depth via setDepths(...)
 		trace.add(pointLocation);
 		return trace;
 	}
@@ -227,61 +384,9 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 		return getFaultTrace();
 	}
 	
-	/**
-	 * This sets the point-source distance correction and rupture
-	 * @param correction
-	 * @param rupture
-	 */
-	public void setDistanceCorrection(PointSourceDistanceCorrection correction, EqkRupture rupture) {
-		setDistanceCorrection(correction, rupture.getMag());
-	}
-	
-	/**
-	 * This sets the point-source distance correction
-	 * @param correction
-	 * @param mag
-	 */
-	public void setDistanceCorrection(PointSourceDistanceCorrection correction, double mag) {
-		Preconditions.checkState(distCorr == null || Double.isFinite(mag),
-				"Magnitude must be finite if a distance correction is supplied");
-		this.distCorr = correction;
-		this.magForDistCorr = mag;
-	}
-
-	public PointSourceDistanceCorrection getDistanceCorrection() {
-		return distCorr;
-	}
-
-	/**
-	 * This sets the three propagation distances (distanceJB, distanceRup, & distanceSeis)
-	 * @param siteLoc
-	 */
-//	@Deprecated
-//	private void calcPropagationDistances(Location siteLoc) {
-//
-//		// calc distances if either location has changed
-//		// IS THIS REALLY SAVING MUCH TIME (is the check faster than recomputing the distances)?
-//		if(!siteLocForDistCalcs.equals(siteLoc) || ptLocChanged) {
-//			siteLocForDistCalcs = siteLoc;
-//			vertDist = LocationUtils.vertDistance(pointLocation, siteLocForDistCalcs);
-//			distanceJB = LocationUtils.horzDistanceFast(pointLocation, siteLocForDistCalcs);
-//		}
-//		
-//		// always do this point source-distance correction since mag is generally always changing 
-//		// (looping over point source) & type NONE returns 1.0
-//		distanceJB *= PtSrcDistCorr.getCorrection(distanceJB, corrMag, corrType);		
-//		
-//		// set distanceRup & distanceSeis
-//		distanceRup = Math.sqrt(distanceJB * distanceJB + vertDist * vertDist);
-//		if (pointLocation.getDepth() < SEIS_DEPTH)
-//			distanceSeis = Math.sqrt(distanceJB * distanceJB + SEIS_DEPTH * SEIS_DEPTH);
-//		else
-//			distanceSeis = distanceRup;
-//	}
-	
 	@Override
 	public double getDistanceRup(Location siteLoc){
-		double depth = getDepth();
+		double depth = getAveRupTopDepth();
 		double djb = getDistanceJB(siteLoc);
 		return Math.sqrt(depth * depth + djb * djb);
 	}
@@ -289,14 +394,12 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	@Override
 	public double getDistanceJB(Location siteLoc){
 		double horzDist = LocationUtils.horzDistanceFast(pointLocation, siteLoc);
-		if (distCorr == null)
-			return horzDist;
-		return distCorr.getCorrectedDistanceJB(siteLoc, magForDistCorr, this, horzDist);
+		return horzDist;
 	}
 
 	@Override
 	public double getDistanceSeis(Location siteLoc){
-		double depth = Math.max(SEIS_DEPTH, pointLocation.getDepth());
+		double depth = Math.max(SEIS_DEPTH, getAveRupTopDepth());
 		double djb = getDistanceJB(siteLoc);
 		return Math.sqrt(depth * depth + djb * djb);
 	}
@@ -339,7 +442,9 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 
 	@Override
 	public double getAreaInsideRegion(Region region) {
-		return 0;
+		if (region.contains(getLocation()))
+			return getArea();
+		return 0d;
 	}
 
 	@Override
@@ -349,11 +454,7 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 
 	@Override
 	public double getAveLength() {
-		return 0;
-	}
-
-	public void setAveWidth(double aveWidth) {
-		this.aveWidth = aveWidth;
+		return aveLength;
 	}
 	
 	@Override
@@ -361,9 +462,14 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 		return aveWidth;
 	}
 	
+	@Override
+	public double getAveHorizontalWidth() {
+		return aveHorzWidth;
+	}
+	
 	private LocationList getLocationList() {
 		LocationList list = new LocationList();
-		list.add(pointLocation);
+		list.add(pointLocation); // always at upper depth
 		return list;
 	}
 
@@ -384,6 +490,11 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 
 	@Override
 	public LocationList getEvenlyDiscritizedLowerEdge() {
+		if (lowerDepth > upperDepth) {
+			LocationList list = new LocationList();
+			list.add(new Location(pointLocation.lat, pointLocation.lon, lowerDepth)); // always at upper depth
+			return list;
+		}
 		return getLocationList();
 	}
 
@@ -421,32 +532,192 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	public double getMinDistance(RuptureSurface surface) {
 		return GriddedSurfaceUtils.getMinDistanceBetweenSurfaces(surface, this);
 	}
-	
-	public static void main(String[] args) {
-//		PointSurface pt = new PointSurface(34.2, -118.02, 5.0);
-//		Location loc = NEHRP_TestCity.LOS_ANGELES.location();
-//		System.out.println(pt.getDistanceJB(loc));
-//		System.out.println(pt.getDistanceRup(loc));
-//		System.out.println(pt.getDistanceSeis(loc));
-//		System.out.println(pt.getDistanceX(loc));
-	}
 
 	@Override
 	public PointSurface getMoved(LocationVector v) {
-		PointSurface moved = copyShallow();
-		moved.setLocation(LocationUtils.location(moved.getLocation(), v));
+		PointSurface moved = new PointSurface(this);
+		moved.pointLocation = LocationUtils.location(moved.getLocation(), v);
+		return moved;
+	}
+	
+	/**
+	 * Gets a copy of this surface for a new location and with all properties (including depths) retained
+	 * 
+	 * @param lat
+	 * @param lon
+	 * @return
+	 */
+	public PointSurface getMoved(double lat, double lon) {
+		PointSurface moved = new PointSurface(this);
+		moved.pointLocation = new Location(lat, lon, pointLocation.depth);
 		return moved;
 	}
 
 	@Override
 	public PointSurface copyShallow() {
-		PointSurface o = new PointSurface(pointLocation);
-		o.distCorr = distCorr;
-		o.aveStrike = aveStrike;
-		o.aveDip = aveDip;
-		o.aveWidth = aveWidth;
-		o.name = name;
-		return o;
+		return new PointSurface(this);
+	}
+	
+	/**
+	 * Point surface wrapper with pre-computed {@link SurfaceDistances} for a specific site, usually from a
+	 * {@link PointSourceDistanceCorrection}
+	 */
+	public static class DistanceCorrected extends PointSurface {
+		
+		private Location siteLoc;
+		private SurfaceDistances surfDists;
+
+		public DistanceCorrected(PointSurface surf, Location siteLoc, SurfaceDistances surfDists) {
+			super(surf);
+			Preconditions.checkNotNull(siteLoc);
+			Preconditions.checkNotNull(surfDists);
+			this.siteLoc = siteLoc;
+			this.surfDists = surfDists;
+		}
+
+		@Override
+		public double getDistanceRup(Location siteLoc) {
+			assertSameLocation(siteLoc);
+			return surfDists.getDistanceRup();
+		}
+
+		@Override
+		public double getDistanceJB(Location siteLoc) {
+			assertSameLocation(siteLoc);
+			return surfDists.getDistanceJB();
+		}
+
+		@Override
+		public double getDistanceSeis(Location siteLoc) {
+			assertSameLocation(siteLoc);
+			return surfDists.getDistanceSeis();
+		}
+
+		@Override
+		public double getDistanceX(Location siteLoc) {
+			assertSameLocation(siteLoc);
+			return surfDists.getDistanceX();
+		}
+		
+		private void assertSameLocation(Location siteLoc) {
+			if (this.siteLoc == siteLoc || this.siteLoc.equals(siteLoc) || LocationUtils.areSimilar(siteLoc, this.siteLoc))
+				return;
+			throw new IllegalStateException("This distance-corrected point-source has been precomputed for one location ("
+				+this.siteLoc+"), cannot return distances for the passed in location ("+siteLoc+")");
+		}
+
+	}
+	
+	/**
+	 * Point surface wrapper with that calculates corrected distances on the fly from a
+	 * {@link PointSourceDistanceCorrection.Single} correction.
+	 */
+	public static class DistanceCorrecting extends PointSurface implements CacheEnabledSurface {
+		
+		private SingleLocDistanceCache cache;
+		private PointSourceDistanceCorrection.Single corr;
+		private TectonicRegionType trt;
+		private double magnitude;
+
+		public DistanceCorrecting(PointSurface surf, PointSourceDistanceCorrection.Single corr,
+				TectonicRegionType trt, double magnitude) {
+			super(surf);
+			this.trt = trt;
+			this.magnitude = magnitude;
+			Preconditions.checkNotNull(corr);
+			this.corr = corr;
+			this.cache = new SingleLocDistanceCache(this);
+		}
+
+		@Override
+		public double getDistanceRup(Location siteLoc) {
+			return cache.getSurfaceDistances(siteLoc).getDistanceRup();
+		}
+
+		@Override
+		public double getDistanceJB(Location siteLoc) {
+			return cache.getSurfaceDistances(siteLoc).getDistanceJB();
+		}
+
+		@Override
+		public double getDistanceSeis(Location siteLoc) {
+			return cache.getSurfaceDistances(siteLoc).getDistanceSeis();
+		}
+
+		@Override
+		public double getDistanceX(Location siteLoc) {
+			return cache.getSurfaceDistances(siteLoc).getDistanceX();
+		}
+
+		@Override
+		public SurfaceDistances calcDistances(Location loc) {
+			return corr.getCorrectedDistance(loc, this, trt, magnitude, super.getQuickDistance(loc));
+		}
+
+		@Override
+		public double calcQuickDistance(Location loc) {
+			return super.getQuickDistance(loc);
+		}
+
+		@Override
+		public void clearCache() {
+			cache.clearCache();
+		}
+
+	}
+	
+	/**
+	 * Point surface wrapper that blocks access to all distance metrics; used by a {@link PointSource} to prevent other
+	 * classes from accidentally accessing non-corrected distance metrics. Instead, an {@link IllegalStateException} will
+	 * be thrown.
+	 */
+	public static class DistanceProtected extends PointSurface {
+		
+		private static final String MESSAGE = "This PointSurface is part of a distance-corrected PointSource and cannot be "
+				+ "used directly; instead, access the distance-corrected ruptures via PointSource.getForSite(Site) method. "
+				+ "If you really need to access the distance metrics, uncorrected alternatives are provided, e.g., "
+				+ "getUncorrectedDistanceRup(Location)";
+
+		public DistanceProtected(PointSurface surf) {
+			super(surf);
+		}
+
+		@Override
+		public double getDistanceRup(Location siteLoc) {
+			throw new IllegalStateException(MESSAGE);
+		}
+
+		@Override
+		public double getDistanceJB(Location siteLoc) {
+			throw new IllegalStateException(MESSAGE);
+		}
+
+		@Override
+		public double getDistanceSeis(Location siteLoc) {
+			throw new IllegalStateException(MESSAGE);
+		}
+
+		@Override
+		public double getDistanceX(Location siteLoc) {
+			throw new IllegalStateException(MESSAGE);
+		}
+
+		public double getUncorrectedDistanceRup(Location siteLoc) {
+			return super.getDistanceRup(siteLoc);
+		}
+
+		public double getUncorrectedDistanceJB(Location siteLoc) {
+			return super.getDistanceJB(siteLoc);
+		}
+
+		public double getUncorrectedDistanceSeis(Location siteLoc) {
+			return super.getDistanceSeis(siteLoc);
+		}
+
+		public double getUncorrectedDistanceX(Location siteLoc) {
+			return super.getDistanceX(siteLoc);
+		}
+
 	}
 
 }

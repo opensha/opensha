@@ -23,7 +23,7 @@ public class GriddedSeismicitySettings {
 			6d, // always finite >6
 //			5d,
 			// distance corrections
-			PointSourceDistanceCorrections.DEFAULT, // NSHM 2013 distance correction
+			PointSourceDistanceCorrections.DEFAULT.get(),
 			// supersampling
 			null, // none
 			// finite rupture settings
@@ -47,7 +47,7 @@ public class GriddedSeismicitySettings {
 	 * {@link BackgroundRupType#POINT} and no strike information is provided, or ruptures below
 	 * {@link #pointSourceMagnitudeCutoff}). Can be null;
 	 */
-	public final WeightedList<? extends PointSourceDistanceCorrection> distanceCorrections;
+	public final PointSourceDistanceCorrection distanceCorrection;
 	/**
 	 * Supersampling settings to further subdivide each grid cell into many sources when calculating hazard for
 	 * nearby sites.
@@ -62,18 +62,7 @@ public class GriddedSeismicitySettings {
 			double minimumMagnitude,
 			BackgroundRupType surfaceType,
 			double pointSourceMagnitudeCutoff,
-			PointSourceDistanceCorrections distanceCorrs,
-			GridCellSupersamplingSettings supersamplingSettings,
-			GriddedFiniteRuptureSettings finiteRuptureSettings) {
-		this(minimumMagnitude, surfaceType, pointSourceMagnitudeCutoff,
-				distanceCorrs == null ? null : distanceCorrs.get(), supersamplingSettings, finiteRuptureSettings);
-	}
-	
-	private GriddedSeismicitySettings(
-			double minimumMagnitude,
-			BackgroundRupType surfaceType,
-			double pointSourceMagnitudeCutoff,
-			WeightedList<? extends PointSourceDistanceCorrection> distanceCorrs,
+			PointSourceDistanceCorrection distanceCorr,
 			GridCellSupersamplingSettings supersamplingSettings,
 			GriddedFiniteRuptureSettings finiteRuptureSettings) {
 		super();
@@ -81,7 +70,7 @@ public class GriddedSeismicitySettings {
 		this.minimumMagnitude = minimumMagnitude;
 		this.surfaceType = surfaceType;
 		this.pointSourceMagnitudeCutoff = pointSourceMagnitudeCutoff;
-		this.distanceCorrections = distanceCorrs;
+		this.distanceCorrection = distanceCorr;
 		this.supersamplingSettings = supersamplingSettings;
 		Preconditions.checkState(surfaceType == BackgroundRupType.POINT || finiteRuptureSettings != null);
 		this.finiteRuptureSettings = finiteRuptureSettings;
@@ -95,7 +84,7 @@ public class GriddedSeismicitySettings {
 		if (this.minimumMagnitude == minimumMagnitude)
 			return this;
 		return new GriddedSeismicitySettings(minimumMagnitude, surfaceType,
-				pointSourceMagnitudeCutoff, distanceCorrections, supersamplingSettings, finiteRuptureSettings);
+				pointSourceMagnitudeCutoff, distanceCorrection, supersamplingSettings, finiteRuptureSettings);
 	}
 	
 	/**
@@ -109,7 +98,7 @@ public class GriddedSeismicitySettings {
 		if (surfaceType == BackgroundRupType.FINITE && finiteRuptureSettings == null)
 			finiteRuptureSettings = GriddedFiniteRuptureSettings.DEFAULT;
 		return new GriddedSeismicitySettings(minimumMagnitude, surfaceType,
-				pointSourceMagnitudeCutoff, distanceCorrections, supersamplingSettings, finiteRuptureSettings);
+				pointSourceMagnitudeCutoff, distanceCorrection, supersamplingSettings, finiteRuptureSettings);
 	}
 	
 	/**
@@ -120,29 +109,18 @@ public class GriddedSeismicitySettings {
 		if (this.pointSourceMagnitudeCutoff == pointSourceMagnitudeCutoff)
 			return this;
 		return new GriddedSeismicitySettings(minimumMagnitude, surfaceType,
-				pointSourceMagnitudeCutoff, distanceCorrections, supersamplingSettings, finiteRuptureSettings);
-	}
-	
-	/**
-	 * @param distanceCorrs
-	 * @return a copy with the distance corrections changed to those passed in
-	 */
-	public GriddedSeismicitySettings forDistanceCorrections(PointSourceDistanceCorrections distanceCorrs) {
-		if (distanceCorrs != null && this.distanceCorrections == distanceCorrs.get())
-			return this;
-		return new GriddedSeismicitySettings(minimumMagnitude, surfaceType,
-				pointSourceMagnitudeCutoff, distanceCorrs, supersamplingSettings, finiteRuptureSettings);
+				pointSourceMagnitudeCutoff, distanceCorrection, supersamplingSettings, finiteRuptureSettings);
 	}
 	
 	/**
 	 * @param distanceCorrections
-	 * @return a copy with the distance corrections changed to those passed in
+	 * @return a copy with the distance correction changed to that passed in
 	 */
-	public GriddedSeismicitySettings forDistanceCorrections(WeightedList<PointSourceDistanceCorrection> distanceCorrections) {
-		if (this.distanceCorrections == distanceCorrections)
+	public GriddedSeismicitySettings forDistanceCorrection(PointSourceDistanceCorrection distanceCorrection) {
+		if (this.distanceCorrection == distanceCorrection)
 			return this;
 		return new GriddedSeismicitySettings(minimumMagnitude, surfaceType,
-				pointSourceMagnitudeCutoff, distanceCorrections, supersamplingSettings, finiteRuptureSettings);
+				pointSourceMagnitudeCutoff, distanceCorrection, supersamplingSettings, finiteRuptureSettings);
 	}
 	
 	/**
@@ -153,7 +131,7 @@ public class GriddedSeismicitySettings {
 		if (this.supersamplingSettings == supersamplingSettings)
 			return this;
 		return new GriddedSeismicitySettings(minimumMagnitude, surfaceType,
-				pointSourceMagnitudeCutoff, distanceCorrections, supersamplingSettings, finiteRuptureSettings);
+				pointSourceMagnitudeCutoff, distanceCorrection, supersamplingSettings, finiteRuptureSettings);
 	}
 	
 	/**
@@ -164,14 +142,14 @@ public class GriddedSeismicitySettings {
 		if (this.finiteRuptureSettings == finiteRuptureSettings)
 			return this;
 		return new GriddedSeismicitySettings(minimumMagnitude, surfaceType,
-				pointSourceMagnitudeCutoff, distanceCorrections, supersamplingSettings, finiteRuptureSettings);
+				pointSourceMagnitudeCutoff, distanceCorrection, supersamplingSettings, finiteRuptureSettings);
 	}
 
 	@Override
 	public String toString() {
 		return "GriddedSeismicitySettings [minMag=" + minimumMagnitude + ", type=" + surfaceType.name()
-				+ ", ptSrcMagCut=" + pointSourceMagnitudeCutoff + ", distCorrs="
-				+ distanceCorrections + ", superssample=" + supersamplingSettings
+				+ ", ptSrcMagCut=" + pointSourceMagnitudeCutoff + ", distCorr="
+				+ distanceCorrection + ", superssample=" + supersamplingSettings
 				+ ", finiteRuptureSettings=" + finiteRuptureSettings + "]";
 	}
 

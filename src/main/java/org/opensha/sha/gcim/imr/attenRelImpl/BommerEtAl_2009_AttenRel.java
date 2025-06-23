@@ -168,12 +168,9 @@ public class BommerEtAl_2009_AttenRel
    * Vs30 parameter
    */
   public void setSite(Site site) throws ParameterException {
-
-    vs30Param.setValue((Double)site.getParameter(Vs30_Param.NAME).getValue());
-
-    this.site = site;
-    setPropagationEffectParams();
-
+	  if (site != null)
+		  vs30Param.setValue((Double)site.getParameter(Vs30_Param.NAME).getValue());
+	  super.setSite(site); // will call setPropagationEffectParams
   }
 
   /**

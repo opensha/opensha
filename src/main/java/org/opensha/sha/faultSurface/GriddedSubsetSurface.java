@@ -128,6 +128,12 @@ public class GriddedSubsetSurface extends ContainerSubset2D<Location>  implement
     public double getAveWidth() {
     	return getGridSpacingDownDip() * (getNumRows()-1);
     }
+
+    @Override
+    public double getAveHorizontalWidth() {
+    	double dip = getAveDip();
+    	return dip == 90d ? 0d : getAveWidth()*Math.cos(Math.toRadians(dip));
+    }
     
 
     @Override
@@ -314,19 +320,29 @@ public class GriddedSubsetSurface extends ContainerSubset2D<Location>  implement
 	public double getDistanceX(Location siteLoc){
 		return cache.getSurfaceDistances(siteLoc).getDistanceX();
 	}
-	
+
 
 	@Override
 	public double getAveRupTopDepth() {
 		if (this.data instanceof EvenlyGriddedSurfFromSimpleFaultData) // all depths are the same on the top row
 			return getLocation(0,0).getDepth();
 		else {
-			double depth = 0;
-			FaultTrace topTrace = getRowAsTrace(0);
-			for(Location loc:topTrace)
-				depth += loc.getDepth();
-			return depth/topTrace.size();
+			int numCols = getNumCols();
+			double dep=0;
+			for (int col=0; col<numCols; col++)
+				dep += getLocation(0, col).depth;
+			return dep/(double)numCols;
 		}
+	}
+
+	@Override
+	public double getAveRupBottomDepth() {
+		int numCols = getNumCols();
+		final int lastRow = getNumRows()-1;
+		double dep=0;
+		for (int col=0; col<numCols; col++)
+			dep += getLocation(lastRow, col).depth;
+		return dep/(double)numCols;
 	}
 
 	@Override

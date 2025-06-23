@@ -10,7 +10,7 @@ import org.opensha.commons.util.DevStatus;
 import org.opensha.commons.util.ServerPrefs;
 import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm.DistanceCorrection2013;
 import org.opensha.sha.faultSurface.PointSurface;
-import org.opensha.sha.util.NSHMP_Util.DistanceCorrection2008;
+import org.opensha.sha.faultSurface.utils.ptSrcCorr.FieldPointSourceCorrection;
 
 import com.google.common.base.Preconditions;
 
@@ -21,63 +21,25 @@ import com.google.common.base.Preconditions;
  * then a rupture should be split into multiple realizations with the given weight. Weights will always be normalized
  * to sum to 1.
  */
-public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? extends PointSourceDistanceCorrection>> {
+public enum PointSourceDistanceCorrections implements Supplier<PointSourceDistanceCorrection> {
 	
 	NONE("None", DevStatus.PRODUCTION) {
 		@Override
-		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
+		protected PointSourceDistanceCorrection initCorr() {
 			// none
 			return null;
 		}
 	},
-//	NONE("None", new PointSourceDistanceCorrection() {
-//
-//		@Override
-//		public double getCorrectedDistanceJB(double mag, PointSurface surf, double horzDist) {
-//			return horzDist;
-//		}
-//		
-//		@Override
-//		public String toString() {
-//			return PointSourceDistanceCorrections.NONE.name;
-//		}
-//		
-//	}),
 	FIELD("Field", DevStatus.PRODUCTION) {
 		@Override
-		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
-			return WeightedList.evenlyWeighted(new PointSourceDistanceCorrection() {
-				// TODO is there a reference? more specific name?
-
-				@Override
-				public double getCorrectedDistanceJB(Location siteLoc, double mag, PointSurface surf, double horzDist) {
-					// Wells and Coppersmith L(M) for "all" focal mechanisms
-					// this correction comes from work by Ned Field and Bruce Worden
-					// it assumes a vertically dipping straight fault with random
-					// hypocenter and strike
-					double rupLen =  Math.pow(10.0,-3.22+0.69*mag);
-					double corrFactor = 0.7071 + (1.0-0.7071)/(1 + Math.pow(rupLen/(horzDist*0.87),1.1));
-					return horzDist*corrFactor;
-				}
-				
-				@Override
-				public String toString() {
-					return PointSourceDistanceCorrections.FIELD.name;
-				}
-				
-			});
-		}
-	},
-	NSHM_2008("USGS NSHM (2008)", DevStatus.PRODUCTION) {
-		@Override
-		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
-			return WeightedList.evenlyWeighted(new DistanceCorrection2008());
+		protected PointSourceDistanceCorrection initCorr() {
+			return new FieldPointSourceCorrection();
 		}
 	},
 	NSHM_2013("USGS NSHM (2013)", DevStatus.PRODUCTION) {
 		@Override
-		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
-			return WeightedList.evenlyWeighted(new DistanceCorrection2013());
+		protected PointSourceDistanceCorrection initCorr() {
+			return new DistanceCorrection2013();
 		}
 	},
 	MEDIAN_RJB("Median rJB (centered)", DevStatus.DEVELOPMENT) {
@@ -190,26 +152,21 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? ex
 	private String name;
 	private DevStatus devStatus;
 	private volatile boolean intialized;
-	private WeightedList<? extends PointSourceDistanceCorrection> corrs;
+	private PointSourceDistanceCorrection corr;
 
 	private PointSourceDistanceCorrections(String name, DevStatus devStatus) {
 		this.name = name;
 		this.devStatus = devStatus;
 	}
 	
-	protected abstract WeightedList<? extends PointSourceDistanceCorrection> initCorrs();
+	protected abstract PointSourceDistanceCorrection initCorr();
 	
 	private void checkInitCorrs() {
 		if (!intialized) {
 			synchronized (this) {
 				if (!intialized) {
-					WeightedList<? extends PointSourceDistanceCorrection> corrs = initCorrs();
-					if (corrs != null) {
-						Preconditions.checkState(corrs.isNormalized(), "Weights not normalized for %s", name);
-						if (!(corrs instanceof WeightedList.Unmodifiable<?>))
-							corrs = new WeightedList.Unmodifiable<>(corrs);
-					}
-					this.corrs = corrs;
+					PointSourceDistanceCorrection corr = initCorr();
+					this.corr = corr;
 					intialized = true;
 				}
 			}
@@ -218,26 +175,30 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? ex
 	
 	@Override
 	public String toString() {
+		return getName();
+	}
+	
+	public String getName() {
 		return name;
 	}
 
 	@Override
-	public WeightedList<? extends PointSourceDistanceCorrection> get() {
+	public PointSourceDistanceCorrection get() {
 		checkInitCorrs();
-		return corrs;
+		return corr;
 	}
 	
 	/**
 	 * Finds the enum that generated this list (if any), otherwise null
-	 * @param corrs
+	 * @param corr
 	 * @return
 	 */
-	public static PointSourceDistanceCorrections forCorrections(WeightedList<? extends PointSourceDistanceCorrection> corrs) {
-		if (corrs == null || corrs.isEmpty())
+	public static PointSourceDistanceCorrections forCorrection(PointSourceDistanceCorrection corrInst) {
+		if (corrInst == null)
 			return NONE;
 		for (PointSourceDistanceCorrections corr : values()) {
 			corr.checkInitCorrs();
-			if (corr.corrs == corrs)
+			if (corr.corr == corrInst)
 				return corr;
 		}
 		return null;

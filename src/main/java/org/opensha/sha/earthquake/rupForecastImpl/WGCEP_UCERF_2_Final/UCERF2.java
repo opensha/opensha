@@ -480,7 +480,7 @@ public class UCERF2 extends AbstractERF {
 		backSeisRupStrings.add(BACK_SEIS_RUP_CROSSHAIR);
 		backSeisRupParam = new StringParameter(BACK_SEIS_RUP_NAME, backSeisRupStrings,BACK_SEIS_RUP_DEFAULT);
 		
-		distCorrParam = new PointSourceDistanceCorrectionParam(PointSourceDistanceCorrections.NSHM_2008);
+		distCorrParam = new PointSourceDistanceCorrectionParam(PointSourceDistanceCorrections.NSHM_2013);
 
 		// back seis Mmax
 		backSeisMaxMagParam = new DoubleParameter(BACK_SEIS_MAG_NAME, BACK_SEIS_MAG_MIN, BACK_SEIS_MAG_MAX,
@@ -700,7 +700,7 @@ public class UCERF2 extends AbstractERF {
 		backSeisParam.setValue(BACK_SEIS_DEFAULT);
 		// backgroud treated as point sources/finite soource
 		backSeisRupParam.setValue(BACK_SEIS_RUP_DEFAULT);
-		distCorrParam.setValue(PointSourceDistanceCorrections.NSHM_2008);
+		distCorrParam.setValue(PointSourceDistanceCorrections.NSHM_2013);
 		// back seis Mmax
 		backSeisMaxMagParam.setValue(BACK_SEIS_MAG_DEFAULT);
 		// rup offset
@@ -2205,7 +2205,7 @@ public class UCERF2 extends AbstractERF {
 			this.updateB_FaultsFetcher = true;
 			//bFaultsFetcher.test_writeFileAfterCombiningB_Faults();
 		}  else if (paramName.equalsIgnoreCase(distCorrParam.getName())) {
-			nshmp_gridSrcGen.setDistanceCorrections(distCorrParam.getValue().get());
+			nshmp_gridSrcGen.setDistanceCorrection(distCorrParam.getValue().get());
 		}
 	}
 

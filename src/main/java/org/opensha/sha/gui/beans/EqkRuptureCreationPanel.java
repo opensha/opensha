@@ -234,18 +234,18 @@ extends JPanel implements EqkRupSelectorGuiBeanAPI, ParameterChangeListener {
 		String ruptureType = (String) sourceTypeParam.getValue();
 
 		if (ruptureType.equals(POINT_SRC_NAME)) {
-			ruptureSurface = new PointSurface( (Location) locationParam.getValue());
+			PointSurface ptSurface = new PointSurface( (Location) locationParam.getValue());
 			double aveDip = ( (Double) dipParam.getValue()).doubleValue();
-			((PointSurface)ruptureSurface).setAveDip(aveDip);
-			WeightedList<? extends PointSourceDistanceCorrection> corrs = distCorrParam.getValue().get();
-			PointSourceDistanceCorrection corr;
-			if (corrs == null) {
-				corr = null;
-			} else {
-				Preconditions.checkState(corrs == null || corrs.size() == 1, "Should only have a single correction");
-				corr = corrs.getValue(0);
+			ptSurface.setAveDip(aveDip);
+			PointSourceDistanceCorrection corr = distCorrParam.getValue().get();
+			if (corr != null) {
+				Preconditions.checkState(corr instanceof PointSourceDistanceCorrection.Single,
+						"Only single-valued corrections are supported, we have a %s of type %s",
+						corr, corr.getClass().getName());
+				ptSurface = ptSurface.getForDistanceCorrection((PointSourceDistanceCorrection.Single)corr, null, magParam.getValue());
+				// TODO: should also include finite params such as length and widths
 			}
-			((PointSurface)ruptureSurface).setDistanceCorrection(corr, magParam.getValue());
+			this.ruptureSurface = ptSurface;
 		} else if (ruptureType.equals(FINITE_SRC_NAME)) {
 			faultParam.setEvenlyGriddedSurfaceFromParams();
 			ruptureSurface = (AbstractEvenlyGriddedSurface) faultParam.getValue();
@@ -396,17 +396,6 @@ extends JPanel implements EqkRupSelectorGuiBeanAPI, ParameterChangeListener {
 		listEditor.refreshParamEditor();
 		this.validate();
 		this.repaint();
-	}
-
-
-
-	/**
-	 *
-	 * @return the panel which allows user to select Eqk rupture from existing
-	 * ERF models
-	 */
-	public EqkRupSelectorGuiBeanAPI getEqkRuptureSelectorPanel() {
-		return this;
 	}
 
 	/**

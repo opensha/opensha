@@ -163,12 +163,13 @@ public class CS_2005_AttenRel extends AttenuationRelationship {
 	 * Vs30 parameter
 	 */
 	public void setSite(Site site) throws ParameterException {
-
-		vs30Param.setValueIgnoreWarning((Double)site.getParameter(Vs30_Param.NAME).getValue());
-		softSoilParam.setValue((Boolean)(site.getParameter(SOFT_SOIL_NAME).getValue()));
-		this.site = site;
-		// set the location in as_1997_attenRel
-		as_1997_attenRel.setSiteLocation(site.getLocation());
+		super.setSite(site); // will call setPropagationEffectParams
+		if (site != null) {
+			vs30Param.setValueIgnoreWarning((Double)site.getParameter(Vs30_Param.NAME).getValue());
+			softSoilParam.setValue((Boolean)(site.getParameter(SOFT_SOIL_NAME).getValue()));
+			// set the location in as_1997_attenRel
+			as_1997_attenRel.setSiteLocation(site.getLocation());
+		}
 	}
 
 	/**

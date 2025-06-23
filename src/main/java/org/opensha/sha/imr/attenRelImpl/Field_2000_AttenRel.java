@@ -159,13 +159,12 @@ public class Field_2000_AttenRel extends AttenuationRelationship {
 	 * Vs30 parameter
 	 */
 	public void setSite(Site site) throws ParameterException {
-
-		vs30Param.setValueIgnoreWarning((Double)site.getParameter(Vs30_Param.NAME).getValue());
-		basinDepthParam.setValueIgnoreWarning((Double)site.getParameter(BASIN_DEPTH_NAME).
-				getValue());
-		this.site = site;
-		setPropagationEffectParams();
-
+		super.setSite(site); // will call setPropagationEffectParams
+		if (site != null) {
+			vs30Param.setValueIgnoreWarning((Double)site.getParameter(Vs30_Param.NAME).getValue());
+			basinDepthParam.setValueIgnoreWarning((Double)site.getParameter(BASIN_DEPTH_NAME).
+					getValue());
+		}
 	}
 
 

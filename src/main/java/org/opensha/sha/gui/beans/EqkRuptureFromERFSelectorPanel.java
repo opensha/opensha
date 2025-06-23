@@ -795,15 +795,6 @@ implements ParameterChangeListener,EqkRupSelectorGuiBeanAPI{
 
 	/**
 	 *
-	 * @return the panel which allows user to select Eqk rupture from existing
-	 * ERF models
-	 */
-	public EqkRupSelectorGuiBeanAPI getEqkRuptureSelectorPanel(){
-		return this;
-	}
-
-	/**
-	 *
 	 * @return the timespan Metadata for the selected Rupture.
 	 * If no timespan exists for the rupture then it returns the Message:
 	 * "No Timespan exists for the selected Rupture".

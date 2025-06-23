@@ -181,13 +181,12 @@ public class Campbell_1997_AttenRel extends AttenuationRelationship {
 	 * either of these parameters.
 	 */
 	public void setSite(Site site) throws ParameterException {
-
-		siteTypeParam.setValue((String)site.getParameter(SITE_TYPE_NAME).getValue());
-		basinDepthParam.setValueIgnoreWarning((Double)site.getParameter(BASIN_DEPTH_NAME).
-				getValue());
-		this.site = site;
-		setPropagationEffectParams();
-
+		if (site != null) {
+			siteTypeParam.setValue((String)site.getParameter(SITE_TYPE_NAME).getValue());
+			basinDepthParam.setValueIgnoreWarning((Double)site.getParameter(BASIN_DEPTH_NAME).
+					getValue());
+		}
+		super.setSite(site); // will call setPropagationEffectParams
 	}
 
 

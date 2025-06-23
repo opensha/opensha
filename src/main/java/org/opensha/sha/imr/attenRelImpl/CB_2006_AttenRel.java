@@ -459,13 +459,12 @@ public class CB_2006_AttenRel extends AttenuationRelationship implements
    * Vs30 parameter
    */
   public void setSite(Site site) throws ParameterException {
-
-    vs30Param.setValue((Double)site.getParameter(Vs30_Param.NAME).getValue());
-    depthTo2pt5kmPerSecParam.setValueIgnoreWarning((Double)site.getParameter(DepthTo2pt5kmPerSecParam.NAME).
+	  super.setSite(site); // will call setPropagationEffectParams
+		if (site != null) {
+			vs30Param.setValue((Double)site.getParameter(Vs30_Param.NAME).getValue());
+			depthTo2pt5kmPerSecParam.setValueIgnoreWarning((Double)site.getParameter(DepthTo2pt5kmPerSecParam.NAME).
                                       getValue());
-    this.site = site;
-    setPropagationEffectParams();
-
+		}
   }
 
   /**

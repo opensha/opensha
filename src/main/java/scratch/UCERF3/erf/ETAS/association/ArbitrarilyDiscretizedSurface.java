@@ -414,6 +414,17 @@ class ArbitrarilyDiscretizedSurface implements RuptureSurface, CacheEnabledSurfa
 	public double getAveRupTopDepth() {
 		return minDepth;
 	}
+	
+	@Override
+	public double getAveHorizontalWidth() {
+		getRawWidthEstimate(); // this calculates the below
+		return horzComponentOfWidth;
+	}
+
+	@Override
+	public double getAveRupBottomDepth() {
+		return maxDepth;
+	}
 
 	@Override
 	public double getAveDipDirection() {

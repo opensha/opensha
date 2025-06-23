@@ -170,10 +170,10 @@ public class BA_2008_AttenRel extends AttenuationRelationship implements
 
 	@Override
 	public void setSite(Site site) throws ParameterException {
-		this.site = site;
-		vs30Param.setValueIgnoreWarning((Double) site.getParameter(Vs30_Param.NAME)
-			.getValue());
-		setPropagationEffectParams();
+		if (site != null)
+			vs30Param.setValueIgnoreWarning((Double) site.getParameter(Vs30_Param.NAME)
+					.getValue());
+		super.setSite(site); // will call setPropagationEffectParams
 	}
 
 	@Override

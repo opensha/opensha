@@ -285,8 +285,6 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 			sourceIndex =0;
 			for(sourceIndex=0;sourceIndex<numSources;++sourceIndex) {
 				ProbEqkSource source = eqkRupForecast.getSource(sourceIndex);
-				if (source instanceof SiteAdaptiveSource)
-					source = ((SiteAdaptiveSource)source).getForSite(site);
 				totRuptures += source.getNumRuptures();
 			}
 		}
@@ -313,8 +311,13 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 			ProbEqkSource source = eqkRupForecast.getSource(sourceIndex);
 			TectonicRegionType trt = source.getTectonicRegionType();
 			
-			if (source instanceof SiteAdaptiveSource)
+			int numRuptures = source.getNumRuptures();
+			int origNumRuptures = numRuptures;
+			if (source instanceof SiteAdaptiveSource) {
+				origNumRuptures = numRuptures;
 				source = ((SiteAdaptiveSource)source).getForSite(site);
+				numRuptures = source.getNumRuptures();
+			}
 			
 			// get the IMR
 			ScalarIMR imr = TRTUtils.getIMRforTRT(imrMap, trt);
@@ -326,7 +329,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 
 			// apply any filters
 			if (canSkipSource(filters, source, site)) {
-				currRuptures += source.getNumRuptures();  //update progress bar for skipped ruptures
+				currRuptures += origNumRuptures;  //update progress bar for skipped ruptures
 				continue;
 			}
 
@@ -337,12 +340,11 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 			if(!poissonSource)
 				initDiscretizeValues(sourceHazFunc, 0.0);
 
-			// get the number of ruptures for the current source
-			int numRuptures = source.getNumRuptures();
-
 			// loop over these ruptures
-			for(int n=0; n < numRuptures ; n++,++currRuptures) {
-				
+			for(int n=0; n < numRuptures ; n++) {
+				if (n < origNumRuptures)
+					// won't increment if it's after the original (non-site-adaptive) rupture count
+					currRuptures++;
 				ProbEqkRupture rupture = source.getRupture(n);
 
 				try {
@@ -409,8 +411,19 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 					System.err.flush();
 					//System.err.println("RupM: "+source.getRupture(n).getMag());
 					ExceptionUtils.throwAsRuntimeException(t);
+				} finally {
+					// clear the rupture so that no stale data remain
+					
+					// this can be important for distance-corrected point surfaces, which will check to make sure that
+					// any distance calls use the same location; if we didn't clear it, then later changed the site,
+					// the IMR might try to call the distance methods automatically on the stale rupture leading to an
+					// exception.
+					imr.setEqkRupture(null);
 				}
 			}
+			if (numRuptures < origNumRuptures)
+				// site adaptive is smaller, catch up with were we would be in the original count
+				currRuptures += (origNumRuptures-numRuptures);
 			// for non-poisson source:
 			if(!poissonSource)
 				for(k=0;k<numPoints;k++)

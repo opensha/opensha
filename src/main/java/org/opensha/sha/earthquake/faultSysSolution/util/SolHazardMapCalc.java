@@ -439,7 +439,7 @@ public class SolHazardMapCalc {
 	}
 	
 	public void setPointSourceDistanceCorrection(PointSourceDistanceCorrections distCorrType) {
-		setGriddedSeismicitySettings(backSeisSettings.forDistanceCorrections(distCorrType));
+		setGriddedSeismicitySettings(backSeisSettings.forDistanceCorrection(distCorrType.get()));
 	}
 	
 	public void setSupersamplingSettings(GridCellSupersamplingSettings supersamplingSettings) {
@@ -1541,7 +1541,7 @@ public class SolHazardMapCalc {
 		}
 		
 		if (cmd.hasOption("dist-corr"))
-			settings = settings.forDistanceCorrections(PointSourceDistanceCorrections.valueOf(cmd.getOptionValue("dist-corr")));
+			settings = settings.forDistanceCorrection(PointSourceDistanceCorrections.valueOf(cmd.getOptionValue("dist-corr")).get());
 		
 		if (cmd.hasOption("point-source-type"))
 			settings = settings.forSurfaceType(BackgroundRupType.valueOf(cmd.getOptionValue("point-source-type")));

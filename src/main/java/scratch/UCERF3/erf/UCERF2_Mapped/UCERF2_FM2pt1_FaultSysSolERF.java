@@ -35,7 +35,7 @@ public class UCERF2_FM2pt1_FaultSysSolERF extends FaultSystemSolutionERF {
 	
 	public UCERF2_FM2pt1_FaultSysSolERF() {
 		super(UCERF2_ComparisonSolutionFetcher.getUCERF2Solution(FaultModels.FM2_1));
-		nshmp_gridSrcGen = new NSHMP_GridSourceGenerator(bgSettings.distanceCorrections);
+		nshmp_gridSrcGen = new NSHMP_GridSourceGenerator(bgSettings.distanceCorrection);
 //		initOtherSources(); // NOTE called by parent in updateForecast()
 		setParameter(AleatoryMagAreaStdDevParam.NAME, 0.12);
 		setParameter(IncludeBackgroundParam.NAME, IncludeBackgroundOption.INCLUDE);
@@ -90,7 +90,7 @@ public class UCERF2_FM2pt1_FaultSysSolERF extends FaultSystemSolutionERF {
 		super.parameterChange(event);
 		
 		if (event.getParameter() == bgSettingsParam)
-			nshmp_gridSrcGen.setDistanceCorrections(bgSettings.distanceCorrections);
+			nshmp_gridSrcGen.setDistanceCorrection(bgSettings.distanceCorrection);
 	}
 
 

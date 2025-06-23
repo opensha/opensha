@@ -324,6 +324,14 @@ implements EvenlyGriddedSurface, CacheEnabledSurface, Serializable {
 	}
 
 	@Override
+	public double getAveHorizontalWidth() {
+		double dip = getAveDip();
+		if (dip == 90d)
+			return 0d;
+		return getAveWidth()*Math.cos(Math.toRadians(dip));
+	}
+
+	@Override
 	public double getArea() {
 		return getAveWidth()*getAveLength();
 	}

@@ -78,6 +78,11 @@ public class InterpolatedEvenlyGriddedSurface extends
 	}
 	
 	@Override
+	public double getAveRupBottomDepth() {
+		return loResSurf.getAveRupBottomDepth();
+	}
+	
+	@Override
 	public double getAveDipDirection() {
 		return loResSurf.getAveDipDirection();
 	}

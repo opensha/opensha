@@ -387,12 +387,13 @@ public class AfshariStewart_2016_AttenRel extends AttenuationRelationship {
 
 	@Override
 	public void setSite(Site site) throws ParameterException {
-		this.site = site;
-		vs30Param.setValueIgnoreWarning((Double) site.getParameter(Vs30_Param.NAME)
-			.getValue());
-		depthTo1pt0kmPerSecParam.setValueIgnoreWarning((Double) site.getParameter(
-			DepthTo1pt0kmPerSecParam.NAME).getValue());
-		setPropagationEffectParams();
+		if (site != null) {
+			vs30Param.setValueIgnoreWarning((Double) site.getParameter(Vs30_Param.NAME)
+					.getValue());
+			depthTo1pt0kmPerSecParam.setValueIgnoreWarning((Double) site.getParameter(
+					DepthTo1pt0kmPerSecParam.NAME).getValue());
+		}
+		super.setSite(site); // will call setPropagationEffectParams
 	}
 
 	@Override

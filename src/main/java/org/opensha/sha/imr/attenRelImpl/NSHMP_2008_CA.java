@@ -171,7 +171,10 @@ ParameterChangeListener {
 	}
 
 	@Override
-	protected void setPropagationEffectParams() {}
+	protected void setPropagationEffectParams() {
+		if (site != null && eqkRupture != null)
+			setPropagationEffect();
+	}
 
 	@Override
 	protected void initSupportedIntensityMeasureParams() {
@@ -320,9 +323,9 @@ ParameterChangeListener {
 
 	@Override
 	public void setSite(Site site) {
-		this.site = site;
-
-		// being done to satisfy unit tests
+		super.setSite(site); // will call setPropagationEffectParams
+		if (site != null)
+			// being done to satisfy unit tests
 		vs30Param.setValueIgnoreWarning((Double) site.getParameter(Vs30_Param.NAME).getValue());
 
 		if (eqkRupture != null) {

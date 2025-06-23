@@ -329,6 +329,11 @@ public class LineSurface implements RuptureSurface, CacheEnabledSurface {
 	}
 
 	@Override
+	public double getAveHorizontalWidth() {
+		return 0d;
+	}
+
+	@Override
 	public double getArea() {
 		return 0d;
 	}
@@ -391,6 +396,11 @@ public class LineSurface implements RuptureSurface, CacheEnabledSurface {
 
 	@Override
 	public double getAveRupTopDepth() {
+		return depth;
+	}
+
+	@Override
+	public double getAveRupBottomDepth() {
 		return depth;
 	}
 

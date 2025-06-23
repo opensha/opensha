@@ -202,6 +202,16 @@ public class WeightedList<E> extends AbstractList<WeightedValue<E>> implements X
 		return new Unmodifiable<>(List.of(values), false);
 	}
 	
+	/**
+	 * Convenience method for pre-specified varags values. Note that, when using this method,
+	 * the returned list is unmodifiable.
+	 * 
+	 * @param values list of values
+	 */
+	public static <E> Unmodifiable<E> of(List<WeightedValue<E>> values) {
+		return new Unmodifiable<>(values, false);
+	}
+	
 	public WeightedList(List<WeightedValue<E>> list) {
 		setAll(list);
 	}

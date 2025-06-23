@@ -89,6 +89,11 @@ class TriangularElementSurface implements RuptureSurface {
 	}
 
 	@Override
+	public double getAveHorizontalWidth() {
+		throw new UnsupportedOperationException("Not yet implemented");
+	}
+
+	@Override
 	public double getArea() {
 		return area;
 	}
@@ -158,6 +163,11 @@ class TriangularElementSurface implements RuptureSurface {
 
 	@Override
 	public double getAveRupTopDepth() {
+		throw new UnsupportedOperationException("Not yet implemented");
+	}
+
+	@Override
+	public double getAveRupBottomDepth() {
 		throw new UnsupportedOperationException("Not yet implemented");
 	}
 

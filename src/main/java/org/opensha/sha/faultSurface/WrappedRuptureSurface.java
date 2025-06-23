@@ -71,6 +71,12 @@ public abstract class WrappedRuptureSurface implements RuptureSurface {
 	}
 
 	@Override
+	public double getAveHorizontalWidth() {
+		// passthrough
+		return surf.getAveHorizontalWidth();
+	}
+
+	@Override
 	public double getArea() {
 		// passthrough
 		return surf.getArea();
@@ -140,6 +146,12 @@ public abstract class WrappedRuptureSurface implements RuptureSurface {
 	public double getAveRupTopDepth() {
 		// passthrough
 		return surf.getAveRupTopDepth();
+	}
+
+	@Override
+	public double getAveRupBottomDepth() {
+		// passthrough
+		return surf.getAveRupBottomDepth();
 	}
 
 	@Override

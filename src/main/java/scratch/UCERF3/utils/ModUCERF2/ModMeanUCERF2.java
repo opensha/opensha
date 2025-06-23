@@ -234,7 +234,7 @@ public class ModMeanUCERF2 extends AbstractERF {
 		backSeisRupStrings.add(UCERF2.BACK_SEIS_RUP_CROSSHAIR);
 		backSeisRupParam = new StringParameter(UCERF2.BACK_SEIS_RUP_NAME, backSeisRupStrings, UCERF2.BACK_SEIS_RUP_DEFAULT);
 
-		distCorrParam = new PointSourceDistanceCorrectionParam(PointSourceDistanceCorrections.NSHM_2008);
+		distCorrParam = new PointSourceDistanceCorrectionParam(PointSourceDistanceCorrections.NSHM_2013);
 
 		// rup offset
 		rupOffsetParam = new DoubleParameter(RUP_OFFSET_PARAM_NAME,RUP_OFFSET_PARAM_MIN,
@@ -269,7 +269,7 @@ public class ModMeanUCERF2 extends AbstractERF {
 		backSeisParam.setValue(UCERF2.BACK_SEIS_DEFAULT);
 		// backgroud treated as point sources/finite soource
 		backSeisRupParam.setValue(UCERF2.BACK_SEIS_RUP_DEFAULT);
-		distCorrParam.setValue(PointSourceDistanceCorrections.NSHM_2008);
+		distCorrParam.setValue(PointSourceDistanceCorrections.NSHM_2013);
 		// rup offset
 		rupOffsetParam.setValue(DEFAULT_RUP_OFFSET_VAL);
 		// floater type
@@ -993,7 +993,7 @@ public class ModMeanUCERF2 extends AbstractERF {
 		} else if(paramName.equalsIgnoreCase(UCERF2.BACK_SEIS_RUP_NAME)) { 
 
 		} else if (paramName.equalsIgnoreCase(distCorrParam.getName())) {
-			nshmp_gridSrcGen.setDistanceCorrections(distCorrParam.getValue().get());
+			nshmp_gridSrcGen.setDistanceCorrection(distCorrParam.getValue().get());
 		}
 		parameterChangeFlag = true;
 	}

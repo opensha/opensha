@@ -218,14 +218,15 @@ public class Bradley_2010_AttenRel extends AttenuationRelationship implements
 
 	@Override
 	public void setSite(Site site) throws ParameterException {
-		this.site = site;
-		vs30Param.setValueIgnoreWarning((Double) site.getParameter(Vs30_Param.NAME)
-			.getValue());
-		depthTo1pt0kmPerSecParam.setValueIgnoreWarning((Double) site.getParameter(
-			DepthTo1pt0kmPerSecParam.NAME).getValue());
-		vs30_TypeParam.setValue((String) site.getParameter(Vs30_TypeParam.NAME)
-			.getValue());
-		setPropagationEffectParams();
+		if (site != null) {
+			vs30Param.setValueIgnoreWarning((Double) site.getParameter(Vs30_Param.NAME)
+					.getValue());
+			depthTo1pt0kmPerSecParam.setValueIgnoreWarning((Double) site.getParameter(
+					DepthTo1pt0kmPerSecParam.NAME).getValue());
+			vs30_TypeParam.setValue((String) site.getParameter(Vs30_TypeParam.NAME)
+					.getValue());
+		}
+		super.setSite(site); // will call setPropagationEffectParams
 	}
 
 	@Override

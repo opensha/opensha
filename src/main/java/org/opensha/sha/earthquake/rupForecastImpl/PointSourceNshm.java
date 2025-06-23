@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.apache.commons.math3.util.Precision;
 import org.opensha.commons.calc.magScalingRelations.MagLengthRelationship;
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_MagLengthRelationship;
 import org.opensha.commons.data.Site;
@@ -34,7 +35,10 @@ import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
 import org.opensha.sha.faultSurface.FiniteApproxPointSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
+import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.faultSurface.utils.PointSurfaceBuilder;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
@@ -103,9 +107,19 @@ public class PointSourceNshm extends PoissonPointSource {
 			IncrementalMagFreqDist mfd,
 			double duration,
 			Map<FocalMech, Double> mechWtMap,
-			WeightedList<? extends PointSourceDistanceCorrection> distCorrs,
+			PointSourceDistanceCorrection distCorr,
 			double minMagForDistCorr) {
-		this(loc, mfd, duration, mechWtMap, SURF_BUILDER_DEFAULT, distCorrs, minMagForDistCorr, null);
+		this(loc, mfd, duration, mechWtMap, SURF_BUILDER_DEFAULT, distCorr, minMagForDistCorr, null);
+	}
+	
+	public PointSourceNshm(Location loc,
+			IncrementalMagFreqDist mfd,
+			double duration,
+			Map<FocalMech, Double> mechWtMap,
+			PointSourceDistanceCorrection distCorr,
+			double minMagForDistCorr,
+			GridCellSupersamplingSettings supersamplingSettings) {
+		this(loc, mfd, duration, mechWtMap, SURF_BUILDER_DEFAULT, distCorr, minMagForDistCorr, supersamplingSettings);
 	}
 	
 	public PointSourceNshm(Location loc,
@@ -115,9 +129,9 @@ public class PointSourceNshm extends PoissonPointSource {
 			double magCut,
 			double depthBelowMagCut,
 			double depthAboveMagCut,
-			WeightedList<? extends PointSourceDistanceCorrection> distCorrs,
+			PointSourceDistanceCorrection distCorr,
 			double minMagForDistCorr) {
-		this(loc, mfd, duration, mechWtMap, new SurfaceBuilder(magCut, depthBelowMagCut, depthAboveMagCut), distCorrs, minMagForDistCorr, null);
+		this(loc, mfd, duration, mechWtMap, new SurfaceBuilder(magCut, depthBelowMagCut, depthAboveMagCut), distCorr, minMagForDistCorr, null);
 	}
 	
 	private PointSourceNshm(Location loc,
@@ -125,67 +139,12 @@ public class PointSourceNshm extends PoissonPointSource {
 			double duration, 
 			Map<FocalMech, Double> mechWtMap,
 			SurfaceBuilder surfaceBuilder,
-			WeightedList<? extends PointSourceDistanceCorrection> distCorrs,
+			PointSourceDistanceCorrection distCorr,
 			double minMagForDistCorr,
 			GridCellSupersamplingSettings supersamplingSettings) {
 		super(loc, TectonicRegionType.ACTIVE_SHALLOW, duration,
-				buildData(loc, mfd, mechWtMap, surfaceBuilder, supersamplingSettings), distCorrs, minMagForDistCorr);
+				buildData(loc, mfd, mechWtMap, surfaceBuilder, supersamplingSettings), distCorr, minMagForDistCorr);
 		this.name = NAME;
-	}
-	
-	public static class Supersampled extends PointSourceNshm implements SiteAdaptiveSource {
-		
-		private SiteAdaptivePointSourceData<PoissonPointSourceData> adaptiveData;
-		
-		private ConcurrentMap<PoissonPointSourceData, PoissonPointSource> sourceCache;
-		
-		public Supersampled(Location loc,
-				IncrementalMagFreqDist mfd,
-				double duration,
-				Map<FocalMech, Double> mechWtMap,
-				WeightedList<? extends PointSourceDistanceCorrection> distCorrs,
-				double minMagForDistCorr,
-				GridCellSupersamplingSettings supersamplingSettings) {
-			super(loc, mfd, duration, mechWtMap, SURF_BUILDER_DEFAULT, distCorrs, minMagForDistCorr, supersamplingSettings);
-			initAdaptive();
-		}
-		
-		public Supersampled(Location loc,
-				IncrementalMagFreqDist mfd,
-				double duration,
-				Map<FocalMech, Double> mechWtMap,
-				double magCut,
-				double depthBelowMagCut,
-				double depthAboveMagCut,
-				WeightedList<? extends PointSourceDistanceCorrection> distCorrs,
-				double minMagForDistCorr,
-				GridCellSupersamplingSettings supersamplingSettings) {
-			super(loc, mfd, duration, mechWtMap, new SurfaceBuilder(magCut, depthBelowMagCut, depthAboveMagCut), distCorrs, minMagForDistCorr, supersamplingSettings);
-			initAdaptive();
-		}
-		
-		@SuppressWarnings("unchecked")
-		private void initAdaptive() {
-			Preconditions.checkState(data instanceof SiteAdaptivePointSourceData<?>);
-			adaptiveData = (SiteAdaptivePointSourceData<PoissonPointSourceData>) data;
-			sourceCache = new ConcurrentHashMap<>();
-		}
-
-		@Override
-		public ProbEqkSource getForSite(Site site) {
-			PoissonPointSourceData dataForSite = adaptiveData.getForSite(site);
-			if (dataForSite == adaptiveData)
-				// it returned itself, nothing for this site
-				return this;
-			PoissonPointSource ret = sourceCache.get(dataForSite);
-			if (ret != null)
-				return ret;
-			ret = new PoissonPointSource(getLocation(), getTectonicRegionType(),
-					getDuration(), dataForSite, getDistCorrs(), minMagForDistCorr);
-			sourceCache.putIfAbsent(dataForSite, ret);
-			return ret;
-		}
-		
 	}
 	
 	private static PoissonPointSourceData buildData(Location loc, IncrementalMagFreqDist mfd,
@@ -231,8 +190,8 @@ public class PointSourceNshm extends PoissonPointSource {
 
 		@Override
 		public int getNumSurfaces(double magnitude, FocalMech mech) {
-			// 1 surface for SS, 2 for dipping (1 for each HW setting)
-			return mech == STRIKE_SLIP ? 1 : 2;
+			// this used to return 2, but splitting out FW/HW is now done in the distance correction
+			return 1;
 		}
 
 		@Override
@@ -245,17 +204,16 @@ public class PointSourceNshm extends PoissonPointSource {
 			
 			PointSurfaceBuilder builder = new PointSurfaceBuilder(loc);
 			builder.upperDepthWidthAndDip(zTop, widthDD, mech.dip());
-			builder.footwall(surfaceIndex == 0); // always true for SS, true for one rup for N & R
 			builder.magnitude(magnitude);
 			builder.length(calcLength(magnitude));
 			
-			return builder.buildFiniteApproxPointSurface();
+			return builder.buildPointSurface();
 		}
 
 		@Override
 		public double getSurfaceWeight(double magnitude, FocalMech mech, int surfaceIndex) {
-			// 1 surface for SS, 2 for dipping (1 for each HW setting)
-			return mech == STRIKE_SLIP ? 1d : 0.5;
+			// splitting out FW/HW is now done in the distance correction
+			return 1d;
 		}
 
 		@Override
@@ -360,7 +318,6 @@ public class PointSourceNshm extends PoissonPointSource {
 	 */
 	public static class DistanceCorrection2013 implements PointSourceDistanceCorrection {
 
-		@Override
 		public double getCorrectedDistanceJB(Location siteLoc, double mag, PointSurface surf, double horzDist) {
 			if (mag < RJB_M_CUTOFF) {
 				return horzDist;
@@ -370,11 +327,103 @@ public class PointSourceNshm extends PoissonPointSource {
 			return RJB_WC94LENGTH[mIndex][rIndex];
 		}
 		
-		@Override
-		public String toString() {
-			return "USGS NSHM (2013)";
+		public double getCorrectedDistanceRup(double rJB, double zTop, double zBot, double dipRad, double horzWidth, boolean footwall) {
+			// this is the (buggy) distance correction used by the USGS NSHM in 2013 and at least through 2023; it is labeled
+			// 2013 because it was implemented in OpenSHA for the 2013 update.
+			// It can return unphysical values, e.g., where rRup < zTop. See https://github.com/opensha/opensha/issues/124
+			if (footwall) return hypot2(rJB, zTop);
+
+			double rCut = zBot * Math.tan(dipRad);
+
+			if (rJB > rCut) return hypot2(rJB, zBot);
+
+			// rRup when rJB is 0 -- we take the minimum of the site-to-top-edge
+			// and site-to-normal of rupture for the site being directly over
+			// the down-dip edge of the rupture
+			double rRup0 = Math.min(hypot2(horzWidth, zTop), zBot * Math.cos(dipRad));
+			// rRup at cutoff rJB
+			double rRupC = zBot / Math.cos(dipRad);
+			// scale linearly with rJB distance
+			return (rRupC - rRup0) * rJB / rCut + rRup0;
 		}
 		
+		@Override
+		public String toString() {
+			return PointSourceDistanceCorrections.NSHM_2013.getName();
+		}
+
+		@Override
+		public WeightedList<SurfaceDistances> getCorrectedDistances(Location siteLoc, PointSurface surf,
+				TectonicRegionType trt, double mag, double horzDist) {
+			if (trt == TectonicRegionType.SUBDUCTION_SLAB) {
+				// NSHM13 always treats slab ruptures as true point sources
+				double corrJB = horzDist;
+				double zTop = surf.getAveRupTopDepth();
+				double rRup = hypot2(corrJB, zTop);
+				double rSeis = zTop > GriddedSurfaceUtils.SEIS_DEPTH ? rRup : hypot2(corrJB, GriddedSurfaceUtils.SEIS_DEPTH);
+				double rX = -corrJB;
+				return WeightedList.evenlyWeighted(
+						new SurfaceDistances.Precomputed(siteLoc, rRup, corrJB, rSeis, rX));
+			}
+			double corrJB = getCorrectedDistanceJB(siteLoc, mag, surf, horzDist);
+			
+			double dip = surf.getAveDip();
+			
+			double zTop = surf.getAveRupTopDepth();
+			
+			if (Precision.equals(90d, dip, 0.1)) {
+				// vertical, simple case
+				
+				double rRup = getCorrectedDistanceRup(corrJB, zTop, Double.NaN, PI_HALF, Double.NaN, true);
+				
+				double rSeis;
+				if (zTop > GriddedSurfaceUtils.SEIS_DEPTH)
+					rSeis = rRup;
+				else
+					rSeis = getCorrectedDistanceRup(corrJB, GriddedSurfaceUtils.SEIS_DEPTH, Double.NaN, PI_HALF, Double.NaN, true);
+				
+				double rX = -corrJB; // footwall is set to 'true' for SS ruptures in order to short-circuit GMPE calcs
+				return WeightedList.evenlyWeighted(
+						new SurfaceDistances.Precomputed(siteLoc, rRup, corrJB, rSeis, rX));
+			} else {
+				// dipping, return one on and one off the footwall
+				double zBot = surf.getAveRupBottomDepth();
+				double horzWidth = surf.getAveHorizontalWidth();
+				
+				double dipRad = Math.toRadians(dip);
+				
+				double rRupFW = getCorrectedDistanceRup(corrJB, zTop, zBot, dipRad, horzWidth, true);
+				double rRupHW = getCorrectedDistanceRup(corrJB, zTop, zBot, dipRad, horzWidth, false);
+				
+				double rSeisFW, rSeisHW;
+				if (zTop > GriddedSurfaceUtils.SEIS_DEPTH) {
+					rSeisFW = rRupFW;
+					rSeisHW = rRupHW;
+				} else {
+					rSeisFW = getCorrectedDistanceRup(corrJB, GriddedSurfaceUtils.SEIS_DEPTH, zBot, dipRad, horzWidth, true);
+					rSeisHW = getCorrectedDistanceRup(corrJB, GriddedSurfaceUtils.SEIS_DEPTH, zBot, dipRad, horzWidth, false);
+				}
+				
+				double rX_FW = -corrJB;
+				double rX_HW = corrJB + horzWidth;
+				
+				// evenly-weight them. this is valid if rJB is large but a bad approximation close in, but it's what
+				// is/was done in the NSHM
+				return WeightedList.evenlyWeighted(
+						new SurfaceDistances.Precomputed(siteLoc, rRupFW, corrJB, rSeisFW, rX_FW),
+						new SurfaceDistances.Precomputed(siteLoc, rRupHW, corrJB, rSeisHW, rX_HW));
+			}
+		}
+		
+	}
+	
+	private static final double PI_HALF = Math.PI/2d; // 90 degrees
+	
+	/**
+	 * Same as {@code Math.hypot()} without regard to under/over flow.
+	 */
+	private static final double hypot2(double v1, double v2) {
+		return Math.sqrt(v1 * v1 + v2 * v2);
 	}
 
 }

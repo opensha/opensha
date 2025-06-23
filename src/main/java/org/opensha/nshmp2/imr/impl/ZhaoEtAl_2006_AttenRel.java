@@ -114,10 +114,10 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 
 	@Override
 	public void setSite(Site site) throws ParameterException {
-		vs30Param.setValueIgnoreWarning((Double) site.getParameter(
-			Vs30_Param.NAME).getValue());
-		this.site = site;
-		setPropagationEffectParams();
+		if (site != null)
+			vs30Param.setValueIgnoreWarning((Double) site.getParameter(
+					Vs30_Param.NAME).getValue());
+		super.setSite(site);
 	}
 	
 

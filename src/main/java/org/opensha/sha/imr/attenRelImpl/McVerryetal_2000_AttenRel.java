@@ -267,11 +267,9 @@ public class McVerryetal_2000_AttenRel extends AttenuationRelationship implement
    * @param  site             The new site object
    */
   public void setSite(Site site) throws ParameterException {
-
-	    siteTypeParam.setValue((String)site.getParameter(SITE_TYPE_NAME).getValue());
-	    this.site = site;
-	    setPropagationEffectParams();
-
+	  super.setSite(site); // will call setPropagationEffectParams
+		if (site != null)
+			siteTypeParam.setValue((String)site.getParameter(SITE_TYPE_NAME).getValue());
   }
 
   /**

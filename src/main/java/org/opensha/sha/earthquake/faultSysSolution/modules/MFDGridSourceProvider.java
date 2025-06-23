@@ -23,6 +23,7 @@ import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
+import org.opensha.sha.earthquake.PointSource;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.aftershocks.MagnitudeDependentAftershockFilter;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
@@ -71,7 +72,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 	 * @param gridSourceSettings gridded seismicity settings (rupture type, distance corrections, etc)
 	 * @return the source at {@code index}
 	 */
-	public ProbEqkSource getSource(int gridIndex, double duration,
+	public PointSource getSource(int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings);
 	
 
@@ -87,7 +88,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 	 * @param gridSourceSettings gridded seismicity settings (rupture type, distance corrections, etc)
 	 * @return the source at {@code index}
 	 */
-	public ProbEqkSource getSourceSubSeisOnFault(int gridIndex, double duration,
+	public PointSource getSourceSubSeisOnFault(int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings);
 
 	/**
@@ -102,11 +103,11 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 	 * @param gridSourceSettings gridded seismicity settings (rupture type, distance corrections, etc)
 	 * @return the source at {@code index}
 	 */
-	public ProbEqkSource getSourceUnassociated(int gridIndex, double duration,
+	public PointSource getSourceUnassociated(int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings);
 
 	@Override
-	default ProbEqkSource getSource(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
+	default PointSource getSource(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings) {
 		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType(gridIndex))
 			return getSource(gridIndex, duration, aftershockFilter, gridSourceSettings);
@@ -114,7 +115,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 	}
 
 	@Override
-	default ProbEqkSource getSourceSubSeisOnFault(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
+	default PointSource getSourceSubSeisOnFault(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings) {
 		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType(gridIndex))
 			return getSourceSubSeisOnFault(gridIndex, duration, aftershockFilter, gridSourceSettings);
@@ -122,7 +123,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 	}
 
 	@Override
-	default ProbEqkSource getSourceUnassociated(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
+	default PointSource getSourceUnassociated(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings) {
 		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType(gridIndex))
 			return getSourceUnassociated(gridIndex, duration, aftershockFilter, gridSourceSettings);
@@ -314,7 +315,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		 * @param supersamplingParams
 		 * @return source
 		 */
-		protected abstract ProbEqkSource buildSource(int gridIndex, IncrementalMagFreqDist mfd,
+		protected abstract PointSource buildSource(int gridIndex, IncrementalMagFreqDist mfd,
 				double duration, GriddedSeismicitySettings gridSourceSettings);
 	
 		@Override
@@ -362,7 +363,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		}
 	
 		@Override
-		public ProbEqkSource getSource(int gridIndex, double duration, MagnitudeDependentAftershockFilter aftershockFilter,
+		public PointSource getSource(int gridIndex, double duration, MagnitudeDependentAftershockFilter aftershockFilter,
 				GriddedSeismicitySettings gridSourceSettings) {
 			IncrementalMagFreqDist mfd = getMFD(gridIndex, gridSourceSettings.minimumMagnitude);
 			if (mfd == null)
@@ -373,7 +374,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		}
 	
 		@Override
-		public ProbEqkSource getSourceSubSeisOnFault(int gridIndex, double duration, MagnitudeDependentAftershockFilter aftershockFilter,
+		public PointSource getSourceSubSeisOnFault(int gridIndex, double duration, MagnitudeDependentAftershockFilter aftershockFilter,
 				GriddedSeismicitySettings gridSourceSettings) {
 			IncrementalMagFreqDist mfd = getMFD_SubSeisOnFault(gridIndex);
 			if(mfd == null)
@@ -386,7 +387,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		}
 	
 		@Override
-		public ProbEqkSource getSourceUnassociated(int gridIndex, double duration, MagnitudeDependentAftershockFilter aftershockFilter,
+		public PointSource getSourceUnassociated(int gridIndex, double duration, MagnitudeDependentAftershockFilter aftershockFilter,
 				GriddedSeismicitySettings gridSourceSettings) {
 			IncrementalMagFreqDist mfd = getMFD_Unassociated(gridIndex);
 			if(mfd == null)
@@ -983,7 +984,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		}
 	
 		@Override
-		protected ProbEqkSource buildSource(int gridIndex, IncrementalMagFreqDist mfd, double duration,
+		protected PointSource buildSource(int gridIndex, IncrementalMagFreqDist mfd, double duration,
 				GriddedSeismicitySettings gridSourceSettings) {
 			Location loc = getGriddedRegion().locationForIndex(gridIndex);
 			

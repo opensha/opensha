@@ -311,10 +311,7 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 			Location destLoc = samples.get(indexes.getSubsampleIndex(rupIndex));
 			if (surf instanceof PointSurface) {
 				// shortcut to avoid the more costly LocationVector creation
-				PointSurface moved = ((PointSurface)surf).copyShallow();
-				// keep same depth
-				moved.setLocation(new Location(destLoc.lat, destLoc.lon, moved.getLocation().depth));
-				return moved;
+				return ((PointSurface)surf).getMoved(destLoc.lat, destLoc.lon);
 			}
 			LocationVector vector = LocationUtils.vector(centerLoc, destLoc);
 			vector.setVertDistance(0d);

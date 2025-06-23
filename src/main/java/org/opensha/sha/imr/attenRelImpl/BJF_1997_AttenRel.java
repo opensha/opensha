@@ -150,11 +150,9 @@ public class BJF_1997_AttenRel extends AttenuationRelationship {
 	 * Vs30 parameter
 	 */
 	public void setSite(Site site) throws ParameterException {
-
-		vs30Param.setValueIgnoreWarning((Double)site.getParameter(Vs30_Param.NAME).getValue());
-		this.site = site;
-		setPropagationEffectParams();
-
+		if (site != null)
+			vs30Param.setValueIgnoreWarning((Double)site.getParameter(Vs30_Param.NAME).getValue());
+		super.setSite(site); // will call setPropagationEffectParams
 	}
 
 

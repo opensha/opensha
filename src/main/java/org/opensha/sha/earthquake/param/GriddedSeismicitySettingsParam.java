@@ -173,7 +173,7 @@ public class GriddedSeismicitySettingsParam extends AbstractParameter<GriddedSei
 			surfTypeParam.setValue(value.surfaceType);
 			minMagParam.setValue(value.minimumMagnitude);
 			pointSourceCutoffMagParam.setValue(value.pointSourceMagnitudeCutoff);
-			PointSourceDistanceCorrections corrType = PointSourceDistanceCorrections.forCorrections(value.distanceCorrections);
+			PointSourceDistanceCorrections corrType = PointSourceDistanceCorrections.forCorrection(value.distanceCorrection);
 			Preconditions.checkNotNull(corrType, "Passed in corrections are not of a standard type; editor not supported.");
 			distCorrParam.setValue(corrType);
 			distCorrParam.getEditor().setVisible(value.surfaceType == BackgroundRupType.POINT);
@@ -216,7 +216,7 @@ public class GriddedSeismicitySettingsParam extends AbstractParameter<GriddedSei
 			else if (source == pointSourceCutoffMagParam)
 				param.setValue(value.forPointSourceMagCutoff(pointSourceCutoffMagParam.getValue()));
 			else if (source == distCorrParam)
-				param.setValue(value.forDistanceCorrections(distCorrParam.getValue()));
+				param.setValue(value.forDistanceCorrection(distCorrParam.getValue().get()));
 			else if (source == finiteSettingsParam)
 				param.setValue(value.forFiniteRuptureSettings(finiteSettingsParam.getValue()));
 			else if (source == supersamplingParam)

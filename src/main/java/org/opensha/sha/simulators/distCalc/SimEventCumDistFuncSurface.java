@@ -42,6 +42,7 @@ public class SimEventCumDistFuncSurface implements CacheEnabledSurface {
 	
 	private double dip = Double.NaN;
 	private double zTOR = Double.NaN;
+	private double zBOT = Double.NaN;
 	private double ddw = Double.NaN;
 	private double area = Double.NaN;
 	private LocationElementDistanceCacheFactory locCacheFactory;
@@ -115,8 +116,10 @@ public class SimEventCumDistFuncSurface implements CacheEnabledSurface {
 					double sectDip = sectDipsMap.values().iterator().next() / sectWeights.values().iterator().next();
 					zTOR = depths[0];
 					ddw = (depths[1]-depths[0])/Math.sin(sectDip*Math.PI/ 180);
+					zBOT = depths[1];
 				} else {
 					double sumZtors = 0d;
+					double sumZbots = 0d;
 					double sumDDWs = 0d;
 					double sumWeights = 0d;
 					for (int id : sectDepthsMap.keySet()) {
@@ -124,13 +127,15 @@ public class SimEventCumDistFuncSurface implements CacheEnabledSurface {
 						double weight = sectWeights.get(id);
 						double dip = sectDipsMap.get(id)/weight;
 						double ddw = (depths[1]-depths[0])/Math.sin(dip*Math.PI/ 180);
-						
+
 						sumZtors += depths[0]*weight;
+						sumZbots += depths[1]*weight;
 						sumDDWs += ddw*weight;
 						sumWeights += weight;
 					}
 					zTOR = sumZtors/sumWeights;
 					ddw = sumDDWs/sumWeights;
+					zBOT = sumZbots/sumWeights;
 				}
 				this.area = area*1e-6;
 				if (zTOR < 0.01 && zTOR > -0.01)
@@ -268,6 +273,13 @@ public class SimEventCumDistFuncSurface implements CacheEnabledSurface {
 	}
 
 	@Override
+	public double getAveHorizontalWidth() {
+		if (dip == 90d)
+			return 0d;
+		return getAveWidth()*Math.cos(Math.toRadians(dip));
+	}
+
+	@Override
 	public double getArea() {
 		checkInitAvgQuantities();
 		return area;
@@ -327,6 +339,12 @@ public class SimEventCumDistFuncSurface implements CacheEnabledSurface {
 	public double getAveRupTopDepth() {
 		checkInitAvgQuantities();
 		return zTOR;
+	}
+
+	@Override
+	public double getAveRupBottomDepth() {
+		checkInitAvgQuantities();
+		return zBOT;
 	}
 
 	@Override

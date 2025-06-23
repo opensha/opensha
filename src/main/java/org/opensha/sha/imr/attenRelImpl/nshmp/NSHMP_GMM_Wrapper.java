@@ -20,6 +20,7 @@ import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.WeightedValue;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
+import org.opensha.commons.exceptions.ConstraintException;
 import org.opensha.commons.exceptions.IMRException;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.geo.Location;
@@ -245,7 +246,7 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 		
 		@Override
 		public void setSite(Site site) {
-			setSite(site, false);
+			setSite(site, false, true);
 		}
 
 		@Override
@@ -1034,10 +1035,27 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 
 	@Override
 	public void setSite(Site site) {
-		this.setSite(site, true);
+		this.setSite(site, true, true);
 	}
 
-	protected void setSite(Site site, boolean requireAllParams) {
+	@Override
+	public void setSiteLocation(Location loc) {
+		perRuptureInputCache = null;
+		super.setSiteLocation(loc);
+		clearCachedGmmInputs();
+		
+		setPropagationEffectParams();
+	}
+
+	@Override
+	public void setAll(EqkRupture eqkRupture, Site site, Parameter intensityMeasure)
+			throws ParameterException, IMRException, ConstraintException {
+		this.setSite(site, true, false); // don't compute the propagation effects on setting the site, because it'll happen next
+		this.setEqkRupture(eqkRupture); // this will compute propagation effects
+		this.setIntensityMeasure(intensityMeasure);
+	}
+
+	protected void setSite(Site site, boolean requireAllParams, boolean setPropEffectParams) {
 		if (site != this.site)
 			perRuptureInputCache = null;
 		super.setSite(site);
@@ -1058,7 +1076,8 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 			if (requireAllParams || site.containsParameter(SedimentThicknessParam.NAME))
 				valueManager.setParameterValue(Field.ZSED, site.getParameter(Double.class, SedimentThicknessParam.NAME).getValue());
 		
-		setPropagationEffectParams();
+		if (setPropEffectParams)
+			setPropagationEffectParams();
 	}
 
 	@Override

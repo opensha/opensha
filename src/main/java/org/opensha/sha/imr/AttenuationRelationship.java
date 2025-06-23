@@ -14,6 +14,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.impl.WarningDoubleParameter;
+import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.gcim.imr.param.EqkRuptureParams.FocalDepthParam;
 import org.opensha.sha.gcim.imr.param.IntensityMeasureParams.CAV_Param;
 import org.opensha.sha.gcim.imr.param.IntensityMeasureParams.Ds575_Param;
@@ -365,18 +366,35 @@ extends AbstractIMR implements ScalarIMR {
 	 * of setting the site once and changing the location of the site to do the
 	 * calculations.
 	 */
+	@Override
 	public void setSiteLocation(Location loc) {
 		//if site is null create a new Site
 		if (site == null) {
 			site = new Site();
 		}
 		site.setLocation(loc);
+		if (this.eqkRupture != null && this.eqkRupture.getRuptureSurface() instanceof PointSurface.DistanceCorrected)
+			// we already have a point surface, and it's distance has been corrected for the prior site
+			// clear the rupture because, if non-null, the propagation effect calculation will attempt to
+			// retrieve distances for this surface which will throw an exception
+			this.eqkRupture = null;
+		setPropagationEffectParams();
+	}
+
+	@Override
+	public void setSite(Site site) {
+		if (this.eqkRupture != null && this.eqkRupture.getRuptureSurface() instanceof PointSurface.DistanceCorrected)
+			// we already have a point surface, and it's distance has been corrected for the prior site
+			// clear the rupture because, if non-null, the propagation effect calculation will attempt to
+			// retrieve distances for this surface which will throw an exception
+			this.eqkRupture = null;
+		super.setSite(site);
 		setPropagationEffectParams();
 	}
 
 	/**
 	 *  Calculates the value of each propagation effect parameter from the
-	 *  current Site and ProbEqkRupture objects.
+	 *  current Site and EqkRupture objects.
 	 */
 	protected abstract void setPropagationEffectParams();
 

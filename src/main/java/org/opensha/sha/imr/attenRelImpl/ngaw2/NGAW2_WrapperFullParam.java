@@ -149,15 +149,15 @@ public class NGAW2_WrapperFullParam extends AttenuationRelationship implements P
 
 	@Override
 	public void setSite(Site site) {
+		if (site != null) {
+			this.vs30Param.setValueIgnoreWarning(site.getParameter(Double.class, Vs30_Param.NAME).getValue());
+			this.vs30_TypeParam.setValue(site.getParameter(String.class, Vs30_TypeParam.NAME).getValue());
+			this.depthTo1pt0kmPerSecParam.setValue(site.getParameter(Double.class,
+					DepthTo1pt0kmPerSecParam.NAME).getValue());
+			this.depthTo2pt5kmPerSecParam.setValue(site.getParameter(Double.class,
+					DepthTo2pt5kmPerSecParam.NAME).getValue());
+		}
 		super.setSite(site);
-		this.vs30Param.setValueIgnoreWarning(site.getParameter(Double.class, Vs30_Param.NAME).getValue());
-		this.vs30_TypeParam.setValue(site.getParameter(String.class, Vs30_TypeParam.NAME).getValue());
-		this.depthTo1pt0kmPerSecParam.setValue(site.getParameter(Double.class,
-				DepthTo1pt0kmPerSecParam.NAME).getValue());
-		this.depthTo2pt5kmPerSecParam.setValue(site.getParameter(Double.class,
-				DepthTo2pt5kmPerSecParam.NAME).getValue());
-		
-		setPropagationEffectParams();
 	}
 
 	@Override

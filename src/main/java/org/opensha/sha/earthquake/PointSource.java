@@ -9,7 +9,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.apache.commons.math3.util.Precision;
-import org.checkerframework.checker.units.qual.min;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.geo.Location;
@@ -21,26 +20,27 @@ import org.opensha.sha.earthquake.util.GridCellSuperSamplingPoissonPointSourceDa
 import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.PointSurface;
+import org.opensha.sha.faultSurface.PointSurface.DistanceCorrected;
 import org.opensha.sha.faultSurface.QuadSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
-public abstract class PointSource extends ProbEqkSource {
+public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveSource {
 	
 	/*
-	 * Basic source
+	 * Basic source items, common to all implementations
 	 */
 	
 	private Location loc;
 	private PointSurface pointSurf; // lazily initialized, used for getSourceSurface()
 	private LocationList sourceLocs; // lazily initialized, used for getAllSourceLocs()
-	protected WeightedList<? extends PointSourceDistanceCorrection> distCorrs;
+	protected PointSourceDistanceCorrection distCorr;
 	protected double minMagForDistCorr;
 
 	public PointSource(Location loc) {
@@ -48,20 +48,18 @@ public abstract class PointSource extends ProbEqkSource {
 	}
 
 	public PointSource(Location loc, TectonicRegionType tectonicRegionType,
-			WeightedList<? extends PointSourceDistanceCorrection> distCorrs, double minMagForDistCorr) {
+			PointSourceDistanceCorrection distCorr, double minMagForDistCorr) {
 		this.loc = loc;
 		this.setTectonicRegionType(tectonicRegionType);
-		this.setDistCorrs(distCorrs, minMagForDistCorr);
+		this.setDistCorr(distCorr, minMagForDistCorr);
 	}
 
-	public WeightedList<? extends PointSourceDistanceCorrection> getDistCorrs() {
-		return distCorrs;
+	public PointSourceDistanceCorrection getDistCorr() {
+		return distCorr;
 	}
 
-	public void setDistCorrs(WeightedList<? extends PointSourceDistanceCorrection> distCorrs, double minMagForDistCorr) {
-		if (distCorrs != null && !(distCorrs instanceof WeightedList.Unmodifiable<?>))
-			distCorrs = new WeightedList.Unmodifiable<>(distCorrs);
-		this.distCorrs = distCorrs;
+	public void setDistCorr(PointSourceDistanceCorrection distCorr, double minMagForDistCorr) {
+		this.distCorr = distCorr;
 		this.minMagForDistCorr = minMagForDistCorr;
 	}
 
@@ -90,6 +88,20 @@ public abstract class PointSource extends ProbEqkSource {
 	public Location getLocation() {
 		return loc;
 	}
+	
+	/**
+	 * {@link PointSource} always implements {@link SiteAdaptiveSource} for distance-corrections; this can be used to
+	 * detect if the underlying data are site adaptive, or if the only site-adaptive aspect are distance corrections. 
+	 * 
+	 * @return true if the underlying point source data are site adaptive, false otherwise
+	 */
+	public abstract boolean isDataSiteAdaptive();
+	
+	/**
+	 * @return copy of this point source with distance corrections disabled, without overriding the distance correction
+	 * in the original source
+	 */
+	public abstract PointSource getUncorrected();
 	
 	/*
 	 * Source data interfaces
@@ -403,63 +415,27 @@ public abstract class PointSource extends ProbEqkSource {
 		
 		protected E data;
 		
-		private int numRuptures;
-		private DataSubsamplingIndexTracker indexes;
+		protected int numRuptures;
+		
+		private ConcurrentMap<E, BaseImplementation<E>> siteAdaptiveSourceDataCache;
 		
 		public BaseImplementation(Location loc, TectonicRegionType tectonicRegionType,
-				E data, WeightedList<? extends PointSourceDistanceCorrection> distCorrs, double minMagForDistCorr) {
-			super(loc, tectonicRegionType, distCorrs, minMagForDistCorr);
-			this.data = data;
-			if (data != null)
-				updateCountAndIndexes();
+				E data, PointSourceDistanceCorrection distCorr, double minMagForDistCorr) {
+			super(loc, tectonicRegionType, distCorr, minMagForDistCorr);
+			setData(data);
 		}
 		
 		public void setData(E data) {
 			this.data = data;
-			updateCountAndIndexes();
-		}
-		
-		@Override
-		public void setDistCorrs(WeightedList<? extends PointSourceDistanceCorrection> distCorrs, double minMagForDistCorr) {
-			super.setDistCorrs(distCorrs, minMagForDistCorr);
-			if (data != null) // will be null during the super constructor
-				updateCountAndIndexes();
-		}
-
-		private void updateCountAndIndexes() {
-			int dataRupCount = data.getNumRuptures();
-			if (distCorrs == null || distCorrs.size() == 1) {
-				this.numRuptures = dataRupCount;
-				this.indexes = null;
+			if (data != null) {
+				numRuptures = data.getNumRuptures();
+				if (data instanceof SiteAdaptivePointSourceData<?> && ((SiteAdaptivePointSourceData<?>)data).isDiscrete())
+					siteAdaptiveSourceDataCache = new ConcurrentHashMap<>(4);
+				else
+					siteAdaptiveSourceDataCache = null;
 			} else {
-				// we have multiple distance corrections per rupture and need to pre-store the indexes
-				// we can't just calculate indexes because some ruptures may be finite and not use the distance corrections
-				int numCorrs = distCorrs.size();
-				// rupture count if there are no finite ruptures; finite ruptures don't have distance corrections
-				// this might be larger than we need, but that's ok (we'll only read up to numRuptures)
-				long numIfNoFinite = (long)dataRupCount * (long)numCorrs;
-				Preconditions.checkState(numIfNoFinite < Integer.MAX_VALUE,
-						"Have more than Integer.MAX_VALUE ruptures: %s", numIfNoFinite);
-				indexes = getDataCorrIndexTracker(numIfNoFinite, dataRupCount, numCorrs);
-				Preconditions.checkState(numCorrs > 1); // mostly to make sure it's not zero
-				
-				int index = 0;
-				for (int d=0; d<dataRupCount; d++) {
-					if (data.isFinite(d) || data.getMagnitude(d) < minMagForDistCorr) {
-						// finite surface or below distance correction threshold: just 1 rupture instance (no distance correction)
-						indexes.set(index++, d, -1);
-					} else {
-						// point surface: 1 rupture instance for each distance correction
-						for (short i=0; i<numCorrs; i++) {
-							indexes.set(index++, d, i);
-						}
-					}
-				}
-				this.numRuptures = index;
-				// fill in any extra room in the arrays with no data flags
-				for (int i=index; i<numIfNoFinite; i++) {
-					indexes.set(i, -1, -1);
-				}
+				numRuptures = 0;
+				siteAdaptiveSourceDataCache = null;
 			}
 		}
 
@@ -478,66 +454,197 @@ public abstract class PointSource extends ProbEqkSource {
 		
 		/**
 		 * 
-		 * @param sourceRuptureIndex rupture index in the source
 		 * @param dataRuptureIndex rupture index in the {@link PointSourceData} data object
 		 * @param distCorrWeight weight for the distance correction (if any). Will be 1 unless there are multiple
 		 * distance corrections
 		 * @return probability for this rupture
 		 */
-		protected abstract double getProbability(int sourceRuptureIndex, int dataRuptureIndex, double distCorrWeight);
+		protected abstract double getProbability(int dataRuptureIndex, double distCorrWeight);
 
 		@Override
 		public ProbEqkRupture getRupture(int nRupture) {
-			// this is the index in the upstream data object, which may not equal or rupture index in the case where
-			// we have multiple distance corrections per rupture
-			int dataIndex;
-			PointSourceDistanceCorrection distCorr;
-			double distCorrWeight;
-			if (indexes == null) {
-				// simple case: no distance corrections, or 1 per rupture
-				dataIndex = nRupture;
-				if (distCorrs == null || data.isFinite(dataIndex) || data.getMagnitude(dataIndex) < minMagForDistCorr) {
-					distCorr = null;
-				} else {
-					Preconditions.checkState(distCorrs.size() == 1);
-					distCorr = distCorrs.getValue(0);
-				}
-				distCorrWeight = 1d;
-			} else {
-				dataIndex = indexes.getOriginalDataIndex(nRupture);
-				int corrIndex = indexes.getSubsampleIndex(nRupture);
-				if (corrIndex < 0) {
-					// finite rupture or below minMagForDistCorr, no correction
-					distCorr = null;
-					distCorrWeight = 1d;
-				} else {
-					Preconditions.checkState(corrIndex < distCorrs.size());
-					distCorr = distCorrs.getValue(corrIndex);
-					distCorrWeight = distCorrs.getWeight(corrIndex);
-				}
+			// nRupture is data index here
+			double mag = data.getMagnitude(nRupture);
+			double rake = data.getAveRake(nRupture);
+			RuptureSurface surf = data.getSurface(nRupture);
+			if (distCorr != null && mag >= minMagForDistCorr && surf instanceof PointSurface) {
+				// distance corrections are enabled and this is a point source
+				// the distance-corrected version must be accessed via getForSite(Site)
+				// protect the surface here so that it is not accidentally used
+				surf = ((PointSurface)surf).getDistancedProtected();
 			}
-			double mag = data.getMagnitude(dataIndex);
-			double rake = data.getAveRake(dataIndex);
-			RuptureSurface surf = data.getSurface(dataIndex);
-			if (distCorr != null) {
-				Preconditions.checkState(surf instanceof PointSurface,
-						"Surface for rupture %s with data index %s was labeled as non-finite, but is not a PointSurface: %s",
-						nRupture, dataIndex, surf);
-				if (distCorrs.size() > 1) {
-					// paranoid for thread-safety: copy the surface in case it's being cached and shared for multiple
-					// ruptures instances since we'll be setting different corrections on the same original data index
-					RuptureSurface copy = surf.copyShallow();
-					Preconditions.checkState(copy.getClass().equals(surf.getClass()),
-							"Shallow copy of surface with type %s is of a different type: %s",
-							surf.getClass(), copy.getClass());
-					surf = copy;
-				}
-				((PointSurface)surf).setDistanceCorrection(distCorr, mag);
-			}
-			Location hypo = data.getHypocenter(getLocation(), surf, dataIndex);
-			
-			double prob = getProbability(nRupture, dataIndex, distCorrWeight);
+			Location hypo = data.getHypocenter(getLocation(), surf, nRupture);
+			double prob = getProbability(nRupture, 1d);
 			return new ProbEqkRupture(mag, rake, prob, surf, hypo);
+		}
+		
+		protected abstract BaseImplementation<E> newInstance(E data);
+
+		@Override
+		public boolean isDataSiteAdaptive() {
+			return data instanceof SiteAdaptivePointSourceData<?>;
+		}
+
+		@Override
+		public PointSource getUncorrected() {
+			if (distCorr == null)
+				return this;
+			BaseImplementation<E> copy = newInstance(data);
+			copy.setDistCorr(null, Double.MIN_VALUE);
+			return copy;
+		}
+
+		@Override
+		public PointSource getForSite(Site site) {
+			BaseImplementation<E> ret = this;
+			
+			// first check to see if the underlying data are site adaptive
+			if (isDataSiteAdaptive()) {
+				// the data are site adaptive, take care of that first
+				E dataForSite = ((SiteAdaptivePointSourceData<E>)data).getForSite(site);
+				if (dataForSite != data) {
+					boolean wasCached = false;
+					if (siteAdaptiveSourceDataCache != null) {
+						// see if cached
+						BaseImplementation<E> cached = siteAdaptiveSourceDataCache.get(dataForSite);
+						if (cached != null) {
+							ret = cached;
+							wasCached = true;
+						}
+					}
+					if (!wasCached) {
+						// need to build it
+						ret = newInstance(dataForSite);
+						if (siteAdaptiveSourceDataCache != null)
+							siteAdaptiveSourceDataCache.putIfAbsent(dataForSite, ret);
+					}
+				}
+			}
+			
+			// now check to see if we have a distance correction that we need to apply
+			if (distCorr != null && ret.numRuptures > 0) {
+				// we have a distance correction, apply it
+				return new DistanceCorrectedPointSource<>(ret, distCorr, site.getLocation());
+			}
+			return ret;
+		}
+		
+	}
+	
+	private static class DistanceCorrectedPointSource<E extends PointSourceData> extends PointSource {
+
+		private final BaseImplementation<E> source;
+		private final Location siteLoc;
+		private final List<ProbEqkRupture> ruptures;
+
+		private DistanceCorrectedPointSource(BaseImplementation<E> source,
+				PointSourceDistanceCorrection distCorr, Location siteLoc) {
+			// we intentionally use a passed in distance correction instead of the one attached to the upstream source
+			// because it could have been cached previously as part of site-adaptive data, and the distance correction
+			// on that cached version could be stale
+			super(siteLoc, source.getTectonicRegionType(), distCorr, source.minMagForDistCorr);
+			this.isPoissonian = source.isPoissonian;
+			this.source = source;
+//			super(sourceLoc, tectonicRegionType, data, distCorr, minMagForDistCorr);
+			this.siteLoc = siteLoc;
+			Preconditions.checkNotNull(siteLoc);
+			Preconditions.checkNotNull(distCorr);
+			Location sourceLoc = getLocation();
+			
+			E data = source.getData();
+			
+			double horzDist = LocationUtils.horzDistanceFast(siteLoc, source.getLocation());
+			int numOrigRups = source.getNumRuptures();
+			TectonicRegionType trt = getTectonicRegionType();
+			ruptures = new ArrayList<>(source.getNumRuptures()); // at least this many ruptures, maybe more
+			for (int dataIndex=0; dataIndex<numOrigRups; dataIndex++) {
+				double mag = data.getMagnitude(dataIndex);
+				double rake = data.getAveRake(dataIndex);
+				RuptureSurface surf = data.getSurface(dataIndex);
+				if (mag >= minMagForDistCorr && data.isFinite(dataIndex)) {
+					// point source, do distance correction(s)
+					Preconditions.checkState(surf instanceof PointSurface,
+							"Surface for rupture with data index %s was labeled as non-finite, but is not a PointSurface: %s",
+							dataIndex, surf);
+					PointSurface ptSurf = (PointSurface)surf;
+					WeightedList<SurfaceDistances> corrDists = distCorr.getCorrectedDistances(
+							siteLoc, ptSurf, trt, mag, horzDist);
+					Preconditions.checkState(corrDists.isNormalized(),
+							"Distance correction weights must be normalized to 1, aren't for %s", distCorr);
+					for (int i=0; i<corrDists.size(); i++) {
+						SurfaceDistances dists = corrDists.getValue(i);
+						double weight = corrDists.getWeight(i);
+						DistanceCorrected corrSurf = ptSurf.getForDistances(siteLoc, dists);
+						Location hypo = data.getHypocenter(sourceLoc, corrSurf, dataIndex);
+						double prob = source.getProbability(dataIndex, weight);
+						ruptures.add(new ProbEqkRupture(mag, rake, prob, corrSurf, hypo));
+					}
+				} else {
+					// finite source or below min correction magnitude, leave unchanged
+					Location hypo = data.getHypocenter(getLocation(), surf, dataIndex);
+					double prob = source.getProbability(dataIndex, 1d);
+					ruptures.add(new ProbEqkRupture(mag, rake, prob, surf, hypo));
+				}
+			}
+		}
+
+		@Override
+		public ProbEqkSource getForSite(Site site) {
+			Location loc = site.getLocation();
+			Preconditions.checkState(loc == siteLoc || LocationUtils.areSimilar(loc, siteLoc),
+					"Cannot change sites, this source is already corrected for the specific site and correction");
+			return this;
+		}
+
+		@Override
+		public int getNumRuptures() {
+			return ruptures.size();
+		}
+
+		@Override
+		public ProbEqkRupture getRupture(int nRupture) {
+			return ruptures.get(nRupture);
+		}
+
+		@Override
+		public PointSourceDistanceCorrection getDistCorr() {
+			return distCorr;
+		}
+
+		@Override
+		public void setDistCorr(PointSourceDistanceCorrection distCorr, double minMagForDistCorr) {
+			throw new UnsupportedOperationException("Cannot change distance corrections, this source is already "
+					+ "corrected for the specific site and correction");
+		}
+
+		@Override
+		public LocationList getAllSourceLocs() {
+			return source.getAllSourceLocs();
+		}
+
+		@Override
+		public RuptureSurface getSourceSurface() {
+			return source.getSourceSurface();
+		}
+
+		@Override
+		public double getMinDistance(Site site) {
+			return source.getMinDistance(site);
+		}
+
+		@Override
+		public Location getLocation() {
+			return source.getLocation();
+		}
+
+		@Override
+		public boolean isDataSiteAdaptive() {
+			return source.isDataSiteAdaptive();
+		}
+
+		@Override
+		public PointSource getUncorrected() {
+			return source.getUncorrected();
 		}
 		
 	}
@@ -545,59 +652,22 @@ public abstract class PointSource extends ProbEqkSource {
 	public static class NonPoissonPointSource extends BaseImplementation<NonPoissonPointSourceData> {
 
 		public NonPoissonPointSource(Location loc, TectonicRegionType tectonicRegionType,
-				NonPoissonPointSourceData data, WeightedList<? extends PointSourceDistanceCorrection> distCorrs,
+				NonPoissonPointSourceData data, PointSourceDistanceCorrection distCorr,
 				double minMagForDistCorr) {
-			super(loc, tectonicRegionType, data, distCorrs, minMagForDistCorr);
+			super(loc, tectonicRegionType, data, distCorr, minMagForDistCorr);
 			super.isPoissonian = false;
 		}
 
 		@Override
-		protected double getProbability(int sourceRuptureIndex, int dataRuptureIndex, double distCorrWeight) {
+		protected double getProbability(int dataRuptureIndex, double distCorrWeight) {
 			// if there are multiple distance correlations, just partition the probability across them
 			return data.getProbability(dataRuptureIndex) * distCorrWeight;
 		}
-		
-	}
-	
-	private static class SiteAdaptiveNonPoissonPointSourceImpl
-	<E extends SiteAdaptivePointSourceData<NonPoissonPointSourceData> & NonPoissonPointSourceData>
-	extends NonPoissonPointSource implements SiteAdaptiveSource {
-
-		private E data;
-		private ConcurrentMap<NonPoissonPointSourceData, NonPoissonPointSource> sourceCache;
-
-		public SiteAdaptiveNonPoissonPointSourceImpl(Location loc, TectonicRegionType tectonicRegionType,
-				E data, WeightedList<? extends PointSourceDistanceCorrection> distCorrs, double minMagForDistCorr) {
-			super(loc, tectonicRegionType, data, distCorrs, minMagForDistCorr);
-			this.data = data;
-			if (data.isDiscrete())
-				sourceCache = new ConcurrentHashMap<>();
-		}
 
 		@Override
-		public void setDistCorrs(WeightedList<? extends PointSourceDistanceCorrection> distCorrs, double minMagForDistCorr) {
-			super.setDistCorrs(distCorrs, minMagForDistCorr);
-			if (sourceCache != null)
-				sourceCache.clear();
-		}
-
-		@Override
-		public NonPoissonPointSource getForSite(Site site) {
-			NonPoissonPointSourceData dataForSite = data.getForSite(site);
-			if (dataForSite == data)
-				// it returned itself, nothing for this site
-				return this;
-			NonPoissonPointSource ret = null;
-			if (sourceCache != null) {
-				// see if cached
-				ret = sourceCache.get(dataForSite);
-				if (ret != null)
-					return ret;
-			}
-			ret = new NonPoissonPointSource(getLocation(), getTectonicRegionType(), dataForSite, getDistCorrs(), minMagForDistCorr);
-			if (sourceCache != null)
-				sourceCache.putIfAbsent(dataForSite, ret);
-			return ret;
+		protected BaseImplementation<NonPoissonPointSourceData> newInstance(
+				NonPoissonPointSourceData data) {
+			return new NonPoissonPointSource(getLocation(), getTectonicRegionType(), data, distCorr, minMagForDistCorr);
 		}
 		
 	}
@@ -613,9 +683,8 @@ public abstract class PointSource extends ProbEqkSource {
 
 		public PoissonPointSource(Location loc, TectonicRegionType tectonicRegionType,
 				double duration, PoissonPointSourceData data,
-				WeightedList<? extends PointSourceDistanceCorrection> distCorrs,
-				double minMagForDistCorr) {
-			super(loc, tectonicRegionType, data, distCorrs, minMagForDistCorr);
+				PointSourceDistanceCorrection distCorr, double minMagForDistCorr) {
+			super(loc, tectonicRegionType, data, distCorr, minMagForDistCorr);
 			this.duration = duration;
 			super.isPoissonian = true;
 		}
@@ -663,7 +732,8 @@ public abstract class PointSource extends ProbEqkSource {
 		}
 
 		@Override
-		protected double getProbability(int nRupture, int dataIndex, double distCorrWeight) {
+		protected double getProbability(int dataIndex, double distCorrWeight) {
+			// partition the rate, then convert that rate to a probability
 			double rate = data.getRate(dataIndex) * distCorrWeight;
 			return rateToProb(rate, duration);
 		}
@@ -677,49 +747,10 @@ public abstract class PointSource extends ProbEqkSource {
 				rate += data.getRate(i);
 			return rate;
 		}
-		
-	}
-	
-	private static class SiteAdaptivePoissonPointSourceImpl
-	<E extends SiteAdaptivePointSourceData<PoissonPointSourceData> & PoissonPointSourceData>
-	extends PoissonPointSource implements SiteAdaptiveSource {
-
-		private E data;
-		private ConcurrentMap<PoissonPointSourceData, PoissonPointSource> sourceCache;
-
-		public SiteAdaptivePoissonPointSourceImpl(Location loc, TectonicRegionType tectonicRegionType, double duration,
-				E data, WeightedList<? extends PointSourceDistanceCorrection> distCorrs, double minMagForDistCorr) {
-			super(loc, tectonicRegionType, duration, data, distCorrs, minMagForDistCorr);
-			this.data = data;
-			if (data.isDiscrete())
-				sourceCache = new ConcurrentHashMap<>();
-		}
 
 		@Override
-		public void setDistCorrs(WeightedList<? extends PointSourceDistanceCorrection> distCorrs, double minMagForDistCorr) {
-			super.setDistCorrs(distCorrs, minMagForDistCorr);
-			if (sourceCache != null)
-				sourceCache.clear();
-		}
-
-		@Override
-		public PoissonPointSource getForSite(Site site) {
-			PoissonPointSourceData dataForSite = data.getForSite(site);
-			if (dataForSite == data)
-				// it returned itself, nothing for this site
-				return this;
-			PoissonPointSource ret = null;
-			if (sourceCache != null) {
-				// see if cached
-				ret = sourceCache.get(dataForSite);
-				if (ret != null)
-					return ret;
-			}
-			ret = new PoissonPointSource(getLocation(), getTectonicRegionType(),
-					getDuration(), dataForSite, getDistCorrs(), minMagForDistCorr);
-			if (sourceCache != null)
-				sourceCache.putIfAbsent(dataForSite, ret);
-			return ret;
+		protected BaseImplementation<PoissonPointSourceData> newInstance(PoissonPointSourceData data) {
+			return new PoissonPointSource(getLocation(), getTectonicRegionType(), duration, data, distCorr, minMagForDistCorr);
 		}
 		
 	}
@@ -1201,7 +1232,7 @@ public abstract class PointSource extends ProbEqkSource {
 		protected RuptureSurfaceBuilder surfaceBuilder;
 		protected E data;
 		protected TectonicRegionType trt = TECTONIC_REGION_TYPE_DEFAULT;
-		protected WeightedList<? extends PointSourceDistanceCorrection> distCorrs;
+		protected PointSourceDistanceCorrection distCorr;
 		protected double minMagForDistCorr;
 
 		/**
@@ -1266,32 +1297,14 @@ public abstract class PointSource extends ProbEqkSource {
 		
 		/**
 		 * Sets point source distance correction(s) to be used. This need not be final, and can be updated on the built
-		 * source by calling {@link PointSource#setDistCorrs(WeightedList)}.
+		 * source by calling {@link PointSource#setDistCorr(PointSourceDistanceCorrection, double)}.
 		 * 
-		 * @param distCorrs
+		 * @param distCorr
 		 * @param minMagForDistCorr
 		 * @return the builder
 		 */
-		public B distCorrs(PointSourceDistanceCorrections distCorrs, double minMagForDistCorr) {
-			if (distCorrs == null) {
-				this.distCorrs = null;
-				this.minMagForDistCorr = Double.NEGATIVE_INFINITY;
-				return castThis();
-			}
-			return distCorrs(distCorrs.get(), minMagForDistCorr);
-		}
-		
-		/**
-		 * Sets point source distance correction(s) to be used. This need not be final, and can be updated on the built
-		 * source by calling {@link PointSource#setDistCorrs(WeightedList)}.
-		 * 
-		 * @param distCorrs
-		 * @param minMagForDistCorr
-		 * @return the builder
-		 */
-		public B distCorrs(WeightedList<? extends PointSourceDistanceCorrection> distCorrs, double minMagForDistCorr) {
-			Preconditions.checkState(distCorrs == null || (!distCorrs.isEmpty() && distCorrs.isNormalized()));
-			this.distCorrs = distCorrs;
+		public B distCorr(PointSourceDistanceCorrection distCorr, double minMagForDistCorr) {
+			this.distCorr = distCorr;
 			this.minMagForDistCorr = minMagForDistCorr;
 			return castThis();
 		}
@@ -1379,11 +1392,7 @@ public abstract class PointSource extends ProbEqkSource {
 		public NonPoissonPointSource build() {
 			checkValidLocAndData();
 			
-			if (data instanceof SiteAdaptivePointSourceData<?>)
-				return new SiteAdaptiveNonPoissonPointSourceImpl<>(loc, trt,
-						(SiteAdaptivePointSourceData<NonPoissonPointSourceData> & NonPoissonPointSourceData)data,
-						distCorrs, minMagForDistCorr);
-			return new NonPoissonPointSource(loc, trt, data, distCorrs, minMagForDistCorr);
+			return new NonPoissonPointSource(loc, trt, data, distCorr, minMagForDistCorr);
 		}
 	}
 	
@@ -1392,7 +1401,7 @@ public abstract class PointSource extends ProbEqkSource {
 	 * ({@link ProbEqkSource#TECTONIC_REGION_TYPE_DEFAULT}).
 	 * 
 	 * <p>The typical flow to build a point source is to give the initial (but updatable) forecast duration via
-	 * {@link PoissonBuilder#duration(double)}, set the distance corrections via {@link PoissonBuilder#distCorrs(WeightedList)},
+	 * {@link PoissonBuilder#duration(double)}, set the distance corrections via {@link PoissonBuilder#distCorr(PointSourceDistanceCorrection, double)},
 	 * set the rate data (e.g., from an MFD), and set the {@link RuptureSurfaceBuilder} that builds rupture surfaces. TODO update
 	 * 
 	 * @param loc point source location
@@ -1564,10 +1573,7 @@ public abstract class PointSource extends ProbEqkSource {
 			
 			Preconditions.checkState(Double.isFinite(duration) && duration > 0d, "Must set duration");
 			
-			if (data instanceof SiteAdaptivePointSourceData<?>)
-				return new SiteAdaptivePoissonPointSourceImpl<>(loc, trt, duration,
-						(SiteAdaptivePointSourceData<PoissonPointSourceData> & PoissonPointSourceData)data, distCorrs, minMagForDistCorr);
-			return new PoissonPointSource(loc, trt, duration, data, distCorrs, minMagForDistCorr);
+			return new PoissonPointSource(loc, trt, duration, data, distCorr, minMagForDistCorr);
 		}
 	}
 

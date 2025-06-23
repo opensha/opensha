@@ -40,12 +40,36 @@ public interface RuptureSurface extends Surface3D {
 	 * @return
 	 */
 	public double getAveWidth();
+
+	/**
+	 * Horizontal component of the down-dip width (km) of rupture surface, 0 for vertical faults
+	 * @return
+	 */
+	public double getAveHorizontalWidth();
 	
     /**
      * This returns the surface area in km-sq
      * @return double
      */
     public double getArea();
+
+	/**
+	 * Average depth (km) to top of rupture (always a positive number)
+	 * @return
+	 */
+	public double getAveRupTopDepth();
+
+	/**
+	 * Average depth (km) to bottom of rupture (always a positive number)
+	 * @return
+	 */
+	public double getAveRupBottomDepth();
+
+	/**
+	 * Average dip direction (degrees) of rupture surface
+	 * @return
+	 */
+	public double getAveDipDirection();
     
     /**
      * This returns the surface area in km-sq that lies within the given region
@@ -140,18 +164,6 @@ public interface RuptureSurface extends Surface3D {
 	 * @return
 	 */
 	public double getDistanceX(Location siteLoc);
-
-	/**
-	 * Average depth (km) to top of rupture (always a positive number)
-	 * @return
-	 */
-	public double getAveRupTopDepth();
-
-	/**
-	 * Average dip direction (degrees) of rupture surface
-	 * @return
-	 */
-	public double getAveDipDirection();
 	
 	/**
 	 * This returns the upper edge of the rupture surface (where the 

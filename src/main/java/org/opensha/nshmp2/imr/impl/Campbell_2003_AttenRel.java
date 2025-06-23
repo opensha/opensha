@@ -145,10 +145,11 @@ public class Campbell_2003_AttenRel extends AttenuationRelationship implements
 
 	@Override
 	public void setSite(Site site) throws ParameterException {
-		siteTypeParam.setValue((SiteType) site.getParameter(
-			siteTypeParam.getName()).getValue());
-		this.site = site;
-		setPropagationEffectParams();
+		if (site != null) {
+			siteTypeParam.setValue((SiteType) site.getParameter(
+					siteTypeParam.getName()).getValue());
+		}
+		super.setSite(site); // will call setPropagationEffectParams
 	}
 
 	@Override

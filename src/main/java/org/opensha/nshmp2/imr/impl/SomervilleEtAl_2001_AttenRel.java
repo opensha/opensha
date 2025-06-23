@@ -140,10 +140,10 @@ public class SomervilleEtAl_2001_AttenRel extends AttenuationRelationship implem
 
 	@Override
 	public void setSite(Site site) throws ParameterException {
-		siteTypeParam.setValue((SiteType) site.getParameter(
+		super.setSite(site); // will call setPropagationEffectParams
+		if (site != null)
+			siteTypeParam.setValue((SiteType) site.getParameter(
 			siteTypeParam.getName()).getValue());
-		this.site = site;
-		setPropagationEffectParams();
 	}
 
 	@Override

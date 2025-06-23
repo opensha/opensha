@@ -226,11 +226,9 @@ public class ShakeMap_2003_AttenRel extends AttenuationRelationship {
 	 * Wills site parameter
 	 */
 	public void setSite(Site site) throws ParameterException {
-
-		willsSiteParam.setValue((String)site.getParameter(WILLS_SITE_NAME).getValue());
-		this.site = site;
-		setPropagationEffectParams();
-
+		super.setSite(site); // will call setPropagationEffectParams
+		if (site != null)
+			willsSiteParam.setValue((String)site.getParameter(WILLS_SITE_NAME).getValue());
 	}
 
 	/**

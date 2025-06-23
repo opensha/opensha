@@ -136,18 +136,6 @@ public class WC94_DisplMagRel extends AttenuationRelationship {
 	}
 
 	/**
-	 * This sets the site object.
-	 *
-	 * @param  site
-	 */
-	public void setSite(Site site) {
-
-		this.site = site;
-		setPropagationEffectParams();
-
-	}
-
-	/**
 	 * This calculates the DistanceRup propagation effect parameter based
 	 * on the current site and eqkRupture. <P>
 	 */

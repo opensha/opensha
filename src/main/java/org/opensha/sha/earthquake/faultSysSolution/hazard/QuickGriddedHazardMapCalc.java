@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
 import org.opensha.commons.data.Site;
+import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
@@ -38,6 +39,7 @@ import org.opensha.commons.util.modules.ModuleContainer;
 import org.opensha.sha.calc.params.filters.SourceFilterManager;
 import org.opensha.sha.calc.params.filters.SourceFilters;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.earthquake.PointSource;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.SiteAdaptiveSource;
@@ -52,6 +54,7 @@ import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.FiniteApproxPointSurface;
 import org.opensha.sha.faultSurface.PointSurface;
+import org.opensha.sha.faultSurface.PointSurface.DistanceCorrected;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
@@ -174,11 +177,11 @@ public class QuickGriddedHazardMapCalc {
 		private final double zTOR;
 		private final double width;
 		private final double dip;
-		private final boolean footwall;
-		private final double zHyp;
 		private final PointSourceDistanceCorrection distCorr;
+		private final TectonicRegionType trt;
+		private final double zHyp;
 		private final int hash;
-		public UniquePointRupture(EqkRupture rup) {
+		public UniquePointRupture(EqkRupture rup, PointSourceDistanceCorrection distCorr, TectonicRegionType trt) {
 			this.rake = rup.getAveRake();
 			this.mag = rup.getMag();
 			RuptureSurface surf = rup.getRuptureSurface();
@@ -186,17 +189,11 @@ public class QuickGriddedHazardMapCalc {
 			this.width = surf.getAveWidth();
 			this.dip = surf.getAveDip();
 			PointSurface ptSurf = (PointSurface)surf;
-			Location ptLoc = ptSurf.getLocation();
-			if (surf instanceof FiniteApproxPointSurface) {
-				footwall = ((FiniteApproxPointSurface)surf).isOnFootwall();
-			} else {
-				Location loc = LocationUtils.location(ptLoc, 0d, 50d);
-				footwall = surf.getDistanceX(loc) < 0d;
-			}
-			distCorr = ptSurf.getDistanceCorrection();
+			this.distCorr = distCorr;
+			this.trt = trt;
 			Location hypo = rup.getHypocenterLocation();
-			zHyp = hypo == null ? ptLoc.getDepth() : hypo.getDepth();
-			hash = Objects.hash(dip, footwall, mag, rake, width, zTOR, distCorr, zHyp);
+			zHyp = hypo == null ? 0.5*(ptSurf.getAveRupTopDepth()+ptSurf.getAveRupBottomDepth()) : hypo.getDepth();
+			hash = Objects.hash(dip, mag, rake, width, zTOR, distCorr, trt, zHyp);
 		}
 		@Override
 		public int hashCode() {
@@ -211,7 +208,7 @@ public class QuickGriddedHazardMapCalc {
 			if (getClass() != obj.getClass())
 				return false;
 			UniquePointRupture other = (UniquePointRupture) obj;
-			return hash == other.hash && footwall == other.footwall && distCorr == other.distCorr
+			return hash == other.hash && distCorr == other.distCorr && trt == other.trt
 					&& Double.doubleToLongBits(zHyp) == Double.doubleToLongBits(other.zHyp)
 					&& Double.doubleToLongBits(dip) == Double.doubleToLongBits(other.dip)
 					&& Double.doubleToLongBits(mag) == Double.doubleToLongBits(other.mag)
@@ -354,7 +351,7 @@ public class QuickGriddedHazardMapCalc {
 							break;
 						sourceID = sourceIndexes.pop();
 					}
-					ProbEqkSource source = gridProv.getSource(sourceID, 1d, null, gridSettings);
+					PointSource source = gridProv.getSource(sourceID, 1d, null, gridSettings);
 					
 					TectonicRegionType trt = source.getTectonicRegionType();
 					ScalarIMR gmpe = gmpeMap.get(trt);
@@ -370,7 +367,8 @@ public class QuickGriddedHazardMapCalc {
 		
 	}
 	
-	private void quickSourceCalc(GriddedRegion gridReg, ProbEqkSource origSource, ScalarIMR gmpe, DiscretizedFunc[] curves) {
+	private void quickSourceCalc(GriddedRegion gridReg, PointSource origSource, ScalarIMR gmpe, DiscretizedFunc[] curves) {
+		Preconditions.checkState(origSource.isPoissonianSource(), "Only poisson sources are supported; type: %s", origSource.getClass().getName());
 		double[] xValsArray = new double[curves[0].size()];
 		for (int i=0; i<xValsArray.length; i++)
 			xValsArray[i] = curves[0].getX(i);
@@ -392,25 +390,27 @@ public class QuickGriddedHazardMapCalc {
 		List<Double> nodeMaxDistsList = new ArrayList<>();
 		List<ProbEqkSource> sourceInstances = new ArrayList<>();
 		Map<ProbEqkSource, Integer> sourceInstancesMap = new HashMap<>();
-		SiteAdaptiveSource adaptive = origSource instanceof SiteAdaptiveSource ? (SiteAdaptiveSource)origSource : null;
+		boolean dataAdaptive = origSource.isDataSiteAdaptive();
+		PointSourceDistanceCorrection distCorr = origSource.getDistCorr();
+		PointSource uncorrectedSource = origSource.getUncorrected();
 		// always put the original source in the list
 		nodeIndexesList.add(new ArrayList<>());
 		nodeDistsList.add(new ArrayList<>());
 		nodeMaxDistsList.add(0d);
-		sourceInstances.add(origSource);
-		sourceInstancesMap.put(origSource, 0);
+		sourceInstances.add(uncorrectedSource);
+		sourceInstancesMap.put(uncorrectedSource, 0);
 		
 		// figure out locations to include
 		Site site = new Site(gridReg.getLocation(0));
 		for (int i=0; i<gridReg.getNodeCount(); i++) {
 			Location loc = gridReg.getLocation(i);
 			site.setLocation(loc);
-			double dist = origSource.getMinDistance(site);
+			double dist = uncorrectedSource.getMinDistance(site);
 			if (dist <= maxDist) {
 				Integer sourceIndex;
-				if (adaptive != null) {
+				if (dataAdaptive) {
 					// site adaptive
-					ProbEqkSource mySource = adaptive.getForSite(site);
+					ProbEqkSource mySource = uncorrectedSource.getForSite(site);
 					sourceIndex = sourceInstancesMap.get(mySource);
 					if (sourceIndex == null) {
 						// source instance we haven't seen yet
@@ -492,17 +492,22 @@ public class QuickGriddedHazardMapCalc {
 				if (trackStats) numNonTruePointSources.incrementAndGet();
 				// no shortcut for this one
 				for (ProbEqkRupture rup : rups) {
-					gmpe.setEqkRupture(rup);
-					double invQkProb = 1d-rup.getProbability();
+					// we're going to do a bunch of (1-prob)^value
+					// we can speed this up by replacing the power with this log equation:
+					// a^b = exp(b*ln(a))
+					double qkProb = rup.getProbability();
+					double lnBase = Math.log(1-qkProb);
+					Preconditions.checkState(Double.isFinite(lnBase), "Bad lnBase=%s for qkProb=%s", lnBase, qkProb);
+//					double invQkProb = 1d-rup.getProbability();
 					
 					for (int l=0; l<numNodes; l++) {
 						int index = nodeIndexes.get(l);
 						
-						gmpe.setSiteLocation(gridReg.getLocation(index));
-						gmpe.getExceedProbabilities(exceedFunc);
+						calcRuptureExceedances(rup, gridReg.getLocation(index), distCorr, trt, gmpe, exceedFunc);
 						
 						for(int k=0; k<exceedFunc.size(); k++)
-							curves[index].set(k, curves[index].getY(k)*Math.pow(invQkProb, exceedFunc.getY(k)));
+//							curves[index].set(k, curves[index].getY(k)*Math.pow(invQkProb, exceedFunc.getY(k)));
+							curves[index].set(k, curves[index].getY(k)*Math.exp(lnBase*exceedFunc.getY(k)));
 					}
 				}
 			} else if (!allSameLoc || nodeCalcs < minNodeCalcsForSourcewise || numNodes < theSource.getNumRuptures()) {
@@ -520,7 +525,7 @@ public class QuickGriddedHazardMapCalc {
 				}
 				
 				for (ProbEqkRupture rup : rups) {
-					DiscretizedFunc[] exceeds = getCacheRupExceeds(rup, gmpe, curves[0], distVals, distDiscr);
+					DiscretizedFunc[] exceeds = getCacheRupExceeds(rup, distCorr, trt, gmpe, curves[0], distVals, distDiscr);
 					
 					Location rupLoc = allSameLoc ? null : ((PointSurface)rup.getRuptureSurface()).getLocation();
 					
@@ -584,7 +589,7 @@ public class QuickGriddedHazardMapCalc {
 				}
 				
 				for (ProbEqkRupture rup : rups) {
-					DiscretizedFunc[] exceeds = getCacheRupExceeds(rup, gmpe, curves[0], distVals, distDiscr);
+					DiscretizedFunc[] exceeds = getCacheRupExceeds(rup, distCorr, trt, gmpe, curves[0], distVals, distDiscr);
 					
 					// we're going to do a bunch of (1-prob)^value
 					// we can speed this up by replacing the power with this log equation:
@@ -689,9 +694,9 @@ public class QuickGriddedHazardMapCalc {
 	private AtomicLong numCacheMisses = new AtomicLong();
 	private AtomicLong numCacheHits = new AtomicLong();
 	
-	private DiscretizedFunc[] getCacheRupExceeds(ProbEqkRupture rup, ScalarIMR gmpe, DiscretizedFunc xVals,
-			double[] distVals, DiscretizedFunc distDiscr) {
-		UniquePointRupture uRup = new UniquePointRupture(rup);
+	private DiscretizedFunc[] getCacheRupExceeds(ProbEqkRupture rup, PointSourceDistanceCorrection distCorr,
+			TectonicRegionType trt, ScalarIMR gmpe, DiscretizedFunc xVals, double[] distVals, DiscretizedFunc distDiscr) {
+		UniquePointRupture uRup = new UniquePointRupture(rup, distCorr, trt);
 		DiscretizedFunc[] exceeds = rupExceedsMap.get(uRup);
 		if (exceeds == null) {
 			// calculate it
@@ -706,12 +711,13 @@ public class QuickGriddedHazardMapCalc {
 			double[] xValsArray = new double[xVals.size()];
 			for (int i=0; i<xValsArray.length; i++)
 				xValsArray[i] = xVals.getX(i);
+			
 			LightFixedXFunc exceedFunc = new LightFixedXFunc(xValsArray, new double[xValsArray.length]);
+			
 			for (int i=0; i<distDiscr.size(); i++) {
 				double dist = distDiscr.getX(i);
 				Location siteLoc = (float)dist == 0f ? srcLoc : LocationUtils.location(srcLoc, 0d, dist);
-				gmpe.setSiteLocation(siteLoc);
-				gmpe.getExceedProbabilities(exceedFunc);
+				calcRuptureExceedances(rup, siteLoc, distCorr, trt, gmpe, exceedFunc);
 				
 				for (int j=0; j<exceedFunc.size(); j++)
 					exceeds[j].set(i, exceedFunc.getY(j));
@@ -723,6 +729,46 @@ public class QuickGriddedHazardMapCalc {
 			numCacheHits.incrementAndGet();
 		}
 		return exceeds;
+	}
+	
+	private static void calcRuptureExceedances(EqkRupture rup, Location siteLoc, PointSourceDistanceCorrection distCorr,
+			TectonicRegionType trt, ScalarIMR gmpe, LightFixedXFunc exceedFunc) {
+		gmpe.setSiteLocation(siteLoc);
+		RuptureSurface surf = rup.getRuptureSurface();
+		if (distCorr != null && surf instanceof PointSurface) {
+			// distance-correct
+			WeightedList<DistanceCorrected> corrSurfs =
+					((PointSurface)surf).getForDistanceCorrection(siteLoc, distCorr, trt, rup.getMag());
+			double mag = rup.getMag();
+			double rake = rup.getAveRake();
+			Location hypo = rup.getHypocenterLocation();
+			if (corrSurfs.size() == 1) {
+				// only one surface, simple
+				gmpe.setEqkRupture(new EqkRupture(mag, rake, corrSurfs.getValue(0), hypo));
+				gmpe.getExceedProbabilities(exceedFunc);
+			} else {
+				// multiple surfaces, weight-average exceedance probabilities for them
+				Preconditions.checkState(corrSurfs.isNormalized());
+				for (int k=0; k<exceedFunc.size(); k++)
+					exceedFunc.set(k, 0d);
+				LightFixedXFunc intermediate = new LightFixedXFunc(exceedFunc.getXVals(), new double[exceedFunc.size()]);
+				for (int i=0; i<corrSurfs.size(); i++) {
+					double weight = corrSurfs.getWeight(i);
+					
+					gmpe.setEqkRupture(new EqkRupture(mag, rake, corrSurfs.getValue(i), hypo));
+					gmpe.getExceedProbabilities(intermediate);
+					
+					for (int k=0; k<exceedFunc.size(); k++)
+						exceedFunc.set(k, exceedFunc.getY(k) + weight*intermediate.getY(k));
+				}
+			}
+			// clear out the site-specific rupture
+			gmpe.setEqkRupture(null);
+		} else {
+			// simple
+			gmpe.setEqkRupture(rup);
+			gmpe.getExceedProbabilities(exceedFunc);
+		}
 	}
 
 	public static void main(String[] args) throws IOException {

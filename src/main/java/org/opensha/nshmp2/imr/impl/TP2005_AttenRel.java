@@ -154,10 +154,10 @@ public class TP2005_AttenRel extends AttenuationRelationship implements
 
 	@Override
 	public void setSite(Site site) throws ParameterException {
-		siteTypeParam.setValue((SiteType) site.getParameter(
-			siteTypeParam.getName()).getValue());
-		this.site = site;
-		setPropagationEffectParams();
+		super.setSite(site); // will call setPropagationEffectParams
+		if (site != null)
+			siteTypeParam.setValue((SiteType) site.getParameter(
+					siteTypeParam.getName()).getValue());
 	}
 
 	@Override

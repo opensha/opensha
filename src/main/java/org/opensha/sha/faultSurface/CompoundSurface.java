@@ -36,7 +36,7 @@ public class CompoundSurface implements RuptureSurface, CacheEnabledSurface {
 	// this tells whether any traces need to be reversed
 	boolean[] reverseSurfTrace; //  indicates which surface traces need to be reversed in building the entire upper surface
 	boolean reverseOrderOfSurfaces = false; // indicates whether the order of surfaces needs to be reversed to honor Aki and Richards
-	double aveDip, totArea,aveLength=-1,aveRupTopDepth=-1,aveWidth=-1, aveGridSpacing=-1;
+	double aveDip, totArea,aveLength=-1,aveRupTopDepth=-1,aveRupBotDepth=-1,aveWidth=-1,aveHorzWidth=-1, aveGridSpacing=-1;
 	FaultTrace upperEdge = null;
 	
 	private SurfaceDistanceCache cache = SurfaceCachingPolicy.build(this);
@@ -217,6 +217,21 @@ public class CompoundSurface implements RuptureSurface, CacheEnabledSurface {
 
 	@Override
 	/**
+	 * This returns the area-wt-averaged rup-bottom depths of the given surfaces
+	 */
+	public synchronized double getAveRupBottomDepth() {
+		if(aveRupBotDepth == -1) {
+			aveRupBotDepth = 0;
+			for(RuptureSurface surf: surfaces) {
+				aveRupBotDepth += surf.getAveRupBottomDepth()*surf.getArea();
+			}
+			aveRupBotDepth /= getArea();
+		}
+		return aveRupBotDepth;
+	}
+
+	@Override
+	/**
 	 * This returns getUpperEdge().getAveStrike()
 	 */
 	public double getAveStrike() {
@@ -236,6 +251,21 @@ public class CompoundSurface implements RuptureSurface, CacheEnabledSurface {
 			aveWidth /= getArea();
 		}
 		return aveWidth;
+	}
+
+	@Override
+	/**
+	 * This returns the area-wt-averaged horizontal width of the given surfaces
+	 */
+	public synchronized double getAveHorizontalWidth() {
+		if(aveHorzWidth == -1) {
+			aveHorzWidth = 0;
+			for(RuptureSurface surf: surfaces) {
+				aveHorzWidth += surf.getAveHorizontalWidth()*surf.getArea();
+			}
+			aveHorzWidth /= getArea();
+		}
+		return aveHorzWidth;
 	}
 
 	@Override

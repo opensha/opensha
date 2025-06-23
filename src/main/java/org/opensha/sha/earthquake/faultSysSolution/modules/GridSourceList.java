@@ -203,28 +203,28 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 	}
 
 	@Override
-	public ProbEqkSource getSource(int sourceIndex, double duration, MagnitudeDependentAftershockFilter aftershockFilter,
+	public PointSource getSource(int sourceIndex, double duration, MagnitudeDependentAftershockFilter aftershockFilter,
 			GriddedSeismicitySettings gridSourceSettings) {
 		return getSource(tectonicRegionTypeForSourceIndex(sourceIndex), getLocationIndexForSource(sourceIndex),
 				duration, aftershockFilter, gridSourceSettings);
 	}
 
 	@Override
-	public ProbEqkSource getSource(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
+	public PointSource getSource(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings) {
 		return buildSource(getLocation(gridIndex), getRuptures(tectonicRegionType, gridIndex),
 				duration, aftershockFilter, gridSourceSettings, tectonicRegionType);
 	}
 
 	@Override
-	public ProbEqkSource getSourceSubSeisOnFault(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
+	public PointSource getSourceSubSeisOnFault(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings) {
 		return buildSource(getLocation(gridIndex), getRupturesSubSeisOnFault(tectonicRegionType, gridIndex),
 				duration, aftershockFilter, gridSourceSettings, tectonicRegionType);
 	}
 
 	@Override
-	public ProbEqkSource getSourceUnassociated(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
+	public PointSource getSourceUnassociated(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings) {
 		return buildSource(getLocation(gridIndex), getRupturesUnassociated(tectonicRegionType, gridIndex),
 				duration, aftershockFilter, gridSourceSettings, tectonicRegionType);
@@ -1147,7 +1147,6 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 				updateSurfBuilderForLoc(surfBuilder, rup, forcePointSurf);
 				WeightedList<? extends RuptureSurfaceSupplier<? extends RuptureSurface>> rupSurfSuppliers = surfBuilder.supply(
 						forcePointSurf ? BackgroundRupType.POINT : gridSourceSettings.surfaceType,
-								null, // null here is the point-source distance correction, which gets set downstream
 								gridSourceSettings.finiteRuptureSettings);
 				for (int i=0; i<rupSurfSuppliers.size(); i++) {
 					RuptureSurfaceSupplier<? extends RuptureSurface> supplier = rupSurfSuppliers.getValue(i);
@@ -1207,7 +1206,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		PointSource.PoissonBuilder builder = PointSource.poissonBuilder(gridLoc, tectonicRegionType);
 		
 		builder.data(new GriddedRuptureSourceData(gridLoc, gridRups, aftershockFilter, gridSourceSettings));
-		builder.distCorrs(gridSourceSettings.distanceCorrections, gridSourceSettings.pointSourceMagnitudeCutoff);
+		builder.distCorr(gridSourceSettings.distanceCorrection, gridSourceSettings.pointSourceMagnitudeCutoff);
 		builder.duration(duration);
 		
 		if (gridSourceSettings.supersamplingSettings != null) {

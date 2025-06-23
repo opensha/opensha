@@ -140,7 +140,7 @@ public class EqkRupSelectorGuiBean extends JPanel implements ParameterChangeList
 		catch(Exception e) {
 			e.printStackTrace();
 		}
-		rupturePanel.add( (JPanel) eqkRupturePanel.getEqkRuptureSelectorPanel(),
+		rupturePanel.add( (JPanel) eqkRupturePanel,
 				new GridBagConstraints(0, 1, 1, 1, 1.0, 1.0
 						, GridBagConstraints.CENTER,
 						GridBagConstraints.BOTH,
@@ -246,7 +246,7 @@ public class EqkRupSelectorGuiBean extends JPanel implements ParameterChangeList
 			eqkRupturePanel = eqkRupturePanelFromRupture;
 		}
 
-		rupturePanel.add( (JPanel) eqkRupturePanel.getEqkRuptureSelectorPanel(),
+		rupturePanel.add( (JPanel) eqkRupturePanel,
 				new GridBagConstraints(0, 1, 1, 1, 1.0, 1.0
 						, GridBagConstraints.CENTER,
 						GridBagConstraints.BOTH,

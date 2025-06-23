@@ -157,10 +157,10 @@ public class FrankelEtAl_1996_AttenRel extends AttenuationRelationship implement
 
 	@Override
 	public void setSite(Site site) throws ParameterException {
+		if (site != null)
 		siteTypeParam.setValue((SiteType) site.getParameter(
 			siteTypeParam.getName()).getValue());
-		this.site = site;
-		setPropagationEffectParams();
+		super.setSite(site); // will call setPropagationEffectParams
 	}
 
 	@Override

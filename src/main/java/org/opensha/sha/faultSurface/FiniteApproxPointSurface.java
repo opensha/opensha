@@ -184,23 +184,25 @@ public class FiniteApproxPointSurface extends PointSurface {
 	private static final boolean R_RUP_ACCOUNT_FOR_FW_MICLASSIFICATION = false;
 	
 	/*
-	 * Notes/thoughts on future improvements in order to better approximate dipping faults:
+	 * TODO: Notes/thoughts on future improvements in order to better approximate dipping faults:
 	 * 
-	 * Distance corrections should really return a WeightedList<SurfaceDistances>. Surface distances should also include
-	 * distance X, which would allow the corrections to correctly weight HW vs FW terms. This could be implemented by
+	 * Distance corrections should really return a WeightedList<SurfaceDistances> (TODO). Surface distances should also include
+	 * distance X, which would allow the corrections to correctly weight HW vs FW terms (DONE). This could be implemented by
 	 * moving corrections to being applied at the source level, with a corrected point source implementing SiteAdaptiveSource
 	 * and shielding against users accidentally using the raw point sources. When a user gets the site-specific version,
-	 * all distances would be precomputed.
+	 * all distances would be precomputed (TODO).
 	 * 
-	 * That change would effectively delete this class. The old NSHM08/13 rRup calculation would be folded directly
-	 * into their point source calculations, and the new distribution methods would calculate rRup better. It would allow
+	 * That change would effectively delete this class (TODO). The old NSHM08/13 rRup calculation would be folded directly
+	 * into their point source calculations (TODO), and the new distribution methods would calculate rRup better (TODO). It would allow
 	 * for reproducibility of old models and ultimately simpler implementations.
 	 * 
 	 * This could all still be done in rJB -> rRup space, but calculations could be further improved by sampling from a
 	 * distribution of SurfaceDistances rather than from rJB. The challenge becomes how to do that sampling at fixed
-	 * percentiles from a multidimensional sapce. Simplest version would be to regress (see LoessInterpolator in apache)
+	 * percentiles from a multidimensional space. Simplest version would be to regress (see LoessInterpolator in apache)
 	 * for mean rRup as a function of rJB; this would mean that we would have to key on zTop as well as the existing
-	 * rupture parameters. 
+	 * rupture parameters.
+	 * 
+	 * TODO: move the better-than-2013 rrup code to new median rJB correction? or just use median rrup
 	 */
 
 	public static double getCorrDistRup(double rJB, double zTop, double zBot, double dipRad, double length, double horzWidth, boolean footwall) {
