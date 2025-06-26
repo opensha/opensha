@@ -755,7 +755,7 @@ public class RSQSimFileWriter {
 	}
 
 	public static void main(String[] args) throws IOException {
-		File catalogsDir = new File("/data/kevin/simulators/catalogs");
+//		File catalogsDir = new File("/data/kevin/simulators/catalogs");
 //		File outputDir = new File(catalogsDir, "text_combine_2585");
 //		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 //		File input1 = new File(catalogsDir, "restart2585");
@@ -818,38 +818,51 @@ public class RSQSimFileWriter {
 //		
 //		combineSeparateCatalogs(outputDir, "combined", filter, elements, skipYears, inputDirs);
 		
-		File catDir = new File("/home/scec-00/rsqsim/catalogs/");
-		File inParentDir = new File(catDir, "kmilner");
-		File outParentDir = inParentDir;
-//		File catDir = new File("/data-0/kevin/simulators/catalogs/");
-//		File inParentDir = new File(catDir, "bruce");
-//		File outParentDir = catDir;
+//		File catDir = new File("/home/scec-00/rsqsim/catalogs/");
+//		File inParentDir = new File(catDir, "kmilner");
+//		File outParentDir = inParentDir;
+////		File catDir = new File("/data-0/kevin/simulators/catalogs/");
+////		File inParentDir = new File(catDir, "bruce");
+////		File outParentDir = catDir;
+//		
+//		File outputDir = new File(outParentDir, "rundir4983_stitched");
+//		TransVersion version = TransVersion.CONSOLIDATED_RELATIVE;
+//		
+//		File[] inputDirs = new File[] {
+//			new File(inParentDir, "rundir4983"),
+//			new File(inParentDir, "rundir4983.01"),
+//			new File(inParentDir, "rundir4983.02"),
+//			new File(inParentDir, "rundir4983.03")
+//		};
+//		
+//		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+//		
+//		for (File inputDir : inputDirs)
+//			Preconditions.checkState(inputDir.exists());
+//		
+////		RuptureIdentifier filter = new MagRangeRuptureIdentifier(6.5d, Double.POSITIVE_INFINITY);
+//		RuptureIdentifier filter = null;
+//		
+//		File geomFile = new File(inputDirs[0], "zfault_Deepen.in");
+//		
+//		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'S');
+//		System.out.println("Loaded "+elements.size()+" elements");
+//		
+////		combineSeparateCatalogs(outputDir, "combined", filter, elements, skipYears, inputDirs);
+//		stitchCatalogs(outputDir, "stitched", filter, elements, version, inputDirs);
 		
-		File outputDir = new File(outParentDir, "rundir4983_stitched");
-		TransVersion version = TransVersion.CONSOLIDATED_RELATIVE;
-		
-		File[] inputDirs = new File[] {
-			new File(inParentDir, "rundir4983"),
-			new File(inParentDir, "rundir4983.01"),
-			new File(inParentDir, "rundir4983.02"),
-			new File(inParentDir, "rundir4983.03")
-		};
-		
-		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
-		
-		for (File inputDir : inputDirs)
-			Preconditions.checkState(inputDir.exists());
-		
-//		RuptureIdentifier filter = new MagRangeRuptureIdentifier(6.5d, Double.POSITIVE_INFINITY);
-		RuptureIdentifier filter = null;
-		
-		File geomFile = new File(inputDirs[0], "zfault_Deepen.in");
-		
-		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'S');
-		System.out.println("Loaded "+elements.size()+" elements");
-		
-//		combineSeparateCatalogs(outputDir, "combined", filter, elements, skipYears, inputDirs);
-		stitchCatalogs(outputDir, "stitched", filter, elements, version, inputDirs);
+		File bruceDir = new File("/home/kevin/Simulators/catalogs/bruce");
+		File origDir = new File(bruceDir, "rundir6261");
+		int thousandYears = 200;
+		File skipDir = new File(bruceDir, origDir.getName()+"_skip"+thousandYears+"k");
+		Preconditions.checkState(skipDir.exists() || skipDir.mkdir());
+		RuptureIdentifier filter = new SkipYearsLoadIden(thousandYears*1000d);
+		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(new File(origDir, "zfault_Deepen.in"), 11, 'S');
+		Iterable<RSQSimEvent> allEvents = RSQSimFileReader.getEventsIterable(origDir, elements);
+		writeFilteredCatalog(allEvents, filter, skipDir, "skip"+thousandYears+"k", false);
+		for (File file : origDir.listFiles())
+			if (file.getName().endsWith(".in"))
+				Files.copy(file, new File(skipDir, file.getName()));
 	}
 
 }
