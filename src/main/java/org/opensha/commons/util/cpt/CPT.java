@@ -843,7 +843,7 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 			else if (preserveEdges && i == num-1)
 				color = getMaxColor();
 			else
-				color = orig.getColor((float)(0.5*(end + start)));
+				color = orig.getColorRaw((float)(0.5*(end + start)));
 			cpt.add(new CPTVal(start, color, end, color));
 		}
 		
