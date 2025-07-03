@@ -1957,7 +1957,7 @@ public class GeographicMapMaker {
 				if (xyzLabel == null)
 					((XYZPlotSpec)spec).setCPTVisible(false);
 				else
-					((XYZPlotSpec)spec).setCPTPosition(RectangleEdge.BOTTOM);
+					((XYZPlotSpec)spec).setCPTPosition(cptEdge);
 			} else {
 				spec = new PlotSpec(funcs, chars, title, xAxisLabel, yAxisLabel);
 			}

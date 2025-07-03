@@ -101,6 +101,8 @@ public class PRVI25_GridSourceBuilder {
 	
 	public static double SLAB_MMAX = 7.95;
 	
+	public static double SLAB_M_CORNER = Double.NaN;
+	
 	public static void doPreGridBuildHook(FaultSystemSolution sol, LogicTreeBranch<?> faultBranch) throws IOException {
 		if (faultBranch.hasValue(PRVI25_CrustalFaultModels.class)) {
 			// add fault cube associations and seismicity regions
@@ -369,6 +371,11 @@ public class PRVI25_GridSourceBuilder {
 	private static EnumMap<PRVI25_SeismicityRegions, GriddedGeoDataSet> gridStrikes;
 	private static final String DEPTHS_DIR = "/data/erf/prvi25/seismicity/depths/";
 	
+	public static GriddedGeoDataSet loadSubductionDepths(PRVI25_SeismicityRegions seisReg) throws IOException {
+		loadRegionDepthStrikeData(seisReg);
+		return gridDepths.get(seisReg).copy();
+	}
+	
 	private synchronized static void loadRegionDepthStrikeData(PRVI25_SeismicityRegions seisReg) throws IOException {
 		if (gridDepths == null) {
 			gridDepths = new EnumMap<>(PRVI25_SeismicityRegions.class);
@@ -431,10 +438,10 @@ public class PRVI25_GridSourceBuilder {
 		IncrementalMagFreqDist totalGR;
 		if (seisRegion == PRVI25_SeismicityRegions.MUE_INTRASLAB) {
 			PRVI25_SubductionMuertosSeismicityRate seisBranch = branch.requireValue(PRVI25_SubductionMuertosSeismicityRate.class);
-			totalGR = seisBranch.build(FaultSysTools.initEmptyMFD(OVERALL_MMIN, maxMagOff), maxMagOff, true);
+			totalGR = seisBranch.build(FaultSysTools.initEmptyMFD(OVERALL_MMIN, maxMagOff), maxMagOff, SLAB_M_CORNER, true);
 		} else if (seisRegion == PRVI25_SeismicityRegions.CAR_INTRASLAB) {
 			PRVI25_SubductionCaribbeanSeismicityRate seisBranch = branch.requireValue(PRVI25_SubductionCaribbeanSeismicityRate.class);
-			totalGR = seisBranch.build(FaultSysTools.initEmptyMFD(OVERALL_MMIN, maxMagOff), maxMagOff, true);
+			totalGR = seisBranch.build(FaultSysTools.initEmptyMFD(OVERALL_MMIN, maxMagOff), maxMagOff, SLAB_M_CORNER, true);
 		} else {
 			throw new IllegalStateException("Not a slab region: "+seisRegion);
 		}
@@ -582,7 +589,7 @@ public class PRVI25_GridSourceBuilder {
 					@Override
 					public IncrementalMagFreqDist apply(Double mMax) {
 						try {
-							return seisBranch.build(refMFD, mMax, false);
+							return seisBranch.build(refMFD, mMax, Double.NaN, false);
 						} catch (IOException e) {
 							throw ExceptionUtils.asRuntimeException(e);
 						}
@@ -595,7 +602,7 @@ public class PRVI25_GridSourceBuilder {
 					@Override
 					public IncrementalMagFreqDist apply(Double mMax) {
 						try {
-							return seisBranch.build(refMFD, mMax, false);
+							return seisBranch.build(refMFD, mMax, Double.NaN, false);
 						} catch (IOException e) {
 							throw ExceptionUtils.asRuntimeException(e);
 						}

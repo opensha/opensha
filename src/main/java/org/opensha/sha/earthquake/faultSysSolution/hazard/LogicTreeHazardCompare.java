@@ -487,11 +487,13 @@ public class LogicTreeHazardCompare {
 		this.spacing = spacing;
 
 		logCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(-3d, 1d);
+		logCPT.setLog10(true);
 		spreadCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0, 1d);
 		spreadCPT.setNanColor(Color.LIGHT_GRAY);
 		spreadDiffCPT = GMT_CPT_Files.DIVERGING_BAM_UNIFORM.instance().reverse().rescale(-1d, 1d);
 		spreadDiffCPT.setNanColor(Color.LIGHT_GRAY);
 		iqrCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(-2, 0d);
+		iqrCPT.setLog10(true);
 		iqrCPT.setNanColor(Color.LIGHT_GRAY);
 		iqrDiffCPT = GMT_CPT_Files.DIVERGING_BAM_UNIFORM.instance().reverse().rescale(-0.05d, 0.05d);
 		iqrDiffCPT.setNanColor(Color.LIGHT_GRAY);
@@ -563,6 +565,7 @@ public class LogicTreeHazardCompare {
 	public void setCPTRange(double lower, double upper) {
 		try {
 			logCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(lower, upper);
+			logCPT.setLog10(true);
 		} catch (IOException e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
@@ -1535,7 +1538,7 @@ public class LogicTreeHazardCompare {
 				
 				// plot CPT files for grabbing externally
 				PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt",
-						GeographicMapMaker.buildCPTLegend(logCPT, "Log10 "+label), cptWidth, true, true);
+						GeographicMapMaker.buildCPTLegend(logCPT, label), cptWidth, true, true);
 				PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt_cov",
 						GeographicMapMaker.buildCPTLegend(covCPT, "COV, "+unitlessLabel), cptWidth, true, true);
 				PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt_pDiff",
@@ -1642,14 +1645,14 @@ public class LogicTreeHazardCompare {
 				
 				boolean cmulti = comp != null && comp.branches != null && comp.branches.size() > 1;
 				
-				MapPlot meanMapPlot = mapper.buildMapPlot(resourcesDir, prefix+"_mean", log10(mean),
-						logCPT, TITLES ? name : " ", "Log10 "+(multi ? "Weighted-Average" : "Mean")+", "+label, false);
+				MapPlot meanMapPlot = mapper.buildMapPlot(resourcesDir, prefix+"_mean", mean,
+						logCPT, TITLES ? name : " ", (multi ? "Weighted-Average" : "Mean")+", "+label, false);
 				File meanMapFile = new File(resourcesDir, meanMapPlot.prefix+".png");
 				GriddedGeoDataSet.writeXYZFile(mean, new File(resourcesDir, prefix+"_mean.xyz"));
 				File medianMapFile = null;
 				if (multi) {
-					medianMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_median", log10(median),
-							logCPT, TITLES ? name : " ", "Log10 Weighted-Median, "+label);
+					medianMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_median", median,
+							logCPT, TITLES ? name : " ", "Weighted-Median, "+label);
 					GriddedGeoDataSet.writeXYZFile(median, new File(resourcesDir, prefix+"_median.xyz"));
 				}
 				
@@ -1695,8 +1698,8 @@ public class LogicTreeHazardCompare {
 					TableBuilder table = MarkdownUtils.tableBuilder();
 					
 					// comparison mean
-					File cmeanMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_mean", log10(cmean),
-							logCPT, TITLES ? compName : " ", "Log10 Weighted-Average, "+label);
+					File cmeanMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_mean", cmean,
+							logCPT, TITLES ? compName : " ", "Weighted-Average, "+label);
 					GriddedGeoDataSet.writeXYZFile(cmean, new File(resourcesDir, prefix+"_comp_mean.xyz"));
 					
 					table.initNewLine();
@@ -1746,8 +1749,8 @@ public class LogicTreeHazardCompare {
 						lines.addAll(table.build());
 						lines.add("");
 						
-						File cmedianMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_median", log10(cmedian),
-								logCPT, TITLES ? compName : " ", "Log10 Weighted-Median, "+label);
+						File cmedianMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_median", cmedian,
+								logCPT, TITLES ? compName : " ", "Weighted-Median, "+label);
 						GriddedGeoDataSet.writeXYZFile(cmedian, new File(resourcesDir, prefix+"_comp_median.xyz"));
 						
 						lines.add("### Median hazard maps and comparisons, "+unitlessLabel);
@@ -1908,14 +1911,14 @@ public class LogicTreeHazardCompare {
 					table = MarkdownUtils.tableBuilder();
 					table.addLine(MarkdownUtils.boldCentered("Minimum"), MarkdownUtils.boldCentered("Maximum"));
 					
-					File minMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_min", log10(min),
-							logCPT, TITLES ? name : " ", "Log10 Minimum, "+label);
-					File maxMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_max", log10(max),
-							logCPT, TITLES ? name : " ", "Log10 Maximum, "+label);
+					File minMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_min", min,
+							logCPT, TITLES ? name : " ", "Minimum, "+label);
+					File maxMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_max", max,
+							logCPT, TITLES ? name : " ", "Maximum, "+label);
 					File spreadMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_spread", spread,
 							spreadCPT, TITLES ? name : " ", "Log10 (Max/Min), "+unitlessLabel);
-					File iqrMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_iqr", log10(iqr),
-							iqrCPT, TITLES ? name : " ", "Log10 IQR, "+label);
+					File iqrMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_iqr", iqr,
+							iqrCPT, TITLES ? name : " ", "IQR, "+label);
 					File sdMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_sd", sd,
 							sdCPT, TITLES ? name : " ", "SD, "+label);
 					File covMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_cov", cov,
@@ -1948,19 +1951,19 @@ public class LogicTreeHazardCompare {
 					table = MarkdownUtils.tableBuilder();
 					// comparison
 					addMapCompDiffLines(min, name, cmin, compName, prefix+"_min", resourcesDir, table,
-							"Minimum", "Minimum "+label, "Minimum "+unitlessLabel, true, logCPT, diffCPT, pDiffCPT, comp.gridReg);
+							"Minimum", "Minimum "+label, "Minimum "+unitlessLabel, logCPT, diffCPT, pDiffCPT, comp.gridReg);
 					addMapCompDiffLines(max, name, cmax, compName, prefix+"_max", resourcesDir, table,
-							"Maximum", "Maximum "+label, "Maximum "+unitlessLabel, true, logCPT, diffCPT, pDiffCPT, comp.gridReg);
+							"Maximum", "Maximum "+label, "Maximum "+unitlessLabel, logCPT, diffCPT, pDiffCPT, comp.gridReg);
 					addMapCompDiffLines(spread, name, cspread, compName, prefix+"_spread", resourcesDir, table,
-							"Log10 (Max/Min)", "Log10 (Max/Min) "+unitlessLabel, "Log10 (Max/Min) "+unitlessLabel, false,
+							"Log10 (Max/Min)", "Log10 (Max/Min) "+unitlessLabel, "Log10 (Max/Min) "+unitlessLabel,
 							spreadCPT, spreadDiffCPT, pDiffCPT, comp.gridReg);
 					addMapCompDiffLines(iqr, name, ciqr, compName, prefix+"_iqr", resourcesDir, table,
-							"Interquartile Range", "IQR "+label, "IQR "+unitlessLabel, true,
+							"Interquartile Range", "IQR "+label, "IQR "+unitlessLabel,
 							iqrCPT, iqrDiffCPT, pDiffCPT, comp.gridReg);
 					addMapCompDiffLines(sd, name, csd, compName, prefix+"_sd", resourcesDir, table,
-							"SD", label+", SD", unitlessLabel+", SD", false, sdCPT, sdDiffCPT, pDiffCPT, comp.gridReg);
+							"SD", label+", SD", unitlessLabel+", SD", sdCPT, sdDiffCPT, pDiffCPT, comp.gridReg);
 					addMapCompDiffLines(cov, name, ccov, compName, prefix+"_cov", resourcesDir, table,
-							"COV", unitlessLabel+", COV", unitlessLabel+", COV", false, covCPT, covDiffCPT, pDiffCPT, comp.gridReg);
+							"COV", unitlessLabel+", COV", unitlessLabel+", COV", covCPT, covDiffCPT, pDiffCPT, comp.gridReg);
 					
 					lines.add("");
 					lines.add(minMaxStr+" Each of those quantities is plotted separately for the primary and comparison "
@@ -3059,17 +3062,17 @@ public class LogicTreeHazardCompare {
 	
 	private void addMapCompDiffLines(GriddedGeoDataSet primary, String name, GriddedGeoDataSet comparison,
 			String compName, String prefix, File resourcesDir, TableBuilder table, String type, String label,
-			String unitlessLabel, boolean logMap, CPT cpt, CPT diffCPT, CPT pDiffCPT, GriddedRegion compReg) throws IOException {
+			String unitlessLabel, CPT cpt, CPT diffCPT, CPT pDiffCPT, GriddedRegion compReg) throws IOException {
 		
 		table.addLine(MarkdownUtils.boldCentered("Primary "+type), MarkdownUtils.boldCentered("Comparison "+type),
 				MarkdownUtils.boldCentered("Difference"), MarkdownUtils.boldCentered("% Change"));
 		
 		table.initNewLine();
 		File map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix,
-				logMap ? log10(primary) : primary, cpt, name, (logMap ? "Log10 " : "")+label);
+				primary, cpt, name, label);
 		table.addColumn("!["+type+"]("+resourcesDir.getName()+"/"+map.getName()+")");
 		map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp",
-				logMap ? log10(comparison) : comparison, cpt, compName, (logMap ? "Log10 " : "")+label);
+				comparison, cpt, compName, label);
 		table.addColumn("!["+type+"]("+resourcesDir.getName()+"/"+map.getName()+")");
 		
 		GriddedGeoDataSet diffForStats = null;

@@ -250,10 +250,10 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					&& input.hasEntry("solution/rates.csv")) {
 				// missing modules.json, try to load it as an unlisted module
 				System.err.println("WARNING: solution archive is missing modules.json, trying to load it anyway");
-				archive.loadUnlistedModule(FaultSystemRupSet.class, "ruptures/");
+				archive.loadUnlistedModule(FaultSystemRupSet.class, FaultSystemRupSet.NESTING_PREFIX);
 				Preconditions.checkState(archive.hasModule(FaultSystemRupSet.class),
 						"Failed to load unlisted rupture set module");
-				archive.loadUnlistedModule(FaultSystemSolution.class, "solution/");
+				archive.loadUnlistedModule(FaultSystemSolution.class, NESTING_PREFIX);
 				Preconditions.checkState(archive.hasModule(FaultSystemSolution.class),
 						"Failed to load unlisted solution module");
 				sol = archive.getModule(FaultSystemSolution.class);
@@ -262,6 +262,18 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		Preconditions.checkState(sol != null, "Failed to load solution module from archive (see above error messages)");
 		Preconditions.checkNotNull(sol.rupSet, "rupture set not loaded?");
 		Preconditions.checkNotNull(sol.archive, "archive should have been set automatically");
+		
+		if (sol.hasAvailableModule(GridSourceList.class) && !sol.hasAvailableModule(GridSourceList.Precomputed.class)) {
+			System.err.println("WARNING: solution archive refers to old GridSourceList module class that is now "
+					+ "abstract, updating with Precomputed variant.");
+			sol.addAvailableModule(new Callable<GridSourceList>() {
+
+				@Override
+				public GridSourceList call() throws Exception {
+					return archive.loadUnlistedModule(GridSourceList.Precomputed.class, NESTING_PREFIX);
+				}
+			}, GridSourceList.class);
+		}
 		
 		return sol;
 	}
@@ -576,7 +588,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			if (p != null) p.dispose();
 			particRatesCache.put(key, particRates);
 		}
-		return particRatesCache.get(key);
+		return Arrays.copyOf(particRatesCache.get(key), rupSet.getNumSections());
 	}
 
 	private HashMap<String, double[]> nucleationRatesCache = new HashMap<String, double[]>();
@@ -646,7 +658,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			if (p != null) p.dispose();
 			nucleationRatesCache.put(key, nucleationRates);
 		}
-		return nucleationRatesCache.get(key);
+		return Arrays.copyOf(nucleationRatesCache.get(key), rupSet.getNumSections());
 	}
 	
 	private double[] totParticRatesCache;
@@ -687,7 +699,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			}
 			if (p != null) p.dispose();
 		}
-		return totParticRatesCache;
+		return Arrays.copyOf(totParticRatesCache, rupSet.getNumSections());
 	}
 	
 	private Map<PaleoProbabilityModel, double[]> paleoVisibleRatesCache;
@@ -744,7 +756,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			}
 			if (p != null) p.dispose();
 		}
-		return paleoRates;
+		return Arrays.copyOf(paleoRates, paleoRates.length);
 	}
 	
 	/**

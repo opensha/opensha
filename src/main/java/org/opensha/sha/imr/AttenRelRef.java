@@ -260,6 +260,33 @@ public enum AttenRelRef implements AttenRelSupplier {
 		
 	},
 	
+	WRAPPED_BSSA_2014(null, "NSHMP-Haz BSSA (2014) Base",
+			"WrapedBSSA2014", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper.Single(Gmm.BSSA_14_BASE, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	WRAPPED_NGAW2_NoIDR(null, "NSHMP-Haz NGA-W2 (2014) Base (excl. Idriss)",
+			"WrappedNGAW2-NoIdr", PRODUCTION) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			WeightedList<Gmm> gmms = WeightedList.of(
+					new WeightedValue<>(Gmm.ASK_14_BASE, 0.25),
+					new WeightedValue<>(Gmm.BSSA_14_BASE, 0.25),
+					new WeightedValue<>(Gmm.CB_14_BASE, 0.25),
+					new WeightedValue<>(Gmm.CY_14_BASE, 0.25));
+			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
 	AG_2020_GLOBAL_INTERFACE(null, "AG (2020) Global Interface",
 			"AG2020", DEVELOPMENT) {
 		

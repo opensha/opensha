@@ -17,6 +17,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_Subduc
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.magdist.TaperedGR_MagFreqDist;
 
 import com.google.common.base.Preconditions;
 
@@ -100,34 +101,70 @@ public class SeismicityRateFileLoader {
 	}
 	
 	public static IncrementalMagFreqDist buildIncrementalMFD(RateRecord record, EvenlyDiscretizedFunc refMFD, double mMax) {
+		return buildIncrementalMFD(record, refMFD, mMax, Double.NaN);
+	}
+	
+	public static IncrementalMagFreqDist buildIncrementalMFD(RateRecord record, EvenlyDiscretizedFunc refMFD,
+			double mMax, double magCorner) {
 		Preconditions.checkNotNull(record, "Record is null");
 		if (record instanceof PureGR)
-			return buildIncrementalMFD((PureGR)record, refMFD, mMax);
-		else if (record instanceof Exact)
-			return buildIncrementalMFD((Exact)record, refMFD, mMax);
-		else if (record instanceof Direct)
-			return buildIncrementalMFD((Direct)record, refMFD, mMax);
-		else
-			throw new IllegalStateException("Record is of unexpected type: "+record.getClass());
+			return buildIncrementalMFD((PureGR)record, refMFD, mMax, magCorner);
+		else {
+			Preconditions.checkState(!Double.isFinite(magCorner) || magCorner <= 0, "Can only set magCorner for PureGR records");
+			if (record instanceof Exact)
+				return buildIncrementalMFD((Exact)record, refMFD, mMax);
+			else if (record instanceof Direct)
+				return buildIncrementalMFD((Direct)record, refMFD, mMax);
+			else
+				throw new IllegalStateException("Record is of unexpected type: "+record.getClass());
+		}
 	}
 	
 	public static IncrementalMagFreqDist buildIncrementalMFD(PureGR grRecord, EvenlyDiscretizedFunc refMFD, double mMax) {
+		return buildIncrementalMFD(grRecord, refMFD, mMax);
+	}
+	
+	public static IncrementalMagFreqDist buildIncrementalMFD(PureGR grRecord, EvenlyDiscretizedFunc refMFD, double mMax,
+			double magCorner) {
 		Preconditions.checkState(mMax-0.001 < refMFD.getMaxX()+0.5*refMFD.getDelta(),
 				"Reference incremental MFD doesn't have a bin for mMax=%s", mMax);
-		GutenbergRichterMagFreqDist gr = new GutenbergRichterMagFreqDist(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
-		
-		// this sets shape, min/max
-		// subtract a tiny amount from mMax so that if it's exactly at a bin edge, e.g. 7.9, it rounds down, e.g. to 7.85
-		gr.setAllButTotCumRate(refMFD.getX(0), refMFD.getX(refMFD.getClosestXIndex(mMax-0.001)), 1e16, grRecord.b);
-		// this scales it to match
-		// similarly, add a tiny amount to M1 so that if it's exactly at a bin edge (which it should be as it's determined
-		// using cumulative binning), it rounds up to the incremental bin for that cumulative edge
-		gr.scaleToCumRate(refMFD.getClosestXIndex(grRecord.M1+0.001), grRecord.rateAboveM1);
-		
-		gr.setName("Total Observed [b="+oDF.format(grRecord.b)
-				+", N"+oDF.format(grRecord.M1)+"="+oDF.format(grRecord.rateAboveM1)+"]");
-		
-		return gr;
+		if (Double.isFinite(magCorner) && magCorner > 0d) {
+			TaperedGR_MagFreqDist taperGR = new TaperedGR_MagFreqDist(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
+			// this sets shape, min/max
+			// subtract a tiny amount from mMax so that if it's exactly at a bin edge, e.g. 7.9, it rounds down, e.g. to 7.85
+			taperGR.setAllButTotCumRate(refMFD.getX(0), magCorner, 1e16, grRecord.b);
+			// copy to an incr so we can clear out any values above mMax
+			IncrementalMagFreqDist gr = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
+			for (int i=0; i<gr.size(); i++) {
+				double mag = gr.getX(i);
+				if ((float)mag > (float)mMax)
+					break;
+				gr.set(i, taperGR.getY(i));
+			}
+			// now scale to match rate
+			gr.scaleToCumRate(refMFD.getClosestXIndex(grRecord.M1+0.001), grRecord.rateAboveM1);
+			
+			gr.setName("Total Observed [b="+oDF.format(grRecord.b)
+					+", N"+oDF.format(grRecord.M1)+"="+oDF.format(grRecord.rateAboveM1)
+					+", Mcorner="+oDF.format(magCorner)+"]");
+			
+			return gr;
+		} else {
+			GutenbergRichterMagFreqDist gr = new GutenbergRichterMagFreqDist(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
+			
+			// this sets shape, min/max
+			// subtract a tiny amount from mMax so that if it's exactly at a bin edge, e.g. 7.9, it rounds down, e.g. to 7.85
+			gr.setAllButTotCumRate(refMFD.getX(0), refMFD.getX(refMFD.getClosestXIndex(mMax-0.001)), 1e16, grRecord.b);
+			// this scales it to match
+			// similarly, add a tiny amount to M1 so that if it's exactly at a bin edge (which it should be as it's determined
+			// using cumulative binning), it rounds up to the incremental bin for that cumulative edge
+			gr.scaleToCumRate(refMFD.getClosestXIndex(grRecord.M1+0.001), grRecord.rateAboveM1);
+			
+			gr.setName("Total Observed [b="+oDF.format(grRecord.b)
+					+", N"+oDF.format(grRecord.M1)+"="+oDF.format(grRecord.rateAboveM1)+"]");
+			
+			return gr;
+		}
 	}
 	
 	public static IncrementalMagFreqDist buildIncrementalMFD(Exact exactRecord, EvenlyDiscretizedFunc refMFD, double mMax) {
@@ -532,24 +569,31 @@ public class SeismicityRateFileLoader {
 			
 			List<String> names = new ArrayList<>();
 			List<SeismicityRateModel> rateModels = new ArrayList<>();
+			List<SeismicityRateModel> grRateModels = new ArrayList<>();
 			
 			names.add("Crustal");
 			rateModels.add(PRVI25_CrustalSeismicityRate.loadRateModel(RateType.EXACT));
+			grRateModels.add(PRVI25_CrustalSeismicityRate.loadRateModel(RateType.M1_TO_MMAX));
 			
 			names.add("CAR Intraslab");
 			rateModels.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(RateType.EXACT, true));
+			grRateModels.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(RateType.M1_TO_MMAX, true));
 			
 			names.add("CAR Interface");
 			rateModels.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(RateType.EXACT, false));
+			grRateModels.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(RateType.M1_TO_MMAX, false));
 			
 			names.add("MUE Intraslab");
 			rateModels.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(RateType.EXACT, true));
+			grRateModels.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(RateType.M1_TO_MMAX, true));
 			
 			names.add("MUE Interface");
 			rateModels.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(RateType.EXACT, false));
+			grRateModels.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(RateType.M1_TO_MMAX, false));
 			
 			names.add("Union");
 			rateModels.add(null);
+			grRateModels.add(null);
 			
 			double sumDirect = 0d;
 			double sumModelRate = 0d;
@@ -557,6 +601,7 @@ public class SeismicityRateFileLoader {
 			for (int i=0; i<names.size(); i++) {
 				String name = names.get(i);
 				SeismicityRateModel rateModel = rateModels.get(i);
+				SeismicityRateModel grRateModel = grRateModels.get(i);
 				String csvName = directPrefix+name+yearSuffix;
 				
 				InputStream is = SeismicityRateFileLoader.class.getResourceAsStream(csvName);
@@ -564,8 +609,12 @@ public class SeismicityRateFileLoader {
 				List<Direct> directs = loadDirectBranches(CSVFile.readStream(is, false));
 				List<String> line = new ArrayList<>();
 				line.add(names.get(i));
-				System.out.println("mag: "+(float)mag);
-				System.out.println("direct:\n"+locateMean(directs).cumulativeDist);
+				System.out.println(names.get(i)+", M"+(float)mag);
+//				System.out.println("direct:\n"+locateMean(directs).cumulativeDist);
+				if (m5)
+					System.out.println("direct M>5:\t"+locateMean(directs).cumulativeDist.getY(5d));
+				else
+					System.out.println("direct M>6:\t"+locateMean(directs).cumulativeDist.getY(6d));
 				double directRate = getWithinTol(locateMean(directs).cumulativeDist, mag, 1e-3);
 				double directLowerRate = getWithinTol(locateQuantile(directs, 0.025).cumulativeDist, mag, 1e-3);
 				double directUpperRate = getWithinTol(locateQuantile(directs, 0.975).cumulativeDist, mag, 1e-3);
@@ -580,6 +629,14 @@ public class SeismicityRateFileLoader {
 					line.add((float)modelRate+"");
 					line.add((float)getWithinTol(((Exact)rateModel.getLowerRecord()).cumulativeDist, mag, 1e-3)+"");
 					line.add((float)getWithinTol(((Exact)rateModel.getUpperRecord()).cumulativeDist, mag, 1e-3)+"");
+					if (m5) {
+						PureGR grMean = (PureGR) grRateModel.getMeanRecord();
+						System.out.println("preferred M>5:\t"+(float)grMean.rateAboveM1+";\tb="+(float)grMean.b);
+						PureGR grLow = (PureGR) grRateModel.getLowerRecord();
+						PureGR grHigh = (PureGR) grRateModel.getUpperRecord();
+						System.out.println("lower M>5:\t"+(float)grLow.rateAboveM1+";\tb="+(float)grLow.b);
+						System.out.println("upper M>5:\t"+(float)grHigh.rateAboveM1+";\tb="+(float)grHigh.b);
+					}
 				} else {
 					line.add("");
 					line.add("");
