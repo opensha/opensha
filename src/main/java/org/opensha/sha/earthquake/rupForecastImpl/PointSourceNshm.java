@@ -32,7 +32,6 @@ import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.SiteAdaptiveSource;
 import org.opensha.sha.earthquake.util.GridCellSuperSamplingPoissonPointSourceData;
 import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
-import org.opensha.sha.faultSurface.FiniteApproxPointSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
@@ -224,8 +223,7 @@ public class PointSourceNshm extends PoissonPointSource {
 
 		@Override
 		public Location getHypocenter(Location sourceLoc, RuptureSurface rupSurface) {
-			Preconditions.checkState(rupSurface instanceof FiniteApproxPointSurface);
-			double depth = 0.5*(rupSurface.getAveRupTopDepth() + ((FiniteApproxPointSurface)rupSurface).getLowerDepth());
+			double depth = 0.5*(rupSurface.getAveRupTopDepth() + rupSurface.getAveRupBottomDepth());
 			return new Location(sourceLoc.lat, sourceLoc.lon, depth);
 		}
 

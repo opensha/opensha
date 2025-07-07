@@ -561,7 +561,7 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 				double mag = data.getMagnitude(dataIndex);
 				double rake = data.getAveRake(dataIndex);
 				RuptureSurface surf = data.getSurface(dataIndex);
-				if (mag >= minMagForDistCorr && data.isFinite(dataIndex)) {
+				if (mag >= minMagForDistCorr && !data.isFinite(dataIndex)) {
 					// point source, do distance correction(s)
 					Preconditions.checkState(surf instanceof PointSurface,
 							"Surface for rupture with data index %s was labeled as non-finite, but is not a PointSurface: %s",
@@ -613,8 +613,13 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 
 		@Override
 		public void setDistCorr(PointSourceDistanceCorrection distCorr, double minMagForDistCorr) {
-			throw new UnsupportedOperationException("Cannot change distance corrections, this source is already "
-					+ "corrected for the specific site and correction");
+			if (source == null) {
+				// this is the first time, from the constructor, don't need to protect
+				super.setDistCorr(distCorr, minMagForDistCorr);
+			} else {
+				throw new UnsupportedOperationException("Cannot change distance corrections, this source is already "
+						+ "corrected for the specific site and correction");
+			}
 		}
 
 		@Override

@@ -60,7 +60,6 @@ import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.faultSurface.FiniteApproxPointSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
@@ -4232,18 +4231,13 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 					// find match in the original source; this is needed for the nth rupture index to be real in the
 					// output files, see issue #120: https://github.com/opensha/opensha/issues/120
 					
-					// we'll find it by finding a rupture in the original source with the same magnitude, rake,
-					// and footwall setting (there can be 2 versions of the dipping ruptures that are programmed to be
-					// on/off the footwall). This is pretty specific to the UCERF3 point source implementation (with
-					// distance corrected point surface, e.g. from PointSource13b), and should be generalized in
-					// future models. Checks are made to ensure that exactly 1 mapping is found, so if those assumptions
+					// we'll find it by finding a rupture in the original source with the same magnitude and rake.
+					// Checks are made to ensure that exactly 1 mapping is found, so if those assumptions
 					// break down those checks should fail (e.g., with multiple mappings found).
-					boolean footwall = ptRupFootwallTest(filteredRup);
 					for (int r=0; r<src.getNumRuptures(); r++) {
 						ProbEqkRupture rup = src.getRupture(r);
 						boolean match = Precision.equals(rup.getAveRake(), filteredRup.getAveRake())
-								&& Precision.equals(rup.getMag(), filteredRup.getMag())
-								&& footwall == ptRupFootwallTest(rup);
+								&& Precision.equals(rup.getMag(), filteredRup.getMag());
 						if (match) {
 							Preconditions.checkState(randRupIndex < 0, "Multiple rupture mappings? sourceID=%s, subSeismo=%s,"
 									+ "filteredR=%s, mag=%s, rake=%s, sourceType=%s, surfType=%s",
@@ -4360,16 +4354,6 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		rupToFillIn.setDistanceToParent(distToParent);
 		
 		return true;
-	}
-	
-	private static final Location ptStrFootwallTestLoc = new Location(0d, 0d);
-	private static boolean ptRupFootwallTest(ProbEqkRupture rup) {
-		RuptureSurface surf = rup.getRuptureSurface();
-		if (surf.getAveDip() == 90d)
-			return false;
-		if (surf instanceof FiniteApproxPointSurface)
-			return ((FiniteApproxPointSurface)surf).isOnFootwall();
-		return surf.getDistanceX(ptStrFootwallTestLoc) < 0;
 	}
 	
 	/**
