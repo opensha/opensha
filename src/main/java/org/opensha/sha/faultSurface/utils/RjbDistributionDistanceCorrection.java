@@ -12,11 +12,14 @@ import java.util.function.Supplier;
 
 import org.apache.commons.math3.util.Precision;
 import org.opensha.commons.data.WeightedList;
+import org.opensha.commons.data.WeightedValue;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.util.Interpolate;
 import org.opensha.sha.faultSurface.PointSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
@@ -36,6 +39,7 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 	static final int NUM_ALPHA_SAMPLES_DEFAULT = 180; // span is 0-180, 90 means one every 2 degrees
 	// better performance is achieved by further interpolating distances between alpha values before calculating the CDF
 	static final int NUM_ALPHA_INTERP_SAMPLES = 3;
+//	static final int NUM_ALPHA_INTERP_SAMPLES = 0; // TODO revert
 	static final int NUM_SS_ALPHA_SAMPLES_DEFAULT = 90; // alpha samples when also supersampling
 	static final int NUM_SS_AND_ALONG_ALPHA_SAMPLES_DEFAULT = 90; // alpha samples when supersampling and sampling along
 	// if we're sampling along-strike, the number of said samples
@@ -44,6 +48,13 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 	static final int NUM_ALONG_INTERP_SAMPLES = 10;
 	// if we're sampling down-dip, the number of said samples
 	static final int NUM_SAMPLES_DOWN_DIP_DEFAULT = 5;
+	
+	public static InvCDFCache initDefaultCache(WeightedList<Double> fractiles, boolean sampleAlong, boolean sampleDownDip) {
+		double[] fractilesArray = new double[fractiles.size()];
+		for (int i=0; i<fractiles.size(); i++)
+			fractilesArray[i] = fractiles.getValue(i);
+		return initDefaultCache(fractilesArray, sampleAlong, sampleDownDip);
+	}
 	
 	public static InvCDFCache initDefaultCache(double[] fractiles, boolean sampleAlong, boolean sampleDownDip) {
 		InvCDFCache ret = new InvCDFCache(sampleAlong, sampleDownDip, MIN_NONZERO_DIST_DEFAULT, INITIAL_MAX_DIST_DEFAULT,
@@ -100,113 +111,526 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 	    		.orElse("");
 	}
 	
-	public static WeightedList<RjbDistributionDistanceCorrection> getEvenlyWeightedFractiles(
+	public static RjbDistributionDistanceCorrection getEvenlyWeightedFractiles(
 			int numFractiles, boolean sampleAlong, boolean sampleDownDip) {
 		Preconditions.checkState(numFractiles > 1);
-		double[] fractiles = buildSpacedSamples(0d, 1d, numFractiles);
+		WeightedList<Double> fractiles = buildWeightedSpacedSamples(0d, 1d, numFractiles);
 		InvCDFCache cache = initDefaultCache(fractiles, sampleAlong, sampleDownDip);
-		RjbDistributionDistanceCorrection[] corrs = new RjbDistributionDistanceCorrection[numFractiles];
-		for (int i=0; i<numFractiles; i++)
-			corrs[i] = new RjbDistributionDistanceCorrection(fractiles[i], cache);
-		return WeightedList.evenlyWeighted(corrs);
+		return new RjbDistributionDistanceCorrection(fractiles, cache);
 	}
 	
-	public static WeightedList<RjbDistributionDistanceCorrection> getImportanceSampledFractiles(
+	public static RjbDistributionDistanceCorrection getImportanceSampledFractiles(
 			double[] fractileBoundaries, boolean sampleAlong, boolean sampleDownDip) {
 		Preconditions.checkState(fractileBoundaries.length > 2);
 		Preconditions.checkState(fractileBoundaries[0] == 0d, "First boundary must start at 0");
 		Preconditions.checkState(fractileBoundaries[fractileBoundaries.length-1] == 1d, "Last boundary must end at 1");
-		double[] fractiles = new double[fractileBoundaries.length -1];
-		double[] weights = new double[fractileBoundaries.length -1];
+		int num = fractileBoundaries.length -1;
+		List<WeightedValue<Double>> fractileValues = new ArrayList<>(num);
 		double weightSum = 0d;
-		for (int i=0; i<fractiles.length; i++) {
+		for (int i=0; i<num; i++) {
 			double lower = fractileBoundaries[i];
 			double upper = fractileBoundaries[i+1];
-			weights[i] = upper - lower;
-			weightSum += weights[i];
-			Preconditions.checkState(weights[i] > 0d);
-			fractiles[i] = 0.5*(lower + upper); // center
+			double weight = upper - lower;
+			weightSum += weight;
+			Preconditions.checkState(weight > 0d);
+			double fractile = 0.5*(lower + upper); // center
+			fractileValues.add(new WeightedValue<Double>(fractile, weight));
 		}
 		Preconditions.checkState(Precision.equals(weightSum, 1d, 0.001), "Weights don't sum to 1: %s", weightSum);
-		WeightedList<RjbDistributionDistanceCorrection> ret = new WeightedList<>(fractiles.length);
+		WeightedList<Double> fractiles = WeightedList.of(fractileValues);
 		InvCDFCache cache = initDefaultCache(fractiles, sampleAlong, sampleDownDip);
-		for (int i=0; i<fractiles.length; i++)
-			ret.add(new RjbDistributionDistanceCorrection(fractiles[i], cache), weights[i]);
-		
-		return ret;
+		return new RjbDistributionDistanceCorrection(fractiles, cache);
 	}
 	
-	private double fractile;
-	private int indexInCache;
+	private WeightedList<Double> fractiles;
 	private InvCDFCache cache;
 
 	public RjbDistributionDistanceCorrection(double fractile, boolean sampleAlong, boolean sampleDownDip) {
-		this(fractile, initDefaultCache(new double[] {fractile}, sampleAlong, sampleDownDip));
+		this(WeightedList.evenlyWeighted(fractile), initDefaultCache(new double[] {fractile}, sampleAlong, sampleDownDip));
 	}
 
-	public RjbDistributionDistanceCorrection(double fractile, InvCDFCache cache) {
-		this.fractile = fractile;
+	public RjbDistributionDistanceCorrection(WeightedList<Double> fractiles, InvCDFCache cache) {
+		if (!(fractiles instanceof WeightedList.Unmodifiable<?>))
+			fractiles = new WeightedList.Unmodifiable<>(fractiles);
+		this.fractiles = fractiles;
 		this.cache = cache;
-		indexInCache = -1;
-		for (int i=0; i<cache.fractiles.length; i++) {
-			// use Double.compare because it handles NaNs
-			if (Double.compare(fractile, cache.fractiles[i]) == 0) {
-				indexInCache = i;
-				break;
-			}
+		
+		Preconditions.checkState(fractiles.size() == cache.fractiles.length,
+				"Cache has %s fractiles but we have %s", cache.fractiles.length, fractiles.size());
+		for (int f=0; f<fractiles.size(); f++) {
+			double fractile = fractiles.getValue(f);
+			Preconditions.checkState(Double.compare(fractile, cache.fractiles[f]) == 0,
+					"Cache fractile %s is %s, expected %s", f, cache.fractiles[f], fractile);
 		}
-		Preconditions.checkState(indexInCache >= 0, "Fractile %s not found in cache", fractile);
 	}
 	
 	@Override
 	public String toString() {
-		String str;
-		if (Double.isNaN(fractile))
-			str = "mean";
-		else
-			str = "p"+(float)(fractile*100d);
-		if (Double.compare(fractile, cache.fractiles[0]) == 0)
-			// first
-			str += " (sampleAlong="+(cache.alongSamples.length > 1)+", sampleDownDip="+(cache.downDipSamples.length > 1)+")";
+		String str = null;
+		for (int f=0; f<fractiles.size(); f++) {
+			double fractile = fractiles.getValue(f);
+			if (str == null)
+				str = "";
+			else
+				str += ",";
+			if (Double.isNaN(fractile))
+				str += "mean";
+			else
+				str += "p"+(float)(fractile*100d);
+		}
+		str += " (sampleAlong="+(cache.alongSamples.length > 1)+", sampleDownDip="+(cache.downDipSamples.length > 1)+")";
 		return str;
 	}
 
 	@Override
-	public double getCorrectedDistanceJB(Location siteLoc, double mag, PointSurface surf, double horzDist) {
-		return getCachedDist(surf, horzDist, cache, indexInCache);
+	public WeightedList<SurfaceDistances> getCorrectedDistances(Location siteLoc, PointSurface surf,
+			TectonicRegionType trt, double mag, double horzDist) {
+		double length = surf.getAveLength();
+		double zTop = surf.getAveRupTopDepth();
+		if (length == 0d || !Double.isFinite(length)) {
+			// no length, so no distance correction
+			return WeightedList.evenlyWeighted(forZeroLength(siteLoc, horzDist, zTop));
+		}
+		double zBot = surf.getAveRupBottomDepth();
+		double dipRad = Math.toRadians(surf.getAveDip());
+		double horzWidth = surf.getAveHorizontalWidth();
+		RjbFractileDistances dists = getCachedDist(surf, horzDist, cache);
+		return getCorrectedDistances(siteLoc, fractiles, dists, horzDist, zTop, zBot, dipRad, length, horzWidth);
 	}
 	
-	static double getCachedDist(PointSurface surf, double horzDist, InvCDFCache cache, int indexInCache) {
-		double ret;
+	static WeightedList<SurfaceDistances> getCorrectedDistances(Location siteLoc, WeightedList<Double> fractiles,
+			RjbFractileDistances dists, double rEpi, double zTop, double zBot, double dipRad, double length, double horzWidth) {
+		boolean doFW = dists.fractFootwall > 0d;
+		boolean doHW = dists.fractFootwall < 1d;
+		List<WeightedValue<SurfaceDistances>> values = new ArrayList<>(doHW && doFW ? fractiles.size()*2 : fractiles.size());
+		boolean[] hws;
+		if (doFW && doHW)
+			hws = new boolean[] {false, true};
+		else if (doFW)
+			hws = new boolean[] {false};
+		else if (doHW)
+			hws = new boolean[] {true};
+		else
+			throw new IllegalStateException("doFW and doHW both false? fract="+dists.fractFootwall);
+		for (boolean hw : hws) {
+			double weight = hw ? 1d - dists.fractFootwall : dists.fractFootwall;
+			double[] rJBs = hw ? dists.hangingWallDists : dists.footwallDists;
+			Preconditions.checkState(rJBs.length == fractiles.size());
+			for (int f=0; f<rJBs.length; f++) {
+				double fractWeight = fractiles.getWeight(f) * weight;
+				double rJB = rJBs[f];
+				Preconditions.checkState(rJB >= 0d);
+				if (f > 0 && rJB == rJBs[f-1]) {
+					// duplicate (probably zero), bundle in with previous
+					WeightedValue<SurfaceDistances> prev = values.remove(values.size()-1);
+					values.add(new WeightedValue<>(prev.value, prev.weight+fractWeight));
+				} else {
+					values.add(new WeightedValue<>(
+							new LazyDistancesFromRjb(siteLoc, rJB, rEpi, zTop, zBot, dipRad, length, horzWidth, !hw), fractWeight));
+				}
+			}
+		}
+		return WeightedList.of(values);
+	}
+	
+	static RjbFractileDistances getCachedDist(PointSurface surf, double horzDist, InvCDFCache cache) {
 		if (horzDist < cache.minNonzeroDist) {
-			double zeroVal = cache.getZeroDistVals(surf.getAveLength(), surf.getAveWidth(), surf.getAveDip())[indexInCache];
+			RjbFractileDistances zeroVal = cache.getZeroDistVals(surf.getAveLength(), surf.getAveWidth(), surf.getAveDip());
 			if (horzDist < 1e-10)
 				// zero
 				return zeroVal;
 			// nonzero, interpolate
-			double firstNonzeroVal = cache.getFractileFuncs(surf.getAveLength(), surf.getAveWidth(), surf.getAveDip(),
-					horzDist)[indexInCache].getY(0);
-			ret = Interpolate.findY(0d, zeroVal, cache.minNonzeroDist, firstNonzeroVal, horzDist);
-		} else {
-			EvenlyDiscretizedFunc logDistFunc = cache.getFractileFuncs(
-					surf.getAveLength(), surf.getAveWidth(), surf.getAveDip(), horzDist)[indexInCache];
-			double logDist = Math.log10(horzDist);
-			// distances are discretized in log space, but do the actual interpolation in linear space
-			int xIndBelow = logDistFunc.getClosestXIndex(logDist);
-			if (logDist < logDistFunc.getX(xIndBelow))
-				xIndBelow--;
-			double distBelow = Math.pow(10, logDistFunc.getX(xIndBelow));
-			double distAbove = Math.pow(10, logDistFunc.getX(xIndBelow+1));
-			ret = Interpolate.findY(distBelow, logDistFunc.getY(xIndBelow), distAbove, logDistFunc.getY(xIndBelow+1), horzDist);
+			RjbFractileDistances firstNonzeroVal = cache.getFractileFuncs(surf.getAveLength(), surf.getAveWidth(), surf.getAveDip(),
+					horzDist).get(0);
+			return interpolateFractileDists(zeroVal, 0d, firstNonzeroVal, cache.minNonzeroDist, horzDist);
 		}
-		if (ret < 0d) {
-			// sometimes the interpolation leads to tiny negative values, force positive
-			Preconditions.checkState(ret > -1e-10);
-			return 0d;
+		return cache.getFractileFuncs(surf.getAveLength(), surf.getAveWidth(), surf.getAveDip(),
+				horzDist).interpolate(horzDist);
+	}
+	
+	static SurfaceDistances forZeroLength(Location siteLoc, double horzDist, double zTop) {
+		double rRup = hypot2(horzDist, zTop);
+		double rSeis = zTop >= GriddedSurfaceUtils.SEIS_DEPTH ? rRup : hypot2(horzDist, GriddedSurfaceUtils.SEIS_DEPTH);
+		double rX = horzDist == 0d ? 0 : -horzDist;
+		return new SurfaceDistances.Precomputed(siteLoc, rRup, horzDist, rSeis, rX);
+	}
+	
+	public static SurfaceDistances calcDistancesForRjb(PointSurface surf, Location siteLoc, double horzDist, double rJB, boolean footwall) {
+		double zTop = surf.getAveRupTopDepth();
+		double zBot = surf.getAveRupBottomDepth();
+		double dipRad = Math.toRadians(surf.getAveDip());
+		double length = surf.getAveLength();
+		double horzWidth = surf.getAveHorizontalWidth();
+		return new LazyDistancesFromRjb(siteLoc, rJB, horzDist, zTop, zBot, dipRad, length, horzWidth, footwall);
+	}
+	
+	public static class LazyDistancesFromRjb implements SurfaceDistances {
+		
+		private final Location siteLoc;
+		private final double rJB;
+		private final double rEpi;
+		private final double zTop;
+		private final double zBot;
+		private final double dipRad;
+		private final double length;
+		private final double horzWidth;
+		private final boolean footwall;
+		
+		private volatile Double rRup;
+		private volatile Double rSeis;
+
+		public LazyDistancesFromRjb(Location siteLoc, double rJB, double rEpi, double zTop, double zBot, double dipRad,
+				double length, double horzWidth, boolean footwall) {
+			this.siteLoc = siteLoc;
+			this.rJB = rJB;
+			this.rEpi = rEpi;
+			this.zTop = zTop;
+			this.zBot = zBot;
+			this.dipRad = dipRad;
+			this.length = length;
+			this.horzWidth = horzWidth;
+			this.footwall = footwall;
 		}
-		Preconditions.checkState(ret >= 0d, "Bad distance=%s for surf=%s, horzDist=%s, cache=%s",
-				ret, surf, horzDist, cache);
-		return ret;
+
+		@Override
+		public Location getSiteLocation() {
+			return siteLoc;
+		}
+
+		@Override
+		public double getDistanceRup() {
+			if (rRup == null)
+				rRup = getCorrDistRup(rJB, rEpi, zTop, zBot, dipRad, length, horzWidth, footwall);
+			return rRup;
+		}
+
+		@Override
+		public double getDistanceJB() {
+			return rJB;
+		}
+
+		@Override
+		public double getDistanceSeis() {
+			if (rSeis == null) {
+				if (zTop >= GriddedSurfaceUtils.SEIS_DEPTH)
+					rSeis = getDistanceRup();
+				else
+					rSeis = getCorrDistRup(rJB, rEpi, GriddedSurfaceUtils.SEIS_DEPTH, Math.max(GriddedSurfaceUtils.SEIS_DEPTH, zBot),
+							dipRad, length, horzWidth, footwall);
+			}
+			return rSeis;
+		}
+
+		@Override
+		public double getDistanceX() {
+			if (Precision.equals(rJB,  0d, 0.0001))
+				// rJB == 0: inside the surface projection, assume halfway away from trace
+				// by definition, this means we're on the hanging wall (even if footwall == true)
+				return 0.5*horzWidth;
+			return footwall ? -rJB : rJB + horzWidth;
+		}
+		
+	}
+	
+	public static double getCorrDistRup(double rJB, double rEpi, double zTop, double zBot, double dipRad, double length, double horzWidth, boolean footwall) {
+		// special cases
+		if (Precision.equals(dipRad,  PI_HALF, 0.0001) || horzWidth < 0.0001) {
+			// vertical: the upper edge of the rupture is by definition the closest point to the site
+			return hypot2(rJB, zTop);
+		} else if (Precision.equals(rJB,  0d, 0.0001)) {
+			// special case: site is within the surface projection of (directly above) the rupture
+			
+			// we don't know if it's directly over the top edge, bottom edge, or somewhere in-between
+			// approximate it as if we're directly over the middle of the rupture; that should capture
+			// average behavior
+			
+			LineSegment3D line = new LineSegment3D(0, 0, zTop, horzWidth, 0, zBot);
+			return distanceToLineSegment3D(0.5*horzWidth, 0, line);
+		} else if (footwall) {
+			// special case: on the footwall, meaning the upper edge of the rupture is by definition the closest point
+			// to the site
+			return hypot2(rJB, zTop);
+		}
+		// if we're here, we're on the hanging wall and rJB>0
+		
+////		double f = (2d/Math.PI)*Math.asin(Math.min(1, rJB/horzWidth));
+////		double f = Math.min(1, rJB/horzWidth);
+//		double f = 1 - Math.exp(-rJB/horzWidth);
+//		Preconditions.checkState(f >= 0 && f <= 1, "Unexpected f=%s for rJB=%s, horzWidth=%s", f, rJB, horzWidth);
+//		double zPrime = zTop + f*(zBot-zTop);
+//		return hypot2(rJB, zPrime);
+		
+		// define coordinate system where:
+		// (0, 0, 0) lies above the middle of the fault.
+		// front edge extends from (-w/2, l/2, zTop) to (w/2, l/2, zBot)
+		// right (bottom) edge extends from (w/2, l/2, zBot) to (w/2, -l/2, zBot)
+		double halfW = 0.5*horzWidth;
+		double halfL = 0.5*length;
+		LineSegment3D frontEdge = new LineSegment3D(-halfW, halfL, zTop, halfW, halfL, zBot);
+		System.out.println("\t\tFront edge is at "+(float)-halfW+", "+(float)halfL+" -> "+(float)halfW+", "+(float)halfL);
+		// right (bottom) edge extends from (w/2, l/2, zBot) to (w/2, -l/2, zBot)
+		
+		double rEpiSq = rEpi*rEpi;
+		
+		// find possible site locations for this rEpi and rJB. assume that rEpi is to the center of the fault
+		
+		// first do it for the front edge (can also be off the front bottom corner)
+		// valid footprint is for -w/2 <= xSite <= w/2
+		double ySite = halfL + rJB;
+		double xSite = Math.sqrt(rEpiSq - ySite*ySite);
+		
+		List<double[]> validLocs = new ArrayList<>(3);
+		if (Double.isFinite(xSite)) {
+			// there is a potentially valid site in this direction
+			// xSite could be negative and or positive, first try positive
+			if (xSite >= -halfW && xSite <= halfW) {
+//				System.out.println("\t\tAdding front positive: "+(float)xSite+", "+(float)ySite);
+				validLocs.add(new double[] {xSite, ySite});
+			}
+			// now try negative
+			xSite = -xSite;
+			if (xSite >= -halfW && xSite <= halfW) {
+//				System.out.println("\t\tAdding front negative: "+(float)xSite+", "+(float)ySite);
+				validLocs.add(new double[] {xSite, ySite});
+			}
+		}
+		
+		// now for the right edge (can also be off the front bottom corner
+		// valid footprint is for 0 <= ySite <= l/2
+		xSite = halfW + rJB;
+		ySite = Math.sqrt(rEpiSq - xSite*xSite);
+		if (Double.isFinite(ySite)) {
+			// there is a potentially valid site in this direction
+			// we're only interested in ones with ySite >= 0 (the problem is symmetrical across y)
+			if (ySite >= 0 && ySite <= halfL) {
+//				System.out.println("\t\tAdding side positive: "+(float)xSite+", "+(float)ySite);
+				validLocs.add(new double[] {xSite, ySite});
+			}
+		}
+		
+		// now for the off-the-corner
+		double halfWsq = halfW*halfW;
+		double halfLsq = halfL*halfL;
+		double rJBsq = rJB*rJB;
+//		if (rJBsq > halfWsq + halfLsq) {
+			
+//		}
+		double C = (rEpiSq - rJBsq + halfW*halfW + halfL*halfL) * 0.5;
+		
+		// 2) Solve quadratic A x^2 + B x + D = 0
+		double A = 1.0 + halfWsq/halfLsq;
+		double B = -2.0 * halfW * C / halfLsq;
+		double D = (C*C)/halfLsq - rEpiSq;
+
+		// discriminant
+		double disc = B*B - 4.0*A*D;
+//		System.out.println("disc="+disc+" for C="+C+", A="+A+", B=" +B+", D="+D);
+		if (disc >= 0) {
+			double sqrtD = Math.sqrt(disc);
+			for (double sign : new double[]{+1, -1}) {
+				double xCorner = (-B + sign*sqrtD) / (2.0*A);
+				double yCorner = (C - halfW*xCorner) / halfL;
+				// keep only the quadrant you want
+//				System.out.println("Testing "+xCorner+" >= "+halfW+" && "+yCorner+" >= "+halfL);
+				if (xCorner >= halfW && yCorner >= halfL && Double.isFinite(yCorner)) {
+					validLocs.add(new double[]{ xCorner, yCorner });
+//					System.out.printf(
+//							"  [corner] x=%.6f, y=%.6f%n", xCorner, yCorner
+//							);
+				}
+			}
+		}
+		
+		if (validLocs.isEmpty()) {
+			// must be supersampled or sampled along/dd
+			// if we couln't find anything, just put it on the corner
+			double rJBprime = ROOT_TWO_OVER_TWO * rJB;
+			validLocs.add(new double[] {halfW+rJBprime, halfL+rJBprime});
+		}
+//		Preconditions.checkState(!validLocs.isEmpty(),
+//				"No valid locations found for rJB=%s, rEpi=%s, w=%s, l=%s", rJB, rEpi, horzWidth, length);
+		double sum = 0d;
+		for (double[] loc : validLocs) {
+			double x = loc[0];
+			double y = loc[1];
+			
+			if (y < halfL)
+				// this means the site is off of the bottom edge (and not beyond the front edge)
+				// in this case, we'll calculate the distance to the dipping edge right at that y
+				// we already have frontEdge at a known y, so instead we just move our y here to be at that location
+				// off the right and not the corner, move it to exactly off the front edge for the calculation
+				y = halfL;
+			double rRup = distanceToLineSegment3D(x, y, frontEdge);
+//			System.out.println("\t\tFor site location ("+(float)x+", "+(float)loc[1]+"); rRup="+rRup);
+			
+			// this is what chatGPT wanted me to do, but the above gives the exact same results and is faster
+			// because my line segment object precomputes some values for quick calcs 
+//			double yFault = y < halfL ? y : halfL;
+//			double rRup = distanceToLineSegment3D(x, y, new LineSegment3D(-halfW, yFault, zTop, halfW, yFault, zBot));
+//			System.out.println("\t\tFor site location ("+(float)x+", "+(float)y+"); rRup="+rRup+"; yFault="+(float)yFault);
+			
+			sum += rRup;
+		}
+		if (validLocs.size() == 1)
+			return sum;
+		return sum / (double)validLocs.size();
+		
+//		// approximate the calculation assuming different angles; we'll use three locations:
+//		/*
+//		 * map view schematic; legend:
+//		 * G: grid node center
+//		 * ||: rupture upper edge
+//		 * |: rupture lower edge
+//		 * A: along-strike of the rupture, but shifted to the right because HW flag means we're not left of G (put it halfway between G and .)
+//		 * B: site is somewhere off the end of the fault, and also past the bottom edge
+//		 * C: site perfectly down-dip of the rupture, and also rJB away from the surface projection of the rupture
+//		 * D: site that would improperly get included as footwall and is accounted for above
+//		 * *: origin where x=0 and y=0 (upper front corner of the rupture)
+//		 * .: lower front corner of the rupture
+//		 * 
+//		 * 
+//		 *     D !  A !     
+//		 *       !    !    B
+//		 *       !    !
+//		 *  *_________.-------C
+//		 * ||         |
+//		 * ||         |
+//		 * ||         |
+//		 * ||         |
+//		 * ||    G    |--------
+//		 * ||         |
+//		 * ||         |
+//		 * ||         |
+//		 * ||_________|
+//		 * 
+//		 */
+//		
+//		// TODO: these weights are wrong because it assumes that alpha is sampled fully for any rJB
+//		// BUT: there's a single rJB for each alpha
+//		
+//		// we can compute all distances to the forward edge, from '*' to '.'
+//		LineSegment3D line = new LineSegment3D(0, 0, zTop, horzWidth, 0, zBot);
+//		
+//		// calculate distance from edge [* .] to points A&D 
+//		
+//		// front edge is along the x axis between:
+//		//	(0, 0, zTop) and (horzWidth, 0, zBot)
+//		double distA = 0.5*
+//						(distanceToLineSegment3D(0.25*horzWidth, rJB, line)
+//						+ distanceToLineSegment3D(0.75*horzWidth, rJB, line));
+//		
+//		// now calculate for site B where we're off the end and past the bottom
+//		// define rJB' = rJB*sqrt(2)/2
+//		// site B is then at (horzWidth + rJB', rJB')
+//		// front edge is along the x axis between:
+//		//  (0, 0, zTop) and (horzWidth, 0, zBot)
+//		double rJBprime = ROOT_TWO_OVER_TWO * rJB;
+//		double distB = distanceToLineSegment3D(horzWidth+rJBprime, rJBprime, line);
+//		
+//		// now calculate for site C where we're in the perfectly down-dip direction
+//		// we'll put site C at (horzWdith+rJB, 0); y doesn't matter here since the distance is the same no matter where we are along-stike
+//		double distC = distanceToLineSegment3D(horzWidth+rJB, 0, line);
+//		
+//		// now compute weights between the three
+//		// when we're really close in, distances A and C dominate
+//		// when we're far (relive to width and length), distance B dominates
+//		
+//		double halfLength = 0.5*length;
+//		double halfWidth = 0.5*horzWidth;
+//
+//		// azimuth from G to the rightmost '!' that is rJB away 
+//		double theta1 = Math.atan(halfWidth / (halfLength + rJB));
+//		// azimuth from G to the upper '-' that is rJB away
+//		double theta2 = Math.atan((halfLength+rJB) / halfLength);
+//
+//		// range from 0 to theta1 belongs to side A
+//		// range from theta1 to theta2 belongs to corner B
+//		// range from theta2 to PI/2 belongs to side C
+//		// sum of the weights is PI/2
+//		
+////		double weightA =  theta1;
+////		double weightB = theta2 - theta1;
+////		double weightC = PI_HALF - theta2;
+////
+////		Preconditions.checkState(Precision.equals(PI_HALF, weightA+weightB+weightC, 1e-4));
+////		Preconditions.checkState(weightA >= 0);
+////		Preconditions.checkState(weightB >= 0);
+////		Preconditions.checkState(weightC >= 0);
+////
+////		return (weightA*distA + weightB*distB + weightC*distC)/PI_HALF;
+//
+//		double weightA =  2*theta1;
+//		double weightB = theta2 - theta1;
+//		double weightC = PI_HALF - theta2;
+//		
+//		// now correct these weights if we're close in and the rJB distribution is skewed
+//		double cornerDist = Math.sqrt(halfWidth*halfWidth + halfLength*halfLength);
+//		double cornerRampMax = 2*cornerDist;
+//		if (rJB < cornerRampMax) {
+//			double bAdd = (cornerRampMax - rJB)/cornerRampMax;
+//			distA = bAdd*distB + (1d-bAdd)*distA;
+//			distC = bAdd*distB + (1d-bAdd)*distC;
+//		}
+//
+//		Preconditions.checkState(weightA >= 0);
+//		Preconditions.checkState(weightB >= 0);
+//		Preconditions.checkState(weightC >= 0);
+//
+//		return (weightA*distA + weightB*distB + weightC*distC)/(weightA + weightB + weightC);
+////		return distA;
+////		return distB;
+////		return distC;
+	}
+	
+	private static final double PI_HALF = Math.PI/2d; // 90 degrees
+	
+	private static double ROOT_TWO_OVER_TWO = Math.sqrt(2)/2;
+
+	/**
+	 * Same as {@code Math.hypot()} without regard to under/over flow.
+	 */
+	private static final double hypot2(double v1, double v2) {
+		return Math.sqrt(v1 * v1 + v2 * v2);
+	}
+	
+	public static double distanceToLineSegment3D(double px, double py, LineSegment3D line) {
+		// Vector AP (Pz = 0)
+		double apX = px - line.ax;
+		double apY = py - line.ay;
+		double apZ = -line.az;
+
+		// Projection scalar
+		double apDotAb = apX * line.abX + apY * line.abY + apZ * line.abZ;
+		double t = apDotAb / line.abDotAb;
+		t = Math.max(0, Math.min(1, t));
+
+		// Closest point on segment
+		double cx = line.ax + t * line.abX;
+		double cy = line.ay + t * line.abY;
+		double cz = line.az + t * line.abZ;
+
+		// Distance from P to C
+		double dx = px - cx;
+		double dy = py - cy;
+		double dz = -cz;
+
+		return Math.sqrt(dx * dx + dy * dy + dz * dz);
+	}
+	
+	public static class LineSegment3D {
+		public final double ax, ay, az;
+		public final double abX, abY, abZ;
+		public final double abDotAb;
+
+		public LineSegment3D(double ax, double ay, double az, double bx, double by, double bz) {
+			this.ax = ax;
+			this.ay = ay;
+			this.az = az;
+			this.abX = bx - ax;
+			this.abY = by - ay;
+			this.abZ = bz - az;
+			this.abDotAb = abX * abX + abY * abY + abZ * abZ;
+		}
 	}
 	
 	/**
@@ -233,64 +657,132 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 		double sinA = Math.sin(alphaRad);
 		double cosA = Math.cos(alphaRad);
 		
-		return doCalcRJB(rEpi, rupLength, rupHorzWidth, gridNodeFractDAS, gridNodeFractDepth, sinA, cosA);
+		return Math.abs(doCalcRJB(rEpi, rupLength, rupHorzWidth, gridNodeFractDAS, gridNodeFractDepth, sinA, cosA));
 	}
 	
 	/**
-	 * Quicker method for use in inner loops with pre-computed rupHorzWidth, sin(alpha), and cos(alpha)
-	 * 
-	 * @param rEpi
-	 * @param rupLength
-	 * @param rupHorzWidth
-	 * @param gridNodeFractDAS
-	 * @param gridNodeFractDepth
-	 * @param sinAlpha
-	 * @param cosAlpha
-	 * @return
+	 * Fast Joyner–Boore distance (rJB) for a rectangular fault patch.
+	 * Returns negative rJB on the footwall side and positive on the hanging wall.
+	 *
+	 * @param rEpi               Epicentral distance from site to grid node (horizontal map distance).
+	 * @param rupLength          Along-strike length of the patch.
+	 * @param rupHorzWidth       Down-dip (horizontal) width of the patch.
+	 * @param gridNodeFractDAS   Fractional distance along strike where the site projection falls (0…1).
+	 * @param gridNodeFractDepth Fractional down-dip position of the patch relative to the site projection (0…1).
+	 * @param sinAlpha           Precomputed sin(strike-to-site azimuth).
+	 * @param cosAlpha           Precomputed cos(strike-to-site azimuth).
+	 * @return rJB signed by wall: <0 ⇒ footwall, 0 ⇒ on-patch, >0 ⇒ hanging wall.
 	 */
 	private static double doCalcRJB(double rEpi, double rupLength, double rupHorzWidth,
-			double gridNodeFractDAS, double gridNodeFractDepth, double sinAlpha, double cosAlpha) {
-		// Fault rectangle in local (strike,dip) coords is:
-		//       X in [Xmin, Xmax], with total length = rupLength
-		//       Y in [Ymin, Ymax], with total width = rupHorzWidth
-		//    where (0,0) is the grid node in local coordinates.
-		double xMin = -gridNodeFractDAS * rupLength;
-		double xMax = xMin + rupLength; // = (1 - gridNodeFractDAS)*rupLength
-		double yMin = -gridNodeFractDepth * rupHorzWidth;
-		double yMax = yMin + rupHorzWidth;     // = (1 - gridNodeFractDepth)*wHorz
+			double gridNodeFractDAS, double gridNodeFractDepth,
+			double sinAlpha, double cosAlpha) {
+		// 1) Compute the projected patch bounds in local strike (X) and dip (Y) coords
+		double xMin = -gridNodeFractDAS * rupLength;      // left edge along strike
+		double xMax = xMin + rupLength;                   // right edge along strike
+		double yMin = -gridNodeFractDepth * rupHorzWidth; // top edge down-dip
+		double yMax = yMin + rupHorzWidth;                 // bottom edge down-dip
 
-		// Convert the site's global coords (rEpi, 0) -> local (xLoc, yLoc)
-		//    local X-axis = strike = (cos(alpha), sin(alpha))
-		//    local Y-axis = dip in map = (-sin(alpha), cos(alpha))
-		//    node is at (0,0), site is at (rEpi, 0).
-		double xLoc = rEpi * cosAlpha;   // = x*cosA + y*sinA, but site y=0
-		double yLoc = -rEpi * sinAlpha;  // = -x*sinA + y*cosA
+		// 2) Rotate the site (rEpi, 0) into the local patch frame:
+		//    X-axis = strike, Y-axis = dip direction (positive down-dip)
+		double xLoc = rEpi * cosAlpha;
+		double yLoc = -rEpi * sinAlpha;
 
-		// Distance from (xLoc, yLoc) to that axis-aligned bounding box
+		// 3) Compute the shortest distance components (dx, dy) to the rectangle
 		boolean inside = true;
-		double dx = 0.0;
+		double dx = 0, dy = 0;
 		if (xLoc < xMin) {
-			dx = xMin - xLoc;
+			dx = xMin - xLoc;  // site is left of patch
 			inside = false;
 		} else if (xLoc > xMax) {
-			dx = xLoc - xMax;
+			dx = xLoc - xMax;  // site is right of patch
 			inside = false;
 		}
-
-		double dy = 0.0;
 		if (yLoc < yMin) {
-			dy = yMin - yLoc;
+			dy = yMin - yLoc;  // site is above (footwall side of) patch top
 			inside = false;
 		} else if (yLoc > yMax) {
-			dy = yLoc - yMax;
+			dy = yLoc - yMax;  // site is below (hanging-wall side of) patch bottom
 			inside = false;
 		}
-		if (inside)
-			return 0d;
 
-		double ret = Math.sqrt(dx * dx + dy * dy);
-		Preconditions.checkState(ret>=0d, "ret=%s, dx=%x, dy=%s", ret, dx, dy);
-		return ret;
+		// 4) If the projection falls inside the patch, rJB = 0
+		if (inside) {
+			return 0.0;
+		}
+
+		// 5) Euclidean distance to the patch edge (always positive)
+		double absDist = hypot2(dx, dy);
+
+		// 6) Sign by comparing yLoc to the *top* edge (yMin):
+		//    yLoc < yMin ⇒ site sits above the patch top (footwall) ⇒ negative
+		//    yLoc ≥ yMin ⇒ site sits on/below patch top (hanging wall) ⇒ positive
+		boolean isFootwall = (yLoc < yMin);
+		return isFootwall ? -absDist : absDist;
+	}
+
+//	private static double doCalcRJB(double rEpi, double rupLength, double rupHorzWidth,
+//			double gridNodeFractDAS, double gridNodeFractDepth, double sinAlpha, double cosAlpha) {
+//		// Fault rectangle in local (strike,dip) coords is:
+//		//       X in [Xmin, Xmax], with total length = rupLength
+//		//       Y in [Ymin, Ymax], with total width = rupHorzWidth
+//		//    where (0,0) is the grid node in local coordinates.
+//		double xMin = -gridNodeFractDAS * rupLength;
+//		double xMax = xMin + rupLength; // = (1 - gridNodeFractDAS)*rupLength
+//		double yMin = -gridNodeFractDepth * rupHorzWidth;
+//		double yMax = yMin + rupHorzWidth;     // = (1 - gridNodeFractDepth)*wHorz
+//
+//		// Convert the site's global coords (rEpi, 0) -> local (xLoc, yLoc)
+//		//    local X-axis = strike = (cos(alpha), sin(alpha))
+//		//    local Y-axis = dip in map = (-sin(alpha), cos(alpha))
+//		//    node is at (0,0), site is at (rEpi, 0).
+//		double xLoc = rEpi * cosAlpha;   // = x*cosA + y*sinA, but site y=0
+//		double yLoc = -rEpi * sinAlpha;  // = -x*sinA + y*cosA
+//
+//		// Distance from (xLoc, yLoc) to that axis-aligned bounding box
+//		boolean inside = true;
+//		double dx = 0.0;
+//		if (xLoc < xMin) {
+//			dx = xMin - xLoc;
+//			inside = false;
+//		} else if (xLoc > xMax) {
+//			dx = xLoc - xMax;
+//			inside = false;
+//		}
+//
+//		double dy = 0.0;
+//		if (yLoc < yMin) {
+//			dy = yMin - yLoc;
+//			inside = false;
+//		} else if (yLoc > yMax) {
+//			dy = yLoc - yMax;
+//			inside = false;
+//		}
+//		if (inside)
+//			return 0d;
+//
+//		double ret = Math.sqrt(dx * dx + dy * dy);
+//		Preconditions.checkState(ret>=0d, "ret=%s, dx=%x, dy=%s", ret, dx, dy);
+//		if (rEpi == FIRST_D_DIST)
+//			System.out.println("rJB="+ret+" for rEpi="+rEpi+", rupLength="+rupLength+", rupHorzWidth="+rupHorzWidth
+//					+", gridNodeFractDAS="+gridNodeFractDAS+", gridNodeFractDepth="+gridNodeFractDepth+", sinAlpha="+sinAlpha+", cosAlpha="+cosAlpha
+//					+"; yLoc="+yLoc+", yMin="+yMin+";\tHW="+(yLoc>yMin));
+//		if (yLoc > yMin)
+//			// footwall
+//			return -ret;
+//		return ret;
+//	}
+	
+	static WeightedList<Double> buildWeightedSpacedSamples(double min, double max, int num) {
+		return buildWeightedSpacedSamples(min, max, num, false);
+	}
+	
+	static WeightedList<Double> buildWeightedSpacedSamples(double min, double max, int num, boolean sampleEdges) {
+		double[] fractiles = buildSpacedSamples(min, max, num, sampleEdges);
+		List<WeightedValue<Double>> vals = new ArrayList<>(num);
+		double weightEach = 1d/(double)num;
+		for (int i=0; i<num; i++)
+			vals.add(new WeightedValue<Double>(fractiles[i], weightEach));
+		return WeightedList.of(vals);
 	}
 	
 	static double[] buildSpacedSamples(double min, double max, int num) {
@@ -313,7 +805,8 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 		
 		public final double minNonzeroDist;
 		final double logDistSampleDiscr;
-		final double[] alphaRadSamples;
+		final double[] alphaRadSamplesDipping;
+		final double[] alphaRadSamplesVertical;
 		final double betaRad;
 		final double[] cellSamplesX;
 		final double[] cellSamplesY;
@@ -324,8 +817,8 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 		private double maxDistBin;
 		private EvenlyDiscretizedFunc logDistBins;
 
-		private ConcurrentMap<RuptureKey, EvenlyDiscretizedFunc[]> valueFuncs = new ConcurrentHashMap<>();
-		private ConcurrentMap<RuptureKey, double[]> zeroDistValues = new ConcurrentHashMap<>();
+		private ConcurrentMap<RuptureKey, RjbFractileDistanceFuncs> valueFuncs = new ConcurrentHashMap<>();
+		private ConcurrentMap<RuptureKey, RjbFractileDistances> zeroDistValues = new ConcurrentHashMap<>();
 
 		public InvCDFCache(boolean sampleAlongStrike, boolean sampleDownDip, double minNonzeroDist,
 				double initialMaxDist, double logDistSampleDiscr,
@@ -348,13 +841,17 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 			this.logDistSampleDiscr = logDistSampleDiscr;
 			Preconditions.checkState(numAlphaSamples > 1); 
 			// can just do 0->PI because we're doing rJB and the surface projection is symmetrical across the axis
-			double maxAlpha = Math.PI;
-			if (ALPHA_ALIGN_EDGES)
+			double maxAlphaVertical = Math.PI;
+			double maxAlphaDipping = Math.PI*2;
+			if (ALPHA_ALIGN_EDGES) {
 				// start at 0 and end one bin before the end (to avoid double counting)
-				alphaRadSamples = Arrays.copyOf(buildSpacedSamples(0d, maxAlpha, numAlphaSamples+1, true), numAlphaSamples);
-			else
-				// bin centers, can put edges right at 0 and 180 without double counting.
-				alphaRadSamples = buildSpacedSamples(0d, maxAlpha, numAlphaSamples, false);
+				alphaRadSamplesVertical = Arrays.copyOf(buildSpacedSamples(0d, maxAlphaVertical, numAlphaSamples+1, true), numAlphaSamples);
+				alphaRadSamplesDipping = Arrays.copyOf(buildSpacedSamples(0d, maxAlphaDipping, numAlphaSamples+1, true), numAlphaSamples);
+			} else {
+				// bin centers, can put edges right at 0 and 180/360 without double counting.
+				alphaRadSamplesVertical = buildSpacedSamples(0d, maxAlphaVertical, numAlphaSamples, false);
+				alphaRadSamplesDipping = buildSpacedSamples(0d, maxAlphaDipping, numAlphaSamples, false);
+			}
 			if (numCellSamples > 1) {
 				boolean cellSamplesAtEdges = false; // we don't want to colocate with the next cell over
 				Preconditions.checkState(cellWidth > 0 || cellHeight > 0);
@@ -402,9 +899,9 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 			maxDistBin = Math.pow(10, logDistBins.getMaxX());
 		}
 		
-		public EvenlyDiscretizedFunc[] getFractileFuncs(double rupLen, double rupWidth, double dip, double horzDist) {
+		public RjbFractileDistanceFuncs getFractileFuncs(double rupLen, double rupWidth, double dip, double horzDist) {
 			RuptureKey key = new RuptureKey(rupLen, rupWidth, dip);
-			EvenlyDiscretizedFunc[] ret = valueFuncs.get(key);
+			RjbFractileDistanceFuncs ret = valueFuncs.get(key);
 			
 			if (horzDist > maxDistBin) {
 				// largest we've ever seen
@@ -415,23 +912,38 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 			}
 			EvenlyDiscretizedFunc logDistBins = this.logDistBins;
 			
+			boolean doHW = dip < 90d;
+			double[] alphaRadSamples = doHW ? alphaRadSamplesDipping : alphaRadSamplesVertical;
+			
 			if (ret == null) {
 				// need to build it from scratch
-				List<CompletableFuture<double[]>> futures = new ArrayList<>(logDistBins.size());
+				List<CompletableFuture<RjbFractileDistances>> futures = new ArrayList<>(logDistBins.size());
 				for (int r=0; r<logDistBins.size(); r++) {
 					double rEpi = Math.pow(10, logDistBins.getX(r));
 					futures.add(CompletableFuture.supplyAsync(new SampleFractileCalculator(
 							rEpi, rupLen, rupWidth, dip, alphaRadSamples, betaRad, cellSamplesX, cellSamplesY,
 							alongSamples, downDipSamples, fractiles)));
 				}
-				ret = new EvenlyDiscretizedFunc[fractiles.length];
-				for (int i=0; i<fractiles.length; i++)
-					ret[i] = new EvenlyDiscretizedFunc(logDistBins.getMinX(), logDistBins.size(), logDistBins.getDelta());
-				for (int r=0; r<futures.size(); r++) {
-					double[] values = futures.get(r).join();
-					for (int i=0; i<ret.length; i++)
-						ret[i].set(r, values[i]);
+				EvenlyDiscretizedFunc[] fwDists = new EvenlyDiscretizedFunc[fractiles.length];
+				EvenlyDiscretizedFunc[] hwDists = doHW ? new EvenlyDiscretizedFunc[fractiles.length] : null;
+				double[] fwFracts = new double[logDistBins.size()];
+				for (int i=0; i<fractiles.length; i++) {
+					fwDists[i] = new EvenlyDiscretizedFunc(logDistBins.getMinX(), logDistBins.size(), logDistBins.getDelta());
+					if (doHW)
+						hwDists[i] = new EvenlyDiscretizedFunc(logDistBins.getMinX(), logDistBins.size(), logDistBins.getDelta());
 				}
+				for (int r=0; r<futures.size(); r++) {
+					RjbFractileDistances values = futures.get(r).join();
+					for (int i=0; i<fractiles.length; i++) {
+						fwDists[i].set(r, values.footwallDists == null ? 0d : values.footwallDists[i]);
+						if (doHW)
+							hwDists[i].set(r, values.hangingWallDists[i]);
+					}
+					fwFracts[r] = values.fractFootwall;
+					if (!doHW)
+						Preconditions.checkState(fwFracts[r] == 1d);
+				}
+				ret = new RjbFractileDistanceFuncs(fwDists, hwDists, fwFracts);
 				synchronized (valueFuncs) {
 					valueFuncs.put(key, ret);
 				}
@@ -439,25 +951,34 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 				if (horzDist > 0d) {
 					// we already have one, see if we need to expand it
 					double logDist = Math.log10(horzDist);
-					if (logDist > ret[0].getMaxX()) {
+					if (logDist > ret.footwallDistFuncs[0].getMaxX()) {
 						// we need to expand it
 						
 						// do it with a local variable because there could be thread contention
-						EvenlyDiscretizedFunc[] expandedArray = new EvenlyDiscretizedFunc[ret.length];
+						EvenlyDiscretizedFunc[] expandedFWArray = new EvenlyDiscretizedFunc[fractiles.length];
+						EvenlyDiscretizedFunc[] expandedHWArray = doHW ? new EvenlyDiscretizedFunc[fractiles.length] : null;
+						double[] expandedFWFracts = new double[logDistBins.size()];
 						
 						// grow them
 						// first copy into larger functions
-						int origNum = ret[0].size();
-						for (int i=0; i<ret.length; i++) {
-							EvenlyDiscretizedFunc expanded = new EvenlyDiscretizedFunc(logDistBins.getMinX(), logDistBins.size(), logDistBins.getDelta());
-							for (int r=0; r<ret[i].size(); r++) {
-								Preconditions.checkState(i > 0 || Precision.equals(expanded.getX(r), ret[i].getX(r), 0.0001));
-								expanded.set(r, ret[i].getY(r));
+						int origNum = ret.footwallDistFuncs[0].size();
+						for (int i=0; i<fractiles.length; i++) {
+							EvenlyDiscretizedFunc expandedFW = new EvenlyDiscretizedFunc(logDistBins.getMinX(), logDistBins.size(), logDistBins.getDelta());
+							EvenlyDiscretizedFunc expandedHW = doHW ? new EvenlyDiscretizedFunc(logDistBins.getMinX(), logDistBins.size(), logDistBins.getDelta()) : null;
+							for (int r=0; r<origNum; r++) {
+								Preconditions.checkState(i > 0 || Precision.equals(expandedFW.getX(r), ret.footwallDistFuncs[i].getX(r), 0.0001));
+								expandedFW.set(r, ret.footwallDistFuncs[i].getY(r));
+								if (doHW)
+									expandedHW.set(r, ret.hangingWallDistFuncs[i].getY(r));
+								if (i == 0)
+									expandedFWFracts[r] = ret.fractFootwalls[r];
 							}
-							expandedArray[i] = expanded;
+							expandedFWArray[i] = expandedFW;
+							if (doHW)
+								expandedHWArray[i] = expandedHW;
 						}
 						// now calculate for the new distances
-						List<CompletableFuture<double[]>> futures = new ArrayList<>(logDistBins.size()-origNum);
+						List<CompletableFuture<RjbFractileDistances>> futures = new ArrayList<>(logDistBins.size()-origNum);
 						for (int r=origNum; r<logDistBins.size(); r++) {
 							double rEpi = Math.pow(10, logDistBins.getX(r));
 							futures.add(CompletableFuture.supplyAsync(new SampleFractileCalculator(
@@ -465,12 +986,16 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 									alongSamples, downDipSamples, fractiles)));
 						}
 						for (int f=0; f<futures.size(); f++) {
-							double[] values = futures.get(f).join();
+							RjbFractileDistances values = futures.get(f).join();
 							int r = origNum+f;
-							for (int i=0; i<ret.length; i++)
-								expandedArray[i].set(r, values[i]);
+							for (int i=0; i<fractiles.length; i++) {
+								expandedFWArray[i].set(r, values.footwallDists[i]);
+								if (doHW)
+									expandedHWArray[i].set(r, values.hangingWallDists[i]);
+							}
+							expandedFWFracts[r] = values.fractFootwall;
 						}
-						ret = expandedArray;
+						ret = new RjbFractileDistanceFuncs(expandedFWArray, expandedHWArray, expandedFWFracts);
 						synchronized (valueFuncs) {
 							valueFuncs.put(key, ret);
 						}
@@ -480,12 +1005,13 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 			return ret;
 		}
 		
-		public double[] getZeroDistVals(double rupLen, double rupWidth, double dip) {
+		public RjbFractileDistances getZeroDistVals(double rupLen, double rupWidth, double dip) {
 			RuptureKey key = new RuptureKey(rupLen, rupWidth, dip);
-			double[] ret = zeroDistValues.get(key);
+			RjbFractileDistances ret = zeroDistValues.get(key);
 			
 			if (ret == null) {
 				// need to build it from scratch
+				double[] alphaRadSamples = dip < 90d ? alphaRadSamplesDipping : alphaRadSamplesVertical;
 				ret = new SampleFractileCalculator(
 						0d, rupLen, rupWidth, dip, alphaRadSamples, betaRad, cellSamplesX, cellSamplesY,
 						alongSamples, downDipSamples, fractiles).get();
@@ -567,8 +1093,100 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 	}
 	
 	private static boolean FIRST_D = true;
+	private static double FIRST_D_DIST = 15d;
 	
-	private static class SampleFractileCalculator implements Supplier<double[]> {
+	public static class RjbFractileDistanceFuncs {
+		public final EvenlyDiscretizedFunc[] footwallDistFuncs;
+		public final EvenlyDiscretizedFunc[] hangingWallDistFuncs;
+		public final double[] fractFootwalls;
+		
+		private RjbFractileDistanceFuncs(EvenlyDiscretizedFunc[] footwallDistFuncs,
+				EvenlyDiscretizedFunc[] hangingWallDistFuncs, double[] fractFootwalls) {
+			this.footwallDistFuncs = footwallDistFuncs;
+			this.hangingWallDistFuncs = hangingWallDistFuncs;
+			this.fractFootwalls = fractFootwalls;
+		}
+		
+		public RjbFractileDistances get(int index) {
+			double fractFootwall = fractFootwalls[index];
+			double[] footwallDists = fractFootwall == 0d ? null : new double[footwallDistFuncs.length];
+			double[] hangingWallDists = hangingWallDistFuncs == null ? null : new double[footwallDistFuncs.length];
+			int num = footwallDists == null ? hangingWallDists.length : footwallDists.length;
+			for (int f=0; f<num; f++) {
+				if (footwallDists != null)
+					footwallDists[f] = footwallDistFuncs[f].getY(index);
+				if (hangingWallDists != null)
+					hangingWallDists[f] = hangingWallDistFuncs[f].getY(index);
+			}
+			return new RjbFractileDistances(footwallDists, hangingWallDists, fractFootwall);
+		}
+		
+		public RjbFractileDistances interpolate(double horzDist) {
+			EvenlyDiscretizedFunc logDistFunc = footwallDistFuncs[0];
+			double logDist = Math.log10(horzDist);
+			// distances are discretized in log space, but do the actual interpolation in linear space
+			int xIndBelow = logDistFunc.getClosestXIndex(logDist);
+			if (logDist < logDistFunc.getX(xIndBelow))
+				xIndBelow--;
+			double distBelow = Math.pow(10, logDistFunc.getX(xIndBelow));
+			double distAbove = Math.pow(10, logDistFunc.getX(xIndBelow+1));
+			
+			return interpolateFractileDists(get(xIndBelow), distBelow, get(xIndBelow+1), distAbove, horzDist);
+		}
+	}
+	
+	static RjbFractileDistances interpolateFractileDists(RjbFractileDistances dists1, double horzDist1, RjbFractileDistances dists2, double horzDist2, double horzDist) {
+//		double[] footwallDists = dists1.footwallDists == null ? null : new double[dists1.footwallDists.length];
+//		double[] hangingWallDists = dists1.hangingWallDists == null ? null : new double[dists1.hangingWallDists.length];
+		int num = dists1.footwallDists == null ? dists1.hangingWallDists.length : dists1.footwallDists.length;
+//		interp: y1 + (x - x1) * (y2 - y1) / (x2 - x1);
+		double xFract = (horzDist - horzDist1); // x - x1
+		double xBinSize = horzDist2 - horzDist1; // x2 - x1
+		double fractFW = dists1.fractFootwall + xFract*(dists2.fractFootwall - dists1.fractFootwall) / xBinSize;
+		double[] footwallDists = (float)fractFW > 0f ? new double[num] : null;
+		double[] hangingWallDists = (float)fractFW < 1f ? new double[num] : null;
+		for (int f=0; f<num; f++) {
+			if (footwallDists != null) {
+				Preconditions.checkState(dists2.footwallDists != null, "The further one should always have footwall");
+				if (dists1.footwallDists == null)
+					// nearer one didn't have any footwall, which means on top of the surface, treat it as zero
+					footwallDists[f] = xFract*(dists2.footwallDists[f]) / xBinSize;
+				else
+					footwallDists[f] = dists1.footwallDists[f] + xFract*(dists2.footwallDists[f] - dists1.footwallDists[f]) / xBinSize;
+				// interpolation can lead to tiny negative values, clamp to zero
+				Preconditions.checkState(footwallDists[f] > -1e-10);
+				if (footwallDists[f] < 0)
+					footwallDists[f] = 0d;
+			}
+			if (hangingWallDists != null) {
+				hangingWallDists[f] = dists1.hangingWallDists[f] + xFract*(dists2.hangingWallDists[f] - dists1.hangingWallDists[f]) / xBinSize;
+				Preconditions.checkState(hangingWallDists[f] > -1e-10);
+				if (hangingWallDists[f] < 0)
+					hangingWallDists[f] = 0d;
+			}
+		}
+		return new RjbFractileDistances(footwallDists, hangingWallDists, fractFW);
+	}
+	
+	public static class RjbFractileDistances {
+		public final double[] footwallDists;
+		public final double[] hangingWallDists;
+		public final double fractFootwall;
+		
+		private RjbFractileDistances(double[] footwallDists, double[] hangingWallDists, double fractFootwall) {
+			Preconditions.checkState(Double.isFinite(fractFootwall) && fractFootwall >= 0d && fractFootwall <= 1d,
+					"Bad fractFootwall=%s", fractFootwall);
+			Preconditions.checkState(footwallDists != null || fractFootwall == 0d,
+					"Footwall distances can only be null if fractFootwall=0, we have %s", fractFootwall);
+			this.footwallDists = footwallDists;
+			Preconditions.checkState(hangingWallDists != null || fractFootwall == 1d,
+					"Hangingwall distances can only be null if fractFootwall=1, we have %s", fractFootwall);
+			this.hangingWallDists = hangingWallDists;
+			this.fractFootwall = fractFootwall;
+		}
+	}
+	
+	private static class SampleFractileCalculator implements Supplier<RjbFractileDistances> {
 
 		private final double rEpi;
 		private final double rupLength;
@@ -622,7 +1240,7 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 		}
 
 		@Override
-		public double[] get() {
+		public RjbFractileDistances get() {
 			double rupHorzWidth = rupWidth * Math.cos(Math.toRadians(dip));
 			
 			// figure out the closest and farthest it could possibly be
@@ -660,7 +1278,7 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 				double[] ret = new double[fractiles.length];
 				for (int i=0; i<ret.length; i++)
 					ret[i] = closest;
-				return ret;
+				return new RjbFractileDistances(ret, null, 1d);
 			}
 			
 			double rEpiSinB, rEpiCosB;
@@ -674,10 +1292,27 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 			
 			final boolean D;
 			if (FIRST_D) {
+				SampleFractileCalculator extD = null;
 				synchronized (SampleFractileCalculator.class) {
-					D = FIRST_D;
-					FIRST_D = false;
+					if (FIRST_D) {
+						if (Double.isFinite(FIRST_D_DIST)) {
+							if (rEpi == FIRST_D_DIST) {
+								D = true;
+							} else {
+								extD = new SampleFractileCalculator(FIRST_D_DIST, rupLength, rupWidth, dip,
+										alphaRadSamples, betaRad, cellSamplesX, cellSamplesY, alongSamples, downDipSamples, fractiles);
+								D = false;
+							}
+						}  else {
+							D = true;
+						}
+					} else {
+						D = false;
+					}
 				}
+				if (extD != null)
+					extD.get();
+				FIRST_D = false;
 			} else {
 				D = false;
 			}
@@ -700,7 +1335,7 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 				}
 			}
 			
-			SampleDistributionTracker sampleDist = new SampleDistributionTracker(closest, farthest, 1000); 
+			SampleDistributionTracker sampleDist = new SampleDistributionTracker(closest, farthest, 1000, dip < 90d);
 			
 			int numSamples = alphaRadSamples.length*cellSamplesX.length*cellSamplesY.length;
 			double[] alongSubSampleFracts = null;
@@ -723,6 +1358,12 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 			double[] firstAlphaVals = null;
 			double[] prevAlphaVals = new double[numPerAlpha];
 			double[] tempArray = new double[numPerAlpha];
+			boolean[] prevTempFWarray = null;
+			boolean[] tempFWarray = null;
+			if (dip < 90d) {
+				prevTempFWarray = new boolean[numPerAlpha];
+				tempFWarray = new boolean[numPerAlpha];
+			}
 			
 			double[] subSampleFracts = null;
 			double[] oneMinusFracts = null;
@@ -741,6 +1382,7 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 				
 				Preconditions.checkState(tempArray != prevAlphaVals); // check to make sure the array rolling worked
 				double[] innerSamples = tempArray;
+				boolean[] innerFWs = tempFWarray;
 				int index = 0;
 				
 				if (haveCellSamples) {
@@ -806,47 +1448,42 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 				
 				// no longer need the previous, but reuse the array
 				tempArray = prevAlphaVals;
+				tempFWarray = prevTempFWarray;
 				// set ours as previous
 				prevAlphaVals = innerSamples;
+				prevTempFWarray = innerFWs;
 			}
 			
 			if (NUM_ALPHA_INTERP_SAMPLES > 1)
 				// wrap around interpolation
 				addInterpolateSamplesBetween(sampleDist, prevAlphaVals, firstAlphaVals, subSampleFracts, oneMinusFracts);
-			
+
+			double fractFW = sampleDist.getFootwallFract();
 			if (fractiles.length == 1 && Double.isNaN(fractiles[0])) {
 				// special case for mean only, don't need inv CDF
-				return new double[] {sampleDist.sum/(double)sampleDist.count};
+				return new RjbFractileDistances(new double[] {sampleDist.getMean(true)},
+						new double[] {sampleDist.getMean(false)}, fractFW);
 			}
 			
-			// convert to normCDF
-			double invSum = 1d/(double)sampleDist.count;
-			double runningSumY = 0d;
-			EvenlyDiscretizedFunc dist = sampleDist.dist;
-			for (int i=0; i<dist.size(); i++) {
-				runningSumY += dist.getY(i);
-				dist.set(i, runningSumY*invSum);
+			double[] fwDists = sampleDist.calcFractiles(fractiles, true);
+			double[] hwDists = sampleDist.calcFractiles(fractiles, false);
+			
+			if (D && Double.isFinite(FIRST_D_DIST)) {
+				System.out.println("Results for rEpi="+(float)rEpi);
+				System.out.println("\tFractFW="+(float)sampleDist.getFootwallFract());
+				System.out.println("\tFootwall Count: "+sampleDist.fwCount);
+				System.out.println("\t\tMean: "+sampleDist.getMean(true));
+				if (fwDists != null)
+					for (int f=0; f<fractiles.length; f++)
+						System.out.println("\t\tp"+(float)(fractiles[f]*100d)+": "+fwDists[f]);
+				System.out.println("\tHangingwall Count: "+sampleDist.hwCount);
+				System.out.println("\t\tMean: "+sampleDist.getMean(false));
+				if (hwDists != null)
+					for (int f=0; f<fractiles.length; f++)
+						System.out.println("\t\tp"+(float)(fractiles[f]*100d)+": "+hwDists[f]);
 			}
 			
-			// calc normCDF
-//			LightFixedXFunc normCDF = ArbDiscrEmpiricalDistFunc.calcQuickNormCDF(samples, null);
-			double minY = dist.getMinY();
-			double maxY = dist.getMaxY();
-			double[] ret = new double[fractiles.length];
-			for (int i=0; i<fractiles.length; i++) {
-				if (Double.isNaN(fractiles[i])) {
-					// special case for mean
-					ret[i] = sampleDist.sum/(double)sampleDist.count;
-				} else {
-					if (fractiles[i] <= minY)
-						ret[i] = dist.getX(0);
-					else if (fractiles[i] >= maxY)
-						ret[i] = dist.getX(dist.size()-1);
-					else
-						ret[i] = dist.getFirstInterpolatedX(fractiles[i]);
-				}
-			}
-			return ret;
+			return new RjbFractileDistances(fwDists, hwDists, fractFW);
 		}
 		
 	}
@@ -862,8 +1499,13 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 				double val = doCalcRJB(rEpi, rupLength, rupHorzWidth, fractDAS, fractDD, sinA, cosA);
 				if (i > 0) {
 					// interpolate from prior val
-					for (int k=1; k<subSampleFracts.length; k++)
-						destArray[index++] = oneMinusFracts[k]*prevVals[j] + subSampleFracts[k]*val;
+					for (int k=1; k<subSampleFracts.length; k++) {
+						boolean footwall = oneMinusFracts[k] >= subSampleFracts[k] ? prevVals[j] < 0 : val < 0;
+						destArray[index] = oneMinusFracts[k]*Math.abs(prevVals[j]) + subSampleFracts[k]*Math.abs(val);
+						if (footwall)
+							destArray[index] = -destArray[index];
+						index++;
+					}
 				}
 				prevVals[j] = val;
 				destArray[index++] = val;
@@ -874,17 +1516,21 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 	
 	private static class SampleDistributionTracker {
 		
-		private EvenlyDiscretizedFunc dist;
-		private int count;
-		private double sum;
+		private EvenlyDiscretizedFunc fwDist;
+		private double fwSum = 0d;
+		private int fwCount = 0;
+		
+		private EvenlyDiscretizedFunc hwDist;
+		private double hwSum = 0d;
+		private int hwCount = 0;
 		
 		private double minVal, maxVal;
 		private double minCheck, maxCheck;
 		
-		public SampleDistributionTracker(double minVal, double maxVal, int numDiscretizations) {
-			dist = new EvenlyDiscretizedFunc(minVal, maxVal, numDiscretizations);
-			count = 0;
-			sum = 0d;
+		public SampleDistributionTracker(double minVal, double maxVal, int numDiscretizations, boolean doHW) {
+			fwDist = new EvenlyDiscretizedFunc(minVal, maxVal, numDiscretizations);
+			if (doHW)
+				hwDist = new EvenlyDiscretizedFunc(minVal, maxVal, numDiscretizations);
 			this.minVal = minVal;
 			this.maxVal = maxVal;
 			minCheck = minVal-1e-2;
@@ -892,15 +1538,78 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 		}
 		
 		public void addValue(double sample) {
+			boolean footwall = sample < 0d;
+			if (footwall)
+				sample = -sample;
 			Preconditions.checkState(sample >= minCheck && sample <= maxCheck,
 					"sample=%s out of bounds [%s, %s]", sample, minVal, maxVal);
-			addValueRaw(sample);
+			addValueRaw(sample, footwall);
 		}
 		
-		private void addValueRaw(double sample) {
-			dist.add(dist.getClosestXIndex(sample), 1d);
-			count++;
-			sum += sample;
+		private void addValueRaw(double sample, boolean footwall) {
+			if (footwall || hwDist == null) {
+				fwDist.add(fwDist.getClosestXIndex(sample), 1d);
+				fwSum += sample;
+				fwCount++;
+			} else {
+				hwDist.add(hwDist.getClosestXIndex(sample), 1d);
+				hwSum += sample;
+				hwCount++;
+			}
+		}
+		
+		public double getMean(boolean footwall) {
+			if (footwall)
+				return fwSum/fwDist.calcSumOfY_Vals();
+			return hwSum/hwDist.calcSumOfY_Vals();
+		}
+		
+		public double getFootwallFract() {
+			return (double)fwCount/(double)(fwCount+hwCount);
+		}
+		
+		public double[] calcFractiles(double[] fractiles, boolean footwall) {
+			EvenlyDiscretizedFunc dist;
+			double sum;
+			int count;
+			if (footwall) {
+				dist = fwDist;
+				sum = fwSum;
+				count = fwCount;
+			} else {
+				dist = hwDist;
+				sum = hwSum;
+				count = hwCount;
+			}
+			if (count == 0)
+				return null;
+			EvenlyDiscretizedFunc invCmlDist = new EvenlyDiscretizedFunc(minVal, maxVal, fwDist.size());
+			
+			// convert to normCDF
+			double invSum = 1d/(double)count;
+			double runningSumY = 0d;
+			for (int i=0; i<dist.size(); i++) {
+				runningSumY += dist.getY(i);
+				invCmlDist.set(i, runningSumY*invSum);
+			}
+			
+			double minY = invCmlDist.getMinY();
+			double maxY = invCmlDist.getMaxY();
+			double[] ret = new double[fractiles.length];
+			for (int i=0; i<fractiles.length; i++) {
+				if (Double.isNaN(fractiles[i])) {
+					// special case for mean
+					ret[i] = sum/(double)count;
+				} else {
+					if (fractiles[i] <= minY)
+						ret[i] = invCmlDist.getX(0);
+					else if (fractiles[i] >= maxY)
+						ret[i] = invCmlDist.getX(invCmlDist.size()-1);
+					else
+						ret[i] = invCmlDist.getFirstInterpolatedX(fractiles[i]);
+				}
+			}
+			return ret;
 		}
 	}
 	
@@ -910,7 +1619,12 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 			// j=1 because we're just doing the samples between
 			for (int j=1; j<subSampleFracts.length; j++) {
 				// simple linear interpolation; I tried cubic and saw no improvement
-				sampleDist.addValueRaw(oneMinusFracts[j]*samples0[i] + subSampleFracts[j]*samples1[i]);
+				boolean footwall;
+				if (oneMinusFracts[j] >= subSampleFracts[j])
+					footwall = samples0[i] < 0;
+				else
+					footwall = samples1[i] < 0;
+				sampleDist.addValueRaw(oneMinusFracts[j]*Math.abs(samples0[i]) + subSampleFracts[j]*Math.abs(samples1[i]), footwall);
 			}
 		}
 	}

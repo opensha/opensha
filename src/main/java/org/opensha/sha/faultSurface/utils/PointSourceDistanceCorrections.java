@@ -23,34 +23,35 @@ import com.google.common.base.Preconditions;
  */
 public enum PointSourceDistanceCorrections implements Supplier<PointSourceDistanceCorrection> {
 	
-	NONE("None", DevStatus.PRODUCTION) {
+	NONE("None", null, DevStatus.PRODUCTION) {
 		@Override
 		protected PointSourceDistanceCorrection initCorr() {
 			// none
 			return null;
 		}
 	},
-	FIELD("Field", DevStatus.PRODUCTION) {
+	FIELD("Field", FieldPointSourceCorrection.class, DevStatus.PRODUCTION) {
 		@Override
 		protected PointSourceDistanceCorrection initCorr() {
 			return new FieldPointSourceCorrection();
 		}
 	},
-	NSHM_2013("USGS NSHM (2013)", DevStatus.PRODUCTION) {
+	NSHM_2013("USGS NSHM (2013)", DistanceCorrection2013.class, DevStatus.PRODUCTION) {
 		@Override
 		protected PointSourceDistanceCorrection initCorr() {
 			return new DistanceCorrection2013();
 		}
 	},
-	MEDIAN_RJB("Median rJB (centered)", DevStatus.DEVELOPMENT) {
+	MEDIAN_RJB("Median rJB (centered)", RjbDistributionDistanceCorrection.class, DevStatus.DEVELOPMENT) {
 		@Override
-		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
-			return WeightedList.evenlyWeighted(new RjbDistributionDistanceCorrection(0.5, false, false));
+		protected RjbDistributionDistanceCorrection initCorr() {
+			return new RjbDistributionDistanceCorrection(0.5, false, false);
 		}
 	},
-	FIVE_POINT_RJB_DIST("5-Point rJB Distribution (centered)", DevStatus.DEVELOPMENT) {
+	FIVE_POINT_RJB_DIST("5-Point rJB Distribution (centered)",
+			RjbDistributionDistanceCorrection.class, DevStatus.DEVELOPMENT) {
 		@Override
-		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
+		protected RjbDistributionDistanceCorrection initCorr() {
 			// for the simple case I found that evenly weighted fractiles performs better than importance sampled
 			return RjbDistributionDistanceCorrection.getEvenlyWeightedFractiles(5, false, false);
 //			return RjbDistributionDistanceCorrection.getImportanceSampledFractiles(
@@ -59,9 +60,10 @@ public enum PointSourceDistanceCorrections implements Supplier<PointSourceDistan
 //					new double[] {0d, 0.05, 0.30, 0.60, 0.95, 1d}, false, false);
 		}
 	},
-	FIVE_POINT_RJB_DIST_ALONG("5-Point rJB Distribution (sample along)", DevStatus.DEVELOPMENT) {
+	FIVE_POINT_RJB_DIST_ALONG("5-Point rJB Distribution (sample along)",
+			RjbDistributionDistanceCorrection.class, DevStatus.DEVELOPMENT) {
 		@Override
-		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
+		protected RjbDistributionDistanceCorrection initCorr() {
 			// when sampling along-strike I found that importance sampling performs best
 //			return RjbDistributionDistanceCorrection.getEvenlyWeightedFractiles(5, true, true);
 			return RjbDistributionDistanceCorrection.getImportanceSampledFractiles(
@@ -73,21 +75,24 @@ public enum PointSourceDistanceCorrections implements Supplier<PointSourceDistan
 //					new double[] {0d, 0.02, 0.10, 0.2, 0.5, 1d}, true, true);
 		}
 	},
-	TWENTY_POINT_RJB_DIST_ALONG("20-Point rJB Distribution (sample along)", DevStatus.EXPERIMENTAL) {
+	TWENTY_POINT_RJB_DIST_ALONG("20-Point rJB Distribution (sample along)",
+			RjbDistributionDistanceCorrection.class, DevStatus.EXPERIMENTAL) {
 		@Override
-		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
+		protected RjbDistributionDistanceCorrection initCorr() {
 			return RjbDistributionDistanceCorrection.getEvenlyWeightedFractiles(20, true, true);
 		}
 	},
-	TWENTY_POINT_RJB_DIST("20-Point rJB Distribution (centered)", DevStatus.EXPERIMENTAL) {
+	TWENTY_POINT_RJB_DIST("20-Point rJB Distribution (centered)",
+			RjbDistributionDistanceCorrection.class, DevStatus.EXPERIMENTAL) {
 		@Override
-		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
+		protected RjbDistributionDistanceCorrection initCorr() {
 			return RjbDistributionDistanceCorrection.getEvenlyWeightedFractiles(20, false, false);
 		}
 	},
-	SUPERSAMPLING_0p1_FIVE_POINT_RJB_DIST("Super-sampling 5-Point rJB (centered, 0.1 deg)", DevStatus.DEVELOPMENT) {
+	SUPERSAMPLING_0p1_FIVE_POINT_RJB_DIST("Super-sampling 5-Point rJB (centered, 0.1 deg)",
+			SupersamplingRjbDistributionDistanceCorrection.class, DevStatus.DEVELOPMENT) {
 		@Override
-		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
+		protected SupersamplingRjbDistributionDistanceCorrection initCorr() {
 			// for this one, importance sampling does better because the closest distance can really be at a corner
 			// that isn't captured by the wide evenly spaced bins
 			return SupersamplingRjbDistributionDistanceCorrection.getImportanceSampledFractiles(
@@ -99,18 +104,20 @@ public enum PointSourceDistanceCorrections implements Supplier<PointSourceDistan
 //					5, 0.1, 11, 3, false, false);
 		}
 	},
-	SUPERSAMPLING_0p1_FIVE_POINT_RJB_DIST_ALONG("Super-sampling 5-Point rJB (centered, 0.1 deg, sample along)", DevStatus.DEVELOPMENT) {
+	SUPERSAMPLING_0p1_FIVE_POINT_RJB_DIST_ALONG("Super-sampling 5-Point rJB (centered, 0.1 deg, sample along)",
+			SupersamplingRjbDistributionDistanceCorrection.class, DevStatus.DEVELOPMENT) {
 		@Override
-		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
+		protected SupersamplingRjbDistributionDistanceCorrection initCorr() {
 			// for this one, importance sampling does better because the closest distance can really be at a corner
 			// that isn't captured by the wide evenly spaced bins
 			return SupersamplingRjbDistributionDistanceCorrection.getImportanceSampledFractiles(
 					new double[] {0d, 0.05, 0.15, 0.4, 0.6, 1d}, 0.1, 11, 5, true, true);
 		}
 	},
-	SUPERSAMPLING_0p1_TWENTY_POINT_RJB_DIST("Super-sampling 20-Point rJB (centered, 0.1 deg)", DevStatus.EXPERIMENTAL) {
+	SUPERSAMPLING_0p1_TWENTY_POINT_RJB_DIST("Super-sampling 20-Point rJB (centered, 0.1 deg)",
+			SupersamplingRjbDistributionDistanceCorrection.class, DevStatus.EXPERIMENTAL) {
 		@Override
-		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
+		protected SupersamplingRjbDistributionDistanceCorrection initCorr() {
 			return SupersamplingRjbDistributionDistanceCorrection.getEvenlyWeightedFractiles(
 					20, 0.1, 11, 3, false, false);
 		}
@@ -120,13 +127,13 @@ public enum PointSourceDistanceCorrections implements Supplier<PointSourceDistan
 	public static final PointSourceDistanceCorrections DEFAULT = NSHM_2013;
 	
 	/**
-	 * Set of all {@link PointSourceDistanceCorrections} that produce a single {@link PointSourceDistanceCorrection}.
+	 * Set of all {@link PointSourceDistanceCorrections} that produce a {@link PointSourceDistanceCorrection.Single}.
 	 */
 	public static final EnumSet<PointSourceDistanceCorrections> SINGLE_CORRS;
 	static {
 		SINGLE_CORRS = EnumSet.noneOf(PointSourceDistanceCorrections.class);
 		for (PointSourceDistanceCorrections corr : values()) {
-			if (corr.corrs == null || corr.corrs.size() == 1)
+			if (corr.clazz == null || PointSourceDistanceCorrection.Single.class.isAssignableFrom(corr.clazz))
 				SINGLE_CORRS.add(corr);
 		}
 	}
@@ -153,9 +160,12 @@ public enum PointSourceDistanceCorrections implements Supplier<PointSourceDistan
 	private DevStatus devStatus;
 	private volatile boolean intialized;
 	private PointSourceDistanceCorrection corr;
+	private Class<? extends PointSourceDistanceCorrection> clazz;
 
-	private PointSourceDistanceCorrections(String name, DevStatus devStatus) {
+	private PointSourceDistanceCorrections(String name,
+			Class<? extends PointSourceDistanceCorrection> clazz, DevStatus devStatus) {
 		this.name = name;
+		this.clazz = clazz;
 		this.devStatus = devStatus;
 	}
 	
