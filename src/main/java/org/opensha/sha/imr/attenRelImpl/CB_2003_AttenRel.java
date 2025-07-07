@@ -178,13 +178,13 @@ public class CB_2003_AttenRel extends AttenuationRelationship {
 	 * @throws InvalidRangeException thrown if rake is out of bounds
 	 */
 	public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
-
-		magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
-		setFaultTypeFromRake(eqkRupture.getAveRake(),
-				eqkRupture.getRuptureSurface().getAveDip());
-		this.eqkRupture = eqkRupture;
-		setPropagationEffectParams();
-
+		super.setEqkRupture(eqkRupture);
+		if (eqkRupture != null) {
+			magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
+			setFaultTypeFromRake(eqkRupture.getAveRake(),
+					eqkRupture.getRuptureSurface().getAveDip());
+			setPropagationEffectParams();
+		}
 	}
 
 	/**

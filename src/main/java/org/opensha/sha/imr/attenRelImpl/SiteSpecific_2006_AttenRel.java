@@ -505,7 +505,7 @@ public class SiteSpecific_2006_AttenRel extends AttenuationRelationship implemen
 	 */
 	public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
 		attenRel.setEqkRupture(eqkRupture);
-		this.eqkRupture = eqkRupture;
+		super.setEqkRupture(eqkRupture);
 	}
 
 	/**

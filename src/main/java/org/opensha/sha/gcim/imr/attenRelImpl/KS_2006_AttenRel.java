@@ -140,12 +140,12 @@ public class KS_2006_AttenRel
    * @throws InvalidRangeException thrown if rake is out of bounds
    */
   public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
-	  
-	  magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
-	  
-	  this.eqkRupture = eqkRupture;
-	  setPropagationEffectParams();
-	  
+	  super.setEqkRupture(eqkRupture);
+	  if (eqkRupture != null) {
+		  magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
+
+		  setPropagationEffectParams();
+	  }
   }
 
   /**

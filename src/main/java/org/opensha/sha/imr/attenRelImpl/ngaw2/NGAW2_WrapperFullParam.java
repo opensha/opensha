@@ -163,27 +163,28 @@ public class NGAW2_WrapperFullParam extends AttenuationRelationship implements P
 	@Override
 	public void setEqkRupture(EqkRupture eqkRupture) {
 		super.setEqkRupture(eqkRupture);
-		
-		RuptureSurface surf = eqkRupture.getRuptureSurface();
-		
-		magParam.setValueIgnoreWarning(eqkRupture.getMag());
-		rakeParam.setValue(eqkRupture.getAveRake());
-		dipParam.setValueIgnoreWarning(surf.getAveDip());
-		double width = surf.getAveWidth();
-		if (width == 0d)
-			width = 0.1; // must be positive
-		rupWidthParam.setValueIgnoreWarning(width);
-		rupTopDepthParam.setValueIgnoreWarning(surf.getAveRupTopDepth());
-		double zHyp;
-		if (eqkRupture.getHypocenterLocation() != null) {
-			zHyp = eqkRupture.getHypocenterLocation().getDepth();
-		} else {
-			zHyp = surf.getAveRupTopDepth() +
-				Math.sin(surf.getAveDip() * TO_RAD) * width/2.0;
+		if (eqkRupture != null) {
+			RuptureSurface surf = eqkRupture.getRuptureSurface();
+
+			magParam.setValueIgnoreWarning(eqkRupture.getMag());
+			rakeParam.setValue(eqkRupture.getAveRake());
+			dipParam.setValueIgnoreWarning(surf.getAveDip());
+			double width = surf.getAveWidth();
+			if (width == 0d)
+				width = 0.1; // must be positive
+			rupWidthParam.setValueIgnoreWarning(width);
+			rupTopDepthParam.setValueIgnoreWarning(surf.getAveRupTopDepth());
+			double zHyp;
+			if (eqkRupture.getHypocenterLocation() != null) {
+				zHyp = eqkRupture.getHypocenterLocation().getDepth();
+			} else {
+				zHyp = surf.getAveRupTopDepth() +
+						Math.sin(surf.getAveDip() * TO_RAD) * width/2.0;
+			}
+			focalDepthParam.setValueIgnoreWarning(zHyp);
+
+			setPropagationEffectParams();
 		}
-		focalDepthParam.setValueIgnoreWarning(zHyp);
-		
-		setPropagationEffectParams();
 	}
 
 	@Override

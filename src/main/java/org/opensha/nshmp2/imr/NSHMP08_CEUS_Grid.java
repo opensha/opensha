@@ -143,9 +143,11 @@ public class NSHMP08_CEUS_Grid extends NSHMP08_CEUS implements GridIMR {
 		// KLUDGY: because we need Mw for distance but mblg for magnitude PE
 		// lookup, adjust the eqkRupture mag here to Mw and keep a local mblg
 		// value for use in getPE(f)
-		utilMag = eqkRupture.getMag();
-		eqkRupture.setMag(Utils.mblgToMw(code, utilMag));
 		super.setEqkRupture(eqkRupture);
+		if (eqkRupture != null) {
+			utilMag = eqkRupture.getMag();
+			eqkRupture.setMag(Utils.mblgToMw(code, utilMag));
+		}
 	}
 
 	@Override

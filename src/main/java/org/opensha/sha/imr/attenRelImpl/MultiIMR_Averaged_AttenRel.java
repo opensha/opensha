@@ -597,7 +597,7 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	@Override
 	public void setEqkRupture(EqkRupture eqkRupture) {
 		// Set the eqkRupture
-		this.eqkRupture = eqkRupture;
+		super.setEqkRupture(eqkRupture);
 		for (ScalarIMR imr : imrs) {
 			imr.setEqkRupture(eqkRupture);
 		}

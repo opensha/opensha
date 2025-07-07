@@ -424,28 +424,28 @@ public class CB_2006_AttenRel extends AttenuationRelationship implements
    * @throws InvalidRangeException thrown if rake is out of bounds
    */
   public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
-	  
-	  magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
-	  
-	  double rake = eqkRupture.getAveRake();
-	  if(rake >30 && rake <150) {
-		  fltTypeParam.setValue(FLT_TYPE_REVERSE);
+	  super.setEqkRupture(eqkRupture);
+	  if (eqkRupture != null) {
+		  magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
+
+		  double rake = eqkRupture.getAveRake();
+		  if(rake >30 && rake <150) {
+			  fltTypeParam.setValue(FLT_TYPE_REVERSE);
+		  }
+		  else if(rake >-150 && rake<-30) {
+			  fltTypeParam.setValue(FLT_TYPE_NORMAL);
+		  }
+		  else { // strike slip
+			  fltTypeParam.setValue(FLT_TYPE_STRIKE_SLIP);
+		  }
+
+		  RuptureSurface surface = eqkRupture.getRuptureSurface();
+		  rupTopDepthParam.setValueIgnoreWarning(surface.getAveRupTopDepth());
+		  dipParam.setValueIgnoreWarning(surface.getAveDip());
+
+		  //	  setFaultTypeFromRake(eqkRupture.getAveRake());
+		  setPropagationEffectParams();
 	  }
-	  else if(rake >-150 && rake<-30) {
-		  fltTypeParam.setValue(FLT_TYPE_NORMAL);
-	  }
-	  else { // strike slip
-		  fltTypeParam.setValue(FLT_TYPE_STRIKE_SLIP);
-	  }
-	  
-	  RuptureSurface surface = eqkRupture.getRuptureSurface();
-	  rupTopDepthParam.setValueIgnoreWarning(surface.getAveRupTopDepth());
-	  dipParam.setValueIgnoreWarning(surface.getAveDip());
-	  
-//	  setFaultTypeFromRake(eqkRupture.getAveRake());
-	  this.eqkRupture = eqkRupture;
-	  setPropagationEffectParams();
-	  
   }
 
   /**

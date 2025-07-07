@@ -150,8 +150,8 @@ public class CS_2005_AttenRel extends AttenuationRelationship {
 	 * @throws InvalidRangeException thrown if rake is out of bounds
 	 */
 	public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
+		super.setEqkRupture(eqkRupture);
 		this.as_1997_attenRel.setEqkRupture(eqkRupture);
-		this.eqkRupture = eqkRupture;
 	}
 
 	/**

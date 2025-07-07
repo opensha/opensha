@@ -233,25 +233,25 @@ public class AS_2005_AttenRel extends AttenuationRelationship implements
    * @throws InvalidRangeException thrown if rake is out of bounds
    */
   public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
+	  super.setEqkRupture(eqkRupture);
+	  if (eqkRupture != null) {
+		  magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
+		  rakeParam.setValue(eqkRupture.getAveRake());
+		  RuptureSurface surface = eqkRupture.getRuptureSurface();
+		  dipParam.setValue(surface.getAveDip());
+		  rupTopDepthParam.setValue(surface.getAveRupTopDepth());
+		  // for point surface
+		  if (surface.isPointSurface()) {
+			  aspectRatioParam.setValue(1.0);
+		  }
+		  else {
+			  aspectRatioParam.setValue(surface.getAveLength() /
+					  surface.getAveWidth());
+		  }
 
-    magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
-    rakeParam.setValue(eqkRupture.getAveRake());
-    RuptureSurface surface = eqkRupture.getRuptureSurface();
-    dipParam.setValue(surface.getAveDip());
-    rupTopDepthParam.setValue(surface.getAveRupTopDepth());
-    // for point surface
-    if (surface.isPointSurface()) {
-      aspectRatioParam.setValue(1.0);
-    }
-    else {
-      aspectRatioParam.setValue(surface.getAveLength() /
-                                surface.getAveWidth());
-    }
-
-//    setFaultTypeFromRake(eqkRupture.getAveRake());
-    this.eqkRupture = eqkRupture;
-    setPropagationEffectParams();
-
+		  //    setFaultTypeFromRake(eqkRupture.getAveRake());
+		  setPropagationEffectParams();
+	  }
   }
 
   /**

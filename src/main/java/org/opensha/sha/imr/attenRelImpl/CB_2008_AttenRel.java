@@ -180,13 +180,15 @@ public class CB_2008_AttenRel extends AttenuationRelationship implements
 	@Override
 	public void setEqkRupture(EqkRupture eqkRupture)
 			throws InvalidRangeException {
-		this.eqkRupture = eqkRupture;
-		magParam.setValueIgnoreWarning(eqkRupture.getMag());
-		setFaultTypeFromRake(eqkRupture.getAveRake());
-		RuptureSurface surface = eqkRupture.getRuptureSurface();
-		rupTopDepthParam.setValueIgnoreWarning(surface.getAveRupTopDepth());
-		dipParam.setValueIgnoreWarning(surface.getAveDip());
-		setPropagationEffectParams();
+		super.setEqkRupture(eqkRupture);
+		if (eqkRupture != null) {
+			magParam.setValueIgnoreWarning(eqkRupture.getMag());
+			setFaultTypeFromRake(eqkRupture.getAveRake());
+			RuptureSurface surface = eqkRupture.getRuptureSurface();
+			rupTopDepthParam.setValueIgnoreWarning(surface.getAveRupTopDepth());
+			dipParam.setValueIgnoreWarning(surface.getAveDip());
+			setPropagationEffectParams();
+		}
 	}
 
 	@Override

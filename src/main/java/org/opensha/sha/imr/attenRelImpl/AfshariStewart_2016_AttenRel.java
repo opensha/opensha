@@ -359,10 +359,12 @@ public class AfshariStewart_2016_AttenRel extends AttenuationRelationship {
 
 	@Override
 	public void setEqkRupture(EqkRupture eqkRupture) {
-		this.eqkRupture = eqkRupture;
-		magParam.setValueIgnoreWarning(eqkRupture.getMag());
-		faultStyleParam.setValue(getFaultStyle(eqkRupture.getAveRake()));
-		setPropagationEffectParams();
+		super.setEqkRupture(eqkRupture);
+		if (eqkRupture != null) {
+			magParam.setValueIgnoreWarning(eqkRupture.getMag());
+			faultStyleParam.setValue(getFaultStyle(eqkRupture.getAveRake()));
+			setPropagationEffectParams();
+		}
 	}
 	
 	private void propEffectUpdate() {

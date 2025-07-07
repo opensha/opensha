@@ -1084,49 +1084,50 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 	public void setEqkRupture(EqkRupture eqkRupture) {
 		super.setEqkRupture(eqkRupture);
 		clearCachedGmmInputs();
-		
-		boolean usePerRupCache = cacheInputsPerRupture && site != null;
-		EqkRupture rupForCache = eqkRupture;
-		if (usePerRupCache) {
-			if (perRuptureInputCache == null)
-				perRuptureInputCache = new HashMap<>();
-			if (eqkRupture instanceof DistCacheWrapperRupture)
-				rupForCache = ((DistCacheWrapperRupture)eqkRupture).getOriginalRupture();
-			GmmInput cached = perRuptureInputCache.get(rupForCache);
-			if (cached != null) {
-				setCurrentGmmInput(cached);
-				return;
+		if (eqkRupture != null) {
+			boolean usePerRupCache = cacheInputsPerRupture && site != null;
+			EqkRupture rupForCache = eqkRupture;
+			if (usePerRupCache) {
+				if (perRuptureInputCache == null)
+					perRuptureInputCache = new HashMap<>();
+				if (eqkRupture instanceof DistCacheWrapperRupture)
+					rupForCache = ((DistCacheWrapperRupture)eqkRupture).getOriginalRupture();
+				GmmInput cached = perRuptureInputCache.get(rupForCache);
+				if (cached != null) {
+					setCurrentGmmInput(cached);
+					return;
+				}
 			}
-		}
-		
-		RuptureSurface surf = eqkRupture.getRuptureSurface();
-		
-		if (fields.contains(Field.MW))
-			valueManager.setParameterValue(Field.MW, eqkRupture.getMag());
-		if (fields.contains(Field.RAKE))
-			valueManager.setParameterValue(Field.RAKE, eqkRupture.getAveRake());
-		if (fields.contains(Field.DIP))
-			valueManager.setParameterValue(Field.DIP, surf.getAveDip());
-		if (fields.contains(Field.WIDTH))
-			valueManager.setParameterValue(Field.WIDTH, surf.getAveWidth());
-		if (fields.contains(Field.ZTOR))
-			valueManager.setParameterValue(Field.ZTOR, surf.getAveRupTopDepth());
-		if (fields.contains(Field.ZHYP)) {
-			double zHyp;
-			if (eqkRupture.getHypocenterLocation() != null) {
-				zHyp = eqkRupture.getHypocenterLocation().getDepth();
-			} else {
-				zHyp = surf.getAveRupTopDepth() +
-					Math.sin(surf.getAveDip() * TO_RAD) * surf.getAveWidth()/2.0;
+			
+			RuptureSurface surf = eqkRupture.getRuptureSurface();
+			
+			if (fields.contains(Field.MW))
+				valueManager.setParameterValue(Field.MW, eqkRupture.getMag());
+			if (fields.contains(Field.RAKE))
+				valueManager.setParameterValue(Field.RAKE, eqkRupture.getAveRake());
+			if (fields.contains(Field.DIP))
+				valueManager.setParameterValue(Field.DIP, surf.getAveDip());
+			if (fields.contains(Field.WIDTH))
+				valueManager.setParameterValue(Field.WIDTH, surf.getAveWidth());
+			if (fields.contains(Field.ZTOR))
+				valueManager.setParameterValue(Field.ZTOR, surf.getAveRupTopDepth());
+			if (fields.contains(Field.ZHYP)) {
+				double zHyp;
+				if (eqkRupture.getHypocenterLocation() != null) {
+					zHyp = eqkRupture.getHypocenterLocation().getDepth();
+				} else {
+					zHyp = surf.getAveRupTopDepth() +
+						Math.sin(surf.getAveDip() * TO_RAD) * surf.getAveWidth()/2.0;
+				}
+				valueManager.setParameterValue(Field.ZHYP, zHyp);
 			}
-			valueManager.setParameterValue(Field.ZHYP, zHyp);
-		}
-		
-		setPropagationEffectParams();
-		
-		if (usePerRupCache) {
-			// cache the GmmInput for future reuse
-			perRuptureInputCache.put(rupForCache, getCurrentGmmInput());
+			
+			setPropagationEffectParams();
+			
+			if (usePerRupCache) {
+				// cache the GmmInput for future reuse
+				perRuptureInputCache.put(rupForCache, getCurrentGmmInput());
+			}
 		}
 	}
 

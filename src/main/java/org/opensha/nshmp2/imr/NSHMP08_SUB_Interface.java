@@ -242,12 +242,14 @@ public class NSHMP08_SUB_Interface extends AttenuationRelationship implements
 	
 	@Override
 	public void setEqkRupture(EqkRupture eqkRupture) {
-		this.eqkRupture = eqkRupture;
-		magParam.setValueIgnoreWarning(eqkRupture.getMag()); // needed at getExceedProbs()
-		for (ScalarIMR imr : imrMap.keySet()) {
-			imr.setEqkRupture(eqkRupture);
+		super.setEqkRupture(eqkRupture);
+		if (eqkRupture != null) {
+			magParam.setValueIgnoreWarning(eqkRupture.getMag()); // needed at getExceedProbs()
+			for (ScalarIMR imr : imrMap.keySet()) {
+				imr.setEqkRupture(eqkRupture);
+			}
+			setPropagationEffectParams();
 		}
-		setPropagationEffectParams();
 	}
 	
 	@Override

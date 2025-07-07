@@ -133,9 +133,11 @@ public class SomervilleEtAl_2001_AttenRel extends AttenuationRelationship implem
 	@Override
 	public void setEqkRupture(EqkRupture eqkRupture)
 			throws InvalidRangeException {
-		magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
-		this.eqkRupture = eqkRupture;
-		setPropagationEffectParams();
+		super.setEqkRupture(eqkRupture);
+		if (eqkRupture != null) {
+			magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
+			setPropagationEffectParams();
+		}
 	}
 
 	@Override

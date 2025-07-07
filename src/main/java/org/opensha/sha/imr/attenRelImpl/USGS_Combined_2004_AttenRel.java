@@ -238,7 +238,7 @@ public class USGS_Combined_2004_AttenRel extends AttenuationRelationship {
 	 */
 	public void setEqkRupture(EqkRupture eqkRupture) {
 		// Set the eqkRupture
-		this.eqkRupture = eqkRupture;
+		super.setEqkRupture(eqkRupture);
 		as_1997_attenRel.setEqkRupture(eqkRupture);
 		bjf_1997_attenRel.setEqkRupture(eqkRupture);
 		scemy_1997_attenRel.setEqkRupture(eqkRupture);

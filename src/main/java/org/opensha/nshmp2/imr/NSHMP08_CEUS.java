@@ -284,7 +284,7 @@ public class NSHMP08_CEUS extends AttenuationRelationship implements
 
 	@Override
 	public void setEqkRupture(EqkRupture eqkRupture) {
-		this.eqkRupture = eqkRupture;
+		super.setEqkRupture(eqkRupture);
 		for (ScalarIMR imr : imrMap.keySet()) {
 			imr.setEqkRupture(eqkRupture);
 		}

@@ -131,8 +131,8 @@ public class InterpolatedSA_AttenRelWrapper extends AttenuationRelationship impl
    * @throws InvalidRangeException thrown if rake is out of bounds
    */
   public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
+	  super.setEqkRupture(eqkRupture);
 	  attenRelToWrap.setEqkRupture(eqkRupture);
-	  this.eqkRupture = eqkRupture;
   }
 
   /**

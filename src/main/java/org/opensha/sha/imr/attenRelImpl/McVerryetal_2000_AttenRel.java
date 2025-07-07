@@ -228,34 +228,33 @@ public class McVerryetal_2000_AttenRel extends AttenuationRelationship implement
    * @throws InvalidRangeException thrown if rake is out of bounds
    */
   public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
+	  super.setEqkRupture(eqkRupture);
+	  if (eqkRupture != null) {
+		  magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
+		  setFaultTypeFromRake(eqkRupture.getAveRake());
+		  setPropagationEffectParams();
 
-    magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
-    setFaultTypeFromRake(eqkRupture.getAveRake());
-    this.eqkRupture = eqkRupture;
-    setPropagationEffectParams();
-    
-    if (tecRegType.equals(FLT_TEC_ENV_INTERFACE) || tecRegType.equals(FLT_TEC_ENV_INTERFACE)) {
-    	//Determine the focal depth
-    	// this is problematic, see ticket #438
-    	RuptureSurface surf = this.eqkRupture.getRuptureSurface();
-    	double hypoLon = 0.0;
-		double hypoLat = 0.0;
-		double hypoDep = 0.0;
-		double cnt = 0.0;
-		for(Location loc: surf.getEvenlyDiscritizedListOfLocsOnSurface()) {
-			hypoLon += loc.getLongitude();
-			hypoLat += loc.getLatitude();
-			hypoDep += loc.getDepth();
-			cnt += 1;		
-		}
-		
-		hypoLon = hypoLon / cnt;
-		hypoLat = hypoLat / cnt;
-		hypoDep = hypoDep / cnt;
-		focalDepthParam.setValueIgnoreWarning(Double.valueOf(hypoDep));
-    }
-    
+		  if (tecRegType.equals(FLT_TEC_ENV_INTERFACE) || tecRegType.equals(FLT_TEC_ENV_INTERFACE)) {
+			  //Determine the focal depth
+			  // this is problematic, see ticket #438
+			  RuptureSurface surf = this.eqkRupture.getRuptureSurface();
+			  double hypoLon = 0.0;
+			  double hypoLat = 0.0;
+			  double hypoDep = 0.0;
+			  double cnt = 0.0;
+			  for(Location loc: surf.getEvenlyDiscritizedListOfLocsOnSurface()) {
+				  hypoLon += loc.getLongitude();
+				  hypoLat += loc.getLatitude();
+				  hypoDep += loc.getDepth();
+				  cnt += 1;		
+			  }
 
+			  hypoLon = hypoLon / cnt;
+			  hypoLat = hypoLat / cnt;
+			  hypoDep = hypoDep / cnt;
+			  focalDepthParam.setValueIgnoreWarning(Double.valueOf(hypoDep));
+		  }
+	  }
   }
 
   /**

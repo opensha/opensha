@@ -335,8 +335,8 @@ ParameterChangeListener {
 	
 	@Override
 	public void setEqkRupture(EqkRupture eqkRupture) {
-		this.eqkRupture = eqkRupture;
-		if (site != null) {
+		super.setEqkRupture(eqkRupture);
+		if (eqkRupture != null && site != null) {
 			setPropagationEffect();
 		}
 	}

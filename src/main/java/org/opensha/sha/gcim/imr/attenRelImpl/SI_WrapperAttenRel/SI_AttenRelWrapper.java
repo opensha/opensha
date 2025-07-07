@@ -163,7 +163,7 @@ public class SI_AttenRelWrapper
    */
   public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
 	  attenRelToWrap.setEqkRupture(eqkRupture);
-	  this.eqkRupture = eqkRupture;
+	  super.setEqkRupture(eqkRupture);
   }
 
   /**

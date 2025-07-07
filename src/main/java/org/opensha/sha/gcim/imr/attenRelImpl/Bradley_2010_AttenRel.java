@@ -207,13 +207,15 @@ public class Bradley_2010_AttenRel extends AttenuationRelationship implements
 	@Override
 	public void setEqkRupture(EqkRupture eqkRupture)
 			throws InvalidRangeException {
-		this.eqkRupture = eqkRupture;
-		magParam.setValueIgnoreWarning(eqkRupture.getMag());
-		setFaultTypeFromRake(eqkRupture.getAveRake());
-		RuptureSurface surface = eqkRupture.getRuptureSurface();
-		dipParam.setValue(surface.getAveDip());
-		rupTopDepthParam.setValueIgnoreWarning(surface.getAveRupTopDepth());
-		setPropagationEffectParams();
+		super.setEqkRupture(eqkRupture);
+		if (eqkRupture != null) {
+			magParam.setValueIgnoreWarning(eqkRupture.getMag());
+			setFaultTypeFromRake(eqkRupture.getAveRake());
+			RuptureSurface surface = eqkRupture.getRuptureSurface();
+			dipParam.setValue(surface.getAveDip());
+			rupTopDepthParam.setValueIgnoreWarning(surface.getAveRupTopDepth());
+			setPropagationEffectParams();
+		}
 	}
 
 	@Override

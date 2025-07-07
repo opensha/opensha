@@ -271,11 +271,13 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 	 *             If not valid rake angle
 	 */
 	public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
-		magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));		
-		this.eqkRupture = eqkRupture;
-		setPropagationEffectParams();
-		// TODO
-		//	    setFaultTypeFromRake(eqkRupture.getAveRake());
+		super.setEqkRupture(eqkRupture);
+		if (eqkRupture != null) {
+			magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));		
+			setPropagationEffectParams();
+			// TODO
+			//	    setFaultTypeFromRake(eqkRupture.getAveRake());
+		}
 	}
 
 	/**
