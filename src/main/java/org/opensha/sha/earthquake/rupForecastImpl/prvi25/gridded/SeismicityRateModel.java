@@ -126,9 +126,19 @@ public class SeismicityRateModel {
 		return build(meanRecord, refMFD, mMax);
 	}
 	
+	public IncrementalMagFreqDist buildPreferred(EvenlyDiscretizedFunc refMFD, double mMax, double magCorner)
+			throws IOException {
+		return build(meanRecord, refMFD, mMax, magCorner);
+	}
+	
 	public IncrementalMagFreqDist buildLower(EvenlyDiscretizedFunc refMFD, double mMax)
 			throws IOException {
 		return build(lowerRecord, refMFD, mMax);
+	}
+	
+	public IncrementalMagFreqDist buildLower(EvenlyDiscretizedFunc refMFD, double mMax, double magCorner)
+			throws IOException {
+		return build(lowerRecord, refMFD, mMax, magCorner);
 	}
 	
 	public IncrementalMagFreqDist buildUpper(EvenlyDiscretizedFunc refMFD, double mMax)
@@ -136,9 +146,19 @@ public class SeismicityRateModel {
 		return build(upperRecord, refMFD, mMax);
 	}
 	
+	public IncrementalMagFreqDist buildUpper(EvenlyDiscretizedFunc refMFD, double mMax, double magCorner)
+			throws IOException {
+		return build(upperRecord, refMFD, mMax, magCorner);
+	}
+	
 	private IncrementalMagFreqDist build(RateRecord record, EvenlyDiscretizedFunc refMFD, double mMax)
 			throws IOException {
-		IncrementalMagFreqDist mfd = SeismicityRateFileLoader.buildIncrementalMFD(record, refMFD, mMax);
+		return build(record, refMFD, mMax, Double.NaN);
+	}
+	
+	private IncrementalMagFreqDist build(RateRecord record, EvenlyDiscretizedFunc refMFD, double mMax,
+			double magCorner) throws IOException {
+		IncrementalMagFreqDist mfd = SeismicityRateFileLoader.buildIncrementalMFD(record, refMFD, mMax, magCorner);
 		
 		boolean preferred = record.mean || record.quantile == 0.5;
 		
@@ -158,9 +178,13 @@ public class SeismicityRateModel {
 	private static final DecimalFormat oDF = new DecimalFormat("0.##");
 	
 	public UncertainBoundedIncrMagFreqDist getBounded(EvenlyDiscretizedFunc refMFD, double mMax) throws IOException {
-		IncrementalMagFreqDist upper = buildUpper(refMFD, mMax);
-		IncrementalMagFreqDist lower = buildLower(refMFD, mMax);
-		IncrementalMagFreqDist pref = buildPreferred(refMFD, mMax);
+		return getBounded(refMFD, mMax, Double.NaN);
+	}
+	
+	public UncertainBoundedIncrMagFreqDist getBounded(EvenlyDiscretizedFunc refMFD, double mMax, double magCorner) throws IOException {
+		IncrementalMagFreqDist upper = buildUpper(refMFD, mMax, magCorner);
+		IncrementalMagFreqDist lower = buildLower(refMFD, mMax, magCorner);
+		IncrementalMagFreqDist pref = buildPreferred(refMFD, mMax, magCorner);
 		
 		double M1 = meanRecord.M1;
 		

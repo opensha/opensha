@@ -84,14 +84,16 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.ClassicModelInvers
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.PRVI25_GridSourceBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.SeismicityRateFileLoader.RateType;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalBValues;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalDeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalSeismicityRate;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_LogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionBValues;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionCaribbeanSeismicityRate;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionCouplingModels;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionDeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionMuertosSeismicityRate;
-import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -175,7 +177,7 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		RupSetDeformationModel dm = fm.getDefaultDeformationModel();
 		List<? extends FaultSection> subSects;
 		try {
-			subSects = dm.build(fm, ssm, branch);
+			subSects = buildSubSects(rupSet, fm, dm, ssm, branch);
 		} catch (IOException e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
@@ -308,6 +310,11 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 			ssm = SubSectionBuilder.getModel(2, SUB_SECT_DDW_FRACT, Double.NaN);
 		else 
 			ssm = branch.requireValue(RupSetSubsectioningModel.class);
+		return buildSubSects(rupSet, fm, dm, ssm, branch);
+	}
+	
+	protected List<? extends FaultSection> buildSubSects(FaultSystemRupSet rupSet, RupSetFaultModel fm,
+			RupSetDeformationModel dm, RupSetSubsectioningModel ssm, LogicTreeBranch<?> branch) throws IOException {
 		return dm.build(fm, ssm, branch);
 	}
 
@@ -316,7 +323,6 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 			throws IOException {
 		// we don't trust any modules attached to this rupture set as it could have been used for another calculation
 		// that could have attached anything. Instead, lets only keep the ruptures themselves
-		
 		
 		// override slip rates for the given deformation model
 		List<? extends FaultSection> subSects;
@@ -1204,6 +1210,84 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 			MAX_PROXY_FAULT_RUP_LEN = 0d;
 		}
 		
+	}
+
+	
+	public static class MueAsCrustal extends PRVI25_InvConfigFactory {
+		
+		public MueAsCrustal() {
+			MAX_PROXY_FAULT_RUP_LEN = 0d;
+			PRVI25_GridSourceBuilder.MUERTOS_AS_CRUSTAL = true;
+		}
+		
+		public static List<? extends FaultSection> removeMuertosFromInterface(List<? extends FaultSection> origSubSects) {
+			List<FaultSection> modSubSects = new ArrayList<>();
+			// remove muertos
+			for (FaultSection sect : origSubSects) {
+				if (!sect.getSectionName().contains("Muertos")) {
+					if (sect.getSectionId() != modSubSects.size()) {
+						sect = sect.clone();
+						sect.setSectionId(modSubSects.size());
+					}
+					modSubSects.add(sect);
+				}
+			}
+			Preconditions.checkState(modSubSects.size() < origSubSects.size());
+			return modSubSects;
+		}
+		
+		public static List<? extends FaultSection> addMuertosToCrustal(List<? extends FaultSection> origSubSects,
+				RupSetFaultModel fm, RupSetDeformationModel dm, LogicTreeBranch<?> branch) throws IOException {
+			List<FaultSection> modSubSects = new ArrayList<>();
+			
+			modSubSects.addAll(origSubSects);
+			LogicTreeBranch<LogicTreeNode> interfaceBranch = PRVI25_LogicTreeBranch.DEFAULT_SUBDUCTION_INTERFACE.copy();
+			if (dm == PRVI25_CrustalDeformationModels.GEOLOGIC_DIST_AVG) {
+				// just use prefferred coupling
+				interfaceBranch.setValue(PRVI25_SubductionCouplingModels.PREFERRED);
+			} else {
+				// use randomly sampled coupling
+				double rand = Math.random();
+				double sumWeight = 0d;
+				for (PRVI25_SubductionCouplingModels coupling : PRVI25_SubductionCouplingModels.values()) {
+					double weight = coupling.getNodeWeight(branch);
+					if (weight > 0) {
+						sumWeight += weight;
+						if (rand <= sumWeight) {
+							interfaceBranch.setValue(coupling);
+							break;
+						}
+					}
+				}
+			}
+			List<? extends FaultSection> interfaceSects = PRVI25_SubductionDeformationModels.FULL.build(
+					PRVI25_SubductionFaultModels.PRVI_SUB_FM_LARGE, interfaceBranch);
+			for (FaultSection sect : interfaceSects) {
+				if (sect.getSectionName().contains("Muertos")) {
+					sect = sect.clone();
+					sect.setSectionId(modSubSects.size());
+					modSubSects.add(sect);
+				}
+			}
+			Preconditions.checkState(modSubSects.size() > origSubSects.size());
+			return modSubSects;
+		}
+
+		@Override
+		protected List<? extends FaultSection> buildSubSects(FaultSystemRupSet rupSet, RupSetFaultModel fm,
+				RupSetDeformationModel dm, RupSetSubsectioningModel ssm, LogicTreeBranch<?> branch) throws IOException {
+			this.cacheDir = null; // we don't want to cache these tests
+			List<? extends FaultSection> origSubSects = super.buildSubSects(rupSet, fm, dm, ssm, branch);
+			List<? extends FaultSection> modSubSects;
+			if (fm instanceof PRVI25_CrustalFaultModels) {
+				modSubSects = addMuertosToCrustal(origSubSects, fm, dm, branch);
+			} else {
+				Preconditions.checkState(fm instanceof PRVI25_SubductionFaultModels);
+				modSubSects = removeMuertosFromInterface(origSubSects);
+			}
+			Preconditions.checkState(!modSubSects.isEmpty());
+			return modSubSects;
+		}
 	}
 
 }

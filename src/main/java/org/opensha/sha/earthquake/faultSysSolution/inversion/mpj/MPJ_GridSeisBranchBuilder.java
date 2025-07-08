@@ -213,19 +213,28 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			Preconditions.checkState(!levelsAffecting.isEmpty());
 			branchWriteFlags = new boolean[tree.size()];
 			branchesAffectingOnly = new ArrayList<>(tree.size());
-			HashSet<String> affectedPrefixes = new HashSet<>();
+			HashMap<String, LogicTreeBranch<?>> affectedPrefixes = new HashMap<>();
 			for (int i=0; i<tree.size(); i++) {
 				LogicTreeBranch<?> branch = tree.getBranch(i);
 				List<LogicTreeNode> nodesAffecting = new ArrayList<>(levelsAffecting.size());
 				for (LogicTreeLevel<?> level : levelsAffecting)
 					nodesAffecting.add(branch.getValue(level.getType()));
 				LogicTreeBranch<?> subBranch = new LogicTreeBranch<>(levelsAffecting, nodesAffecting);
-				branchesAffectingOnly.add(subBranch);
 				String prefix = subBranch.buildFileName();
-				if (!affectedPrefixes.contains(prefix)) {
-					affectedPrefixes.add(prefix);
+				if (affectedPrefixes.containsKey(prefix)) {
+					// already encountered this sub-branch, switch out with that previously found
+					subBranch = affectedPrefixes.get(prefix);
+					// add our weight to it
+					subBranch.setOrigBranchWeight(subBranch.getOrigBranchWeight() + tree.getBranchWeight(i));
+				} else {
+					// first time encountering this sub-branch
+					// initialize weight with our weight
+					subBranch.setOrigBranchWeight(tree.getBranchWeight(i));
+					affectedPrefixes.put(prefix, subBranch);
+					// register our top-level branch as the one who will process this grid provider branch
 					branchWriteFlags[i] = true;
 				}
+				branchesAffectingOnly.add(subBranch);
 			}
 			debug("Will only write for "+affectedPrefixes.size()+" unique affected sub-branches");
 		} else {
@@ -718,6 +727,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 						"Couldn't create grid source dir: %s", gridSeisDir);
 				write = true;
 				faultWeight = tree.getBranchWeight(origBranch);
+				Preconditions.checkState(faultWeight > 0, "Fault branch weight=%s: %s", faultWeight, origBranch);
 			} else {
 				// gridded seismicity branch level is further up
 				LogicTreeBranch<?> subBranch = branchesAffectingOnly.get(index);
@@ -726,8 +736,9 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 				gridSeisDir = new File(subDir, "grid_source_providers");
 				Preconditions.checkState(!write || gridSeisDir.exists() || gridSeisDir.mkdir(),
 						"Couldn't create grid source dir: %s", gridSeisDir);
-				faultWeight = tree.getWeightProvider().getWeight(subBranch);
+				faultWeight = subBranch.getOrigBranchWeight();
 				debug("Branch "+index+" maps to sub-branch: "+subBranch+" with weight="+faultWeight+" and write="+write);
+				Preconditions.checkState(faultWeight > 0, "Fault branch weight=%s. ORIG %s; SUB: %s", faultWeight, origBranch, subBranch);
 			}
 			
 			FaultSystemSolution sol = FaultSystemSolution.load(solFile);

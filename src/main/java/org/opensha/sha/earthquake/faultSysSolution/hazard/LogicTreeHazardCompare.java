@@ -93,6 +93,7 @@ import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.io.archive.ArchiveInput;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.hazard.AbstractLTVarianceDecomposition.VarianceContributionResult;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_LogicTreeHazardCalc;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
@@ -297,6 +298,7 @@ public class LogicTreeHazardCompare {
 				mapper.setPDiffRange(Double.parseDouble(cmd.getOptionValue("pdiff-range")));
 			if (cmd.hasOption("diff-range"))
 				mapper.setDiffRange(Double.parseDouble(cmd.getOptionValue("diff-range")));
+			mapper.forceSparseLTVar = cmd.hasOption("force-sparse-lt-var");
 			
 			if (cmd.hasOption("plot-region")) {
 				String plotRegStr = cmd.getOptionValue("plot-region");
@@ -409,6 +411,7 @@ public class LogicTreeHazardCompare {
 		ops.addOption(null, "pdiff-range", true, "Maximum % difference to plot");
 		ops.addOption(null, "diff-range", true, "Maximum difference to plot");
 		ops.addOption(null, "periods", true, "Custom spectral periods, comma separated");
+		ops.addOption(null, "force-sparse-lt-var", false, "Flag to force using the sparse logic tree variance algorithm");
 		
 		return ops;
 	}
@@ -432,6 +435,7 @@ public class LogicTreeHazardCompare {
 	
 	private ReturnPeriods[] rps;
 	private double[] periods;
+	private boolean forceSparseLTVar = false;
 	
 	private ZipFile zip;
 	private List<? extends LogicTreeBranch<?>> branches;
@@ -483,11 +487,13 @@ public class LogicTreeHazardCompare {
 		this.spacing = spacing;
 
 		logCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(-3d, 1d);
+		logCPT.setLog10(true);
 		spreadCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0, 1d);
 		spreadCPT.setNanColor(Color.LIGHT_GRAY);
 		spreadDiffCPT = GMT_CPT_Files.DIVERGING_BAM_UNIFORM.instance().reverse().rescale(-1d, 1d);
 		spreadDiffCPT.setNanColor(Color.LIGHT_GRAY);
 		iqrCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(-2, 0d);
+		iqrCPT.setLog10(true);
 		iqrCPT.setNanColor(Color.LIGHT_GRAY);
 		iqrDiffCPT = GMT_CPT_Files.DIVERGING_BAM_UNIFORM.instance().reverse().rescale(-0.05d, 0.05d);
 		iqrDiffCPT.setNanColor(Color.LIGHT_GRAY);
@@ -559,6 +565,7 @@ public class LogicTreeHazardCompare {
 	public void setCPTRange(double lower, double upper) {
 		try {
 			logCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(lower, upper);
+			logCPT.setLog10(true);
 		} catch (IOException e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
@@ -886,7 +893,7 @@ public class LogicTreeHazardCompare {
 		return avg;
 	}
 	
-	public GriddedGeoDataSet buildMean(List<GriddedGeoDataSet> maps, List<Double> weights) {
+	public static GriddedGeoDataSet buildMean(List<GriddedGeoDataSet> maps, List<Double> weights) {
 		GriddedGeoDataSet avg = new GriddedGeoDataSet(maps.get(0).getRegion(), false);
 		
 		double totWeight = 0d;
@@ -1357,83 +1364,13 @@ public class LogicTreeHazardCompare {
 		return ret;
 	}
 	
-	private GriddedGeoDataSet[] averageAcrossLevel(LogicTree<?> tree, GriddedGeoDataSet[] allMaps, List<Double> allWeights,
-			LogicTreeLevel<?> level, int levelIndex, List<Double> weightsToFillIn, List<LogicTreeLevel<?>> uniqueSamplingLevels) {
-		Preconditions.checkState(allMaps.length == tree.size());
-		Preconditions.checkState(allMaps.length == allWeights.size());
-		Preconditions.checkState(weightsToFillIn.isEmpty());
-		
-		Map<LogicTreeBranch<?>, List<Integer>> otherBranchIndexes = new HashMap<>();
-		List<LogicTreeBranch<?>> uniqueOtherBranches = new ArrayList<>();
-		
-		if (level == null) {
-			System.out.println("Averaging out any sampling levels");
-		} else {
-			System.out.println("Averaging out level '"+level.getName()+"' by finding all unique branches excluding that level");
-		}
-		
-		List<Integer> clearIndexes = new ArrayList<>();
-		if (levelIndex >= 0)
-			clearIndexes.add(levelIndex);
-		// now see if there are any random sampling branches where there are unique samples for every branch in the
-		// tree (as opposed to N samples at that lavel). In that case, we need to clear them as well.
-		int numLevels = tree.getLevels().size();
-		for (int l=0; l<numLevels; l++) {
-			if (l != levelIndex) {
-				LogicTreeLevel<?> testLevel = tree.getLevels().get(l);
-				if (uniqueSamplingLevels.contains(testLevel)) {
-					System.out.println("\tWill also clear out sampling values from level '"+testLevel.getName()+"'");
-					clearIndexes.add(l);
-				}
-			}
-		}
-		if (clearIndexes.isEmpty())
-			return null;
-		
-		for (int b=0; b<tree.size(); b++) {
-			// copy it so we can clear the value
-			LogicTreeBranch<?> branch = tree.getBranch(b).copy();
-			for (int l : clearIndexes)
-				branch.clearValue(l);
-			
-			List<Integer> indexes = otherBranchIndexes.get(branch);
-			if (indexes == null) {
-				// first time
-				indexes = new ArrayList<>();
-				otherBranchIndexes.put(branch, indexes);
-				uniqueOtherBranches.add(branch);
-			}
-			indexes.add(b);
-		}
-		
-		System.out.println("\treduced from "+tree.size()+" to "+uniqueOtherBranches.size()+" branches");
-		if (tree.size() == uniqueOtherBranches.size() || uniqueOtherBranches.size() == 1)
-			return null;
-		
-		GriddedGeoDataSet[] ret = new GriddedGeoDataSet[uniqueOtherBranches.size()];
-		
-		for (int b=0; b<ret.length; b++) {
-			LogicTreeBranch<?> branch = uniqueOtherBranches.get(b);
-			List<Integer> indexes = otherBranchIndexes.get(branch);
-			double weightSum = 0d;
-			GriddedGeoDataSet map = new GriddedGeoDataSet(allMaps[0].getRegion());
-			for (int index : indexes) {
-				double subWeight = tree.getBranchWeight(index);
-				weightSum += subWeight;
-				GriddedGeoDataSet subMap = allMaps[index];
-				for (int i=0; i<map.size(); i++)
-					map.add(i, subMap.get(i)*subWeight);
-			}
-			map.scale(1d/weightSum);
-			ret[b] = map;
-			weightsToFillIn.add(weightSum);
-		}
-		
-		return ret;
-	}
-	
 	private void calcSD_COV(GriddedGeoDataSet[] maps, List<Double> weights,
 			GriddedGeoDataSet meanMap, GriddedGeoDataSet sd, GriddedGeoDataSet cov) {
+		calcSD_COV(maps, weights, meanMap, sd, cov, exec);
+	}
+	
+	static void calcSD_COV(GriddedGeoDataSet[] maps, List<Double> weights,
+			GriddedGeoDataSet meanMap, GriddedGeoDataSet sd, GriddedGeoDataSet cov, ExecutorService exec) {
 		double[] weightsArray = MathArrays.normalizeArray(Doubles.toArray(weights), weights.size());
 
 		Stopwatch watch = Stopwatch.createStarted();
@@ -1580,6 +1517,7 @@ public class LogicTreeHazardCompare {
 		
 		List<LogicTreeLevel<?>> uniqueSamplingLevels = null;
 		Boolean canDecomposeVariance = null;
+		AbstractLTVarianceDecomposition varDecomposer = null;
 		
 		for (double period : periods) {
 			String perLabel, perPrefix, unitlessPerLabel;
@@ -1600,7 +1538,7 @@ public class LogicTreeHazardCompare {
 				
 				// plot CPT files for grabbing externally
 				PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt",
-						GeographicMapMaker.buildCPTLegend(logCPT, "Log10 "+label), cptWidth, true, true);
+						GeographicMapMaker.buildCPTLegend(logCPT, label), cptWidth, true, true);
 				PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt_cov",
 						GeographicMapMaker.buildCPTLegend(covCPT, "COV, "+unitlessLabel), cptWidth, true, true);
 				PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt_pDiff",
@@ -1707,14 +1645,14 @@ public class LogicTreeHazardCompare {
 				
 				boolean cmulti = comp != null && comp.branches != null && comp.branches.size() > 1;
 				
-				MapPlot meanMapPlot = mapper.buildMapPlot(resourcesDir, prefix+"_mean", log10(mean),
-						logCPT, TITLES ? name : " ", "Log10 "+(multi ? "Weighted-Average" : "Mean")+", "+label, false);
+				MapPlot meanMapPlot = mapper.buildMapPlot(resourcesDir, prefix+"_mean", mean,
+						logCPT, TITLES ? name : " ", (multi ? "Weighted-Average" : "Mean")+", "+label, false);
 				File meanMapFile = new File(resourcesDir, meanMapPlot.prefix+".png");
 				GriddedGeoDataSet.writeXYZFile(mean, new File(resourcesDir, prefix+"_mean.xyz"));
 				File medianMapFile = null;
 				if (multi) {
-					medianMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_median", log10(median),
-							logCPT, TITLES ? name : " ", "Log10 Weighted-Median, "+label);
+					medianMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_median", median,
+							logCPT, TITLES ? name : " ", "Weighted-Median, "+label);
 					GriddedGeoDataSet.writeXYZFile(median, new File(resourcesDir, prefix+"_median.xyz"));
 				}
 				
@@ -1760,8 +1698,8 @@ public class LogicTreeHazardCompare {
 					TableBuilder table = MarkdownUtils.tableBuilder();
 					
 					// comparison mean
-					File cmeanMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_mean", log10(cmean),
-							logCPT, TITLES ? compName : " ", "Log10 Weighted-Average, "+label);
+					File cmeanMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_mean", cmean,
+							logCPT, TITLES ? compName : " ", "Weighted-Average, "+label);
 					GriddedGeoDataSet.writeXYZFile(cmean, new File(resourcesDir, prefix+"_comp_mean.xyz"));
 					
 					table.initNewLine();
@@ -1811,8 +1749,8 @@ public class LogicTreeHazardCompare {
 						lines.addAll(table.build());
 						lines.add("");
 						
-						File cmedianMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_median", log10(cmedian),
-								logCPT, TITLES ? compName : " ", "Log10 Weighted-Median, "+label);
+						File cmedianMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_median", cmedian,
+								logCPT, TITLES ? compName : " ", "Weighted-Median, "+label);
 						GriddedGeoDataSet.writeXYZFile(cmedian, new File(resourcesDir, prefix+"_comp_median.xyz"));
 						
 						lines.add("### Median hazard maps and comparisons, "+unitlessLabel);
@@ -1973,14 +1911,14 @@ public class LogicTreeHazardCompare {
 					table = MarkdownUtils.tableBuilder();
 					table.addLine(MarkdownUtils.boldCentered("Minimum"), MarkdownUtils.boldCentered("Maximum"));
 					
-					File minMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_min", log10(min),
-							logCPT, TITLES ? name : " ", "Log10 Minimum, "+label);
-					File maxMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_max", log10(max),
-							logCPT, TITLES ? name : " ", "Log10 Maximum, "+label);
+					File minMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_min", min,
+							logCPT, TITLES ? name : " ", "Minimum, "+label);
+					File maxMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_max", max,
+							logCPT, TITLES ? name : " ", "Maximum, "+label);
 					File spreadMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_spread", spread,
 							spreadCPT, TITLES ? name : " ", "Log10 (Max/Min), "+unitlessLabel);
-					File iqrMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_iqr", log10(iqr),
-							iqrCPT, TITLES ? name : " ", "Log10 IQR, "+label);
+					File iqrMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_iqr", iqr,
+							iqrCPT, TITLES ? name : " ", "IQR, "+label);
 					File sdMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_sd", sd,
 							sdCPT, TITLES ? name : " ", "SD, "+label);
 					File covMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_cov", cov,
@@ -2013,19 +1951,19 @@ public class LogicTreeHazardCompare {
 					table = MarkdownUtils.tableBuilder();
 					// comparison
 					addMapCompDiffLines(min, name, cmin, compName, prefix+"_min", resourcesDir, table,
-							"Minimum", "Minimum "+label, "Minimum "+unitlessLabel, true, logCPT, diffCPT, pDiffCPT, comp.gridReg);
+							"Minimum", "Minimum "+label, "Minimum "+unitlessLabel, logCPT, diffCPT, pDiffCPT, comp.gridReg);
 					addMapCompDiffLines(max, name, cmax, compName, prefix+"_max", resourcesDir, table,
-							"Maximum", "Maximum "+label, "Maximum "+unitlessLabel, true, logCPT, diffCPT, pDiffCPT, comp.gridReg);
+							"Maximum", "Maximum "+label, "Maximum "+unitlessLabel, logCPT, diffCPT, pDiffCPT, comp.gridReg);
 					addMapCompDiffLines(spread, name, cspread, compName, prefix+"_spread", resourcesDir, table,
-							"Log10 (Max/Min)", "Log10 (Max/Min) "+unitlessLabel, "Log10 (Max/Min) "+unitlessLabel, false,
+							"Log10 (Max/Min)", "Log10 (Max/Min) "+unitlessLabel, "Log10 (Max/Min) "+unitlessLabel,
 							spreadCPT, spreadDiffCPT, pDiffCPT, comp.gridReg);
 					addMapCompDiffLines(iqr, name, ciqr, compName, prefix+"_iqr", resourcesDir, table,
-							"Interquartile Range", "IQR "+label, "IQR "+unitlessLabel, true,
+							"Interquartile Range", "IQR "+label, "IQR "+unitlessLabel,
 							iqrCPT, iqrDiffCPT, pDiffCPT, comp.gridReg);
 					addMapCompDiffLines(sd, name, csd, compName, prefix+"_sd", resourcesDir, table,
-							"SD", label+", SD", unitlessLabel+", SD", false, sdCPT, sdDiffCPT, pDiffCPT, comp.gridReg);
+							"SD", label+", SD", unitlessLabel+", SD", sdCPT, sdDiffCPT, pDiffCPT, comp.gridReg);
 					addMapCompDiffLines(cov, name, ccov, compName, prefix+"_cov", resourcesDir, table,
-							"COV", unitlessLabel+", COV", unitlessLabel+", COV", false, covCPT, covDiffCPT, pDiffCPT, comp.gridReg);
+							"COV", unitlessLabel+", COV", unitlessLabel+", COV", covCPT, covDiffCPT, pDiffCPT, comp.gridReg);
 					
 					lines.add("");
 					lines.add(minMaxStr+" Each of those quantities is plotted separately for the primary and comparison "
@@ -2074,6 +2012,7 @@ public class LogicTreeHazardCompare {
 					uniqueSamplingLevels = new ArrayList<>();
 					System.out.println("Looking for unique random sampling levels (those where samples are not reused "
 							+ "across upstream branches) for exclusion in variance calculations");
+					boolean firstVaryingLevel = true;
 					for (int l=0; l<numLevels; l++) {
 						LogicTreeLevel<?> level = tree.getLevels().get(l);
 						if (level instanceof RandomlySampledLevel<?> || level instanceof FileBackedLevel) {
@@ -2086,13 +2025,15 @@ public class LogicTreeHazardCompare {
 								System.out.println("\tDetected that "+level.getName()+" is a randomly sampled level "
 										+ "because it has a unique value for each tree branch");
 								uniqueSamplingLevels.add(level);
-							} else if (l > 1) {
+							} else if (!firstVaryingLevel) {
 								// there's not a one-to-one correspondence, but it still could be tree-wide random sampling
 								// if the tree was later downsampled and/or combined with another tree
 								// 
 								// we'll detect this by checking to see if there are any values shared amongst upstream
 								// branches; if there are not (meaning that nodes from this level were never reused, at
 								// least looking at upstream branches), then we'll treat this as a random sampling level
+								// 
+								// we can only do this check for levels downstream of the first varying level, however
 								
 								List<LogicTreeLevel<? extends LogicTreeNode>> levelsAbove = new ArrayList<>(tree.getLevels().subList(0, l));
 								Map<LogicTreeNode, LogicTreeBranch<?>> prevBranchesAbove = new HashMap<>();
@@ -2119,59 +2060,69 @@ public class LogicTreeHazardCompare {
 								}
 							}
 						}
+						if (firstVaryingLevel) {
+							// see if this node varies
+							LogicTreeNode firstVal = tree.getBranch(0).getValue(l);
+							for (LogicTreeBranch<?> branch : tree) {
+								if (!branch.getValue(l).equals(firstVal)) {
+									// there are multiple values for this level
+									firstVaryingLevel = false;
+									break;
+								}
+							}
+						}
 					}
 					
 					if (uniqueSamplingLevels.isEmpty()) {
 						System.out.println("\tNo such sampling levels found");
-						canDecomposeVariance = true;
-					} else {
-						// we have randomly sampled levels and can only decompose the variance if the logic tree is 
-						// otherwise complete; this doesn't work for downsampled logic trees
-						HashSet<LogicTreeBranch<?>> concreteBranches = new HashSet<>();
-						List<LogicTreeLevel<? extends LogicTreeNode>> concreteLevels = new ArrayList<>();
-						List<Integer> levelMappings = new ArrayList<>();
-						List<HashSet<LogicTreeNode>> encounteredConcreteNodes = new ArrayList<>();
-						for (int l=0; l<numLevels; l++) {
-							LogicTreeLevel<?> level = tree.getLevels().get(l);
-							if (!uniqueSamplingLevels.contains(level)) {
-								concreteLevels.add(level);
-								levelMappings.add(l);
-								encounteredConcreteNodes.add(new HashSet<>());
-							}
-						}
-						for (LogicTreeBranch<?> branch : tree) {
-							LogicTreeBranch<LogicTreeNode> concreteBranch = new LogicTreeBranch<>(concreteLevels);
-							for (int i=0; i<concreteLevels.size(); i++) {
-								LogicTreeNode node = branch.getValue(levelMappings.get(i));
-								concreteBranch.setValue(i, node);
-								encounteredConcreteNodes.get(i).add(node);
-							}
-							concreteBranches.add(concreteBranch);
-						};
-						int completeTreeCount = 1;
-						for (HashSet<LogicTreeNode> nodes : encounteredConcreteNodes)
-							completeTreeCount *= nodes.size();
-						if (completeTreeCount != concreteBranches.size()) {
-							System.out.println("Can't do variance decomposition because this tree contains random "
-									+ "sampling levels and is downsampled. Complete count of concrete branches "
-									+ "(excluding sampling levels) would be "+completeTreeCount+", we have "+concreteBranches.size());
-							canDecomposeVariance = false;
-						} else {
-							canDecomposeVariance = true;
+					}
+					
+					// now see if the logic tree is complete or randomly sampled
+					// if complete, we'll use the better marginal averaging approach
+					// if not, we'll use the sparse approach
+					HashSet<LogicTreeBranch<?>> concreteBranches = new HashSet<>();
+					List<LogicTreeLevel<? extends LogicTreeNode>> concreteLevels = new ArrayList<>();
+					List<Integer> levelMappings = new ArrayList<>();
+					List<HashSet<LogicTreeNode>> encounteredConcreteNodes = new ArrayList<>();
+					for (int l=0; l<numLevels; l++) {
+						LogicTreeLevel<?> level = tree.getLevels().get(l);
+						if (!uniqueSamplingLevels.contains(level)) {
+							concreteLevels.add(level);
+							levelMappings.add(l);
+							encounteredConcreteNodes.add(new HashSet<>());
 						}
 					}
+					for (LogicTreeBranch<?> branch : tree) {
+						LogicTreeBranch<LogicTreeNode> concreteBranch = new LogicTreeBranch<>(concreteLevels);
+						for (int i=0; i<concreteLevels.size(); i++) {
+							LogicTreeNode node = branch.getValue(levelMappings.get(i));
+							concreteBranch.setValue(i, node);
+							encounteredConcreteNodes.get(i).add(node);
+						}
+						concreteBranches.add(concreteBranch);
+					};
+					int completeTreeCount = 1;
+					for (HashSet<LogicTreeNode> nodes : encounteredConcreteNodes)
+						completeTreeCount *= nodes.size();
+					if (completeTreeCount == 1) {
+						canDecomposeVariance = false;
+					} else if (completeTreeCount != concreteBranches.size() || forceSparseLTVar) {
+						System.out.println("Have to use sparse variance decomposition approach because the logic tree is downsampled");
+						canDecomposeVariance = true;
+						varDecomposer = new SparseLTVarianceDecomposition(tree, uniqueSamplingLevels, exec);
+					} else {
+						canDecomposeVariance = true;
+						varDecomposer = new MarginalAveragingLTVarianceDecomposition(tree, uniqueSamplingLevels, exec);
+					}
 				}
-				TableBuilder ltCOVtable = null;
-				boolean anyNegativeLTCOVs = false;
-				GriddedGeoDataSet covOfMapMean = null;
-				GriddedGeoDataSet varOfMapMean = null;
-				AvgMaxCalc origCOVs = null;
 				
-				GriddedGeoDataSet covAveragingOverSampling = null;
-				GriddedGeoDataSet varAveragingOverSampling = null;
-				
+				List<VarianceContributionResult> varResults = null;
 				if (canDecomposeVariance) {
-					ltCOVtable = MarkdownUtils.tableBuilder();
+					varResults = new ArrayList<>(numLevels);
+					for (int l=0; l<numLevels; l++)
+						varResults.add(null);
+					GriddedGeoDataSet covOfMapMean;
+					GriddedGeoDataSet varOfMapMean;
 					if (meanIsFromCurves) {
 						// need to calculate the raw mean of the maps because that's how we're going to calculate level COVs
 						mapMean = buildMean(maps);
@@ -2183,26 +2134,11 @@ public class LogicTreeHazardCompare {
 						covOfMapMean = cov;
 					}
 					varOfMapMean = new GriddedGeoDataSet(region);
-					origCOVs = new AvgMaxCalc();
 					for (int i=0; i<cov.size(); i++) {
-						origCOVs.addValue(cov.get(i));
-						varOfMapMean.set(i, sd.get(i)*sd.get(i));
+						double var = sd.get(i)*sd.get(i);
+						varOfMapMean.set(i, var);
 					}
-					ltCOVtable.addLine("Branch Level", "Average Variance Contribution", "Average COV Contribution",
-							"Maximum Variance Contribution", "Maximum COV Contribution");
-					ltCOVtable.addLine("Full model", "100%", threeDigits.format(origCOVs.getAverage()), "100%", threeDigits.format(origCOVs.getMax()));
-					
-					if (!uniqueSamplingLevels.isEmpty()) {
-						List<Double> weightsWithoutSampling = new ArrayList<>();
-						GriddedGeoDataSet[] mapsAveragingOverSampling = averageAcrossLevel(tree, maps, weights, null, -1, weightsWithoutSampling, uniqueSamplingLevels);
-						Preconditions.checkNotNull(mapsAveragingOverSampling);
-						GriddedGeoDataSet sdAveragingOverSampling = new GriddedGeoDataSet(region);
-						covAveragingOverSampling = new GriddedGeoDataSet(region);
-						calcSD_COV(mapsAveragingOverSampling, weightsWithoutSampling, mapMean, sdAveragingOverSampling, covAveragingOverSampling);
-						varAveragingOverSampling = new GriddedGeoDataSet(region);
-						for (int i=0; i<region.getNodeCount(); i++)
-							varAveragingOverSampling.set(i, sdAveragingOverSampling.get(i)*sdAveragingOverSampling.get(i));
-					}
+					varDecomposer.initForMaps(mapMean, varOfMapMean, maps, weights);
 				}
 				
 				
@@ -2245,84 +2181,39 @@ public class LogicTreeHazardCompare {
 								uniqueSamplingLevels.contains(level))
 							// this is a secondary unique sampling level, skip as already bundled previously
 							continue;
-						List<Double> weightsExcludingLevel = new ArrayList<>();
-						GriddedGeoDataSet[] mapsExcludingLevel = averageAcrossLevel(tree, maps, weights, level, l, weightsExcludingLevel, uniqueSamplingLevels);
-						if (mapsExcludingLevel != null) {
-							// verification step
-							GriddedGeoDataSet excludingMean = buildMean(List.of(mapsExcludingLevel), weightsExcludingLevel);
-							for (int i=0; i<excludingMean.size(); i++) {
-								Preconditions.checkState(!Double.isFinite(mapMean.get(i))
-										|| Precision.equals(mapMean.get(i), excludingMean.get(i), 1e-4),
-										"Mean map doesn't match mean when averaged across level for location %s: %s != %s",
-										i, mapMean.get(i), excludingMean.get(i));
-							}
+						VarianceContributionResult varResult = varDecomposer.calcMapVarianceContributionForLevel(
+								l, level, choiceMaps, choiceWeights);
+						if (varResult != null) {
+//							// orig here is the full original, used for ratios
+//							// ref here is the reference value we're comparing to, used for differences
+//							AvgMaxCalc refCOVs = new AvgMaxCalc();
+//							AvgMaxCalc withoutCOVs = new AvgMaxCalc();
+//							AvgMaxCalc deltaCOVs = new AvgMaxCalc();
+//							AvgMaxCalc fDiffCOVs = new AvgMaxCalc();
+//							AvgMaxCalc fractVars = new AvgMaxCalc();
+//							for (int i=0; i<covExcluding.size(); i++) {
+//								double refCOV = refCOVMap.get(i);
+//								double origCOV = covOfMapMean.get(i);
+//								double withoutCOV = covExcluding.get(i);
+//								double refVar = refVarMap.get(i);
+//								double origVar = varOfMapMean.get(i);
+//								double withoutVar = sdExcluding.get(i)*sdExcluding.get(i);
+//								double varDiff = refVar - withoutVar;
+//								double deltaCOV = refCOV - withoutCOV;
+//								refCOVs.addValue(refCOV);
+//								withoutCOVs.addValue(withoutCOV);
+//								deltaCOVs.addValue(deltaCOV);
+//								fDiffCOVs.addValue(deltaCOV/origCOV);
+//								fractVars.addValue(varDiff/origVar);
+//							}
+//							
+//							System.out.println("\tOrigCOV="+(float)origCOVs.getAverage());
+//							System.out.println("\tRefCOV="+(float)refCOVs.getAverage());
+//							System.out.println("\tWithoutCOV="+(float)withoutCOVs.getAverage());
+//							System.out.println("\tdeltaCOV="+deltaCOVs.getAverage()+" ("+pDF.format(fDiffCOVs.getAverage())+")");
+//							System.out.println("\tdeltaVar="+fractVars.getAverage()+" ("+pDF.format(fractVars.getAverage())+")");
 							
-							GriddedGeoDataSet covExcluding = new GriddedGeoDataSet(region);
-							GriddedGeoDataSet sdExcluding = new GriddedGeoDataSet(region);
-							System.out.println("\tCalculating COV excluding");
-							calcSD_COV(mapsExcludingLevel, weightsExcludingLevel, mapMean, sdExcluding, covExcluding);
-//							AvgMaxCalc fullCOVs = new AvgMaxCalc();
-							
-							GriddedGeoDataSet refCOVMap, refVarMap;
-							if (uniqueSamplingLevels.isEmpty() || uniqueSamplingLevels.contains(level)) {
-								// no sampling levels, or this is a sampling level
-								// in which case, we're comparing to the full distribution
-								refCOVMap = covOfMapMean;
-								refVarMap = varOfMapMean;
-							} else {
-								// this is not a sampling level, but they exist; we should compare to the distribution
-								// after having averaged out the sampling levels
-								refCOVMap = covAveragingOverSampling;
-								refVarMap = varAveragingOverSampling;
-							}
-							
-							// orig here is the full original, used for ratios
-							// ref here is the reference value we're comparing to, used for differences
-							AvgMaxCalc refCOVs = new AvgMaxCalc();
-							AvgMaxCalc withoutCOVs = new AvgMaxCalc();
-							AvgMaxCalc deltaCOVs = new AvgMaxCalc();
-							AvgMaxCalc fDiffCOVs = new AvgMaxCalc();
-							AvgMaxCalc fractVars = new AvgMaxCalc();
-							for (int i=0; i<covExcluding.size(); i++) {
-								double refCOV = refCOVMap.get(i);
-								double origCOV = covOfMapMean.get(i);
-								double withoutCOV = covExcluding.get(i);
-								double refVar = refVarMap.get(i);
-								double origVar = varOfMapMean.get(i);
-								double withoutVar = sdExcluding.get(i)*sdExcluding.get(i);
-								double varDiff = refVar - withoutVar;
-								double deltaCOV = refCOV - withoutCOV;
-								refCOVs.addValue(refCOV);
-								withoutCOVs.addValue(withoutCOV);
-								deltaCOVs.addValue(deltaCOV);
-								fDiffCOVs.addValue(deltaCOV/origCOV);
-								fractVars.addValue(varDiff/origVar);
-							}
-							
-							System.out.println("\tOrigCOV="+(float)origCOVs.getAverage());
-							System.out.println("\tRefCOV="+(float)refCOVs.getAverage());
-							System.out.println("\tWithoutCOV="+(float)withoutCOVs.getAverage());
-							System.out.println("\tdeltaCOV="+deltaCOVs.getAverage()+" ("+pDF.format(fDiffCOVs.getAverage())+")");
-							System.out.println("\tdeltaVar="+fractVars.getAverage()+" ("+pDF.format(fractVars.getAverage())+")");
-							
-							String levelName = level.getName();
-							if (uniqueSamplingLevels.size() > 1 && uniqueSamplingLevels.get(0) == level) {
-								// this is a bundle across multiple sampling levels
-								levelName = uniqueSamplingLevels.size()+" sampling levels: ";
-								for (int i=0; i<uniqueSamplingLevels.size(); i++) {
-									if (i > 0)
-										levelName += ", ";
-									levelName += uniqueSamplingLevels.get(i).getShortName();
-								}
-							}
-							
-							anyNegativeLTCOVs |= fractVars.getAverage() < 0d || deltaCOVs.getAverage() < 0d;
-							
-							ltCOVtable.addLine(levelName,
-									pDF.format(fractVars.getAverage()),
-									threeDigits.format(deltaCOVs.getAverage())+" ("+pDF.format(fDiffCOVs.getAverage())+")",
-									pDF.format(fractVars.getMax()),
-									threeDigits.format(deltaCOVs.getMax())+" ("+pDF.format(fDiffCOVs.getMax())+")");
+							varResults.set(l, varResult);
 						}
 					}
 					if (LogicTreeCurveAverager.shouldSkipLevel(level, choiceMaps.size())) {
@@ -2739,34 +2630,13 @@ public class LogicTreeHazardCompare {
 				}
 				
 				if (canDecomposeVariance) {
-					if (ltCOVtable.getNumLines() > 2) {
+					List<String> varLines = varDecomposer.buildLines(varResults);
+					if (varLines != null && !varLines.isEmpty()) {
 						if (!addInLines.isEmpty())
 							addInLines.add("");
-						addInLines.add("#### Logic Tree Variance and COV Contributions, "+unitlessLabel);
+						addInLines.add("#### "+varDecomposer.getHeading()+", "+unitlessLabel);
 						addInLines.add(topLink); addInLines.add("");
-						addInLines.add("This table summarizes how each logic tree branching level contributes to the overall "
-								+ "variance and coefficient of variation (COV) in the model.");
-						addInLines.add("");
-						addInLines.add("For each level, its contribution is estimated by collapsing the logic tree across "
-								+ "that level; i.e., by averaging values across all branches that differ only in thier "
-								+ "choice at that level.");
-						addInLines.add("");
-						if (uniqueSamplingLevels.size() > 1) {
-							addInLines.add("This logic tree contains multiple random sampling levels and variance cannot "
-									+ "be decomposed between them. They are bundled into a single line of the table.");
-							addInLines.add("");
-						}
-						if (anyNegativeLTCOVs) {
-							addInLines.add("In some cases, the variance (and therefore COV) may slightly increase after removing "
-									+ "a level. This is due to the behavior of weighted averaging and is interpreted as "
-									+ "statistical noise, indicating that the level does not significantly contribute to model "
-									+ "variability.");
-							addInLines.add("");
-						}
-						addInLines.add("Both spatially averaged and maximum contributions are reported for each level.");
-						addInLines.add("");
-						addInLines.addAll(ltCOVtable.build());
-						addInLines.add("");
+						addInLines.addAll(varLines);
 					} else {
 						canDecomposeVariance = false;
 					}
@@ -3034,9 +2904,9 @@ public class LogicTreeHazardCompare {
 		return "Mean: "+twoDigits.format(mean)+"%, Mean Abs: "+twoDigits.format(meanAbs)+"%";
 	}
 
-	private static final DecimalFormat threeDigits = new DecimalFormat("0.000");
-	private static final DecimalFormat twoDigits = new DecimalFormat("0.00");
-	private static final DecimalFormat pDF = new DecimalFormat("0.0%");
+	static final DecimalFormat threeDigits = new DecimalFormat("0.000");
+	static final DecimalFormat twoDigits = new DecimalFormat("0.00");
+	static final DecimalFormat pDF = new DecimalFormat("0.0%");
 	
 	private static final Comparator<LogicTreeNode> nodeNameCompare = new Comparator<LogicTreeNode>() {
 
@@ -3192,17 +3062,17 @@ public class LogicTreeHazardCompare {
 	
 	private void addMapCompDiffLines(GriddedGeoDataSet primary, String name, GriddedGeoDataSet comparison,
 			String compName, String prefix, File resourcesDir, TableBuilder table, String type, String label,
-			String unitlessLabel, boolean logMap, CPT cpt, CPT diffCPT, CPT pDiffCPT, GriddedRegion compReg) throws IOException {
+			String unitlessLabel, CPT cpt, CPT diffCPT, CPT pDiffCPT, GriddedRegion compReg) throws IOException {
 		
 		table.addLine(MarkdownUtils.boldCentered("Primary "+type), MarkdownUtils.boldCentered("Comparison "+type),
 				MarkdownUtils.boldCentered("Difference"), MarkdownUtils.boldCentered("% Change"));
 		
 		table.initNewLine();
 		File map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix,
-				logMap ? log10(primary) : primary, cpt, name, (logMap ? "Log10 " : "")+label);
+				primary, cpt, name, label);
 		table.addColumn("!["+type+"]("+resourcesDir.getName()+"/"+map.getName()+")");
 		map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp",
-				logMap ? log10(comparison) : comparison, cpt, compName, (logMap ? "Log10 " : "")+label);
+				comparison, cpt, compName, label);
 		table.addColumn("!["+type+"]("+resourcesDir.getName()+"/"+map.getName()+")");
 		
 		GriddedGeoDataSet diffForStats = null;
