@@ -251,9 +251,8 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 	
 	static SurfaceDistances forZeroLength(Location siteLoc, double horzDist, double zTop) {
 		double rRup = hypot2(horzDist, zTop);
-		double rSeis = zTop >= GriddedSurfaceUtils.SEIS_DEPTH ? rRup : hypot2(horzDist, GriddedSurfaceUtils.SEIS_DEPTH);
 		double rX = horzDist == 0d ? 0 : -horzDist;
-		return new SurfaceDistances.Precomputed(siteLoc, rRup, horzDist, rSeis, rX);
+		return new SurfaceDistances.Precomputed(siteLoc, rRup, horzDist, rX);
 	}
 	
 	public static SurfaceDistances calcDistancesForRjb(PointSurface surf, Location siteLoc, double horzDist, double rJB, boolean footwall) {
@@ -278,7 +277,6 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 		private final boolean footwall;
 		
 		private volatile Double rRup;
-		private volatile Double rSeis;
 
 		public LazyDistancesFromRjb(Location siteLoc, double rJB, double rEpi, double zTop, double zBot, double dipRad,
 				double length, double horzWidth, boolean footwall) {
@@ -308,18 +306,6 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 		@Override
 		public double getDistanceJB() {
 			return rJB;
-		}
-
-		@Override
-		public double getDistanceSeis() {
-			if (rSeis == null) {
-				if (zTop >= GriddedSurfaceUtils.SEIS_DEPTH)
-					rSeis = getDistanceRup();
-				else
-					rSeis = getCorrDistRup(rJB, rEpi, GriddedSurfaceUtils.SEIS_DEPTH, Math.max(GriddedSurfaceUtils.SEIS_DEPTH, zBot),
-							dipRad, length, horzWidth, footwall);
-			}
-			return rSeis;
 		}
 
 		@Override

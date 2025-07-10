@@ -400,12 +400,10 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 		double horzDist = LocationUtils.horzDistanceFast(pointLocation, siteLoc);
 		return horzDist;
 	}
-
+	
 	@Override
-	public double getDistanceSeis(Location siteLoc){
-		double depth = Math.max(SEIS_DEPTH, getAveRupTopDepth());
-		double djb = getDistanceJB(siteLoc);
-		return Math.sqrt(depth * depth + djb * djb);
+	public SurfaceDistances getDistances(Location siteLoc) {
+		return new SurfaceDistances.Precomputed(siteLoc, getDistanceRup(siteLoc), getDistanceJB(siteLoc), getDistanceX(siteLoc));
 	}
 	
 	@Override
@@ -592,12 +590,6 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 		}
 
 		@Override
-		public double getDistanceSeis(Location siteLoc) {
-			assertSameLocation(siteLoc);
-			return surfDists.getDistanceSeis();
-		}
-
-		@Override
 		public double getDistanceX(Location siteLoc) {
 			assertSameLocation(siteLoc);
 			return surfDists.getDistanceX();
@@ -641,11 +633,6 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 		@Override
 		public double getDistanceJB(Location siteLoc) {
 			return cache.getSurfaceDistances(siteLoc).getDistanceJB();
-		}
-
-		@Override
-		public double getDistanceSeis(Location siteLoc) {
-			return cache.getSurfaceDistances(siteLoc).getDistanceSeis();
 		}
 
 		@Override
@@ -702,11 +689,6 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 		}
 
 		@Override
-		public double getDistanceSeis(Location siteLoc) {
-			throw new IllegalStateException(MESSAGE);
-		}
-
-		@Override
 		public double getDistanceX(Location siteLoc) {
 			throw new IllegalStateException(MESSAGE);
 		}
@@ -717,10 +699,6 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 
 		public double getUncorrectedDistanceJB(Location siteLoc) {
 			return super.getDistanceJB(siteLoc);
-		}
-
-		public double getUncorrectedDistanceSeis(Location siteLoc) {
-			return super.getDistanceSeis(siteLoc);
 		}
 
 		public double getUncorrectedDistanceX(Location siteLoc) {

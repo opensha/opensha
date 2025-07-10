@@ -182,9 +182,8 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 			// no length, so no distance correction
 			double zTop = surf.getAveRupTopDepth();
 			double rRup = hypot2(horzDist, zTop);
-			double rSeis = zTop >= GriddedSurfaceUtils.SEIS_DEPTH ? rRup : hypot2(horzDist, GriddedSurfaceUtils.SEIS_DEPTH);
 			double rX = horzDist == 0d ? 0 : -horzDist;
-			return WeightedList.evenlyWeighted(new SurfaceDistances.Precomputed(siteLoc, rRup, horzDist, rSeis, rX));
+			return WeightedList.evenlyWeighted(new SurfaceDistances.Precomputed(siteLoc, rRup, horzDist, rX));
 		}
 		
 		FractileDistances fractileDists;
@@ -276,11 +275,10 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 		private final double comparable;
 
 		public PrecomputedComparableDistances(double distanceRup, double distanceJB,
-				double distanceSeis, double distanceX) {
-			super(null, distanceRup, distanceJB, distanceSeis, distanceX);
+				double distanceX) {
+			super(null, distanceRup, distanceJB, distanceX);
 			Preconditions.checkState(distanceJB >= 0 && Double.isFinite(distanceJB), "Bad rJB=%s", distanceJB);
 			Preconditions.checkState(distanceRup >= 0 && Double.isFinite(distanceRup), "Bad rRup=%s", distanceRup);
-			Preconditions.checkState(distanceSeis >= 0 && Double.isFinite(distanceSeis), "Bad rSeis=%s", distanceSeis);
 			Preconditions.checkState(Double.isFinite(distanceX), "Bad rX=%s", distanceX);
 			comparable = distanceJB + distanceRup;
 		}
@@ -546,7 +544,6 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 			ret[f] = new PrecomputedComparableDistances(
 					deltaInterp(delta, below[f].getDistanceRup(), above[f].getDistanceRup()),
 					deltaInterp(delta, below[f].getDistanceJB(), above[f].getDistanceJB()),
-					deltaInterp(delta, below[f].getDistanceSeis(), above[f].getDistanceSeis()),
 					deltaInterp(delta, below[f].getDistanceX(), above[f].getDistanceX()));
 		}
 		return ret;
@@ -766,14 +763,8 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 			
 			boolean doHW = rupture.dip < 90d;
 			LineSegment3D dipLineAtY0 = null;
-			LineSegment3D seisDipLineAtY0 = null;
-			if (doHW) {
+			if (doHW)
 				dipLineAtY0 = new LineSegment3D(x0, 0d, rupture.zTop, x1, 0d, rupture.zBot);
-				if (rupture.zTop >= GriddedSurfaceUtils.SEIS_DEPTH) {
-					// trace at seis depth is right of x0
-					seisDipLineAtY0 = new LineSegment3D(x0, 0d, rupture.zTop, x1, 0d, rupture.zBot);
-				}
-			}
 			
 			PrecomputedComparableDistances[] ret = new PrecomputedComparableDistances[siteX.length];
 			
@@ -830,7 +821,7 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 							+ "\n\txInside="+xInside+", xDist="+xDist+", yInside="+yInside+", yDist="+yDist+", rJB="+rJB);
 				}
 				
-				double rRup, rSeis;
+				double rRup;
 				if (hw) {
 					Preconditions.checkState(rX >= 0);
 					rRup = distanceToLineSegment3D(siteX[i], yDist, dipLineAtY0);
@@ -838,33 +829,13 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 						System.out.println("HW rRup="+rRup+" for siteX="+siteX[i]+" and yDist="+yDist);
 						System.out.println("\tdipLineAtY0=("+x0+", 0, "+rupture.zTop+") -> ("+x1+", 0, "+rupture.zBot+")");
 					}
-					if (seisDipLineAtY0 != null)
-						rSeis = distanceToLineSegment3D(siteX[i], yDist, seisDipLineAtY0);
-					else
-						rSeis = rRup;
 				} else {
 					// simple
 					Preconditions.checkState(!doHW || rX <= 0);
 					double rJBsq = rJB*rJB;
 					rRup = Math.sqrt(rJBsq + zTopSq);
-					if (zTopSq == zSeisSq) {
-						rSeis = rRup;
-					} else if (seisX0 == x0) {
-						rSeis = Math.sqrt(rJBsq + zSeisSq);
-					} else {
-						// seis trace is right of the fault top edge
-						// we know we're already left of the fault top edge
-						double seisXDiff = seisX0 - siteX[i];
-						double seisJBsq;
-						if (yInside) {
-							seisJBsq = seisXDiff*seisXDiff;
-						} else {
-							seisJBsq = seisXDiff*seisXDiff + yDist*yDist;
-						}
-						rSeis = Math.sqrt(seisJBsq + zSeisSq);
-					}
 				}
-				ret[i] = new PrecomputedComparableDistances(rRup, rJB, rSeis, rX);
+				ret[i] = new PrecomputedComparableDistances(rRup, rJB, rX);
 			}
 			return ret;
 		}
@@ -934,19 +905,17 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 			// average all of them
 			double sumJB = 0d;
 			double sumRup = 0d;
-			double sumSeis = 0d;
 			double sumX = 0d;
 			
 			for (PrecomputedComparableDistances dist : distances) {
 				sumJB += dist.getDistanceJB();
 				sumRup += dist.getDistanceRup();
-				sumSeis += dist.getDistanceSeis();
 				sumX += dist.getDistanceX();
 			}
 			
 			double scale = 1d/(double)distances.size();
 			return new PrecomputedComparableDistances[] {
-					new PrecomputedComparableDistances(sumRup*scale, sumJB*scale, sumSeis*scale, sumX*scale)};
+					new PrecomputedComparableDistances(sumRup*scale, sumJB*scale, sumX*scale)};
 		}
 		
 		Collections.sort(distances);
@@ -970,7 +939,6 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 
 			double[] sumJBs = new double[ret.length];
 			double[] sumRups = new double[ret.length];
-			double[] sumSeis = new double[ret.length];
 			double[] sumXs = new double[ret.length];
 			double[] sumWeights = new double[ret.length];
 
@@ -996,7 +964,6 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 					sumWeights[f] += w;
 					sumJBs[f]   += w * d.getDistanceJB();
 					sumRups[f]  += w * d.getDistanceRup();
-					sumSeis[f]  += w * d.getDistanceSeis();
 					sumXs[f]    += w * d.getDistanceX();
 				}
 			}
@@ -1008,7 +975,6 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 				ret[f] = new PrecomputedComparableDistances(
 						invW * sumRups[f],
 						invW * sumJBs[f],
-						invW * sumSeis[f],
 						invW * sumXs[f]);
 			}
 		} else {
@@ -1026,16 +992,14 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 				double weightEach = 1d/(double)(endIndex - startIndex);
 				double sumJB = 0d;
 				double sumRup = 0d;
-				double sumSeis = 0d;
 				double sumX = 0d;
 				for (int i=startIndex; i<endIndex; i++) {
 					PrecomputedComparableDistances dists = distances.get(i);
 					sumJB += dists.getDistanceJB();
 					sumRup += dists.getDistanceRup();
-					sumSeis += dists.getDistanceSeis();
 					sumX += dists.getDistanceX();
 				}
-				ret[f] = new PrecomputedComparableDistances(weightEach*sumRup, weightEach*sumJB, weightEach*sumSeis, weightEach*sumX);
+				ret[f] = new PrecomputedComparableDistances(weightEach*sumRup, weightEach*sumJB, weightEach*sumX);
 			}
 		}
 		

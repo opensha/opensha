@@ -550,7 +550,7 @@ implements DisaggregationCalculatorAPI {
 				String sourceDisaggInfo =
 					"Source#\t% Contribution\tTotExceedRate\tSourceName";
 				if (showDistances)
-					sourceDisaggInfo += "\tDistRup\tDistX\tDistSeis\tDistJB";
+					sourceDisaggInfo += "\tDistRup\tDistX\tDistJB";
 				sourceDisaggInfo += "\n";
 				int size = disaggSourceList.size();
 				if (size > numSourcesToShow)
@@ -569,7 +569,6 @@ implements DisaggregationCalculatorAPI {
 							RuptureSurface surf = source.getSourceSurface();
 							sourceDisaggInfo += "\t" + f2.format(surf.getDistanceRup(site.getLocation()))
 									+ "\t" + f2.format(surf.getDistanceX(site.getLocation()))
-									+ "\t" + f2.format(surf.getDistanceSeis(site.getLocation()))
 									+ "\t" + f2.format(surf.getDistanceJB(site.getLocation()));
 						} catch (Exception e) {
 							sourceDisaggInfo += "\t(no source surface information available, likely a background or consolidated source)";

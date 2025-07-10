@@ -131,12 +131,6 @@ public abstract class WrappedRuptureSurface implements RuptureSurface {
 	}
 
 	@Override
-	public double getDistanceSeis(Location siteLoc) {
-		// passthrough
-		return surf.getDistanceSeis(siteLoc);
-	}
-
-	@Override
 	public double getDistanceX(Location siteLoc) {
 		// passthrough
 		return surf.getDistanceX(siteLoc);

@@ -211,7 +211,6 @@ public class TestSurfaceDistanceCaches {
 				for (int i=0; i<numGetsPerTest; i++) {
 					assertEquals(dists.getDistanceRup(), surf.getDistanceRup(loc), delta);
 					assertEquals(dists.getDistanceJB(), surf.getDistanceJB(loc), delta);
-					assertEquals(dists.getDistanceSeis(), surf.getDistanceSeis(loc), delta);
 					assertEquals(dists.getDistanceX(), surf.getDistanceX(loc), delta);
 				}
 			} catch (Throwable e) {

@@ -162,10 +162,6 @@ public class SimEventCumDistFuncSurface implements CacheEnabledSurface {
 				DistanceType.R_RUP, scalar);
 		double distanceRup = calcDistance(rRupFunc);
 		
-		DiscretizedFunc rSeisFunc = SimRuptureDistCalcUtils.calcDistScalarFunc(event, loc, siteLocDistCache,
-				DistanceType.R_SEIS, scalar);
-		double distanceSeis = rSeisFunc == null ? Double.NaN : calcDistance(rSeisFunc);
-		
 		double maxDistJBforX = calcDistance(rJBFunc, fractThresholdX, Double.NaN);
 		
 		double wtFootwall = 0d;
@@ -185,7 +181,7 @@ public class SimEventCumDistFuncSurface implements CacheEnabledSurface {
 		boolean footwall = (float)wtFootwall >= (float)wtHangingwall;
 		
 		FootwallAwareSurfaceDistances dists = new FootwallAwareSurfaceDistances(
-				loc, distanceRup, distanceJB, distanceSeis, footwall);
+				loc, distanceRup, distanceJB, footwall);
 		
 		return dists;
 	}
@@ -326,13 +322,13 @@ public class SimEventCumDistFuncSurface implements CacheEnabledSurface {
 	}
 
 	@Override
-	public double getDistanceSeis(Location siteLoc) {
-		return cache.getSurfaceDistances(siteLoc).getDistanceSeis();
-	}
-
-	@Override
 	public double getDistanceX(Location siteLoc) {
 		return cache.getSurfaceDistances(siteLoc).getDistanceX();
+	}
+	
+	@Override
+	public SurfaceDistances getDistances(Location siteLoc) {
+		return cache.getSurfaceDistances(siteLoc);
 	}
 
 	@Override

@@ -5,6 +5,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 
 /**
  * This interface defines a rupture surfaces. This does not specify how a rupture 
@@ -149,14 +150,6 @@ public interface RuptureSurface extends Surface3D {
 	public double getDistanceJB(Location siteLoc);
 
 	/**
-	 * This returns "distance seis" (shortest distance in km to point on rupture 
-	 * deeper than 3 km), assuming the location has zero depth (for numerical 
-	 * expediency).
-	 * @return
-	 */
-	public double getDistanceSeis(Location siteLoc);
-
-	/**
 	 * This returns distance X (the shortest distance in km to the rupture 
 	 * upper edge extended to infinity), where values >= 0 are on the hanging wall
 	 * and values < 0 are on the foot wall.  The location is assumed to be at zero
@@ -164,6 +157,13 @@ public interface RuptureSurface extends Surface3D {
 	 * @return
 	 */
 	public double getDistanceX(Location siteLoc);
+	
+	/**
+	 * Gets standard distances all at once.
+	 * @param loc
+	 * @return
+	 */
+	public SurfaceDistances getDistances(Location loc);
 	
 	/**
 	 * This returns the upper edge of the rupture surface (where the 

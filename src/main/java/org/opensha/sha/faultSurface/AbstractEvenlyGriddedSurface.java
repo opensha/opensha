@@ -207,8 +207,7 @@ implements EvenlyGriddedSurface, CacheEnabledSurface, Serializable {
 	
 	@Override
 	public SurfaceDistances calcDistances(Location loc) {
-		double[] dCalc = GriddedSurfaceUtils.getPropagationDistances(this, loc);
-		return new SurfaceDistances.PrecomputedLazyX(loc, dCalc[0], dCalc[1], dCalc[2], distXCalcFunc);
+		return GriddedSurfaceUtils.getPropagationDistances(this, loc, distXCalcFunc);
 	}
 	
 	/**
@@ -230,20 +229,15 @@ implements EvenlyGriddedSurface, CacheEnabledSurface, Serializable {
 	public double getDistanceJB(Location siteLoc){
 		return cache.getSurfaceDistances(siteLoc).getDistanceJB();
 	}
-
-	/**
-	 * This returns "distance seis" (shortest distance in km to point on rupture 
-	 * deeper than 3 km), assuming the location has zero depth (for numerical 
-	 * expediency).
-	 * @return
-	 */
-	public double getDistanceSeis(Location siteLoc){
-		return cache.getSurfaceDistances(siteLoc).getDistanceSeis();
-	}
 	
 	@Override
 	public double getQuickDistance(Location siteLoc) {
 		return cache.getQuickDistance(siteLoc);
+	}
+	
+	@Override
+	public SurfaceDistances getDistances(Location siteLoc) {
+		return cache.getSurfaceDistances(siteLoc);
 	}
 
 	@Override

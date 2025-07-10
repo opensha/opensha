@@ -98,7 +98,6 @@ public class TestQuadSurface {
 	private enum Dist {
 		RUP,
 		JB,
-		SEIS,
 		X;
 	}
 	
@@ -108,8 +107,6 @@ public class TestQuadSurface {
 			return surf.getDistanceRup(loc);
 		case JB:
 			return surf.getDistanceJB(loc);
-		case SEIS:
-			return surf.getDistanceSeis(loc);
 		case X:
 			return surf.getDistanceX(loc);
 
@@ -379,28 +376,6 @@ public class TestQuadSurface {
 		
 		// complex dipping fault
 		runTest(buildFSD(jagged_trace, Math.random()*4d, 10d, 45), jagged_trace_gridded, dist, num, tol);
-	}
-
-	@Test
-	public void testDistanceSeis() {
-		// note - only tests with site on surface
-		
-		Dist dist = Dist.SEIS;
-		int num = 1000;
-//		double tol = 0.5d;
-		double tol = grid_disc;
-		
-		// complex vertical fault above
-		runTest(buildFSD(jagged_trace, Math.random()*3d, 10d, 90), jagged_trace_gridded, dist, num, tol);
-		
-		// complex vertical fault below
-		runTest(buildFSD(jagged_trace, 4d, 10d, 90), jagged_trace_gridded, dist, num, tol);
-		
-		// complex dipping fault above
-		runTest(buildFSD(jagged_trace, Math.random()*3d, 10d, 45), jagged_trace_gridded, dist, num, tol);
-		
-		// complex dipping fault below
-		runTest(buildFSD(jagged_trace, 4d, 10d, 45), jagged_trace_gridded, dist, num, tol);
 	}
 
 	@Test

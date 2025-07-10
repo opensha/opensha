@@ -1003,7 +1003,6 @@ public class USGS_Combined_2004_AttenRel extends AttenuationRelationship {
 		ar.setIntensityMeasure(PGA_Param.NAME);
 		System.out.println(ar.getMean());
 		System.out.println(ar.getStdDev());
-		System.out.println(qk.getRuptureSurface().getDistanceSeis(site.getLocation()));
 		System.out.println(ar.getMean());
 		System.out.println(ar.getStdDev());
 

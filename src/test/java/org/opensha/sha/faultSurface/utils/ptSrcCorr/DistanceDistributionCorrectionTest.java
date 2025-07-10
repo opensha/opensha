@@ -195,20 +195,18 @@ public class DistanceDistributionCorrectionTest {
 			for (int f=0; f<nFract; f++) {
 				double sumJB = 0d;
 				double sumRup = 0d;
-				double sumSeis = 0d;
 				double sumX = 0d;
 				for (int i=0; i<numPerBin; i++) {
 					double jb = index;
 					double rup = index + 1000;
 					double seis = index + 2000;
 					double x = -jb;
-					dists.add(new PrecomputedComparableDistances(rup, jb, seis, x));
+					dists.add(new PrecomputedComparableDistances(rup, jb, x));
 					sumJB += jb;
 					sumRup += rup;
-					sumSeis += seis;
 					sumX += x;
 				}
-				expected[f] = new PrecomputedComparableDistances(sumRup/numPerBin, sumJB/numPerBin, sumSeis/numPerBin, sumX/numPerBin);
+				expected[f] = new PrecomputedComparableDistances(sumRup/numPerBin, sumJB/numPerBin, sumX/numPerBin);
 			}
 
 			PrecomputedComparableDistances[] binAvg = DistanceDistributionCorrection.calcBinAverageDistances(dists, fractiles, 0d);
@@ -218,7 +216,6 @@ public class DistanceDistributionCorrectionTest {
 				String testStr = "nFract="+nFract+", f="+f+", numPerBin="+numsPerBin;
 				assertEquals("rJB mistmatch: "+testStr+"\n", ref.getDistanceJB(), test.getDistanceJB(), tol);
 				assertEquals("rRup mistmatch: "+testStr+"\n", ref.getDistanceRup(), test.getDistanceRup(), tol);
-				assertEquals("rSeis mistmatch: "+testStr+"\n", ref.getDistanceSeis(), test.getDistanceSeis(), tol);
 				assertEquals("rX mistmatch: "+testStr+"\n", ref.getDistanceX(), test.getDistanceX(), tol);
 			}
 		}
@@ -226,7 +223,7 @@ public class DistanceDistributionCorrectionTest {
 
 	/** builds a PrecomputedComparableDistances with every distance = v */
 	private static PrecomputedComparableDistances pcd(double v) {
-		return new PrecomputedComparableDistances(v, v, v, v);
+		return new PrecomputedComparableDistances(v, v, v);
 	}
 
 	/** ascending list 1 … n (all fields set to that integer) */

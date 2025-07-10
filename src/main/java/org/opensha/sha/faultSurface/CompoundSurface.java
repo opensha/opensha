@@ -271,7 +271,6 @@ public class CompoundSurface implements RuptureSurface, CacheEnabledSurface {
 	@Override
 	public SurfaceDistances calcDistances(Location loc) {
 		double distanceJB = Double.MAX_VALUE;
-		double distanceSeis = Double.MAX_VALUE;
 		double distanceRup = Double.MAX_VALUE;
 		double dist;
 		RuptureSurface surfForX = null;
@@ -284,12 +283,10 @@ public class CompoundSurface implements RuptureSurface, CacheEnabledSurface {
 				distanceRup=dist;
 				surfForX = surf;
 			}
-			dist = surf.getDistanceSeis(loc);
-			if (dist<distanceSeis) distanceSeis=dist;
 		}
 		// use the closest sub-surface (determined via rRup) for distanceX
 		final RuptureSurface theSurfForX = surfForX;
-		return new SurfaceDistances.PrecomputedLazyX(loc, distanceRup, distanceJB, distanceSeis, new Function<Location, Double>() {
+		return new SurfaceDistances.PrecomputedLazyX(loc, distanceRup, distanceJB, new Function<Location, Double>() {
 			
 			@Override
 			public Double apply(Location t) {
@@ -312,7 +309,11 @@ public class CompoundSurface implements RuptureSurface, CacheEnabledSurface {
 	public double getQuickDistance(Location siteLoc) {
 		return cache.getQuickDistance(siteLoc);
 	}
-
+	
+	@Override
+	public SurfaceDistances getDistances(Location siteLoc) {
+		return cache.getSurfaceDistances(siteLoc);
+	}
 
 	@Override
 	public double calcQuickDistance(Location siteLoc) {
@@ -320,11 +321,6 @@ public class CompoundSurface implements RuptureSurface, CacheEnabledSurface {
 		for (RuptureSurface surf : surfaces)
 			minDist = Math.min(minDist, surf.getQuickDistance(siteLoc));
 		return minDist;
-	}
-
-	@Override
-	public double getDistanceSeis(Location siteLoc) {
-		return cache.getSurfaceDistances(siteLoc).getDistanceSeis();
 	}
 
 	@Override

@@ -53,13 +53,13 @@ public class CustomCacheWrappedSurface extends WrappedRuptureSurface implements 
 	}
 
 	@Override
-	public double getDistanceSeis(Location siteLoc) {
-		return cache.getSurfaceDistances(siteLoc).getDistanceSeis();
-	}
-
-	@Override
 	public double getDistanceX(Location siteLoc) {
 		return cache.getSurfaceDistances(siteLoc).getDistanceX();
+	}
+	
+	@Override
+	public SurfaceDistances getDistances(Location siteLoc) {
+		return cache.getSurfaceDistances(siteLoc);
 	}
 
 }

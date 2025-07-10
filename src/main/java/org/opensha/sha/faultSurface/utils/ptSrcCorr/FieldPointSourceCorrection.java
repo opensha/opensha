@@ -7,6 +7,9 @@ import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrection.Single;
 import org.opensha.sha.util.TectonicRegionType;
 
+/**
+ * Called "Field" in the original distance correction enum, obviously from Ned, no known reference
+ */
 public class FieldPointSourceCorrection implements Single {
 
 	@Override
@@ -25,15 +28,9 @@ public class FieldPointSourceCorrection implements Single {
 		double depth = surf.getAveRupTopDepth();
 		double rRup = Math.sqrt(depth * depth + rJBsq);
 		
-		double rSeis;
-		if (depth < GriddedSurfaceUtils.SEIS_DEPTH)
-			rSeis = Math.sqrt(GriddedSurfaceUtils.SEIS_DEPTH * GriddedSurfaceUtils.SEIS_DEPTH + rJBsq);
-		else
-			rSeis = rRup;
-		
 		double rX = 0d;
 		
-		return new SurfaceDistances.Precomputed(siteLoc, rRup, rJB, rSeis, rX);
+		return new SurfaceDistances.Precomputed(siteLoc, rRup, rJB, rX);
 	}
 	
 	@Override

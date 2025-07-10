@@ -11,6 +11,7 @@ import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 
 /**
  * Quick partial implementation of RuptureSurface interface to allow for triangles. A full triangular surface implementation
@@ -152,12 +153,12 @@ class TriangularElementSurface implements RuptureSurface {
 	}
 
 	@Override
-	public double getDistanceSeis(Location siteLoc) {
+	public double getDistanceX(Location siteLoc) {
 		throw new UnsupportedOperationException("Not yet implemented");
 	}
-
+	
 	@Override
-	public double getDistanceX(Location siteLoc) {
+	public SurfaceDistances getDistances(Location siteLoc) {
 		throw new UnsupportedOperationException("Not yet implemented");
 	}
 

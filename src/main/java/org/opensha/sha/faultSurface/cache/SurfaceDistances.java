@@ -13,23 +13,12 @@ import org.opensha.commons.geo.Location;
  *
  */
 public interface SurfaceDistances {
-//	private final double distanceRup, distanceJB, distanceSeis;
-//
-//	public SurfaceDistances(double distanceRup, double distanceJB,
-//			double distanceSeis) {
-//		super();
-//		this.distanceRup = distanceRup;
-//		this.distanceJB = distanceJB;
-//		this.distanceSeis = distanceSeis;
-//	}
 	
 	public Location getSiteLocation();
 
 	public double getDistanceRup();
 
 	public double getDistanceJB();
-
-	public double getDistanceSeis();
 	
 	public double getDistanceX();
 	
@@ -38,15 +27,14 @@ public interface SurfaceDistances {
 	 */
 	public static class Precomputed implements SurfaceDistances {
 		private final Location siteLoc;
-		private final double distanceRup, distanceJB, distanceSeis, distanceX;
+		private final double distanceRup, distanceJB, distanceX;
 		
 		public Precomputed(Location siteLoc, double distanceRup, double distanceJB,
-				double distanceSeis, double distanceX) {
+				double distanceX) {
 			super();
 			this.siteLoc = siteLoc;
 			this.distanceRup = distanceRup;
 			this.distanceJB = distanceJB;
-			this.distanceSeis = distanceSeis;
 			this.distanceX = distanceX;
 		}
 
@@ -66,11 +54,6 @@ public interface SurfaceDistances {
 		}
 
 		@Override
-		public double getDistanceSeis() {
-			return distanceSeis;
-		}
-
-		@Override
 		public double getDistanceX() {
 			return distanceX;
 		}
@@ -82,17 +65,16 @@ public interface SurfaceDistances {
 	 */
 	public static class PrecomputedLazyX implements SurfaceDistances {
 		private final Location siteLoc;
-		private final double distanceRup, distanceJB, distanceSeis;
+		private final double distanceRup, distanceJB;
 		private volatile Double distanceX;
 		private final Function<Location, Double> distanceXCalc;
 		
 		public PrecomputedLazyX(Location siteLoc, double distanceRup, double distanceJB,
-				double distanceSeis, Function<Location, Double> distanceXCalc) {
+				Function<Location, Double> distanceXCalc) {
 			super();
 			this.siteLoc = siteLoc;
 			this.distanceRup = distanceRup;
 			this.distanceJB = distanceJB;
-			this.distanceSeis = distanceSeis;
 			this.distanceXCalc = distanceXCalc;
 		}
 
@@ -109,11 +91,6 @@ public interface SurfaceDistances {
 		@Override
 		public double getDistanceJB() {
 			return distanceJB;
-		}
-
-		@Override
-		public double getDistanceSeis() {
-			return distanceSeis;
 		}
 
 		@Override

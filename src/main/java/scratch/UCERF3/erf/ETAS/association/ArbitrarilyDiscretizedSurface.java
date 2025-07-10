@@ -401,13 +401,13 @@ class ArbitrarilyDiscretizedSurface implements RuptureSurface, CacheEnabledSurfa
 	}
 
 	@Override
-	public double getDistanceSeis(Location siteLoc){
-		return cache.getSurfaceDistances(siteLoc).getDistanceSeis();
-	}
-
-	@Override
 	public double getDistanceX(Location siteLoc) {
 		return cache.getSurfaceDistances(siteLoc).getDistanceX();
+	}
+	
+	@Override
+	public SurfaceDistances getDistances(Location siteLoc) {
+		return cache.getSurfaceDistances(siteLoc);
 	}
 
 	@Override
@@ -507,7 +507,6 @@ class ArbitrarilyDiscretizedSurface implements RuptureSurface, CacheEnabledSurfa
 		Location loc1 = loc;
 		Location loc2;
 		double distJB = Double.MAX_VALUE;
-		double distSeis = Double.MAX_VALUE;
 		double distRup = Double.MAX_VALUE;
 		
 		double horzDist, vertDist, rupDist;
@@ -529,17 +528,11 @@ class ArbitrarilyDiscretizedSurface implements RuptureSurface, CacheEnabledSurfa
 
 			rupDist = horzDist * horzDist + vertDist * vertDist;
 			if(rupDist < distRup) distRup = rupDist;
-
-			if (loc2.getDepth() >= DistanceSeisParameter.SEIS_DEPTH) {
-				if (rupDist < distSeis)
-					distSeis = rupDist;
-			}
 		}
 
 		distRup = Math.pow(distRup,0.5);
-		distSeis = Math.pow(distSeis,0.5);
 
-		return new SurfaceDistances.PrecomputedLazyX(loc, distRup, distJB, distSeis, distXCalcFunc);
+		return new SurfaceDistances.PrecomputedLazyX(loc, distRup, distJB, distXCalcFunc);
 	}
 	
 	@Override

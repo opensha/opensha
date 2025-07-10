@@ -291,13 +291,13 @@ public class RectangularSurface implements CacheEnabledSurface {
 	}
 
 	@Override
-	public double getDistanceSeis(Location siteLoc) {
-		return cache.getSurfaceDistances(siteLoc).getDistanceSeis();
-	}
-
-	@Override
 	public double getDistanceX(Location siteLoc) {
 		return cache.getSurfaceDistances(siteLoc).getDistanceX();
+	}
+	
+	@Override
+	public SurfaceDistances getDistances(Location siteLoc) {
+		return cache.getSurfaceDistances(siteLoc);
 	}
 
 	@Override
@@ -393,7 +393,7 @@ public class RectangularSurface implements CacheEnabledSurface {
 		
 		private final Location siteLoc;
 		
-		private volatile Double distRup, distJB, distSeis, distX;
+		private volatile Double distRup, distJB, distX;
 
 		private final double dist; // distance from the start of the trace to the site
 		private final double az; // azimuth (radians) from the start of the trace to the site
@@ -458,36 +458,6 @@ public class RectangularSurface implements CacheEnabledSurface {
 				distJB = hypot(x - xClamped, y - yClamped);
 			}
 			return distJB;
-		}
-
-		@Override
-		public double getDistanceSeis() {
-			if (distSeis == null) {
-				if (zTop > GriddedSurfaceUtils.SEIS_DEPTH) {
-					distSeis = getDistanceRup();
-				} else {
-					if (vertical) {
-						double distToPlane = Math.abs(y);
-						double zClamped = clamp(0.0, Math.max(GriddedSurfaceUtils.SEIS_DEPTH, zTop), zBot);
-						distSeis = hypot(distToPlane, -zClamped);
-					} else {
-						double yStart = (GriddedSurfaceUtils.SEIS_DEPTH - zTop) / Math.tan(dipRad);
-						double yEnd   = horzWidth;
-						if (yStart > yEnd) yEnd = yStart; // rectangle collapses to line
-
-						double dot = y * sinDip - zRel * cosDip;
-						double yProj = y - dot * sinDip;
-						double xProj = x;
-
-						double xPlane = clamp(xProj, 0.0, length);
-						double yPlane = clamp(yProj, yStart, yEnd);
-						double zPlane = yPlane * Math.tan(dipRad);
-
-						distSeis = hypot3(x - xPlane, y - yPlane, zRel - zPlane);
-					}
-				}
-			}
-			return distSeis;
 		}
 
 		@Override

@@ -266,8 +266,7 @@ public class GriddedSubsetSurface extends ContainerSubset2D<Location>  implement
 	
 	@Override
 	public SurfaceDistances calcDistances(Location loc) {
-		double[] dCalc = GriddedSurfaceUtils.getPropagationDistances(this, loc);
-		return new SurfaceDistances.PrecomputedLazyX(loc, dCalc[0], dCalc[1], dCalc[2], distXCalcFunc);
+		return GriddedSurfaceUtils.getPropagationDistances(this, loc, distXCalcFunc);
 	}
 	
 	@Override
@@ -301,16 +300,6 @@ public class GriddedSubsetSurface extends ContainerSubset2D<Location>  implement
 	}
 
 	/**
-	 * This returns "distance seis" (shortest distance in km to point on rupture 
-	 * deeper than 3 km), assuming the location has zero depth (for numerical 
-	 * expediency).
-	 * @return
-	 */
-	public double getDistanceSeis(Location siteLoc){
-		return cache.getSurfaceDistances(siteLoc).getDistanceSeis();
-	}
-
-	/**
 	 * This returns distance X (the shortest distance in km to the rupture 
 	 * trace extended to infinity), where values >= 0 are on the hanging wall
 	 * and values < 0 are on the foot wall.  The location is assumed to be at zero
@@ -319,6 +308,11 @@ public class GriddedSubsetSurface extends ContainerSubset2D<Location>  implement
 	 */
 	public double getDistanceX(Location siteLoc){
 		return cache.getSurfaceDistances(siteLoc).getDistanceX();
+	}
+	
+	@Override
+	public SurfaceDistances getDistances(Location siteLoc) {
+		return cache.getSurfaceDistances(siteLoc);
 	}
 
 

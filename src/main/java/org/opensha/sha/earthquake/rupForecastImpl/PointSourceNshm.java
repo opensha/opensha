@@ -358,10 +358,9 @@ public class PointSourceNshm extends PoissonPointSource {
 				double corrJB = horzDist;
 				double zTop = surf.getAveRupTopDepth();
 				double rRup = hypot2(corrJB, zTop);
-				double rSeis = zTop > GriddedSurfaceUtils.SEIS_DEPTH ? rRup : hypot2(corrJB, GriddedSurfaceUtils.SEIS_DEPTH);
 				double rX = -corrJB;
 				return WeightedList.evenlyWeighted(
-						new SurfaceDistances.Precomputed(siteLoc, rRup, corrJB, rSeis, rX));
+						new SurfaceDistances.Precomputed(siteLoc, rRup, corrJB, rX));
 			}
 			// note: nshmp-haz still uses all of this logic for M<6, just with corrJB == horzDist, which will happen
 			// in getCorrectedDistanceJB
@@ -376,19 +375,13 @@ public class PointSourceNshm extends PoissonPointSource {
 				
 				double rRup = getCorrectedDistanceRup(corrJB, zTop, Double.NaN, PI_HALF, Double.NaN, true);
 				
-				double rSeis;
-				if (zTop > GriddedSurfaceUtils.SEIS_DEPTH)
-					rSeis = rRup;
-				else
-					rSeis = getCorrectedDistanceRup(corrJB, GriddedSurfaceUtils.SEIS_DEPTH, Double.NaN, PI_HALF, Double.NaN, true);
-				
 				double rX = -corrJB; // footwall is set to 'true' for SS ruptures in order to short-circuit GMPE calcs
 				
 //				System.out.println("CORR13 vertical for rEpi="+horzDist+"; rJB="+corrJB
 //						+"; rRup="+rRup+", rX="+rX);
 				
 				return WeightedList.evenlyWeighted(
-						new SurfaceDistances.Precomputed(siteLoc, rRup, corrJB, rSeis, rX));
+						new SurfaceDistances.Precomputed(siteLoc, rRup, corrJB, rX));
 			} else {
 				// dipping, return one on and one off the footwall
 				double zBot = surf.getAveRupBottomDepth();
@@ -399,15 +392,6 @@ public class PointSourceNshm extends PoissonPointSource {
 				double rRupFW = getCorrectedDistanceRup(corrJB, zTop, zBot, dipRad, horzWidth, true);
 				double rRupHW = getCorrectedDistanceRup(corrJB, zTop, zBot, dipRad, horzWidth, false);
 				
-				double rSeisFW, rSeisHW;
-				if (zTop > GriddedSurfaceUtils.SEIS_DEPTH) {
-					rSeisFW = rRupFW;
-					rSeisHW = rRupHW;
-				} else {
-					rSeisFW = getCorrectedDistanceRup(corrJB, GriddedSurfaceUtils.SEIS_DEPTH, zBot, dipRad, horzWidth, true);
-					rSeisHW = getCorrectedDistanceRup(corrJB, GriddedSurfaceUtils.SEIS_DEPTH, zBot, dipRad, horzWidth, false);
-				}
-				
 				double rX_FW = -corrJB;
 				double rX_HW = corrJB + horzWidth;
 				
@@ -417,8 +401,8 @@ public class PointSourceNshm extends PoissonPointSource {
 				// evenly-weight them. this is valid if rJB is large but a bad approximation close in, but it's what is
 				// (hopefully to become 'was') done in the NSHM
 				return WeightedList.evenlyWeighted(
-						new SurfaceDistances.Precomputed(siteLoc, rRupFW, corrJB, rSeisFW, rX_FW),
-						new SurfaceDistances.Precomputed(siteLoc, rRupHW, corrJB, rSeisHW, rX_HW));
+						new SurfaceDistances.Precomputed(siteLoc, rRupFW, corrJB, rX_FW),
+						new SurfaceDistances.Precomputed(siteLoc, rRupHW, corrJB, rX_HW));
 			}
 		}
 		

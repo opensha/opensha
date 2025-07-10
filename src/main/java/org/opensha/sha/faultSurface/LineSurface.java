@@ -98,7 +98,7 @@ public class LineSurface implements RuptureSurface, CacheEnabledSurface {
 		private Location siteLoc;
 		private double[] segHorzDists;
 		
-		private volatile Double distRup, distJB, distSeis, distX;
+		private volatile Double distRup, distJB, distX;
 
 		private LazySurfaceDistances(Location siteLoc) {
 			this.siteLoc = siteLoc;
@@ -125,17 +125,6 @@ public class LineSurface implements RuptureSurface, CacheEnabledSurface {
 		}
 
 		@Override
-		public double getDistanceSeis() {
-			if (distSeis == null) {
-				if (trace == traceBelowSeis)
-					distSeis = getDistanceRup();
-				else
-					distSeis = distance(traceBelowSeis, siteLoc, true, segHorzDists);
-			}
-			return distSeis;
-		}
-
-		@Override
 		public double getDistanceX() {
 			if (distX == null)
 				distX = distanceX(trace, siteLoc, segHorzDists);
@@ -151,9 +140,10 @@ public class LineSurface implements RuptureSurface, CacheEnabledSurface {
 	public double getDistanceJB(Location loc) {
 		return cache.getSurfaceDistances(loc).getDistanceJB();
 	}
-
-	public double getDistanceSeis(Location loc) {
-		return cache.getSurfaceDistances(loc).getDistanceSeis();
+	
+	@Override
+	public SurfaceDistances getDistances(Location siteLoc) {
+		return cache.getSurfaceDistances(siteLoc);
 	}
 	
 	private static double[] calcSegHorzDists(FaultTrace trace, Location loc) {

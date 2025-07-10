@@ -81,9 +81,6 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	private double avgLowerDepth;
 	private double avgDipDirRad;
 	private double avgDipDirDeg;
-	
-	/* true if the entire trace is below 3km */
-	private boolean traceBelowSeis;
 
 	/* actual 3d values */
 	private FaultTrace trace;
@@ -93,11 +90,6 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	/* surface projection (for dist jb) */
 	private FaultTrace proj_trace;
 	private List<Path2D> proj_surfs;
-
-	/* portion of fault below seismogenic depth of 3km (for dist seis) */
-	private FaultTrace seis_trace;
-	private List<Rotation> seis_rots;
-	private List<Path2D> seis_surfs;
 	
 	/*
 	 * discretization to use for evenly discretized methods
@@ -193,12 +185,9 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 		
 		initSegments(dipRad, avgDipDirRad, width, trace, rots, surfs);
 		
-		traceBelowSeis = true;
 		avgUpperDepth = 0d;
 		// TODO weight average?
 		for (Location loc : trace) {
-			if (loc.getDepth() <= GriddedSurfaceUtils.SEIS_DEPTH)
-				traceBelowSeis = false;
 			avgUpperDepth += loc.getDepth();
 		}
 		avgUpperDepth /= (double)trace.size();
@@ -353,7 +342,7 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 		
 		private Location siteLoc;
 		
-		private volatile Double distRup, distJB, distSeis, distX;
+		private volatile Double distRup, distJB, distX;
 
 		private LazySurfaceDistances(Location siteLoc) {
 			this.siteLoc = siteLoc;
@@ -376,17 +365,6 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 			if (distJB == null)
 				distJB = calcDistanceJB(siteLoc);
 			return distJB;
-		}
-
-		@Override
-		public double getDistanceSeis() {
-			if (distSeis == null) {
-				if (traceBelowSeis)
-					distSeis = getDistanceRup();
-				else
-					distSeis = calcDistanceSeis(siteLoc);
-			}
-			return distSeis;
 		}
 
 		@Override
@@ -419,36 +397,6 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 		
 		return distance3D(proj_trace, null, proj_surfs, new Location(loc.getLatitude(), loc.getLongitude()));
 	}
-	
-	private double calcDistanceSeis(Location loc) {
-		if (seis_trace == null) {
-			synchronized(this) {
-				if (seis_trace == null) {
-					FaultTrace seis_trace;
-					if (traceBelowSeis) {
-						// it's already below the seismogenic depth, use normal trace/rots/surfs
-						seis_trace = trace;
-						seis_rots = rots;
-						seis_surfs = surfs;
-					} else {
-						seis_trace = getTraceBelowDepth(trace, GriddedSurfaceUtils.SEIS_DEPTH, dipRad, avgDipDirDeg);
-						seis_rots = new ArrayList<Rotation>();
-						seis_surfs = new ArrayList<Path2D>();
-						
-						// new width below seis
-						double widthBelowSeis;
-						if (avgUpperDepth < GriddedSurfaceUtils.SEIS_DEPTH)
-							widthBelowSeis = width - (GriddedSurfaceUtils.SEIS_DEPTH - avgUpperDepth);
-						else
-							widthBelowSeis = width;
-						initSegments(dipRad, avgDipDirRad, widthBelowSeis, seis_trace, seis_rots, seis_surfs);
-					}
-					this.seis_trace = seis_trace;
-				}
-			}
-		}
-		return distance3D(seis_trace, seis_rots, seis_surfs, new Location(loc.getLatitude(), loc.getLongitude()));
-	}
 
 	public double getDistanceRup(Location loc) {
 		return cache.getSurfaceDistances(loc).getDistanceRup();
@@ -456,10 +404,6 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 
 	public double getDistanceJB(Location loc) {
 		return cache.getSurfaceDistances(loc).getDistanceJB();
-	}
-
-	public double getDistanceSeis(Location loc) {
-		return cache.getSurfaceDistances(loc).getDistanceSeis();
 	}
 	
 	/**
@@ -648,9 +592,13 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 		return cache.getSurfaceDistances(siteLoc).getDistanceRup();
 	}
 	
-	
 	public double getDistanceX(Location siteLoc) {
 		return cache.getSurfaceDistances(siteLoc).getDistanceX();
+	}
+	
+	@Override
+	public SurfaceDistances getDistances(Location siteLoc) {
+		return cache.getSurfaceDistances(siteLoc);
 	}
 	
 //	private EvenlyGriddedSurface getGridded() {
@@ -1118,7 +1066,7 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	}
 	
 	private static long[] runTest(int num_calcs, RuptureSurface surf) {
-		long[] ret = new long[5];
+		long[] ret = new long[4];
 		
 		// distance rup
 		Stopwatch watch = Stopwatch.createStarted();
@@ -1138,15 +1086,6 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 		watch.stop();
 		ret[1] = watch.elapsed(TimeUnit.MILLISECONDS);
 		
-		// distance Seis
-		watch = Stopwatch.createStarted();
-		for (int i=0; i<num_calcs; i++) {
-			Location loc = getTestLoc(true);
-			surf.getDistanceSeis(loc);
-		}
-		watch.stop();
-		ret[2] = watch.elapsed(TimeUnit.MILLISECONDS);
-		
 		// distance X
 		watch = Stopwatch.createStarted();
 		for (int i=0; i<num_calcs; i++) {
@@ -1154,7 +1093,7 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 			surf.getDistanceX(loc);
 		}
 		watch.stop();
-		ret[3] = watch.elapsed(TimeUnit.MILLISECONDS);
+		ret[2] = watch.elapsed(TimeUnit.MILLISECONDS);
 		
 		// combined
 		watch = Stopwatch.createStarted();
@@ -1162,11 +1101,10 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 			Location loc = getTestLoc(true);
 			surf.getDistanceRup(loc);
 			surf.getDistanceJB(loc);
-			surf.getDistanceSeis(loc);
 			surf.getDistanceX(loc);
 		}
 		watch.stop();
-		ret[4] = watch.elapsed(TimeUnit.MILLISECONDS);
+		ret[3] = watch.elapsed(TimeUnit.MILLISECONDS);
 		
 		return ret;
 	}
