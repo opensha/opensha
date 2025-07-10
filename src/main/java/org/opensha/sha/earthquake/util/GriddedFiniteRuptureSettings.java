@@ -4,8 +4,6 @@ import com.google.common.base.Preconditions;
 
 /**
  * Settings for gridded seismicity finite rupture properties; used when BackgroundRupType is FINITE
- * 
- * TODO: GUI parameter editor
  */
 public class GriddedFiniteRuptureSettings {
 	

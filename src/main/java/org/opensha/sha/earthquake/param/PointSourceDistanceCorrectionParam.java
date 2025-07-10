@@ -3,7 +3,7 @@ package org.opensha.sha.earthquake.param;
 import java.util.EnumSet;
 
 import org.opensha.commons.param.impl.EnumParameter;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
+import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrections;
 
 import com.google.common.base.Preconditions;
 

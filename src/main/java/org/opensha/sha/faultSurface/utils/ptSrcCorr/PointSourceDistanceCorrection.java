@@ -1,4 +1,4 @@
-package org.opensha.sha.faultSurface.utils;
+package org.opensha.sha.faultSurface.utils.ptSrcCorr;
 
 import java.util.ArrayList;
 import java.util.List;

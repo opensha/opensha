@@ -19,7 +19,7 @@ import org.opensha.sha.faultSurface.cache.CacheEnabledSurface;
 import org.opensha.sha.faultSurface.cache.SingleLocDistanceCache;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
+import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrection;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -215,8 +215,8 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	 * @return a version of this source that blocks access to all distance metrics, used to ensure that raw distances
 	 * are never used when distance corrections are enabled
 	 */
-	public DistanceProtected getDistancedProtected() {
-		return new DistanceProtected(this);
+	public DistanceProtected getDistancedProtected(PointSourceDistanceCorrection corr) {
+		return new DistanceProtected(this, corr);
 	}
 
 	/**
@@ -286,13 +286,17 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 		} else if (Double.isFinite(aveDip) && !Precision.equals(aveDip, 90d, 1e-4)) {
 			// dipping
 			double dipRad = Math.toRadians(aveDip);
-			aveWidth = (lowerDepth-upperDepth)/Math.sin(dipRad);
+			aveWidth = (lowerDepth - upperDepth)/Math.sin(dipRad);
 			aveHorzWidth = aveWidth * Math.cos(dipRad);
 		} else {
 			// we have depths, but no dip, assume vertical
-			aveWidth = upperDepth - lowerDepth;
+			aveWidth = lowerDepth - upperDepth;
 			aveHorzWidth = 0d;
 		}
+		Preconditions.checkState(aveWidth >= 0, "Bad aveWidth=%s for zTop=%s, zBot=%s, dip=%s",
+				aveDip, upperDepth, lowerDepth, aveDip);
+		Preconditions.checkState(aveHorzWidth >= 0, "Bad aveHorzWidth=%s for zTop=%s, zBot=%s, dip=%s, aveWidth=%s",
+				aveDip, upperDepth, lowerDepth, aveDip, aveWidth);
 	}
 
 	public void setAveLength(double aveLength) {
@@ -677,9 +681,14 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 				+ "used directly; instead, access the distance-corrected ruptures via PointSource.getForSite(Site) method. "
 				+ "If you really need to access the distance metrics, uncorrected alternatives are provided, e.g., "
 				+ "getUncorrectedDistanceRup(Location)";
+		
+		private PointSurface surf;
+		private PointSourceDistanceCorrection corr;
 
-		public DistanceProtected(PointSurface surf) {
+		public DistanceProtected(PointSurface surf, PointSourceDistanceCorrection corr) {
 			super(surf);
+			this.surf = surf;
+			this.corr = corr;
 		}
 
 		@Override
@@ -716,6 +725,14 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 
 		public double getUncorrectedDistanceX(Location siteLoc) {
 			return super.getDistanceX(siteLoc);
+		}
+		
+		public PointSurface getUncorrectedSurface() {
+			return surf;
+		}
+		
+		public PointSourceDistanceCorrection getDistanceCorrection() {
+			return corr;
 		}
 
 	}

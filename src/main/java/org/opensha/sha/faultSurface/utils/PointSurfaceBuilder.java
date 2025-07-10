@@ -814,8 +814,16 @@ public class PointSurfaceBuilder {
 		Preconditions.checkState(length > 0, "Can't build finite surface because length=%s; "
 				+ "set magnitude to infer length from scaling relationship", length);
 		double strikeRad = Math.toRadians(strike);
-		Location l0 = LocationUtils.location(loc, strikeRad-Math.PI, length*dasFract);
-		Location l1 = LocationUtils.location(loc, strikeRad, length*(1d-dasFract));
+		Location l0;
+		if (dasFract == 0d)
+			l0 = loc;
+		else
+			l0 = LocationUtils.location(loc, strikeRad-Math.PI, length*dasFract);
+		Location l1;
+		if (dasFract == 1d)
+			l1 = loc;
+		else
+			l1 = LocationUtils.location(loc, strikeRad, length*(1d-dasFract));
 		if (horzWidth > 0d) {
 			// translate it for the given zHyp
 			// move to the left (so that it follows the RHR and dips to the right)

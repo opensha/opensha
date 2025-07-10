@@ -3,8 +3,8 @@ package org.opensha.sha.earthquake.util;
 import org.opensha.commons.data.WeightedList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
+import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrection;
+import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrections;
 
 import com.google.common.base.Preconditions;
 
@@ -18,10 +18,8 @@ public class GriddedSeismicitySettings {
 			5d, // M>5
 			// rupture surface type
 			BackgroundRupType.POINT, // point sources
-			// minimum magnitude for finite (if FINITE selected, below this will still be POINT)
-			// also applies with POINT selected if finite ruptures have strikes
-			6d, // always finite >6
-//			5d,
+			// minimum magnitude for finite or distance-corrected point source ruptures
+			5d,
 			// distance corrections
 			PointSourceDistanceCorrections.DEFAULT.get(),
 			// supersampling

@@ -24,7 +24,7 @@ import org.opensha.sha.faultSurface.PointSurface.DistanceCorrected;
 import org.opensha.sha.faultSurface.QuadSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
+import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
 import org.opensha.sha.util.TectonicRegionType;
@@ -471,7 +471,7 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 				// distance corrections are enabled and this is a point source
 				// the distance-corrected version must be accessed via getForSite(Site)
 				// protect the surface here so that it is not accidentally used
-				surf = ((PointSurface)surf).getDistancedProtected();
+				surf = ((PointSurface)surf).getDistancedProtected(distCorr);
 			}
 			Location hypo = data.getHypocenter(getLocation(), surf, nRupture);
 			double prob = getProbability(nRupture, 1d);

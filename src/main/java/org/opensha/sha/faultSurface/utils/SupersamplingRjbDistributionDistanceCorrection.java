@@ -14,6 +14,7 @@ import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.faultSurface.utils.RjbDistributionDistanceCorrection.InvCDFCache;
 import org.opensha.sha.faultSurface.utils.RjbDistributionDistanceCorrection.RjbFractileDistances;
+import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrection;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;

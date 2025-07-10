@@ -4,8 +4,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection.Single;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
+import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrection.Single;
 import org.opensha.sha.util.TectonicRegionType;
 
 public class FieldPointSourceCorrection implements Single {

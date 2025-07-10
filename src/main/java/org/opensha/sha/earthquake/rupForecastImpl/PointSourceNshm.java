@@ -36,9 +36,9 @@ import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.faultSurface.utils.PointSurfaceBuilder;
+import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrection;
+import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrections;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
 import org.opensha.sha.util.TectonicRegionType;
@@ -363,6 +363,8 @@ public class PointSourceNshm extends PoissonPointSource {
 				return WeightedList.evenlyWeighted(
 						new SurfaceDistances.Precomputed(siteLoc, rRup, corrJB, rSeis, rX));
 			}
+			// note: nshmp-haz still uses all of this logic for M<6, just with corrJB == horzDist, which will happen
+			// in getCorrectedDistanceJB
 			double corrJB = getCorrectedDistanceJB(siteLoc, mag, surf, horzDist);
 			
 			double dip = surf.getAveDip();
@@ -381,6 +383,10 @@ public class PointSourceNshm extends PoissonPointSource {
 					rSeis = getCorrectedDistanceRup(corrJB, GriddedSurfaceUtils.SEIS_DEPTH, Double.NaN, PI_HALF, Double.NaN, true);
 				
 				double rX = -corrJB; // footwall is set to 'true' for SS ruptures in order to short-circuit GMPE calcs
+				
+//				System.out.println("CORR13 vertical for rEpi="+horzDist+"; rJB="+corrJB
+//						+"; rRup="+rRup+", rX="+rX);
+				
 				return WeightedList.evenlyWeighted(
 						new SurfaceDistances.Precomputed(siteLoc, rRup, corrJB, rSeis, rX));
 			} else {
@@ -405,8 +411,11 @@ public class PointSourceNshm extends PoissonPointSource {
 				double rX_FW = -corrJB;
 				double rX_HW = corrJB + horzWidth;
 				
-				// evenly-weight them. this is valid if rJB is large but a bad approximation close in, but it's what
-				// is/was done in the NSHM
+//				System.out.println("CORR13 dipping for rEpi="+horzDist+"; rJB="+corrJB
+//						+"; footwall rRup="+rRupFW+", rX="+rX_FW+"; hanging wall rRup="+rRupHW+", rX="+rX_HW);
+				
+				// evenly-weight them. this is valid if rJB is large but a bad approximation close in, but it's what is
+				// (hopefully to become 'was') done in the NSHM
 				return WeightedList.evenlyWeighted(
 						new SurfaceDistances.Precomputed(siteLoc, rRupFW, corrJB, rSeisFW, rX_FW),
 						new SurfaceDistances.Precomputed(siteLoc, rRupHW, corrJB, rSeisHW, rX_HW));

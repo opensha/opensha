@@ -19,6 +19,7 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.util.Interpolate;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
+import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrection;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -839,7 +840,7 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 			this.minNonzeroDist = minNonzeroDist;
 			Preconditions.checkState(logDistSampleDiscr > 0d);
 			this.logDistSampleDiscr = logDistSampleDiscr;
-			Preconditions.checkState(numAlphaSamples > 1); 
+			Preconditions.checkState(numAlphaSamples > 1);
 			// can just do 0->PI because we're doing rJB and the surface projection is symmetrical across the axis
 			double maxAlphaVertical = Math.PI;
 			double maxAlphaDipping = Math.PI*2;

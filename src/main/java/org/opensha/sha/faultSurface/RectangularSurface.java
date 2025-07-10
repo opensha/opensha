@@ -452,6 +452,9 @@ public class RectangularSurface implements CacheEnabledSurface {
 			if (distJB == null) {
 				double xClamped = clamp(x, 0.0, length);
 				double yClamped = clamp(y, 0.0, horzWidth);
+//				System.out.println("x - xClamped = "+x+" - "+xClamped+" = "+ (x-xClamped));
+//				System.out.println("y - yClamped = "+y+" - "+yClamped+" = "+ (y-yClamped));
+//				System.out.println("startLoc="+startLoc+"; siteLoc="+siteLoc);
 				distJB = hypot(x - xClamped, y - yClamped);
 			}
 			return distJB;

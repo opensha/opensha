@@ -22,7 +22,7 @@ import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.GriddedSeismicitySettingsParam;
 import org.opensha.sha.earthquake.param.MaximumMagnitudeParam;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
+import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrections;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;

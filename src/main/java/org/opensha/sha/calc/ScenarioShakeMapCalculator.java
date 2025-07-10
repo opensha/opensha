@@ -23,7 +23,7 @@ import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.param.PointSourceDistanceCorrectionParam;
 import org.opensha.sha.faultSurface.PointSurface;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
+import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrections;
 import org.opensha.sha.gui.servlets.ScenarioShakeMapCalcServlet;
 import org.opensha.sha.imr.AttenuationRelationship;
 
