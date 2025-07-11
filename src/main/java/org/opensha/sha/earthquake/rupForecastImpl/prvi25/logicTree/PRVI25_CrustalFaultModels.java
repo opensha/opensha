@@ -257,7 +257,8 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel, RupSetSubsect
 //		if (region != null)
 //			return PRVI25_RegionalSeismicity.getRemapped(region, seisRegion, declustering, smooth, refMFD, mMax);
 //		else
-		return PRVI25_CrustalSeismicityRate.loadRateModel().getBounded(refMFD, mMax);
+		PRVI25_SeismicityRateEpoch epoch = PRVI25_SeismicityRateEpoch.DEFAULT;
+		return PRVI25_CrustalSeismicityRate.loadRateModel(epoch).getBounded(refMFD, mMax);
 	}
 
 	@Override

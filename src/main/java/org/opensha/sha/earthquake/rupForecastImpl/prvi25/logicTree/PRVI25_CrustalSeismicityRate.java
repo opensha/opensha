@@ -48,33 +48,33 @@ import com.google.common.collect.Table;
 public enum PRVI25_CrustalSeismicityRate implements LogicTreeNode {
 	LOW("Lower Seismicity Bound (p2.5)", "Low", 0.13d) {
 		@Override
-		public IncrementalMagFreqDist build(EvenlyDiscretizedFunc refMFD, double mMax) throws IOException {
-			return loadRateModel(TYPE).buildLower(refMFD, mMax);
+		public IncrementalMagFreqDist build(PRVI25_SeismicityRateEpoch epoch, EvenlyDiscretizedFunc refMFD, double mMax) throws IOException {
+			return loadRateModel(epoch, TYPE).buildLower(refMFD, mMax);
 		}
 	},
 	PREFFERRED("Preffered Seismicity Rate", "Preferred", 0.74d) {
 		@Override
-		public IncrementalMagFreqDist build(EvenlyDiscretizedFunc refMFD, double mMax) throws IOException {
-			return loadRateModel(TYPE).buildPreferred(refMFD, mMax);
+		public IncrementalMagFreqDist build(PRVI25_SeismicityRateEpoch epoch, EvenlyDiscretizedFunc refMFD, double mMax) throws IOException {
+			return loadRateModel(epoch, TYPE).buildPreferred(refMFD, mMax);
 		}
 	},
 	HIGH("Upper Seismicity Bound (p97.5)", "High", 0.13d) {
 		@Override
-		public IncrementalMagFreqDist build(EvenlyDiscretizedFunc refMFD, double mMax) throws IOException {
-			return loadRateModel(TYPE).buildUpper(refMFD, mMax);
+		public IncrementalMagFreqDist build(PRVI25_SeismicityRateEpoch epoch, EvenlyDiscretizedFunc refMFD, double mMax) throws IOException {
+			return loadRateModel(epoch, TYPE).buildUpper(refMFD, mMax);
 		}
 	},
 	AVERAGE("Average Seismicity Rate", "Average", 0d) {
 
 		@Override
-		public IncrementalMagFreqDist build(EvenlyDiscretizedFunc refMFD, double mMax) throws IOException {
+		public IncrementalMagFreqDist build(PRVI25_SeismicityRateEpoch epoch, EvenlyDiscretizedFunc refMFD, double mMax) throws IOException {
 			IncrementalMagFreqDist ret = null;
 			double weightSum = 0d;
 			for (PRVI25_CrustalSeismicityRate seis : values()) {
 				if (seis == this || seis.weight == 0d)
 					continue;
 				weightSum += seis.weight;
-				IncrementalMagFreqDist mfd = seis.build(refMFD, mMax);
+				IncrementalMagFreqDist mfd = seis.build(epoch, refMFD, mMax);
 				if (ret == null)
 					ret = new IncrementalMagFreqDist(mfd.getMinX(), mfd.getMaxX(), mfd.size());
 				else
@@ -89,7 +89,7 @@ public enum PRVI25_CrustalSeismicityRate implements LogicTreeNode {
 		
 	};
 	
-	public static String RATE_DATE = "2025_03_26";
+	public static String RATE_DATE = "2025_07_11";
 	private static final String RATES_PATH_PREFIX = "/data/erf/prvi25/seismicity/rates/";
 	public static RateType TYPE = RateType.M1_TO_MMAX;
 	
@@ -100,43 +100,50 @@ public enum PRVI25_CrustalSeismicityRate implements LogicTreeNode {
 	 */
 	private static final UncertaintyBoundType BOUND_TYPE = UncertaintyBoundType.CONF_95;
 	
-	private static Map<RateType, SeismicityRateModel> rateModels;
-	private static CSVFile<String> csv;
+	private static Table<PRVI25_SeismicityRateEpoch, RateType, SeismicityRateModel> rateModels;
+	private static Map<PRVI25_SeismicityRateEpoch, CSVFile<String>> csvs;
 	
 	public synchronized static void clearCache() {
 		rateModels = null;
+		csvs = null;
 	}
 	
-	public abstract IncrementalMagFreqDist build(EvenlyDiscretizedFunc refMFD, double mMax) throws IOException;
+	public abstract IncrementalMagFreqDist build(PRVI25_SeismicityRateEpoch epoch, EvenlyDiscretizedFunc refMFD, double mMax) throws IOException;
 	
-	public static List<? extends RateRecord> loadRates(RateType type) throws IOException {
-		CSVFile<String> csv = loadCSV();
+	public static List<? extends RateRecord> loadRates(PRVI25_SeismicityRateEpoch epoch, RateType type) throws IOException {
+		CSVFile<String> csv = loadCSV(epoch);
 		return SeismicityRateFileLoader.loadRecords(csv, type);
 	}
 	
-	public static SeismicityRateModel loadRateModel() throws IOException {
-		return loadRateModel(TYPE);
+	public static SeismicityRateModel loadRateModel(PRVI25_SeismicityRateEpoch epoch) throws IOException {
+		return loadRateModel(epoch, TYPE);
 	}
 	
-	public synchronized static SeismicityRateModel loadRateModel(RateType type) throws IOException {
+	public synchronized static SeismicityRateModel loadRateModel(PRVI25_SeismicityRateEpoch epoch, RateType type) throws IOException {
 		if (rateModels == null)
-			rateModels = new HashMap<>();
-		SeismicityRateModel rateModel = rateModels.get(type);
+			rateModels = HashBasedTable.create();
+		SeismicityRateModel rateModel = rateModels.get(epoch, type);
 		if (rateModel != null)
 			return rateModel;
-		CSVFile<String> csv = loadCSV();
+		CSVFile<String> csv = loadCSV(epoch);
 		rateModel = new SeismicityRateModel(csv, type, BOUND_TYPE);
-		rateModels.put(type, rateModel);
+		rateModels.put(epoch, type, rateModel);
 		return rateModel;
 	}
 	
-	private synchronized static CSVFile<String> loadCSV() throws IOException {
-		if (csv != null)
-			return csv;
-		String resourceaName = RATES_PATH_PREFIX+RATE_DATE+"/"+PRVI25_SeismicityRegions.CRUSTAL.name()+".csv";
-		InputStream stream = PRVI25_CrustalSeismicityRate.class.getResourceAsStream(resourceaName);
-		Preconditions.checkNotNull(stream, "Error loading stream for '%s'", resourceaName);
-		csv = CSVFile.readStream(stream, false);
+	private synchronized static CSVFile<String> loadCSV(PRVI25_SeismicityRateEpoch epoch) throws IOException {
+		if (csvs == null) {
+			csvs = new HashMap<>();
+		}
+		CSVFile<String> csv = csvs.get(epoch);
+		if (csv == null) {
+			String resourceName = RATES_PATH_PREFIX+RATE_DATE+"/"+epoch.getRateSubDirName()+"/"+PRVI25_SeismicityRegions.CRUSTAL.name()+".csv";
+			InputStream stream = PRVI25_CrustalSeismicityRate.class.getResourceAsStream(resourceName);
+			Preconditions.checkNotNull(stream, "Error loading stream for '%s'", resourceName);
+			csv = CSVFile.readStream(stream, false);
+			csvs.put(epoch, csv);
+		}
+		
 		return csv;
 	}
 	
@@ -174,10 +181,11 @@ public enum PRVI25_CrustalSeismicityRate implements LogicTreeNode {
 	
 	public static void main(String[] args) throws IOException {
 		double mMax = 7.6;
+		PRVI25_SeismicityRateEpoch epoch = PRVI25_SeismicityRateEpoch.DEFAULT;
 		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.OVERALL_MMIN, mMax);
-		IncrementalMagFreqDist pref = PREFFERRED.build(refMFD, mMax);
-		IncrementalMagFreqDist low = LOW.build(refMFD, mMax);
-		IncrementalMagFreqDist high = HIGH.build(refMFD, mMax);
+		IncrementalMagFreqDist pref = PREFFERRED.build(epoch, refMFD, mMax);
+		IncrementalMagFreqDist low = LOW.build(epoch, refMFD, mMax);
+		IncrementalMagFreqDist high = HIGH.build(epoch, refMFD, mMax);
 		
 		for (int i=0; i<refMFD.size(); i++) {
 			if (refMFD.getX(i) > refMFD.getClosestXIndex(mMax))

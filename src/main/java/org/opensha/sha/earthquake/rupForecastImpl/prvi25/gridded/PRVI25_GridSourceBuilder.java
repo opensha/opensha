@@ -52,13 +52,15 @@ import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_Crusta
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalSeismicityRate;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_DeclusteringAlgorithms;
-import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_LogicTreeBranch;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_LogicTree;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SeisSmoothingAlgorithms;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SeismicityRateEpoch;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionCaribbeanSeismicityRate;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionDeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionMuertosSeismicityRate;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionScalingRelationships;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionSlabMMax;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -99,8 +101,6 @@ public class PRVI25_GridSourceBuilder {
 	
 	public static final double OVERALL_MMIN= 2.55;
 	
-	public static double SLAB_MMAX = 7.95;
-	
 	public static double SLAB_M_CORNER = Double.NaN;
 	
 	public static void doPreGridBuildHook(FaultSystemSolution sol, LogicTreeBranch<?> faultBranch) throws IOException {
@@ -134,7 +134,7 @@ public class PRVI25_GridSourceBuilder {
 		
 		if (MUERTOS_AS_CRUSTAL) {
 			// add muertos in
-			LogicTreeBranch<LogicTreeNode> mueBranch = PRVI25_LogicTreeBranch.DEFAULT_SUBDUCTION_GRIDDED.copy();
+			LogicTreeBranch<LogicTreeNode> mueBranch = PRVI25_LogicTree.DEFAULT_SUBDUCTION_GRIDDED.copy();
 			mueBranch.setValue(branch.requireValue(PRVI25_DeclusteringAlgorithms.class));
 			mueBranch.setValue(branch.requireValue(PRVI25_SeisSmoothingAlgorithms.class));
 			mueBranch.setValue(PRVI25_SubductionMuertosSeismicityRate.valueOf(branch.requireValue(PRVI25_CrustalSeismicityRate.class).name()));
@@ -269,7 +269,8 @@ public class PRVI25_GridSourceBuilder {
 		
 		// total G-R up to Mmax
 		PRVI25_CrustalSeismicityRate seisBranch = branch.requireValue(PRVI25_CrustalSeismicityRate.class);
-		IncrementalMagFreqDist totalGR = seisBranch.build(refMFD, maxMagOff);
+		PRVI25_SeismicityRateEpoch epoch = branch.requireValue(PRVI25_SeismicityRateEpoch.class);
+		IncrementalMagFreqDist totalGR = seisBranch.build(epoch, refMFD, maxMagOff);
 		
 		return buildCrustalGridSourceProv(sol, branch, cubeAssociations, totalGR);
 	}
@@ -432,16 +433,23 @@ public class PRVI25_GridSourceBuilder {
 		Preconditions.checkState(seisRegion == PRVI25_SeismicityRegions.CAR_INTRASLAB
 				|| seisRegion == PRVI25_SeismicityRegions.MUE_INTRASLAB);
 		
-		double maxMagOff = SLAB_MMAX;
+		PRVI25_SubductionSlabMMax mMaxBranch = branch.requireValue(PRVI25_SubductionSlabMMax.class);
+		PRVI25_SeismicityRateEpoch epoch = branch.requireValue(PRVI25_SeismicityRateEpoch.class);
+		
+		double maxMagOff = mMaxBranch.getMmax();
+		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(OVERALL_MMIN, maxMagOff);
+		// snap Mmax to incremental bin before it
+		maxMagOff = refMFD.getX(refMFD.getClosestXIndex(maxMagOff-0.01));
+		Preconditions.checkState(maxMagOff <= mMaxBranch.getMmax());
 		
 		// total G-R up to Mmax
 		IncrementalMagFreqDist totalGR;
 		if (seisRegion == PRVI25_SeismicityRegions.MUE_INTRASLAB) {
 			PRVI25_SubductionMuertosSeismicityRate seisBranch = branch.requireValue(PRVI25_SubductionMuertosSeismicityRate.class);
-			totalGR = seisBranch.build(FaultSysTools.initEmptyMFD(OVERALL_MMIN, maxMagOff), maxMagOff, SLAB_M_CORNER, true);
+			totalGR = seisBranch.build(epoch, refMFD, maxMagOff, SLAB_M_CORNER, true);
 		} else if (seisRegion == PRVI25_SeismicityRegions.CAR_INTRASLAB) {
 			PRVI25_SubductionCaribbeanSeismicityRate seisBranch = branch.requireValue(PRVI25_SubductionCaribbeanSeismicityRate.class);
-			totalGR = seisBranch.build(FaultSysTools.initEmptyMFD(OVERALL_MMIN, maxMagOff), maxMagOff, SLAB_M_CORNER, true);
+			totalGR = seisBranch.build(epoch, refMFD, maxMagOff, SLAB_M_CORNER, true);
 		} else {
 			throw new IllegalStateException("Not a slab region: "+seisRegion);
 		}
@@ -582,6 +590,7 @@ public class PRVI25_GridSourceBuilder {
 		IncrementalMagFreqDist refMFD = FaultSysTools.initEmptyMFD(OVERALL_MMIN, 9d);
 		Map<Double, IncrementalMagFreqDist> mMaxMFDCache = new HashMap<>();
 		if (mfdBuilderFunc == null) {
+			PRVI25_SeismicityRateEpoch epoch = fullBranch.requireValue(PRVI25_SeismicityRateEpoch.class);
 			if (seisRegion == PRVI25_SeismicityRegions.MUE_INTERFACE) {
 				PRVI25_SubductionMuertosSeismicityRate seisBranch = fullBranch.requireValue(PRVI25_SubductionMuertosSeismicityRate.class);
 				mfdBuilderFunc = new Function<Double, IncrementalMagFreqDist>() {
@@ -589,7 +598,7 @@ public class PRVI25_GridSourceBuilder {
 					@Override
 					public IncrementalMagFreqDist apply(Double mMax) {
 						try {
-							return seisBranch.build(refMFD, mMax, Double.NaN, false);
+							return seisBranch.build(epoch, refMFD, mMax, Double.NaN, false);
 						} catch (IOException e) {
 							throw ExceptionUtils.asRuntimeException(e);
 						}
@@ -602,7 +611,7 @@ public class PRVI25_GridSourceBuilder {
 					@Override
 					public IncrementalMagFreqDist apply(Double mMax) {
 						try {
-							return seisBranch.build(refMFD, mMax, Double.NaN, false);
+							return seisBranch.build(epoch, refMFD, mMax, Double.NaN, false);
 						} catch (IOException e) {
 							throw ExceptionUtils.asRuntimeException(e);
 						}
@@ -1196,8 +1205,8 @@ public class PRVI25_GridSourceBuilder {
 		
 		ModuleContainer.VERBOSE_DEFAULT = false;
 		List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
-		levels.addAll(PRVI25_LogicTreeBranch.levelsSubduction);
-		levels.addAll(PRVI25_LogicTreeBranch.levelsSubductionGridded);
+		levels.addAll(PRVI25_LogicTree.levelsSubduction);
+		levels.addAll(PRVI25_LogicTree.levelsSubductionGridded);
 		LogicTreeBranch<LogicTreeNode> branch = new LogicTreeBranch<>(levels);
 		
 		branch.setValue(PRVI25_SubductionScalingRelationships.AVERAGE);

@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
@@ -140,6 +141,7 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel, RupSetSubs
 						PRVI25_SeismicityRegions.CAR_INTERFACE,
 						PRVI25_SeismicityRegions.MUE_INTERFACE,
 				};
+				PRVI25_SeismicityRateEpoch epoch = PRVI25_SeismicityRateEpoch.DEFAULT;
 //				double maxMinMag = 0d;
 //				for (int s=0; s<rupSet.getNumSections(); s++)
 //					maxMinMag = Math.max(maxMinMag, rupSet.getMinMagForSection(s));
@@ -172,10 +174,10 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel, RupSetSubs
 					double dataMmax = maxMags.stream().mapToDouble(D->D).max().getAsDouble();
 					regions.add(reg);
 					if (seisReg == PRVI25_SeismicityRegions.CAR_INTERFACE)
-						regionMFDs.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(false).getBounded(
+						regionMFDs.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(epoch, false).getBounded(
 								interfaceRefMFD, interfaceRefMFD.getX(interfaceRefMFD.getClosestXIndex(dataMmax))));
 					else
-						regionMFDs.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(false).getBounded(
+						regionMFDs.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(epoch, false).getBounded(
 								interfaceRefMFD, interfaceRefMFD.getX(interfaceRefMFD.getClosestXIndex(dataMmax))));
 					regionTRTs.add(TectonicRegionType.SUBDUCTION_INTERFACE);
 				}
@@ -184,16 +186,22 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel, RupSetSubs
 						PRVI25_SeismicityRegions.CAR_INTRASLAB,
 						PRVI25_SeismicityRegions.MUE_INTRASLAB,
 				};
-				IncrementalMagFreqDist slabRefMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.OVERALL_MMIN, PRVI25_GridSourceBuilder.SLAB_MMAX);
+				
+				PRVI25_SubductionSlabMMax slabMmaxBranch = PRVI25_SubductionSlabMMax.DEFAULT;
+				
+				double slabMmaxOff = slabMmaxBranch.getMmax();
+				EvenlyDiscretizedFunc slabRefMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.OVERALL_MMIN, slabMmaxOff);
+				// snap Mmax to incremental bin before it
+				slabMmaxOff = slabRefMFD.getX(slabRefMFD.getClosestXIndex(slabMmaxOff-0.01));
+				Preconditions.checkState(slabMmaxOff <= slabMmaxBranch.getMmax());
+				
 				for (PRVI25_SeismicityRegions seisReg : slabRegions) {
 					regions.add(seisReg.load());
 					UncertainBoundedIncrMagFreqDist mfd;
 					if (seisReg == PRVI25_SeismicityRegions.CAR_INTRASLAB)
-						mfd = PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(true).getBounded(
-								slabRefMFD, slabRefMFD.getX(slabRefMFD.getClosestXIndex(PRVI25_GridSourceBuilder.SLAB_MMAX)));
+						mfd = PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(epoch, true).getBounded(slabRefMFD, slabMmaxOff);
 					else
-						mfd = PRVI25_SubductionMuertosSeismicityRate.loadRateModel(true).getBounded(
-								slabRefMFD, slabRefMFD.getX(slabRefMFD.getClosestXIndex(PRVI25_GridSourceBuilder.SLAB_MMAX)));
+						mfd = PRVI25_SubductionMuertosSeismicityRate.loadRateModel(epoch, true).getBounded(slabRefMFD, slabMmaxOff);
 //					System.out.println("MFD for "+seisReg
 //							+"; lowM5="+(float)mfd.getLower().getCumRateDistWithOffset().getY(5d)
 //							+"; prefM5="+(float)mfd.getCumRateDistWithOffset().getY(5d)

@@ -12,6 +12,7 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalSeismicityRate;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SeismicityRateEpoch;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionCaribbeanSeismicityRate;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionMuertosSeismicityRate;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
@@ -555,6 +556,7 @@ public class SeismicityRateFileLoader {
 //		System.out.println("\tExact G-R: "+(float)exact.getCumRateDistWithOffset().getY(5d)+"\t(expected "+(float)meanExact.rateAboveM1+")");
 		
 		String directPrefix = "/data/erf/prvi25/seismicity/rates/directrates_2025_05_08/directrates-PRVI ";
+		PRVI25_SeismicityRateEpoch epoch = PRVI25_SeismicityRateEpoch.DEFAULT;
 		for (boolean m5 : new boolean[] {true,false}) {
 			String yearSuffix = m5 ? "-Full-1973-2024.csv" : "-Full-1900-2024.csv";
 			CSVFile<String> outCSV = new CSVFile<>(false);
@@ -572,24 +574,24 @@ public class SeismicityRateFileLoader {
 			List<SeismicityRateModel> grRateModels = new ArrayList<>();
 			
 			names.add("Crustal");
-			rateModels.add(PRVI25_CrustalSeismicityRate.loadRateModel(RateType.EXACT));
-			grRateModels.add(PRVI25_CrustalSeismicityRate.loadRateModel(RateType.M1_TO_MMAX));
+			rateModels.add(PRVI25_CrustalSeismicityRate.loadRateModel(epoch, RateType.EXACT));
+			grRateModels.add(PRVI25_CrustalSeismicityRate.loadRateModel(epoch, RateType.M1_TO_MMAX));
 			
 			names.add("CAR Intraslab");
-			rateModels.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(RateType.EXACT, true));
-			grRateModels.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(RateType.M1_TO_MMAX, true));
+			rateModels.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(epoch, RateType.EXACT, true));
+			grRateModels.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(epoch, RateType.M1_TO_MMAX, true));
 			
 			names.add("CAR Interface");
-			rateModels.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(RateType.EXACT, false));
-			grRateModels.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(RateType.M1_TO_MMAX, false));
+			rateModels.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(epoch, RateType.EXACT, false));
+			grRateModels.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(epoch, RateType.M1_TO_MMAX, false));
 			
 			names.add("MUE Intraslab");
-			rateModels.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(RateType.EXACT, true));
-			grRateModels.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(RateType.M1_TO_MMAX, true));
+			rateModels.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(epoch, RateType.EXACT, true));
+			grRateModels.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(epoch, RateType.M1_TO_MMAX, true));
 			
 			names.add("MUE Interface");
-			rateModels.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(RateType.EXACT, false));
-			grRateModels.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(RateType.M1_TO_MMAX, false));
+			rateModels.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(epoch, RateType.EXACT, false));
+			grRateModels.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(epoch, RateType.M1_TO_MMAX, false));
 			
 			names.add("Union");
 			rateModels.add(null);
