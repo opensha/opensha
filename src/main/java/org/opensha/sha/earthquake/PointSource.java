@@ -471,7 +471,7 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 				// distance corrections are enabled and this is a point source
 				// the distance-corrected version must be accessed via getForSite(Site)
 				// protect the surface here so that it is not accidentally used
-				surf = ((PointSurface)surf).getDistancedProtected(distCorr);
+				surf = ((PointSurface)surf).getDistancedProtected(distCorr, getTectonicRegionType(), mag);
 			}
 			Location hypo = data.getHypocenter(getLocation(), surf, nRupture);
 			double prob = getProbability(nRupture, 1d);

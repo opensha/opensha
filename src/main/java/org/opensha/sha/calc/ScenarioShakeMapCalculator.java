@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.ListIterator;
 
 import org.opensha.commons.data.Site;
+import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.region.SitesInGriddedRegion;
 import org.opensha.commons.data.xyz.ArbDiscrGeoDataSet;
 import org.opensha.commons.data.xyz.GeoDataSet;
@@ -23,9 +24,13 @@ import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.param.PointSourceDistanceCorrectionParam;
 import org.opensha.sha.faultSurface.PointSurface;
+import org.opensha.sha.faultSurface.PointSurface.DistanceCorrected;
+import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrections;
 import org.opensha.sha.gui.servlets.ScenarioShakeMapCalcServlet;
 import org.opensha.sha.imr.AttenuationRelationship;
+
+import com.google.common.base.Preconditions;
 
 
 /**
@@ -315,7 +320,25 @@ public class ScenarioShakeMapCalculator {
 	 */
 	private double scenarioShakeMapDataCalc(EqkRupture rupture, Site site,
 			AttenuationRelationship imr,boolean isProbAtIML) throws ParameterException {
-
+		// check for distance-corrected
+		RuptureSurface surf = rupture.getRuptureSurface();
+		if (surf instanceof PointSurface.DistanceProtected) {
+			// need to get sub-surfaces
+			WeightedList<DistanceCorrected> surfs = ((PointSurface.DistanceProtected)surf).getCorrectedSurfaces(site.getLocation());
+			Preconditions.checkState(surfs.isNormalized());
+			
+			imr.setSite(site);
+			double val = 0d;
+			for (int i=0; i<surfs.size(); i++) {
+				surf = surfs.getValue(i);
+				double weight = surfs.getWeight(i);
+				EqkRupture modRup = new EqkRupture(rupture.getMag(), rupture.getAveRake(), surf, rupture.getHypocenterLocation());
+				val += weight*scenarioShakeMapDataCalc(modRup, site, imr, isProbAtIML);
+			}
+			imr.setEqkRupture(null); // clear out the precomputed surface
+			return val;
+		}
+		
 		imr.setEqkRupture(rupture);
 		imr.setSite(site);
 		if(D) {

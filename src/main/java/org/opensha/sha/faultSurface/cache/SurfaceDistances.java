@@ -57,6 +57,12 @@ public interface SurfaceDistances {
 		public double getDistanceX() {
 			return distanceX;
 		}
+
+		@Override
+		public String toString() {
+			return "Precomputed [loc=" + siteLoc + ", rRup=" + (float)distanceRup + ", rJB=" + (float)distanceJB
+					+ ", rX=" + (float)distanceX + "]";
+		}
 	}
 	
 	/**

@@ -71,6 +71,21 @@ extends JPanel implements EqkRupSelectorGuiBeanAPI, ParameterChangeListener {
 	private Double DIP_PARAM_MAX = Double.valueOf(90);
 	private Double DIP_PARAM_DEFAULT = Double.valueOf(90);
 
+	// point surface finiteness
+	public final static String POINT_LENGTH_PARAM_NAME = "Length";
+	private final static String POINT_LENGTH_PARAM_INFO = "Length of surface (used by some distance corrections)";
+	private final static String POINT_LENGTH_PARAM_UNITS = "km";
+	private Double POINT_LENGTH_PARAM_MIN = Double.valueOf(0);
+	private Double POINT_LENGTH_PARAM_MAX = Double.valueOf(10000);
+	private Double POINT_LENGTH_PARAM_DEFAULT = Double.valueOf(0);
+	
+	public final static String POINT_WIDTH_PARAM_NAME = "Width";
+	private final static String POINT_WIDTH_PARAM_INFO = "Down-dip width of surface (used by some distance corrections)";
+	private final static String POINT_WIDTH_PARAM_UNITS = "km";
+	private Double POINT_WIDTH_PARAM_MIN = Double.valueOf(0);
+	private Double POINT_WIDTH_PARAM_MAX = Double.valueOf(100);
+	private Double POINT_WIDTH_PARAM_DEFAULT = Double.valueOf(0);
+
 	// the source-location parameters (this should be a location parameter)
 	private Double SRC_LAT_PARAM_DEFAULT = Double.valueOf(35.71);
 
@@ -113,6 +128,8 @@ extends JPanel implements EqkRupSelectorGuiBeanAPI, ParameterChangeListener {
 	private DoubleParameter magParam;
 	private DoubleParameter dipParam;
 	private DoubleParameter rakeParam;
+	private DoubleParameter pointLengthParam;
+	private DoubleParameter pointWidthParam;
 	private LocationParameter locationParam;
 	private LocationParameter hypocenterLocationParam;
 	private BooleanParameter showHypocenterLocationParam = new
@@ -151,11 +168,22 @@ extends JPanel implements EqkRupSelectorGuiBeanAPI, ParameterChangeListener {
 				RAKE_PARAM_DEFAULT);
 		rakeParam.setInfo(RAKE_PARAM_INFO);
 
-		// create the rake param
+		// create the dip param
 		dipParam = new DoubleParameter(DIP_PARAM_NAME, DIP_PARAM_MIN,
 				DIP_PARAM_MAX, DIP_PARAM_UNITS,
 				DIP_PARAM_DEFAULT);
 		dipParam.setInfo(DIP_PARAM_INFO);
+
+		// create the point approx finite params
+		pointLengthParam = new DoubleParameter(POINT_LENGTH_PARAM_NAME, POINT_LENGTH_PARAM_MIN,
+				POINT_LENGTH_PARAM_MAX, POINT_LENGTH_PARAM_UNITS,
+				POINT_LENGTH_PARAM_DEFAULT);
+		pointLengthParam.setInfo(POINT_LENGTH_PARAM_INFO);
+
+		pointWidthParam = new DoubleParameter(POINT_WIDTH_PARAM_NAME, POINT_WIDTH_PARAM_MIN,
+				POINT_WIDTH_PARAM_MAX, POINT_WIDTH_PARAM_UNITS,
+				POINT_WIDTH_PARAM_DEFAULT);
+		pointWidthParam.setInfo(POINT_WIDTH_PARAM_INFO);
 
 		// create src location param for the point source
 		locationParam = new LocationParameter(LOCATION_PARAM_NAME,
@@ -176,9 +204,7 @@ extends JPanel implements EqkRupSelectorGuiBeanAPI, ParameterChangeListener {
 				(String) ruptureTypeList.get(0));
 		sourceTypeParam.setInfo(SRC_TYP_PARAM_INFO);
 		
-		distCorrParam = new PointSourceDistanceCorrectionParam(
-				// only supports single corrections (not a list of corrections) as we return a single rupture
-				PointSourceDistanceCorrections.SINGLE_CORRS, PointSourceDistanceCorrections.NONE);
+		distCorrParam = new PointSourceDistanceCorrectionParam(PointSourceDistanceCorrections.NONE);
 
 		parameterList = new ParameterList();
 		// add the adjustable parameters to the list
@@ -190,12 +216,16 @@ extends JPanel implements EqkRupSelectorGuiBeanAPI, ParameterChangeListener {
 		parameterList.addParameter(locationParam);
 		parameterList.addParameter(showHypocenterLocationParam);
 		parameterList.addParameter(distCorrParam);
+		parameterList.addParameter(pointLengthParam);
+		parameterList.addParameter(pointWidthParam);
 
 		sourceTypeParam.addParameterChangeListener(this);
 		magParam.addParameterChangeListener(this);
 		rakeParam.addParameterChangeListener(this);
 		locationParam.addParameterChangeListener(this);
 		dipParam.addParameterChangeListener(this);
+		pointLengthParam.addParameterChangeListener(this);
+		pointWidthParam.addParameterChangeListener(this);
 		faultParam.addParameterChangeListener(this);
 		showHypocenterLocationParam.addParameterChangeListener(this);
 		distCorrParam.addParameterChangeListener(this);
@@ -234,16 +264,30 @@ extends JPanel implements EqkRupSelectorGuiBeanAPI, ParameterChangeListener {
 		String ruptureType = (String) sourceTypeParam.getValue();
 
 		if (ruptureType.equals(POINT_SRC_NAME)) {
-			PointSurface ptSurface = new PointSurface( (Location) locationParam.getValue());
+			Location loc = locationParam.getValue();
+			PointSurface ptSurface = new PointSurface(loc);
 			double aveDip = ( (Double) dipParam.getValue()).doubleValue();
 			ptSurface.setAveDip(aveDip);
+			ptSurface.setAveLength(pointLengthParam.getValue());
+			double ddw = pointWidthParam.getValue();
+			if (ddw > 0d) {
+				double middleDepth = loc.getDepth();
+				double vertWidth = ddw * Math.sin(Math.toRadians(aveDip));
+				double upper = middleDepth - 0.5*vertWidth;
+				double lower = middleDepth + 0.5*vertWidth;
+				if (upper < 0) {
+					upper = 0d;
+					lower = vertWidth;
+				}
+				ptSurface.setDepths(upper, lower);
+			}
 			PointSourceDistanceCorrection corr = distCorrParam.getValue().get();
 			if (corr != null) {
-				Preconditions.checkState(corr instanceof PointSourceDistanceCorrection.Single,
-						"Only single-valued corrections are supported, we have a %s of type %s",
-						corr, corr.getClass().getName());
-				ptSurface = ptSurface.getForDistanceCorrection((PointSourceDistanceCorrection.Single)corr, null, magParam.getValue());
-				// TODO: should also include finite params such as length and widths
+				if (corr instanceof PointSourceDistanceCorrection.Single) {
+					ptSurface = ptSurface.getForDistanceCorrection((PointSourceDistanceCorrection.Single)corr, null, magParam.getValue());
+				} else {
+					ptSurface = ptSurface.getDistancedProtected(corr, null, magParam.getValue());
+				}
 			}
 			this.ruptureSurface = ptSurface;
 		} else if (ruptureType.equals(FINITE_SRC_NAME)) {
@@ -324,6 +368,8 @@ extends JPanel implements EqkRupSelectorGuiBeanAPI, ParameterChangeListener {
 			this.updateUI();
 		} else if (name1.equals(LOCATION_PARAM_NAME)
 				|| name1.equals(FAULT_PARAM_NAME)
+				|| name1.equals(POINT_LENGTH_PARAM_NAME)
+				|| name1.equals(POINT_WIDTH_PARAM_NAME)
 				|| name1.equals(distCorrParam.getName())
 				|| name1.equals(MAG_PARAM_NAME)) { // mag param influences distance correction, thus needed here
 			createGriddedRuptureSurface();
@@ -384,12 +430,16 @@ extends JPanel implements EqkRupSelectorGuiBeanAPI, ParameterChangeListener {
 		if (selectedRuptureType.equals(POINT_SRC_NAME)) {
 			listEditor.setParameterVisible(LOCATION_PARAM_NAME, true);
 			listEditor.setParameterVisible(DIP_PARAM_NAME, true);
+			listEditor.setParameterVisible(POINT_LENGTH_PARAM_NAME, true);
+			listEditor.setParameterVisible(POINT_WIDTH_PARAM_NAME, true);
 			listEditor.setParameterVisible(FAULT_PARAM_NAME, false);
 			listEditor.setParameterVisible(distCorrParam.getName(), true);
 		}
 		else if (selectedRuptureType.equals(FINITE_SRC_NAME)) {
 			listEditor.setParameterVisible(LOCATION_PARAM_NAME, false);
 			listEditor.setParameterVisible(DIP_PARAM_NAME, false);
+			listEditor.setParameterVisible(POINT_LENGTH_PARAM_NAME, false);
+			listEditor.setParameterVisible(POINT_WIDTH_PARAM_NAME, false);
 			listEditor.setParameterVisible(FAULT_PARAM_NAME, true);
 			listEditor.setParameterVisible(distCorrParam.getName(), false);
 		}

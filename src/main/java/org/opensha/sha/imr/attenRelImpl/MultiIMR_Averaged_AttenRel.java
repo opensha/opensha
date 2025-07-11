@@ -606,11 +606,13 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	@Override
 	public void setSite(Site site) {
 		this.site = site;
-		for (Parameter param : siteParams) {
-			if (param instanceof WarningDoubleParameter)
-				((WarningDoubleParameter)param).setValueIgnoreWarning((Double)site.getParameter(param.getName()).getValue());
-			else
-				param.setValue(site.getParameter(param.getName()).getValue());
+		if (site != null) {
+			for (Parameter param : siteParams) {
+				if (param instanceof WarningDoubleParameter)
+					((WarningDoubleParameter)param).setValueIgnoreWarning((Double)site.getParameter(param.getName()).getValue());
+				else
+					param.setValue(site.getParameter(param.getName()).getValue());
+			}
 		}
 		for (ScalarIMR imr : imrs) {
 			imr.setSite(site);

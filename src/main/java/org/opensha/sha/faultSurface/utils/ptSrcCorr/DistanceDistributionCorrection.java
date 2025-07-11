@@ -17,6 +17,7 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.geo.Location;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances.Precomputed;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -183,7 +184,9 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 			double zTop = surf.getAveRupTopDepth();
 			double rRup = hypot2(horzDist, zTop);
 			double rX = horzDist == 0d ? 0 : -horzDist;
-			return WeightedList.evenlyWeighted(new SurfaceDistances.Precomputed(siteLoc, rRup, horzDist, rX));
+			Precomputed dists = new SurfaceDistances.Precomputed(siteLoc, rRup, horzDist, rX);
+//			System.out.println("True pt src dists: "+dists);
+			return WeightedList.evenlyWeighted(dists);
 		}
 		
 		FractileDistances fractileDists;

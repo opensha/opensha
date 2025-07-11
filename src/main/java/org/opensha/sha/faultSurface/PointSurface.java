@@ -215,8 +215,8 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	 * @return a version of this source that blocks access to all distance metrics, used to ensure that raw distances
 	 * are never used when distance corrections are enabled
 	 */
-	public DistanceProtected getDistancedProtected(PointSourceDistanceCorrection corr) {
-		return new DistanceProtected(this, corr);
+	public DistanceProtected getDistancedProtected(PointSourceDistanceCorrection corr, TectonicRegionType trt, double magnitude) {
+		return new DistanceProtected(this, corr, trt, magnitude);
 	}
 
 	/**
@@ -664,18 +664,25 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	 */
 	public static class DistanceProtected extends PointSurface {
 		
-		private static final String MESSAGE = "This PointSurface is part of a distance-corrected PointSource and cannot be "
-				+ "used directly; instead, access the distance-corrected ruptures via PointSource.getForSite(Site) method. "
+		private static final String MESSAGE = "This PointSurface has a distance correction attached and should not be "
+				+ "used direction; insatead, you can access corrected instances via getCorrectedSurfaces(Location). "
+				+ "If accessed as part of a PointSource, use PointSource.getForSite(Site) to get a corrected source. "
 				+ "If you really need to access the distance metrics, uncorrected alternatives are provided, e.g., "
-				+ "getUncorrectedDistanceRup(Location)";
+				+ "getUncorrectedDistanceRup(Location).";
 		
 		private PointSurface surf;
 		private PointSourceDistanceCorrection corr;
 
-		public DistanceProtected(PointSurface surf, PointSourceDistanceCorrection corr) {
+		private TectonicRegionType trt;
+
+		private double magnitude;
+
+		public DistanceProtected(PointSurface surf, PointSourceDistanceCorrection corr, TectonicRegionType trt, double magnitude) {
 			super(surf);
 			this.surf = surf;
 			this.corr = corr;
+			this.trt = trt;
+			this.magnitude = magnitude;
 		}
 
 		@Override
@@ -690,6 +697,11 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 
 		@Override
 		public double getDistanceX(Location siteLoc) {
+			throw new IllegalStateException(MESSAGE);
+		}
+
+		@Override
+		public SurfaceDistances getDistances(Location siteLoc) {
 			throw new IllegalStateException(MESSAGE);
 		}
 
@@ -711,6 +723,10 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 		
 		public PointSourceDistanceCorrection getDistanceCorrection() {
 			return corr;
+		}
+		
+		public WeightedList<DistanceCorrected> getCorrectedSurfaces(Location siteLoc) {
+			return getForDistanceCorrection(siteLoc, corr, trt, magnitude);
 		}
 
 	}
