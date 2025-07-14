@@ -147,6 +147,10 @@ public class LogicTreeHazardCompare {
 		if (cmd.hasOption("write-pdfs"))
 			SolHazardMapCalc.PDFS = true;
 		
+		boolean forceFileBacked = cmd.hasOption("force-file-backed-lt");
+		if (forceFileBacked)
+			System.out.println("Forcing file-backed logic trees");
+		
 		File resultsFile, hazardFile;
 		File compResultsFile, compHazardFile;
 		LogicTree<?> tree = null;
@@ -170,13 +174,15 @@ public class LogicTreeHazardCompare {
 				File treeFile = new File(cmd.getOptionValue("logic-tree"));
 				System.out.println("Reading custom logic tree from: "+treeFile.getAbsolutePath());
 				if (treeFile.getName().endsWith("zip"))
-					tree = loadTreeFromResults(treeFile);
+					tree = loadTreeFromResults(treeFile, forceFileBacked);
+				else if (forceFileBacked)
+					tree = LogicTree.readFileBacked(treeFile);
 				else
 					tree = LogicTree.read(treeFile);
 				ignorePrecomputed = true;
 			} else {
 				// read it from the hazard file if available
-				tree = loadTreeFromResults(hazardFile);
+				tree = loadTreeFromResults(hazardFile, forceFileBacked);
 			}
 			if (cmd.hasOption("ignore-precomputed-maps"))
 				ignorePrecomputed = true;
@@ -192,11 +198,14 @@ public class LogicTreeHazardCompare {
 				if (cmd.hasOption("comp-logic-tree")) {
 					File treeFile = new File(cmd.getOptionValue("comp-logic-tree"));
 					System.out.println("Reading custom logic tree from: "+treeFile.getAbsolutePath());
-					compTree = LogicTree.read(treeFile);
+					if (forceFileBacked)
+						compTree = LogicTree.readFileBacked(treeFile);
+					else
+						compTree = LogicTree.read(treeFile);
 					ignorePrecomputed = true;
 				} else {
 					// read it from the hazard file if available
-					compTree = loadTreeFromResults(compHazardFile);
+					compTree = loadTreeFromResults(compHazardFile, forceFileBacked);
 				}
 				compName = args[cnt++];
 			} else {
@@ -412,11 +421,13 @@ public class LogicTreeHazardCompare {
 		ops.addOption(null, "diff-range", true, "Maximum difference to plot");
 		ops.addOption(null, "periods", true, "Custom spectral periods, comma separated");
 		ops.addOption(null, "force-sparse-lt-var", false, "Flag to force using the sparse logic tree variance algorithm");
+		ops.addOption(null, "force-file-backed-lt", false, "Flag to force loading the logic tree exactly as registered "
+				+ "in the tree file and ignoring matching enums or classes");
 		
 		return ops;
 	}
 	
-	private static LogicTree<?> loadTreeFromResults(File resultsFile) throws IOException {
+	private static LogicTree<?> loadTreeFromResults(File resultsFile, boolean forceFileBacked) throws IOException {
 		ZipFile zip = new ZipFile(resultsFile);
 		
 		ZipEntry entry = zip.getEntry(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME);
@@ -426,9 +437,12 @@ public class LogicTreeHazardCompare {
 		}
 		
 		BufferedInputStream logicTreeIS = new BufferedInputStream(zip.getInputStream(entry));
-		Gson gson = new GsonBuilder().registerTypeAdapter(LogicTree.class, new LogicTree.Adapter<>()).create();
 		InputStreamReader reader = new InputStreamReader(logicTreeIS);
-		LogicTree<?> tree = gson.fromJson(reader, LogicTree.class);
+		LogicTree<?> tree;
+		if (forceFileBacked)
+			tree = LogicTree.readFileBacked(reader);
+		else
+			tree = LogicTree.read(reader);
 		zip.close();
 		return tree;
 	}
