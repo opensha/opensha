@@ -11,6 +11,7 @@ import java.util.concurrent.Callable;
 
 import org.opensha.commons.data.IntegerSampler.ExclusionIntegerSampler;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.logicTree.BranchWeightProvider;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
@@ -1291,12 +1292,21 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		}
 	}
 	
-	public static class Rates1973 extends PRVI25_InvConfigFactory {
+	public static class Rates1973scaledTo1900 extends PRVI25_InvConfigFactory {
 		
-		public Rates1973() {
-			PRVI25_CrustalSeismicityRate.RATE_DATE = "2025_07_11";
-			PRVI25_SubductionCaribbeanSeismicityRate.RATE_DATE = "2025_07_11";
-			PRVI25_SubductionMuertosSeismicityRate.RATE_DATE = "2025_07_11";
+		public Rates1973scaledTo1900() {
+		}
+
+		@Override
+		public LogicTree<?> getGridSourceTree(LogicTree<?> faultTree) {
+			LogicTreeNode[] required = {PRVI25_SeismicityRateEpoch.RECENT_SCALED};
+			if (faultTree.getBranch(0).hasValue(PRVI25_CrustalFaultModels.class))
+				return LogicTree.buildExhaustive(PRVI25_LogicTree.levelsCrustalOffFault, true,
+						new BranchWeightProvider.NodeWeightOverrides(required, 1d), required);
+			if (faultTree.getBranch(0).hasValue(PRVI25_SubductionFaultModels.class))
+				return LogicTree.buildExhaustive(PRVI25_LogicTree.levelsSubductionGridded, true,
+						new BranchWeightProvider.NodeWeightOverrides(required, 1d), required);
+			throw new IllegalStateException();
 		}
 		
 	}

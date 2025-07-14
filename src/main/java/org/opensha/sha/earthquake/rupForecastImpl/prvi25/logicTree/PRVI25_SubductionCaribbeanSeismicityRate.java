@@ -131,8 +131,12 @@ public enum PRVI25_SubductionCaribbeanSeismicityRate implements LogicTreeNode {
 		}
 		if (rateModel != null)
 			return rateModel;
-		CSVFile<String> csv = loadCSV(epoch, slab);
-		rateModel = new SeismicityRateModel(csv, type, BOUND_TYPE);
+		if (epoch == PRVI25_SeismicityRateEpoch.RECENT_SCALED) {
+			rateModel = PRVI25_CrustalSeismicityRate.getScaledToFull(loadRateModel(PRVI25_SeismicityRateEpoch.RECENT, slab), type);
+		} else {
+			CSVFile<String> csv = loadCSV(epoch, slab);
+			rateModel = new SeismicityRateModel(csv, type, BOUND_TYPE);
+		}
 		if (slab)
 			slabRateModels.put(epoch, type, rateModel);
 		else
@@ -162,6 +166,7 @@ public enum PRVI25_SubductionCaribbeanSeismicityRate implements LogicTreeNode {
 		InputStream stream = PRVI25_SubductionCaribbeanSeismicityRate.class.getResourceAsStream(resourceName);
 		Preconditions.checkNotNull(stream, "Error loading stream for '%s'", resourceName);
 		csv = CSVFile.readStream(stream, false);
+		stream.close();
 		if (slab)
 			slabCSVs.put(epoch, csv);
 		else
@@ -200,37 +205,30 @@ public enum PRVI25_SubductionCaribbeanSeismicityRate implements LogicTreeNode {
 	}
 	
 	public static void main(String[] args) throws IOException {
-		PRVI25_SeismicityRateEpoch epoch = PRVI25_SeismicityRateEpoch.DEFAULT;
-		boolean cumulative = true;
 		for (boolean slab : new boolean[] {false,true}) {
 			if (slab)
 				System.out.println("SLAB");
 			else
 				System.out.println("INTERFACE");
 			double mMax = 7.95;
-//			double magCorner = Double.NaN;
-			double magCorner = slab ? 7.4 : Double.NaN;
+			double magCorner = Double.NaN;
 			EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(5.01, mMax);
 			
-			EvenlyDiscretizedFunc pref, low, high, avg;
-			if (cumulative) {
-				pref = PREFFERRED.build(epoch, refMFD, mMax, magCorner, slab).getCumRateDistWithOffset();
-				low = LOW.build(epoch, refMFD, mMax, magCorner, slab).getCumRateDistWithOffset();
-				high = HIGH.build(epoch, refMFD, mMax, magCorner, slab).getCumRateDistWithOffset();
-				avg = AVERAGE.build(epoch, refMFD, mMax, magCorner, slab).getCumRateDistWithOffset();
-			} else {
-				pref = PREFFERRED.build(epoch, refMFD, mMax, magCorner, slab);
-				low = LOW.build(epoch, refMFD, mMax, magCorner, slab);
-				high = HIGH.build(epoch, refMFD, mMax, magCorner, slab);
-				avg = AVERAGE.build(epoch, refMFD, mMax, magCorner, slab);
+			for (PRVI25_SeismicityRateEpoch epoch : PRVI25_SeismicityRateEpoch.values()) {
+				System.out.println("Epoch: "+epoch);
+				IncrementalMagFreqDist pref = PREFFERRED.build(epoch, refMFD, mMax, magCorner, true);
+				IncrementalMagFreqDist low = LOW.build(epoch, refMFD, mMax, magCorner, true);
+				IncrementalMagFreqDist high = HIGH.build(epoch, refMFD, mMax, magCorner, true);
+				
+				for (int i=0; i<refMFD.size(); i++) {
+					float x = (float)refMFD.getX(i);
+					if (x > (float)refMFD.getClosestXIndex(mMax))
+						break;
+					if (x == 5.05f || x == 6.05f || x == 7.05f)
+						System.out.println(x+"\t"+(float)pref.getY(i)+"\t["+(float)low.getY(i)+","+(float)high.getY(i)+"]");
+				}
+				System.out.println();
 			}
-			
-			for (int i=0; i<refMFD.size(); i++) {
-				if (refMFD.getX(i) > refMFD.getClosestXIndex(mMax))
-					break;
-				System.out.println((float)pref.getX(i)+"\t"+(float)pref.getY(i)+"\t["+(float)low.getY(i)+","+(float)high.getY(i)+"]\tavg="+(float)avg.getY(i));
-			}
-			System.out.println();
 		}
 	}
 

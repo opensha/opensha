@@ -21,18 +21,22 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider
 @Affects(MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum PRVI25_SeismicityRateEpoch implements LogicTreeNode {
-	FULL("Full 1900-2023", "1900-2023", 0.5d),
-	ONLY_1973("Only 1973-2023", "1973-2023", 0.5d);
+	FULL("Full (1900-2023)", "Full", "1900_2023", 1d/3d),
+	RECENT("Recent (1973-2023)", "Recent", "1973_2023", 1d/3d),
+	RECENT_SCALED("Recent, scaled to full rate", "Recent (scaled to full)", null, 1d/3d);
 	
 	public static PRVI25_SeismicityRateEpoch DEFAULT = FULL; // TODO
 
 	private String name;
 	private String shortName;
+	private String rateDirName;
 	private double weight;
 
-	private PRVI25_SeismicityRateEpoch(String name, String shortName, double weight) {
+
+	private PRVI25_SeismicityRateEpoch(String name, String shortName, String rateDirName, double weight) {
 		this.name = name;
 		this.shortName = shortName;
+		this.rateDirName = rateDirName;
 		this.weight = weight;
 	}
 	
@@ -57,7 +61,7 @@ public enum PRVI25_SeismicityRateEpoch implements LogicTreeNode {
 	}
 	
 	public String getRateSubDirName() {
-		return getShortName().replace("-", "_");
+		return rateDirName;
 	}
 
 }

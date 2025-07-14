@@ -63,6 +63,36 @@ public class SeismicityRateModel {
 		upperRecord = SeismicityRateFileLoader.locateQuantile(rates, upperQuantile);
 	}
 	
+	public SeismicityRateModel(RateRecord meanRecord, RateRecord lowerRecord, RateRecord upperRecord,
+			UncertaintyBoundType boundType) {
+		this.boundType = boundType;
+		switch (boundType) {
+		case CONF_68:
+			lowerQuantile = 0.16;
+			upperQuantile = 0.84;
+			break;
+		case ONE_SIGMA:
+			lowerQuantile = 0.16;
+			upperQuantile = 0.84;
+			break;
+		case CONF_95:
+			lowerQuantile = 0.025;
+			upperQuantile = 0.975;
+			break;
+		case TWO_SIGMA:
+			lowerQuantile = 0.025;
+			upperQuantile = 0.975;
+			break;
+
+		default:
+			throw new IllegalStateException("Not supported: "+boundType);
+		}
+		
+		this.meanRecord = meanRecord;
+		this.lowerRecord = lowerRecord;
+		this.upperRecord = upperRecord;
+	}
+	
 	public UncertaintyBoundType getBoundType() {
 		return boundType;
 	}

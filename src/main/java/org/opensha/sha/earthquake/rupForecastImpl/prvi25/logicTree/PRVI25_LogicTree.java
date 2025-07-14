@@ -183,7 +183,7 @@ public class PRVI25_LogicTree {
 				continue;
 
 			int ind = -1;
-			for (int i=0; i<levelsOnFault.size(); i++) {
+			for (int i=0; i<levels.size(); i++) {
 				LogicTreeLevel<?> level = levels.get(i);
 				if (level.isMember(val)) {
 					ind = i;

@@ -58,6 +58,8 @@ public class SeismicityRateFileLoader {
 			this.quantile = quantile;
 			this.mean = mean;
 		}
+		
+		public abstract RateRecord getScaled(double scalar);
 	}
 	
 	public static class PureGR extends RateRecord {
@@ -75,6 +77,11 @@ public class SeismicityRateFileLoader {
 			return "PureGR [M1="+(float)M1+", Mmax="+(float)Mmax+", rateAboveM1="+(float)rateAboveM1
 					+", b="+(float)b+", quantile="+(float)quantile+ ", mean="+mean+"]";
 		}
+
+		@Override
+		public PureGR getScaled(double scalar) {
+			return new PureGR(type, M1, Mmax, rateAboveM1*scalar, b, quantile, mean);
+		}
 	}
 	
 	public static class Exact extends RateRecord {
@@ -83,6 +90,13 @@ public class SeismicityRateFileLoader {
 		private Exact(double M1, EvenlyDiscretizedFunc cumulativeDist, double quantile, boolean mean) {
 			super(RateType.EXACT, M1, cumulativeDist.getY(cumulativeDist.getClosestXIndex(M1)), quantile, mean);
 			this.cumulativeDist = cumulativeDist;
+		}
+
+		@Override
+		public Exact getScaled(double scalar) {
+			EvenlyDiscretizedFunc scaledDist = cumulativeDist.deepClone();
+			scaledDist.scale(scalar);
+			return new Exact(M1, scaledDist, quantile, mean);
 		}
 	}
 	
@@ -98,6 +112,15 @@ public class SeismicityRateFileLoader {
 			this.cumulativeDist = cumulativeDist;
 			this.maxObsIncrMag = maxObsIncrMag;
 			this.maxObsCmlMag = maxObsCmlMag;
+		}
+
+		@Override
+		public Direct getScaled(double scalar) {
+			EvenlyDiscretizedFunc scaledIncr = incrementalDist.deepClone();
+			EvenlyDiscretizedFunc scaledCml = cumulativeDist.deepClone();
+			scaledIncr.scale(scalar);
+			scaledCml.scale(scalar);
+			return new Direct(M1, scaledIncr, scaledCml, maxObsIncrMag, maxObsCmlMag, quantile, mean);
 		}
 	}
 	
@@ -454,10 +477,10 @@ public class SeismicityRateFileLoader {
 					double mag = cmlFuncs[0].getX(m);
 					double csvMag = csv.getDouble(row, 0);
 					Preconditions.checkState((float)mag == (float)csvMag, "Expected m=%s at index %s, have %s", mag, m, csvMag);
-					int cmlObs = csv.getInt(row, 1);
+					double cmlObs = csv.getDouble(row, 1);
 					if (cmlObs > 0)
 						maxObsCmlMag = mag;
-					int incrObs = csv.getInt(row, 2+nQuantiles);
+					double incrObs = csv.getDouble(row, 2+nQuantiles);
 					if (incrObs > 0)
 						maxObsIncrMag = mag;
 					for (int n=0; n<nQuantiles; n++) {

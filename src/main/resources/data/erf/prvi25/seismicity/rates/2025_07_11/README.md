@@ -1,0 +1,3 @@
+These data use new fixes for default depths, wherein surrogate depths from nearby known-depth events are used to determine average classification probabilities. The rate model calculation now also randomly selects catalogs using those classification probabilities (prior calculations assigned events fully to the classification with the highest probability).
+
+We now also track the epochs separately. The `1900_2023` subdirectory contains results for the full catalog (both epochs), and are Andy's 'v5' files sent via e-mail on 7/10/2025. The `1973_2023` subdirectory contains results for only the more recent epoch, and are Andy's 'v6' files sent via e-mail on 7/11/2025.

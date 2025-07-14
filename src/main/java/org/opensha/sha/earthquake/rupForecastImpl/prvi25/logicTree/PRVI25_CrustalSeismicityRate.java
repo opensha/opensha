@@ -125,10 +125,57 @@ public enum PRVI25_CrustalSeismicityRate implements LogicTreeNode {
 		SeismicityRateModel rateModel = rateModels.get(epoch, type);
 		if (rateModel != null)
 			return rateModel;
-		CSVFile<String> csv = loadCSV(epoch);
-		rateModel = new SeismicityRateModel(csv, type, BOUND_TYPE);
+		if (epoch == PRVI25_SeismicityRateEpoch.RECENT_SCALED) {
+			rateModel = getScaledToFull(loadRateModel(PRVI25_SeismicityRateEpoch.RECENT), type);
+		} else {
+			CSVFile<String> csv = loadCSV(epoch);
+			rateModel = new SeismicityRateModel(csv, type, BOUND_TYPE);
+		}
 		rateModels.put(epoch, type, rateModel);
 		return rateModel;
+	}
+	
+	private static Double RECENT_TO_FULL_SCALAR = null;
+	
+	static synchronized SeismicityRateModel getScaledToFull(SeismicityRateModel recentModel, RateType type) throws IOException {
+		if (RECENT_TO_FULL_SCALAR == null) {
+			double sumRecent = 0d;
+			double sumFull = 0d;
+			String commonPrefix = RATES_PATH_PREFIX+RATE_DATE+"/";
+			for (PRVI25_SeismicityRegions region : PRVI25_SeismicityRegions.values()) {
+				String recentCSVname = commonPrefix+PRVI25_SeismicityRateEpoch.RECENT.getRateSubDirName()+"/"+region.name()+".csv";
+				InputStream recentStream = PRVI25_CrustalSeismicityRate.class.getResourceAsStream(recentCSVname);
+				Preconditions.checkNotNull(recentStream, "Error loading stream for '%s'", recentCSVname);
+				CSVFile<String> recentCSV = CSVFile.readStream(recentStream, false);
+				recentStream.close();
+				
+				String fullCSVname = commonPrefix+PRVI25_SeismicityRateEpoch.FULL.getRateSubDirName()+"/"+region.name()+".csv";
+				InputStream fullStream = PRVI25_CrustalSeismicityRate.class.getResourceAsStream(fullCSVname);
+				Preconditions.checkNotNull(fullStream, "Error loading stream for '%s'", fullCSVname);
+				CSVFile<String> fullCSV = CSVFile.readStream(fullStream, false);
+				fullStream.close();
+				
+				SeismicityRateModel recentRegionalModel = new SeismicityRateModel(recentCSV, type, BOUND_TYPE);
+				SeismicityRateModel fullRegionalModel = new SeismicityRateModel(fullCSV, type, BOUND_TYPE);
+				
+				RateRecord recentMean = recentRegionalModel.getMeanRecord();
+				RateRecord fullMean = fullRegionalModel.getMeanRecord();
+				
+				Preconditions.checkState(recentMean.M1 == fullMean.M1);
+				
+				sumRecent += recentMean.rateAboveM1;
+				sumFull += fullMean.rateAboveM1;
+			}
+			
+			double rateScalar = sumFull/sumRecent;
+			System.out.println("Recent-to-full seismicity rate scalar:\t"
+					+(float)sumFull+" / "+(float)sumRecent+" = "+(float)rateScalar);
+			RECENT_TO_FULL_SCALAR = rateScalar;
+		}
+		
+		return new SeismicityRateModel(recentModel.getMeanRecord().getScaled(RECENT_TO_FULL_SCALAR),
+				recentModel.getLowerRecord().getScaled(RECENT_TO_FULL_SCALAR),
+				recentModel.getUpperRecord().getScaled(RECENT_TO_FULL_SCALAR), BOUND_TYPE);
 	}
 	
 	private synchronized static CSVFile<String> loadCSV(PRVI25_SeismicityRateEpoch epoch) throws IOException {
@@ -141,6 +188,7 @@ public enum PRVI25_CrustalSeismicityRate implements LogicTreeNode {
 			InputStream stream = PRVI25_CrustalSeismicityRate.class.getResourceAsStream(resourceName);
 			Preconditions.checkNotNull(stream, "Error loading stream for '%s'", resourceName);
 			csv = CSVFile.readStream(stream, false);
+			stream.close();
 			csvs.put(epoch, csv);
 		}
 		
@@ -181,18 +229,23 @@ public enum PRVI25_CrustalSeismicityRate implements LogicTreeNode {
 	
 	public static void main(String[] args) throws IOException {
 		double mMax = 7.6;
-		PRVI25_SeismicityRateEpoch epoch = PRVI25_SeismicityRateEpoch.DEFAULT;
 		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.OVERALL_MMIN, mMax);
-		IncrementalMagFreqDist pref = PREFFERRED.build(epoch, refMFD, mMax);
-		IncrementalMagFreqDist low = LOW.build(epoch, refMFD, mMax);
-		IncrementalMagFreqDist high = HIGH.build(epoch, refMFD, mMax);
 		
-		for (int i=0; i<refMFD.size(); i++) {
-			if (refMFD.getX(i) > refMFD.getClosestXIndex(mMax))
-				break;
-			System.out.println((float)refMFD.getX(i)+"\t"+(float)pref.getY(i)+"\t["+(float)low.getY(i)+","+(float)high.getY(i)+"]");
+		for (PRVI25_SeismicityRateEpoch epoch : PRVI25_SeismicityRateEpoch.values()) {
+			System.out.println("Epoch: "+epoch);
+			IncrementalMagFreqDist pref = PREFFERRED.build(epoch, refMFD, mMax);
+			IncrementalMagFreqDist low = LOW.build(epoch, refMFD, mMax);
+			IncrementalMagFreqDist high = HIGH.build(epoch, refMFD, mMax);
+			
+			for (int i=0; i<refMFD.size(); i++) {
+				float x = (float)refMFD.getX(i);
+				if (x > (float)refMFD.getClosestXIndex(mMax))
+					break;
+				if (x == 5.05f || x == 6.05f || x == 7.05f)
+					System.out.println(x+"\t"+(float)pref.getY(i)+"\t["+(float)low.getY(i)+","+(float)high.getY(i)+"]");
+			}
+			System.out.println();
 		}
-		System.out.println();
 	}
 
 }
