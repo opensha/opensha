@@ -449,7 +449,7 @@ public class NSHM23_ConstraintBuilder {
 			UncertainBoundedIncrMagFreqDist oneSigmaBoundedMFD = sectSupraMFD.estimateBounds(UncertaintyBoundType.ONE_SIGMA);
 			double upperVal = oneSigmaBoundedMFD.getUpper().calcSumOfY_Vals();
 			double lowerVal = oneSigmaBoundedMFD.getLower().calcSumOfY_Vals();
-			targetRateStdDevs[s] = UncertaintyBoundType.ONE_SIGMA.estimateStdDev(targetRates[s], lowerVal, upperVal);
+			targetRateStdDevs[s] = UncertaintyBoundType.ONE_SIGMA.estimateStdDev(lowerVal, upperVal);
 //			System.out.println(rupSet.getFaultSectionData(s).getSectionName()+": totRate="+(float)targetRates[s]
 //					+"\tstdDev="+(float)targetRateStdDevs[s]+"\trelStdDev="+(float)(targetRateStdDevs[s]/targetRates[s]));
 		}

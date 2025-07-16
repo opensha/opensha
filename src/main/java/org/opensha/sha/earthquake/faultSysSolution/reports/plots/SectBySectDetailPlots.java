@@ -2338,7 +2338,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 						double upperVal = oneSigmaBoundedMFD.getUpper().calcSumOfY_Vals();
 						double lowerVal = oneSigmaBoundedMFD.getLower().calcSumOfY_Vals();
 						targetSectRateStdDevs[sectID] = UncertaintyBoundType.ONE_SIGMA.estimateStdDev(
-								targetSectRates[sectID], lowerVal, upperVal);
+								lowerVal, upperVal);
 					} else {
 						targetSectRateStdDevs = null;
 					}

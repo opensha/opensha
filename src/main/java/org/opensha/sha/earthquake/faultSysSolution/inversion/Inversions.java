@@ -616,7 +616,7 @@ public class Inversions {
 							((UncertainIncrMagFreqDist)sectSupraMFD).estimateBounds(UncertaintyBoundType.ONE_SIGMA);
 					double upperVal = oneSigmaBoundedMFD.getUpper().calcSumOfY_Vals();
 					double lowerVal = oneSigmaBoundedMFD.getLower().calcSumOfY_Vals();
-					targetRateStdDevs[s] = UncertaintyBoundType.ONE_SIGMA.estimateStdDev(targetRates[s], lowerVal, upperVal);
+					targetRateStdDevs[s] = UncertaintyBoundType.ONE_SIGMA.estimateStdDev(lowerVal, upperVal);
 				}
 			}
 			

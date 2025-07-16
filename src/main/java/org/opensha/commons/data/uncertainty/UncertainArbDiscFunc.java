@@ -154,7 +154,7 @@ public class UncertainArbDiscFunc extends UnmodifiableDiscrFunc implements Uncer
 				if (stdDevs == null) {
 					DiscretizedFunc stdDevs = new ArbitrarilyDiscretizedFunc();
 					for (int i=0; i<size(); i++)
-						stdDevs.set(getX(i), boundType.estimateStdDev(getY(i), getLowerY(i), getUpperY(i)));
+						stdDevs.set(getX(i), boundType.estimateStdDev(getLowerY(i), getUpperY(i)));
 					this.stdDevs = new UnmodifiableDiscrFunc(stdDevs);
 				}
 			}
