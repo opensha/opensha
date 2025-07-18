@@ -89,9 +89,28 @@ public enum PRVI25_CrustalSeismicityRate implements LogicTreeNode {
 		
 	};
 	
-	public static String RATE_DATE = "2025_07_11";
+	public static String RATE_DATE = "2025_07_17";
 	private static final String RATES_PATH_PREFIX = "/data/erf/prvi25/seismicity/rates/";
 	public static RateType TYPE = RateType.M1_TO_MMAX;
+	
+	public static String getDirectRateFileName(PRVI25_SeismicityRegions seisReg, PRVI25_SeismicityRateEpoch epoch) {
+		String yearStr;
+		String vStr;
+		switch (epoch) {
+		case FULL:
+			yearStr = "1900";
+			vStr = "-v9";
+			break;
+		case RECENT:
+			yearStr = "1973";
+			vStr = "-v10";
+			break;
+
+		default:
+			throw new IllegalStateException("Can't load direct rates for epoch: "+epoch);
+		}
+		return "directrates-PRVI "+seisReg.getShortName()+"-Prob-"+yearStr+"-2024"+vStr+".csv";
+	}
 	
 	/*
 	 * If changed, don't forget to update:
