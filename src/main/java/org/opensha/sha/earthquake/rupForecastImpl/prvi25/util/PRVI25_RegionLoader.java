@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.ShortNamed;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
@@ -29,21 +30,35 @@ public class PRVI25_RegionLoader {
 	 * @see NSHM23_SeisSmoothingAlgorithms
 	 * 
 	 */
-	public enum PRVI25_SeismicityRegions implements NSHM23_BaseRegion {
-		CAR_INTERFACE("CAR_Interface.geojson"),
-		CAR_INTRASLAB("CAR_Intraslab.geojson"),
-		CRUSTAL("PRVI_Crustal_Grid.geojson"),
-		MUE_INTERFACE("MUE_Interface.geojson"),
-		MUE_INTRASLAB("MUE_Intraslab.geojson");
+	public enum PRVI25_SeismicityRegions implements NSHM23_BaseRegion, ShortNamed {
+		CAR_INTERFACE("CAR_Interface.geojson", "Caribbean Interface", "CAR Interface"),
+		CAR_INTRASLAB("CAR_Intraslab.geojson", "Caribbean Intraslab", "CAR Intraslab"),
+		CRUSTAL("PRVI_Crustal_Grid.geojson", "Crustal", "Crustal"),
+		MUE_INTERFACE("MUE_Interface.geojson", "Muertos Interface", "MUE Interface"),
+		MUE_INTRASLAB("MUE_Intraslab.geojson", "Muertos Intraslab", "MUE Intraslab");
 		
 		private String fileName;
+		private String name;
+		private String shortName;
 
-		private PRVI25_SeismicityRegions(String fileName) {
+		private PRVI25_SeismicityRegions(String fileName, String name, String shortName) {
 			this.fileName = fileName;
+			this.name = name;
+			this.shortName = shortName;
 		}
 		
 		public String getResourcePath() {
 			return SEIS_REG_PATH+"/"+fileName;
+		}
+		
+		@Override
+		public String getName() {
+			return name;
+		}
+
+		@Override
+		public String getShortName() {
+			return shortName;
 		}
 	}
 	
