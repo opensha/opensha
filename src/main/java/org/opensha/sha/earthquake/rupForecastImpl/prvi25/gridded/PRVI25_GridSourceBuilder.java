@@ -27,11 +27,15 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.FaultUtils;
+import org.opensha.commons.util.cpt.CPT;
+import org.opensha.commons.util.cpt.CPTVal;
 import org.opensha.commons.util.modules.ModuleContainer;
 import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -95,7 +99,11 @@ public class PRVI25_GridSourceBuilder {
 	 * if true, depths and strikes are taken from the mapped subsection
 	 * otherwise, they use Slab2 (which won't match for Muertos)
 	 */
-	public static boolean INTERFACE_USE_SECT_PROPERTIES = true;
+	public static boolean INTERFACE_USE_SECT_PROPERTIES = false;
+	
+	// maximum depths for interface finite ruptures; only used if INTERFACE_USE_SECT_PROPERTIES=false
+	public static double INTERFACE_CAR_MAX_DEPTH = 50d;
+	public static double INTERFACE_MUE_MAX_DEPTH = 50d;
 	
 	public static boolean MUERTOS_AS_CRUSTAL = false;
 	
@@ -370,6 +378,7 @@ public class PRVI25_GridSourceBuilder {
 	
 	private static EnumMap<PRVI25_SeismicityRegions, GriddedGeoDataSet> gridDepths;
 	private static EnumMap<PRVI25_SeismicityRegions, GriddedGeoDataSet> gridStrikes;
+	private static EnumMap<PRVI25_SeismicityRegions, GriddedGeoDataSet> gridDips;
 	private static final String DEPTHS_DIR = "/data/erf/prvi25/seismicity/depths/";
 	
 	public static GriddedGeoDataSet loadSubductionDepths(PRVI25_SeismicityRegions seisReg) throws IOException {
@@ -377,49 +386,103 @@ public class PRVI25_GridSourceBuilder {
 		return gridDepths.get(seisReg).copy();
 	}
 	
+	public static GriddedGeoDataSet loadSubductionStrikes(PRVI25_SeismicityRegions seisReg) throws IOException {
+		loadRegionDepthStrikeData(seisReg);
+		return gridStrikes.get(seisReg).copy();
+	}
+	
+	public static GriddedGeoDataSet loadSubductionDips(PRVI25_SeismicityRegions seisReg) throws IOException {
+		loadRegionDepthStrikeData(seisReg);
+		return gridDips.get(seisReg).copy();
+	}
+	
 	private synchronized static void loadRegionDepthStrikeData(PRVI25_SeismicityRegions seisReg) throws IOException {
 		if (gridDepths == null) {
 			gridDepths = new EnumMap<>(PRVI25_SeismicityRegions.class);
 			gridStrikes = new EnumMap<>(PRVI25_SeismicityRegions.class);
+			gridDips = new EnumMap<>(PRVI25_SeismicityRegions.class);
 		}
 		
 		if (!gridDepths.containsKey(seisReg)) {
-			Region reg = seisReg.load();
-			GriddedRegion gridReg = new GriddedRegion(reg, 0.1, GriddedRegion.ANCHOR_0_0);
-			String fileName = DEPTHS_DIR+seisReg.name()+".csv";
+			PRVI25_SeismicityRegions[] applicableRegions;
+			String fileName;
+			GriddedRegion gridReg;
+			if (seisReg == PRVI25_SeismicityRegions.CAR_INTERFACE || seisReg == PRVI25_SeismicityRegions.CAR_INTRASLAB) {
+				applicableRegions = new PRVI25_SeismicityRegions[] {
+						PRVI25_SeismicityRegions.CAR_INTERFACE, PRVI25_SeismicityRegions.CAR_INTRASLAB};
+				fileName = DEPTHS_DIR+"CAR_slab2_extended.csv";
+				gridReg = new GriddedRegion(PRVI25_SeismicityRegions.CAR_INTRASLAB.load(), 0.05, GriddedRegion.ANCHOR_0_0);
+			} else if (seisReg == PRVI25_SeismicityRegions.MUE_INTERFACE || seisReg == PRVI25_SeismicityRegions.MUE_INTRASLAB) {
+				applicableRegions = new PRVI25_SeismicityRegions[] {
+						PRVI25_SeismicityRegions.MUE_INTERFACE, PRVI25_SeismicityRegions.MUE_INTRASLAB};
+				fileName = DEPTHS_DIR+"MUE_slab2_extended.csv";
+				gridReg = new GriddedRegion(PRVI25_SeismicityRegions.MUE_INTRASLAB.load(), 0.02, GriddedRegion.ANCHOR_0_0);
+			} else {
+				throw new IllegalStateException("Not applicable to region: "+seisReg);
+			}
+			
+			System.out.println("Loading gridded Slab2 depth/strike/dip data from "+fileName);
+			
 			InputStream depthResources = PRVI25_GridSourceBuilder.class.getResourceAsStream(fileName);
 			Preconditions.checkNotNull(depthResources, "Depth CSV not found: %s", fileName);
 			CSVFile<String> csv = CSVFile.readStream(depthResources, true);
 			
 			GriddedGeoDataSet depths = new GriddedGeoDataSet(gridReg);
-			GriddedGeoDataSet strikes = null;
+			GriddedGeoDataSet strikes = new GriddedGeoDataSet(gridReg);
+			GriddedGeoDataSet dips = new GriddedGeoDataSet(gridReg);
 			
-			Preconditions.checkState(csv.getNumRows() == gridReg.getNodeCount()+1);
-			for (int row=1; row<csv.getNumRows(); row++) {
-				int gridIndex = csv.getInt(row, 0);
-				double lat = csv.getDouble(row, 1);
-				double lon = csv.getDouble(row, 2);
-				Location loc = new Location(lat, lon);
-				Preconditions.checkState(LocationUtils.areSimilar(loc, gridReg.getLocation(gridIndex)));
-				double depth = csv.getDouble(row, 3);
-				FaultUtils.assertValidDepth(depth);
-				depths.set(gridIndex, depth);
-				String strikeStr = csv.get(row, 4);
-				if (strikeStr.isBlank()) {
-					Preconditions.checkState(strikes == null);
-				} else {
-					if (strikes == null) {
-						Preconditions.checkState(gridIndex == 0);
-						strikes = new GriddedGeoDataSet(gridReg);
-					}
-					double strike = Double.parseDouble(strikeStr);
-					FaultUtils.assertValidStrike(strike);
-					strikes.set(gridIndex, strike);
-				}
+			// initialize all 3 to NaN
+			for (int i = 0; i < depths.size(); i++) {
+				depths.set(i, Double.NaN);
+				strikes.set(i, Double.NaN);
+				dips.set(i, Double.NaN);
 			}
 			
-			gridDepths.put(seisReg, depths);
-			gridStrikes.put(seisReg, strikes);
+//			Preconditions.checkState(csv.getNumRows() == gridReg.getNodeCount()+1,
+//					"CSV has %s rows, grid reg has %s", csv.getNumRows(), gridReg.getNodeCount());
+			int numFilled = 0;
+			int numSkipped = 0;
+			for (int row=1; row<csv.getNumRows(); row++) {
+				double lon = csv.getDouble(row, 0);
+				double lat = csv.getDouble(row, 1);
+				Location loc = new Location(lat, lon);
+				int gridIndex = gridReg.indexForLocation(loc);
+				if (gridIndex < 0) {
+//				if (gridIndex < 0 || !LocationUtils.areSimilar(loc, gridReg.getLocation(gridIndex))) {
+					numSkipped++;
+					continue;
+				}
+//				Preconditions.checkState(gridIndex >= 0, "Location not in grid: %s", loc);
+				Preconditions.checkState(LocationUtils.areSimilar(loc, gridReg.getLocation(gridIndex)),
+						"Location mismatch: ours[%s]=%s, theirs=%s", gridIndex, gridReg.getLocation(gridIndex), loc);
+				
+				double depth = csv.getDouble(row, 2);
+				Preconditions.checkState(Double.isFinite(depth));
+				FaultUtils.assertValidDepth(depth);
+				depths.set(gridIndex, depth);
+//				if ((float)loc.lat == 21.1f && (float)loc.lon == -67.8f)
+//					System.out.println("Loaded depth="+(float)depth+" for "+gridIndex+". "+loc);
+				
+				double strike = csv.getDouble(row, 3);
+				Preconditions.checkState(Double.isFinite(strike));
+				FaultUtils.assertValidStrike(strike);
+				strikes.set(gridIndex, strike);
+				
+				double dip = csv.getDouble(row, 4);
+				Preconditions.checkState(Double.isFinite(dip));
+				FaultUtils.assertValidDip(dip);
+				dips.set(gridIndex, dip);
+				
+				numFilled++;
+			}
+			
+			System.out.println("\tFilled in data for "+numFilled+"/"+depths.size()+" Slab2 grid nodes (skipped "+numSkipped+" from file)");
+			
+			for (PRVI25_SeismicityRegions reg : applicableRegions) {
+				gridDepths.put(reg, depths);
+				gridStrikes.put(reg, strikes);
+				gridDips.put(reg, dips);
+			}
 		}
 	}
 	
@@ -629,6 +692,8 @@ public class PRVI25_GridSourceBuilder {
 		Preconditions.checkNotNull(depthData);
 		GriddedGeoDataSet strikeData = gridStrikes.get(seisRegion);
 		Preconditions.checkNotNull(strikeData);
+		GriddedGeoDataSet dipData = gridDips.get(seisRegion);
+		Preconditions.checkNotNull(dipData);
 		
 		// total G-R up to Mmax
 //		IncrementalMagFreqDist totalGR = seisBranch.build(seisRegion, refMFD, maxMagOff);
@@ -771,7 +836,7 @@ public class PRVI25_GridSourceBuilder {
 					sectMappings[gridIndex] = matchingSectIndex;
 					
 					// find the depth at this location
-					Preconditions.checkState(LocationUtils.areSimilar(loc, depthData.getLocation(gridIndex)));
+//					Preconditions.checkState(LocationUtils.areSimilar(loc, depthData.getLocation(gridIndex)));
 //					double depth = depthData.get(gridIndex);
 //					sectMinDepths[matchingSectIndex] = Math.min(sectMinDepths[matchingSectIndex], Math.min(depth, matchingSection.getOrigAveUpperDepth()));
 //					sectMaxDepths[matchingSectIndex] = Math.max(sectMaxDepths[matchingSectIndex], Math.max(depth, matchingSection.getAveLowerDepth()));
@@ -816,6 +881,20 @@ public class PRVI25_GridSourceBuilder {
 				int sectIndex = geomSectMappings[gridIndex];
 				gridRateSubtracts[gridIndex] = sectNuclRates[sectIndex]/(double)sectMappingCounts[sectIndex];
 			}
+		}
+		
+		// used only when INTERFACE_USE_SECT_PROPERTIES == false
+		double overallDepthUpperLimit = Double.NaN;
+		double overallDepthLowerLimit = Double.NaN;
+		if (!INTERFACE_USE_SECT_PROPERTIES) {
+			if (seisRegion == PRVI25_SeismicityRegions.CAR_INTERFACE)
+				overallDepthLowerLimit = INTERFACE_CAR_MAX_DEPTH;
+			else
+				overallDepthLowerLimit = INTERFACE_MUE_MAX_DEPTH;
+			overallDepthUpperLimit = depthData.getMinZ();
+			Preconditions.checkState(overallDepthUpperLimit >= 0d);
+			System.out.println("Gridded depth limits for "+region
+					+": ["+(float)overallDepthUpperLimit+", "+(float)overallDepthUpperLimit+"]");
 		}
 		
 		double totRateM5 = 0d;
@@ -887,120 +966,137 @@ public class PRVI25_GridSourceBuilder {
 					System.out.println("\tSect depth limits are ["+(float)depthUpperLimit+", "+(float)depthLowerLimit+"]");
 				}
 			} else {
-				strike = strikeData.get(gridIndex);
-				depth = depthData.get(gridIndex);
-				// find the depth limits at this point on the surface
-				// first find the edges of the seismicity region in the strike-normal direction
-				Location leftEdgeLoc = null;
-				Location rightEdgeLoc = null;
-				for (boolean left : new boolean[] {true, false}) {
-					double azRad = left ? Math.toRadians(strike-90d) : Math.toRadians(strike+90d);
-					
-					Location lastInsideLoc = gridLoc;
-					double lastInsideLocDist = 0d;
-					
-					Location firstOutsideLoc = null;
-					double firstOutsideLocDist = 10d;
-					
-					while (firstOutsideLoc == null) {
-						Location testLoc = LocationUtils.location(gridLoc, azRad, firstOutsideLocDist);
-						if (region.indexForLocation(testLoc) >= 0) {
-							// still inside
-							lastInsideLocDist = firstOutsideLocDist;
-							firstOutsideLocDist += 10d;
-							lastInsideLoc = testLoc;
-						} else {
-							firstOutsideLoc = testLoc;
-						}
-					}
-					
-					// now we have a location that's inside and outside, figure out where the boundary actually is
-					// do a binary search
-					for (int i=0; i<10; i++) {
-						double testDist = 0.5*(lastInsideLocDist + firstOutsideLocDist);
-						Location testLoc = LocationUtils.location(gridLoc, azRad, testDist);
-						if (region.indexForLocation(testLoc) >= 0) {
-							lastInsideLoc = testLoc;
-							lastInsideLocDist = testDist;
-						} else {
-							firstOutsideLoc = testLoc;
-							firstOutsideLocDist = testDist;
-						}
-					}
-					
-					if (left)
-						leftEdgeLoc = lastInsideLoc;
-					else
-						rightEdgeLoc = lastInsideLoc;
-				}
-				int leftIndex = region.indexForLocation(leftEdgeLoc);
-				int rightIndex = region.indexForLocation(rightEdgeLoc);
-				double leftDepth = depthData.get(leftIndex);
-				double rightDepth = depthData.get(rightIndex);
-				if (leftIndex == rightIndex || leftDepth == rightDepth) {
-					// just use section dip
-					dip = matchingSection.getAveDip();
-				} else {
-					// calculate dip from the surface
-					double horzDist = LocationUtils.horzDistanceFast(leftEdgeLoc, rightEdgeLoc);
-					double vertDist = Math.abs(leftDepth - rightDepth);
-					Preconditions.checkState(horzDist > 0d);
-					Preconditions.checkState(vertDist > 0d);
-					// tan(dip) = vert / horz
-					// dip = arctan(vert/horz)
-					dip = Math.toDegrees(Math.atan(vertDist/horzDist));
-					FaultUtils.assertValidDip(dip);
-//					if ((float)gridLoc.lat == 17.9f && (float)gridLoc.lon == -66.3f) {
-//						System.out.println("Debug for gridLoc="+gridLoc);
-//						System.out.println("\tleftDepth="+leftDepth);
-//						System.out.println("\trightDepth="+rightDepth);
-//						System.out.println("\tvertDist="+vertDist);
-//						System.out.println("\thorzDist="+horzDist);
-//						System.out.println("\tdip="+dip);
+				int depthIndex = depthData.indexOf(gridLoc);
+				Preconditions.checkState(depthIndex >= 0, "No location in depth data for %s. %s", gridIndex, gridLoc);
+				Location depthLoc = depthData.getLocation(depthIndex);
+				Preconditions.checkState(LocationUtils.areSimilar(depthLoc, gridLoc),
+						"Depth data location mismatch: %s. %s != %s. %s", gridIndex, gridLoc, depthIndex, depthLoc);
+				strike = strikeData.get(depthIndex);
+				depth = depthData.get(depthIndex);
+				// depth + down, so upper <= depth <= lower
+				Preconditions.checkState(depth >= overallDepthUpperLimit, "Depth=%s < limit=%s", depth, overallDepthUpperLimit);
+				Preconditions.checkState(depth <= overallDepthLowerLimit, "Depth=%s > limit=%s", depth, overallDepthLowerLimit);
+				
+				depthUpperLimit = overallDepthUpperLimit;
+				depthLowerLimit = overallDepthLowerLimit;
+				dip = dipData.get(depthIndex);
+				Preconditions.checkState(Double.isFinite(dip), "Bad dip for location %s: %s", gridIndex, gridLoc);
+				FaultUtils.assertValidDip(dip);
+				
+				// all of the below was trying to use the sections for dip and extents with fallback for the edges
+				// just outside; messy, and would get even messier with the new larger polygons
+//				// find the depth limits at this point on the surface
+//				// first find the edges of the seismicity region in the strike-normal direction
+//				Location leftEdgeLoc = null;
+//				Location rightEdgeLoc = null;
+//				for (boolean left : new boolean[] {true, false}) {
+//					double azRad = left ? Math.toRadians(strike-90d) : Math.toRadians(strike+90d);
+//					
+//					Location lastInsideLoc = gridLoc;
+//					double lastInsideLocDist = 0d;
+//					
+//					Location firstOutsideLoc = null;
+//					double firstOutsideLocDist = 10d;
+//					
+//					while (firstOutsideLoc == null) {
+//						Location testLoc = LocationUtils.location(gridLoc, azRad, firstOutsideLocDist);
+//						if (region.indexForLocation(testLoc) >= 0) {
+//							// still inside
+//							lastInsideLocDist = firstOutsideLocDist;
+//							firstOutsideLocDist += 10d;
+//							lastInsideLoc = testLoc;
+//						} else {
+//							firstOutsideLoc = testLoc;
+//						}
 //					}
-				}
-				// left *should* be above right
-				depthUpperLimit = Math.min(leftDepth, rightDepth);
-				depthLowerLimit = Math.max(leftDepth, rightDepth);
-				Preconditions.checkState(depthUpperLimit <= depth, "depthUpperLimit=%s but depth=%s", depthUpperLimit, depth);
-				Preconditions.checkState(depthLowerLimit >= depth, "depthLowerLimit=%s but depth=%s", depthLowerLimit, depth);
-				
-				double myMaxDepth = overallMaxDepth;
-				double myMinDepth = overallMinDepth;
-				
-				// this uses section depths, but it can extend past the section horizontally to achieve those depths
-//				double sectLowerDepth = matchingSection.getAveLowerDepth();
-//				myMaxDepth = Math.max(sectLowerDepth, myMaxDepth);
-//				if (sectLowerDepth > depthLowerLimit)
-//					depthLowerLimit = sectLowerDepth;
-//				double sectUpperDepth = matchingSection.getOrigAveUpperDepth();
-//				myMinDepth = Math.min(sectUpperDepth, myMinDepth);
-//				if (sectUpperDepth < depthUpperLimit)
-//					depthUpperLimit = sectUpperDepth;
-				
-				double delta = depthLowerLimit - depthUpperLimit;
-				if (delta < minDepthRangeLimit) {
-					// too narrow, probably right at the skinny end, expand to a sensible value
-					System.out.println("Delta="+(float)delta+" is too narrow, expanding to "+(float)minDepthRangeLimit+" for depth="+(float)depth);
-					depthUpperLimit = depth - 0.5*minDepthRangeLimit;
-					depthLowerLimit = depth + 0.5*minDepthRangeLimit;
-					System.out.println("\tUpdated limits: ["+(float)depthUpperLimit+", "+(float)depthLowerLimit+"]");
-					if (depthLowerLimit > myMaxDepth) {
-						depthLowerLimit = overallMaxDepth;
-						depthUpperLimit = depthLowerLimit - minDepthRangeLimit;
-						System.out.println("\twould have extended beyond overall max depth; updated limits: ["
-								+(float)depthUpperLimit+", "+(float)depthLowerLimit+"]");
-					} else if (depthUpperLimit < myMinDepth) {
-						depthUpperLimit = myMinDepth;
-						depthLowerLimit = depthUpperLimit + minDepthRangeLimit;
-						System.out.println("\twould have extended above overall min depth; updated limits: ["
-								+(float)depthUpperLimit+", "+(float)depthLowerLimit+"]");
-					}
-				}
-				Preconditions.checkState(depthLowerLimit <= myMaxDepth,
-						"Bad depthLowerLimit=%s with myMaxDepth=%s", depthLowerLimit, myMaxDepth);
-				Preconditions.checkState(depthUpperLimit >= myMinDepth,
-						"Bad depthUpperLimit=%s with overallMinDepth=%s", depthUpperLimit, myMinDepth);
+//					
+//					// now we have a location that's inside and outside, figure out where the boundary actually is
+//					// do a binary search
+//					for (int i=0; i<10; i++) {
+//						double testDist = 0.5*(lastInsideLocDist + firstOutsideLocDist);
+//						Location testLoc = LocationUtils.location(gridLoc, azRad, testDist);
+//						if (region.indexForLocation(testLoc) >= 0) {
+//							lastInsideLoc = testLoc;
+//							lastInsideLocDist = testDist;
+//						} else {
+//							firstOutsideLoc = testLoc;
+//							firstOutsideLocDist = testDist;
+//						}
+//					}
+//					
+//					if (left)
+//						leftEdgeLoc = lastInsideLoc;
+//					else
+//						rightEdgeLoc = lastInsideLoc;
+//				}
+//				int leftIndex = region.indexForLocation(leftEdgeLoc);
+//				int rightIndex = region.indexForLocation(rightEdgeLoc);
+//				double leftDepth = depthData.get(leftIndex);
+//				double rightDepth = depthData.get(rightIndex);
+//				if (leftIndex == rightIndex || leftDepth == rightDepth) {
+//					// just use section dip
+//					dip = matchingSection.getAveDip();
+//				} else {
+//					// calculate dip from the surface
+//					double horzDist = LocationUtils.horzDistanceFast(leftEdgeLoc, rightEdgeLoc);
+//					double vertDist = Math.abs(leftDepth - rightDepth);
+//					Preconditions.checkState(horzDist > 0d);
+//					Preconditions.checkState(vertDist > 0d);
+//					// tan(dip) = vert / horz
+//					// dip = arctan(vert/horz)
+//					dip = Math.toDegrees(Math.atan(vertDist/horzDist));
+//					FaultUtils.assertValidDip(dip);
+////					if ((float)gridLoc.lat == 17.9f && (float)gridLoc.lon == -66.3f) {
+////						System.out.println("Debug for gridLoc="+gridLoc);
+////						System.out.println("\tleftDepth="+leftDepth);
+////						System.out.println("\trightDepth="+rightDepth);
+////						System.out.println("\tvertDist="+vertDist);
+////						System.out.println("\thorzDist="+horzDist);
+////						System.out.println("\tdip="+dip);
+////					}
+//				}
+//				// left *should* be above right
+//				depthUpperLimit = Math.min(leftDepth, rightDepth);
+//				depthLowerLimit = Math.max(leftDepth, rightDepth);
+//				Preconditions.checkState(depthUpperLimit <= depth, "depthUpperLimit=%s but depth=%s", depthUpperLimit, depth);
+//				Preconditions.checkState(depthLowerLimit >= depth, "depthLowerLimit=%s but depth=%s", depthLowerLimit, depth);
+//				
+//				double myMaxDepth = overallMaxDepth;
+//				double myMinDepth = overallMinDepth;
+//				
+//				// this uses section depths, but it can extend past the section horizontally to achieve those depths
+////				double sectLowerDepth = matchingSection.getAveLowerDepth();
+////				myMaxDepth = Math.max(sectLowerDepth, myMaxDepth);
+////				if (sectLowerDepth > depthLowerLimit)
+////					depthLowerLimit = sectLowerDepth;
+////				double sectUpperDepth = matchingSection.getOrigAveUpperDepth();
+////				myMinDepth = Math.min(sectUpperDepth, myMinDepth);
+////				if (sectUpperDepth < depthUpperLimit)
+////					depthUpperLimit = sectUpperDepth;
+//				
+//				double delta = depthLowerLimit - depthUpperLimit;
+//				if (delta < minDepthRangeLimit) {
+//					// too narrow, probably right at the skinny end, expand to a sensible value
+//					System.out.println("Delta="+(float)delta+" is too narrow, expanding to "+(float)minDepthRangeLimit+" for depth="+(float)depth);
+//					depthUpperLimit = depth - 0.5*minDepthRangeLimit;
+//					depthLowerLimit = depth + 0.5*minDepthRangeLimit;
+//					System.out.println("\tUpdated limits: ["+(float)depthUpperLimit+", "+(float)depthLowerLimit+"]");
+//					if (depthLowerLimit > myMaxDepth) {
+//						depthLowerLimit = overallMaxDepth;
+//						depthUpperLimit = depthLowerLimit - minDepthRangeLimit;
+//						System.out.println("\twould have extended beyond overall max depth; updated limits: ["
+//								+(float)depthUpperLimit+", "+(float)depthLowerLimit+"]");
+//					} else if (depthUpperLimit < myMinDepth) {
+//						depthUpperLimit = myMinDepth;
+//						depthLowerLimit = depthUpperLimit + minDepthRangeLimit;
+//						System.out.println("\twould have extended above overall min depth; updated limits: ["
+//								+(float)depthUpperLimit+", "+(float)depthLowerLimit+"]");
+//					}
+//				}
+//				Preconditions.checkState(depthLowerLimit <= myMaxDepth,
+//						"Bad depthLowerLimit=%s with myMaxDepth=%s", depthLowerLimit, myMaxDepth);
+//				Preconditions.checkState(depthUpperLimit >= myMinDepth,
+//						"Bad depthUpperLimit=%s with overallMinDepth=%s", depthUpperLimit, myMinDepth);
 			}
 			
 			int[] assocIDs = { matchingSection.getSectionId() };
@@ -1207,13 +1303,18 @@ public class PRVI25_GridSourceBuilder {
 		List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
 		levels.addAll(PRVI25_LogicTree.levelsSubduction);
 		levels.addAll(PRVI25_LogicTree.levelsSubductionGridded);
+		
 		LogicTreeBranch<LogicTreeNode> branch = new LogicTreeBranch<>(levels);
+		
+		for (LogicTreeNode node : PRVI25_LogicTree.DEFAULT_SUBDUCTION_INTERFACE)
+			branch.setValue(node);
+		for (LogicTreeNode node : PRVI25_LogicTree.DEFAULT_SUBDUCTION_GRIDDED)
+			branch.setValue(node);
 		
 		branch.setValue(PRVI25_SubductionScalingRelationships.AVERAGE);
 //		branch.setValue(PRVI25_RegionalSeismicity.LOW);
-		branch.setValue(PRVI25_SubductionMuertosSeismicityRate.LOW);
+		branch.setValue(PRVI25_SubductionMuertosSeismicityRate.PREFFERRED);
 		branch.setValue(PRVI25_SubductionCaribbeanSeismicityRate.PREFFERRED);
-//		branch.setValue(PRVI25_RegionalSeismicity.HIGH);
 		branch.setValue(PRVI25_SeisSmoothingAlgorithms.AVERAGE);
 		branch.setValue(PRVI25_DeclusteringAlgorithms.AVERAGE);
 		
@@ -1221,7 +1322,7 @@ public class PRVI25_GridSourceBuilder {
 		
 //		INTERFACE_USE_SECT_PROPERTIES = false;
 		FaultSystemSolution sol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
-				+ "2025_01_02-prvi25_subduction_branches/results_PRVI_SUB_FM_LARGE_branch_averaged.zip"));
+				+ "2025_07_15-prvi25_subduction_branches/results_PRVI_SUB_FM_LARGE_branch_averaged.zip"));
 		branch.setValue(PRVI25_SubductionFaultModels.PRVI_SUB_FM_LARGE);
 //		FaultSystemSolution sol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
 //				+ "2024_12_12-prvi25_subduction_branches/results_PRVI_SUB_FM_SMALL_branch_averaged.zip"));
@@ -1237,7 +1338,7 @@ public class PRVI25_GridSourceBuilder {
 //					rateM5 += rup.rate;
 //		System.out.println(seisReg+" rate M>5: "+(float)rateM5);
 		
-		RATE_BALANCE_INTERFACE_GRIDDED = true;
+		RATE_BALANCE_INTERFACE_GRIDDED = false;
 //		PRVI25_SeismicityRegions seisReg = PRVI25_SeismicityRegions.CAR_INTERFACE;
 		PRVI25_SeismicityRegions seisReg = PRVI25_SeismicityRegions.MUE_INTERFACE;
 		Region region = seisReg.load();
@@ -1286,6 +1387,40 @@ public class PRVI25_GridSourceBuilder {
 						+pDF.format((rateBalanced - rateUnbalanced)/rateUnbalanced)+")");
 			}
 		}
+		
+		GriddedRegion gridReg = interfaceModel.getGriddedRegion();
+		GriddedGeoDataSet sectMapIndexes = new GriddedGeoDataSet(gridReg);
+		GriddedGeoDataSet gridMmaxes = new GriddedGeoDataSet(gridReg);
+		for (int l=0; l<gridReg.getNodeCount(); l++) {
+			double mMax = 0d;
+			int mapped = -1;
+			for (GriddedRupture rup : interfaceModel.getRuptures(TectonicRegionType.SUBDUCTION_INTERFACE, l)) {
+				Preconditions.checkState(rup.associatedSections.length == 1);
+				if (mapped == -1)
+					mapped = rup.associatedSections[0];
+				else
+					Preconditions.checkState(rup.associatedSections[0] == mapped);
+				mMax = Math.max(mMax, rup.properties.magnitude);
+			}
+			sectMapIndexes.set(l, mapped);
+			gridMmaxes.set(l, mMax);
+		}
+		GeographicMapMaker mapMaker = new GeographicMapMaker(sol.getRupSet().getFaultSectionDataList());
+		CPT rainbow = GMT_CPT_Files.RAINBOW_UNIFORM.instance().asDiscrete(10, true);
+		CPT indexCPT = new CPT();
+		while (indexCPT.size() < (int)sectMapIndexes.getMaxZ()) {
+			for (CPTVal val : rainbow) {
+				double index = (double)indexCPT.size();
+				indexCPT.add(new CPTVal(index+0d, val.minColor, index+1d, val.maxColor));
+			}
+		}
+//		CPT indexCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(sectMapIndexes.getMinZ(), sectMapIndexes.getMaxZ());
+		CPT magCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(7d, gridMmaxes.getMaxZ()+0.01);
+		
+		mapMaker.plotXYZData(sectMapIndexes, indexCPT, "Section mapped index");
+		mapMaker.plot(new File("/tmp"), "sub_grid_sect_mappings", " ");
+		mapMaker.plotXYZData(gridMmaxes, magCPT, "Grid Mmax");
+		mapMaker.plot(new File("/tmp"), "sub_grid_mmax", " ");
 		
 //		buildInterfaceGridSourceList(sol, branch);
 		
