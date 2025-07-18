@@ -346,8 +346,8 @@ public enum AttenRelRef implements AttenRelSupplier {
 		
 	},
 	
-	USGS_PRVI_SLAB(null, "USGS PRVI25 Slab (beta)",
-			"PRVI25-Slab", DEVELOPMENT) {
+	USGS_PRVI_SLAB(null, "USGS PRVI25 Intraslab (beta)",
+			"PRVI25-Intraslab", DEVELOPMENT) {
 		
 		@Override
 		public AttenuationRelationship instance(
