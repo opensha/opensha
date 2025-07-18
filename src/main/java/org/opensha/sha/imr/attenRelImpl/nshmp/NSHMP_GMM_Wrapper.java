@@ -280,12 +280,24 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 		private List<EnumMap<Imt, GroundMotionModel>> instanceMaps;
 		private List<Constraints> constraintsList;
 		
+		public WeightedCombination(Map<Gmm, Double> gmms, String name, String shortName) {
+			this(gmmMapToList(gmms), name, shortName);
+		}
+		
 		public WeightedCombination(WeightedList<Gmm> gmms, String name, String shortName) {
 			this(gmms, name, shortName, true);
 		}
 		
+		public WeightedCombination(Map<Gmm, Double> gmms, String name, String shortName, boolean parameterize) {
+			this(gmmMapToList(gmms), name, shortName, parameterize, null);
+		}
+		
 		public WeightedCombination(WeightedList<Gmm> gmms, String name, String shortName, boolean parameterize) {
 			this(gmms, name, shortName, parameterize, null);
+		}
+		
+		public WeightedCombination(Map<Gmm, Double> gmms, String name, String shortName, boolean parameterize, Component component) {
+			this(gmmMapToList(gmms), name, shortName, parameterize, component);
 		}
 		
 		public WeightedCombination(WeightedList<Gmm> gmms, String name, String shortName, boolean parameterize, Component component) {
@@ -300,6 +312,13 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 			for (int i=0; i<gmms.size(); i++)
 				instanceMaps.add(new EnumMap<>(Imt.class));
 			init();
+		}
+		
+		private static WeightedList<Gmm> gmmMapToList(Map<Gmm, Double> map) {
+			WeightedList<Gmm> list = new WeightedList<>(map.size());
+			for (Gmm gmm : map.keySet())
+				list.add(gmm, map.get(gmm));
+			return list;
 		}
 
 		@Override
