@@ -103,15 +103,16 @@ public class SeismicityRateFileLoader {
 	public static class Direct extends RateRecord {
 		public final EvenlyDiscretizedFunc incrementalDist;
 		public final EvenlyDiscretizedFunc cumulativeDist;
-		public final double maxObsIncrMag, maxObsCmlMag;
+		public final double maxObsIncrMag, maxObsCmlMag, nObs;
 		
 		private Direct(double M1, EvenlyDiscretizedFunc incrementalDist, EvenlyDiscretizedFunc cumulativeDist,
-				double maxObsIncrMag, double maxObsCmlMag, double quantile, boolean mean) {
+				double maxObsIncrMag, double maxObsCmlMag, double nObs, double quantile, boolean mean) {
 			super(RateType.DIRECT, M1, cumulativeDist.getY(cumulativeDist.getClosestXIndex(M1)), quantile, mean);
 			this.incrementalDist = incrementalDist;
 			this.cumulativeDist = cumulativeDist;
 			this.maxObsIncrMag = maxObsIncrMag;
 			this.maxObsCmlMag = maxObsCmlMag;
+			this.nObs = nObs;
 		}
 
 		@Override
@@ -120,7 +121,7 @@ public class SeismicityRateFileLoader {
 			EvenlyDiscretizedFunc scaledCml = cumulativeDist.deepClone();
 			scaledIncr.scale(scalar);
 			scaledCml.scale(scalar);
-			return new Direct(M1, scaledIncr, scaledCml, maxObsIncrMag, maxObsCmlMag, quantile, mean);
+			return new Direct(M1, scaledIncr, scaledCml, maxObsIncrMag, maxObsCmlMag, nObs*scalar, quantile, mean);
 		}
 	}
 	
@@ -434,6 +435,7 @@ public class SeismicityRateFileLoader {
 	public static List<Direct> loadDirectBranches(CSVFile<String> csv) {
 		String M1_FIELD_NAME = "minmag:"; // different for this file
 		Double M1 = null;
+		Double duration = null;
 		Integer nQuantiles = null;
 		Integer nMagnitudes = null;
 		
@@ -442,6 +444,8 @@ public class SeismicityRateFileLoader {
 			if (col1 == null || col1.isBlank())
 				continue;
 			col1 = col1.trim();
+			if (duration == null && col1.equalsIgnoreCase("duration:"))
+				duration = csv.getDouble(row, 1);
 			if (M1 == null && col1.equals(M1_FIELD_NAME))
 				M1 = csv.getDouble(row, 1);
 			if (col1.equals(N_QUANTILES_FIELD_NAME)) {
@@ -472,12 +476,15 @@ public class SeismicityRateFileLoader {
 				}
 				double maxObsIncrMag = 0d;
 				double maxObsCmlMag = 0d;
+				double nObs0 = Double.NaN;
 				for (int m=0; m<nMagnitudes; m++) {
 					Preconditions.checkState(row<csv.getNumRows(), "Ran out of rows befor reaching nMagnitudes=%s", nMagnitudes);
 					double mag = cmlFuncs[0].getX(m);
 					double csvMag = csv.getDouble(row, 0);
 					Preconditions.checkState((float)mag == (float)csvMag, "Expected m=%s at index %s, have %s", mag, m, csvMag);
 					double cmlObs = csv.getDouble(row, 1);
+					if (m == 0)
+						nObs0 = cmlObs;
 					if (cmlObs > 0)
 						maxObsCmlMag = mag;
 					double incrObs = csv.getDouble(row, 2+nQuantiles);
@@ -494,7 +501,7 @@ public class SeismicityRateFileLoader {
 				List<Direct> ret = new ArrayList<>(nQuantiles);
 				for (int n=0; n<nQuantiles; n++) {
 					boolean mean = (float)quantiles[n] == (float)MEAN_QUANT_FLAG;
-					ret.add(new Direct(M1, incrFuncs[n], cmlFuncs[n], maxObsIncrMag, maxObsCmlMag,
+					ret.add(new Direct(M1, incrFuncs[n], cmlFuncs[n], maxObsIncrMag, maxObsCmlMag, nObs0,
 							mean ? Double.NaN : quantiles[n], mean));
 				}
 				return ret;
