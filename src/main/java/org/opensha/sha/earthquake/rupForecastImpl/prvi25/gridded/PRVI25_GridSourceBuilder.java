@@ -560,10 +560,11 @@ public class PRVI25_GridSourceBuilder {
 				continue;
 			}
 			
-			double upper = depthData.get(gridIndex);
-			Preconditions.checkState(LocationUtils.areSimilar(pdf.getLocation(gridIndex), depthData.getLocation(gridIndex)));
-			
 			Location loc = pdf.getLocation(gridIndex);
+			int depthIndex = depthData.indexOf(loc);
+			Location depthLoc = depthData.getLocation(depthIndex);
+			Preconditions.checkState(LocationUtils.areSimilar(loc, depthLoc));
+			double upper = depthData.get(depthIndex);
 			
 			List<GriddedRupture> ruptureList = new ArrayList<>(totalGR.size());
 			ruptureLists.add(ruptureList);
@@ -1329,98 +1330,100 @@ public class PRVI25_GridSourceBuilder {
 //		branch.setValue(PRVI25_SubductionFaultModels.PRVI_SUB_FM_SMALL);
 		
 //		GridSourceList slabModel = buildSlabGridSourceList(branch);
-//		SeismicityRegions seisReg = SeismicityRegions.CAR_INTRASLAB;
-//		GridSourceList slabModel = buildSlabGridSourceList(branch, seisReg);
+////		PRVI25_SeismicityRegions seisReg = PRVI25_SeismicityRegions.CAR_INTRASLAB;
+////		GridSourceList slabModel = buildSlabGridSourceList(branch, seisReg);
 //		double rateM5 = 0d;
 //		for (int gridIndex=0; gridIndex<slabModel.getNumLocations(); gridIndex++)
 //			for (GriddedRupture rup : slabModel.getRuptures(TectonicRegionType.SUBDUCTION_SLAB, gridIndex))
-//				if (rup.magnitude >= 5d)
+//				if (rup.properties.magnitude >= 5d)
 //					rateM5 += rup.rate;
-//		System.out.println(seisReg+" rate M>5: "+(float)rateM5);
+//		System.out.println("rate M>5: "+(float)rateM5);
 		
-		RATE_BALANCE_INTERFACE_GRIDDED = false;
+		buildCombinedSubductionGridSourceList(sol, branch);
+		
+//		RATE_BALANCE_INTERFACE_GRIDDED = false;
 //		PRVI25_SeismicityRegions seisReg = PRVI25_SeismicityRegions.CAR_INTERFACE;
-		PRVI25_SeismicityRegions seisReg = PRVI25_SeismicityRegions.MUE_INTERFACE;
-		Region region = seisReg.load();
-		GridSourceList interfaceModel = buildInterfaceGridSourceList(sol, branch, seisReg);
-//		GridSourceList interfaceModel = buildInterfaceGridSourceList(sol, branch);
-		AveragingAccumulator<GridSourceProvider> averager = interfaceModel.averagingAccumulator();
-		for (int i=0; i<10; i++)
-			averager.process(interfaceModel, 1d);
-		interfaceModel = (GridSourceList) averager.getAverage();
-		double rateM5 = 0d;
-		for (int gridIndex=0; gridIndex<interfaceModel.getNumLocations(); gridIndex++) {
-			if (region.contains(interfaceModel.getLocation(gridIndex))) {
-				for (GriddedRupture rup : interfaceModel.getRuptures(TectonicRegionType.SUBDUCTION_INTERFACE, gridIndex))
-					if (rup.properties.magnitude >= 5d)
-						rateM5 += rup.rate;
-			}
-		}
-		System.out.println(seisReg+" rate M>5: "+(float)rateM5);
-		sol.setGridSourceProvider(interfaceModel);
-		String name = "sol_"+branch.requireValue(PRVI25_SubductionFaultModels.class).getFilePrefix()+"_with_"+seisReg.name()+"_gridded";
-		if (!INTERFACE_USE_SECT_PROPERTIES)
-			name += "_slab_depths";
-		sol.write(new File("/tmp/", name+".zip"));
-		if (RATE_BALANCE_INTERFACE_GRIDDED) {
-			IncrementalMagFreqDist refMFD = interfaceModel.getRefMFD();
-			SummedMagFreqDist balancedMFD = new SummedMagFreqDist(refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
-			for (int l=0; l<interfaceModel.getNumLocations(); l++)
-				balancedMFD.addIncrementalMagFreqDist(interfaceModel.getMFD(l));
-			
-			// do it again without rate balancing
-			RATE_BALANCE_INTERFACE_GRIDDED = false;
-			interfaceModel = buildInterfaceGridSourceList(sol, branch, seisReg);
-			SummedMagFreqDist unbalancedMFD = new SummedMagFreqDist(refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
-			for (int l=0; l<interfaceModel.getNumLocations(); l++)
-				unbalancedMFD.addIncrementalMagFreqDist(interfaceModel.getMFD(l));
-			DecimalFormat pDF = new DecimalFormat("0.000%");
-			for (int i=0; i<balancedMFD.size(); i++) {
-				double mag = balancedMFD.getX(i);
-				if (mag < 5d)
-					continue;
-				double rateBalanced = balancedMFD.getY(i);
-				double rateUnbalanced = unbalancedMFD.getY(i);
-				if (rateBalanced == 0 && rateUnbalanced == 0)
-					break;
-				System.out.println((float)mag+"\t"+(float)rateUnbalanced+"\t"+(float)rateBalanced+"\t("
-						+pDF.format((rateBalanced - rateUnbalanced)/rateUnbalanced)+")");
-			}
-		}
-		
-		GriddedRegion gridReg = interfaceModel.getGriddedRegion();
-		GriddedGeoDataSet sectMapIndexes = new GriddedGeoDataSet(gridReg);
-		GriddedGeoDataSet gridMmaxes = new GriddedGeoDataSet(gridReg);
-		for (int l=0; l<gridReg.getNodeCount(); l++) {
-			double mMax = 0d;
-			int mapped = -1;
-			for (GriddedRupture rup : interfaceModel.getRuptures(TectonicRegionType.SUBDUCTION_INTERFACE, l)) {
-				Preconditions.checkState(rup.associatedSections.length == 1);
-				if (mapped == -1)
-					mapped = rup.associatedSections[0];
-				else
-					Preconditions.checkState(rup.associatedSections[0] == mapped);
-				mMax = Math.max(mMax, rup.properties.magnitude);
-			}
-			sectMapIndexes.set(l, mapped);
-			gridMmaxes.set(l, mMax);
-		}
-		GeographicMapMaker mapMaker = new GeographicMapMaker(sol.getRupSet().getFaultSectionDataList());
-		CPT rainbow = GMT_CPT_Files.RAINBOW_UNIFORM.instance().asDiscrete(10, true);
-		CPT indexCPT = new CPT();
-		while (indexCPT.size() < (int)sectMapIndexes.getMaxZ()) {
-			for (CPTVal val : rainbow) {
-				double index = (double)indexCPT.size();
-				indexCPT.add(new CPTVal(index+0d, val.minColor, index+1d, val.maxColor));
-			}
-		}
-//		CPT indexCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(sectMapIndexes.getMinZ(), sectMapIndexes.getMaxZ());
-		CPT magCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(7d, gridMmaxes.getMaxZ()+0.01);
-		
-		mapMaker.plotXYZData(sectMapIndexes, indexCPT, "Section mapped index");
-		mapMaker.plot(new File("/tmp"), "sub_grid_sect_mappings", " ");
-		mapMaker.plotXYZData(gridMmaxes, magCPT, "Grid Mmax");
-		mapMaker.plot(new File("/tmp"), "sub_grid_mmax", " ");
+////		PRVI25_SeismicityRegions seisReg = PRVI25_SeismicityRegions.MUE_INTERFACE;
+//		Region region = seisReg.load();
+//		GridSourceList interfaceModel = buildInterfaceGridSourceList(sol, branch, seisReg);
+////		GridSourceList interfaceModel = buildInterfaceGridSourceList(sol, branch);
+//		AveragingAccumulator<GridSourceProvider> averager = interfaceModel.averagingAccumulator();
+//		for (int i=0; i<10; i++)
+//			averager.process(interfaceModel, 1d);
+//		interfaceModel = (GridSourceList) averager.getAverage();
+//		double rateM5 = 0d;
+//		for (int gridIndex=0; gridIndex<interfaceModel.getNumLocations(); gridIndex++) {
+//			if (region.contains(interfaceModel.getLocation(gridIndex))) {
+//				for (GriddedRupture rup : interfaceModel.getRuptures(TectonicRegionType.SUBDUCTION_INTERFACE, gridIndex))
+//					if (rup.properties.magnitude >= 5d)
+//						rateM5 += rup.rate;
+//			}
+//		}
+//		System.out.println(seisReg+" rate M>5: "+(float)rateM5);
+//		sol.setGridSourceProvider(interfaceModel);
+//		String name = "sol_"+branch.requireValue(PRVI25_SubductionFaultModels.class).getFilePrefix()+"_with_"+seisReg.name()+"_gridded";
+//		if (!INTERFACE_USE_SECT_PROPERTIES)
+//			name += "_slab_depths";
+//		sol.write(new File("/tmp/", name+".zip"));
+//		if (RATE_BALANCE_INTERFACE_GRIDDED) {
+//			IncrementalMagFreqDist refMFD = interfaceModel.getRefMFD();
+//			SummedMagFreqDist balancedMFD = new SummedMagFreqDist(refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
+//			for (int l=0; l<interfaceModel.getNumLocations(); l++)
+//				balancedMFD.addIncrementalMagFreqDist(interfaceModel.getMFD(l));
+//			
+//			// do it again without rate balancing
+//			RATE_BALANCE_INTERFACE_GRIDDED = false;
+//			interfaceModel = buildInterfaceGridSourceList(sol, branch, seisReg);
+//			SummedMagFreqDist unbalancedMFD = new SummedMagFreqDist(refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
+//			for (int l=0; l<interfaceModel.getNumLocations(); l++)
+//				unbalancedMFD.addIncrementalMagFreqDist(interfaceModel.getMFD(l));
+//			DecimalFormat pDF = new DecimalFormat("0.000%");
+//			for (int i=0; i<balancedMFD.size(); i++) {
+//				double mag = balancedMFD.getX(i);
+//				if (mag < 5d)
+//					continue;
+//				double rateBalanced = balancedMFD.getY(i);
+//				double rateUnbalanced = unbalancedMFD.getY(i);
+//				if (rateBalanced == 0 && rateUnbalanced == 0)
+//					break;
+//				System.out.println((float)mag+"\t"+(float)rateUnbalanced+"\t"+(float)rateBalanced+"\t("
+//						+pDF.format((rateBalanced - rateUnbalanced)/rateUnbalanced)+")");
+//			}
+//		}
+//		
+//		GriddedRegion gridReg = interfaceModel.getGriddedRegion();
+//		GriddedGeoDataSet sectMapIndexes = new GriddedGeoDataSet(gridReg);
+//		GriddedGeoDataSet gridMmaxes = new GriddedGeoDataSet(gridReg);
+//		for (int l=0; l<gridReg.getNodeCount(); l++) {
+//			double mMax = 0d;
+//			int mapped = -1;
+//			for (GriddedRupture rup : interfaceModel.getRuptures(TectonicRegionType.SUBDUCTION_INTERFACE, l)) {
+//				Preconditions.checkState(rup.associatedSections.length == 1);
+//				if (mapped == -1)
+//					mapped = rup.associatedSections[0];
+//				else
+//					Preconditions.checkState(rup.associatedSections[0] == mapped);
+//				mMax = Math.max(mMax, rup.properties.magnitude);
+//			}
+//			sectMapIndexes.set(l, mapped);
+//			gridMmaxes.set(l, mMax);
+//		}
+//		GeographicMapMaker mapMaker = new GeographicMapMaker(sol.getRupSet().getFaultSectionDataList());
+//		CPT rainbow = GMT_CPT_Files.RAINBOW_UNIFORM.instance().asDiscrete(10, true);
+//		CPT indexCPT = new CPT();
+//		while (indexCPT.size() < (int)sectMapIndexes.getMaxZ()) {
+//			for (CPTVal val : rainbow) {
+//				double index = (double)indexCPT.size();
+//				indexCPT.add(new CPTVal(index+0d, val.minColor, index+1d, val.maxColor));
+//			}
+//		}
+////		CPT indexCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(sectMapIndexes.getMinZ(), sectMapIndexes.getMaxZ());
+//		CPT magCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(7d, gridMmaxes.getMaxZ()+0.01);
+//		
+//		mapMaker.plotXYZData(sectMapIndexes, indexCPT, "Section mapped index");
+//		mapMaker.plot(new File("/tmp"), "sub_grid_sect_mappings", " ");
+//		mapMaker.plotXYZData(gridMmaxes, magCPT, "Grid Mmax");
+//		mapMaker.plot(new File("/tmp"), "sub_grid_mmax", " ");
 		
 //		buildInterfaceGridSourceList(sol, branch);
 		
