@@ -2,6 +2,7 @@ package org.opensha.sha.calc.IM_EventSet.v03.gui;
 
 import java.util.ArrayList;
 
+import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -27,12 +28,13 @@ public class AddSitePanel extends JPanel {
 		paramList.addParameter(lonParam);
 		ParameterListEditor paramEdit = new ParameterListEditor(paramList);
 		paramEdit.setTitle("New Site Location");
+		paramEdit.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 10));
 		
 		this.add(paramEdit, true);
 		
 		adder = new AddMultipleSiteDataPanel();
 		this.add(adder);
-	}
+	}	
 	
 	public Location getSiteLocation() {
 		return new Location(latParam.getValue(), lonParam.getValue());
