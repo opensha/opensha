@@ -29,8 +29,6 @@ public class AddSiteDataPanel extends ParameterListEditor {
 	StringParameter valEntry;
 	
 	public AddSiteDataPanel() {
-		this.setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-		
 		typeSelector = new StringParameter("Site Data Type", siteDataTypes, siteDataTypes.get(0));
 		
 		ArrayList<String> measTypes = new ArrayList<String>();
