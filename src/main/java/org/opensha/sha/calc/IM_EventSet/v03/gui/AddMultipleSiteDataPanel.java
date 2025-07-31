@@ -4,9 +4,12 @@ import java.util.ArrayList;
 
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.border.Border;
+import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 
 import org.opensha.commons.data.siteData.SiteDataValue;
+import org.opensha.commons.gui.LabeledBoxPanel;
 
 public class AddMultipleSiteDataPanel extends NamesListPanel {
 	
@@ -17,6 +20,8 @@ public class AddMultipleSiteDataPanel extends NamesListPanel {
 	public AddMultipleSiteDataPanel() {
 		super(/*upperPanel=*/new AddSiteDataPanel(), "Site Data Values:");
 		adder = (AddSiteDataPanel) getComponent(0);
+		adder.setBorder(BorderFactory.createLineBorder(
+				new LabeledBoxPanel().getBorderColor()));
 		
 		vals = new ArrayList<SiteDataValue<?>>();
 	}
