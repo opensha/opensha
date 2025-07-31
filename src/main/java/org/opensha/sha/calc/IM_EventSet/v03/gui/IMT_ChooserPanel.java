@@ -1,7 +1,6 @@
 package org.opensha.sha.calc.IM_EventSet.v03.gui;
 
 import java.util.ArrayList;
-import java.util.ListIterator;
 import java.util.StringTokenizer;
 
 import javax.swing.JFrame;
@@ -12,6 +11,7 @@ import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetOutputWriter;
 import org.opensha.sha.gui.beans.IMT_GuiBean;
+
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.CB_2008_AttenRel;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PeriodParam;
