@@ -64,7 +64,7 @@ public class AddSiteDataPanel extends ParameterListEditor {
 		
 		if (type.equals(SiteData.TYPE_WILLS_CLASS)) {
 			if (!WillsMap2000.wills_vs30_map.containsKey(valStr))
-				throw new RuntimeException("'" + valStr + "' is not a valid Wills Site Class!");
+				throw new RuntimeException("'" + valStr + "' is not a valid Wills Site Class!\nValid values: " + WillsMap2000.wills_vs30_map.keySet());
 			val = valStr;
 		} else {
 			// it's a double that we need to parse

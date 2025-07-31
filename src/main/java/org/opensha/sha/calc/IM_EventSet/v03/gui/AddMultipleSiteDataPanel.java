@@ -15,7 +15,7 @@ public class AddMultipleSiteDataPanel extends NamesListPanel {
 	private AddSiteDataPanel adder;
 	
 	public AddMultipleSiteDataPanel() {
-		super(new AddSiteDataPanel(), "Site Data Values:");
+		super(/*upperPanel=*/new AddSiteDataPanel(), "Site Data Values:");
 		adder = (AddSiteDataPanel) getComponent(0);
 		
 		vals = new ArrayList<SiteDataValue<?>>();
