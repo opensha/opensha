@@ -29,7 +29,6 @@ public class AddSitePanel extends JPanel {
 		ParameterListEditor paramEdit = new ParameterListEditor(paramList);
 		paramEdit.setTitle("New Site Location");
 		paramEdit.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 10));
-		
 		this.add(paramEdit, true);
 		
 		adder = new AddMultipleSiteDataPanel();

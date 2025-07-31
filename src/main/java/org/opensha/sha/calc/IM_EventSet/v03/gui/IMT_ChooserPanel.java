@@ -26,11 +26,11 @@ public class IMT_ChooserPanel extends NamesListPanel implements ParameterChangeL
 	private ArrayList<Parameter<?>> imts;
 	
 	public IMT_ChooserPanel() {
-		super(null, "Selected IMT(s):");
+		super("Selected IMT(s):");
 		imtGuiBean = new IMT_GuiBean(null);
 		imts = new ArrayList<Parameter<?>>();
-		
-		this.setLowerPanel(imtGuiBean);
+		initIMRs(); // TODO: Find out why isn't this working
+		setLowerPanel(imtGuiBean);
 	}
 	
 	public void setForceDisableAddButton(boolean disable) {
@@ -151,16 +151,23 @@ public class IMT_ChooserPanel extends NamesListPanel implements ParameterChangeL
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setSize(400, 600);
 		
+		IMT_ChooserPanel choose = new IMT_ChooserPanel();
+		choose.initIMRs();
+		
+		frame.setContentPane(choose);
+		frame.setVisible(true);
+	}
+	
+	/**
+	 * Some IMR needs to be initially set to build the IMT Editor
+	 */
+	private void initIMRs() {
 		ArrayList<ScalarIMR> imrs = new ArrayList<ScalarIMR>();
 		CB_2008_AttenRel cb08 = new CB_2008_AttenRel(null);
 		cb08.setParamDefaults();
 		imrs.add(cb08);
 		
-		IMT_ChooserPanel choose = new IMT_ChooserPanel();
-		choose.setIMRs(imrs);
-		
-		frame.setContentPane(choose);
-		frame.setVisible(true);
+		this.setIMRs(imrs);
 	}
 
 	public void parameterChange(ParameterChangeEvent event) {
