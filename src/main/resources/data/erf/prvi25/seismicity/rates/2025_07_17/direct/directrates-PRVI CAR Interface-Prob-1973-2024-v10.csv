@@ -1,7 +1,7 @@
 PRVI CAR Interface,Prob
-Started at:,Fri Jul 18 10:19:02 2025
+Started at:,Fri Jul 18 15:45:27 2025
 parameter file:,directrates-prvi-car-interface-v10-params.R
-catalog file:,catalogs/pmmx_071725_c2-separatedAveraged.csv-car-interface.RData
+catalog file:,catalogs/pmmx_071725_c2-separatedAveraged_v2.csv-car-interface.RData
 Time range:,1973,2024
 Duration:,51
 minmag:,5
