@@ -410,12 +410,12 @@ public class PRVI25_GridSourceBuilder {
 			if (seisReg == PRVI25_SeismicityRegions.CAR_INTERFACE || seisReg == PRVI25_SeismicityRegions.CAR_INTRASLAB) {
 				applicableRegions = new PRVI25_SeismicityRegions[] {
 						PRVI25_SeismicityRegions.CAR_INTERFACE, PRVI25_SeismicityRegions.CAR_INTRASLAB};
-				fileName = DEPTHS_DIR+"CAR_slab2_extended.csv";
+				fileName = DEPTHS_DIR+"CAR_slab2_extended-v2.csv";
 				gridReg = new GriddedRegion(PRVI25_SeismicityRegions.CAR_INTRASLAB.load(), 0.05, GriddedRegion.ANCHOR_0_0);
 			} else if (seisReg == PRVI25_SeismicityRegions.MUE_INTERFACE || seisReg == PRVI25_SeismicityRegions.MUE_INTRASLAB) {
 				applicableRegions = new PRVI25_SeismicityRegions[] {
 						PRVI25_SeismicityRegions.MUE_INTERFACE, PRVI25_SeismicityRegions.MUE_INTRASLAB};
-				fileName = DEPTHS_DIR+"MUE_slab2_extended.csv";
+				fileName = DEPTHS_DIR+"MUE_slab2_extended-v2.csv";
 				gridReg = new GriddedRegion(PRVI25_SeismicityRegions.MUE_INTRASLAB.load(), 0.02, GriddedRegion.ANCHOR_0_0);
 			} else {
 				throw new IllegalStateException("Not applicable to region: "+seisReg);
