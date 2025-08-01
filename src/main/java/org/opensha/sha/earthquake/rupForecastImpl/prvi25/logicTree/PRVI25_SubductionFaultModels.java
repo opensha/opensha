@@ -141,7 +141,6 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel, RupSetSubs
 						PRVI25_SeismicityRegions.CAR_INTERFACE,
 						PRVI25_SeismicityRegions.MUE_INTERFACE,
 				};
-				PRVI25_SeismicityRateEpoch epoch = PRVI25_SeismicityRateEpoch.DEFAULT;
 //				double maxMinMag = 0d;
 //				for (int s=0; s<rupSet.getNumSections(); s++)
 //					maxMinMag = Math.max(maxMinMag, rupSet.getMinMagForSection(s));
@@ -172,13 +171,23 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel, RupSetSubs
 					Preconditions.checkState(!minMags.isEmpty());
 //					double avgMinMag = minMags.stream().mapToDouble(D->D).average().getAsDouble();
 					double dataMmax = maxMags.stream().mapToDouble(D->D).max().getAsDouble();
+					dataMmax = interfaceRefMFD.getX(interfaceRefMFD.getClosestXIndex(dataMmax));
 					regions.add(reg);
-					if (seisReg == PRVI25_SeismicityRegions.CAR_INTERFACE)
-						regionMFDs.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(epoch, false).getBounded(
-								interfaceRefMFD, interfaceRefMFD.getX(interfaceRefMFD.getClosestXIndex(dataMmax))));
-					else
-						regionMFDs.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(epoch, false).getBounded(
-								interfaceRefMFD, interfaceRefMFD.getX(interfaceRefMFD.getClosestXIndex(dataMmax))));
+					List<UncertainBoundedIncrMagFreqDist> mfds = new ArrayList<>();
+					List<Double> weights = new ArrayList<>();
+					for (PRVI25_SeismicityRateEpoch epoch : PRVI25_SeismicityRateEpoch.values()) {
+						double weight = epoch.getNodeWeight(branch);
+						if (weight == 0d)
+							continue;
+						UncertainBoundedIncrMagFreqDist mfd;
+						if (seisReg == PRVI25_SeismicityRegions.CAR_INTERFACE)
+							mfd = PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(epoch, false).getBounded(interfaceRefMFD, dataMmax);
+						else
+							mfd = PRVI25_SubductionMuertosSeismicityRate.loadRateModel(epoch, false).getBounded(interfaceRefMFD, dataMmax);
+						mfds.add(mfd);
+						weights.add(weight);
+					}
+					regionMFDs.add(PRVI25_SeismicityRateEpoch.averageUncert(mfds, weights));
 					regionTRTs.add(TectonicRegionType.SUBDUCTION_INTERFACE);
 				}
 				
@@ -197,16 +206,31 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel, RupSetSubs
 				
 				for (PRVI25_SeismicityRegions seisReg : slabRegions) {
 					regions.add(seisReg.load());
-					UncertainBoundedIncrMagFreqDist mfd;
-					if (seisReg == PRVI25_SeismicityRegions.CAR_INTRASLAB)
-						mfd = PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(epoch, true).getBounded(slabRefMFD, slabMmaxOff);
-					else
-						mfd = PRVI25_SubductionMuertosSeismicityRate.loadRateModel(epoch, true).getBounded(slabRefMFD, slabMmaxOff);
+					List<UncertainBoundedIncrMagFreqDist> mfds = new ArrayList<>();
+					List<Double> weights = new ArrayList<>();
+					for (PRVI25_SeismicityRateEpoch epoch : PRVI25_SeismicityRateEpoch.values()) {
+						double weight = epoch.getNodeWeight(branch);
+						if (weight == 0d)
+							continue;
+						UncertainBoundedIncrMagFreqDist mfd;
+						if (seisReg == PRVI25_SeismicityRegions.CAR_INTRASLAB)
+							mfd = PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(epoch, true).getBounded(slabRefMFD, slabMmaxOff);
+						else
+							mfd = PRVI25_SubductionMuertosSeismicityRate.loadRateModel(epoch, true).getBounded(slabRefMFD, slabMmaxOff);
+						mfds.add(mfd);
+						weights.add(weight);
+					}
+					regionMFDs.add(PRVI25_SeismicityRateEpoch.averageUncert(mfds, weights));
+//					UncertainBoundedIncrMagFreqDist mfd;
+//					if (seisReg == PRVI25_SeismicityRegions.CAR_INTRASLAB)
+//						mfd = PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(epoch, true).getBounded(slabRefMFD, slabMmaxOff);
+//					else
+//						mfd = PRVI25_SubductionMuertosSeismicityRate.loadRateModel(epoch, true).getBounded(slabRefMFD, slabMmaxOff);
 //					System.out.println("MFD for "+seisReg
 //							+"; lowM5="+(float)mfd.getLower().getCumRateDistWithOffset().getY(5d)
 //							+"; prefM5="+(float)mfd.getCumRateDistWithOffset().getY(5d)
 //							+"; highM5="+(float)mfd.getUpper().getCumRateDistWithOffset().getY(5d));
-					regionMFDs.add(mfd);
+//					regionMFDs.add(mfd);
 					regionTRTs.add(TectonicRegionType.SUBDUCTION_SLAB);
 				}
 				return new RegionsOfInterest(regions, regionMFDs, regionTRTs);

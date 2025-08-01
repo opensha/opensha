@@ -185,7 +185,7 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel, RupSetSubsect
 					if (!FaultSectionUtils.anySectInRegion(region, subSects, true))
 						continue;
 					
-					regionMFDs.add(getRegionalMFD(seisReg, branch));
+					regionMFDs.add(getRegionalMFD(seisReg, null, branch));
 					regions.add(region);
 					regionTRTs.add(TectonicRegionType.ACTIVE_SHALLOW);
 				}
@@ -195,27 +195,10 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel, RupSetSubsect
 				if (FaultSectionUtils.anySectInRegion(mapRegion, subSects, true)) {
 					mapRegion.setName("PRVI - NSHMP Map Region");
 					regions.add(mapRegion);
-					regionMFDs.add(null);
+					regionMFDs.add(getRegionalMFD(PRVI25_SeismicityRegions.CRUSTAL, mapRegion, branch));
 					regionTRTs.add(null);
 				}
 				
-//				// analysis regions
-//				for (Region region : NSHM23_RegionLoader.loadAnalysisRegions(subSects)) {
-//					if (!FaultSectionUtils.anySectInRegion(region, subSects, true))
-//						continue;
-//					
-//					regionMFDs.add(getRegionalMFD(region, null, branch));
-//					regions.add(region);
-//				}
-//				
-//				// local regions
-//				for (Region region : NSHM23_RegionLoader.loadLocalRegions(subSects)) {
-//					if (!FaultSectionUtils.anySectInRegion(region, subSects, true))
-//						continue;
-//					
-//					regionMFDs.add(getRegionalMFD(region, null, branch));
-//					regions.add(region);
-//				}
 				for (int i=0; i<regions.size(); i++) {
 					String regName = regions.get(i).getName();
 					System.out.println(regName);
@@ -226,8 +209,6 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel, RupSetSubsect
 							System.out.println("\t"+((UncertainBoundedDiscretizedFunc)mfd).getBoundName());
 					}
 				}
-//				System.exit(0);
-//				return new RegionsOfInterest(regions, regionMFDs);
 				return new RegionsOfInterest(regions, regionMFDs, regionTRTs);
 			}
 		}, RegionsOfInterest.class);
@@ -242,7 +223,7 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel, RupSetSubsect
 	}
 	
 	private static UncertainBoundedIncrMagFreqDist getRegionalMFD(PRVI25_SeismicityRegions seisRegion,
-			LogicTreeBranch<?> branch) throws IOException {
+			Region region, LogicTreeBranch<?> branch) throws IOException {
 //		PRVI25_DeclusteringAlgorithms declustering = PRVI25_DeclusteringAlgorithms.AVERAGE;
 //		if (branch != null && branch.hasValue(PRVI25_DeclusteringAlgorithms.class))
 //			declustering = branch.requireValue(PRVI25_DeclusteringAlgorithms.class);
@@ -257,8 +238,22 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel, RupSetSubsect
 //		if (region != null)
 //			return PRVI25_RegionalSeismicity.getRemapped(region, seisRegion, declustering, smooth, refMFD, mMax);
 //		else
-		PRVI25_SeismicityRateEpoch epoch = PRVI25_SeismicityRateEpoch.DEFAULT;
-		return PRVI25_CrustalSeismicityRate.loadRateModel(epoch).getBounded(refMFD, mMax);
+		List<UncertainBoundedIncrMagFreqDist> mfds = new ArrayList<>();
+		List<Double> weights = new ArrayList<>();
+		for (PRVI25_SeismicityRateEpoch epoch : PRVI25_SeismicityRateEpoch.values()) {
+			double weight = epoch.getNodeWeight(branch);
+			if (weight == 0d)
+				continue;
+			UncertainBoundedIncrMagFreqDist mfd;
+			if (region != null)
+				mfd = PRVI25_CrustalSeismicityRate.loadRateModel(epoch).getRemapped(region, seisRegion,
+						PRVI25_DeclusteringAlgorithms.AVERAGE, PRVI25_SeisSmoothingAlgorithms.AVERAGE, refMFD, mMax);
+			else
+				mfd = PRVI25_CrustalSeismicityRate.loadRateModel(epoch).getBounded(refMFD, mMax);
+			mfds.add(mfd);
+			weights.add(weight);
+		}
+		return PRVI25_SeismicityRateEpoch.averageUncert(mfds, weights);
 	}
 
 	@Override

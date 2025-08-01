@@ -3,6 +3,7 @@ package org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -109,7 +110,10 @@ public enum PRVI25_CrustalSeismicityRate implements LogicTreeNode {
 		default:
 			throw new IllegalStateException("Can't load direct rates for epoch: "+epoch);
 		}
-		return "directrates-PRVI "+seisReg.getShortName()+"-Prob-"+yearStr+"-2024"+vStr+".csv";
+		if (seisReg == null)
+			return "directrates-PRVI Union-Full-"+yearStr+"-2024"+vStr+".csv";
+		else
+			return "directrates-PRVI "+seisReg.getShortName()+"-Prob-"+yearStr+"-2024"+vStr+".csv";
 	}
 	
 	/*
@@ -130,6 +134,8 @@ public enum PRVI25_CrustalSeismicityRate implements LogicTreeNode {
 	public abstract IncrementalMagFreqDist build(PRVI25_SeismicityRateEpoch epoch, EvenlyDiscretizedFunc refMFD, double mMax) throws IOException;
 	
 	public static List<? extends RateRecord> loadRates(PRVI25_SeismicityRateEpoch epoch, RateType type) throws IOException {
+		if (epoch == PRVI25_SeismicityRateEpoch.RECENT_SCALED)
+			return getScaledToFull(loadRates(PRVI25_SeismicityRateEpoch.RECENT, type));
 		CSVFile<String> csv = loadCSV(epoch);
 		return SeismicityRateFileLoader.loadRecords(csv, type);
 	}
@@ -156,7 +162,23 @@ public enum PRVI25_CrustalSeismicityRate implements LogicTreeNode {
 	
 	private static Double RECENT_TO_FULL_SCALAR = null;
 	
-	static synchronized SeismicityRateModel getScaledToFull(SeismicityRateModel recentModel, RateType type) throws IOException {
+	public static SeismicityRateModel getScaledToFull(SeismicityRateModel recentModel, RateType type) throws IOException {
+		checkLoadRecentToFullScalar();
+		
+		return new SeismicityRateModel(recentModel.getMeanRecord().getScaled(RECENT_TO_FULL_SCALAR),
+				recentModel.getLowerRecord().getScaled(RECENT_TO_FULL_SCALAR),
+				recentModel.getUpperRecord().getScaled(RECENT_TO_FULL_SCALAR), BOUND_TYPE);
+	}
+	
+	public static List<? extends RateRecord> getScaledToFull(List<? extends RateRecord> rates) throws IOException {
+		checkLoadRecentToFullScalar();
+		List<RateRecord> ret = new ArrayList<>();
+		for (RateRecord rec : rates)
+			ret.add(rec.getScaled(RECENT_TO_FULL_SCALAR));
+		return ret;
+	}
+	
+	private synchronized static void checkLoadRecentToFullScalar() throws IOException {
 		if (RECENT_TO_FULL_SCALAR == null) {
 			double sumRecent = 0d;
 			double sumFull = 0d;
@@ -174,8 +196,8 @@ public enum PRVI25_CrustalSeismicityRate implements LogicTreeNode {
 				CSVFile<String> fullCSV = CSVFile.readStream(fullStream, false);
 				fullStream.close();
 				
-				SeismicityRateModel recentRegionalModel = new SeismicityRateModel(recentCSV, type, BOUND_TYPE);
-				SeismicityRateModel fullRegionalModel = new SeismicityRateModel(fullCSV, type, BOUND_TYPE);
+				SeismicityRateModel recentRegionalModel = new SeismicityRateModel(recentCSV, TYPE, BOUND_TYPE);
+				SeismicityRateModel fullRegionalModel = new SeismicityRateModel(fullCSV, TYPE, BOUND_TYPE);
 				
 				RateRecord recentMean = recentRegionalModel.getMeanRecord();
 				RateRecord fullMean = fullRegionalModel.getMeanRecord();
@@ -191,10 +213,6 @@ public enum PRVI25_CrustalSeismicityRate implements LogicTreeNode {
 					+(float)sumFull+" / "+(float)sumRecent+" = "+(float)rateScalar);
 			RECENT_TO_FULL_SCALAR = rateScalar;
 		}
-		
-		return new SeismicityRateModel(recentModel.getMeanRecord().getScaled(RECENT_TO_FULL_SCALAR),
-				recentModel.getLowerRecord().getScaled(RECENT_TO_FULL_SCALAR),
-				recentModel.getUpperRecord().getScaled(RECENT_TO_FULL_SCALAR), BOUND_TYPE);
 	}
 	
 	private synchronized static CSVFile<String> loadCSV(PRVI25_SeismicityRateEpoch epoch) throws IOException {

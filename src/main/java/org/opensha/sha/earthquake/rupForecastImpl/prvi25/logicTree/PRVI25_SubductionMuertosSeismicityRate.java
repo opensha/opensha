@@ -119,6 +119,8 @@ public enum PRVI25_SubductionMuertosSeismicityRate implements LogicTreeNode {
 	}
 	
 	public static List<? extends RateRecord> loadRates(PRVI25_SeismicityRateEpoch epoch, RateType type, boolean slab) throws IOException {
+		if (epoch == PRVI25_SeismicityRateEpoch.RECENT_SCALED)
+			return PRVI25_CrustalSeismicityRate.getScaledToFull(loadRates(PRVI25_SeismicityRateEpoch.RECENT, type, slab));
 		CSVFile<String> csv = loadCSV(epoch, slab);
 		return SeismicityRateFileLoader.loadRecords(csv, type);
 	}
