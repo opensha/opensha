@@ -35,6 +35,14 @@ public class IndeterminateProgressBar extends JProgressBar {
 	private int offset = 0;
 	private int direction = 1; // 1 = right, -1 = left
 	private final int step = 10;
+	
+	public IndeterminateProgressBar(String loadingMessage) {
+		setString(loadingMessage);
+	}
+	
+	public IndeterminateProgressBar() {
+		setString("Loading...");
+	}
 
 	@Override
 	public void setIndeterminate(boolean newValue) {
@@ -74,7 +82,6 @@ public class IndeterminateProgressBar extends JProgressBar {
 			g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f)); // 50% opacity
 			g2.setColor(Color.BLUE);
 			g2.fillRoundRect(offset, 0, getBarWidth(), barHeight, 10, 10); // 10 is arc width/height
-
 			
 			 // Draw string if enabled
 			if (isStringPainted() && getString() != null) {
@@ -98,19 +105,23 @@ public class IndeterminateProgressBar extends JProgressBar {
 	private int getBarWidth() {
 		return getWidth() / 5;
 	}
+	
+	// Use the toggle method to set and unset the indeterminate progress bar
+	public void toggle() {
+		setStringPainted(!isIndeterminate());
+		setIndeterminate(!isIndeterminate());
+	}
 
+	// Demonstration
 	public static void main(String[] args) {
 //		try {
 //			UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
 //		} catch (Exception e) {
 //			e.printStackTrace();
 //		}
-		JProgressBar indBar = new IndeterminateProgressBar();
+		IndeterminateProgressBar indBar = new IndeterminateProgressBar();
 		indBar.setPreferredSize(new Dimension(200, 24));
-		indBar.setString("Calculating...");
-		indBar.setStringPainted(true);
-		indBar.setIndeterminate(true);
-		indBar.setVisible(true);
+		indBar.toggle();
 
 		JPanel mainPanel = new JPanel();
 		mainPanel.add(indBar);
