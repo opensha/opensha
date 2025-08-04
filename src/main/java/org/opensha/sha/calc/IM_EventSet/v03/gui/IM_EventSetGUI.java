@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.concurrent.ExecutionException;
 
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -16,6 +17,9 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
+import javax.swing.Timer;
 
 import org.dom4j.Document;
 import org.dom4j.Element;
@@ -36,10 +40,13 @@ import org.opensha.sha.earthquake.ERF_Ref;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.BaseERF;
 import org.opensha.sha.gui.beans.ERF_GuiBean;
+import org.opensha.sha.gui.infoTools.IndeterminateProgressBar;
 import org.opensha.sha.imr.ScalarIMR;
 
 public class IM_EventSetGUI extends JFrame implements ActionListener {
 	
+	private static final long serialVersionUID = 1L;
+
 	private static File cwd = new File(System.getProperty("user.dir"));
 	
 	private SitesPanel sitesPanel = null;
@@ -61,9 +68,10 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 	private JFileChooser saveChooser;
 	private JFileChooser outputChooser;
 	
-	private JComboBox outputWriterChooser;
+	private JComboBox<?> outputWriterChooser;
 	
-//	private JProgressBar bar = new JProgressBar();
+	private IndeterminateProgressBar bar = new IndeterminateProgressBar("Calculating...");
+	private Timer doneTimer = null; // show when calculation is done
 	
 	public IM_EventSetGUI() {
 		sitesPanel = new SitesPanel();
@@ -108,7 +116,8 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 		bottomPanel.add(calcButton);
 		bottomPanel.add(saveButton);
 		bottomPanel.add(loadButton);
-//		bottomPanel.add(bar);
+		bottomPanel.add(bar);
+
 		calcButton.addActionListener(this);
 		saveButton.addActionListener(this);
 		loadButton.addActionListener(this);
@@ -118,7 +127,8 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 		
 		this.setTitle("IM Event Set Calculator v3.0");
 		
-		this.setContentPane(mainPanel);
+		this.setContentPane(mainPanel); 
+		pack();
 	}
 	
 	private ERF_GuiBean createERF_GUI_Bean() {
@@ -183,63 +193,137 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 	}
 	
 	public void actionPerformed(ActionEvent e) {
+		IM_EventSetGUI instance = this; // Need to get instance inside SwingWorker
 		if (e.getSource().equals(calcButton)) {
-			// make sure we're ready to calculate first
-			ArrayList<Location> locs = null;
-			ArrayList<ArrayList<SiteDataValue<?>>> dataLists = null;
-			ERF erf = null;
-			ArrayList<ScalarIMR> imrs = null;
-			ArrayList<String> imts = null;
-			try {
-				locs = sitesPanel.getLocs();
-				dataLists = sitesPanel.getDataLists();
-				erf = (ERF)erfGuiBean.getSelectedERF();
-				imrs = imrChooser.getSelectedIMRs();
-				imts = imtChooser.getIMTStrings();
-				
-				if (!isReadyForCalc(locs, dataLists, erf, imrs, imts))
-					return;
-			} catch (Exception e2) {
-				e2.printStackTrace();
-				JOptionPane.showMessageDialog(this, e2.getMessage(), "Exception Preparing Calculation",
-						JOptionPane.ERROR_MESSAGE);
-			}
-			
-			if (outputChooser == null) {
-				outputChooser = new JFileChooser(cwd);
-				outputChooser.setDialogTitle("Select Output Directory");
-				outputChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-			}
-			int returnVal = outputChooser.showOpenDialog(this);;
-			if (returnVal == JFileChooser.APPROVE_OPTION) {
-				File outputDir = outputChooser.getSelectedFile();
-				GUICalcAPI_Impl calc = new GUICalcAPI_Impl(locs, dataLists,
-						outputDir, dataBean.getProviderList());
-				IM_EventSetOutputWriter writer;
-				String writerName = (String) outputWriterChooser.getSelectedItem();
-				if (writerName.equals(OriginalModWriter.NAME))
-					writer = new OriginalModWriter(calc);
-				else if (writerName.equals(HAZ01Writer.NAME))
-					writer = new HAZ01Writer(calc);
-				else
-					throw new RuntimeException("Unknown writer: " + writerName);
-				try {
-//					bar.setIndeterminate(true);
-//					bar.setString("Calculating...");
-//					bar.setStringPainted(true);
-					this.calcButton.setEnabled(false);
-					this.validate();
-					writer.writeFiles(erf, imrs, imts);
-				} catch (Exception e1) {
-//					bar.setIndeterminate(false);
-//					bar.setStringPainted(false);
-					this.calcButton.setEnabled(true);
-					throw new RuntimeException(e1);
+
+			// Spawn thread for precalculation logic to determine if ready
+			SwingWorker<Boolean, Integer> precalcWorker = new SwingWorker<>() {
+				ArrayList<Location> locs = null;
+				ArrayList<ArrayList<SiteDataValue<?>>> dataLists = null;
+				ERF erf = null;
+				ArrayList<ScalarIMR> imrs = null;
+				ArrayList<String> imts = null;
+				Exception precalcException;
+
+				@Override
+				protected Boolean doInBackground() {
+					try {
+						// Ensure no active timers from prior calculations
+						if (doneTimer != null && doneTimer.isRunning()) {
+							doneTimer.stop();
+							doneTimer = null;
+						}
+						// Get data for calculation
+						locs = sitesPanel.getLocs();
+						dataLists = sitesPanel.getDataLists();
+						erf = (ERF)erfGuiBean.getSelectedERF();
+						imrs = imrChooser.getSelectedIMRs();
+						imts = imtChooser.getIMTStrings();
+						
+						return isReadyForCalc(locs, dataLists, erf, imrs, imts);
+					} catch (Exception e) {
+						precalcException = e;
+						return false;
+					}
 				}
-				this.calcButton.setEnabled(true);
-//				bar.setIndeterminate(false);
-//				bar.setStringPainted(false);
-			}
+				@Override
+				protected void done() {
+					// If precalcWorker was successful, begin main calculation
+					boolean readyForCalc = false;
+					try {
+						readyForCalc = get();
+					} catch (InterruptedException | ExecutionException e) {
+						precalcException = e;
+					}
+					if (!readyForCalc) {
+						if (precalcException != null)
+							precalcException.printStackTrace();
+						JOptionPane.showMessageDialog(
+								instance, precalcException.getMessage(), "Exception Preparing Calculation",
+								JOptionPane.ERROR_MESSAGE);
+						return;
+					}
+					// Ask user for output directory on Event Dispatch Thread
+					SwingUtilities.invokeLater(() -> {
+						if (outputChooser == null) {
+							outputChooser = new JFileChooser(cwd);
+							outputChooser.setDialogTitle("Select Output Directory");
+							outputChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+						}
+						int returnVal = outputChooser.showOpenDialog(instance);;
+						
+						if (returnVal == JFileChooser.APPROVE_OPTION) {
+							File outputDir = outputChooser.getSelectedFile();
+							GUICalcAPI_Impl calc = new GUICalcAPI_Impl(locs, dataLists,
+									outputDir, dataBean.getProviderList());
+							IM_EventSetOutputWriter writer;
+							String writerName = (String) outputWriterChooser.getSelectedItem();
+							if (writerName.equals(OriginalModWriter.NAME))
+								writer = new OriginalModWriter(calc);
+							else if (writerName.equals(HAZ01Writer.NAME))
+								writer = new HAZ01Writer(calc);
+							else
+								throw new RuntimeException("Unknown writer: " + writerName);
+
+							// Spawn thread for calculation. Returns true if ran successfully.
+							SwingWorker<Boolean, Integer> calcWorker = new SwingWorker<>() {
+								Exception calcException;
+								@Override
+								protected Boolean doInBackground() {
+									instance.validate();
+									try {
+										writer.writeFiles(erf, imrs, imts);
+										return true;
+									} catch (IOException e) {
+										calcException = e;
+									}
+									return false;
+								}
+								
+								@Override
+								protected void done() {
+									boolean calcSuccess = false;
+									try {
+										calcSuccess = get();
+									} catch (InterruptedException | ExecutionException e) {
+										calcException = e;
+									}
+									if (!calcSuccess) {
+										bar.toggle();
+										calcButton.setEnabled(true);
+										if (calcException != null)
+											calcException.printStackTrace();
+										throw new RuntimeException(calcException);
+									}
+									calcButton.setEnabled(true);
+									// Stop progress bar after calculation over
+									bar.toggle();
+									
+									bar.setString("Done!");
+									bar.setStringPainted(true);
+									doneTimer = new Timer(1200, e -> {
+										bar.setStringPainted(false);
+										bar.setString("Calculating...");
+									});
+									doneTimer.start();
+								}
+							};
+							
+							// Show progress bar on bottom panel
+							bar.toggle();
+							calcButton.setEnabled(false);
+
+							calcWorker.execute();
+							// Give EDT a moment to update before kicking off background work
+//							SwingUtilities.invokeLater(() -> calcWorker.execute());
+						}
+					});
+					
+				}
+			};
+			precalcWorker.execute();
+			
+			// TODO: Delete save button and its logic
 		} else if (e.getSource().equals(saveButton)) {
 			if (saveChooser == null)
 				saveChooser = new JFileChooser(cwd);
@@ -256,6 +340,7 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 					e1.printStackTrace();
 				}
 			}
+			// TODO: Delete load button and its logic
 		} else if (e.getSource().equals(loadButton)) {
 			if (openChooser == null)
 				openChooser = new JFileChooser(cwd);
@@ -318,16 +403,12 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 					if (provs != null)
 						dataBean.setProviderList(defaultProvs);
 				} catch (Exception e1) {
-					// TODO Auto-generated catch block
 					e1.printStackTrace();
 				}
 			}
 		}
 	}
 
-	/**
-	 * @param args
-	 */
 	public static void main(String[] args) {
 		IM_EventSetGUI gui = new IM_EventSetGUI();
 		gui.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
