@@ -103,13 +103,11 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.apache.commons.math3.util.Precision;
-import org.jfree.chart.axis.AxisState;
-import org.jfree.chart.axis.LogAxis;
-import org.jfree.chart.axis.NumberTick;
-import org.jfree.chart.axis.Tick;
-import org.jfree.chart.axis.ValueTick;
+import org.jfree.chart.axis.*;
 import org.jfree.chart.plot.Plot;
 import org.jfree.chart.plot.ValueAxisPlot;
 import org.jfree.chart.text.TextUtils;
@@ -964,6 +962,19 @@ public class JFreeLogarithmicAxis extends LogAxis {
 		List ticks = refreshTicks(g2, state, dataArea, edge);
 		state.setTicks(ticks);
 
+		if (ticks.size()> 20) {
+			ticks = (List) ticks.stream()
+					.filter((tick) -> ((ValueTick)tick).getTickType() == TickType.MAJOR)
+					.collect(Collectors.toList());
+		}
+		if (ticks.size()> 20) {
+			int stepSize = ticks.size() / 10;
+			ticks = IntStream.range(0, ticks.size())
+					.filter(i -> (i % stepSize) ==0)
+					.mapToObj(ticks::get)
+					.collect(Collectors.toList());
+		}
+
 		Font majorTickFont = getMajorTickFont();
 		Font minorTickFont = getMinorTickFont();
 		Font powerTickFont = getPowerTickFont();
@@ -1243,7 +1254,15 @@ public class JFreeLogarithmicAxis extends LogAxis {
 				}
 			}
 
-			setRange(new Range(lower, upper), false, false);
+			// if upper - lower < minRange and upper + lower < minRange, then lower might now be negative.
+			if (lower < 0) {
+				lower = SMALL_LOG_VALUE;
+				if (upper - lower < 1) {
+					upper = lower + 1;
+				}
+			}
+
+ 			setRange(new Range(lower, upper), false, false);
 		}
 	}
 
