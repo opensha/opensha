@@ -962,15 +962,15 @@ public class JFreeLogarithmicAxis extends LogAxis {
 		List ticks = refreshTicks(g2, state, dataArea, edge);
 		state.setTicks(ticks);
 
-		if (ticks.size()> 20) {
+		if (ticks.size() > 15) {
 			ticks = (List) ticks.stream()
-					.filter((tick) -> ((ValueTick)tick).getTickType() == TickType.MAJOR)
+					.filter((tick) -> ((ValueTick)tick).getText().length() > 0)
 					.collect(Collectors.toList());
 		}
-		if (ticks.size()> 20) {
+		if (ticks.size() > 15) {
 			int stepSize = ticks.size() / 10;
 			ticks = IntStream.range(0, ticks.size())
-					.filter(i -> (i % stepSize) ==0)
+					.filter(i -> (i % stepSize) == 0)
 					.mapToObj(ticks::get)
 					.collect(Collectors.toList());
 		}
@@ -1257,8 +1257,8 @@ public class JFreeLogarithmicAxis extends LogAxis {
 			// if upper - lower < minRange and upper + lower < minRange, then lower might now be negative.
 			if (lower < 0) {
 				lower = SMALL_LOG_VALUE;
-				if (upper - lower < 1) {
-					upper = lower + 1;
+				if (upper - lower < minRange) {
+					upper = lower + minRange;
 				}
 			}
 
