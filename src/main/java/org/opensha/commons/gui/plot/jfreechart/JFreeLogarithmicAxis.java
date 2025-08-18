@@ -103,11 +103,13 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import org.apache.commons.math3.util.Precision;
-import org.jfree.chart.axis.*;
+import org.jfree.chart.axis.AxisState;
+import org.jfree.chart.axis.LogAxis;
+import org.jfree.chart.axis.NumberTick;
+import org.jfree.chart.axis.Tick;
+import org.jfree.chart.axis.ValueTick;
 import org.jfree.chart.plot.Plot;
 import org.jfree.chart.plot.ValueAxisPlot;
 import org.jfree.chart.text.TextUtils;
@@ -962,19 +964,6 @@ public class JFreeLogarithmicAxis extends LogAxis {
 		List ticks = refreshTicks(g2, state, dataArea, edge);
 		state.setTicks(ticks);
 
-		if (ticks.size() > 15) {
-			ticks = (List) ticks.stream()
-					.filter((tick) -> ((ValueTick)tick).getText().length() > 0)
-					.collect(Collectors.toList());
-		}
-		if (ticks.size() > 15) {
-			int stepSize = ticks.size() / 10;
-			ticks = IntStream.range(0, ticks.size())
-					.filter(i -> (i % stepSize) == 0)
-					.mapToObj(ticks::get)
-					.collect(Collectors.toList());
-		}
-
 		Font majorTickFont = getMajorTickFont();
 		Font minorTickFont = getMinorTickFont();
 		Font powerTickFont = getPowerTickFont();
@@ -1241,6 +1230,10 @@ public class JFreeLogarithmicAxis extends LogAxis {
 			// ensure the autorange is at least <minRange> in size...
 			double minRange = getAutoRangeMinimumSize();
 			if (upper - lower < minRange) {
+				// Edge case: where <minRange> would lead us to a negative lower boundary, we adjust it.
+				if (upper + lower <= minRange / 2){
+					minRange = upper / 2;
+				}
 				upper = (upper + lower + minRange) / 2;
 				lower = (upper + lower - minRange) / 2;
 				//if autorange still below minimum then adjust by 1%
@@ -1254,15 +1247,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 				}
 			}
 
-			// if upper - lower < minRange and upper + lower < minRange, then lower might now be negative.
-			if (lower < 0) {
-				lower = SMALL_LOG_VALUE;
-				if (upper - lower < minRange) {
-					upper = lower + minRange;
-				}
-			}
-
- 			setRange(new Range(lower, upper), false, false);
+			setRange(new Range(lower, upper), false, false);
 		}
 	}
 

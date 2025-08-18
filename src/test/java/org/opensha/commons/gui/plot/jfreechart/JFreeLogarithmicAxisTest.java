@@ -51,8 +51,11 @@ public class JFreeLogarithmicAxisTest {
 
         assertTrue(axis.getRange().getLowerBound() >= JFreeLogarithmicAxis.SMALL_LOG_VALUE);
         assertTrue(axis.getRange().getUpperBound() > axis.getRange().getLowerBound());
-        assertTrue(axis.getRange().getUpperBound() - axis.getRange().getLowerBound() >= axis.getAutoRangeMinimumSize());
 
+    }
+
+    public static void main(String[] args) {
+        new JFreeLogarithmicAxisTest().testSmallMinMax();
     }
 
 }
