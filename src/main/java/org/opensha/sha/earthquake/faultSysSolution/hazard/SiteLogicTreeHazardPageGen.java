@@ -991,6 +991,10 @@ public class SiteLogicTreeHazardPageGen {
 				}
 			}
 		}
+		if (minX >= maxX || !Double.isFinite(minX) || !Double.isFinite(maxX)) {
+			System.out.println("min="+minX+", max="+maxX+" for "+siteName+" per="+perLabel);
+			System.out.println(meanCurve);
+		}
 		minX = Math.pow(10, Math.floor(Math.log10(minX)));
 		maxX = Math.pow(10, Math.ceil(Math.log10(maxX)));
 		Range xRange = new Range(minX, maxX);
@@ -1244,6 +1248,7 @@ public class SiteLogicTreeHazardPageGen {
 		public final int size;
 		public final double stdDev;
 		public final LightFixedXFunc normCDF;
+		public final boolean allZero;
 		
 		public ValueDistribution(List<Double> values, List<Double> weights) {
 			Preconditions.checkState(values.size() == weights.size());
@@ -1253,11 +1258,14 @@ public class SiteLogicTreeHazardPageGen {
 				this.mean = values.get(0);
 				this.stdDev = Double.NaN;
 				this.normCDF = null;
+				this.allZero = this.mean == 0d;
 			} else {
 				double weightedMean = 0d;
 				double sumOrigWeights = 0d;
+				boolean allZero = true;
 				for (int i=0; i<values.size(); i++) {
 					double val = values.get(i);
+					allZero &= val == 0d;
 					double weight = weights.get(i);
 					weightedMean += val*weight;
 					sumOrigWeights += weight;
@@ -1269,10 +1277,13 @@ public class SiteLogicTreeHazardPageGen {
 				double var = new Variance(false).evaluate(valsArray, weightsArray, weightedMean);
 				this.stdDev = Math.sqrt(var);
 				this.normCDF = ArbDiscrEmpiricalDistFunc.calcQuickNormCDF(valsArray, weightsArray);
+				this.allZero = allZero;
 			}
 		}
 		
 		public double getInterpolatedFractile(double fractile) {
+			if (allZero)
+				return 0d;
 			return ArbDiscrEmpiricalDistFunc.calcFractileFromNormCDF(normCDF, fractile);
 		}
 		
@@ -1569,11 +1580,11 @@ public class SiteLogicTreeHazardPageGen {
 			funcs.add(vertLine(dist.getInterpolatedFractile(0.975), 0d, maxY, null));
 			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, color));
 			
-			// +/- sigma
-			funcs.add(vertLine(mean-dist.stdDev, 0d, maxY, "Mean +/- σ"));
-			chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 1f, Colors.DARK_GRAY));
-			funcs.add(vertLine(mean+dist.stdDev, 0d, maxY, null));
-			chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 1f, Colors.DARK_GRAY));
+//			// +/- sigma
+//			funcs.add(vertLine(mean-dist.stdDev, 0d, maxY, "Mean +/- σ"));
+//			chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 1f, Colors.DARK_GRAY));
+//			funcs.add(vertLine(mean+dist.stdDev, 0d, maxY, null));
+//			chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 1f, Colors.DARK_GRAY));
 		}
 		
 		Range xRange = new Range(hist.getMinX()-0.5*hist.getDelta(), hist.getMaxX()+0.5*hist.getDelta());
