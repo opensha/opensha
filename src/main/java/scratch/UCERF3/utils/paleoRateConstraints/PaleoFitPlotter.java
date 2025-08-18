@@ -75,8 +75,7 @@ public class PaleoFitPlotter {
 		
 		public AveSlipFakePaleoConstraint(U3AveSlipConstraint aveSlip, int sectIndex, double slipRate) {
 			super(aveSlip.name, sectIndex, aveSlip.sectionName, aveSlip.dataLocation, slipRate/aveSlip.getWeightedMean(),
-					new Uncertainty(UncertaintyBoundType.TWO_SIGMA.estimateStdDev(slipRate/aveSlip.getWeightedMean(),
-							slipRate/aveSlip.estimateUncertaintyBounds(UncertaintyBoundType.TWO_SIGMA).upperBound,
+					new Uncertainty(UncertaintyBoundType.TWO_SIGMA.estimateStdDev(slipRate/aveSlip.estimateUncertaintyBounds(UncertaintyBoundType.TWO_SIGMA).upperBound,
 							slipRate/aveSlip.estimateUncertaintyBounds(UncertaintyBoundType.TWO_SIGMA).lowerBound)));
 			isMultiple = false;
 			origAveSlip = aveSlip.getWeightedMean();
@@ -93,7 +92,6 @@ public class PaleoFitPlotter {
 			super(aveSlip.name, sectIndex, aveSlip.sectionName, aveSlip.dataLocation,
 					U3FaultSystemSolutionFetcher.calcScaledAverage(slipRates, weights)/aveSlip.getWeightedMean(),
 					new Uncertainty(UncertaintyBoundType.TWO_SIGMA.estimateStdDev(
-							U3FaultSystemSolutionFetcher.calcScaledAverage(slipRates, weights)/aveSlip.getWeightedMean(),
 							StatUtils.min(slipRates)/aveSlip.estimateUncertaintyBounds(UncertaintyBoundType.TWO_SIGMA).upperBound,
 							StatUtils.max(slipRates)/aveSlip.estimateUncertaintyBounds(UncertaintyBoundType.TWO_SIGMA).lowerBound)));
 			isMultiple = true;

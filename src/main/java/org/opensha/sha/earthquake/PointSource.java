@@ -1013,7 +1013,6 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 					anyMultiple |= magDataCount > 1;
 				}
 			}
-			Preconditions.checkState(numRups > 0, "No ruptures; MFDs all zeros?");
 			
 			magnitudes = new double[numRups];
 			rates = new double[numRups];

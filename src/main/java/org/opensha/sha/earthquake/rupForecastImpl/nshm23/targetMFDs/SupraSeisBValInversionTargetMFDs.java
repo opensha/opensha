@@ -1498,7 +1498,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				double closestData = Double.NaN;
 				for (double dataRate : dataRates) {
 					double diff = Math.abs(dataRate - rate);
-					double impliedStdDev = uncertAdjDataTargetBound.estimateStdDev(rate, rate-diff, rate+diff);
+					double impliedStdDev = uncertAdjDataTargetBound.estimateStdDev(rate-diff, rate+diff);
 					if (impliedStdDev < minImpliedStdDev) {
 						minImpliedStdDev = impliedStdDev;
 						closestData = dataRate;

@@ -153,8 +153,7 @@ public class PaleoSlipInversionConstraint extends InversionConstraint {
 				
 				// rate estimate: r = s / d
 				double meanRate = targetSlipRate / aveSlip;
-				double rateSD = slipUncert.type.estimateStdDev(meanRate,
-						targetSlipRate / slipUncert.upperBound,
+				double rateSD = slipUncert.type.estimateStdDev(targetSlipRate / slipUncert.upperBound,
 						targetSlipRate / slipUncert.lowerBound);
 				
 				System.out.println("\trate="+(float)meanRate+" +/- "+(float)rateSD);

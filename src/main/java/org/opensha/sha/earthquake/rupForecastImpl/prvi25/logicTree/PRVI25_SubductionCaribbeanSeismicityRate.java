@@ -2,17 +2,13 @@ package org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.text.DecimalFormat;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
-import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
-import org.opensha.commons.data.xyz.GriddedGeoDataSet;
-import org.opensha.commons.geo.Region;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
@@ -23,7 +19,6 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
-import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.PRVI25_GridSourceBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.SeismicityRateFileLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.SeismicityRateFileLoader.RateRecord;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.SeismicityRateFileLoader.RateType;
@@ -48,33 +43,33 @@ import com.google.common.collect.Table;
 public enum PRVI25_SubductionCaribbeanSeismicityRate implements LogicTreeNode {
 	LOW("Lower Seismicity Bound (p2.5)", "Low", 0.13d) {
 		@Override
-		public IncrementalMagFreqDist build(EvenlyDiscretizedFunc refMFD, double mMax, double magCorner, boolean slab) throws IOException {
-			return loadRateModel(TYPE, slab).buildLower(refMFD, mMax, magCorner);
+		public IncrementalMagFreqDist build(PRVI25_SeismicityRateEpoch epoch, EvenlyDiscretizedFunc refMFD, double mMax, double magCorner, boolean slab) throws IOException {
+			return loadRateModel(epoch, TYPE, slab).buildLower(refMFD, mMax, magCorner);
 		}
 	},
 	PREFFERRED("Preffered Seismicity Rate", "Preferred", 0.74d) {
 		@Override
-		public IncrementalMagFreqDist build(EvenlyDiscretizedFunc refMFD, double mMax, double magCorner, boolean slab) throws IOException {
-			return loadRateModel(TYPE, slab).buildPreferred(refMFD, mMax, magCorner);
+		public IncrementalMagFreqDist build(PRVI25_SeismicityRateEpoch epoch, EvenlyDiscretizedFunc refMFD, double mMax, double magCorner, boolean slab) throws IOException {
+			return loadRateModel(epoch, TYPE, slab).buildPreferred(refMFD, mMax, magCorner);
 		}
 	},
 	HIGH("Upper Seismicity Bound (p97.5)", "High", 0.13d) {
 		@Override
-		public IncrementalMagFreqDist build(EvenlyDiscretizedFunc refMFD, double mMax, double magCorner, boolean slab) throws IOException {
-			return loadRateModel(TYPE, slab).buildUpper(refMFD, mMax, magCorner);
+		public IncrementalMagFreqDist build(PRVI25_SeismicityRateEpoch epoch, EvenlyDiscretizedFunc refMFD, double mMax, double magCorner, boolean slab) throws IOException {
+			return loadRateModel(epoch, TYPE, slab).buildUpper(refMFD, mMax, magCorner);
 		}
 	},
 	AVERAGE("Average Seismicity Rate", "Average", 0d) {
 
 		@Override
-		public IncrementalMagFreqDist build(EvenlyDiscretizedFunc refMFD, double mMax, double magCorner, boolean slab) throws IOException {
+		public IncrementalMagFreqDist build(PRVI25_SeismicityRateEpoch epoch, EvenlyDiscretizedFunc refMFD, double mMax, double magCorner, boolean slab) throws IOException {
 			IncrementalMagFreqDist ret = null;
 			double weightSum = 0d;
 			for (PRVI25_SubductionCaribbeanSeismicityRate seis : values()) {
 				if (seis == this || seis.weight == 0d)
 					continue;
 				weightSum += seis.weight;
-				IncrementalMagFreqDist mfd = seis.build(refMFD, mMax, magCorner, slab);
+				IncrementalMagFreqDist mfd = seis.build(epoch, refMFD, mMax, magCorner, slab);
 				if (ret == null)
 					ret = new IncrementalMagFreqDist(mfd.getMinX(), mfd.getMaxX(), mfd.size());
 				else
@@ -100,43 +95,71 @@ public enum PRVI25_SubductionCaribbeanSeismicityRate implements LogicTreeNode {
 	 */
 	private static final UncertaintyBoundType BOUND_TYPE = UncertaintyBoundType.CONF_95;
 	
-	private static Table<RateType, Boolean, SeismicityRateModel> rateModels;
-	private static CSVFile<String> slabCSV;
-	private static CSVFile<String> interfaceCSV;
+	private static Table<PRVI25_SeismicityRateEpoch, RateType, SeismicityRateModel> slabRateModels;
+	private static Table<PRVI25_SeismicityRateEpoch, RateType, SeismicityRateModel> interfaceRateModels;
+	private static Map<PRVI25_SeismicityRateEpoch, CSVFile<String>> slabCSVs;
+	private static Map<PRVI25_SeismicityRateEpoch, CSVFile<String>> interfaceCSVs;
 	
 	public synchronized static void clearCache() {
-		rateModels = null;
+		slabRateModels = null;
+		slabCSVs = null;
+		interfaceRateModels = null;
+		interfaceCSVs = null;
 	}
 	
-	public abstract IncrementalMagFreqDist build(EvenlyDiscretizedFunc refMFD, double mMax, double magCorner, boolean slab) throws IOException;
+	public abstract IncrementalMagFreqDist build(PRVI25_SeismicityRateEpoch epoch, EvenlyDiscretizedFunc refMFD, double mMax, double magCorner, boolean slab) throws IOException;
 	
-	public static SeismicityRateModel loadRateModel(boolean slab) throws IOException {
-		return loadRateModel(TYPE, slab);
+	public static SeismicityRateModel loadRateModel(PRVI25_SeismicityRateEpoch epoch, boolean slab) throws IOException {
+		return loadRateModel(epoch, TYPE, slab);
 	}
 	
-	public static List<? extends RateRecord> loadRates(RateType type, boolean slab) throws IOException {
-		CSVFile<String> csv = loadCSV(slab);
+	public static List<? extends RateRecord> loadRates(PRVI25_SeismicityRateEpoch epoch, RateType type, boolean slab) throws IOException {
+		if (epoch == PRVI25_SeismicityRateEpoch.RECENT_SCALED)
+			return PRVI25_CrustalSeismicityRate.getScaledToFull(loadRates(PRVI25_SeismicityRateEpoch.RECENT, type, slab));
+		CSVFile<String> csv = loadCSV(epoch, slab);
 		return SeismicityRateFileLoader.loadRecords(csv, type);
 	}
 	
-	public synchronized static SeismicityRateModel loadRateModel(RateType type, boolean slab) throws IOException {
-		if (rateModels == null)
-			rateModels = HashBasedTable.create();
-		SeismicityRateModel rateModel = rateModels.get(type, slab);
+	public synchronized static SeismicityRateModel loadRateModel(PRVI25_SeismicityRateEpoch epoch, RateType type, boolean slab) throws IOException {
+		SeismicityRateModel rateModel;
+		if (slab) {
+			if (slabRateModels == null)
+				slabRateModels = HashBasedTable.create();
+			rateModel = slabRateModels.get(epoch, type);
+		} else {
+			if (interfaceRateModels == null)
+				interfaceRateModels = HashBasedTable.create();
+			rateModel = interfaceRateModels.get(epoch, type);
+		}
 		if (rateModel != null)
 			return rateModel;
-		CSVFile<String> csv = loadCSV(slab);
-		rateModel = new SeismicityRateModel(csv, type, BOUND_TYPE);
-		rateModels.put(type, slab, rateModel);
+		if (epoch == PRVI25_SeismicityRateEpoch.RECENT_SCALED) {
+			rateModel = PRVI25_CrustalSeismicityRate.getScaledToFull(loadRateModel(PRVI25_SeismicityRateEpoch.RECENT, type, slab), type);
+		} else {
+			CSVFile<String> csv = loadCSV(epoch, slab);
+			rateModel = new SeismicityRateModel(csv, type, BOUND_TYPE);
+		}
+		if (slab)
+			slabRateModels.put(epoch, type, rateModel);
+		else
+			interfaceRateModels.put(epoch, type, rateModel);
 		return rateModel;
 	}
 	
-	private synchronized static CSVFile<String> loadCSV(boolean slab) throws IOException {
-		if (slab && slabCSV != null)
-			return slabCSV;
-		if (!slab && interfaceCSV != null)
-			return interfaceCSV;
-		String resourceName = RATES_PATH_PREFIX+RATE_DATE+"/";
+	private synchronized static CSVFile<String> loadCSV(PRVI25_SeismicityRateEpoch epoch, boolean slab) throws IOException {
+		CSVFile<String> csv;
+		if (slab) {
+			if (slabCSVs == null)
+				slabCSVs = new HashMap<>();
+			csv = slabCSVs.get(epoch);
+		} else {
+			if (interfaceCSVs == null)
+				interfaceCSVs = new HashMap<>();
+			csv = interfaceCSVs.get(epoch);
+		}
+		if (csv != null)
+			return csv;
+		String resourceName = RATES_PATH_PREFIX+RATE_DATE+"/"+epoch.getRateSubDirName()+"/";
 		if (slab)
 			resourceName += PRVI25_SeismicityRegions.CAR_INTRASLAB.name();
 		else
@@ -144,11 +167,12 @@ public enum PRVI25_SubductionCaribbeanSeismicityRate implements LogicTreeNode {
 		resourceName += ".csv";
 		InputStream stream = PRVI25_SubductionCaribbeanSeismicityRate.class.getResourceAsStream(resourceName);
 		Preconditions.checkNotNull(stream, "Error loading stream for '%s'", resourceName);
-		CSVFile<String> csv = CSVFile.readStream(stream, false);
+		csv = CSVFile.readStream(stream, false);
+		stream.close();
 		if (slab)
-			slabCSV = csv;
+			slabCSVs.put(epoch, csv);
 		else
-			interfaceCSV = csv;
+			interfaceCSVs.put(epoch, csv);
 		return csv;
 	}
 	
@@ -183,36 +207,30 @@ public enum PRVI25_SubductionCaribbeanSeismicityRate implements LogicTreeNode {
 	}
 	
 	public static void main(String[] args) throws IOException {
-		boolean cumulative = true;
 		for (boolean slab : new boolean[] {false,true}) {
 			if (slab)
 				System.out.println("SLAB");
 			else
 				System.out.println("INTERFACE");
 			double mMax = 7.95;
-//			double magCorner = Double.NaN;
-			double magCorner = slab ? 7.4 : Double.NaN;
+			double magCorner = Double.NaN;
 			EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(5.01, mMax);
 			
-			EvenlyDiscretizedFunc pref, low, high, avg;
-			if (cumulative) {
-				pref = PREFFERRED.build(refMFD, mMax, magCorner, slab).getCumRateDistWithOffset();
-				low = LOW.build(refMFD, mMax, magCorner, slab).getCumRateDistWithOffset();
-				high = HIGH.build(refMFD, mMax, magCorner, slab).getCumRateDistWithOffset();
-				avg = AVERAGE.build(refMFD, mMax, magCorner, slab).getCumRateDistWithOffset();
-			} else {
-				pref = PREFFERRED.build(refMFD, mMax, magCorner, slab);
-				low = LOW.build(refMFD, mMax, magCorner, slab);
-				high = HIGH.build(refMFD, mMax, magCorner, slab);
-				avg = AVERAGE.build(refMFD, mMax, magCorner, slab);
+			for (PRVI25_SeismicityRateEpoch epoch : PRVI25_SeismicityRateEpoch.values()) {
+				System.out.println("Epoch: "+epoch);
+				IncrementalMagFreqDist pref = PREFFERRED.build(epoch, refMFD, mMax, magCorner, true);
+				IncrementalMagFreqDist low = LOW.build(epoch, refMFD, mMax, magCorner, true);
+				IncrementalMagFreqDist high = HIGH.build(epoch, refMFD, mMax, magCorner, true);
+				
+				for (int i=0; i<refMFD.size(); i++) {
+					float x = (float)refMFD.getX(i);
+					if (x > (float)refMFD.getClosestXIndex(mMax))
+						break;
+					if (x == 5.05f || x == 6.05f || x == 7.05f)
+						System.out.println(x+"\t"+(float)pref.getY(i)+"\t["+(float)low.getY(i)+","+(float)high.getY(i)+"]");
+				}
+				System.out.println();
 			}
-			
-			for (int i=0; i<refMFD.size(); i++) {
-				if (refMFD.getX(i) > refMFD.getClosestXIndex(mMax))
-					break;
-				System.out.println((float)pref.getX(i)+"\t"+(float)pref.getY(i)+"\t["+(float)low.getY(i)+","+(float)high.getY(i)+"]\tavg="+(float)avg.getY(i));
-			}
-			System.out.println();
 		}
 	}
 

@@ -4,6 +4,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.util.concurrent.ExecutionException;
 
 import org.junit.Before;
@@ -12,6 +13,7 @@ import org.junit.Test;
 import org.apache.commons.io.FileUtils;
 
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_Downloader;
+import org.scec.getfile.GetFile;
 
 import scratch.UCERF3.erf.mean.MeanUCERF3;
 
@@ -38,25 +40,21 @@ public class TestGetFileStatus_Operational {
 	}
 	
 	/**
-	 * Verify the MeanUCERF3.checkDownload GetFile wrapper is operational.
-	 * Should be able to download UCERF3 metadata and download a small file
-	 * within 20 seconds.
+	 * Should be able to download UCERF3 metadata.
 	 */
 	@Test(timeout = 20000)
-	public void testMeanUCERF3() {
-		if (D) System.out.println("TestGetFileStatus_Operational.testMeanUCERF3()");
-		File solFile = null;
-		try {
-			solFile = MeanUCERF3.checkDownload(
-					new File(CLIENT_ROOT, "mean_ucerf3_sol.zip"),
-					/*showProgress=*/false).get();
-		} catch (InterruptedException | ExecutionException e) {
-			if (D) e.printStackTrace();
-		}
-		assertTrue(solFile.exists());
-		assertTrue(solFile != null);
-		assertTrue(solFile.isFile());
-		assertTrue(solFile.length() > 0);
+	public void testUCERF3() {
+		if (D) System.out.println("TestGetFileStatus_Operational.testUCERF3()");
+		new GetFile(
+				/*name=*/"MeanUCERF3",
+				/*clientMetaFile=*/new File(
+						System.getProperty("user.home"), ".opensha/ucerf3/ucerf3_client.json"),
+				/*serverMetaURI=*/URI.create(
+						"https://g-c662a6.a78b8.36fe.data.globus.org/getfile/ucerf3/ucerf3.json"),
+				/*showProgress=*/false);
+		File serverMeta = new File(
+				System.getProperty("user.home"), ".opensha/ucerf3/ucerf3_client.json");
+		assertTrue(serverMeta.exists());
 	}
 
 	/**

@@ -48,5 +48,9 @@ public enum PRVI25_GMM_SlabEpistemicModel implements ScalarIMR_ParamsLogicTreeNo
 	public void setParams(ScalarIMR imr) {
 		PRVI25_GMM_GenericEpistemicModel.setParams(imr, model.matchStr, TectonicRegionType.SUBDUCTION_SLAB);
 	}
+	
+	public PRVI25_GMM_GenericEpistemicModel getModel() {
+		return model;
+	}
 
 }

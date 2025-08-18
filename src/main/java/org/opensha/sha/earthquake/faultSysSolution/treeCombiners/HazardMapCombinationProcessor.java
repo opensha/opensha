@@ -275,7 +275,7 @@ public class HazardMapCombinationProcessor implements LogicTreeCombinationProces
 			}
 			curveReadWatch.stop();
 			
-			if (outerBranchIndex > 0) {
+			if (perAvgFutures != null && !perAvgFutures.isEmpty()) {
 				System.out.println("Waiting on "+perAvgFutures.size()+" curve averaging futures...");
 				// can wait on these later after we've finished writing
 				blockingAvgWatch.start();
@@ -506,7 +506,6 @@ public class HazardMapCombinationProcessor implements LogicTreeCombinationProces
 
 	@Override
 	public void close() throws IOException {
-		// TODO Auto-generated method stub
 		System.out.println("Finalizing hazard map zip file");
 		blockingAvgWatch.start();
 		for (CompletableFuture<Void> future : perAvgFutures)

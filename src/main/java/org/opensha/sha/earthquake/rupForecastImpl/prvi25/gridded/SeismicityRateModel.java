@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.uncertainty.UncertainArbDiscFunc;
 import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
@@ -61,6 +62,36 @@ public class SeismicityRateModel {
 		meanRecord = SeismicityRateFileLoader.locateMean(rates);
 		lowerRecord = SeismicityRateFileLoader.locateQuantile(rates, lowerQuantile);
 		upperRecord = SeismicityRateFileLoader.locateQuantile(rates, upperQuantile);
+	}
+	
+	public SeismicityRateModel(RateRecord meanRecord, RateRecord lowerRecord, RateRecord upperRecord,
+			UncertaintyBoundType boundType) {
+		this.boundType = boundType;
+		switch (boundType) {
+		case CONF_68:
+			lowerQuantile = 0.16;
+			upperQuantile = 0.84;
+			break;
+		case ONE_SIGMA:
+			lowerQuantile = 0.16;
+			upperQuantile = 0.84;
+			break;
+		case CONF_95:
+			lowerQuantile = 0.025;
+			upperQuantile = 0.975;
+			break;
+		case TWO_SIGMA:
+			lowerQuantile = 0.025;
+			upperQuantile = 0.975;
+			break;
+
+		default:
+			throw new IllegalStateException("Not supported: "+boundType);
+		}
+		
+		this.meanRecord = meanRecord;
+		this.lowerRecord = lowerRecord;
+		this.upperRecord = upperRecord;
 	}
 	
 	public UncertaintyBoundType getBoundType() {
@@ -195,10 +226,35 @@ public class SeismicityRateModel {
 		return bounded;
 	}
 	
+	public UncertainArbDiscFunc getBoundedCml(EvenlyDiscretizedFunc refMFD, double mMax) throws IOException {
+		EvenlyDiscretizedFunc upper, lower, pref;
+		if (upperRecord instanceof Exact) {
+			upper = ((Exact)upperRecord).cumulativeDist;
+			lower = ((Exact)lowerRecord).cumulativeDist;
+			pref = ((Exact)meanRecord).cumulativeDist;
+		} else {
+			upper = buildUpper(refMFD, mMax).getCumRateDistWithOffset();
+			lower = buildLower(refMFD, mMax).getCumRateDistWithOffset();
+			pref = buildPreferred(refMFD, mMax).getCumRateDistWithOffset();
+		}
+		
+		double M1 = meanRecord.M1;
+		
+		UncertainArbDiscFunc bounded = new UncertainArbDiscFunc(pref, lower, upper, boundType);
+		bounded.setName(pref.getName());
+		bounded.setBoundName(getBoundName(lower, upper, M1));
+		
+		return bounded;
+	}
+	
 	String getBoundName(IncrementalMagFreqDist lower, IncrementalMagFreqDist upper, double M1) {
+		return getBoundName(lower.getCumRateDistWithOffset(), upper.getCumRateDistWithOffset(), M1);
+	}
+	
+	String getBoundName(EvenlyDiscretizedFunc lower, EvenlyDiscretizedFunc upper, double M1) {
 		String boundName = boundType.toString();
-		double lowerN = lower.getCumRateDistWithOffset().getInterpolatedY(M1);
-		double upperN = upper.getCumRateDistWithOffset().getInterpolatedY(M1);
+		double lowerN = lower.getInterpolatedY(M1);
+		double upperN = upper.getInterpolatedY(M1);
 		boundName += ": N"+oDF.format(M1)+"∈["+oDF.format(lowerN)+","+oDF.format(upperN)+"]";
 		return boundName;
 	}
