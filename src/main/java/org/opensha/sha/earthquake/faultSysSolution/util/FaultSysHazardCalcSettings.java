@@ -24,8 +24,9 @@ import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter.Tecton
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
+import org.opensha.sha.earthquake.util.GriddedFiniteRuptureSettings;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
+import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrections;
 import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.AttenRelSupplier;
@@ -408,10 +409,20 @@ public class FaultSysHazardCalcSettings {
 		ops.addOption(null, "gmm-sigma-trunc-two-sided", true, "Enables two-sided GMM sigma truncation; default is disabled.");
 		ops.addOption(null, "supersample", false, "Flag to enable grid cell supersampling (default is disabled)");
 		ops.addOption(null, "supersample-quick", false, "Flag to enable grid cell supersampling with faster parameters (default is disabled)");
+		ops.addOption(null, "supersample-finite", false, "Flag to also super-sample finite ruptures; implies --supersample (unless --supersample-quick is selected).");
 		ops.addOption(null, "dist-corr", true, "Set the point-source distance correction method. Default is "
 				+BaseFaultSystemSolutionERF.DIST_CORR_TYPE_DEFAULT.name()+"; options are: "+FaultSysTools.enumOptions(PointSourceDistanceCorrections.class));
 		ops.addOption(null, "point-source-type", true, "Sets the point source surface type. Default is "
 				+BaseFaultSystemSolutionERF.BG_RUP_TYPE_DEFAULT.name()+"; options are: "+FaultSysTools.enumOptions(BackgroundRupType.class));
+		ops.addOption(null, "point-finite-num-rand-surfaces", true, "If --point-source-type FINITE is supplied, this can be used "
+				+ "to set the number of random-strike finite surfaces for each gridded rupture. Default is "+GriddedFiniteRuptureSettings.DEFAULT.numSurfaces);
+		ops.addOption(null, "point-finite-sample-along-strike", false, "If --point-source-type FINITE is supplied, this can be used "
+				+ "to enable random sampling of the position of the grid cell along-strike of the rupture.");
+		ops.addOption(null, "point-finite-sample-down-dip", false, "If --point-source-type FINITE is supplied, this can be used "
+				+ "to enable random sampling of the position of the grid cell down-dip of the rupture.");
+		ops.addOption(null, "point-finite-min-mag", true, "Minimum magnitude for finite (or distance-corrected point) sources; "
+				+ "all ruptures below this magnitude will be treated as pure point sources. Default: "
+				+(float)GriddedSeismicitySettings.DEFAULT.pointSourceMagnitudeCutoff);
 		if (includeSiteSkip)
 			ops.addOption("smd", "skip-max-distance", true, "Skip sites with no source-site distances below this value, in km. "
 					+ "Default is "+(int)(FaultSysHazardCalcSettings.SITE_SKIP_FRACT*100d)+"% of the TectonicRegionType-specific default maximum distance.");
@@ -428,12 +439,35 @@ public class FaultSysHazardCalcSettings {
 			settings = settings.forSupersamplingSettings(GridCellSupersamplingSettings.QUICK);
 		else
 			settings = settings.forSupersamplingSettings(null);
+		if (cmd.hasOption("supersample-finite")) {
+			GridCellSupersamplingSettings ssSettings = settings.supersamplingSettings;
+			if (ssSettings == null)
+				ssSettings = GridCellSupersamplingSettings.DEFAULT;
+			ssSettings = new GridCellSupersamplingSettings(ssSettings.targetSpacingKM, ssSettings.fullDist,
+					ssSettings.borderDist, ssSettings.cornerDist, true);
+			settings = settings.forSupersamplingSettings(ssSettings);
+		}
 		
 		if (cmd.hasOption("dist-corr"))
-			settings = settings.forDistanceCorrections(PointSourceDistanceCorrections.valueOf(cmd.getOptionValue("dist-corr")));
+			settings = settings.forDistanceCorrection(PointSourceDistanceCorrections.valueOf(cmd.getOptionValue("dist-corr")).get());
 		
 		if (cmd.hasOption("point-source-type"))
 			settings = settings.forSurfaceType(BackgroundRupType.valueOf(cmd.getOptionValue("point-source-type")));
+		
+		if (cmd.hasOption("point-finite-min-mag"))
+			settings = settings.forPointSourceMagCutoff(Double.parseDouble(cmd.getOptionValue("point-finite-min-mag")));
+		
+		if (settings.surfaceType == BackgroundRupType.FINITE) {
+			GriddedFiniteRuptureSettings finiteSettings = settings.finiteRuptureSettings;
+			if (cmd.hasOption("point-finite-num-rand-surfaces"))
+				finiteSettings = finiteSettings.forNumSurfaces(Integer.parseInt(cmd.getOptionValue("point-finite-num-rand-surfaces")));
+			if (cmd.hasOption("point-finite-sample-along-strike"))
+				finiteSettings = finiteSettings.forSampleAlongStrike(true);
+			if (cmd.hasOption("point-finite-sample-down-dip"))
+				finiteSettings = finiteSettings.forSampleDownDip(true);
+			
+			settings = settings.forFiniteRuptureSettings(finiteSettings);
+		}
 		
 		return settings;
 	}
