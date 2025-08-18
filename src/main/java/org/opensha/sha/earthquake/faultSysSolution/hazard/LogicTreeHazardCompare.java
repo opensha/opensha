@@ -2514,7 +2514,8 @@ public class LogicTreeHazardCompare {
 						int height = 360;
 //						int titleFont = 42;
 						int titleFont = 12;
-						int subtitleFont = 40;
+//						int subtitleFont = 40;
+						int subtitleFont = 46;
 						File pDiffMulti = submitMultiMapFuture(mapper, exec, futures, resourcesDir, levelPrefix+"_choice_pDiffs",
 								choicePDiffs, pDiffCPT, null, titleFont, choiceShortNames, subtitleFont, null, true, height);
 						File diffMulti = submitMultiMapFuture(mapper, exec, futures, resourcesDir, levelPrefix+"_choice_diffs",
