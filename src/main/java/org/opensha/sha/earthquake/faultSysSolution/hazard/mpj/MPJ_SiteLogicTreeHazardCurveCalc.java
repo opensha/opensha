@@ -39,8 +39,8 @@ import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.sha.calc.params.filters.SourceFilterManager;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
-import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.imr.AttenRelRef;
@@ -130,14 +130,14 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		if (cmd.hasOption("gridded-seis"))
 			gridSeisOp = IncludeBackgroundOption.valueOf(cmd.getOptionValue("gridded-seis"));
 		
-		griddedSettings = SolHazardMapCalc.getGridSeisSettings(cmd);
+		griddedSettings = FaultSysHazardCalcSettings.getGridSeisSettings(cmd);
 		
 		if (gridSeisOp != IncludeBackgroundOption.EXCLUDE)
 			debug("Gridded settings: "+griddedSettings);
 		
-		sourceFilters = SolHazardMapCalc.getSourceFilters(cmd);
+		sourceFilters = FaultSysHazardCalcSettings.getSourceFilters(cmd);
 		
-		gmms = SolHazardMapCalc.getGMMs(cmd);
+		gmms = FaultSysHazardCalcSettings.getGMMs(cmd);
 		if (rank == 0) {
 			debug("GMMs:");
 			for (TectonicRegionType trt : gmms.keySet())
@@ -160,7 +160,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		File sitesFile = new File(cmd.getOptionValue("sites-file"));
 		Preconditions.checkState(sitesFile.exists());
 		inputSitesCSV = CSVFile.readFile(sitesFile, true);
-		sites = parseSitesCSV(inputSitesCSV, SolHazardMapCalc.getDefaultRefSiteParams(gmms));
+		sites = parseSitesCSV(inputSitesCSV, FaultSysHazardCalcSettings.getDefaultRefSiteParams(gmms));
 		sitePrefixes = new ArrayList<>();
 		siteCSVs = new ArrayList<>();
 		for (Site site : sites) {
@@ -588,7 +588,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 	public static Options createOptions() {
 		Options ops = MPJTaskCalculator.createOptions();
 		
-		SolHazardMapCalc.addCommonOptions(ops, false);
+		FaultSysHazardCalcSettings.addCommonOptions(ops, false);
 		
 		ops.addRequiredOption("if", "input-file", true, "Path to input file (solution logic tree zip)");
 		ops.addOption("lt", "logic-tree", true, "Path to logic tree JSON file, required if a results directory is "

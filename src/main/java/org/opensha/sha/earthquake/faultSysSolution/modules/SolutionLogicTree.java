@@ -996,6 +996,20 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			writtenFiles.add(propsFile);
 		}
 		
+		// will use rup-sect indicies file as mappings for a few levels
+		List<? extends LogicTreeLevel<?>> rupSectLevels = getLevelsAffectingFile(
+				FaultSystemRupSet.RUP_SECTS_FILE_NAME, true);
+		if (rupSet.hasModule(RupSetTectonicRegimes.class)) {
+			String trtsFile = getRecordBranchFileName(branch, prefix, RupSetTectonicRegimes.DATA_FILE_NAME, rupSectLevels, mappings);
+			if (!writtenFiles.contains(trtsFile)) {
+				if (!directCopy(input, output, rsPrefix+RupSetTectonicRegimes.DATA_FILE_NAME, trtsFile, inputIsSolArchive)) {
+					RupSetTectonicRegimes trts = rupSet.requireModule(RupSetTectonicRegimes.class);
+					CSV_BackedModule.writeToArchive(trts.getCSV(), output, entryPrefix, trtsFile);
+				}
+				writtenFiles.add(trtsFile);
+			}
+		}
+		
 		String ratesFile = getRecordBranchFileName(branch, prefix, FaultSystemSolution.RATES_FILE_NAME, true, mappings);
 		if (!writtenFiles.contains(ratesFile)) {
 			if (!directCopy(input, output, solPrefix+FaultSystemSolution.RATES_FILE_NAME, ratesFile, inputIsSolArchive)) {
@@ -1065,8 +1079,6 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		}
 		
 		// use rupture-sections file to figure out which things affect plausibility
-		List<? extends LogicTreeLevel<?>> rupSectLevels = getLevelsAffectingFile(
-				FaultSystemRupSet.RUP_SECTS_FILE_NAME, true);
 		String plausibilityFile = getBranchFileName(branch, prefix,
 				PlausibilityConfiguration.JSON_FILE_NAME, rupSectLevels);
 		if (!writtenFiles.contains(plausibilityFile)) {
@@ -1322,6 +1334,9 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	private RuptureProperties prevProps;
 	private String prevPropsFile;
 	
+	private RupSetTectonicRegimes prevTRTs;
+	private String prevTRTsFile;
+	
 	private GriddedRegion prevGridReg;
 	private String prevGridRegFile;
 	
@@ -1548,6 +1563,21 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		if (process && processor != null)
 			rupSet = processor.processRupSet(rupSet, branch);
 		
+		// will use for trts and plausibility
+		List<? extends LogicTreeLevel<?>> rupSectLevels = getLevelsAffectingFile(
+				FaultSystemRupSet.RUP_SECTS_FILE_NAME, true);
+		String trtsFile = getBranchFileName(branch, RupSetTectonicRegimes.DATA_FILE_NAME, rupSectLevels);
+		if (prevTRTs != null && prevTRTsFile.equals(trtsFile)) {
+			if (verbose) System.out.println("\tRe-using previous TRTs data");
+			rupSet.addModule(prevTRTs);
+		} else if (input.hasEntry(trtsFile)) {
+			CSVFile<String> trtsCSV = CSV_BackedModule.loadFromArchive(input, entryPrefix, trtsFile);
+			RupSetTectonicRegimes trts = RupSetTectonicRegimes.forCSV(rupSet, trtsCSV);
+			rupSet.addModule(trts);
+			prevTRTs = trts;
+			prevTRTsFile = trtsFile;
+		}
+		
 		double[] rates = loadRatesForBranch(branch);
 		Preconditions.checkState(rates.length == rupIndices.size());
 		
@@ -1645,8 +1675,6 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		}
 		
 		// use rupture-sections file to figure out which things affect plausibility
-		List<? extends LogicTreeLevel<?>> rupSectLevels = getLevelsAffectingFile(
-				FaultSystemRupSet.RUP_SECTS_FILE_NAME, true);
 		String plausibilityFile = getBranchFileName(branch, PlausibilityConfiguration.JSON_FILE_NAME, rupSectLevels);
 		if (plausibilityFile != null && input.hasEntry(plausibilityFile)) {
 			List<? extends FaultSection> fsd = rupSet.getFaultSectionDataList();
