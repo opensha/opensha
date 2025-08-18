@@ -1056,6 +1056,15 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 		this.setSite(site, true);
 	}
 
+	@Override
+	public void setSiteLocation(Location loc) {
+		if (site == null || site.getLocation() != loc) {
+			perRuptureInputCache = null;
+			clearCachedGmmInputs();
+		}
+		super.setSiteLocation(loc);
+	}
+
 	protected void setSite(Site site, boolean requireAllParams) {
 		if (site != this.site)
 			perRuptureInputCache = null;
