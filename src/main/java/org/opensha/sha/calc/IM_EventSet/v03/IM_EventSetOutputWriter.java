@@ -96,7 +96,7 @@ public abstract class IM_EventSetOutputWriter {
 	/**
 	 * Sets the IMT from the string specification
 	 * 
-	 * @param imtLine
+	 * @param imtStr
 	 * @param attenRel
 	 */
 	public static void setIMTFromString(String imtStr, ScalarIMR attenRel) {

@@ -250,7 +250,7 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 							outputChooser.setDialogTitle("Select Output Directory");
 							outputChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 						}
-						int returnVal = outputChooser.showOpenDialog(instance);;
+						int returnVal = outputChooser.showOpenDialog(instance);
 						
 						if (returnVal == JFileChooser.APPROVE_OPTION) {
 							File outputDir = outputChooser.getSelectedFile();

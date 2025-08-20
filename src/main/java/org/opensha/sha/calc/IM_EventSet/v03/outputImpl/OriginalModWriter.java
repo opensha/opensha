@@ -49,12 +49,11 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 			this.writeOriginalSrcRupMetaFile(erf);
 			this.writeOriginalRupDistFile(erf);
 			int numIMTs = imts.size();
-			for (int i = 0; i < attenRels.size(); ++i) {
-				ScalarIMR attenRel = attenRels.get(i);
-				for (int j = 0; j < numIMTs; ++j) {
-					this.writeOriginalMeanSigmaFiles(erf, attenRel, imts.get(j));
-				}
-			}
+            for (ScalarIMR attenRel : attenRels) {
+                for (String imt : imts) {
+                    this.writeOriginalMeanSigmaFiles(erf, attenRel, imt);
+                }
+            }
 		}
 		logger.log(Level.INFO, "Done writing files.");
 	}
@@ -170,7 +169,7 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 	}
 	
 	/**
-	 * This writes source/rupture metadate to the file 'src_rup_metadata.txt'
+	 * This writes source/rupture metadata to the file 'src_rup_metadata.txt'
 	 * 
 	 * @param erf
 	 * @throws IOException
