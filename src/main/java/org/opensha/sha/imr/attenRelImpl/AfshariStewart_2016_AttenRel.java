@@ -12,6 +12,7 @@ import org.opensha.commons.param.event.ParameterChangeWarningListener;
 import org.opensha.commons.param.impl.EnumParameter;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.attenRelImpl.ngaw2.FaultStyle;
 import org.opensha.sha.imr.param.EqkRuptureParams.MagParam;
@@ -366,8 +367,9 @@ public class AfshariStewart_2016_AttenRel extends AttenuationRelationship {
 			setPropagationEffectParams();
 		}
 	}
-	
-	private void propEffectUpdate() {
+
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
 		distanceRupParam.setValueIgnoreWarning(eqkRupture.getRuptureSurface().getDistanceRup(site.getLocation()));
 	}
 
@@ -401,7 +403,7 @@ public class AfshariStewart_2016_AttenRel extends AttenuationRelationship {
 	@Override
 	protected void setPropagationEffectParams() {
 		if (site != null && eqkRupture != null) {
-			propEffectUpdate();
+			setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
 		}
 	}
 

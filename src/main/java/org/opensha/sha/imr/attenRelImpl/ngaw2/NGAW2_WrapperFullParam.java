@@ -22,6 +22,7 @@ import org.opensha.commons.param.impl.EnumParameter;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.gcim.imr.param.EqkRuptureParams.FocalDepthParam;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.param.EqkRuptureParams.DipParam;
@@ -190,13 +191,15 @@ public class NGAW2_WrapperFullParam extends AttenuationRelationship implements P
 	@Override
 	protected void setPropagationEffectParams() {
 		if (site != null && eqkRupture != null) {
-			Location siteLoc = site.getLocation();
-			RuptureSurface surf = eqkRupture.getRuptureSurface();
-			
-			distanceJBParam.setValueIgnoreWarning(surf.getDistanceJB(siteLoc));
-			distanceRupParam.setValueIgnoreWarning(surf.getDistanceRup(siteLoc));
-			distanceXParam.setValueIgnoreWarning(surf.getDistanceX(siteLoc));
+			setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
 		}
+	}
+
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		distanceJBParam.setValue(eqkRupture, site, distances);
+		distanceRupParam.setValue(eqkRupture, site, distances);
+		distanceXParam.setValue(eqkRupture, site, distances);
 	}
 	
 	/**

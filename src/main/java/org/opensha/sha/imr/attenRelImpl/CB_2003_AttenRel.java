@@ -20,6 +20,7 @@ import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.EqkRuptureParams.FaultTypeParam;
@@ -232,33 +233,38 @@ public class CB_2003_AttenRel extends AttenuationRelationship {
 
 		if ( (this.site != null) && (this.eqkRupture != null)) {
 
-			distanceSeisParam.setValue(eqkRupture, site);
+			setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
+		}
+	}
 
-			// hanging wall effect
-			double dip = eqkRupture.getRuptureSurface().getAveDip();
-			String fltType = (String) fltTypeParam.getValue();
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		distanceSeisParam.setValue(eqkRupture, site, distances);
 
-			if (dip <= 70.0 && (fltType != FLT_TYPE_OTHER) && !eqkRupture.getRuptureSurface().isPointSurface()) {
-				double jbDist = ( (Double) distanceJBParam.getValue(eqkRupture, site)).
-				doubleValue();
-				if (jbDist < 1.0) {
-					hangingWallParam.setValue(1.0);
-				}
-				else if (jbDist < 5.0) {
-					hangingWallParam.setValue( (5.0 - jbDist) / 5.0);
-				}
-				else {
-					hangingWallParam.setValue(0.0);
-				}
+		// hanging wall effect
+		double dip = eqkRupture.getRuptureSurface().getAveDip();
+		String fltType = (String) fltTypeParam.getValue();
+
+		if (dip <= 70.0 && (fltType != FLT_TYPE_OTHER) && !eqkRupture.getRuptureSurface().isPointSurface()) {
+			double jbDist = ( (Double) distanceJBParam.getValue(eqkRupture, site, distances)).
+					doubleValue();
+			if (jbDist < 1.0) {
+				hangingWallParam.setValue(1.0);
 			}
-			else { // turn it off for normal, strike-slip, or vertically dipping faults
+			else if (jbDist < 5.0) {
+				hangingWallParam.setValue( (5.0 - jbDist) / 5.0);
+			}
+			else {
 				hangingWallParam.setValue(0.0);
 			}
+		}
+		else { // turn it off for normal, strike-slip, or vertically dipping faults
+			hangingWallParam.setValue(0.0);
+		}
 
-			if (D) {
-				System.out.println("CB_2003 hanging wall value: " +
-						hangingWallParam.getValue().toString());
-			}
+		if (D) {
+			System.out.println("CB_2003 hanging wall value: " +
+					hangingWallParam.getValue().toString());
 		}
 
 	}

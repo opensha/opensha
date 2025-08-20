@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.HashMap;
 
 import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.HAZ01ASegment;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 
 public class HAZ01A_FakeAttenRel extends AttenuationRelationship {
@@ -63,5 +64,8 @@ public class HAZ01A_FakeAttenRel extends AttenuationRelationship {
 	}
 
 	public void setParamDefaults() {}
+
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {}
 
 }

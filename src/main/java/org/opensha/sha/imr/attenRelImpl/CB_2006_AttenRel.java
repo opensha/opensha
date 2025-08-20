@@ -20,6 +20,7 @@ import org.opensha.commons.util.FileUtils;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.EqkRuptureParams.DipParam;
@@ -480,10 +481,14 @@ public class CB_2006_AttenRel extends AttenuationRelationship implements
 
     if ( (this.site != null) && (this.eqkRupture != null)) {
 
-      distanceRupParam.setValue(eqkRupture, site);
-      distRupMinusJB_OverRupParam.setValue(eqkRupture, site);
+    	setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
+	}
+  }
 
-    }
+  @Override
+  public void setPropagationEffectParams(SurfaceDistances distances) {
+	  distanceRupParam.setValue(eqkRupture, site, distances);
+	  distRupMinusJB_OverRupParam.setValue(eqkRupture, site, distances);
   }
 
   /**

@@ -24,7 +24,7 @@ import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.param.PointSourceDistanceCorrectionParam;
 import org.opensha.sha.faultSurface.PointSurface;
-import org.opensha.sha.faultSurface.PointSurface.DistanceCorrected;
+import org.opensha.sha.faultSurface.PointSurface.SiteSpecificDistanceCorrected;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrections;
 import org.opensha.sha.gui.servlets.ScenarioShakeMapCalcServlet;
@@ -322,9 +322,9 @@ public class ScenarioShakeMapCalculator {
 			AttenuationRelationship imr,boolean isProbAtIML) throws ParameterException {
 		// check for distance-corrected
 		RuptureSurface surf = rupture.getRuptureSurface();
-		if (surf instanceof PointSurface.DistanceProtected) {
+		if (surf instanceof PointSurface.DistanceCorrectable) {
 			// need to get sub-surfaces
-			WeightedList<DistanceCorrected> surfs = ((PointSurface.DistanceProtected)surf).getCorrectedSurfaces(site.getLocation());
+			WeightedList<SiteSpecificDistanceCorrected> surfs = ((PointSurface.DistanceCorrectable)surf).getCorrectedSurfaces(site.getLocation());
 			Preconditions.checkState(surfs.isNormalized());
 			
 			imr.setSite(site);

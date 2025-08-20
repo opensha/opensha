@@ -3,12 +3,14 @@ package org.opensha.sha.imr.param.PropagationEffectParams;
 import java.util.ListIterator;
 
 import org.dom4j.Element;
+import org.opensha.commons.data.Site;
 import org.opensha.commons.exceptions.ConstraintException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.param.WarningParameter;
 import org.opensha.commons.param.constraint.ParameterConstraint;
 import org.opensha.commons.param.constraint.impl.DoubleConstraint;
+import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
@@ -126,9 +128,9 @@ public class DistanceSeisParameter extends AbstractDoublePropEffectParam {
 	/**
 	 * Note that this does not throw a warning
 	 */
-	protected void calcValueFromSiteAndEqkRup(){
+	protected void setValueFromDistances(EqkRupture eqkRupture, Site site, SurfaceDistances dists) {
 		if( ( site != null ) && ( eqkRupture != null ) ) {
-			setValueIgnoreWarning(estimateDistanceSeis(eqkRupture.getRuptureSurface(), site.getLocation()));
+			setValueIgnoreWarning(estimateDistanceSeis(eqkRupture.getRuptureSurface(), site.getLocation(), dists));
 		} else {
 			setValue(null);
 		}
@@ -146,8 +148,18 @@ public class DistanceSeisParameter extends AbstractDoublePropEffectParam {
 	 * @return
 	 */
 	public static double estimateDistanceSeis(RuptureSurface surf, Location loc) {
+		return estimateDistanceSeis(surf, loc, surf.getDistances(loc));
+	}
+	/**
+	 * We no longer calculate DistanceSeis as a standard distance metric because it is only used by a couple
+	 * ancient models. Instead, this can be used to approximate it from rJB, rRup, zTop, and dip.
+	 * 
+	 * @param surf
+	 * @param loc
+	 * @return
+	 */
+	public static double estimateDistanceSeis(RuptureSurface surf, Location loc, SurfaceDistances dists) {
 		double zTop = surf.getAveRupTopDepth();
-		SurfaceDistances dists = surf.getDistances(loc);
 		double rRup = dists.getDistanceRup();
 		if (zTop >= SEIS_DEPTH) {
 			// already below, return rRup
@@ -223,8 +235,6 @@ public class DistanceSeisParameter extends AbstractDoublePropEffectParam {
 		param.warningConstraint = c2;
 		param.name = name;
 		param.info = info;
-		param.site = site;
-		param.eqkRupture = eqkRupture;
 		if( !this.editable ) param.setNonEditable();
 
 		return param;

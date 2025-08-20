@@ -54,7 +54,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoade
 import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.PointSurface;
-import org.opensha.sha.faultSurface.PointSurface.DistanceCorrected;
+import org.opensha.sha.faultSurface.PointSurface.SiteSpecificDistanceCorrected;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrection;
 import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrections;
@@ -743,7 +743,7 @@ public class QuickGriddedHazardMapCalc {
 		RuptureSurface surf = rup.getRuptureSurface();
 		if (distCorr != null && surf instanceof PointSurface) {
 			// distance-correct
-			WeightedList<DistanceCorrected> corrSurfs =
+			WeightedList<SiteSpecificDistanceCorrected> corrSurfs =
 					((PointSurface)surf).getForDistanceCorrection(siteLoc, distCorr, trt, rup.getMag());
 			double mag = rup.getMag();
 			double rake = rup.getAveRake();

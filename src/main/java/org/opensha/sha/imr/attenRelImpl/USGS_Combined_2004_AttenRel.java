@@ -21,6 +21,7 @@ import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.faultSurface.PointSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.calc.Borcherdt2004_SiteAmpCalc;
@@ -946,7 +947,14 @@ public class USGS_Combined_2004_AttenRel extends AttenuationRelationship {
 
 	// this method, required by the API, does nothing here (it's not needed).
 	protected void setPropagationEffectParams() {
+	}
 
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		as_1997_attenRel.setPropagationEffectParams(distances);
+		cb_2003_attenRel.setPropagationEffectParams(distances);
+		scemy_1997_attenRel.setPropagationEffectParams(distances);
+		bjf_1997_attenRel.setPropagationEffectParams(distances);
 	}
 
 	/**

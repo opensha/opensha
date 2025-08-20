@@ -373,7 +373,7 @@ extends AbstractIMR implements ScalarIMR {
 			site = new Site();
 		}
 		site.setLocation(loc);
-		if (this.eqkRupture != null && this.eqkRupture.getRuptureSurface() instanceof PointSurface.DistanceCorrected)
+		if (this.eqkRupture != null && this.eqkRupture.getRuptureSurface() instanceof PointSurface.SiteSpecificDistanceCorrected)
 			// we already have a point surface, and it's distance has been corrected for the prior site
 			// clear the rupture because, if non-null, the propagation effect calculation will attempt to
 			// retrieve distances for this surface which will throw an exception
@@ -383,7 +383,7 @@ extends AbstractIMR implements ScalarIMR {
 
 	@Override
 	public void setSite(Site site) {
-		if (this.eqkRupture != null && this.eqkRupture.getRuptureSurface() instanceof PointSurface.DistanceCorrected)
+		if (this.eqkRupture != null && this.eqkRupture.getRuptureSurface() instanceof PointSurface.SiteSpecificDistanceCorrected)
 			// we already have a point surface, and it's distance has been corrected for the prior site
 			// clear the rupture because, if non-null, the propagation effect calculation will attempt to
 			// retrieve distances for this surface which will throw an exception

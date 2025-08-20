@@ -19,6 +19,7 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.exceptions.IMRException;
 import org.opensha.commons.exceptions.ParameterException;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.constraint.impl.DoubleDiscreteConstraint;
@@ -39,6 +40,7 @@ import org.opensha.nshmp2.util.Period;
 import org.opensha.nshmp2.util.SiteType;
 import org.opensha.nshmp2.util.Utils;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.DampingParam;
@@ -179,6 +181,13 @@ public class NSHMP08_CEUS extends AttenuationRelationship implements
 	protected void setPropagationEffectParams() {}
 
 	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		for (ScalarIMR imr : imrMap.keySet()) {
+			imr.setPropagationEffectParams(distances);
+		}
+	}
+
+	@Override
 	protected void initSupportedIntensityMeasureParams() {
 
 		List<Double> perVals = Lists.newArrayList();
@@ -280,6 +289,14 @@ public class NSHMP08_CEUS extends AttenuationRelationship implements
 		for (ScalarIMR imr : imrMap.keySet()) {
 			imr.setSite(site);
 		}
+	}
+
+	@Override
+	public void setSiteLocation(Location loc) {
+		for (ScalarIMR imr : imrMap.keySet()) {
+			imr.setSiteLocation(loc);
+		}
+		super.setSiteLocation(loc);
 	}
 
 	@Override

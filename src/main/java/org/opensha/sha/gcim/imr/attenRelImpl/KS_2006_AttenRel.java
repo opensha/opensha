@@ -16,6 +16,7 @@ import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.gcim.imr.param.IntensityMeasureParams.Ds575_Param;
 import org.opensha.sha.gcim.imr.param.IntensityMeasureParams.Ds595_Param;
 import org.opensha.sha.imr.AttenuationRelationship;
@@ -174,8 +175,13 @@ public class KS_2006_AttenRel
   protected void setPropagationEffectParams() {
 
     if ( (this.site != null) && (this.eqkRupture != null)) {
-    	distanceRupParam.setValue(eqkRupture, site);
-    }
+    	setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
+	}
+  }
+
+  @Override
+  public void setPropagationEffectParams(SurfaceDistances distances) {
+	  distanceRupParam.setValue(eqkRupture, site, distances);
   }
 
   /**

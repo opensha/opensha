@@ -9,12 +9,14 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.exceptions.IMRException;
 import org.opensha.commons.exceptions.InvalidRangeException;
 import org.opensha.commons.exceptions.ParameterException;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.AbstractParameter;
 import org.opensha.commons.param.constraint.impl.DoubleConstraint;
 import org.opensha.commons.param.constraint.impl.StringConstraint;
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
@@ -159,11 +161,13 @@ public class BC_2004_AttenRel extends AttenuationRelationship {
 
 	}
 
-	/**
-	 * This does nothing, but is needed.
-	 */
 	protected void setPropagationEffectParams() {
+		as_1997_attenRel.setPropagationEffectParams();
+	}
 
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		as_1997_attenRel.setPropagationEffectParams(distances);
 	}
 
 	/**
@@ -195,6 +199,12 @@ public class BC_2004_AttenRel extends AttenuationRelationship {
 			as_1997_attenRel.setSiteLocation(site.getLocation());
 		}
 		super.setSite(site);
+	}
+
+	@Override
+	public void setSiteLocation(Location loc) {
+		as_1997_attenRel.setSiteLocation(loc);
+		super.setSiteLocation(loc);
 	}
 
 	/**

@@ -9,6 +9,7 @@ import org.opensha.commons.data.Named;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.exceptions.InvalidRangeException;
 import org.opensha.commons.exceptions.ParameterException;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.constraint.impl.DoubleConstraint;
 import org.opensha.commons.param.constraint.impl.DoubleDiscreteConstraint;
@@ -17,6 +18,7 @@ import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.EqkRuptureParams.FaultTypeParam;
@@ -150,11 +152,24 @@ public class InterpolatedSA_AttenRelWrapper extends AttenuationRelationship impl
 	  this.site = site;
   }
 
+	@Override
+	public void setSiteLocation(Location loc) {
+		attenRelToWrap.setSiteLocation(loc);
+		super.setSiteLocation(loc);
+	}
+
   /**
    * This does nothing; is it needed?
    */
   protected void setPropagationEffectParams() {
   }
+
+
+  @Override
+  public void setPropagationEffectParams(SurfaceDistances distances) {
+	  attenRelToWrap.setPropagationEffectParams(distances);
+  }
+
 
 
   /**

@@ -9,6 +9,7 @@ import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.exceptions.IMRException;
 import org.opensha.commons.exceptions.ParameterException;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.ParamLinker;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
@@ -20,6 +21,7 @@ import org.opensha.commons.param.impl.EnumParameter;
 import org.opensha.commons.param.impl.ParameterListParameter;
 import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
@@ -190,6 +192,12 @@ public class ModAttenuationRelationship extends AttenuationRelationship implemen
 
 	@Override
 	protected void setPropagationEffectParams() {}
+
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		if (mod != null && imr != null && eqkRupture != null)
+			mod.setIMRPropEffect(imr, distances);
+	}
 
 	@Override
 	protected void initSupportedIntensityMeasureParams() {
@@ -393,6 +401,12 @@ public class ModAttenuationRelationship extends AttenuationRelationship implemen
 		super.setSite(site);
 		if (mod != null && imr != null && site != null)
 			mod.setIMRSiteParams(imr, site);
+	}
+
+	@Override
+	public void setSiteLocation(Location loc) {
+		super.setSiteLocation(loc);
+		setSite(site);
 	}
 
 	@Override

@@ -23,6 +23,7 @@ import org.opensha.nshmp2.util.Utils;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.PropagationEffect;
 import org.opensha.sha.imr.ScalarIMR;
@@ -126,8 +127,13 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 	@Override
 	public void setPropagationEffectParams() {
 		if ( (this.site != null) && (this.eqkRupture != null)) {
-			distanceRupParam.setValue(eqkRupture,site);
+			setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
 		}
+	}
+
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		distanceRupParam.setValue(eqkRupture,site, distances);
 	}
 
 	private void setCoeffIndex() throws ParameterException {

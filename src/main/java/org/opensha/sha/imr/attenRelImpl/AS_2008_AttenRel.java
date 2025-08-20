@@ -20,6 +20,7 @@ import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.param.EqkRuptureParams.AftershockParam;
 import org.opensha.sha.imr.param.EqkRuptureParams.DipParam;
@@ -242,11 +243,12 @@ public class AS_2008_AttenRel extends AttenuationRelationship implements
 	@Override
 	protected void setPropagationEffectParams() {
 		if (site != null && eqkRupture != null) {
-			propEffectUpdate();
+			setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
 		}
 	}
 
-	private void propEffectUpdate() {
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
 		
 		/*
 		 * This sets the two propagation-effect parameters (distanceRupParam and
@@ -260,18 +262,18 @@ public class AS_2008_AttenRel extends AttenuationRelationship implements
 		 */
 		
 		
-		distanceRupParam.setValue(eqkRupture, site); // this sets rRup too
-//		distanceRupParam.setValueIgnoreWarning(eqkRupture.getRuptureSurface().getDistanceRup(site.getLocation())); // this sets rRup too
-		double dist_jb = eqkRupture.getRuptureSurface().getDistanceJB(site.getLocation());
-		double distX = eqkRupture.getRuptureSurface().getDistanceX(site.getLocation());
+		distanceRupParam.setValue(eqkRupture, site, distances);
+		double rRup = distances.getDistanceRup();
+		double rJB = distances.getDistanceJB();
+		double rX = distances.getDistanceX();
 		if(rRup>0.0) {
-			distRupMinusJB_OverRupParam.setValueIgnoreWarning((rRup-dist_jb)/rRup);
-			if(distX >= 0.0) {  // sign determines whether it's on the hanging wall (distX is always >= 0 in distRupMinusDistX_OverRupParam)
-				distRupMinusDistX_OverRupParam.setValue((rRup-distX)/rRup);
+			distRupMinusJB_OverRupParam.setValueIgnoreWarning((rRup-rJB)/rRup);
+			if(rX >= 0.0) {  // sign determines whether it's on the hanging wall (distX is always >= 0 in distRupMinusDistX_OverRupParam)
+				distRupMinusDistX_OverRupParam.setValue((rRup-rX)/rRup);
 				hangingWallFlagParam.setValue(true);
 			}
 			else {
-				distRupMinusDistX_OverRupParam.setValue((rRup+distX)/rRup);  // switch sign of distX here
+				distRupMinusDistX_OverRupParam.setValue((rRup+rX)/rRup);  // switch sign of distX here
 				hangingWallFlagParam.setValue(false);
 			}
 		}

@@ -21,6 +21,7 @@ import org.opensha.commons.param.impl.EnumParameter;
 import org.opensha.nshmp2.util.Params;
 import org.opensha.nshmp2.util.Utils;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.PropagationEffect;
 import org.opensha.sha.imr.param.EqkRuptureParams.MagParam;
@@ -139,8 +140,13 @@ public class YoungsEtAl_1997_AttenRel extends AttenuationRelationship implements
 	@Override
 	protected void setPropagationEffectParams() {
 		if ((site != null) && (eqkRupture != null)) {
-			distanceRupParam.setValue(eqkRupture, site);
+			setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
 		}
+	}
+
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		distanceRupParam.setValue(eqkRupture, site, distances);
 	}
 
 	private void setCoeffIndex() throws ParameterException {

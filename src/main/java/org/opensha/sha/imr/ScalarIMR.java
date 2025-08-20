@@ -8,6 +8,8 @@ import org.opensha.commons.exceptions.IMRException;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.ParameterList;
+import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.util.TectonicRegionType;
 
 
@@ -241,6 +243,15 @@ public interface ScalarIMR extends IntensityMeasureRelationship {
 	 * setPropagationEffectsParams().
 	 */
 	public void setSiteLocation(Location loc);
+
+	/**
+	 * This method sets the propagation effect parameters for the given distances.
+	 * 
+	 * This is helpful because it allows to override distances for a point source distance correction without
+	 * also resetting the earthquake rupture object.
+	 * @param distances
+	 */
+	public void setPropagationEffectParams(SurfaceDistances distances);
 
 	/**
 	 * Allows to reset the change listeners on the parameters

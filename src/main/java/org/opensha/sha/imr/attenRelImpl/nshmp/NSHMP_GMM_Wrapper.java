@@ -33,6 +33,7 @@ import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.sha.earthquake.DistCachedERFWrapper.DistCacheWrapperRupture;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.gcim.imr.param.EqkRuptureParams.FocalDepthParam;
 import org.opensha.sha.imr.AbstractIMR;
 import org.opensha.sha.imr.AttenuationRelationship;
@@ -1152,18 +1153,22 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 
 	@Override
 	protected void setPropagationEffectParams() {
-		clearCachedGmmInputs();
 		if (site != null && eqkRupture != null) {
-			Location siteLoc = site.getLocation();
-			RuptureSurface surf = eqkRupture.getRuptureSurface();
-			
-			if (fields.contains(Field.RJB))
-				valueManager.setParameterValue(Field.RJB, surf.getDistanceJB(siteLoc));
-			if (fields.contains(Field.RRUP))
-				valueManager.setParameterValue(Field.RRUP, surf.getDistanceRup(siteLoc));
-			if (fields.contains(Field.RX))
-				valueManager.setParameterValue(Field.RX, surf.getDistanceX(siteLoc));
+			setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
+		} else {
+			clearCachedGmmInputs();
 		}
+	}
+
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		clearCachedGmmInputs();
+		if (fields.contains(Field.RJB))
+			valueManager.setParameterValue(Field.RJB, distances.getDistanceJB());
+		if (fields.contains(Field.RRUP))
+			valueManager.setParameterValue(Field.RRUP, distances.getDistanceRup());
+		if (fields.contains(Field.RX))
+			valueManager.setParameterValue(Field.RX, distances.getDistanceX());
 	}
 
 	@Override

@@ -19,6 +19,7 @@ import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.IntegerParameter;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
@@ -182,11 +183,13 @@ public class BS_2003_AttenRel extends AttenuationRelationship {
 
 	}
 
-	/**
-	 * This does nothing, but is needed.
-	 */
 	protected void setPropagationEffectParams() {
+		as_1997_attenRel.setPropagationEffectParams();
+	}
 
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		as_1997_attenRel.setPropagationEffectParams(distances);
 	}
 
 	/**

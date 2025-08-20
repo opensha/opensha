@@ -16,6 +16,7 @@ import org.opensha.commons.param.event.ParameterChangeWarningListener;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.param.EqkRuptureParams.DipParam;
 import org.opensha.sha.imr.param.EqkRuptureParams.FaultTypeParam;
@@ -243,12 +244,12 @@ public class Bradley_ChchSpecific_2014_AttenRel extends AttenuationRelationship 
 	@Override
 	protected void setPropagationEffectParams() {
 		if (site != null && eqkRupture != null) {
-			propEffectUpdate();
+			setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
 		}
 	}
-	
-	
-	private void propEffectUpdate() {
+
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
 		
 		/*
 		 * This sets the two propagation-effect parameters (distanceRupParam and
@@ -261,9 +262,10 @@ public class Bradley_ChchSpecific_2014_AttenRel extends AttenuationRelationship 
 		 * Ned Field, Norm Abrahamson, and Ken Campbell.
 		 */
 		
-		distanceRupParam.setValueIgnoreWarning(eqkRupture.getRuptureSurface().getDistanceRup(site.getLocation())); // this sets rRup too
-		double dist_jb = eqkRupture.getRuptureSurface().getDistanceJB(site.getLocation());
-		double distX = eqkRupture.getRuptureSurface().getDistanceX(site.getLocation());
+		distanceRupParam.setValue(eqkRupture, site, distances);
+		double rRup = distances.getDistanceRup();
+		double dist_jb = distances.getDistanceJB();
+		double distX = distances.getDistanceX();
 		if(rRup>0.0) {
 			distRupMinusJB_OverRupParam.setValueIgnoreWarning((rRup-dist_jb)/rRup);
 			if(distX >= 0.0) {  // sign determines whether it's on the hanging wall (distX is always >= 0 in distRupMinusDistX_OverRupParam)

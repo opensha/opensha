@@ -15,6 +15,7 @@ import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.exceptions.IMRException;
 import org.opensha.commons.exceptions.InvalidRangeException;
 import org.opensha.commons.exceptions.ParameterException;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.AbstractParameter;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.constraint.impl.DoubleConstraint;
@@ -28,6 +29,7 @@ import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.IntegerParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PeriodParam;
@@ -437,8 +439,7 @@ public class SiteSpecific_2006_AttenRel extends AttenuationRelationship implemen
 	 * This does nothing, but is needed.
 	 */
 	protected void setPropagationEffectParams() {
-
-
+		
 	}  
 
 	/**
@@ -536,6 +537,17 @@ public class SiteSpecific_2006_AttenRel extends AttenuationRelationship implemen
 	}
 
 
+
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		attenRel.setPropagationEffectParams(distances);
+	}
+
+	@Override
+	public void setSiteLocation(Location loc) {
+		super.setSiteLocation(loc);
+		attenRel.setSiteLocation(loc);
+	}
 
 	/**
 	 * Calculates the mean

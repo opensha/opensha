@@ -23,6 +23,7 @@ import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.gcim.imr.param.IntensityMeasureParams.CAV_Param;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
@@ -252,13 +253,18 @@ public class CB_2010_CAV_AttenRel
 
     if ( (this.site != null) && (this.eqkRupture != null)) {
    
-    	distanceRupParam.setValue(eqkRupture, site);
-		double dist_jb = eqkRupture.getRuptureSurface().getDistanceJB(site.getLocation());
-    	if(rRup == 0)
-    		distRupMinusJB_OverRupParam.setValueIgnoreWarning(0.0);
-    	else
-    		distRupMinusJB_OverRupParam.setValueIgnoreWarning((rRup-dist_jb)/rRup);
-    }
+    	setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
+	}
+  }
+
+  @Override
+  public void setPropagationEffectParams(SurfaceDistances distances) {
+	  distanceRupParam.setValue(eqkRupture, site, distances);
+	  double dist_jb = distances.getDistanceJB();
+	  if(rRup == 0)
+		  distRupMinusJB_OverRupParam.setValueIgnoreWarning(0.0);
+	  else
+		  distRupMinusJB_OverRupParam.setValueIgnoreWarning((rRup-dist_jb)/rRup);
   }
 
   /**

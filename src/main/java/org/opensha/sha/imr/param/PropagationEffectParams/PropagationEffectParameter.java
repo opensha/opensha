@@ -6,6 +6,7 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.editor.AbstractParameterEditorOld;
 import org.opensha.commons.param.editor.ParameterEditor;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 
 /**
  * <b>Title:</b> PropagationEffectParameter<p>
@@ -23,8 +24,7 @@ import org.opensha.sha.earthquake.EqkRupture;
  * @version 1.0
  */
 
-public abstract class PropagationEffectParameter<E> extends
-		AbstractParameter<E> implements PropagationEffectParameterAPI<E> {
+public abstract class PropagationEffectParameter<E> extends AbstractParameter<E> {
 
     /* *******************/
     /** @todo  Variables */
@@ -34,12 +34,6 @@ public abstract class PropagationEffectParameter<E> extends
     protected final static String C = "PropagationEffectParameter";
     /* If true prints out debbuging statements */
     protected final static boolean D = false;
-
-    /** The Site used for calculating the PropagationEffect */
-    protected Site site = null;
-
-    /** The EqkRupture used for calculating the PropagationEffect */
-    protected EqkRupture eqkRupture = null;
 
 
     /* ***************************/
@@ -52,11 +46,14 @@ public abstract class PropagationEffectParameter<E> extends
 
 
     /** Sets the independent variables (Site and EqkRupture) then calculates and returns the value */
-    @Override
     public E getValue(EqkRupture eqkRupture, Site site){
-        this.eqkRupture = eqkRupture;
-        this.site = site;
-        calcValueFromSiteAndEqkRup();
+    	setValue(eqkRupture, site);
+        return super.getValue();
+    }
+
+    /** Sets the independent variables (Site and EqkRupture) then calculates and returns the value */
+    public E getValue(EqkRupture eqkRupture, Site site, SurfaceDistances distances){
+    	setValue(eqkRupture, site, distances);
         return super.getValue();
     }
 
@@ -77,71 +74,31 @@ public abstract class PropagationEffectParameter<E> extends
 //    }
 
     /** Sets the independent variables (Site and EqkRupture) then calculates the value */
-    @Override
     public void setValue(EqkRupture eqkRupture, Site site){
-        this.eqkRupture = eqkRupture;
-        this.site = site;
-        calcValueFromSiteAndEqkRup();
+        if (eqkRupture == null || site == null) {
+        	setValue(null);
+        } else {
+        	setValue(eqkRupture, site, eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
+        }
     }
-
-    /** The EqkRupture and Site must have already been set */
-//    @Override
-//    public E getValue(){ return this.value; }
-
-    /** Sets the Site and the value is recalculated */
-//    @Override
-//    public void setSite(Site site){
-//        this.site = site;
-//        calcValueFromSiteAndEqkRup();
-//    }
-    /** Returns the Site associated with this Parameter */
-//    @Override
-//    public Site getSite(){ return site; }
-
-    /** Sets the EqkRupture associated with this Parameter */
-//    @Override
-//    public void setEqkRupture(EqkRupture eqkRupture){
-//        this.eqkRupture = eqkRupture;
-//        calcValueFromSiteAndEqkRup();
-//    }
-    /** Returns the EqkRupture associated with this Parameter */
-    @Override
-//    public EqkRupture getEqkRupture(){ return eqkRupture; }
-
+    
+    public void setValue(EqkRupture eqkRupture, Site site, SurfaceDistances dists) {
+    	if (dists == null && eqkRupture != null && site != null)
+    		dists = eqkRupture.getRuptureSurface().getDistances(site.getLocation());
+    	if (dists == null) {
+    		setValue(null);
+    	} else {
+    		setValueFromDistances(eqkRupture, site, dists);
+    	}
+    }
 
      /** function used to determine which GUI widget to use for editing this parameter in an Applet */
     public String getType() { return C; }
-
-
-
-    /** Compares the values to see if they are the same, greater than or less than. */
-    //public abstract int compareTo(Object obj) throws ClassCastException;
-
-    /** Compares value to see if equal */
-//    public boolean equals(Object obj) throws ClassCastException{
-//        if( compareTo(obj) == 0) return true;
-//        else return false;
-//    }
-
-    /**
-     * Standard Java function. Creates a copy of this class instance
-     * so originaly can not be modified
-     */
-    //public abstract Object clone();
-    
-//    public ParameterEditorAPI<Double> getEditor() {
-//    	return null;
-//    }
     
     /**
-     * This is called whenever either the Site or
-     * EqkRupture has been changed to
-     * update the value stored in this parameter. <p>
-     *
-     * Subclasses implement this in their own way. This is what
-     * differentiates different subclasses.
+     * Set the parameter value from the given eqkRupture, site, and precomputed distances.
      */
-    protected abstract void calcValueFromSiteAndEqkRup();
+    protected abstract void setValueFromDistances(EqkRupture eqkRupture, Site site, SurfaceDistances dists);
 
 
 }

@@ -28,6 +28,7 @@ import org.opensha.commons.param.impl.WarningDoubleParameter;
 import org.opensha.commons.param.impl.WeightedListParameter;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.DampingParam;
@@ -623,6 +624,12 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	protected void setPropagationEffectParams() {
 		// do nothing // TODO validate this assumption
 		throw new UnsupportedOperationException("setPropagationEffectParams is not supported by "+C);
+	}
+
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		for (ScalarIMR imr : imrs)
+			imr.setPropagationEffectParams(distances);
 	}
 
 	@Override

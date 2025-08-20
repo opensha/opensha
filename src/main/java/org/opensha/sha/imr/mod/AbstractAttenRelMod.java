@@ -7,6 +7,7 @@ import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.OtherParams.SigmaTruncLevelParam;
@@ -49,6 +50,17 @@ public abstract class AbstractAttenRelMod implements ShortNamed {
 	 */
 	public void setIMRRupParams(ScalarIMR imr, EqkRupture rup) {
 		imr.setEqkRupture(rup);
+	}
+	
+	/**
+	 * Will be called whenever setPropagationEffectParams(SurfaceDistances) is called. Default implementation
+	 * just calls imr.setPropagationEffectParams(distances);
+	 * 
+	 * @param imr
+	 * @param distances
+	 */
+	public void setIMRPropEffect(ScalarIMR imr, SurfaceDistances distances) {
+		imr.setPropagationEffectParams(distances);
 	}
 	
 	/**

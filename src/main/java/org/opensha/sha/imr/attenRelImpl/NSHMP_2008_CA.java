@@ -22,6 +22,7 @@ import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.PointSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.DampingParam;
@@ -171,9 +172,13 @@ ParameterChangeListener {
 	}
 
 	@Override
-	protected void setPropagationEffectParams() {
-		if (site != null && eqkRupture != null)
-			setPropagationEffect();
+	protected void setPropagationEffectParams() {}
+
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		for (AttenuationRelationship ar : arList) {
+			ar.setPropagationEffectParams(distances);
+		}
 	}
 
 	@Override
@@ -323,29 +328,27 @@ ParameterChangeListener {
 
 	@Override
 	public void setSite(Site site) {
+		for (AttenuationRelationship ar : arList)
+			ar.setSite(site);
 		super.setSite(site); // will call setPropagationEffectParams
 		if (site != null)
 			// being done to satisfy unit tests
-		vs30Param.setValueIgnoreWarning((Double) site.getParameter(Vs30_Param.NAME).getValue());
-
-		if (eqkRupture != null) {
-			setPropagationEffect();
-		}
+			vs30Param.setValueIgnoreWarning((Double) site.getParameter(Vs30_Param.NAME).getValue());
 	}
 	
 	@Override
+	public void setSiteLocation(Location loc) {
+		for (AttenuationRelationship ar : arList)
+			ar.setSiteLocation(loc);
+		super.setSiteLocation(loc);
+	}
+
+	@Override
 	public void setEqkRupture(EqkRupture eqkRupture) {
 		super.setEqkRupture(eqkRupture);
-		if (eqkRupture != null && site != null) {
-			setPropagationEffect();
-		}
-	}
-	
-	public void setPropagationEffect() {
-		for (AttenuationRelationship ar : arList) {
+		for (AttenuationRelationship ar : arList)
 			ar.setEqkRupture(eqkRupture);
-			ar.setSite(site);
-		}
+		super.setEqkRupture(eqkRupture); // does NOT automatically call setPropEffectParams
 	}
 
 	@Override

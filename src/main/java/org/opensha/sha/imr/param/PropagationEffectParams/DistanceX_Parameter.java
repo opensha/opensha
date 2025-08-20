@@ -14,11 +14,13 @@ import org.opensha.commons.param.WarningParameter;
 import org.opensha.commons.param.constraint.ParameterConstraint;
 import org.opensha.commons.param.constraint.impl.DoubleConstraint;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.MeanUCERF2.MeanUCERF2;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 
 /**
  * <b>Title:</b> DistanceX_Parameter<p>
@@ -116,11 +118,11 @@ public class DistanceX_Parameter extends AbstractDoublePropEffectParam {
     /**
      * Note that this does not throw a warning
      */
-    protected void calcValueFromSiteAndEqkRup(){
-    	if( ( site != null ) && ( eqkRupture != null ) )
-    		setValueIgnoreWarning(eqkRupture.getRuptureSurface().getDistanceX(site.getLocation()));
+    protected void setValueFromDistances(EqkRupture eqkRupture, Site site, SurfaceDistances dists) {
+    	if (dists != null)
+    		setValueIgnoreWarning(dists.getDistanceX());
     	else 
-    		setValue(null);
+    		this.value = null;
     }
 
 
@@ -169,8 +171,6 @@ public class DistanceX_Parameter extends AbstractDoublePropEffectParam {
         param.warningConstraint = c2;
         param.name = name;
         param.info = info;
-        param.site = site;
-        param.eqkRupture = eqkRupture;
         if( !this.editable ) param.setNonEditable();
 
         return param;
