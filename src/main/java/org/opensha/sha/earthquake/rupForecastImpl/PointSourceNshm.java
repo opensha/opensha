@@ -88,6 +88,8 @@ public class PointSourceNshm extends PoissonPointSource {
 
 	// TODO class will eventually be reconfigured to supply distance metrics
 	// at which point M_FINITE_CUT will be used (and set on invocation)
+	
+	private static final TectonicRegionType trt = TectonicRegionType.ACTIVE_SHALLOW;
 
 	private static final String NAME = "NSHMP Point Source";
 	public static final double M_DEPTH_CUT_DEFAULT = 6.5;
@@ -141,7 +143,7 @@ public class PointSourceNshm extends PoissonPointSource {
 			PointSourceDistanceCorrection distCorr,
 			double minMagForDistCorr,
 			GridCellSupersamplingSettings supersamplingSettings) {
-		super(loc, TectonicRegionType.ACTIVE_SHALLOW, duration,
+		super(loc, duration,
 				buildData(loc, mfd, mechWtMap, surfaceBuilder, supersamplingSettings), distCorr, minMagForDistCorr);
 		this.name = NAME;
 	}
@@ -149,7 +151,7 @@ public class PointSourceNshm extends PoissonPointSource {
 	private static PoissonPointSourceData buildData(Location loc, IncrementalMagFreqDist mfd,
 			Map<FocalMech, Double> mechWtMap, SurfaceBuilder surfaceBuilder,
 			GridCellSupersamplingSettings supersamplingSettings) {
-		PoissonPointSourceData data = PointSource.dataForMFDs(loc, mfd, weightsMap(mechWtMap), surfaceBuilder);
+		PoissonPointSourceData data = PointSource.dataForMFDs(loc, trt, mfd, weightsMap(mechWtMap), surfaceBuilder);
 		if (supersamplingSettings != null) {
 			// assume 0.1 degree gridding (but verify)
 			Preconditions.checkState(multipleOf0p1(loc.lat) && multipleOf0p1(loc.lon),

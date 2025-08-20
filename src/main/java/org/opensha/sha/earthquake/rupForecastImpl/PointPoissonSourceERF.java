@@ -9,6 +9,7 @@ import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.earthquake.PointSource;
 import org.opensha.sha.earthquake.param.PointSourceDistanceCorrectionParam;
+import org.opensha.sha.imr.param.OtherParams.TectonicRegionTypeParam;
 import org.opensha.sha.magdist.GaussianMagFreqDist;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.SingleMagFreqDist;
@@ -95,6 +96,7 @@ public class PointPoissonSourceERF extends AbstractERF{
   DoubleParameter srcLatParam;
   DoubleParameter srcLonParam;
   DoubleParameter srcDepthParam;
+  TectonicRegionTypeParam trtParam;
   PointSourceDistanceCorrectionParam distCorrParam;
 
 
@@ -134,6 +136,7 @@ public class PointPoissonSourceERF extends AbstractERF{
     srcDepthParam = new DoubleParameter(SRC_DEPTH_PARAM_NAME,SRC_DEPTH_PARAM_MIN,
         SRC_DEPTH_PARAM_MAX,SRC_DEPTH_PARAM_UNITS,SRC_DEPTH_PARAM_DEFAULT);
     srcDepthParam.setInfo(SRC_DEPTH_PARAM_INFO);
+    trtParam = new TectonicRegionTypeParam();
     distCorrParam = new PointSourceDistanceCorrectionParam();
 
     // add the adjustable parameters to the list
@@ -143,6 +146,7 @@ public class PointPoissonSourceERF extends AbstractERF{
     adjustableParams.addParameter(rakeParam);
     adjustableParams.addParameter(dipParam);
     adjustableParams.addParameter(magDistParam);
+    adjustableParams.addParameter(trtParam);
     adjustableParams.addParameter(distCorrParam);
 
     // register the parameters that need to be listened to
@@ -152,6 +156,7 @@ public class PointPoissonSourceERF extends AbstractERF{
     srcLonParam.addParameterChangeListener(this);
     srcDepthParam.addParameterChangeListener(this);
     magDistParam.addParameterChangeListener(this);
+    trtParam.addParameterChangeListener(this);
     distCorrParam.addParameterChangeListener(this);
   }
 
@@ -172,7 +177,8 @@ public class PointPoissonSourceERF extends AbstractERF{
     		   .truePointSources(srcDepthParam.getValue())
     		   .duration(timeSpan.getDuration())
     		   .forMFDAndFocalMech(magDistParam.getValue(),
-    				   new FocalMechanism(Double.NaN, dipParam.getValue(), rakeParam.getValue()))
+    				   new FocalMechanism(Double.NaN, dipParam.getValue(), rakeParam.getValue()),
+    				   trtParam.getValueAsTRT())
     		   .distCorr(distCorrParam.getValue().get(), Double.NEGATIVE_INFINITY)
     		   .build();
        parameterChangeFlag = false;

@@ -29,6 +29,7 @@ import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrectio
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
@@ -98,7 +99,7 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 			MagLengthRelationship magLengthRelationship,
 			double strike, double duration, double magCutOff,
 			double fracStrikeSlip, double fracNormal, double fracReverse) {
-		super(loc, TECTONIC_REGION_TYPE_DEFAULT, duration, null);
+		super(loc, duration, null);
 		this.magCutOff = magCutOff;
 
 		if(D) {
@@ -130,7 +131,7 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 			MagLengthRelationship magLengthRelationship,
 			double duration, double magCutOff,double fracStrikeSlip,
 			double fracNormal, double fracReverse, boolean isCrossHair) {
-		super(loc, TECTONIC_REGION_TYPE_DEFAULT, duration, null);
+		super(loc, duration, null);
 		this.magCutOff = magCutOff;
 		// whether to simulate it as 2 perpendicular faults
 		this.isCrossHair = isCrossHair;
@@ -201,7 +202,7 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 		
 		SurfaceGenerator surfGen = new SurfaceGenerator();
 		
-		setData(dataForMFDs(loc, magFreqDist, mechWeights, surfGen));
+		setData(dataForMFDs(loc, TectonicRegionType.ACTIVE_SHALLOW, magFreqDist, mechWeights, surfGen));
 	}
 	
 	private class SurfaceGenerator implements FocalMechRuptureSurfaceBuilder {

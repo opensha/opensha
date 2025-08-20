@@ -22,6 +22,7 @@ import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.magdist.GaussianMagFreqDist;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.util.TectonicRegionType;
 
 /**
  * <p>Title: New Zealand Eqk Rup Forecast</p>
@@ -43,6 +44,8 @@ public class NewZealandERF0909 extends AbstractERF {
 	private boolean D = false;
 	// name of this ERF
 	public final static String NAME = new String("NewZealand_ERF 0909");
+	
+	private final TectonicRegionType TRT = TectonicRegionType.ACTIVE_SHALLOW;
 
 
 	private final static String FAULT_SOURCE_FILENAME = "/data/erf/new_zealand_2010/NZ_FLTmodel0909.txt";
@@ -167,7 +170,7 @@ public class NewZealandERF0909 extends AbstractERF {
 			PoissonPointSource rupSource = PointSource.poissonBuilder(this.bkSourceLocation.get(srcIndex))
 	        		.truePointSources(0d)
 	        		.forMFDAndFocalMech(this.bkMagFD.get(srcIndex).getAboveMagnitude(this.bkMinMag.get(srcIndex)),
-	        				new FocalMechanism(Double.NaN, this.bkDip.get(srcIndex), this.bkRake.get(srcIndex)))
+	        				new FocalMechanism(Double.NaN, this.bkDip.get(srcIndex), this.bkRake.get(srcIndex)), TRT)
 	        		.duration(timeSpan.getDuration())
 	        		.build();
 			allSources.add(rupSource);

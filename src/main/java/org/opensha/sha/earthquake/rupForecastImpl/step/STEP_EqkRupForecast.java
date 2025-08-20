@@ -21,6 +21,7 @@ import org.opensha.sha.earthquake.PointSource.PoissonPointSource;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.util.TectonicRegionType;
 
 /**
  * <p>Title: STEP_EqkRupForecast</p>
@@ -35,6 +36,8 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
   public class STEP_EqkRupForecast extends AbstractERF
     implements ParameterChangeListener{
+	  
+	  private static TectonicRegionType TRT = TectonicRegionType.ACTIVE_SHALLOW;
 
   //for Debug purposes
   private static String  C = new String("STEP_EqkRupForecast");
@@ -218,7 +221,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 //      ptSource = new PointEqkSource(new Location(lat,lon,DEPTH),magFreqDist,duration,RAKE,DIP,minMag);
       ptSource = PointSource.poissonBuilder(new Location(lat,lon,DEPTH))
     		  .truePointSources()
-    		  .forMFDAndFocalMech(magFreqDist.getAboveMagnitude(minMag), new FocalMechanism(Double.NaN, DIP, RAKE))
+    		  .forMFDAndFocalMech(magFreqDist.getAboveMagnitude(minMag), new FocalMechanism(Double.NaN, DIP, RAKE), TRT)
     		  .duration(duration)
     		  .build();
       if(ptSource.getNumRuptures() > 0) {
@@ -290,7 +293,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 //      ptSource = new PointEqkSource(new Location(lat,lon,DEPTH),magFreqDist,duration,RAKE,DIP,minMag);
       ptSource = PointSource.poissonBuilder(new Location(lat,lon,DEPTH))
     		  .truePointSources()
-    		  .forMFDAndFocalMech(magFreqDist.getAboveMagnitude(minMag), new FocalMechanism(Double.NaN, DIP, RAKE))
+    		  .forMFDAndFocalMech(magFreqDist.getAboveMagnitude(minMag), new FocalMechanism(Double.NaN, DIP, RAKE), TRT)
     		  .duration(duration)
     		  .build();
       if(ptSource.getNumRuptures() > 0) {

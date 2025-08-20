@@ -131,7 +131,7 @@ public class SourceFilterTests {
 //			source = new PointEqkSource(loc, magFreqDist, duration, aveRake, aveDip);
 			source = PointSource.poissonBuilder(loc)
 					.truePointSources()
-					.forMFDAndFocalMech(magFreqDist, new FocalMechanism(Double.NaN, aveDip, aveRake))
+					.forMFDAndFocalMech(magFreqDist, new FocalMechanism(Double.NaN, aveDip, aveRake), TECTONIC_REGION_TYPE_DEFAULT)
 					.duration(duration)
 					.build();
 			rups = new ArrayList<>(source.getNumRuptures());

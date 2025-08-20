@@ -354,10 +354,10 @@ public class NewZealandERF2015_ChchAftershock extends AbstractERF{
 //			String tectType = this.bkSourceTectonicTypes.get(srcIndex);
 //			setTectonicTypeOfSource(rupSource,tectType);
 			PoissonPointSource rupSource = PointSource.poissonBuilder(this.bkSourceLocation.get(srcIndex))
-					.tectonicRegionType(trtForType(this.bkSourceTectonicTypes.get(srcIndex)))
 	        		.truePointSources(0d)
 	        		.forMFDAndFocalMech(this.bkMagFD.get(srcIndex).getAboveMagnitude(this.bkMMins.get(srcIndex)),
-	        				new FocalMechanism(Double.NaN, this.bkDip.get(srcIndex), this.bkRake.get(srcIndex)))
+	        				new FocalMechanism(Double.NaN, this.bkDip.get(srcIndex), this.bkRake.get(srcIndex)),
+	        				trtForType(this.bkSourceTectonicTypes.get(srcIndex)))
 	        		.duration(timeSpan.getDuration())
 	        		.build();
 			

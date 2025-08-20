@@ -8,6 +8,7 @@ import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.earthquake.PointSource;
 import org.opensha.sha.earthquake.param.PointSourceDistanceCorrectionParam;
+import org.opensha.sha.imr.param.OtherParams.TectonicRegionTypeParam;
 
 
 /**
@@ -102,6 +103,7 @@ public class PointSourceERF extends AbstractERF{
   DoubleParameter srcLatParam;
   DoubleParameter srcLonParam;
   DoubleParameter srcDepthParam;
+  TectonicRegionTypeParam trtParam;
   PointSourceDistanceCorrectionParam distCorrParam;
 
 
@@ -144,6 +146,8 @@ public class PointSourceERF extends AbstractERF{
         SRC_DEPTH_PARAM_MAX,SRC_DEPTH_PARAM_UNITS,SRC_DEPTH_PARAM_DEFAULT);
     srcDepthParam.setInfo(SRC_DEPTH_PARAM_INFO);
     
+    trtParam = new TectonicRegionTypeParam();
+    
     distCorrParam = new PointSourceDistanceCorrectionParam();
 
     // add the adjustable parameters to the list
@@ -154,6 +158,7 @@ public class PointSourceERF extends AbstractERF{
     adjustableParams.addParameter(srcDepthParam);
     adjustableParams.addParameter(rakeParam);
     adjustableParams.addParameter(dipParam);
+    adjustableParams.addParameter(trtParam);
     adjustableParams.addParameter(distCorrParam);
 
     // register the parameters that need to be listened to
@@ -164,6 +169,7 @@ public class PointSourceERF extends AbstractERF{
     srcLatParam.addParameterChangeListener(this);
     srcLonParam.addParameterChangeListener(this);
     srcDepthParam.addParameterChangeListener(this);
+    trtParam.addParameterChangeListener(this);
     distCorrParam.addParameterChangeListener(this);
   }
 
@@ -182,7 +188,8 @@ public class PointSourceERF extends AbstractERF{
        source = PointSource.nonPoissonBuilder(loc)
     		   .truePointSources(srcDepthParam.getValue())
     		   .forMagProbAndFocalMech(magParam.getValue(), probParam.getValue(),
-    				   new FocalMechanism(Double.NaN, dipParam.getValue(), rakeParam.getValue()))
+    				   new FocalMechanism(Double.NaN, dipParam.getValue(), rakeParam.getValue()),
+    				   trtParam.getValueAsTRT())
     		   .distCorr(distCorrParam.getValue().get(), Double.NEGATIVE_INFINITY)
     		   .build();
        parameterChangeFlag = false;

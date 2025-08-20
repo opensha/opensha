@@ -35,6 +35,7 @@ import org.opensha.sha.magdist.SingleMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 import org.opensha.sha.magdist.YC_1985_CharMagFreqDist;
 import org.opensha.sha.param.MagFreqDistParameter;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
@@ -318,7 +319,7 @@ public class PointToLineSourceERF extends AbstractERF{
 		source = PointSource.poissonBuilder(locParam.getValue())
 				.duration(timeSpan.getDuration())
 				.surfaceBuilder(new LineSurfaceBuilder(numStrikes, scale, rupTopDepth, lowerSeisDepthParam.getValue()))
-				.forMFDAndFocalMech(mfd, focalMech)
+				.forMFDAndFocalMech(mfd, focalMech, ProbEqkSource.TECTONIC_REGION_TYPE_DEFAULT)
 				.build();
 	}
 	
@@ -351,7 +352,7 @@ public class PointToLineSourceERF extends AbstractERF{
 		}
 
 		@Override
-		public RuptureSurface getSurface(Location sourceLoc, double magnitude, FocalMechanism mech, int surfaceIndex) {
+		public RuptureSurface getSurface(Location sourceLoc, double magnitude, TectonicRegionType trt, FocalMechanism mech, int surfaceIndex) {
 			if (numStrikes > 1) {
 				// see if already cached
 				EvenlyGriddedSurface[] cached = surfsCache.get((float)magnitude);

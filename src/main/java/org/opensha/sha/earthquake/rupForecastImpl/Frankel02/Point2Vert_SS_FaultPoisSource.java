@@ -16,6 +16,7 @@ import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
@@ -71,7 +72,7 @@ public class Point2Vert_SS_FaultPoisSource extends PoissonPointSource implements
 	public Point2Vert_SS_FaultPoisSource(Location loc, IncrementalMagFreqDist magFreqDist,
 			MagLengthRelationship magLengthRelationship,
 			double strike, double duration, double magCutOff){
-		super(loc, TECTONIC_REGION_TYPE_DEFAULT, duration, null);
+		super(loc, duration, null);
 		this.magCutOff = magCutOff;
 
 		if(D) {
@@ -95,7 +96,7 @@ public class Point2Vert_SS_FaultPoisSource extends PoissonPointSource implements
 	public Point2Vert_SS_FaultPoisSource(Location loc, IncrementalMagFreqDist magFreqDist,
 			MagLengthRelationship magLengthRelationship,
 			double duration, double magCutOff){
-		super(loc, TECTONIC_REGION_TYPE_DEFAULT, duration, null);
+		super(loc, duration, null);
 		this.magCutOff = magCutOff;
 
 		// set the mags, rates, and rupture surfaces
@@ -165,7 +166,7 @@ public class Point2Vert_SS_FaultPoisSource extends PoissonPointSource implements
 		
 		SurfaceGenerator surfGen = new SurfaceGenerator();
 		
-		setData(dataForMFD(loc, magFreqDist, new FocalMechanism(strike, aveDip, aveRake), surfGen));
+		setData(dataForMFD(loc, TectonicRegionType.ACTIVE_SHALLOW, magFreqDist, new FocalMechanism(strike, aveDip, aveRake), surfGen));
 	}
 	
 	private class SurfaceGenerator implements RuptureSurfaceBuilder {
@@ -176,7 +177,7 @@ public class Point2Vert_SS_FaultPoisSource extends PoissonPointSource implements
 		}
 
 		@Override
-		public RuptureSurface getSurface(Location sourceLoc, double magnitude, FocalMechanism mech, int surfaceIndex) {
+		public RuptureSurface getSurface(Location sourceLoc, double magnitude, TectonicRegionType trt, FocalMechanism mech, int surfaceIndex) {
 			if (magnitude <= magCutOff)
 				return ptSurface;
 			if (magnitude == magFreqDist.getMaxX())

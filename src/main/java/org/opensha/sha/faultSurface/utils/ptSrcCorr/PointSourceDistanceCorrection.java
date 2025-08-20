@@ -27,7 +27,7 @@ public interface PointSourceDistanceCorrection {
 			PointSurface surf, TectonicRegionType trt, double mag, double horzDist);
 	
 	/**
-	 * This returns a {@link WeightedList} of {@link PointSurface.DistanceCorrected} for the a point surface at the given
+	 * This returns a {@link WeightedList} of {@link PointSurface.SiteSpecificDistanceCorrected} for the a point surface at the given
 	 * location, which is known to be the given horizontal site-source (rEpicenter) distance away. The returned surfaces
 	 * are unique to the passed in location and have all distances precomputed.
 	 * 
@@ -36,14 +36,14 @@ public interface PointSourceDistanceCorrection {
 	 * @param trt point source tectonic region type
 	 * @param mag the magnitude of the point source rupture for which we're computing distances 
 	 * @param horzDist the horizontal distance in km between the site and the rupture epicenter
-	 * @return {@link WeightedList} of {@link PointSurface.DistanceCorrected}
+	 * @return {@link WeightedList} of {@link PointSurface.SiteSpecificDistanceCorrected}
 	 */
-	public default WeightedList<PointSurface.DistanceCorrected> getCorrectedSurfaces(Location siteLoc,
+	public default WeightedList<PointSurface.SiteSpecificDistanceCorrected> getCorrectedSurfaces(Location siteLoc,
 			PointSurface surf, TectonicRegionType trt, double mag, double horzDist) {
 		WeightedList<SurfaceDistances> dists = getCorrectedDistances(siteLoc, surf, trt, mag, horzDist);
-		List<WeightedValue<PointSurface.DistanceCorrected>> surfs = new ArrayList<>(dists.size());
+		List<WeightedValue<PointSurface.SiteSpecificDistanceCorrected>> surfs = new ArrayList<>(dists.size());
 		for (int i=0; i<dists.size(); i++)
-			surfs.add(new WeightedValue<>(new PointSurface.DistanceCorrected(surf, siteLoc, dists.getValue(i)), dists.getWeight(i)));
+			surfs.add(new WeightedValue<>(new PointSurface.SiteSpecificDistanceCorrected(surf, siteLoc, dists.getValue(i)), dists.getWeight(i)));
 		return WeightedList.of(surfs);
 	}
 	
@@ -64,7 +64,7 @@ public interface PointSourceDistanceCorrection {
 				double mag, double horzDist);
 		
 		/**
-		 * This returns a single {@link PointSurface.DistanceCorrected} for the a point surface at the given
+		 * This returns a single {@link PointSurface.SiteSpecificDistanceCorrected} for the a point surface at the given
 		 * location, which is known to be the given horizontal site-source (rEpicenter) distance away. The returned
 		 * surface is unique to the passed in location and has all distances precomputed.
 		 * 
@@ -73,12 +73,12 @@ public interface PointSourceDistanceCorrection {
 		 * @param trt point source tectonic region type
 		 * @param mag the magnitude of the point source rupture for which we're computing distances 
 		 * @param horzDist the horizontal distance in km between the site and the rupture epicenter
-		 * @return {@link PointSurface.DistanceCorrected}
+		 * @return {@link PointSurface.SiteSpecificDistanceCorrected}
 		 */
-		public default PointSurface.DistanceCorrected getCorrectedSurface(Location siteLoc,
+		public default PointSurface.SiteSpecificDistanceCorrected getCorrectedSurface(Location siteLoc,
 				PointSurface surf, TectonicRegionType trt, double mag, double horzDist) {
 			SurfaceDistances dist = getCorrectedDistance(siteLoc, surf, trt, mag, horzDist);
-			return new PointSurface.DistanceCorrected(surf, siteLoc, dist);
+			return new PointSurface.SiteSpecificDistanceCorrected(surf, siteLoc, dist);
 		}
 		
 		/**

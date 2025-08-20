@@ -8,6 +8,7 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.sha.earthquake.PointSource.PoissonPointSourceData;
 import org.opensha.sha.earthquake.PointSource.SiteAdaptivePointSourceData;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
@@ -107,6 +108,11 @@ public class SiteDistanceDependentPoissonPointSourceData implements SiteAdaptive
 	@Override
 	public boolean isDiscrete() {
 		return true;
+	}
+
+	@Override
+	public TectonicRegionType getTectonicRegionType() {
+		return fallbackData.getTectonicRegionType();
 	}
 
 }

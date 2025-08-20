@@ -20,7 +20,7 @@ import org.opensha.sha.earthquake.util.GridCellSuperSamplingPoissonPointSourceDa
 import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.PointSurface;
-import org.opensha.sha.faultSurface.PointSurface.DistanceCorrected;
+import org.opensha.sha.faultSurface.PointSurface.SiteSpecificDistanceCorrected;
 import org.opensha.sha.faultSurface.QuadSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
@@ -158,6 +158,11 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 		 */
 		public Location getHypocenter(Location sourceLoc, RuptureSurface rupSurface, int rupIndex);
 		
+		/**
+		 * @return tectonic regime for this source
+		 */
+		public TectonicRegionType getTectonicRegionType();
+		
 	}
 	
 	/**
@@ -220,19 +225,19 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 
 		public int getNumSurfaces(double magnitude, FocalMechanism mech);
 		
-		public RuptureSurface getSurface(Location sourceLoc, double magnitude, FocalMechanism mech, int surfaceIndex);
+		public RuptureSurface getSurface(Location sourceLoc, double magnitude, TectonicRegionType trt, FocalMechanism mech, int surfaceIndex);
 		
 		public double getSurfaceWeight(double magnitude, FocalMechanism mech, int surfaceIndex);
 		
 		public boolean isSurfaceFinite(double magnitude, FocalMechanism mech, int surfaceIndex);
 		
-		public default WeightedList<RuptureSurface> getSurfaces(Location sourceLoc, double magnitude, FocalMechanism mech) {
+		public default WeightedList<RuptureSurface> getSurfaces(Location sourceLoc, double magnitude, TectonicRegionType trt, FocalMechanism mech) {
 			int num = getNumSurfaces(magnitude, mech);
 			if (num == 1)
-				return WeightedList.evenlyWeighted(getSurface(sourceLoc, magnitude, mech, 0));
+				return WeightedList.evenlyWeighted(getSurface(sourceLoc, magnitude, trt, mech, 0));
 			WeightedList<RuptureSurface> ret = new WeightedList<>(num);
 			for (int i=0; i<num; i++)
-				ret.add(getSurface(sourceLoc, magnitude, mech, i), getSurfaceWeight(magnitude, mech, i));
+				ret.add(getSurface(sourceLoc, magnitude, trt, mech, i), getSurfaceWeight(magnitude, mech, i));
 			Preconditions.checkState(ret.isNormalized(),
 					"Surface weights aren't normalized for mag=%s, mech=%s", magnitude, mech);
 			return ret;
@@ -260,7 +265,7 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 		public int getNumSurfaces(double magnitude, FocalMech mech);
 
 		@Override
-		default RuptureSurface getSurface(Location sourceLoc, double magnitude, FocalMechanism mech, int surfaceIndex) {
+		default RuptureSurface getSurface(Location sourceLoc, double magnitude, TectonicRegionType trt, FocalMechanism mech, int surfaceIndex) {
 			return getSurface(sourceLoc, magnitude, getMatchingEnum(mech), surfaceIndex);
 		}
 		
@@ -419,9 +424,9 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 		
 		private ConcurrentMap<E, BaseImplementation<E>> siteAdaptiveSourceDataCache;
 		
-		public BaseImplementation(Location loc, TectonicRegionType tectonicRegionType,
-				E data, PointSourceDistanceCorrection distCorr, double minMagForDistCorr) {
-			super(loc, tectonicRegionType, distCorr, minMagForDistCorr);
+		public BaseImplementation(Location loc, E data, PointSourceDistanceCorrection distCorr,
+				double minMagForDistCorr) {
+			super(loc, data == null ? TECTONIC_REGION_TYPE_DEFAULT : data.getTectonicRegionType(), distCorr, minMagForDistCorr);
 			setData(data);
 		}
 		
@@ -433,6 +438,7 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 					siteAdaptiveSourceDataCache = new ConcurrentHashMap<>(4);
 				else
 					siteAdaptiveSourceDataCache = null;
+				setTectonicRegionType(data.getTectonicRegionType());
 			} else {
 				numRuptures = 0;
 				siteAdaptiveSourceDataCache = null;
@@ -574,7 +580,7 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 					for (int i=0; i<corrDists.size(); i++) {
 						SurfaceDistances dists = corrDists.getValue(i);
 						double weight = corrDists.getWeight(i);
-						DistanceCorrected corrSurf = ptSurf.getForDistances(siteLoc, dists);
+						SiteSpecificDistanceCorrected corrSurf = ptSurf.getForDistances(siteLoc, dists);
 						Location hypo = data.getHypocenter(sourceLoc, corrSurf, dataIndex);
 						double prob = source.getProbability(dataIndex, weight);
 						ruptures.add(new ProbEqkRupture(mag, rake, prob, corrSurf, hypo));
@@ -656,10 +662,10 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 	
 	public static class NonPoissonPointSource extends BaseImplementation<NonPoissonPointSourceData> {
 
-		public NonPoissonPointSource(Location loc, TectonicRegionType tectonicRegionType,
+		public NonPoissonPointSource(Location loc,
 				NonPoissonPointSourceData data, PointSourceDistanceCorrection distCorr,
 				double minMagForDistCorr) {
-			super(loc, tectonicRegionType, data, distCorr, minMagForDistCorr);
+			super(loc, data, distCorr, minMagForDistCorr);
 			super.isPoissonian = false;
 		}
 
@@ -672,7 +678,7 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 		@Override
 		protected BaseImplementation<NonPoissonPointSourceData> newInstance(
 				NonPoissonPointSourceData data) {
-			return new NonPoissonPointSource(getLocation(), getTectonicRegionType(), data, distCorr, minMagForDistCorr);
+			return new NonPoissonPointSource(getLocation(), data, distCorr, minMagForDistCorr);
 		}
 		
 	}
@@ -681,15 +687,13 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 
 		private double duration;
 
-		public PoissonPointSource(Location loc, TectonicRegionType tectonicRegionType,
-				double duration, PoissonPointSourceData data) {
-			this(loc, tectonicRegionType, duration, data, null, Double.NEGATIVE_INFINITY);
+		public PoissonPointSource(Location loc, double duration, PoissonPointSourceData data) {
+			this(loc, duration, data, null, Double.NEGATIVE_INFINITY);
 		}
 
-		public PoissonPointSource(Location loc, TectonicRegionType tectonicRegionType,
-				double duration, PoissonPointSourceData data,
+		public PoissonPointSource(Location loc, double duration, PoissonPointSourceData data,
 				PointSourceDistanceCorrection distCorr, double minMagForDistCorr) {
-			super(loc, tectonicRegionType, data, distCorr, minMagForDistCorr);
+			super(loc, data, distCorr, minMagForDistCorr);
 			this.duration = duration;
 			super.isPoissonian = true;
 		}
@@ -755,7 +759,7 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 
 		@Override
 		protected BaseImplementation<PoissonPointSourceData> newInstance(PoissonPointSourceData data) {
-			return new PoissonPointSource(getLocation(), getTectonicRegionType(), duration, data, distCorr, minMagForDistCorr);
+			return new PoissonPointSource(getLocation(), duration, data, distCorr, minMagForDistCorr);
 		}
 		
 	}
@@ -764,12 +768,13 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 	 * Builds point source data for the given MFD, {@link FocalMechanism} and {@link RuptureSurfaceBuilder}
 	 * 
 	 * @param loc
+	 * @param trt
 	 * @param mfd
 	 * @param mech
 	 * @param surfaceBuilder
 	 * @return the builder
 	 */
-	public static PoissonPointSourceData dataForMFD(Location loc, IncrementalMagFreqDist mfd, FocalMechanism mech,
+	public static PoissonPointSourceData dataForMFD(Location loc, TectonicRegionType trt, IncrementalMagFreqDist mfd, FocalMechanism mech,
 			RuptureSurfaceBuilder surfaceBuilder) {
 		Set<FocalMechanism> mechs = Set.of(mech);
 		MFDData data = new MFDData() {
@@ -794,19 +799,20 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 				return mfd.getY(index);
 			}
 		};
-		return new MFDPoissonPointSourceData(loc, data, surfaceBuilder);
+		return new MFDPoissonPointSourceData(loc, trt, data, surfaceBuilder);
 	}
 	
 	/**
 	 * Builds point source data for the given MFD, weights, and {@link RuptureSurfaceBuilder}
 	 * 
 	 * @param loc
+	 * @param trt
 	 * @param mfd
 	 * @param weights
 	 * @param surfaceBuilder
 	 * @return the builder
 	 */
-	public static <E> PoissonPointSourceData dataForMFDs(Location loc, IncrementalMagFreqDist mfd,
+	public static <E> PoissonPointSourceData dataForMFDs(Location loc, TectonicRegionType trt, IncrementalMagFreqDist mfd,
 			Map<FocalMechanism, Double> weights, RuptureSurfaceBuilder surfaceBuilder) {
 		double weightSum = 0d;
 		for (FocalMechanism mech : weights.keySet()) {
@@ -838,18 +844,19 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 				return mfd.getY(index) * weights.get(mech);
 			}
 		};
-		return new MFDPoissonPointSourceData(loc, data, surfaceBuilder);
+		return new MFDPoissonPointSourceData(loc, trt, data, surfaceBuilder);
 	}
 	
 	/**
 	 * Builds point source data for the given MFDs and {@link RuptureSurfaceBuilder}
 	 * 
 	 * @param loc
+	 * @param trt
 	 * @param mfds
 	 * @param surfaceBuilder
 	 * @return the builder
 	 */
-	public static <E> PoissonPointSourceData dataForMFDs(Location loc, Map<FocalMechanism, IncrementalMagFreqDist> mfds,
+	public static <E> PoissonPointSourceData dataForMFDs(Location loc, TectonicRegionType trt, Map<FocalMechanism, IncrementalMagFreqDist> mfds,
 			RuptureSurfaceBuilder surfaceBuilder) {
 		MFDData data = new MFDData() {
 
@@ -873,20 +880,21 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 				return mfds.get(mech).getY(index);
 			}
 		};
-		return new MFDPoissonPointSourceData(loc, data, surfaceBuilder);
+		return new MFDPoissonPointSourceData(loc, trt, data, surfaceBuilder);
 	}
 	
 	/**
 	 * Builds point source data for the given MFDs and {@link RuptureSurfaceBuilder}
 	 * 
 	 * @param loc
+	 * @param trt
 	 * @param magnitude
 	 * @param rate
 	 * @param ruptureData
 	 * @param surfaceBuilder
 	 * @return the builder
 	 */
-	public static <E> PoissonPointSourceData dataForMagRate(Location loc, double magnitude, double rate,
+	public static <E> PoissonPointSourceData dataForMagRate(Location loc, TectonicRegionType trt, double magnitude, double rate,
 			FocalMechanism mech, RuptureSurfaceBuilder surfaceBuilder) {
 		Set<FocalMechanism> set = Set.of(mech);
 		MFDData data = new MFDData() {
@@ -911,18 +919,20 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 				return rate;
 			}
 		};
-		return new MFDPoissonPointSourceData(loc, data, surfaceBuilder);
+		return new MFDPoissonPointSourceData(loc, trt, data, surfaceBuilder);
 	}
 	
 	/**
 	 * Builds point source data for the given MFDs and {@link RuptureSurfaceBuilder}
 	 * 
 	 * @param loc
-	 * @param mfds
+	 * @param trt
+	 * @param magnitude
+	 * @param ruptureRates
 	 * @param surfaceBuilder
 	 * @return the builder
 	 */
-	public static <E> PoissonPointSourceData dataForMagRates(Location loc, double magnitude,
+	public static <E> PoissonPointSourceData dataForMagRates(Location loc, TectonicRegionType trt, double magnitude,
 			Map<FocalMechanism, Double> ruptureRates, RuptureSurfaceBuilder surfaceBuilder) {
 		MFDData data = new MFDData() {
 
@@ -946,17 +956,18 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 				return ruptureRates.get(mech);
 			}
 		};
-		return new MFDPoissonPointSourceData(loc, data, surfaceBuilder);
+		return new MFDPoissonPointSourceData(loc, trt, data, surfaceBuilder);
 	}
 	
 	/**
 	 * Builds point source data for the given {@link HypoMagFreqDistAtLoc} and {@link RuptureSurfaceBuilder}
 	 * 
 	 * @param hypoMFDs
+	 * @param trt
 	 * @param surfaceBuilder
 	 * @return the builder
 	 */
-	public static PoissonPointSourceData dataForHypoMFDs(HypoMagFreqDistAtLoc hypoMFDs,
+	public static PoissonPointSourceData dataForHypoMFDs(HypoMagFreqDistAtLoc hypoMFDs, TectonicRegionType trt,
 			RuptureSurfaceBuilder surfaceBuilder) {
 		FocalMechanism[] mechs = hypoMFDs.getFocalMechanismList();
 		IncrementalMagFreqDist[] mfds = hypoMFDs.getMagFreqDistList();
@@ -970,7 +981,7 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 			Preconditions.checkNotNull(mfds[i], "MFD %s is null", i);
 			Preconditions.checkState(map.put(mechs[i], mfds[i]) == null, "Duplicate FocalMechanism encountered at %s", i);
 		}
-		return dataForMFDs(hypoMFDs.getLocation(), map, surfaceBuilder);
+		return dataForMFDs(hypoMFDs.getLocation(), trt, map, surfaceBuilder);
 	}
 	
 	private interface MFDData {
@@ -986,16 +997,18 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 	
 	private static class MFDPoissonPointSourceData implements PoissonPointSourceData {
 
-		private Location loc;
-		private RuptureSurfaceBuilder surfaceBuilder;
+		private final Location loc;
+		private final TectonicRegionType trt;
+		private final RuptureSurfaceBuilder surfaceBuilder;
 		
 		private final double[] magnitudes;
 		private final double[] rates;
 		private final short[] surfIndexes;
 		private final FocalMechanism[] mechs;
 		private final int numRuptures;
-		private MFDPoissonPointSourceData(Location loc, MFDData mfdData, RuptureSurfaceBuilder surfaceBuilder) {
+		private MFDPoissonPointSourceData(Location loc, TectonicRegionType trt, MFDData mfdData, RuptureSurfaceBuilder surfaceBuilder) {
 			this.loc = loc;
+			this.trt = trt;
 			this.surfaceBuilder = surfaceBuilder;
 			int numRups = 0;
 			boolean anyMultiple = false;
@@ -1063,8 +1076,8 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 
 		@Override
 		public RuptureSurface getSurface(int rupIndex) {
-			return surfaceBuilder.getSurface(loc, magnitudes[rupIndex], mechs[rupIndex],
-					surfIndexes == null ? 0 : surfIndexes[rupIndex]);
+			return surfaceBuilder.getSurface(loc, magnitudes[rupIndex], getTectonicRegionType(),
+					mechs[rupIndex], surfIndexes == null ? 0 : surfIndexes[rupIndex]);
 		}
 
 		@Override
@@ -1076,6 +1089,11 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 		public boolean isFinite(int rupIndex) {
 			return surfaceBuilder.isSurfaceFinite(magnitudes[rupIndex], mechs[rupIndex],
 					surfIndexes == null ? 0 : surfIndexes[rupIndex]);
+		}
+
+		@Override
+		public TectonicRegionType getTectonicRegionType() {
+			return trt;
 		}
 	}
 	
@@ -1096,16 +1114,19 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 	
 	private static class RupListNonPoissonPointSourceData implements NonPoissonPointSourceData {
 
-		private Location loc;
-		private List<NonPoissonPointRupture> ruptures;
-		private RuptureSurfaceBuilder surfaceBuilder;
+		private final Location loc;
+		private final TectonicRegionType trt;
+		private final List<NonPoissonPointRupture> ruptures;
+		private final RuptureSurfaceBuilder surfaceBuilder;
 		
 		private final int numRuptures;
 		private final short[] rupIndexes;
 		private final short[] surfIndexes;
 
-		public RupListNonPoissonPointSourceData(Location loc, List<NonPoissonPointRupture> ruptures, RuptureSurfaceBuilder surfaceBuilder) {
+		public RupListNonPoissonPointSourceData(Location loc, TectonicRegionType trt,
+				List<NonPoissonPointRupture> ruptures, RuptureSurfaceBuilder surfaceBuilder) {
 			this.loc = loc;
+			this.trt = trt;
 			this.ruptures = ruptures;
 			this.surfaceBuilder = surfaceBuilder;
 			
@@ -1161,8 +1182,8 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 		@Override
 		public RuptureSurface getSurface(int rupIndex) {
 			NonPoissonPointRupture rupture = ruptures.get(rupIndexes[rupIndex]);
-			return surfaceBuilder.getSurface(loc, rupture.magnitude, rupture.mechanism,
-					surfIndexes == null ? 0 : surfIndexes[rupIndex]);
+			return surfaceBuilder.getSurface(loc, rupture.magnitude, getTectonicRegionType(),
+					rupture.mechanism, surfIndexes == null ? 0 : surfIndexes[rupIndex]);
 		}
 
 		@Override
@@ -1180,6 +1201,11 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 		@Override
 		public double getProbability(int rupIndex) {
 			return ruptures.get(rupIndexes[rupIndex]).probability;
+		}
+
+		@Override
+		public TectonicRegionType getTectonicRegionType() {
+			return trt;
 		}
 		
 	}
@@ -1202,7 +1228,7 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 		}
 
 		@Override
-		public RuptureSurface getSurface(Location loc, double magnitude, FocalMechanism mech, int surfaceIndex) {
+		public RuptureSurface getSurface(Location loc, double magnitude, TectonicRegionType trt, FocalMechanism mech, int surfaceIndex) {
 			loc = new Location(loc.lat, loc.lon, depth);
 			PointSurface surf = new PointSurface(loc);
 			surf.setAveDip(mech.getDip());
@@ -1235,7 +1261,6 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 		protected Location loc;
 		protected RuptureSurfaceBuilder surfaceBuilder;
 		protected E data;
-		protected TectonicRegionType trt = TECTONIC_REGION_TYPE_DEFAULT;
 		protected PointSourceDistanceCorrection distCorr;
 		protected double minMagForDistCorr;
 
@@ -1246,18 +1271,6 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 		 */
 		private AbstractBuilder(Location loc) {
 			this.loc = loc;
-		}
-		
-		/**
-		 * Sets the {@link TectonicRegionType} for this source
-		 * 
-		 * @param trt
-		 * @return the builder
-		 * @see {@link ProbEqkSource#TECTONIC_REGION_TYPE_DEFAULT}
-		 */
-		public B tectonicRegionType(TectonicRegionType trt) {
-			this.trt = trt;
-			return castThis();
 		}
 		
 		@SuppressWarnings("unchecked")
@@ -1320,24 +1333,13 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 	}
 	
 	/**
-	 * Initializes a {@link NonPoissonPointSource} builder for the given location and the default tectonic regime
-	 * ({@link ProbEqkSource#TECTONIC_REGION_TYPE_DEFAULT}).
+	 * Initializes a {@link NonPoissonPointSource} builder for the given location.
 	 * 
 	 * @param loc point source location
 	 * @return builder
 	 */
 	public static NonPoissonBuilder nonPoissonBuilder(Location loc) {
 		return new NonPoissonBuilder(loc);
-	}
-	/**
-	 * Initializes a {@link PoissonPointSource} builder for the given location and tectonic regime
-	 * 
-	 * @param loc point source location
-	 * @param trt tectonic regime
-	 * @return builder
-	 */
-	public static NonPoissonBuilder nonPoissonBuilder(Location loc, TectonicRegionType trt) {
-		return new NonPoissonBuilder(loc).tectonicRegionType(trt);
 	}
 	
 	public static class NonPoissonBuilder extends AbstractBuilder<NonPoissonPointSourceData, NonPoissonBuilder> {
@@ -1359,11 +1361,13 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 		 * @param magnitude
 		 * @param prob
 		 * @param mech
+		 * @param trt
 		 * @return the builder
 		 */
-		public NonPoissonBuilder forMagProbAndFocalMech(double magnitude, double prob, FocalMechanism mech) {
+		public NonPoissonBuilder forMagProbAndFocalMech(double magnitude, double prob, FocalMechanism mech,
+				TectonicRegionType trt) {
 			checkHasSurfBuilder();
-			return data(new RupListNonPoissonPointSourceData(loc,
+			return data(new RupListNonPoissonPointSourceData(loc, trt,
 					List.of(new NonPoissonPointRupture(magnitude, prob, mech)), surfaceBuilder));
 		}
 		
@@ -1375,16 +1379,18 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 		 * @param magnitudes
 		 * @param probs
 		 * @param mechs
+		 * @param trt
 		 * @return the builder
 		 */
-		public NonPoissonBuilder forMagProbAndFocalMech(List<Double> magnitudes, List<Double> probs, List<FocalMechanism> mechs) {
+		public NonPoissonBuilder forMagProbAndFocalMech(List<Double> magnitudes, List<Double> probs,
+				List<FocalMechanism> mechs, TectonicRegionType trt) {
 			checkHasSurfBuilder();
 			Preconditions.checkState(magnitudes.size() == probs.size());
 			Preconditions.checkState(magnitudes.size() == mechs.size());
 			List<NonPoissonPointRupture> rups = new ArrayList<>(magnitudes.size());
 			for (int i=0; i<magnitudes.size(); i++)
 				rups.add(new NonPoissonPointRupture(magnitudes.get(i), probs.get(i), mechs.get(i)));
-			return data(new RupListNonPoissonPointSourceData(loc, rups, surfaceBuilder));
+			return data(new RupListNonPoissonPointSourceData(loc, trt, rups, surfaceBuilder));
 		}
 		
 		/**
@@ -1396,13 +1402,12 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 		public NonPoissonPointSource build() {
 			checkValidLocAndData();
 			
-			return new NonPoissonPointSource(loc, trt, data, distCorr, minMagForDistCorr);
+			return new NonPoissonPointSource(loc, data, distCorr, minMagForDistCorr);
 		}
 	}
 	
 	/**
-	 * Initializes a {@link PoissonPointSource} builder for the given location and the default tectonic regime
-	 * ({@link ProbEqkSource#TECTONIC_REGION_TYPE_DEFAULT}).
+	 * Initializes a {@link PoissonPointSource} builder for the given location.
 	 * 
 	 * <p>The typical flow to build a point source is to give the initial (but updatable) forecast duration via
 	 * {@link PoissonBuilder#duration(double)}, set the distance corrections via {@link PoissonBuilder#distCorr(PointSourceDistanceCorrection, double)},
@@ -1413,16 +1418,6 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 	 */
 	public static PoissonBuilder poissonBuilder(Location loc) {
 		return new PoissonBuilder(loc);
-	}
-	/**
-	 * Initializes a {@link PoissonPointSource} builder for the given location and tectonic regime
-	 * 
-	 * @param loc point source location
-	 * @param trt tectonic regime
-	 * @return builder
-	 */
-	public static PoissonBuilder poissonBuilder(Location loc, TectonicRegionType trt) {
-		return new PoissonBuilder(loc).tectonicRegionType(trt);
 	}
 	
 	public static class PoissonBuilder extends AbstractBuilder<PoissonPointSourceData, PoissonBuilder> {
@@ -1460,9 +1455,9 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 		 * @param mech
 		 * @return the builder
 		 */
-		public PoissonBuilder forMagRateAndFocalMech(double magnitude, double rate, FocalMechanism mech) {
+		public PoissonBuilder forMagRateAndFocalMech(double magnitude, double rate, FocalMechanism mech, TectonicRegionType trt ) {
 			checkHasSurfBuilder();
-			return data(dataForMagRate(loc, magnitude, rate, mech, surfaceBuilder));
+			return data(dataForMagRate(loc, trt, magnitude, rate, mech, surfaceBuilder));
 		}
 		
 		/**
@@ -1474,9 +1469,9 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 		 * @param mech
 		 * @return the builder
 		 */
-		public PoissonBuilder forMFDAndFocalMech(IncrementalMagFreqDist mfd, FocalMechanism mech) {
+		public PoissonBuilder forMFDAndFocalMech(IncrementalMagFreqDist mfd, FocalMechanism mech, TectonicRegionType trt) {
 			checkHasSurfBuilder();
-			return data(dataForMFD(loc, mfd, mech, surfaceBuilder));
+			return data(dataForMFD(loc, trt, mfd, mech, surfaceBuilder));
 		}
 		
 		/**
@@ -1489,9 +1484,9 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 		 * @param surfaceBuilder
 		 * @return the builder
 		 */
-		public <E> PoissonBuilder forMFDsAndFocalMechs(IncrementalMagFreqDist mfd, Map<FocalMechanism, Double> mechWeights) {
+		public <E> PoissonBuilder forMFDsAndFocalMechs(IncrementalMagFreqDist mfd, Map<FocalMechanism, Double> mechWeights, TectonicRegionType trt) {
 			checkHasSurfBuilder();
-			return data(dataForMFDs(loc, mfd, mechWeights, surfaceBuilder));
+			return data(dataForMFDs(loc, trt, mfd, mechWeights, surfaceBuilder));
 		}
 		
 		/**
@@ -1504,9 +1499,9 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 		 * @param surfaceBuilder
 		 * @return the builder
 		 */
-		public <E> PoissonBuilder forMFDsAndFocalMechs(Map<FocalMechanism, IncrementalMagFreqDist> mfds) {
+		public <E> PoissonBuilder forMFDsAndFocalMechs(Map<FocalMechanism, IncrementalMagFreqDist> mfds, TectonicRegionType trt) {
 			checkHasSurfBuilder();
-			return data(dataForMFDs(loc, mfds, surfaceBuilder));
+			return data(dataForMFDs(loc, trt, mfds, surfaceBuilder));
 		}
 		
 		/**
@@ -1577,7 +1572,7 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 			
 			Preconditions.checkState(Double.isFinite(duration) && duration > 0d, "Must set duration");
 			
-			return new PoissonPointSource(loc, trt, duration, data, distCorr, minMagForDistCorr);
+			return new PoissonPointSource(loc, duration, data, distCorr, minMagForDistCorr);
 		}
 	}
 

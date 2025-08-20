@@ -52,6 +52,11 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	final static double SEIS_DEPTH = GriddedSurfaceUtils.SEIS_DEPTH;   // minimum depth for Campbell model
 	
 	/*
+	 * Distance correction (defaults to null)
+	 */
+	private PointSourceDistanceCorrection distCorr;
+	
+	/*
 	 * Finite approximation parameters.
 	 * 
 	 * Although this is a point surface, it may have values set that contain information on its finite extend. These are
@@ -106,11 +111,11 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	protected String name;
 
 	/**
-	 *  Constructor for the PointSurface object. Sets all the fields for a true point source.
+	 * Constructor for the PointSurface object. Sets all the fields for a true point source.
 	 *
 	 * @param  loc    the Location object for this point source.
 	 */
-	public PointSurface( Location loc ) {
+	public PointSurface(Location loc) {
 		this(loc, Double.NaN, loc.depth, loc.depth, 0d);
 	}
 	
@@ -137,6 +142,7 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	
 	protected PointSurface(PointSurface other) {
 		this.pointLocation = other.pointLocation;
+		this.distCorr = other.distCorr;
 		this.aveStrike = other.aveStrike;
 		this.aveDip = other.aveDip;
 		this.aveWidth = other.aveWidth;
@@ -156,11 +162,11 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	 * @return distance-corrected view of this surface with distances pre-computed for the specified location and single
 	 * distance correction
 	 */
-	public DistanceCorrected getForDistanceCorrection(Location siteLoc,
+	public SiteSpecificDistanceCorrected getForDistanceCorrection(Location siteLoc,
 			PointSourceDistanceCorrection.Single singleCorr, TectonicRegionType trt, double magnitude) {
 		double horzDist = LocationUtils.horzDistanceFast(pointLocation, siteLoc);
 		SurfaceDistances corrDists = singleCorr.getCorrectedDistance(siteLoc, this, trt, magnitude, horzDist);
-		return new DistanceCorrected(this, siteLoc, corrDists);
+		return new SiteSpecificDistanceCorrected(this, siteLoc, corrDists);
 	}
 	
 	/**
@@ -170,8 +176,8 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	 * @return distance-corrected view of this surfaces with distances to the given location already passed in, likely
 	 * from a {@link PointSourceDistanceCorrection}
 	 */
-	public DistanceCorrected getForDistances(Location siteLoc, SurfaceDistances siteDistances) {
-		return new DistanceCorrected(this, siteLoc, siteDistances);
+	public SiteSpecificDistanceCorrected getForDistances(Location siteLoc, SurfaceDistances siteDistances) {
+		return new SiteSpecificDistanceCorrected(this, siteLoc, siteDistances);
 	}
 	
 	/**
@@ -195,19 +201,36 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	 * @return weighted list of distance-corrected views of this surface with distances pre-computed for the specified
 	 * location and distance correction
 	 */
-	public WeightedList<DistanceCorrected> getForDistanceCorrection(Location siteLoc,
+	public WeightedList<SiteSpecificDistanceCorrected> getForDistanceCorrection(Location siteLoc,
 			PointSourceDistanceCorrection distCorr, TectonicRegionType trt, double magnitude) {
 		double horzDist = LocationUtils.horzDistanceFast(pointLocation, siteLoc);
 		WeightedList<SurfaceDistances> corrDists = distCorr.getCorrectedDistances(siteLoc, this, trt, magnitude, horzDist);
 		Preconditions.checkState(corrDists.isNormalized(), "Returned corrected distances aren't normalized for %s", distCorr);
-		List<WeightedValue<DistanceCorrected>> surfs = new ArrayList<>(corrDists.size());
+		List<WeightedValue<SiteSpecificDistanceCorrected>> surfs = new ArrayList<>(corrDists.size());
 		for (int i=0; i<corrDists.size(); i++) {
 			SurfaceDistances dists = corrDists.getValue(i);
 			double weight = corrDists.getWeight(i);
-			surfs.add(new WeightedValue<DistanceCorrected>(
-					new DistanceCorrected(this, siteLoc, dists), weight));
+			surfs.add(new WeightedValue<SiteSpecificDistanceCorrected>(
+					new SiteSpecificDistanceCorrected(this, siteLoc, dists), weight));
 		}
 		return WeightedList.of(surfs);
+	}
+	
+	/**
+	 * 
+	 * @param siteLoc
+	 * @param distCorr
+	 * @param trt
+	 * @param magnitude
+	 * @return weighted list of distance-corrected views of this surface with distances pre-computed for the specified
+	 * location and distance correction
+	 */
+	public WeightedList<SurfaceDistances> getCorrectedDistances(Location siteLoc,
+			PointSourceDistanceCorrection distCorr, TectonicRegionType trt, double magnitude) {
+		double horzDist = LocationUtils.horzDistanceFast(pointLocation, siteLoc);
+		WeightedList<SurfaceDistances> corrDists = distCorr.getCorrectedDistances(siteLoc, this, trt, magnitude, horzDist);
+		Preconditions.checkState(corrDists.isNormalized(), "Returned corrected distances aren't normalized for %s", distCorr);
+		return corrDists;
 	}
 	
 	/**
@@ -215,8 +238,8 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	 * @return a version of this source that blocks access to all distance metrics, used to ensure that raw distances
 	 * are never used when distance corrections are enabled
 	 */
-	public DistanceProtected getDistancedProtected(PointSourceDistanceCorrection corr, TectonicRegionType trt, double magnitude) {
-		return new DistanceProtected(this, corr, trt, magnitude);
+	public DistanceCorrectable getDistancedProtected(PointSourceDistanceCorrection corr, TectonicRegionType trt, double magnitude) {
+		return new DistanceCorrectable(this, corr, trt, magnitude);
 	}
 
 	/**
@@ -564,12 +587,12 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	 * Point surface wrapper with pre-computed {@link SurfaceDistances} for a specific site, usually from a
 	 * {@link PointSourceDistanceCorrection}
 	 */
-	public static class DistanceCorrected extends PointSurface {
+	public static class SiteSpecificDistanceCorrected extends PointSurface {
 		
 		private Location siteLoc;
 		private SurfaceDistances surfDists;
 
-		public DistanceCorrected(PointSurface surf, Location siteLoc, SurfaceDistances surfDists) {
+		public SiteSpecificDistanceCorrected(PointSurface surf, Location siteLoc, SurfaceDistances surfDists) {
 			super(surf);
 			Preconditions.checkNotNull(siteLoc);
 			Preconditions.checkNotNull(surfDists);
@@ -604,11 +627,28 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 
 	}
 	
+	public interface DistanceCorrectionAttached extends RuptureSurface {
+		/**
+		 * @return magnitude used with {@link #getDistanceCorrection()}
+		 */
+		public double getMagnitude();
+		
+		/**
+		 * @return tectonic region type used with {@link #getDistanceCorrection()}
+		 */
+		public TectonicRegionType getTectonicRegionType();
+		
+		/**
+		 * @return the point-source distance correction to be applied to this point surface
+		 */
+		public PointSourceDistanceCorrection getDistanceCorrection();
+	}
+	
 	/**
 	 * Point surface wrapper with that calculates corrected distances on the fly from a
 	 * {@link PointSourceDistanceCorrection.Single} correction.
 	 */
-	public static class DistanceCorrecting extends PointSurface implements CacheEnabledSurface {
+	public static class DistanceCorrecting extends PointSurface implements DistanceCorrectionAttached,CacheEnabledSurface {
 		
 		private SingleLocDistanceCache cache;
 		private PointSourceDistanceCorrection.Single corr;
@@ -655,6 +695,21 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 			cache.clearCache();
 		}
 
+		@Override
+		public double getMagnitude() {
+			return magnitude;
+		}
+
+		@Override
+		public TectonicRegionType getTectonicRegionType() {
+			return trt;
+		}
+
+		@Override
+		public PointSourceDistanceCorrection.Single getDistanceCorrection() {
+			return corr;
+		}
+
 	}
 	
 	/**
@@ -662,7 +717,7 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	 * classes from accidentally accessing non-corrected distance metrics. Instead, an {@link IllegalStateException} will
 	 * be thrown.
 	 */
-	public static class DistanceProtected extends PointSurface {
+	public static class DistanceCorrectable extends PointSurface implements DistanceCorrectionAttached {
 		
 		private static final String MESSAGE = "This PointSurface has a distance correction attached and should not be "
 				+ "used direction; insatead, you can access corrected instances via getCorrectedSurfaces(Location). "
@@ -671,13 +726,12 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 				+ "getUncorrectedDistanceRup(Location).";
 		
 		private PointSurface surf;
+		
 		private PointSourceDistanceCorrection corr;
-
 		private TectonicRegionType trt;
-
 		private double magnitude;
 
-		public DistanceProtected(PointSurface surf, PointSourceDistanceCorrection corr, TectonicRegionType trt, double magnitude) {
+		public DistanceCorrectable(PointSurface surf, PointSourceDistanceCorrection corr, TectonicRegionType trt, double magnitude) {
 			super(surf);
 			this.surf = surf;
 			this.corr = corr;
@@ -721,12 +775,27 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 			return surf;
 		}
 		
-		public PointSourceDistanceCorrection getDistanceCorrection() {
-			return corr;
+		public WeightedList<SiteSpecificDistanceCorrected> getCorrectedSurfaces(Location siteLoc) {
+			return getForDistanceCorrection(siteLoc, corr, trt, magnitude);
 		}
 		
-		public WeightedList<DistanceCorrected> getCorrectedSurfaces(Location siteLoc) {
-			return getForDistanceCorrection(siteLoc, corr, trt, magnitude);
+		public WeightedList<SurfaceDistances> getCorrectedDistances(Location siteLoc) {
+			return getCorrectedDistances(siteLoc, corr, trt, magnitude);
+		}
+
+		@Override
+		public double getMagnitude() {
+			return magnitude;
+		}
+
+		@Override
+		public TectonicRegionType getTectonicRegionType() {
+			return trt;
+		}
+
+		@Override
+		public PointSourceDistanceCorrection getDistanceCorrection() {
+			return corr;
 		}
 
 	}

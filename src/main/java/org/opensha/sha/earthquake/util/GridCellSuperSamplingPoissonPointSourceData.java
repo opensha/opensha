@@ -18,6 +18,7 @@ import org.opensha.sha.earthquake.PointSource.PoissonPointSourceData;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
@@ -335,6 +336,11 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 				nodeLoc = new Location(nodeLoc.lat, nodeLoc.lon, hypo.depth);
 			return nodeLoc;
 		}
+
+		@Override
+		public TectonicRegionType getTectonicRegionType() {
+			return data.getTectonicRegionType();
+		}
 		
 	}
 	
@@ -384,6 +390,11 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 			@Override
 			public double getAveRake(int rupIndex) {
 				return 0;
+			}
+
+			@Override
+			public TectonicRegionType getTectonicRegionType() {
+				return TectonicRegionType.ACTIVE_SHALLOW;
 			}
 		};
 		GridCellSuperSamplingPoissonPointSourceData sampler = new GridCellSuperSamplingPoissonPointSourceData(

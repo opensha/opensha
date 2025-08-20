@@ -15,6 +15,8 @@ import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.WeightedValue;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.util.interp.DistanceInterpolator;
+import org.opensha.commons.util.interp.DistanceInterpolator.QuickInterpolator;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances.Precomputed;
@@ -25,14 +27,6 @@ import com.google.common.base.Preconditions;
 
 public class DistanceDistributionCorrection implements PointSourceDistanceCorrection {
 	
-	// for rEpi below this, we'll just interpolate linearly between the value at this value and the value at rEpi=0 
-	static final double MIN_NONZERO_DIST = 0.1;
-	// initial max rEpi to calculate for; will go out further if/as needed
-	static final double INITIAL_MAX_DIST = 300d;
-	// we cache at fixed rEpis, spaced with this discretization (in log10 units)
-//	static final double LOG_DIST_SAMPLE_DISCR = 0.05d;
-	static final double LOG_DIST_SAMPLE_DISCR = 0.02d;
-//	static final double LOG_DIST_SAMPLE_DISCR = 0.01d;
 	// true means there's always a sample exactly pointing at the site
 	// number of angle samples
 	static final int NUM_ALPHA_SAMPLES = 360; // must be divisible by 4 for quadrant optimizations
@@ -41,16 +35,13 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 	// if we're sampling down-dip, the number of said samples
 	static final int NUM_SAMPLES_DOWN_DIP = 5;
 	
+	private final DistanceInterpolator interp = DistanceInterpolator.get();
+	
 	private final WeightedList<FractileBin> fractiles;
 	private final boolean sampleAlong;
 	private final boolean sampleDownDip;
-	
-	private double maxDistBin = -1;
-	private double[] linearDistBins;
-	private EvenlyDiscretizedFunc logDistBins;
 
 	private final ConcurrentMap<RuptureKey, CachedFractileDistanceFuncs> valueFuncs = new ConcurrentHashMap<>();
-	private final ConcurrentMap<RuptureKey, FractileDistances> zeroDistValues = new ConcurrentHashMap<>();
 	
 	private boolean cache = true;
 	
@@ -170,9 +161,6 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 			samplesDownDip = buildSpacedSamples(0d, 1d, NUM_SAMPLES_DOWN_DIP, false);
 		else
 			samplesDownDip = new double[] {0.5};
-		
-		if (cache)
-			initLogDistBins(INITIAL_MAX_DIST);
 	}
 
 	@Override
@@ -418,123 +406,24 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 		}
 	}
 	
-	private synchronized void initLogDistBins(double maxDist) {
-		if (maxDist > maxDistBin) {
-			Preconditions.checkState(maxDist > MIN_NONZERO_DIST);
-			double logMaxDist = Math.log10(maxDist);
-			double logMinDist = Math.log10(MIN_NONZERO_DIST);
-			int numAway = (int)Math.ceil((logMaxDist-logMinDist)/LOG_DIST_SAMPLE_DISCR);
-			EvenlyDiscretizedFunc logDistBins = new EvenlyDiscretizedFunc(logMinDist, numAway+1, LOG_DIST_SAMPLE_DISCR);
-			Preconditions.checkState((float)logDistBins.getMaxX() >= (float)logMaxDist,
-					"logDistBins.getMaxX()=%s but logMaxDist=%s", (float)logDistBins.getMaxX(), (float)logMaxDist);
-			double[] linearDistBins = new double[logDistBins.size()];
-			for (int i=0; i<linearDistBins.length; i++)
-				linearDistBins[i] = Math.pow(10, logDistBins.getX(i));
-			if (this.logDistBins != null) {
-				int prevMaxIndex = this.logDistBins.size()-1;
-				double prevMaxLogValue = this.logDistBins.getX(prevMaxIndex);
-				double prevMaxLinearValue = this.linearDistBins[prevMaxIndex];
-				double ourLogValue = logDistBins.getX(prevMaxIndex);
-				double ourLinearValue = linearDistBins[prevMaxIndex];
-				Preconditions.checkState(Precision.equals(prevMaxLogValue, ourLogValue),
-						"Binning changed? log prev[%s]=%s, our[%s]=%s, expanded to %s",
-						prevMaxIndex, prevMaxLogValue, prevMaxIndex, ourLogValue, logDistBins.size());
-				Preconditions.checkState(Precision.equals(prevMaxLinearValue, ourLinearValue),
-						"Binning changed? linear prev[%s]=%s, our[%s]=%s, expanded to %s",
-						prevMaxIndex, prevMaxLinearValue, prevMaxIndex, ourLinearValue, logDistBins.size());
-			}
-			this.logDistBins = logDistBins;
-			this.linearDistBins = linearDistBins;
-			maxDistBin = linearDistBins[linearDistBins.length-1];
-		}
-	}
-	
 	public FractileDistances getFractileDistances(PointSurface surf, double horzDist) {
 		RuptureKey rupKey = new RuptureKey(surf);
-		if (horzDist == 0d) {
-			// zero distance
-			return getFractileDistances(rupKey, -1);
+		QuickInterpolator qi = interp.getQuickInterpolator(horzDist, false);
+		if (qi.isDiscrete()) {
+			// no interpolation required
+			return getFractileDistances(rupKey, qi.getIndex1());
 		}
-		FractileDistances below, above;
-		// need to interpolate
-		// y = y1 + (x - x1) * (y2 - y1) / (x2 - x1)
-		// let delta = (x - x1) / (x2 - x1)
-		// y = y1 + delta * (y2-y1)
-		double delta; // x - x1 / (x2 - x1)
-		if (horzDist < MIN_NONZERO_DIST) {
-			// interpolate from zero
-			below = getFractileDistances(rupKey, -1);
-			above = getFractileDistances(rupKey, 0);
-			// x1 = 0, x2 = horzDist
-			// delta simplifies to:
-			delta = horzDist / MIN_NONZERO_DIST;
-			Preconditions.checkState(delta > 0, "bad delta=%s for horzDist=%s, MIN_NONZERO_DIST=%s", delta, horzDist, MIN_NONZERO_DIST);
-		} else {
-//			System.out.println("Initial maxDistBin="+maxDistBin);
-			if (horzDist > maxDistBin)
-				initLogDistBins(horzDist);
-			double logDist = Math.log10(horzDist);
-			int indexBelow = logDistBins.getClosestXIndex(logDist);
-			double valAtClosest = logDistBins.getX(indexBelow);
-			if (Precision.equals(logDist, valAtClosest)) {
-				return getFractileDistances(rupKey, indexBelow);
-			} else if (valAtClosest > logDist) {
-				Preconditions.checkState(indexBelow > 0);
-				
-				double valBelow = logDistBins.getX(indexBelow-1);
-				Preconditions.checkState(valBelow < logDist, "closest was logDistBins[%s]=%s > logDist=%s; moved down "
-						+ "to logDistBins[%s]=%s and still above?",
-						indexBelow, valAtClosest, logDist, indexBelow-1, valBelow);
-				
-				indexBelow--;
-			}
-//			System.out.println("indexBelow="+indexBelow+" for horzDist="+horzDist+" and logHorzDist="+logDist
-//					+" and maxDistBin="+maxDistBin+" and valAtClosest="+valAtClosest);
-			below = getFractileDistances(rupKey, indexBelow);
-			above = getFractileDistances(rupKey, indexBelow+1);
-			
-			double x1 = linearDistBins[indexBelow];
-			double x2 = linearDistBins[indexBelow+1];
-			delta = (horzDist - x1) / (x2 - x1);
-
-
-		}
-		PrecomputedComparableDistances[] hwDists = interpolateFractileDists(below.hangingWallDists, above.hangingWallDists, delta);
-		PrecomputedComparableDistances[] fwDists = interpolateFractileDists(below.footwallDists, above.footwallDists, delta);
-		double fractFW = deltaInterp(delta, below.fractFootwall, above.fractFootwall);
-		return new FractileDistances(fwDists, hwDists, fractFW);
-	}
-	private static double deltaInterp(double delta, double y1, double y2) {
-		if (y1 == 0d && y2 == 0d)
-			return 0d;
-		double ret = y1 + delta * (y2-y1);
+		FractileDistances below = getFractileDistances(rupKey, qi.getIndex1());
+		FractileDistances above = getFractileDistances(rupKey, qi.getIndex1()+1);
 		
-		// test for sign errors, which can happen very close to zero
-		if (ret < 0.1 && ret > -0.1) {
-			boolean sign1, sign2;
-			if (y1 != 0) {
-				sign1 = y1 >= 0;
-				sign2 = y2 == 0 ? sign1 : y2 >= 0;
-			} else {
-				// y2 != 0
-				sign2 = y2 >= 0;
-				sign1 = y1 == 0  ? sign2 : y1 >= 0;
-			}
-			boolean signRet = ret >= 0;
-			if (sign1 == sign2 && sign1 != signRet) {
-				// this interpolation method can flip signs around zero by a tiny tiny amount
-				// both input were the same sign, we're not; make sure we're effectively zero
-				Preconditions.checkState(ret < 1e-10 && ret > -1e-10,
-						"interp=%s sign flip for y1=%s, y2=%s, delta=%s", ret, y1, y2, delta);
-				// force to zero
-				ret = 0;
-			}
-		}
-		return ret;
+		PrecomputedComparableDistances[] hwDists = interpolateFractileDists(below.hangingWallDists, above.hangingWallDists, qi);
+		PrecomputedComparableDistances[] fwDists = interpolateFractileDists(below.footwallDists, above.footwallDists, qi);
+		double fractFW = qi.interpolate(below.fractFootwall, above.fractFootwall);
+		return new FractileDistances(fwDists, hwDists, fractFW);
 	}
 	
 	private static PrecomputedComparableDistances[] interpolateFractileDists(PrecomputedComparableDistances[] below,
-			PrecomputedComparableDistances[] above, double delta) {
+			PrecomputedComparableDistances[] above, QuickInterpolator qi) {
 		if (below == null && above == null)
 			return null;
 		else if (below == null)
@@ -543,11 +432,10 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 			return below;
 		PrecomputedComparableDistances[] ret = new PrecomputedComparableDistances[below.length];
 		for (int f=0; f<ret.length; f++) {
-			// if either is null, treat that rJB as zero
 			ret[f] = new PrecomputedComparableDistances(
-					deltaInterp(delta, below[f].getDistanceRup(), above[f].getDistanceRup()),
-					deltaInterp(delta, below[f].getDistanceJB(), above[f].getDistanceJB()),
-					deltaInterp(delta, below[f].getDistanceX(), above[f].getDistanceX()));
+					qi.interpolate(below[f].getDistanceRup(), above[f].getDistanceRup()),
+					qi.interpolate(below[f].getDistanceJB(), above[f].getDistanceJB()),
+					qi.interpolate(below[f].getDistanceX(), above[f].getDistanceX()));
 		}
 		return ret;
 	}
@@ -557,25 +445,12 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 		
 		private FractileDistances[] dists;
 		
-		public CachedFractileDistanceFuncs(RuptureKey rupKey, int numInitialBins) {
+		public CachedFractileDistanceFuncs(RuptureKey rupKey, int numBins) {
 			this.rupKey = rupKey;
-			this.dists = new FractileDistances[numInitialBins];
-		}
-		
-		public boolean needsToGrow(int distBinIndex) {
-			return distBinIndex >= dists.length;
-		}
-		
-		public synchronized void grow(int newSize) {
-			if (newSize <= dists.length)
-				// already grown in another thread
-				return;
-			dists = Arrays.copyOf(dists, newSize);
+			this.dists = new FractileDistances[numBins];
 		}
 		
 		public FractileDistances get(int distBinIndex) {
-			if (distBinIndex >= dists.length)
-				return null;
 			return dists[distBinIndex];
 		}
 		
@@ -586,48 +461,30 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 	
 	private FractileDistances getFractileDistances(RuptureKey rupKey, int distBinIndex) {
 		// first see if cached
-		if (distBinIndex == -1) {
-			// zero distance
-			FractileDistances ret = zeroDistValues.get(rupKey);
-			if (ret == null) {
-				ret = calcFractileDistances(rupKey, distBinIndex);
-				zeroDistValues.put(rupKey, ret);
-			}
-			return ret;
-		} else {
-			EvenlyDiscretizedFunc logDistBins = this.logDistBins;
-			Preconditions.checkState(distBinIndex < logDistBins.size(),
-					"should have already grown distance binning for index %s, have %s", distBinIndex, logDistBins.size());
-			
-			CachedFractileDistanceFuncs cachedFuncs = valueFuncs.get(rupKey);
-			
-			if (cachedFuncs == null) {
-				valueFuncs.putIfAbsent(rupKey, new CachedFractileDistanceFuncs(rupKey, logDistBins.size()));
-				cachedFuncs = valueFuncs.get(rupKey);
-				Preconditions.checkNotNull(cachedFuncs);
-			}
-			
-			FractileDistances ret = cachedFuncs.get(distBinIndex);
-			if (ret != null)
-				// already have it
-				return ret;
-			
-			if (cachedFuncs.needsToGrow(distBinIndex))
-				// grow it
-				cachedFuncs.grow(logDistBins.size());
-			
-			// need to calculate it
-			ret = calcFractileDistances(rupKey, distBinIndex);
-			
-			// cache it
-			cachedFuncs.put(distBinIndex, ret);
-			
-			return ret;
+		CachedFractileDistanceFuncs cachedFuncs = valueFuncs.get(rupKey);
+		
+		if (cachedFuncs == null) {
+			valueFuncs.putIfAbsent(rupKey, new CachedFractileDistanceFuncs(rupKey, interp.size()));
+			cachedFuncs = valueFuncs.get(rupKey);
+			Preconditions.checkNotNull(cachedFuncs);
 		}
+		
+		FractileDistances ret = cachedFuncs.get(distBinIndex);
+		if (ret != null)
+			// already have it
+			return ret;
+		
+		// need to calculate it
+		ret = calcFractileDistances(rupKey, distBinIndex);
+		
+		// cache it
+		cachedFuncs.put(distBinIndex, ret);
+		
+		return ret;
 	}
 	
 	private FractileDistances calcFractileDistances(RuptureKey rupKey, int distBinIndex) {
-		return calcFractileDistances(rupKey, distBinIndex == -1 ? 0d : linearDistBins[distBinIndex]);
+		return calcFractileDistances(rupKey, interp.getDistance(distBinIndex));
 	}
 	
 	private FractileDistances calcFractileDistances(RuptureKey rupKey, double rEpi) {
