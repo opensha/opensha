@@ -224,7 +224,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 			DiscretizedFunc hazFunction,
 			Site site,
 			Map<TectonicRegionType, ScalarIMR> imrMap, 
-			ERF eqkRupForecast){
+			ERF eqkRupForecast) {
 		//	  System.out.println("Haz Curv Calc: maxDistanceParam.getValue()="+maxDistanceParam.getValue().toString());
 		//	  System.out.println("Haz Curv Calc: numStochEventSetRealizationsParam.getValue()="+numStochEventSetRealizationsParam.getValue().toString());
 		//	  System.out.println("Haz Curv Calc: includeMagDistFilterParam.getValue()="+includeMagDistFilterParam.getValue().toString());
@@ -412,14 +412,6 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 					System.err.flush();
 					//System.err.println("RupM: "+source.getRupture(n).getMag());
 					ExceptionUtils.throwAsRuntimeException(t);
-				} finally {
-					// clear the rupture so that no stale data remain
-					
-					// this can be important for distance-corrected point surfaces, which will check to make sure that
-					// any distance calls use the same location; if we didn't clear it, then later changed the site,
-					// the IMR might try to call the distance methods automatically on the stale rupture leading to an
-					// exception.
-					imr.setEqkRupture(null);
 				}
 			}
 			if (numRuptures < origNumRuptures)
