@@ -96,9 +96,9 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 		siteERFPanel.add(erfGuiBean);
 		
 		tabbedPane = new JTabbedPane();
-		
+
+        tabbedPane.addTab("IMRs/IMTs", imPanel);
 		tabbedPane.addTab("Sites/ERF", siteERFPanel);
-		tabbedPane.addTab("IMRs/IMTs", imPanel);
 		tabbedPane.addTab("Site Data Providers", dataBean);
 		
 		JPanel mainPanel = new JPanel(new BorderLayout());
