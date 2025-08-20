@@ -12,6 +12,7 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalSeismicityRate;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SeismicityRateEpoch;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionCaribbeanSeismicityRate;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionMuertosSeismicityRate;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
@@ -57,6 +58,8 @@ public class SeismicityRateFileLoader {
 			this.quantile = quantile;
 			this.mean = mean;
 		}
+		
+		public abstract RateRecord getScaled(double scalar);
 	}
 	
 	public static class PureGR extends RateRecord {
@@ -74,6 +77,11 @@ public class SeismicityRateFileLoader {
 			return "PureGR [M1="+(float)M1+", Mmax="+(float)Mmax+", rateAboveM1="+(float)rateAboveM1
 					+", b="+(float)b+", quantile="+(float)quantile+ ", mean="+mean+"]";
 		}
+
+		@Override
+		public PureGR getScaled(double scalar) {
+			return new PureGR(type, M1, Mmax, rateAboveM1*scalar, b, quantile, mean);
+		}
 	}
 	
 	public static class Exact extends RateRecord {
@@ -83,20 +91,37 @@ public class SeismicityRateFileLoader {
 			super(RateType.EXACT, M1, cumulativeDist.getY(cumulativeDist.getClosestXIndex(M1)), quantile, mean);
 			this.cumulativeDist = cumulativeDist;
 		}
+
+		@Override
+		public Exact getScaled(double scalar) {
+			EvenlyDiscretizedFunc scaledDist = cumulativeDist.deepClone();
+			scaledDist.scale(scalar);
+			return new Exact(M1, scaledDist, quantile, mean);
+		}
 	}
 	
 	public static class Direct extends RateRecord {
 		public final EvenlyDiscretizedFunc incrementalDist;
 		public final EvenlyDiscretizedFunc cumulativeDist;
-		public final double maxObsIncrMag, maxObsCmlMag;
+		public final double maxObsIncrMag, maxObsCmlMag, nObs;
 		
 		private Direct(double M1, EvenlyDiscretizedFunc incrementalDist, EvenlyDiscretizedFunc cumulativeDist,
-				double maxObsIncrMag, double maxObsCmlMag, double quantile, boolean mean) {
+				double maxObsIncrMag, double maxObsCmlMag, double nObs, double quantile, boolean mean) {
 			super(RateType.DIRECT, M1, cumulativeDist.getY(cumulativeDist.getClosestXIndex(M1)), quantile, mean);
 			this.incrementalDist = incrementalDist;
 			this.cumulativeDist = cumulativeDist;
 			this.maxObsIncrMag = maxObsIncrMag;
 			this.maxObsCmlMag = maxObsCmlMag;
+			this.nObs = nObs;
+		}
+
+		@Override
+		public Direct getScaled(double scalar) {
+			EvenlyDiscretizedFunc scaledIncr = incrementalDist.deepClone();
+			EvenlyDiscretizedFunc scaledCml = cumulativeDist.deepClone();
+			scaledIncr.scale(scalar);
+			scaledCml.scale(scalar);
+			return new Direct(M1, scaledIncr, scaledCml, maxObsIncrMag, maxObsCmlMag, nObs*scalar, quantile, mean);
 		}
 	}
 	
@@ -410,6 +435,7 @@ public class SeismicityRateFileLoader {
 	public static List<Direct> loadDirectBranches(CSVFile<String> csv) {
 		String M1_FIELD_NAME = "minmag:"; // different for this file
 		Double M1 = null;
+		Double duration = null;
 		Integer nQuantiles = null;
 		Integer nMagnitudes = null;
 		
@@ -418,6 +444,8 @@ public class SeismicityRateFileLoader {
 			if (col1 == null || col1.isBlank())
 				continue;
 			col1 = col1.trim();
+			if (duration == null && col1.equalsIgnoreCase("duration:"))
+				duration = csv.getDouble(row, 1);
 			if (M1 == null && col1.equals(M1_FIELD_NAME))
 				M1 = csv.getDouble(row, 1);
 			if (col1.equals(N_QUANTILES_FIELD_NAME)) {
@@ -448,15 +476,18 @@ public class SeismicityRateFileLoader {
 				}
 				double maxObsIncrMag = 0d;
 				double maxObsCmlMag = 0d;
+				double nObs0 = Double.NaN;
 				for (int m=0; m<nMagnitudes; m++) {
 					Preconditions.checkState(row<csv.getNumRows(), "Ran out of rows befor reaching nMagnitudes=%s", nMagnitudes);
 					double mag = cmlFuncs[0].getX(m);
 					double csvMag = csv.getDouble(row, 0);
 					Preconditions.checkState((float)mag == (float)csvMag, "Expected m=%s at index %s, have %s", mag, m, csvMag);
-					int cmlObs = csv.getInt(row, 1);
+					double cmlObs = csv.getDouble(row, 1);
+					if (m == 0)
+						nObs0 = cmlObs;
 					if (cmlObs > 0)
 						maxObsCmlMag = mag;
-					int incrObs = csv.getInt(row, 2+nQuantiles);
+					double incrObs = csv.getDouble(row, 2+nQuantiles);
 					if (incrObs > 0)
 						maxObsIncrMag = mag;
 					for (int n=0; n<nQuantiles; n++) {
@@ -470,7 +501,7 @@ public class SeismicityRateFileLoader {
 				List<Direct> ret = new ArrayList<>(nQuantiles);
 				for (int n=0; n<nQuantiles; n++) {
 					boolean mean = (float)quantiles[n] == (float)MEAN_QUANT_FLAG;
-					ret.add(new Direct(M1, incrFuncs[n], cmlFuncs[n], maxObsIncrMag, maxObsCmlMag,
+					ret.add(new Direct(M1, incrFuncs[n], cmlFuncs[n], maxObsIncrMag, maxObsCmlMag, nObs0,
 							mean ? Double.NaN : quantiles[n], mean));
 				}
 				return ret;
@@ -555,6 +586,7 @@ public class SeismicityRateFileLoader {
 //		System.out.println("\tExact G-R: "+(float)exact.getCumRateDistWithOffset().getY(5d)+"\t(expected "+(float)meanExact.rateAboveM1+")");
 		
 		String directPrefix = "/data/erf/prvi25/seismicity/rates/directrates_2025_05_08/directrates-PRVI ";
+		PRVI25_SeismicityRateEpoch epoch = PRVI25_SeismicityRateEpoch.DEFAULT;
 		for (boolean m5 : new boolean[] {true,false}) {
 			String yearSuffix = m5 ? "-Full-1973-2024.csv" : "-Full-1900-2024.csv";
 			CSVFile<String> outCSV = new CSVFile<>(false);
@@ -572,24 +604,24 @@ public class SeismicityRateFileLoader {
 			List<SeismicityRateModel> grRateModels = new ArrayList<>();
 			
 			names.add("Crustal");
-			rateModels.add(PRVI25_CrustalSeismicityRate.loadRateModel(RateType.EXACT));
-			grRateModels.add(PRVI25_CrustalSeismicityRate.loadRateModel(RateType.M1_TO_MMAX));
+			rateModels.add(PRVI25_CrustalSeismicityRate.loadRateModel(epoch, RateType.EXACT));
+			grRateModels.add(PRVI25_CrustalSeismicityRate.loadRateModel(epoch, RateType.M1_TO_MMAX));
 			
 			names.add("CAR Intraslab");
-			rateModels.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(RateType.EXACT, true));
-			grRateModels.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(RateType.M1_TO_MMAX, true));
+			rateModels.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(epoch, RateType.EXACT, true));
+			grRateModels.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(epoch, RateType.M1_TO_MMAX, true));
 			
 			names.add("CAR Interface");
-			rateModels.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(RateType.EXACT, false));
-			grRateModels.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(RateType.M1_TO_MMAX, false));
+			rateModels.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(epoch, RateType.EXACT, false));
+			grRateModels.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(epoch, RateType.M1_TO_MMAX, false));
 			
 			names.add("MUE Intraslab");
-			rateModels.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(RateType.EXACT, true));
-			grRateModels.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(RateType.M1_TO_MMAX, true));
+			rateModels.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(epoch, RateType.EXACT, true));
+			grRateModels.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(epoch, RateType.M1_TO_MMAX, true));
 			
 			names.add("MUE Interface");
-			rateModels.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(RateType.EXACT, false));
-			grRateModels.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(RateType.M1_TO_MMAX, false));
+			rateModels.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(epoch, RateType.EXACT, false));
+			grRateModels.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(epoch, RateType.M1_TO_MMAX, false));
 			
 			names.add("Union");
 			rateModels.add(null);

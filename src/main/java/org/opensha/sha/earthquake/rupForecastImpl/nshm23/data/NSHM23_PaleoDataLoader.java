@@ -251,7 +251,7 @@ public class NSHM23_PaleoDataLoader {
 			double lowerRate = csv.getDouble(row, lowerCol);
 			double upperRate = csv.getDouble(row, upperCol);
 			
-			double stdDev = boundType.estimateStdDev(rate, lowerRate, upperRate);
+			double stdDev = boundType.estimateStdDev(lowerRate, upperRate);
 			
 			Location loc = new Location(lat, lon);
 			// now find mapping

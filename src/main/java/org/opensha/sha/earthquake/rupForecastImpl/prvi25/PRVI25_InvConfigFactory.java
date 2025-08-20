@@ -11,6 +11,7 @@ import java.util.concurrent.Callable;
 
 import org.opensha.commons.data.IntegerSampler.ExclusionIntegerSampler;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.logicTree.BranchWeightProvider;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
@@ -87,7 +88,8 @@ import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_Crusta
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalDeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalSeismicityRate;
-import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_LogicTreeBranch;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_LogicTree;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SeismicityRateEpoch;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionBValues;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionCaribbeanSeismicityRate;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionCouplingModels;
@@ -1047,9 +1049,9 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 	@Override
 	public LogicTree<?> getGridSourceTree(LogicTree<?> faultTree) {
 		if (faultTree.getBranch(0).hasValue(PRVI25_CrustalFaultModels.class))
-			return LogicTree.buildExhaustive(PRVI25_LogicTreeBranch.levelsCrustalOffFault, true);
+			return LogicTree.buildExhaustive(PRVI25_LogicTree.levelsCrustalOffFault, true);
 		if (faultTree.getBranch(0).hasValue(PRVI25_SubductionFaultModels.class))
-			return LogicTree.buildExhaustive(PRVI25_LogicTreeBranch.levelsSubductionGridded, true);
+			return LogicTree.buildExhaustive(PRVI25_LogicTree.levelsSubductionGridded, true);
 		return null;
 	}
 
@@ -1087,7 +1089,7 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 			EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.OVERALL_MMIN, rupSet.getMaxMag());
 			IncrementalMagFreqDist obsMFD;
 			try {
-				obsMFD = PRVI25_CrustalSeismicityRate.PREFFERRED.build(refMFD, refMFD.getX(refMFD.getClosestXIndex(rupSet.getMaxMag())));
+				obsMFD = PRVI25_CrustalSeismicityRate.PREFFERRED.build(PRVI25_SeismicityRateEpoch.DEFAULT, refMFD, refMFD.getX(refMFD.getClosestXIndex(rupSet.getMaxMag())));
 			} catch (IOException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
@@ -1241,7 +1243,7 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 			List<FaultSection> modSubSects = new ArrayList<>();
 			
 			modSubSects.addAll(origSubSects);
-			LogicTreeBranch<LogicTreeNode> interfaceBranch = PRVI25_LogicTreeBranch.DEFAULT_SUBDUCTION_INTERFACE.copy();
+			LogicTreeBranch<LogicTreeNode> interfaceBranch = PRVI25_LogicTree.DEFAULT_SUBDUCTION_INTERFACE.copy();
 			if (dm == PRVI25_CrustalDeformationModels.GEOLOGIC_DIST_AVG) {
 				// just use prefferred coupling
 				interfaceBranch.setValue(PRVI25_SubductionCouplingModels.PREFERRED);
@@ -1288,6 +1290,25 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 			Preconditions.checkState(!modSubSects.isEmpty());
 			return modSubSects;
 		}
+	}
+	
+	public static class Rates1973scaledTo1900 extends PRVI25_InvConfigFactory {
+		
+		public Rates1973scaledTo1900() {
+		}
+
+		@Override
+		public LogicTree<?> getGridSourceTree(LogicTree<?> faultTree) {
+			LogicTreeNode[] required = {PRVI25_SeismicityRateEpoch.RECENT_SCALED};
+			if (faultTree.getBranch(0).hasValue(PRVI25_CrustalFaultModels.class))
+				return LogicTree.buildExhaustive(PRVI25_LogicTree.levelsCrustalOffFault, true,
+						new BranchWeightProvider.NodeWeightOverrides(required, 1d), required);
+			if (faultTree.getBranch(0).hasValue(PRVI25_SubductionFaultModels.class))
+				return LogicTree.buildExhaustive(PRVI25_LogicTree.levelsSubductionGridded, true,
+						new BranchWeightProvider.NodeWeightOverrides(required, 1d), required);
+			throw new IllegalStateException();
+		}
+		
 	}
 
 }

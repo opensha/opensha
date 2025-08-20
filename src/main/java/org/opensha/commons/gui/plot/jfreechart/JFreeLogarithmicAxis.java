@@ -445,7 +445,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 			Rectangle2D dataArea,
 			RectangleEdge edge) {
 
-		List<NumberTick> ticks = new ArrayList<>();
+		List<MajorMinorNumberTick> ticks = new ArrayList<>();
 		List<Double> tickEndVals = new ArrayList<>();
 		//get lower bound value:
 		double lowerBoundVal = getRange().getLowerBound();
@@ -524,7 +524,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 
 				if (tickVal > upperBoundVal && !Precision.equals(tickVal, upperBoundVal, upperBoundVal*1e-6)) {
 					//					System.out.println("We're past it: "+tickVal+" > "+upperBoundVal);
-					return ticks;     //if past highest data value then exit method
+					return checkMinNumMinor(ticks);     //if past highest data value then exit method
 				}
 
 				if (tickVal >= lowerBoundVal - SMALL_LOG_VALUE) {
@@ -582,12 +582,11 @@ public class JFreeLogarithmicAxis extends LogAxis {
 										double testBufferedEnd = tickEndVals.get(k) + TICK_OVERLAP_BUFFER;
 										if (tickLabelStart < testBufferedEnd) {
 											// we overlap, but see if it has actually been labeled
-											NumberTick tempTick = ticks.get(k);
+											MajorMinorNumberTick tempTick = ticks.get(k);
 											if(!tempTick.getText().equals("") && !tempTick.getText().contains("E")) {
 												// it has a label, clear it
 												double value = tempTick.getValue();
-												ticks.set(k, new NumberTick(value, "",
-														tempTick.getTextAnchor(), tempTick.getRotationAnchor(), tempTick.getAngle()));
+												ticks.set(k, new MajorMinorNumberTick(tempTick, ""));
 												tickEndVals.set(k, value);
 											}
 										} else {
@@ -607,7 +606,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 						}
 					}
 					//					System.out.println("adding tick with val="+tickVal+", label="+tickLabel);
-					NumberTick tick = new NumberTick(tickVal, tickLabel, anchor, rotationAnchor,angle);
+					MajorMinorNumberTick tick = new MajorMinorNumberTick(tickVal, tickLabel, anchor, rotationAnchor, angle, j==0);
 					ticks.add(tick);
 					tickEndVals.add(tickLabelEnd);
 				}
@@ -618,7 +617,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 		//			ValueTick tick = (ValueTick)ticks.get(i);
 		//			System.out.println("\t"+i+". val="+tick.getValue()+", label="+tick.getText());
 		//		}
-		return ticks;
+		return checkMinNumMinor(ticks);
 	}
 
 	/**
@@ -637,6 +636,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 	}
 	
 	private static final double MIN_PIXELS_PER_DECADE_FOR_MINOR = 100d;
+	private static double MIN_NUM_MINOR = 3; // if fewer minor than this, don't show any
 	
 	private boolean shouldShowMinor(Rectangle2D dataArea, RectangleEdge edge) {
 		Range range = getRange();
@@ -666,7 +666,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 			Rectangle2D dataArea,
 			RectangleEdge edge) {
 
-		List<NumberTick> ticks = new ArrayList<>();
+		List<MajorMinorNumberTick> ticks = new ArrayList<>();
 		List<Double> tickEndVals = new ArrayList<>();
 		//get lower bound value:
 		double lowerBoundVal = getRange().getLowerBound();
@@ -742,7 +742,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 				}
 
 				if (tickVal > upperBoundVal) {
-					return ticks;     //if past highest data value then exit method
+					return checkMinNumMinor(ticks);     //if past highest data value then exit method
 				}
 
 				if (tickVal >= lowerBoundVal - SMALL_LOG_VALUE) {
@@ -810,12 +810,11 @@ public class JFreeLogarithmicAxis extends LogAxis {
 									double testBufferedEnd = tickEndVals.get(k) - TICK_OVERLAP_BUFFER;
 									if (tickLabelStart > testBufferedEnd) {
 										// we overlap, but see if it has actually been labeled
-										NumberTick tempTick = ticks.get(k);
+										MajorMinorNumberTick tempTick = ticks.get(k);
 										if(!tempTick.getText().equals("") && !tempTick.getText().contains("E")) {
 											// it has a label, clear it
 											double value = tempTick.getValue();
-											ticks.set(k, new NumberTick(value, "",
-													tempTick.getTextAnchor(), tempTick.getRotationAnchor(), tempTick.getAngle()));
+											ticks.set(k, new MajorMinorNumberTick(tempTick, ""));
 											tickEndVals.set(k, value);
 										}
 									} else {
@@ -834,16 +833,64 @@ public class JFreeLogarithmicAxis extends LogAxis {
 						}
 					}
 					//create tick object and add to list:
-					ticks.add(new NumberTick(tickVal, tickLabel, anchor,rotationAnchor,angle));
+					ticks.add(new MajorMinorNumberTick(tickVal, tickLabel, anchor, rotationAnchor, angle, j == 0));
 					//					ticksYVals.add(Double.valueOf(y));
 					tickEndVals.add(tickLabelEnd);
 				}
 			}
 		}
-		return ticks;
+		return checkMinNumMinor(ticks);
 	}
 
+	private static class MajorMinorNumberTick extends NumberTick {
 
+		private boolean major;
+		
+		public MajorMinorNumberTick(MajorMinorNumberTick prev, String label) {
+			this(prev.getNumber(), label, prev.getTextAnchor(), prev.getRotationAnchor(), prev.getAngle(), prev.major);
+		}
+
+		public MajorMinorNumberTick(Number number, String label, TextAnchor textAnchor, TextAnchor rotationAnchor,
+				double angle, boolean major) {
+			super(number, label, textAnchor, rotationAnchor, angle);
+			this.major = major;
+		}
+		
+	}
+	
+	private List<MajorMinorNumberTick> checkMinNumMinor(List<MajorMinorNumberTick> ticks) {
+		if (MIN_NUM_MINOR == 0)
+			// no restriction
+			return ticks;
+		
+		Range range = getRange();
+		double decades = switchedLog10(range.getUpperBound()) - switchedLog10(range.getLowerBound());
+		if (decades < 1.001d)
+			// we don't even have a full decade, so we expect to only have a few
+			return ticks;
+		
+		int numMajor = 0;
+		int curNumMinor = 0;
+		int maxNumMinor = 0;
+		for (MajorMinorNumberTick tick : ticks) {
+			if (tick.major) {
+				curNumMinor = 0;
+				numMajor++;
+			} else if (!tick.getText().equals("") && !tick.getText().contains("E")) {
+				curNumMinor++;
+				maxNumMinor = Integer.max(maxNumMinor, curNumMinor);
+			}
+		}
+		if (numMajor > 1 && maxNumMinor > 0 && maxNumMinor < MIN_NUM_MINOR) {
+			// we don't have enough minor ticks, clear them all
+			for (int i=0; i<ticks.size(); i++) {
+				MajorMinorNumberTick tick = ticks.get(i);
+				if (!tick.major && !tick.getText().equals("") && !tick.getText().contains("E"))
+					ticks.set(i, new MajorMinorNumberTick(tick, ""));
+			}
+		}
+		return ticks;
+	}
 
 	/**
 	 * removes the previous tick label so that powers of 10 can be displayed
@@ -1193,6 +1240,10 @@ public class JFreeLogarithmicAxis extends LogAxis {
 			// ensure the autorange is at least <minRange> in size...
 			double minRange = getAutoRangeMinimumSize();
 			if (upper - lower < minRange) {
+				// Edge case: where <minRange> would lead us to a negative lower boundary, we adjust it.
+				if (upper + lower <= minRange / 2){
+					minRange = upper / 2;
+				}
 				upper = (upper + lower + minRange) / 2;
 				lower = (upper + lower - minRange) / 2;
 				//if autorange still below minimum then adjust by 1%

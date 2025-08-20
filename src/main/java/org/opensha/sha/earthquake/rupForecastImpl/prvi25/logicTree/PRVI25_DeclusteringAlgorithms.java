@@ -22,9 +22,9 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum PRVI25_DeclusteringAlgorithms implements LogicTreeNode {
 	
-	GK("Gardner-Knopoff", "GK", 0.45d),
-	NN("Nearest-Neighbor", "NN", 0.45d),
-	REAS("Reasenberg", "Reas", 0.1d),
+	GK("Gardner-Knopoff", "Gardner-Knopoff", 0.45d),
+	NN("Nearest-Neighbor", "Nearest-Neighbor", 0.45d),
+	REAS("Reasenberg", "Reasenberg", 0.1d),
 	AVERAGE("Average", "Average", 0d);
 	
 	private String name;

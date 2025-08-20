@@ -382,7 +382,8 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 						// Math.pow(a, b) is about 3 times slower than Math.exp(a*b)
 						// we can speed this up by replacing the power with this log equivalence and precomputing ln(a):
 						// a^b = exp(b*ln(a))
-						double lnBase = Math.log(1-qkProb);
+//						double lnBase = Math.log(1-qkProb);
+						double lnBase = Math.log1p(-qkProb);
 						Preconditions.checkState(Double.isFinite(lnBase), "Bad lnBase=%s for qkProb=%s", lnBase, qkProb);
 						for(k=0;k<numPoints;k++) {
 							hazFunction.set(k,hazFunction.getY(k)*Math.exp(lnBase*condProbFunc.getY(k)));

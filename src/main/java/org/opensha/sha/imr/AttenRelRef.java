@@ -196,9 +196,10 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			Unmodifiable<Gmm> gmms = WeightedList.evenlyWeighted(
-					Gmm.ASK_14_BASIN, Gmm.BSSA_14_BASIN, Gmm.CB_14_BASIN, Gmm.CY_14_BASIN);
-			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
+//			Unmodifiable<Gmm> gmms = WeightedList.evenlyWeighted(
+//					Gmm.ASK_14_BASIN, Gmm.BSSA_14_BASIN, Gmm.CB_14_BASIN, Gmm.CY_14_BASIN);
+//			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_CONUS_ACTIVE_CRUST_2023, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -326,7 +327,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(Gmm.USGS_PRVI_ACTIVE_CRUST_COMBINED_TREE, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_PRVI_ACTIVE_CRUST_2025, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -337,18 +338,18 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(Gmm.USGS_PRVI_INTERFACE_COMBINED_TREE, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_PRVI_INTERFACE_2025, getName(), getShortName(), false, null);
 		}
 		
 	},
 	
-	USGS_PRVI_SLAB(null, "USGS PRVI25 Slab (beta)",
-			"PRVI25-Slab", DEVELOPMENT) {
+	USGS_PRVI_SLAB(null, "USGS PRVI25 Intraslab (beta)",
+			"PRVI25-Intraslab", DEVELOPMENT) {
 		
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(Gmm.USGS_PRVI_INTRASLAB_COMBINED_TREE, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_PRVI_INTRASLAB_2025, getName(), getShortName(), false, null);
 		}
 		
 	},

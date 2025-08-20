@@ -624,8 +624,16 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	
 	public static class Adapter<E extends LogicTreeNode> extends TypeAdapter<LogicTree<E>> {
 
-		private final LogicTreeLevel.Adapter<E> levelAdapter = new LogicTreeLevel.Adapter<>();
+		private final LogicTreeLevel.Adapter<E> levelAdapter;
 		private final BranchWeightProvider.Adapter weightAdapter = new BranchWeightProvider.Adapter();
+		
+		public Adapter() {
+			this(new LogicTreeLevel.Adapter<>());
+		}
+		
+		public Adapter(LogicTreeLevel.Adapter<E> levelAdapter) {
+			this.levelAdapter = levelAdapter;
+		}
 
 		@Override
 		public void write(JsonWriter out, LogicTree<E> value) throws IOException {
@@ -763,7 +771,11 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 												level.getName(), choice);
 										node = possible;
 										perfectMatch = true;
-									} else if (!perfectMatch) {
+									}
+								}
+								if (!perfectMatch) {
+									// look for partial matches
+									for (E possible : level.getNodes()) {
 										// look for a partial match
 										boolean match = modChoice.equals(simplifyChoiceString(possible.getShortName()));
 										match = match || modChoice.equals(simplifyChoiceString(possible.getFilePrefix()));
@@ -824,6 +836,23 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	private static String simplifyChoiceString(String str) {
 		str = str.replace(" ", "").replace("_", "").replace(",", "").toLowerCase();
 		return str;
+	}
+	
+	public static LogicTree<LogicTreeNode> readFileBacked(File jsonFile) throws IOException {
+		Reader reader = new BufferedReader(new FileReader(jsonFile));
+		return readFileBacked(reader);
+	}
+	
+	public static LogicTree<LogicTreeNode> readFileBacked(Reader jsonReader) throws IOException {
+		LogicTreeLevel.Adapter<LogicTreeNode> levelAdapter = new LogicTreeLevel.Adapter<LogicTreeNode>(true, true); // force file backed
+		Adapter<LogicTreeNode> treeAdapter = new Adapter<>(levelAdapter);
+		Gson gson = new GsonBuilder().setPrettyPrinting()
+				.registerTypeAdapter(LogicTreeLevel.class, levelAdapter)
+				.registerTypeHierarchyAdapter(LogicTreeLevel.class, levelAdapter)
+				.registerTypeAdapter(LogicTree.class, treeAdapter)
+				.registerTypeHierarchyAdapter(LogicTree.class, treeAdapter)
+				.create();
+		return gson.fromJson(jsonReader, TypeToken.getParameterized(LogicTree.class, LogicTreeNode.class).getType());
 	}
 
 }

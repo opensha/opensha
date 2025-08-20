@@ -11,8 +11,8 @@ import gov.usgs.earthquake.nshmp.gmm.Gmm;
 
 @AffectsNone
 public enum PRVI25_SubductionInterfaceGMMs implements ScalarIMRsLogicTreeNode.SingleTRT {
-	AS_PROVIDED(Gmm.USGS_PRVI_INTERFACE, "As Provided", 0.5),
-	DATA_ADJUSTED(Gmm.USGS_PRVI_INTERFACE_ADJUSTED, "Data Adjusted", 0.5);
+	AS_PROVIDED(Gmm.PRVI_2025_INTERFACE, "As Provided", 0.5),
+	DATA_ADJUSTED(Gmm.PRVI_2025_INTERFACE_ADJUSTED, "Data Adjusted", 0.5);
 	
 	private Gmm gmm;
 	private String shortName;
