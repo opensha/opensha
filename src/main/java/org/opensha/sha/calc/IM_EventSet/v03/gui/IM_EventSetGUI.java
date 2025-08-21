@@ -80,11 +80,7 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 		imrChooser = new IMR_ChooserPanel(imtChooser);
 		
 		OrderedSiteDataProviderList providers = OrderedSiteDataProviderList.createSiteDataProviderDefaults();
-		for (int i=0; i<providers.size(); i++) {
-			if (!providers.getProvider(i).getName().equals(WillsMap2006.NAME))
-				providers.setEnabled(i, false);
-		}
-		
+
 		dataBean = new OrderedSiteDataGUIBean(providers);
 		
 		imPanel.setLayout(new BoxLayout(imPanel, BoxLayout.X_AXIS));
