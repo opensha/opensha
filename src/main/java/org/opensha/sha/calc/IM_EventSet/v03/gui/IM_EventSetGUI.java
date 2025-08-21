@@ -125,7 +125,7 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 		mainPanel.add(tabbedPane, BorderLayout.CENTER);
 		mainPanel.add(bottomPanel, BorderLayout.SOUTH);
 		
-		this.setTitle("IM Event Set Calculator v3.0");
+		this.setTitle("IM Event Set Calculator");
 		
 		this.setContentPane(mainPanel); 
 		pack();
