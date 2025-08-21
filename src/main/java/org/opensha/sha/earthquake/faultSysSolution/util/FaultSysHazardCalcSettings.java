@@ -325,6 +325,10 @@ public class FaultSysHazardCalcSettings {
 		}
 		return ret;
 	}
+	
+	public static boolean arePointSourceOptimizationsEnabled(CommandLine cmd) {
+		return !cmd.hasOption("disable-point-optimizations");
+	}
 
 	public static SourceFilterManager getSiteSkipSourceFilters(SourceFilterManager sourceFilters, CommandLine cmd) {
 		SourceFilterManager siteSkipSourceFilters;
@@ -423,6 +427,7 @@ public class FaultSysHazardCalcSettings {
 		ops.addOption(null, "point-finite-min-mag", true, "Minimum magnitude for finite (or distance-corrected point) sources; "
 				+ "all ruptures below this magnitude will be treated as pure point sources. Default: "
 				+(float)GriddedSeismicitySettings.DEFAULT.pointSourceMagnitudeCutoff);
+		ops.addOption(null, "disable-point-optimizations", false, "Flag to disable point source optimizations (default is enabled)");
 		if (includeSiteSkip)
 			ops.addOption("smd", "skip-max-distance", true, "Skip sites with no source-site distances below this value, in km. "
 					+ "Default is "+(int)(FaultSysHazardCalcSettings.SITE_SKIP_FRACT*100d)+"% of the TectonicRegionType-specific default maximum distance.");

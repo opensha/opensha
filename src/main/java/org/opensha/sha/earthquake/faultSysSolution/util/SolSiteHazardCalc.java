@@ -66,6 +66,8 @@ import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.ReturnPeriodUtils;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.calc.HazardCurveCalculator;
+import org.opensha.sha.calc.PointSourceOptimizedExceedProbCalc;
+import org.opensha.sha.calc.RuptureExceedProbCalculator;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculator;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculator.EpsilonCategories;
 import org.opensha.sha.calc.disaggregation.DisaggregationPlotData;
@@ -538,10 +540,23 @@ public class SolSiteHazardCalc {
 		}
 		FaultSystemSolutionERF erf = buildERF(sol, mainGridOp, griddedSettings, duration);
 		
+		RuptureExceedProbCalculator[] exceedCalcs;
+		if (FaultSysHazardCalcSettings.arePointSourceOptimizationsEnabled(cmd)) {
+			exceedCalcs = new RuptureExceedProbCalculator[periods.length];
+			for (int p=0; p<periods.length; p++) {
+				FaultSysHazardCalcSettings.setIMforPeriod(gmms0, periods[p]);
+				exceedCalcs[p] = new PointSourceOptimizedExceedProbCalc(gmms0);
+			}
+		} else {
+			exceedCalcs = new RuptureExceedProbCalculator[] {RuptureExceedProbCalculator.BASIC_IMPLEMENTATION};
+		}
+		
 		List<HazardCalcThread> calcThreads = new ArrayList<>(threads);		
 		for (int i=0; i<threads; i++) {
 			HazardCurveCalculator calc = new HazardCurveCalculator(sourceFilters);
-			calcThreads.add(new HazardCalcThread(calc, i == 0 ? gmms0 : FaultSysHazardCalcSettings.getGmmInstances(gmmSuppliers)));
+			calcThreads.add(new HazardCalcThread(calc,
+					i == 0 ? gmms0 : FaultSysHazardCalcSettings.getGmmInstances(gmmSuppliers),
+							exceedCalcs, periods));
 		}
 		
 		List<DiscretizedFunc[]> curves = calcHazardCurves(calcThreads, sites, erf, periods, periodXVals);
@@ -573,7 +588,8 @@ public class SolSiteHazardCalc {
 			// can't re-use threads, but can copy over previous curve calc and gmm
 			ArrayList<HazardCalcThread> compCalcThreads = new ArrayList<>(threads);		
 			for (int i=0; i<threads; i++)
-				compCalcThreads.add(new HazardCalcThread(calcThreads.get(i).calc, calcThreads.get(i).gmms));
+				compCalcThreads.add(new HazardCalcThread(calcThreads.get(i).calc, calcThreads.get(i).gmms,
+						exceedCalcs, periods));
 			
 			compCurves = calcHazardCurves(compCalcThreads, sites, compERF, periods, periodXVals);
 			
@@ -1828,10 +1844,15 @@ public class SolSiteHazardCalc {
 		private Map<TectonicRegionType, ScalarIMR> gmms;
 		private SiteHazardTaskDistributor tasks;
 		private ProgressTrack track;
+		private RuptureExceedProbCalculator[] exceedCalcs;
+		private double[] periods;
 
-		public HazardCalcThread(HazardCurveCalculator calc, Map<TectonicRegionType, ScalarIMR> gmms) {
+		public HazardCalcThread(HazardCurveCalculator calc, Map<TectonicRegionType, ScalarIMR> gmms,
+				RuptureExceedProbCalculator[] exceedCalcs, double[] periods) {
 			this.calc = calc;
 			this.gmms = gmms;
+			this.exceedCalcs = exceedCalcs;
+			this.periods = periods;
 		}
 		
 		public void init(AbstractERF erf, SiteHazardTaskDistributor tasks) {
@@ -1858,7 +1879,13 @@ public class SolSiteHazardCalc {
 				
 				FaultSysHazardCalcSettings.setIMforPeriod(gmms, task.period);
 				
-				calc.getHazardCurve(logCurve, task.site, gmms, erf);
+				RuptureExceedProbCalculator exceedCalc;
+				if (exceedCalcs.length == 1)
+					exceedCalc = exceedCalcs[0];
+				else
+					exceedCalc = exceedCalcs[Doubles.indexOf(periods, task.period)];
+				
+				calc.getHazardCurve(logCurve, task.site, gmms, erf, exceedCalc);
 				
 				LightFixedXFunc linearCurve = new LightFixedXFunc(linearXVals, logCurve.getYVals());
 				task.setResult(linearCurve);

@@ -97,12 +97,6 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 	 */
 	public abstract boolean isDataSiteAdaptive();
 	
-	/**
-	 * @return copy of this point source with distance corrections disabled, without overriding the distance correction
-	 * in the original source
-	 */
-	public abstract PointSource getUncorrected();
-	
 	/*
 	 * Source data interfaces
 	 */
@@ -492,19 +486,10 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 		}
 
 		@Override
-		public PointSource getUncorrected() {
-			if (distCorr == null)
-				return this;
-			BaseImplementation<E> copy = newInstance(data);
-			copy.setDistCorr(null, Double.MIN_VALUE);
-			return copy;
-		}
-
-		@Override
 		public PointSource getForSite(Site site) {
 			BaseImplementation<E> ret = this;
 			
-			// first check to see if the underlying data are site adaptive
+			// check to see if the underlying data are site adaptive
 			if (isDataSiteAdaptive()) {
 				// the data are site adaptive, take care of that first
 				E dataForSite = ((SiteAdaptivePointSourceData<E>)data).getForSite(site);
@@ -527,135 +512,7 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 				}
 			}
 			
-			// now check to see if we have a distance correction that we need to apply
-			if (distCorr != null && ret.numRuptures > 0) {
-				// we have a distance correction, apply it
-				return new DistanceCorrectedPointSource<>(ret, distCorr, site.getLocation());
-			}
 			return ret;
-		}
-		
-	}
-	
-	private static class DistanceCorrectedPointSource<E extends PointSourceData> extends PointSource {
-
-		private final BaseImplementation<E> source;
-		private final Location siteLoc;
-		private final List<ProbEqkRupture> ruptures;
-
-		private DistanceCorrectedPointSource(BaseImplementation<E> source,
-				PointSourceDistanceCorrection distCorr, Location siteLoc) {
-			// we intentionally use a passed in distance correction instead of the one attached to the upstream source
-			// because it could have been cached previously as part of site-adaptive data, and the distance correction
-			// on that cached version could be stale
-			super(siteLoc, source.getTectonicRegionType(), distCorr, source.minMagForDistCorr);
-			this.isPoissonian = source.isPoissonian;
-			this.source = source;
-//			super(sourceLoc, tectonicRegionType, data, distCorr, minMagForDistCorr);
-			this.siteLoc = siteLoc;
-			Preconditions.checkNotNull(siteLoc);
-			Preconditions.checkNotNull(distCorr);
-			Location sourceLoc = getLocation();
-			
-			E data = source.getData();
-			
-			double horzDist = LocationUtils.horzDistanceFast(siteLoc, source.getLocation());
-			int numOrigRups = source.getNumRuptures();
-			TectonicRegionType trt = getTectonicRegionType();
-			ruptures = new ArrayList<>(source.getNumRuptures()); // at least this many ruptures, maybe more
-			for (int dataIndex=0; dataIndex<numOrigRups; dataIndex++) {
-				double mag = data.getMagnitude(dataIndex);
-				double rake = data.getAveRake(dataIndex);
-				RuptureSurface surf = data.getSurface(dataIndex);
-				if (mag >= minMagForDistCorr && !data.isFinite(dataIndex)) {
-					// point source, do distance correction(s)
-					Preconditions.checkState(surf instanceof PointSurface,
-							"Surface for rupture with data index %s was labeled as non-finite, but is not a PointSurface: %s",
-							dataIndex, surf);
-					PointSurface ptSurf = (PointSurface)surf;
-					WeightedList<SurfaceDistances> corrDists = distCorr.getCorrectedDistances(
-							siteLoc, ptSurf, trt, mag, horzDist);
-					Preconditions.checkState(corrDists.isNormalized(),
-							"Distance correction weights must be normalized to 1, aren't for %s", distCorr);
-					for (int i=0; i<corrDists.size(); i++) {
-						SurfaceDistances dists = corrDists.getValue(i);
-						double weight = corrDists.getWeight(i);
-						SiteSpecificDistanceCorrected corrSurf = ptSurf.getForDistances(siteLoc, dists);
-						Location hypo = data.getHypocenter(sourceLoc, corrSurf, dataIndex);
-						double prob = source.getProbability(dataIndex, weight);
-						ruptures.add(new ProbEqkRupture(mag, rake, prob, corrSurf, hypo));
-					}
-				} else {
-					// finite source or below min correction magnitude, leave unchanged
-					Location hypo = data.getHypocenter(getLocation(), surf, dataIndex);
-					double prob = source.getProbability(dataIndex, 1d);
-					ruptures.add(new ProbEqkRupture(mag, rake, prob, surf, hypo));
-				}
-			}
-		}
-
-		@Override
-		public ProbEqkSource getForSite(Site site) {
-			Location loc = site.getLocation();
-			Preconditions.checkState(loc == siteLoc || LocationUtils.areSimilar(loc, siteLoc),
-					"Cannot change sites, this source is already corrected for the specific site and correction");
-			return this;
-		}
-
-		@Override
-		public int getNumRuptures() {
-			return ruptures.size();
-		}
-
-		@Override
-		public ProbEqkRupture getRupture(int nRupture) {
-			return ruptures.get(nRupture);
-		}
-
-		@Override
-		public PointSourceDistanceCorrection getDistCorr() {
-			return distCorr;
-		}
-
-		@Override
-		public void setDistCorr(PointSourceDistanceCorrection distCorr, double minMagForDistCorr) {
-			if (source == null) {
-				// this is the first time, from the constructor, don't need to protect
-				super.setDistCorr(distCorr, minMagForDistCorr);
-			} else {
-				throw new UnsupportedOperationException("Cannot change distance corrections, this source is already "
-						+ "corrected for the specific site and correction");
-			}
-		}
-
-		@Override
-		public LocationList getAllSourceLocs() {
-			return source.getAllSourceLocs();
-		}
-
-		@Override
-		public RuptureSurface getSourceSurface() {
-			return source.getSourceSurface();
-		}
-
-		@Override
-		public double getMinDistance(Site site) {
-			return source.getMinDistance(site);
-		}
-
-		@Override
-		public Location getLocation() {
-			return source.getLocation();
-		}
-
-		@Override
-		public boolean isDataSiteAdaptive() {
-			return source.isDataSiteAdaptive();
-		}
-
-		@Override
-		public PointSource getUncorrected() {
-			return source.getUncorrected();
 		}
 		
 	}

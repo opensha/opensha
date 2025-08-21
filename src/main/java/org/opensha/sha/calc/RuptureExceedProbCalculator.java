@@ -71,6 +71,8 @@ public interface RuptureExceedProbCalculator {
 		}
 	}
 	
+	public static Basic BASIC_IMPLEMENTATION = new Basic();
+	
 	public static class Basic implements RuptureExceedProbCalculator {
 
 		@Override

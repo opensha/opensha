@@ -19,6 +19,7 @@ import org.opensha.commons.param.event.ParameterChangeWarningListener;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.calc.params.NonSupportedTRT_OptionsParam;
 import org.opensha.sha.calc.params.NumStochasticEventSetsParam;
+import org.opensha.sha.calc.params.PointSourceOptimizationsParam;
 import org.opensha.sha.calc.params.SetTRTinIMR_FromSourceParam;
 import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
 import org.opensha.sha.calc.params.filters.MagDependentDistCutoffFilter;
@@ -78,6 +79,9 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 	 * Other params
 	 */
 	
+	//enables point source optimizations
+	private PointSourceOptimizationsParam pointSourceOptimizations;
+	
 	//Info for parameter that sets the maximum distance considered
 	private NumStochasticEventSetsParam numStochEventSetRealizationsParam;
 	
@@ -117,7 +121,8 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 		trtDependentFilter = (TectonicRegionDistCutoffFilter) sourceFilters.getFilterInstance(SourceFilters.TRT_DIST_CUTOFFS);
 		minMagFilter = (MinMagFilter) sourceFilters.getFilterInstance(SourceFilters.MIN_MAG);
 
-		// Max Distance Parameter
+		pointSourceOptimizations = new PointSourceOptimizationsParam();
+		
 		numStochEventSetRealizationsParam = new NumStochasticEventSetsParam();
 		
 		setTRTinIMR_FromSourceParam = new SetTRTinIMR_FromSourceParam();
@@ -126,6 +131,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 
 		adjustableParams = new ParameterList();
 		adjustableParams.addParameter(sourceFilterParam);
+		adjustableParams.addParameter(pointSourceOptimizations);
 		adjustableParams.addParameter(numStochEventSetRealizationsParam);
 		adjustableParams.addParameter(setTRTinIMR_FromSourceParam);
 		adjustableParams.addParameter(nonSupportedTRT_OptionsParam);
@@ -225,6 +231,21 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 			Site site,
 			Map<TectonicRegionType, ScalarIMR> imrMap, 
 			ERF eqkRupForecast) {
+		RuptureExceedProbCalculator exceedCalc;
+		if (pointSourceOptimizations.getValue())
+			exceedCalc = new PointSourceOptimizedExceedProbCalc(imrMap);
+		else
+			exceedCalc = RuptureExceedProbCalculator.BASIC_IMPLEMENTATION;
+		return getHazardCurve(hazFunction, site, imrMap, eqkRupForecast, exceedCalc);
+	}
+
+	// TODO add to API?
+	public DiscretizedFunc getHazardCurve(
+			DiscretizedFunc hazFunction,
+			Site site,
+			Map<TectonicRegionType, ScalarIMR> imrMap, 
+			ERF eqkRupForecast,
+			RuptureExceedProbCalculator exceedCalc) {
 		//	  System.out.println("Haz Curv Calc: maxDistanceParam.getValue()="+maxDistanceParam.getValue().toString());
 		//	  System.out.println("Haz Curv Calc: numStochEventSetRealizationsParam.getValue()="+numStochEventSetRealizationsParam.getValue().toString());
 		//	  System.out.println("Haz Curv Calc: includeMagDistFilterParam.getValue()="+includeMagDistFilterParam.getValue().toString());
@@ -361,12 +382,9 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 					
 					// indicate that a source has been used (put here because of above filters)
 					sourceUsed = true;
-
-					// set the EqkRup in the IMR
-					imr.setEqkRupture(rupture);
-
-					// get the conditional probability of exceedance from the IMR
-					condProbFunc = imr.getExceedProbabilities(condProbFunc);
+					
+					// get the conditional probability of exceedance from the IMR for this rupture
+					exceedCalc.getExceedProbabilities(imr, rupture, condProbFunc);
 					
 					// For poisson source
 					if(poissonSource) {
@@ -942,6 +960,8 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 		magDependentFilter = (MagDependentDistCutoffFilter) sourceFilters.getFilterInstance(SourceFilters.MAG_DIST_CUTOFFS);
 		trtDependentFilter = (TectonicRegionDistCutoffFilter) sourceFilters.getFilterInstance(SourceFilters.TRT_DIST_CUTOFFS);
 		minMagFilter = (MinMagFilter) sourceFilters.getFilterInstance(SourceFilters.MIN_MAG);
+		this.pointSourceOptimizations = 
+			(PointSourceOptimizationsParam)paramList.getParameter(PointSourceOptimizationsParam.NAME);
 		this.numStochEventSetRealizationsParam =
 			(NumStochasticEventSetsParam)paramList.getParameter(NumStochasticEventSetsParam.NAME);
 		this.setTRTinIMR_FromSourceParam =

@@ -11,8 +11,6 @@ import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -21,7 +19,6 @@ import java.util.zip.ZipOutputStream;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.opensha.commons.data.CSVFile;
-import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.xyz.AbstractXYZ_DataSet;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
@@ -30,8 +27,6 @@ import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
-import org.opensha.commons.logicTree.LogicTreeLevel;
-import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.modules.ModuleArchive;
@@ -39,7 +34,6 @@ import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.calc.params.filters.SourceFilterManager;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
-import org.opensha.sha.earthquake.faultSysSolution.hazard.QuickGriddedHazardMapCalc;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
@@ -50,11 +44,8 @@ import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
-import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.ScalarIMR;
-import org.opensha.sha.imr.logicTree.ScalarIMR_ParamsLogicTreeNode;
-import org.opensha.sha.imr.logicTree.ScalarIMRsLogicTreeNode;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -75,6 +66,8 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 	private FaultSystemSolution singleSol;
 	
 	private double gridSpacing = MPJ_LogicTreeHazardCalc.GRID_SPACING_DEFAULT;
+	
+	private boolean pointSourceOptimizations;
 	
 	private Map<TectonicRegionType, AttenRelSupplier> gmmRefs;
 	
@@ -108,9 +101,6 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 	
 	private GridSourceProvider externalGridProv;
 	private SolHazardMapCalc externalGriddedCurveCalc;
-	
-	private QuickGriddedHazardMapCalc[] quickGridCalcs;
-	private ExecutorService quickGridExec;
 	
 	private boolean noMFDs;
 	private boolean noProxyRups;
@@ -158,6 +148,8 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 		
 		if (cmd.hasOption("gridded-seis"))
 			gridSeisOp = IncludeBackgroundOption.valueOf(cmd.getOptionValue("gridded-seis"));
+		
+		pointSourceOptimizations = FaultSysHazardCalcSettings.arePointSourceOptimizationsEnabled(cmd);
 		
 		griddedSettings = FaultSysHazardCalcSettings.getGridSeisSettings(cmd);
 		
@@ -263,14 +255,6 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 			combineWithOtherDir = new File(cmd.getOptionValue("combine-with-dir"));
 			if (!combineWithOtherDir.exists())
 				combineWithOtherDir = null;
-		}
-		
-		if (cmd.hasOption("quick-grid-calc") && (gridSeisOp == IncludeBackgroundOption.INCLUDE
-				|| gridSeisOp == IncludeBackgroundOption.ONLY)) {
-			quickGridCalcs = new QuickGriddedHazardMapCalc[periods.length];
-			for (int p=0; p<quickGridCalcs.length; p++)
-				quickGridCalcs[p] = new QuickGriddedHazardMapCalc(gmmRefs, periods[p],
-						FaultSysHazardCalcSettings.getDefaultXVals(periods[p]), sourceFilter, griddedSettings);
 		}
 		
 		noMFDs = cmd.hasOption("no-mfds");
@@ -589,6 +573,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 							IncludeBackgroundOption.ONLY, applyAftershockFilter, periods);
 					
 					externalGriddedCurveCalc.setSourceFilter(sourceFilter);
+					externalGriddedCurveCalc.setPointSourceOptimizations(pointSourceOptimizations);
 					externalGriddedCurveCalc.setSiteSkipSourceFilter(siteSkipSourceFilter);
 					externalGriddedCurveCalc.setGriddedSeismicitySettings(griddedSettings);
 					
@@ -596,16 +581,6 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 				}
 				
 				combineWithOnlyCurves = externalGriddedCurveCalc;
-			}
-			
-			if (quickGridCalcs != null && combineWithOnlyCurves == null) {
-				debug("Doing quick gridded seismicity calc");
-				List<DiscretizedFunc[]> curves = new ArrayList<>();
-				if (quickGridExec == null)
-					quickGridExec = Executors.newFixedThreadPool(getNumThreads());
-				for (int p=0; p<periods.length; p++)
-					curves.add(quickGridCalcs[p].calc(singleSol.getGridSourceProvider(), gridRegion, quickGridExec, getNumThreads()));
-				combineWithOnlyCurves = SolHazardMapCalc.forCurves(singleSol, gridRegion, periods, curves);
 			}
 			
 			if (gridSeisOp == IncludeBackgroundOption.INCLUDE && combineWithOnlyCurves != null && combineWithExcludeCurves != null) {
@@ -671,6 +646,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 				calc = new SolHazardMapCalc(singleSol, gmpeSuppliers, gridRegion, IncludeBackgroundOption.EXCLUDE, applyAftershockFilter, periods);
 			}
 			calc.setSourceFilter(sourceFilter);
+			calc.setPointSourceOptimizations(pointSourceOptimizations);
 			calc.setSiteSkipSourceFilter(siteSkipSourceFilter);
 			calc.setAseisReducesArea(aseisReducesArea);
 			calc.setNoMFDs(noMFDs);
@@ -719,7 +695,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 				+ "ruptures in the case of a branch-averaged solution");
 		ops.addOption(null, "no-proxy-ruptures", false, "Flag to disable proxy ruptures MFDs, i.e., use a single proxy "
 				+ "fault instead of distributed proxies that fill the source zone");
-		ops.addOption("qgc", "quick-grid-calc", false, "Flag to enable quick gridded seismicity calculation.");
+		ops.addOption("qgc", "quick-grid-calc", false, "No longer used; can disable updated implementation with --disable-point-optimizations.");
 		
 		return ops;
 	}

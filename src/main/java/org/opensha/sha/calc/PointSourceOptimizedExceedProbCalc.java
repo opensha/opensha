@@ -132,7 +132,7 @@ public class PointSourceOptimizedExceedProbCalc implements RuptureExceedProbCalc
 				return true;
 			if (obj == null)
 				return false;
-			if (getClass() != obj.getClass())
+			if (!(obj instanceof UniqueIMR))
 				return false;
 			UniqueIMR other = (UniqueIMR) obj;
 			return hash == other.hash && Objects.equals(className, other.className) && Objects.equals(name, other.name)
@@ -265,8 +265,12 @@ public class PointSourceOptimizedExceedProbCalc implements RuptureExceedProbCalc
 				imrInstanceReverseCheckMap.put(imr, unique);
 				return unique;
 			}
-			throw new RuntimeException("Unexpected IMR passed to PointSourceOptimizedExceedProbCalc that was not "
-					+ "used in initialization: '"+imr.getName()+"' w/ imt='"+imr.getIntensityMeasure().getName()+"'");
+			StringBuilder exception = new StringBuilder("Unexpected IMR passed to PointSourceOptimizedExceedProbCalc that was not "
+					+ "used in initialization: '").append(imr.getName()).append("' w/ imt='").append(imr.getIntensityMeasure().getName());
+			exception.append("\nAvailable IMRs:");
+			for (UniqueIMR unique : imrInstanceCheckMap.keySet())
+				exception.append("\n\t'"+unique.name+"' w/ imt='"+unique.imtName+"'");
+			throw new RuntimeException(exception.toString());
 		}
 		UniqueIMR_Parameterization myUnique = imrInstanceReverseCheckMap.get(imr);
 		if (myUnique == null) {
@@ -344,7 +348,7 @@ public class PointSourceOptimizedExceedProbCalc implements RuptureExceedProbCalc
 	@Override
 	public void getExceedProbabilities(ScalarIMR gmm, EqkRupture eqkRupture, DiscretizedFunc exceedProbs) {
 		RuptureSurface surf = eqkRupture.getRuptureSurface();
-		if (surf instanceof PointSurface) {
+		if (surf instanceof PointSurface && !(surf instanceof PointSurface.SiteSpecificDistanceCorrected)) {
 			PointSurface pointSurf = (PointSurface)surf;
 			Location sourceLoc = pointSurf.getLocation();
 			Location origSiteLoc = gmm.getSite().getLocation();
