@@ -135,6 +135,9 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 	}
 	
 	private void addSiteDataValue(int i, SiteDataValue<?> val) {
+        if (this.dataLists.get(i).contains(val)) {
+            throw new IllegalArgumentException("Can't add duplicate site data values");
+        }
 		this.dataLists.get(i).add(val);
 	}
 	

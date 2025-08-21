@@ -44,6 +44,9 @@ public class AddMultipleSiteDataPanel extends NamesListPanel {
 		SiteDataValue<?> val;
 		try {
 			val = adder.getValue();
+            if (vals.contains(val)) {
+                throw new IllegalArgumentException("Can't add duplicate site data values");
+            }
 			vals.add(val);
 			rebuildList();
 		} catch (Exception e) {
