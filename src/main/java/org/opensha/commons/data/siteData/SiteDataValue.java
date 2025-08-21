@@ -3,6 +3,8 @@ package org.opensha.commons.data.siteData;
 import org.dom4j.Attribute;
 import org.opensha.commons.metadata.XMLSaveable;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -71,6 +73,22 @@ public class SiteDataValue<Element> implements XMLSaveable {
                 Objects.equals(dataMeasurementType, that.dataMeasurementType) &&
                 Objects.equals(value, that.value) &&
                 Objects.equals(sourceName, that.sourceName);
+    }
+
+    public boolean isValid() {
+        // TODO: How can we consider all possible invalid values per type?
+        //       Maybe Element extends Validatable ?
+        if (value instanceof Double) {
+            return !Double.isNaN((Double)value);
+        } else if (value instanceof Float) {
+            return !Float.isNaN((Float)value);
+        } else if (value instanceof String) {
+            if (dataType.equals("Wills Class") && ((String)value).equals("NA")) {
+               return false;
+            }
+            return !((String)value).isBlank();
+        }
+        return true;
     }
 
 	public org.dom4j.Element toXMLMetadata(org.dom4j.Element root) {
