@@ -79,16 +79,12 @@ public abstract class IM_EventSetCalc_v3_0 implements IM_EventSetCalc_v3_0_API {
 				}
 				if (hasNewType) {
 					// only fetch site data if it's actually needed
-					ArrayList<SiteDataValue<?>> provData = providers.getAllAvailableData(site.getLocation());
+					ArrayList<SiteDataValue<?>> provData = providers.getBestAvailableData(site.getLocation());
 					if (provData != null) {
 						for (SiteDataValue<?> dataVal : provData) {
                             logger.log(Level.FINE, "Provider data value for site " + i + ": " + dataVal);
-                            // Don't add site data values that are already present
-                            if (!dataVals.contains(dataVal) && dataVal.isValid()) {
-                                dataVals.add(dataVal);
-                            }
                         }
-//						dataVals.addAll(provData);
+						dataVals.addAll(provData);
 					}
 				}
 			}

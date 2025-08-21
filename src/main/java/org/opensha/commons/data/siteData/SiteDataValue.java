@@ -75,22 +75,6 @@ public class SiteDataValue<Element> implements XMLSaveable {
                 Objects.equals(sourceName, that.sourceName);
     }
 
-    public boolean isValid() {
-        // TODO: How can we consider all possible invalid values per type?
-        //       Maybe Element extends Validatable ?
-        if (value instanceof Double) {
-            return !Double.isNaN((Double)value);
-        } else if (value instanceof Float) {
-            return !Float.isNaN((Float)value);
-        } else if (value instanceof String) {
-            if (dataType.equals("Wills Class") && ((String)value).equals("NA")) {
-               return false;
-            }
-            return !((String)value).isBlank();
-        }
-        return true;
-    }
-
 	public org.dom4j.Element toXMLMetadata(org.dom4j.Element root) {
 		org.dom4j.Element elem = root.addElement(XML_METADATA_NAME);
 		elem.addAttribute("type", dataType);
