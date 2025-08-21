@@ -35,10 +35,8 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 			throws IOException {
 		logger.log(Level.INFO, "Writing old format files files");
 		outputDir = null;
-		boolean multipleERFs = true;
-		if (erfs.size() == 1)
-			multipleERFs = false;
-		for (int erfID=0; erfID<erfs.size(); erfID++) {
+		boolean multipleERFs = erfs.size() != 1;
+        for (int erfID=0; erfID<erfs.size(); erfID++) {
 			ERF erf = erfs.get(erfID);
 			if (multipleERFs) {
 				outputDir = new File(calc.getOutputDir().getAbsolutePath() + File.separator + "erf" + erfID);
@@ -48,7 +46,6 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 			logger.log(Level.INFO, "Writing files to: " +  outputDir.getAbsolutePath());
 			this.writeOriginalSrcRupMetaFile(erf);
 			this.writeOriginalRupDistFile(erf);
-			int numIMTs = imts.size();
             for (ScalarIMR attenRel : attenRels) {
                 for (String imt : imts) {
                     this.writeOriginalMeanSigmaFiles(erf, attenRel, imt);
