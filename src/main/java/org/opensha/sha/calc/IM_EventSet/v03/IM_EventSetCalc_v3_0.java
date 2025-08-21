@@ -84,7 +84,7 @@ public abstract class IM_EventSetCalc_v3_0 implements IM_EventSetCalc_v3_0_API {
 						for (SiteDataValue<?> dataVal : provData) {
                             logger.log(Level.FINE, "Provider data value for site " + i + ": " + dataVal);
                             // Don't add site data values that are already present
-                            if (!dataVals.contains(dataVal)) {
+                            if (!dataVals.contains(dataVal) && dataVal.isValid()) {
                                 dataVals.add(dataVal);
                             }
                         }
