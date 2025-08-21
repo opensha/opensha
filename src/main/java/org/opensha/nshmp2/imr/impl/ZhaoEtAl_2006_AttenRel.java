@@ -127,7 +127,7 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 	@Override
 	public void setPropagationEffectParams() {
 		if ( (this.site != null) && (this.eqkRupture != null)) {
-			setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
+			distanceRupParam.setValue(eqkRupture,site);
 		}
 	}
 

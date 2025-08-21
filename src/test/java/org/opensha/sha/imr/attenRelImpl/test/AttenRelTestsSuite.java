@@ -2,6 +2,8 @@ package org.opensha.sha.imr.attenRelImpl.test;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
+import org.opensha.sha.imr.attenRelImpl.ProductionIMRsBasicConsitencyTest;
+import org.opensha.sha.imr.attenRelImpl.ProductionIMRsInstantiationTest;
 import org.opensha.sha.imr.attenRelImpl.ngaw2.NGAW2_Tests;
 import org.opensha.sha.imr.attenRelImpl.ngaw2.NGAW2_WrapperTest;
 import org.opensha.sha.imr.mod.ModAttenuationRelationshipTest;
@@ -29,7 +31,9 @@ import org.opensha.sha.imr.mod.ModAttenuationRelationshipTest;
 	
 	NGAW2_WrapperTest.class,
 	NGAW2_Tests.class,
-	ModAttenuationRelationshipTest.class
+	ModAttenuationRelationshipTest.class,
+	ProductionIMRsInstantiationTest.class,
+	ProductionIMRsBasicConsitencyTest.class
 })
 
 

@@ -10,6 +10,7 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.exceptions.IMRException;
 import org.opensha.commons.exceptions.InvalidRangeException;
 import org.opensha.commons.exceptions.ParameterException;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.AbstractParameter;
 import org.opensha.commons.param.constraint.impl.DoubleConstraint;
 import org.opensha.commons.param.constraint.impl.IntegerConstraint;
@@ -225,6 +226,12 @@ public class BS_2003_AttenRel extends AttenuationRelationship {
 			as_1997_attenRel.setSiteLocation(site.getLocation());
 		}
 		super.setSite(site);
+	}
+
+	@Override
+	public void setSiteLocation(Location loc) {
+		super.setSiteLocation(loc);
+		as_1997_attenRel.setSiteLocation(loc);
 	}
 
 	/**

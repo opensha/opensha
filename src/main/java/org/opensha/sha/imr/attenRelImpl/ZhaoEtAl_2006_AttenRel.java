@@ -598,7 +598,6 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 	 * @return
 	 */
 	public double getMean(int iper, double mag, double rRup) {
-
 		double hypodepth;
 		double flag_sc  = 0.0; // This is unity for crustal events - Otherwise 0
 		double flag_Fr  = 0.0; // This is unity for reverse crustal events - Otherwise 0

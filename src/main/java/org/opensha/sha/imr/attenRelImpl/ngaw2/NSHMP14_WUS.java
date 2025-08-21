@@ -22,6 +22,7 @@ import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.nshmp2.util.Period;
 import org.opensha.nshmp2.util.Utils;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.attenRelImpl.BA_2008_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.CB_2008_AttenRel;
@@ -200,6 +201,11 @@ public class NSHMP14_WUS extends AttenuationRelationship implements
 //		}
 //	}
 	
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		throw new UnsupportedOperationException();
+	}
+
 	private IMT imt = null;
 	
 	private double Mw = NaN;
