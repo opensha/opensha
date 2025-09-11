@@ -6,8 +6,10 @@ import gov.usgs.earthquake.event.Format;
 import gov.usgs.earthquake.event.ISO8601;
 import gov.usgs.earthquake.event.JsonEvent;
 import gov.usgs.earthquake.event.UrlUtil;
+import gov.usgs.earthquake.event.JsonUtil;
 
 import java.io.InputStream;
+import java.io.InputStreamReader;
 
 import java.net.URL;
 import java.net.URLConnection;
@@ -16,6 +18,7 @@ import java.net.HttpURLConnection;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 
 import java.util.zip.GZIPInputStream;
 
@@ -25,6 +28,11 @@ import java.net.MalformedURLException;
 import java.net.SocketTimeoutException;
 import java.util.zip.ZipException;
 
+import java.nio.charset.StandardCharsets;
+
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
 
 /**
  * Class to access Comcat using USGS event web services.
@@ -413,6 +421,70 @@ public class ComcatEventWebService extends EventWebService {
 			// Might throw other exceptions.
 		
 			events = parseJsonEventCollection (stream_holder.get_stream());
+		}
+
+		return events;
+	}
+
+
+
+
+	/**
+	 * Parse the response from event web service into an array of JSONEvent
+	 * objects.
+	 *
+	 * @param input
+	 *          input stream response from event web service.
+	 * @return list of parsed events
+	 * @throws Exception
+	 *           if format is unexpected.
+	 */
+	// The following is the exact code from EventWebService.java, except that this:
+	//   new InputStreamReader(input)
+	// is changed to this:
+	//   new InputStreamReader(input, StandardCharsets.UTF_8)
+	// The change fixes issues on systems where UTF-8 is not the default character set.
+	@Override
+	protected List<JsonEvent> parseJsonEventCollection(final InputStream input)
+			throws Exception {
+		JSONParser parser = new JSONParser();
+
+		// parse feature collection into objects
+		JSONObject feed = JsonUtil.getJsonObject(parser
+				.parse(new InputStreamReader(input, StandardCharsets.UTF_8)));
+		if (feed == null) {
+			throw new Exception("Expected feed object");
+		}
+
+		// check feed type
+		String type = JsonUtil.getString(feed.get("type"));
+		if (type == null) {
+			throw new Exception("Expected geojson type");
+		}
+
+		ArrayList<JsonEvent> events = new ArrayList<JsonEvent>();
+
+		if (type.equals("Feature")) {
+			// detail feed with one event
+
+			events.add(new JsonEvent(feed));
+		} else if (type.equals("FeatureCollection")) {
+			// summary feed with many events
+
+			JSONArray features = JsonUtil.getJsonArray(feed.get("features"));
+			if (features == null) {
+				throw new Exception("Expected features");
+			}
+
+			// parse features into events
+			Iterator<?> iter = features.iterator();
+			while (iter.hasNext()) {
+				JSONObject next = JsonUtil.getJsonObject(iter.next());
+				if (next == null) {
+					throw new Exception("Expected feature");
+				}
+				events.add(new JsonEvent(next));
+			}
 		}
 
 		return events;

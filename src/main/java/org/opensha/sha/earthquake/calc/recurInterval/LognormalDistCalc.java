@@ -26,7 +26,26 @@ public final class LognormalDistCalc extends EqkProbDistCalc implements Paramete
 	}
 	
 
-	
+	/**
+	 * This computes the fractional uncertainty, fu, for the given confidence bounds, which only depends
+	 * on aperiodicity (COV) for a lognormal distribution.  For example, fu = ??? for aperiodicity=0.3 and 95% 
+	 * confidence bounds, which means the 95% confidence bounds are mean/fu and mean*fu.
+	 * 
+	 * @param confBoundsFraction - e.g., set as 0.95 for 95% confidence bounds
+	 * @return
+	 */
+	public double getFractionalUncertaintyForConfBounds(double confBoundsFraction) {
+		double fractUncert = 0;
+		this.getCDF(); // make sure it's freshly computed
+		for(double factor=1.001; factor<9.999; factor+=0.001) {
+			fractUncert = cdf.getInterpolatedY(mean*factor) - cdf.getInterpolatedY(mean/factor);
+			if(fractUncert>confBoundsFraction) {
+				fractUncert = factor;
+				break;
+			}
+		}
+		return fractUncert;
+	}
 	
 	/*
 	 * This computes the PDF and then the cdf from the pdf using 
