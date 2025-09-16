@@ -8,6 +8,7 @@ import org.opensha.commons.calc.GaussianDistCalc;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.exceptions.IMRException;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.geo.Location;
@@ -452,15 +453,17 @@ extends AbstractIMR implements ScalarIMR {
 	IMRException {
 		this.setIntensityMeasure(SA_Param.NAME);
 		setIntensityMeasureLevel(Double.valueOf(iml));
-		DiscretizedFunc exeedProbFunction =  new ArbitrarilyDiscretizedFunc();
-		List allowedSA_Periods = saPeriodParam.getAllowedDoubles();
+		List<Double> allowedSA_Periods = saPeriodParam.getAllowedDoubles();
 		int size = allowedSA_Periods.size();
+		double[] periods = new double[size];
+		double[] probs = new double[size];
 		for(int i=0;i<size;++i){
-			Double saPeriod = (Double)allowedSA_Periods.get(i);
-			getParameter(PeriodParam.NAME).setValue(saPeriod);
-			exeedProbFunction.set(saPeriod.doubleValue(),getExceedProbability());
+			Double saPeriod = allowedSA_Periods.get(i);
+			saPeriodParam.setValue(saPeriod);
+			periods[i] = saPeriod;
+			probs[i] = getExceedProbability();
 		}
-		return exeedProbFunction;
+		return new LightFixedXFunc(periods, probs);
 	}
 
 
@@ -476,16 +479,18 @@ extends AbstractIMR implements ScalarIMR {
 		this.setIntensityMeasure(SA_Param.NAME);
 		//sets the value of the exceedProb Param.
 		exceedProbParam.setValue(exceedProb);
-		DiscretizedFunc imlFunction =  new ArbitrarilyDiscretizedFunc();
-		List allowedSA_Periods = saPeriodParam.getAllowedDoubles();
+		List<Double> allowedSA_Periods = saPeriodParam.getAllowedDoubles();
 		int size = allowedSA_Periods.size();
+		double[] periods = new double[size];
+		double[] imls = new double[size];
 		for(int i=0;i<size;++i){
-			Double saPeriod = (Double)allowedSA_Periods.get(i);
-			getParameter(PeriodParam.NAME).setValue(saPeriod);
-			imlFunction.set(saPeriod.doubleValue(),getIML_AtExceedProb());
+			Double saPeriod = allowedSA_Periods.get(i);
+			saPeriodParam.setValue(saPeriod);
+			periods[i] = saPeriod;
+			imls[i] = getIML_AtExceedProb();
 		}
 
-		return imlFunction;
+		return new LightFixedXFunc(periods, imls);
 	}
 
 
