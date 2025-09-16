@@ -848,7 +848,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		if (bgIncludeChanged && bgInclude == EXCLUDE) {
 			// we don't need to erase previously generated ones, but don't bother calling
 			// getGridSourceProvider() below if we're not going to use them
-			return false;
+			return true;
 		}
 		if(bgRupSettingsChanged || bgIncludeChanged) {
 			int prevOther = numOtherSources;
@@ -887,12 +887,13 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		nthRupIndicesForSource = new ArrayList<int[]>();
 
 		// make temp array lists to avoid making each source twice
-		ArrayList<Integer> tempSrcIndexForNthRup = new ArrayList<Integer>();
-		ArrayList<Integer> tempRupIndexForNthRup = new ArrayList<Integer>();
-		ArrayList<Integer> tempFltSysRupIndexForNthRup = new ArrayList<Integer>();
+		int numSources = getNumSources();
+		ArrayList<Integer> tempSrcIndexForNthRup = new ArrayList<Integer>(numSources);
+		ArrayList<Integer> tempRupIndexForNthRup = new ArrayList<Integer>(numSources);
+		ArrayList<Integer> tempFltSysRupIndexForNthRup = new ArrayList<Integer>(numSources);
 		int n=0;
 		
-		for(int s=0; s<getNumSources(); s++) {	// this includes gridded sources
+		for(int s=0; s<numSources; s++) {	// this includes gridded sources
 			int numRups = getSource(s).getNumRuptures();
 			totNumRups += numRups;
 			if(s<numNonZeroFaultSystemSources) {
