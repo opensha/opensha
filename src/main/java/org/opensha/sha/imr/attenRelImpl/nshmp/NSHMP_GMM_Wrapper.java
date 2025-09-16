@@ -637,6 +637,13 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 	}
 
 	@Override
+	public double getExceedProbability() throws ParameterException, IMRException {
+		double iml = ((Double) im.getValue()).doubleValue();
+		
+		return getExceedProbability(iml);
+	}
+
+	@Override
 	public double getExceedProbability(double iml) throws ParameterException,
 			IMRException {
 		double weightSum = 0d;
@@ -664,8 +671,13 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 			);
 		}
 
-		double exceedProb = ( (Double) ( (Parameter<Double>) exceedProbParam).getValue()).doubleValue();
+		double exceedProb = exceedProbParam.getValue().doubleValue();
 		
+		return getIML_AtExceedProb(exceedProb);
+	}
+
+	@Override
+	public double getIML_AtExceedProb(double exceedProb) throws ParameterException {
 		double weightSum = 0d;
 		double weightValSum = 0d;
 		for (Branch<GroundMotion> branch : getGroundMotionTree()) {
@@ -681,20 +693,6 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 		
 		return weightValSum/weightSum;
 	}
-
-	@Override
-	public DiscretizedFunc getSA_ExceedProbSpectrum(double iml)
-			throws ParameterException, IMRException {
-		// TODO implement?
-		throw new UnsupportedOperationException("getSA_IML_AtExceedProbSpectrum is unsupported for "+C);
-	}
-
-	@Override
-	public DiscretizedFunc getSA_IML_AtExceedProbSpectrum(double exceedProb)
-			throws ParameterException, IMRException {
-		// TODO implement?
-		throw new UnsupportedOperationException("getSA_IML_AtExceedProbSpectrum is unsupported for "+C);
-	}
 	
 	protected abstract Set<Imt> getSupportedIMTs();
 
@@ -702,10 +700,6 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 	protected void initSupportedIntensityMeasureParams() {
 		supportedIMParams.clear();
 		
-//		if (gmm == null)
-//			return;
-//		
-//		Set<Imt> imts = gmm.supportedImts();
 		Set<Imt> imts = getSupportedIMTs();
 		if (imts == null)
 			return;

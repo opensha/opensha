@@ -10,6 +10,7 @@ import java.util.ListIterator;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.exceptions.ConstraintException;
 import org.opensha.commons.exceptions.EditableException;
 import org.opensha.commons.exceptions.IMRException;
@@ -689,6 +690,18 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 		}
 		return weighted;
 	}
+	
+	private double[] getWeightedSpectra(double[][] vals) {
+		if (!weights.isNormalized()) {
+			weights.normalize();
+			if (weightsParam != null)
+				weightsParam.refreshEditor();
+		}
+		double[] weighted = new double[vals.length];
+		for (int p=0; p<weighted.length; p++)
+			weighted[p] = weights.getWeightedAverage(vals[p]);
+		return weighted;
+	}
 
 	@Override
 	public double getMean() {
@@ -831,15 +844,49 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	@Override
 	public DiscretizedFunc getSA_ExceedProbSpectrum(double iml)
 			throws ParameterException, IMRException {
-		// TODO implement
-		throw new UnsupportedOperationException("getSA_IML_AtExceedProbSpectrum is unsupported for "+C);
+		double[] periods = null;
+		double[][] allValues = null;
+		for (int i=0; i<imrs.size(); i++) {
+			if (canSkipIMR(i))
+				continue;
+			ScalarIMR imr = imrs.get(i);
+			DiscretizedFunc rawSpectrum = imr.getSA_ExceedProbSpectrum(iml);
+			LightFixedXFunc spectrum = rawSpectrum instanceof LightFixedXFunc ? (LightFixedXFunc)rawSpectrum : new LightFixedXFunc(rawSpectrum);
+			if (periods == null) {
+				// first time
+				periods = spectrum.getXVals();
+				allValues = new double[periods.length][imrs.size()];
+				allValues[i] = spectrum.getYVals();
+			} else {
+				Preconditions.checkState(periods.length == spectrum.size());
+				allValues[i] = spectrum.getYVals();
+			}
+		}
+		return new LightFixedXFunc(periods, getWeightedSpectra(allValues));
 	}
 
 	@Override
 	public DiscretizedFunc getSA_IML_AtExceedProbSpectrum(double exceedProb)
 			throws ParameterException, IMRException {
-		// TODO implement
-		throw new UnsupportedOperationException("getSA_IML_AtExceedProbSpectrum is unsupported for "+C);
+		double[] periods = null;
+		double[][] allValues = null;
+		for (int i=0; i<imrs.size(); i++) {
+			if (canSkipIMR(i))
+				continue;
+			ScalarIMR imr = imrs.get(i);
+			DiscretizedFunc rawSpectrum = imr.getSA_IML_AtExceedProbSpectrum(exceedProb);
+			LightFixedXFunc spectrum = rawSpectrum instanceof LightFixedXFunc ? (LightFixedXFunc)rawSpectrum : new LightFixedXFunc(rawSpectrum);
+			if (periods == null) {
+				// first time
+				periods = spectrum.getXVals();
+				allValues = new double[periods.length][imrs.size()];
+				allValues[i] = spectrum.getYVals();
+			} else {
+				Preconditions.checkState(periods.length == spectrum.size());
+				allValues[i] = spectrum.getYVals();
+			}
+		}
+		return new LightFixedXFunc(periods, getWeightedSpectra(allValues));
 	}
 
 	@Override
