@@ -1240,6 +1240,10 @@ public class JFreeLogarithmicAxis extends LogAxis {
 			// ensure the autorange is at least <minRange> in size...
 			double minRange = getAutoRangeMinimumSize();
 			if (upper - lower < minRange) {
+				// Edge case: where <minRange> would lead us to a negative lower boundary, we adjust it.
+				if (upper + lower <= minRange / 2){
+					minRange = upper / 2;
+				}
 				upper = (upper + lower + minRange) / 2;
 				lower = (upper + lower - minRange) / 2;
 				//if autorange still below minimum then adjust by 1%

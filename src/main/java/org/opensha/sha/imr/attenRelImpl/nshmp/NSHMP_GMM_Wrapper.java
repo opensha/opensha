@@ -186,6 +186,10 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 			return gmm.type();
 		}
 		
+		public Gmm getGmmRef() {
+			return gmm;
+		}
+		
 		private GroundMotionModel getBuildGMM(Imt imt) {
 			Preconditions.checkNotNull(imt);
 			GroundMotionModel gmmInstance = instanceMap.get(imt);

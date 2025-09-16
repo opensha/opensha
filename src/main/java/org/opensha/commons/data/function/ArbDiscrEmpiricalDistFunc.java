@@ -100,7 +100,8 @@ public class ArbDiscrEmpiricalDistFunc extends ArbitrarilyDiscretizedFunc
      * This returns the x-axis value where the interpolated normalized cumulative
      * distribution equals the specified fraction.  If the fraction is below the Y-
      * value of the first point, then the X value of the first point is returned
-     * (since there is nothing below to interpolate with)
+     * (since there is nothing below to interpolate with).  If there are no points the
+     * zero is returned.
      * @param fraction - a value between 0 and 1.
      * @return
      */
@@ -108,6 +109,9 @@ public class ArbDiscrEmpiricalDistFunc extends ArbitrarilyDiscretizedFunc
 
       if(fraction < 0 || fraction > 1)
         throw new InvalidRangeException("fraction value must be between 0 and 1");
+      
+      if(size()==0)
+    	  return 0.0;
 
       DiscretizedFunc tempCumDist = getNormalizedCumDist();
 

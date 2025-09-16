@@ -442,7 +442,7 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 		reweightQuantity.setRequired(false);
 		ops.addOption(reweightQuantity);
 
-		Option reweight = new Option("rw", "reweight", true, "Enables dynamic constraint reweighting, "
+		Option reweight = new Option("rw", "reweight", false, "Enables dynamic constraint reweighting, "
 				+ "targeting "+ReweightEvenFitSimulatedAnnealing.QUANTITY_DEFAULT.name()+". Note that this only applies "
 				+ "to uncertainty-weighted constraints. If you want to target a different quantity, use "
 				+ "--reweight-quantity <quantity> instead.");

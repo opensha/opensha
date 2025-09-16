@@ -1,0 +1,16 @@
+{
+"type": "FeatureCollection",
+"name": "PaleoDOLE_CEUS_June5",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "FaultName": "Commerce", "FaultID": 3007, "SiteName": "Holly Ridge/Idalia Hills", "CalYear": -11050, "Reference": "Baldwin et al. (2006)", "NSHMhazID": 60000 }, "geometry": { "type": "Point", "coordinates": [ -89.895395548768803, 36.844298090726475 ] } },
+{ "type": "Feature", "properties": { "FaultName": "Eastern Margin (south)", "FaultID": 3009, "SiteName": "Porter Gap", "CalYear": -50, "Reference": "Cox et al. (2006)", "NSHMhazID": 3802 }, "geometry": { "type": "Point", "coordinates": [ -89.484272247678646, 35.930676317753978 ] } },
+{ "type": "Feature", "properties": { "FaultName": "Meeman-Shelby", "FaultID": 3011, "SiteName": "Oldham", "CalYear": 1450, "Reference": "Cox et al. (2013)", "NSHMhazID": 3804 }, "geometry": { "type": "Point", "coordinates": [ -90.032250005323803, 35.370023359111869 ] } },
+{ "type": "Feature", "properties": { "FaultName": "Meers", "FaultID": 3015, "SiteName": "Canyon Creek", "CalYear": 700, "Reference": "Crone and Luza (1990)", "NSHMhazID": 3200 }, "geometry": { "type": "Point", "coordinates": [ -98.585275508927324, 34.825226025452004 ] } },
+{ "type": "Feature", "properties": { "FaultName": "Commerce", "FaultID": 3007, "SiteName": "English Hills", "CalYear": 680, "Reference": "Harrison et al. (1999)", "NSHMhazID": 60000 }, "geometry": { "type": "Point", "coordinates": [ -89.470658911546195, 37.144248040090716 ] } },
+{ "type": "Feature", "properties": { "FaultName": "Meers", "FaultID": 3015, "SiteName": "Water Moccasin", "CalYear": -1159, "Reference": "Hornsby et al. (2020)", "NSHMhazID": 3200 }, "geometry": { "type": "Point", "coordinates": [ -98.69087698725987, 34.868851796426227 ] } },
+{ "type": "Feature", "properties": { "FaultName": "Meers", "FaultID": 3015, "SiteName": "Ponded Alluvium", "CalYear": 900, "Reference": "Kelson and Swan (1990)", "NSHMhazID": 3200 }, "geometry": { "type": "Point", "coordinates": [ -98.529921803258873, 34.8030370423321 ] } },
+{ "type": "Feature", "properties": { "FaultName": "Meers", "FaultID": 3015, "SiteName": "Browns Creek", "CalYear": 700, "Reference": "Madole (1998)", "NSHMhazID": 3200 }, "geometry": { "type": "Point", "coordinates": [ -98.439852588835791, 34.76693215662506 ] } },
+{ "type": "Feature", "properties": { "FaultName": "Cheraw", "FaultID": 2180, "SiteName": "Old Ranch", "CalYear": -3280, "Reference": "Ostenaa et al (2022)", "NSHMhazID": 2180 }, "geometry": { "type": "Point", "coordinates": [ -103.43207898475039, 38.268973474785163 ] } }
+]
+}

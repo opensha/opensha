@@ -74,7 +74,7 @@ public class NSHM23_RegionLoader {
 	 * 
 	 */
 	public enum AnalysisRegions implements NSHM23_BaseRegion {
-//		ALASKA("alaska.geojson"),
+		ALASKA("alaska.geojson"),
 		CONUS_EAST("ceus.geojson"),
 		CONUS_IMW("intermountain-west.geojson"),
 //		CONUS_IMW_ACTIVE("intermountain-west-active.geojson"),

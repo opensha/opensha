@@ -427,10 +427,10 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 
 		// THESE SHOULD BE SET DYNAMICALLY
 		// CURRENTLY HARD CODED FOR Ned and Nitin's Macs
-		GMT_PATH="/sw/bin/";
-		GS_PATH="/sw/bin/gs";
-		PS2PDF_PATH = "/sw/bin/ps2pdf";
-		CONVERT_PATH="/sw/bin/convert";
+		GMT_PATH="/opt/homebrew/bin/gmt ";
+		GS_PATH="/opt/homebrew/bin/gs";
+		PS2PDF_PATH = "/opt/homebrew/bin/ps2pdf";
+		CONVERT_PATH="/opt/homebrew/bin/convert";
 		GMT_DATA_PATH="/usr/scec/data/gmt/";
 		
 		GMT_SCRIPT_NAME = dirName+"/"+DEFAULT_GMT_SCRIPT_NAME;
