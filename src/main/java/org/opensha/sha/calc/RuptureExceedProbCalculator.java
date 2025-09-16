@@ -1,12 +1,10 @@
 package org.opensha.sha.calc;
 
-import org.opensha.commons.data.Site;
 import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.WeightedValue;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.geo.Location;
-import org.opensha.commons.util.interp.DistanceInterpolator;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.PointSurface.DistanceCorrectable;
