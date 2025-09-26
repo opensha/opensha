@@ -106,7 +106,7 @@ public class IMT_ChooserPanel extends NamesListPanel implements ParameterChangeL
 	}
 	
 	public void setIMRs(ArrayList<ScalarIMR> imrs) {
-		// this stes the IMRs in the IMT gui bean (so that only ones that work for all
+		// this sets the IMRs in the IMT gui bean (so that only ones that work for all
 		// IMRs can be used.
 		imtGuiBean.setIM(imrs);
 		
