@@ -978,7 +978,16 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		}
 		// also buffer around our trace
 		for (FaultSection sect : mySects) {
-			for (Location loc : new Region(sect.getFaultTrace(), maxNeighborDistance).getBorder()) {
+			LocationList traceBuffer;
+			try {
+				traceBuffer = new Region(sect.getFaultTrace(), maxNeighborDistance).getBorder();
+			} catch (RuntimeException e) {
+				// that can fail for some weird-squirrely fault traces
+				// fall back to juse using the first/last location
+				traceBuffer = new Region(LocationList.of(sect.getFaultTrace().first(), sect.getFaultTrace().last()),
+						maxNeighborDistance).getBorder();
+			}
+			for (Location loc : traceBuffer) {
 				latTrack.addValue(loc.lat);
 				lonTrack.addValue(loc.lon);
 			}
