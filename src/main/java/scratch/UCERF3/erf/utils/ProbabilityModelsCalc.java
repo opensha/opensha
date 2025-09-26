@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.PriorityQueue;
+import java.util.Random;
+import java.util.TreeMap;
 
 import javax.swing.JFrame;
 
@@ -69,11 +71,13 @@ import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
+import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 import org.opensha.sha.simulators.utils.General_EQSIM_Tools;
 
 import com.google.common.base.Preconditions;
 
+import scratch.UCERF3.analysis.FaultSysSolutionERF_Calc;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.utils.ProbModelsPlottingUtils;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
@@ -170,9 +174,6 @@ public class ProbabilityModelsCalc {
 	boolean noSectionsHadDateOfLast;
 	public String u3_ProgGainForRupInfoString;
 
-	// data dir for Elastic Rebound simulations
-	final static File dataDir = new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR,File.separator+"erSimulations");
-	
 	boolean simulationMode=false;
 	HistogramFunction simNormTimeSinceLastHist;
 	HistogramFunction simNormTimeSinceLastForMagBelow7_Hist;
@@ -499,6 +500,10 @@ public class ProbabilityModelsCalc {
 	
 	
 
+	/**
+	 * This only writes to system out
+	 * @return
+	 */
 	public int writeSectionsWithDateOfLastEvent() {
 		List<? extends FaultSection> fltData = fltSysRupSet.getFaultSectionDataList();
 		int numWith=0;
@@ -514,11 +519,11 @@ public class ProbabilityModelsCalc {
 	}
 	
 	
-	public void writeInfoForRupsOnSect(int sectID) {
+	public void writeInfoForRupsOnSect(File outputDir, int sectID) {
 		String fileName = "RupInfoForSect"+sectID+".txt";
-		if(!dataDir.exists())
-			dataDir.mkdir();
-		File dataFile = new File(dataDir,File.separator+fileName);
+		if(!outputDir.exists())
+			outputDir.mkdir();
+		File dataFile = new File(outputDir,fileName);
 		String sectName = fltSysRupSet.getFaultSectionData(sectID).getName();
 		try {
 			FileWriter fileWriter = new FileWriter(dataFile);
@@ -561,16 +566,21 @@ public class ProbabilityModelsCalc {
 	 * This returns Double.NaN if onlyIfAllSectionsHaveDateOfLast=true and one or mare sections
 	 * lack date of last event.
 	 * 
-	 * @param onlyIfAllSectionsHaveDateOfLast
-	 * @param fltSystRupIndex
-	 * @param histOpenInterval
+	 * @param fltSysRupIndex
+	 * @param histOpenInterval - years
+	 * @param onlyIfAllSectionsHaveDateOfLast - gain=Double.NaN if any sections lack a date of last event
 	 * @param aveRecurIntervals - if false, rates will be averaged in get the conditional recurrence interval
 	 * @param aveNormTimeSinceLast - if true, normalized time since last is averaged (divided by section intervals); otherwise time since last is averaged
+	 * @param presentTimeMillis
+	 * @param durationYears
+	 * @return
 	 */
 	public double getU3_ProbGainForRup(int fltSysRupIndex, double histOpenInterval, boolean onlyIfAllSectionsHaveDateOfLast, 
 			boolean aveRecurIntervals, boolean aveNormTimeSinceLast, long presentTimeMillis, double durationYears) {
 		
 		double rupMag = fltSysRupSet.getMagForRup(fltSysRupIndex);
+		int numSubsectForRup = fltSysRupSet.getFaultSectionDataForRupture(fltSysRupIndex).size();
+
 
 		// get the average conditional recurrence interval
 		double aveCondRecurInterval;
@@ -593,8 +603,6 @@ public class ProbabilityModelsCalc {
 		if(aveNormTimeSinceLast) {
 			aveNormTimeSinceLastEventWhereKnown = getAveNormTimeSinceLastEventWhereKnown(fltSysRupIndex, presentTimeMillis);
 			aveTimeSinceLastWhereKnownYears = aveNormTimeSinceLastEventWhereKnown*aveCondRecurInterval;
-//			if(aveTimeSinceLastWhereKnownYears<0)
-//				throw new RuntimeException("1st "+aveTimeSinceLastWhereKnownYears);
 		}
 		else {
 			long aveTimeOfLastMillisWhereKnown = getAveDateOfLastEventWhereKnown(fltSysRupIndex, presentTimeMillis);
@@ -602,28 +610,26 @@ public class ProbabilityModelsCalc {
 				aveTimeSinceLastWhereKnownYears = (double)(presentTimeMillis-aveTimeOfLastMillisWhereKnown)/MILLISEC_PER_YEAR;	
 			else
 				aveTimeSinceLastWhereKnownYears = Double.NaN;
-//			if(aveTimeSinceLastWhereKnownYears<0)
-//				throw new RuntimeException("2nd "+aveTimeSinceLastWhereKnownYears+"\t"+presentTimeMillis+"\t"+aveTimeOfLastMillisWhereKnown+"\t"+Long.MIN_VALUE);
-
 		}
 		
 		Preconditions.checkState(Double.isNaN(aveTimeSinceLastWhereKnownYears)
 				|| aveTimeSinceLastWhereKnownYears >= 0, "aveTimeSinceLastWhereKnownYears=%s", aveTimeSinceLastWhereKnownYears);
+
 		// the following global variables were just set by the above 
 		// 		double totRupArea
 		// 		double totRupAreaWithDateOfLast
 		// 		boolean allSectionsHadDateOfLast
 		// 		boolean noSectionsHadDateOfLast
 		
-		
 		double expNum = durationYears/aveCondRecurInterval;
+		float fractAreaWithDateOfLast = (float)(totRupAreaWithDateOfLast/totRupArea);
 		
 //if(totRupAreaWithDateOfLast==0) {
 //	System.out.println("fltSysRupIndex="+fltSysRupIndex+" has no date of last data");
 //	System.exit(0);
 //}
 		
-// test
+// test (ERF Dependent)
 //int testRupID = 156778;	// ~half sectuibs have date if last
 //int testRupID = 151834;	// all sections have date of last
 //int testRupID = 0;	// no sections have date of last
@@ -631,32 +637,34 @@ public class ProbabilityModelsCalc {
 //int testRupID = 249574;
 // int testRupID = 198219; Imperial rup
 		
-
-		
 		double probGain;
+		double condProb;
+		double condRecurIntWhereUnknown = Double.NaN;
 
 		if(onlyIfAllSectionsHaveDateOfLast && !allSectionsHadDateOfLast) {
 			probGain = Double.NaN;
+			condProb = Double.NaN;
 // if(fltSysRupIndex==testRupID) System.out.println("Here1");
 		}
 		else if(allSectionsHadDateOfLast) {
-			probGain = computeBPT_ProbFast(aveCondRecurInterval, aveTimeSinceLastWhereKnownYears, durationYears, rupMag)/expNum;	
+			condProb = computeBPT_ProbFast(aveCondRecurInterval, aveTimeSinceLastWhereKnownYears, durationYears, rupMag);
+			probGain = condProb/expNum;	
 //if(fltSysRupIndex==testRupID) System.out.println("Here2");
-			// these tests still fail for small ave norm since, disabling for now
-//			Preconditions.checkState(probGain > 0d || (probGain == 0d && (float)aveTimeSinceLastWhereKnownYears == 0f),
-//					"Bad probGain=%s where all sections have date of last.\n"
-//					+ "\taveCondRecurInterval=%s\taveTimeSinceLastWhereKnownYears=%s\n"
-//					+ "\tdurationYears=%s\texpNum=%s",
-//					probGain, aveCondRecurInterval, aveTimeSinceLastWhereKnownYears, histOpenInterval, durationYears, expNum);
+			Preconditions.checkState(probGain >= 0d, // || (probGain == 0d && (float)aveTimeSinceLastWhereKnownYears == 0f),
+					"Bad probGain=%s where all sections have date of last.\n"
+					+ "\taveCondRecurInterval=%s\taveTimeSinceLastWhereKnownYears=%s\n"
+					+ "\thistOpenInterval=%s\tdurationYears=%s\texpNum=%s\n"+
+					"\tcondProb=%s\taper=%s",
+					probGain, aveCondRecurInterval, aveTimeSinceLastWhereKnownYears, histOpenInterval, durationYears, expNum, condProb, aperValues[getAperIndexForRupMag(rupMag)]);
 		}
 		else if (noSectionsHadDateOfLast) {
-			probGain = computeBPT_ProbForUnknownDateOfLastFast(aveCondRecurInterval, histOpenInterval, durationYears, rupMag)/expNum;
-// if(fltSysRupIndex==testRupID) System.out.println("Here3");
-			// these tests still fail for small ave norm since, disabling for now
-//			Preconditions.checkState(probGain > 0d, "Bad probGain=%s where no sections have date of last.\n"
-//					+ "\taveCondRecurInterval=%s\thistOpenInterval=%s\n"
-//					+ "\tdurationYears=%s\texpNum=%s",
-//					probGain, aveCondRecurInterval, histOpenInterval, durationYears, expNum);
+			condProb = computeBPT_ProbForUnknownDateOfLastFast(aveCondRecurInterval, histOpenInterval, durationYears, rupMag);
+			probGain = condProb/expNum;	
+			// if(fltSysRupIndex==testRupID) System.out.println("Here3");
+			Preconditions.checkState(probGain > 0d, "Bad probGain=%s where no sections have date of last.\n"
+					+ "\taveCondRecurInterval=%s\thistOpenInterval=%s\n"
+					+ "\tdurationYears=%s\texpNum=%s",
+					probGain, aveCondRecurInterval, histOpenInterval, durationYears, expNum);
 		}
 		else {	// case where some have date of last; loop over all possibilities for those that don't.
 //  if(fltSysRupIndex==testRupID) System.out.println("Here4");
@@ -668,8 +676,7 @@ public class ProbabilityModelsCalc {
 			double areaWithOutDateOfLast = totRupArea-totRupAreaWithDateOfLast;
 
 			
-			double condRecurIntWhereUnknown = computeAveCondRecurIntForFltSysRupsWhereDateLastUnknown(fltSysRupIndex, aveRecurIntervals, presentTimeMillis);
-//			double condRecurIntWhereUnknown = aveCondRecurInterval;
+			condRecurIntWhereUnknown = computeAveCondRecurIntForFltSysRupsWhereDateLastUnknown(fltSysRupIndex, aveRecurIntervals, presentTimeMillis);
 			
 			if(aveNormTimeSinceLast) {
 				for(int i=0;i<normBPT_CDF.size();i++) {
@@ -677,8 +684,8 @@ public class ProbabilityModelsCalc {
 					double relProbForTimeSinceLast = 1.0-normBPT_CDF.getY(i);	// this is the probability of the date of last event (not considering hist open interval)
 					if(normTimeSinceYears*condRecurIntWhereUnknown>=histOpenInterval && relProbForTimeSinceLast>1e-15) {
 						double aveNormTS = (normTimeSinceYears*areaWithOutDateOfLast + aveNormTimeSinceLastEventWhereKnown*totRupAreaWithDateOfLast)/totRupArea;
-						double condProb = computeBPT_ProbFast(1.0, aveNormTS, durationYears/aveCondRecurInterval, rupMag);
-						sumCondProbGain += (condProb/expNum)*relProbForTimeSinceLast;
+						double condProbTemp = computeBPT_ProbFast(1.0, aveNormTS, durationYears/aveCondRecurInterval, rupMag);
+						sumCondProbGain += (condProbTemp/expNum)*relProbForTimeSinceLast;
 						totWeight += relProbForTimeSinceLast;
 						
 //if(fltSysRupIndex==testRupID) {
@@ -700,8 +707,8 @@ public class ProbabilityModelsCalc {
 					if(timeSinceYears>=histOpenInterval && relProbForTimeSinceLast>1e-15) {
 						// average the time since last between known and unknown sections
 						double aveTimeSinceLast = (timeSinceYears*areaWithOutDateOfLast + aveTimeSinceLastWhereKnownYears*totRupAreaWithDateOfLast)/totRupArea;
-						double condProb = computeBPT_ProbFast(aveCondRecurInterval, aveTimeSinceLast, durationYears, rupMag);
-						sumCondProbGain += (condProb/expNum)*relProbForTimeSinceLast;
+						double condProbTemp = computeBPT_ProbFast(aveCondRecurInterval, aveTimeSinceLast, durationYears, rupMag);
+						sumCondProbGain += (condProbTemp/expNum)*relProbForTimeSinceLast;
 						totWeight += relProbForTimeSinceLast;
 						
 // test
@@ -715,36 +722,35 @@ public class ProbabilityModelsCalc {
 			
 			if(totWeight>0) {
 				probGain = sumCondProbGain/totWeight;
-				// these tests still fail for small ave norm since, disabling for now
-//				Preconditions.checkState(probGain > 0d, "Bad probGain=%s where some (but not all) sections have date of last.\n"
-//						+ "\tsumCondProbGain=%s\ttotWeight=%s\n"
-//						+ "\tdurationYears=%s\texpNum=%s",
-//						probGain, sumCondProbGain, totWeight, durationYears, expNum);
+				condProb = probGain*expNum;
+				Preconditions.checkState(probGain >= 0d, "Bad probGain=%s where some (but not all) sections have date of last.\n"
+						+ "\tsumCondProbGain=%s\ttotWeight=%s\n"
+						+ "\tdurationYears=%s\texpNum=%s\tfractAreaWith=%s",
+						probGain, sumCondProbGain, totWeight, durationYears, expNum, (float)fractAreaWithDateOfLast);
 			}
-			else {	// deal with case where there was no viable time since last; use exactly historic open interval
+			else {	// deal with case where there was no viable time since last (model implies it definitely should have occurred in hist open interval); use exactly historic open interval
 //List<FaultSectionPrefData> fltDataList = fltSysRupSet.getFaultSectionDataForRupture(fltSysRupIndex);
 //System.out.println("FIXING: "+fltDataList.get(0).getName()+" to "+fltDataList.get(fltDataList.size()-1).getName()+
 //		"\tFractAreaUnknown="+(areaWithOutDateOfLast/totRupArea));
+				if(totWeight<=0) throw new RuntimeException("Finally got here - note how this happened");
 				if(aveNormTimeSinceLast) {
 					double normTimeSinceYearsUnknown = histOpenInterval/condRecurIntWhereUnknown;
 					double aveNormTS = (normTimeSinceYearsUnknown*areaWithOutDateOfLast + aveNormTimeSinceLastEventWhereKnown*totRupAreaWithDateOfLast)/totRupArea;
-					double condProb = computeBPT_ProbFast(1.0, aveNormTS, durationYears/aveCondRecurInterval, rupMag);
+					condProb = computeBPT_ProbFast(1.0, aveNormTS, durationYears/aveCondRecurInterval, rupMag);
 					probGain = condProb/expNum;
-					// these tests still fail for small ave norm since, disabling for now
-//					Preconditions.checkState(probGain > 0d, "Bad probGain=%s where some (but not all) sections have date of last.\n"
-//							+ "\tcondProb=%s\texpNum=%s\tnormTimeSinceYearsUnknown=%s\taveNormTS=%s\n"
-//						+ "\tdurationYears=%s\texpNum=%s",
-//							probGain, condProb, expNum, normTimeSinceYearsUnknown, aveNormTS, durationYears, expNum);
+					Preconditions.checkState(probGain > 0d, "Bad probGain=%s where some (but not all) sections have date of last.\n"
+							+ "\tcondProb=%s\texpNum=%s\tnormTimeSinceYearsUnknown=%s\taveNormTS=%s\n"
+						+ "\tdurationYears=%s\texpNum=%s",
+							probGain, condProb, expNum, normTimeSinceYearsUnknown, aveNormTS, durationYears, expNum);
 				}
 				else {
 					double aveTimeSinceLast = (histOpenInterval*areaWithOutDateOfLast + aveTimeSinceLastWhereKnownYears*totRupAreaWithDateOfLast)/totRupArea;
-					double condProb = computeBPT_ProbFast(aveCondRecurInterval, aveTimeSinceLast, durationYears, rupMag);
+					condProb = computeBPT_ProbFast(aveCondRecurInterval, aveTimeSinceLast, durationYears, rupMag);
 					probGain = condProb/expNum;
-					// these tests still fail for small ave norm since, disabling for now
-//					Preconditions.checkState(probGain > 0d, "Bad probGain=%s where some (but not all) sections have date of last.\n"
-//							+ "\tcondProb=%s\texpNum=%s\taveTimeSinceLast=%s\n"
-//						+ "\tdurationYears=%s\texpNum=%s",
-//							probGain, condProb, expNum, aveTimeSinceLast, durationYears, expNum);
+					Preconditions.checkState(probGain > 0d, "Bad probGain=%s where some (but not all) sections have date of last.\n"
+							+ "\tcondProb=%s\texpNum=%s\taveTimeSinceLast=%s\n"
+						+ "\tdurationYears=%s\texpNum=%s",
+							probGain, condProb, expNum, aveTimeSinceLast, durationYears, expNum);
 				}
 			}
 		}
@@ -753,20 +759,29 @@ public class ProbabilityModelsCalc {
 //		if(fltSysRupIndex==testRupID) {
 //				System.out.println("\tprobGain="+probGain);
 //}
+			
 		u3_ProgGainForRupInfoString = new String();
 		u3_ProgGainForRupInfoString += fltSysRupIndex+",";
+		u3_ProgGainForRupInfoString += probGain+",";
+		u3_ProgGainForRupInfoString += condProb+",";
 		u3_ProgGainForRupInfoString += rupMag+",";
 		u3_ProgGainForRupInfoString += aveCondRecurInterval+",";
+		u3_ProgGainForRupInfoString += condRecurIntWhereUnknown+",";
+		u3_ProgGainForRupInfoString += aveTimeSinceLastWhereKnownYears+",";
 		u3_ProgGainForRupInfoString += aveNormTimeSinceLastEventWhereKnown+",";
-		u3_ProgGainForRupInfoString += probGain+",";
 		u3_ProgGainForRupInfoString += totRupArea+",";
 		u3_ProgGainForRupInfoString += totRupAreaWithDateOfLast+",";
-		u3_ProgGainForRupInfoString += allSectionsHadDateOfLast+",";
-		u3_ProgGainForRupInfoString += noSectionsHadDateOfLast;
+		u3_ProgGainForRupInfoString += fractAreaWithDateOfLast+",";
+		u3_ProgGainForRupInfoString += aperValues[getAperIndexForRupMag(rupMag)]+",";
+		u3_ProgGainForRupInfoString += numSubsectForRup;
 
+//		u3_ProgGainForRupInfoString += allSectionsHadDateOfLast+",";
+//		u3_ProgGainForRupInfoString += noSectionsHadDateOfLast;
 
+//		if(simulationMode && Double.isNaN(aveTimeSinceLastWhereKnownYears))
+//			throw new RuntimeException(u3_ProgGainForRupInfoString);
 		
-		if(simulationMode) {
+		if(simulationMode && !Double.isNaN(aveTimeSinceLastWhereKnownYears)) {
 			if(aveTimeSinceLastWhereKnownYears/aveCondRecurInterval > simNormTimeSinceLastHist.getMaxX()) {
 				simNormTimeSinceLastHist.add(simNormTimeSinceLastHist.getMaxX(), longTermRateOfFltSysRup[fltSysRupIndex]);
 				if(rupMag <= 7)
@@ -799,7 +814,7 @@ public class ProbabilityModelsCalc {
 		}
 		
 		if(Double.isNaN(probGain))
-			throw new RuntimeException("NaN fltSysRupIndex="+fltSysRupIndex);
+			throw new RuntimeException("probGain=NaN for fltSysRupIndex="+fltSysRupIndex);
 		
 		return probGain;
 
@@ -1131,7 +1146,8 @@ public class ProbabilityModelsCalc {
 			BPT_DistCalc bptCalc = new BPT_DistCalc();
 			bptCalc.setInterpolate(interpolate);
 			bptCalc.setAll(refRI, aperValues[i], deltaT, numPts);
-			bptCalcArray[i]=bptCalc;			
+			bptCalcArray[i]=bptCalc;		
+ //System.out.println("HEREITIS: "+refRI+"\t"+aperValues[i]+"\t"+deltaT+"\t"+numPts);
 		}
 		
 		return bptCalcArray;
@@ -1201,7 +1217,7 @@ public class ProbabilityModelsCalc {
 	 * normalized durations, normalized time since last, and normalize historic open intervals.  Fractional discrepancies
 	 * greater than 0.001 are listed.  All are generally small and for large normalized durations or historic open intervals,
 	 * where differences in how to avoid numerical problems arise.  I don't think any of these are significant for UCERF3, but
-	 * the better test for the latter would be to do it both ways for UCERF3 (test the long way against the fast caclulations).
+	 * the better test for the latter would be to do it both ways for UCERF3 (test the long way against the fast calculations).
 	 * @param numTests
 	 */
 	public static void testFastCalculations(int numTests) {
@@ -1250,23 +1266,34 @@ public class ProbabilityModelsCalc {
 	
 	
 	/**
-	 * This simulates events from using elastic rebound probabilities
+	 * This simulates events using elastic rebound probabilities
 	 * 
 	 * This assumes the rate of each rupture is constant up until the next event is sampled.
 	 * 
-	 * TODO:
+	 * The state of the ERF is preserved (even though it temporarily switches to Poisson)
 	 * 
-	 * Shouldn't pass in erf (use the local one)
+	 * Changes made since UCERF3 Papers include:
 	 * 
-	 * Have this ignore non-fault=system ruptures (others take way too long this way).
+	 * 1) more debugging info added (actually in the getU3_ProbGainForRup() method
 	 * 
-	 * add progress bar
+	 * 2) added seed to method arguments for reproducibility
+	 * 
+	 * 3) remove the ERF argument from method because it did not make sense
 	 * 
 	 */
-	public void testER_Simulation(String inputDateOfLastFileName, String outputDateOfLastFileName, FaultSystemSolutionERF erf, double numYears, String dirNameSuffix) {
+	public void testER_Simulation(String inputTimeSinceLastMillisFileName, String outputTimesinceLastMillisFileName, 
+			double numYears, String dirNameSuffix, long randomSeed) {
 		
-		
+		if(erf == null)
+			throw new RuntimeException ("erf cannot be null; used the class constructor that takes an erf");
+
 		int testSectionIndex = 1946;
+		
+//		RandomDataImpl randomDataSampler = new RandomDataImpl();	// old apache tool for sampling from exponential distribution here
+		RandomDataGenerator randomDataSampler = new RandomDataGenerator();
+		randomDataSampler.reSeed(randomSeed);  // for reproducibility; this is for the next event time
+		Random random = new Random(randomSeed);  // this is for the nth rup sampler
+
 		
 		boolean aveRecurIntervals = erf.aveRecurIntervalsInU3_BPTcalc;
 		boolean aveNormTimeSinceLast = erf.aveNormTimeSinceLastInU3_BPTcalc;
@@ -1379,6 +1406,9 @@ public class ProbabilityModelsCalc {
 		double[] aveRupProbGainArray = new double[erf.getTotNumRups()];	// averages the prob gains at each event time
 		double[] minRupProbGainArray = new double[erf.getTotNumRups()];	// averages the prob gains at each event time
 		double[] maxRupProbGainArray = new double[erf.getTotNumRups()];	// averages the prob gains at each event time
+		boolean[] sectionRupturedDuringSim = new boolean[numSections];  
+		for(int i=0;i<numSections;i++)
+			sectionRupturedDuringSim[i] = false;
 		
 		// this is for writing out simulated events that occur
 		FileWriter eventFileWriter=null;
@@ -1391,8 +1421,6 @@ public class ProbabilityModelsCalc {
 
 
 		int numRups=0;
-//		RandomDataImpl randomDataSampler = new RandomDataImpl();	// old apache tool for sampling from exponential distribution here
-		RandomDataGenerator randomDataSampler = new RandomDataGenerator();
 		
 		// set the forecast as Poisson to get long-term rates (and update)
 		erf.getParameter(ProbabilityModelParam.NAME).setValue(ProbabilityModelOptions.POISSON);
@@ -1441,7 +1469,7 @@ public class ProbabilityModelsCalc {
 		
 		double totalLongTermRate = totalRate;
 		
-		double simDuration = 1/totalLongTermRate;
+		double simDuration = 1/totalLongTermRate;  // used to compute next prob gain
 		
 
 		// Make local sectIndexArrayForSrcList for faster simulations
@@ -1470,6 +1498,11 @@ public class ProbabilityModelsCalc {
 		tempString += "\ntotal rate >= 6.7 = "+(float)targetMFD.getCumRate(6.75);
 		tempString += "\ntotal MoRate = "+(float)origTotMoRate;
 		targetMFD.setInfo(tempString);
+		
+		// reset ERF to original probability model
+		erf.getParameter(ProbabilityModelParam.NAME).setValue(probTypeEnum);
+		erf.updateForecast();
+
 		
 //		System.out.println(targetMFD);
 
@@ -1511,18 +1544,18 @@ public class ProbabilityModelsCalc {
 
 		long startRunTime = System.currentTimeMillis();
 		
-//		System.out.println("section part rates:");
-//		for(int i=0;i<longTermPartRateForSectArray.length;i++)
-//			System.out.println(i+"\t"+longTermPartRateForSectArray[i]);
-		
 		// read section date of last file if not null
-		if(inputDateOfLastFileName != null && probTypeEnum != ProbabilityModelOptions.POISSON)
-			readSectTimeSinceLastEventFromFile(inputDateOfLastFileName, currentTimeMillis);
-		else {
-			getSectNormTimeSinceLastHistPlot(currentTimeMillis, "From Pref Data");
+		if(inputTimeSinceLastMillisFileName != null && probTypeEnum != ProbabilityModelOptions.POISSON)
+			readSectTimeSinceLastEventFromFile(inputTimeSinceLastMillisFileName, currentTimeMillis);
+		else {  // plot those from the ERF
+			if(probTypeEnum != ProbabilityModelOptions.POISSON)
+				getSectNormTimeSinceLastHistPlot(currentTimeMillis, "From Pref Data");
+			else // override date of last in ERF for Poisson
+				for(int s=0; s<dateOfLastForSect.length;s++)
+					dateOfLastForSect[s]= Long.MIN_VALUE;
 		}
 		
-		// test override ***********************************
+		// test  ***********************************
 //		for(int i=0;i<dateOfLastForSect.length;i++)
 //			dateOfLastForSect[i] = currentTimeMillis-Math.round(1.0*MILLISEC_PER_YEAR/longTermPartRateForSectArray[i]);
 		//*****************************************************
@@ -1532,6 +1565,7 @@ public class ProbabilityModelsCalc {
 	
 		
 		boolean firstEvent = true;
+		int numSectThatRuptured = 0;
 		while (currentYear<numYears+origStartYear) {
 			
 			progressBar.updateProgress((int)Math.round(currentYear-origStartYear), (int)Math.round(numYears));
@@ -1546,7 +1580,9 @@ public class ProbabilityModelsCalc {
 						numGoodDateOfLast+=1;					
 				}
 				int percentGood = (int)Math.round((100.0*(double)numGoodDateOfLast/(double)dateOfLastForSect.length));
-				System.out.println("\n"+percDoneThresh+"% done in "+(float)timeInMin+" minutes"+";  totalRate="+(float)totalRate+"; yr="+(float)currentYear+";  % sect with date of last = "+percentGood+"\n");	
+				System.out.println("\n"+percDoneThresh+"% done in "+(float)timeInMin+" minutes"+";  totalRate="+(float)totalRate+"; yr="+(float)currentYear+";  % sect with date of last = "+percentGood);	
+				System.out.println("\tFraction of sections that ruptured: "+ (double)numSectThatRuptured/(double)numSections+"\n");
+		
 				percDoneThresh += percDoneIncrement;
 			}
 			
@@ -1575,7 +1611,7 @@ public class ProbabilityModelsCalc {
 //					double newRate = longTermRateOfNthRups[n] * probGain/gainCorr;
 //					
 					// no correction
-					double newRate = longTermRateOfNthRups[n] * probGain;
+					double newRate = longTermRateOfNthRups[n] * probGain;	// applied as a rate gain
 					
 					nthRupRandomSampler.set(n, newRate);
 					aveRupProbGainArray[n] += probGain;
@@ -1617,7 +1653,7 @@ public class ProbabilityModelsCalc {
 			// System.out.println("Event time: "+eventTimeMillis+" ("+(timeToNextInYrs+timeOfNextInYrs)+" yrs)");
 
 			// sample an event
-			nthRup = nthRupRandomSampler.getRandomInt();
+			nthRup = nthRupRandomSampler.getRandomInt(random);
 			int srcIndex = erf.getSrcIndexForNthRup(nthRup);
 			
 //.			System.out.println(numRups+"\t"+currentYear+"\t"+totalRate+"\t"+timeToNextInYrs+"\t"+nthRup);
@@ -1632,22 +1668,23 @@ public class ProbabilityModelsCalc {
 
 				
 				// compute and save the normalize recurrence interval if all sections had date of last
+				double aveNormRI = Double.NaN;
 				if(aveNormTimeSinceLast) {	// average time since last
-					double aveNormYearsSinceLast = getAveNormTimeSinceLastEventWhereKnown(fltSystRupIndex, eventTimeMillis);
+					aveNormRI = getAveNormTimeSinceLastEventWhereKnown(fltSystRupIndex, eventTimeMillis);
 					if(allSectionsHadDateOfLast) {
-						normalizedRupRecurIntervals.add(aveNormYearsSinceLast);
+						normalizedRupRecurIntervals.add(aveNormRI);
 						if(numAperValues>0)
-							normalizedRupRecurIntervalsMagDepList.get(getAperIndexForRupMag(rupMag)).add(aveNormYearsSinceLast);
+							normalizedRupRecurIntervalsMagDepList.get(getAperIndexForRupMag(rupMag)).add(aveNormRI);
 					}					
 				}
 				else {
 					long aveDateOfLastMillis = getAveDateOfLastEventWhereKnown(fltSystRupIndex, eventTimeMillis);
 					if(allSectionsHadDateOfLast) {
 						double timeSinceLast = (eventTimeMillis-aveDateOfLastMillis)/MILLISEC_PER_YEAR;
-						double normRI = timeSinceLast/aveCondRecurIntervalForFltSysRups[fltSystRupIndex];
-						normalizedRupRecurIntervals.add(normRI);
+						aveNormRI = timeSinceLast/aveCondRecurIntervalForFltSysRups[fltSystRupIndex];
+						normalizedRupRecurIntervals.add(aveNormRI);
 						if(numAperValues>0)
-							normalizedRupRecurIntervalsMagDepList.get(getAperIndexForRupMag(rupMag)).add(normRI);
+							normalizedRupRecurIntervalsMagDepList.get(getAperIndexForRupMag(rupMag)).add(aveNormRI);
 
 					}					
 				}
@@ -1655,7 +1692,7 @@ public class ProbabilityModelsCalc {
 				
 				// write event info out
 				try {
-					eventFileWriter.write(nthRup+"\t"+fltSystRupIndex+"\t"+(currentYear+timeToNextInYrs)+"\t"+eventTimeMillis+"\t"+normalizedRupRecurIntervals.get(normalizedRupRecurIntervals.size()-1)+"\n");
+					eventFileWriter.write(nthRup+"\t"+fltSystRupIndex+"\t"+(currentYear+timeToNextInYrs)+"\t"+eventTimeMillis+"\t"+aveNormRI+"\n");
 				} catch (IOException e1) {
 					e1.printStackTrace();
 				}
@@ -1793,6 +1830,10 @@ public class ProbabilityModelsCalc {
 					dateOfLastForSect[sect] = eventTimeMillis;
 					obsSectRateArray[sect] += 1.0; // add the event
 					
+					if(sectionRupturedDuringSim[sect]==false) // first time ruptured
+						numSectThatRuptured += 1;
+					sectionRupturedDuringSim[sect] = true;
+					
 					double mag = magOfNthRups[nthRup];
 					if(mag>6 && mag<6.7)
 						obsSectRateArrayM6pt05to6pt65[sect] += 1;
@@ -1815,6 +1856,12 @@ public class ProbabilityModelsCalc {
 			firstEvent=false;
 		}
 		
+		numSectThatRuptured=0;
+		for(boolean ruptured:sectionRupturedDuringSim)
+			if(ruptured)
+				numSectThatRuptured += 1;
+		System.out.println("\tFinal fraction of sections that ruptured: "+ (double)numSectThatRuptured/(double)numSections+"\n");
+				
 		progressBar.showProgress(false);
 		
 		try {
@@ -1825,11 +1872,13 @@ public class ProbabilityModelsCalc {
 		}
 		
 		// write section date of last file if not null
-		if(outputDateOfLastFileName != null)
-			writeSectTimeSinceLastEventToFile(outputDateOfLastFileName, currentTimeMillis);
+		if(outputTimesinceLastMillisFileName != null) {
+			File dataDir = new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR,File.separator+"erSimulations");
+			writeSectTimeSinceLastEventToFile(dataDir,outputTimesinceLastMillisFileName, currentTimeMillis);
+		}
 		
 		String infoString = dirNameForSavingFiles;
-		infoString += "\ninputDateOfLastFileName: "+inputDateOfLastFileName;
+		infoString += "\ninputDateOfLastFileName: "+inputTimeSinceLastMillisFileName;
 		infoString += "\nnumRups="+numRups;
 		
 		
@@ -1973,7 +2022,7 @@ public class ProbabilityModelsCalc {
 		boolean doThis=true;
 		
 
-		// 	plot simNormTimeSinceLastHist & simProbGainHist - these are weighted by long-term rates
+		// 	plot simNormTimeSinceLastHist & simProbGainHist - these are weighted by long-term rates; note that these are for all ruptures (not just the one that occurred at each event time)
 		if(probTypeEnum == ProbabilityModelOptions.U3_BPT && doThis) {
 //			int numObs = (int)Math.round(simNormTimeSinceLastHist.calcSumOfY_Vals());
 			simNormTimeSinceLastHist.scale(1.0/(simNormTimeSinceLastHist.calcSumOfY_Vals()*simNormTimeSinceLastHist.getDelta())); // makes it a density function
@@ -2352,836 +2401,6 @@ public class ProbabilityModelsCalc {
 	
 
 	
-	
-	/**
-	 * 
-	 * TODO Shouldn't pass in erf (use the local one)
-	 * 
-	 * MFD and moment rate comparisons are not yet implemented correctly
-	 */
-	public void testER_SimulationOnParentSection(String inputDateOfLastFileName, String outputDateOfLastFileName, FaultSystemSolutionERF erf, double numYears, 
-			String dirNameSuffix, int parentSectIndex) {
-		
-		boolean aveRecurIntervals = erf.aveRecurIntervalsInU3_BPTcalc;
-		boolean aveNormTimeSinceLast = erf.aveNormTimeSinceLastInU3_BPTcalc;
-		
-		this.simulationMode=true;
-		simNormTimeSinceLastHist = new HistogramFunction(0.05, 100, 0.1);	// up to 10
-		simNormTimeSinceLastForMagBelow7_Hist = new HistogramFunction(0.05, 100, 0.1);	// up to 10
-		simNormTimeSinceLastForMagAbove7_Hist = new HistogramFunction(0.05, 100, 0.1);
-		simProbGainHist = new HistogramFunction(0.05, 100, 0.1);	// up to 10
-		simProbGainForMagAbove7_Hist = new HistogramFunction(0.05, 100, 0.1);	// up to 10
-		simProbGainForMagBelow7_Hist = new HistogramFunction(0.05, 100, 0.1);	// up to 10
-
-		
-		// LABELING AND FILENAME STUFF
-		String typeCalcForU3_Probs;
-		if(aveRecurIntervals)
-			typeCalcForU3_Probs = "aveRI";
-		else
-			typeCalcForU3_Probs = "aveRate";
-		if(aveNormTimeSinceLast)
-			typeCalcForU3_Probs += "_aveNormTimeSince";
-		else
-			typeCalcForU3_Probs += "_aveTimeSince";
-
-		String probTypeString;
-		ProbabilityModelOptions probTypeEnum = (ProbabilityModelOptions)erf.getParameter(ProbabilityModelParam.NAME).getValue();
-		
-		String aperString = "aper";
-		if(probTypeEnum != ProbabilityModelOptions.POISSON) {
-			boolean first = true;
-			for(double aperVal:this.aperValues) {
-				if(first)
-					aperString+=aperVal;
-				else
-					aperString+=","+aperVal;
-				first=false;
-			}
-			aperString = aperString.replace(".", "pt");			
-		}
-		
-		System.out.println("\naperString: "+aperString+"\n");
-		
-		int tempDur = (int) Math.round(numYears/1000);
-		
-		if (probTypeEnum == ProbabilityModelOptions.POISSON) {
-			probTypeString= "Pois";
-		}
-		else if(probTypeEnum == ProbabilityModelOptions.U3_BPT) {
-			probTypeString= "U3BPT";
-		}
-		else if(probTypeEnum == ProbabilityModelOptions.WG02_BPT) {
-			probTypeString= "WG02BPT";
-		}
-		else
-			throw new RuntimeException("Porbability type unrecognized");
-		
-		String dirNameForSavingFiles = "Psect_"+parentSectIndex+"_"+probTypeString+"_"+tempDur+"kyr";
-		if(probTypeEnum != ProbabilityModelOptions.POISSON) {
-			dirNameForSavingFiles += "_"+aperString;
-			dirNameForSavingFiles += "_"+typeCalcForU3_Probs;
-		}
-		
-		dirNameForSavingFiles += "_"+dirNameSuffix;
-		
-		String plotLabelString = probTypeString;
-		if(probTypeEnum == ProbabilityModelOptions.U3_BPT)
-			plotLabelString += " ("+aperString+", "+typeCalcForU3_Probs+")";
-		else if(probTypeEnum == ProbabilityModelOptions.WG02_BPT)
-			plotLabelString += " ("+aperString+")";
-
-		File resultsDir = new File(dirNameForSavingFiles);
-		if(!resultsDir.exists()) resultsDir.mkdir();
-
-		
-		// INTIALIZE THINGS:
-		
-		double[] probGainForFaultSystemSource = new double[erf.getNumFaultSystemSources()];
-		for(int s=0;s<probGainForFaultSystemSource.length;s++)
-			probGainForFaultSystemSource[s] = 1.0;	// default is 1.0
-
-		// set original start time and total duration
-		long origStartTimeMillis = 0;
-		if(probTypeEnum != ProbabilityModelOptions.POISSON)
-			origStartTimeMillis = erf.getTimeSpan().getStartTimeInMillis();
-		double origStartYear = ((double)origStartTimeMillis)/MILLISEC_PER_YEAR+1970.0;
-		System.out.println("orig start time: "+origStartTimeMillis+ " millis ("+origStartYear+" yrs)");
-		System.out.println("numYears: "+numYears);
-		
-		double simDuration = 5;	// 1 year; this could be the expected time to next event?
-		
-		// initialize some things
-		ArrayList<Double> normalizedRupRecurIntervals = new ArrayList<Double>();
-		ArrayList<Double> normalizedSectRecurIntervals = new ArrayList<Double>();
-		ArrayList<ArrayList<Double>> normalizedRupRecurIntervalsMagDepList = new ArrayList<ArrayList<Double>>();
-		ArrayList<ArrayList<Double>> normalizedSectRecurIntervalsMagDepList = new ArrayList<ArrayList<Double>>();
-		for(int i=0;i<numAperValues;i++) {
-			normalizedRupRecurIntervalsMagDepList.add(new ArrayList<Double>());
-			normalizedSectRecurIntervalsMagDepList.add(new ArrayList<Double>());
-		}
-		ArrayList<Double> yearsIntoSimulation = new ArrayList<Double>();
-		ArrayList<Double> totRateAtYearsIntoSimulation = new ArrayList<Double>();
-
-		double[] obsSectRateArray = new double[numSections];
-		double[] obsSectSlipRateArray = new double[numSections];
-		double[] obsRupRateArray = new double[erf.getTotNumRups()];
-		double[] aveRupProbGainArray = new double[erf.getTotNumRups()];	// averages the prob gains at each event time
-		double[] minRupProbGainArray = new double[erf.getTotNumRups()];	// averages the prob gains at each event time
-		double[] maxRupProbGainArray = new double[erf.getTotNumRups()];	// averages the prob gains at each event time
-		
-		// this is for writing out simulated events that occur
-		FileWriter eventFileWriter=null;
-		try {
-			eventFileWriter = new FileWriter(dirNameForSavingFiles+"/sampledEventsData.txt");
-			eventFileWriter.write("nthRupIndex\tfssRupIndex\tyear\tepoch\tnormRupRI\n");
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-
-
-		int numRups=0;
-		int numSteps=0;
-		RandomDataGenerator randomDataSampler = new RandomDataGenerator();
-		
-		// set the forecast as Poisson to get long-term rates (and update)
-		erf.getParameter(ProbabilityModelParam.NAME).setValue(ProbabilityModelOptions.POISSON);
-		erf.updateForecast();
-		
-		List<Integer> fltSysRupIndicesForParentList = fltSysRupSet.getRupturesForParentSection(parentSectIndex);
-		
-		// fill in totalRate, longTermRateOfNthRups, magOfNthRups, and longTermSlipRateForSectArray
-		double totalRate=0;
-		IntegerPDF_FunctionSampler nthRupRandomSampler = new IntegerPDF_FunctionSampler(erf.getTotNumRups());
-		double[] longTermRateOfNthRups = new double[erf.getTotNumRups()];	// this will include any aftershock reductions
-		double[] magOfNthRups = new double[erf.getTotNumRups()];
-		double[] longTermSlipRateForSectArray = new double[numSections];
-		int nthRup=0;
-		for(ProbEqkSource src:erf) {
-			for(ProbEqkRupture rup:src) {
-				double rate = rup.getMeanAnnualRate(erf.getTimeSpan().getDuration());
-				int fltSysRupIndex = erf.getFltSysRupIndexForNthRup(nthRup);
-				if(fltSysRupIndicesForParentList.contains(fltSysRupIndex))
-					longTermRateOfNthRups[nthRup] = rate;
-				else
-					longTermRateOfNthRups[nthRup] = 0;
-				magOfNthRups[nthRup] = rup.getMag();
-				totalRate += longTermRateOfNthRups[nthRup];
-				nthRupRandomSampler.set(nthRup, longTermRateOfNthRups[nthRup]);
-				if(erf.getSrcIndexForNthRup(nthRup)<erf.getNumFaultSystemSources()) {
-					// slip rates
-					int fltSysIndex = erf.getFltSysRupIndexForNthRup(nthRup);
-					List<Integer> sectIndices = fltSysRupSet.getSectionsIndicesForRup(fltSysIndex);
-					double slips[];
-					if(fltSysRupSet instanceof InversionFaultSystemRupSet) {
-						slips = ((InversionFaultSystemRupSet) fltSysRupSet).getSlipOnSectionsForRup(erf.getFltSysRupIndexForNthRup(nthRup));
-					}
-					else {	// apply ave to all sections
-						double mag = fltSysRupSet.getMagForRup(erf.getFltSysRupIndexForNthRup(nthRup));
-						double area = fltSysRupSet.getAreaForRup(erf.getFltSysRupIndexForNthRup(nthRup));
-						double aveSlip = FaultMomentCalc.getSlip(area, MagUtils.magToMoment(mag));
-						slips = new double[sectIndices.size()];
-						for(int i=0;i<slips.length;i++)
-							slips[i]=aveSlip;
-					}
-					for(int s=0;s<sectIndices.size();s++) {
-						int sectID = sectIndices.get(s);
-						longTermSlipRateForSectArray[sectID] += rate*slips[s];
-					}					
-				}
-				nthRup+=1;
-			}
-		}
-		System.out.println("totalRate long term = "+totalRate);
-		
-		double totalLongTermRate = totalRate;
-		
-
-		// Make local sectIndexArrayForSrcList for faster simulations
-		ArrayList<int[]> sectIndexArrayForSrcList = new ArrayList<int[]>();
-		for(int s=0; s<erf.getNumFaultSystemSources();s++) {
-			List<Integer> indexList = fltSysRupSet.getSectionsIndicesForRup(erf.getFltSysRupIndexForSource(s));
-			int[] indexArray = new int[indexList.size()];
-			for(int i=0;i<indexList.size();i++)
-				indexArray[i] = indexList.get(i);
-			sectIndexArrayForSrcList.add(indexArray);
-		}
-		
-		// make the target MFD - TODO
-		if(D) System.out.println("Making target MFD");
-		SummedMagFreqDist targetMFD = ERF_Calculator.getTotalMFD_ForERF(erf, 5.05, 8.95, 40, true);
-		double origTotMoRate = ERF_Calculator.getTotalMomentRateInRegion(erf, null);
-		System.out.println("originalTotalMomentRate: "+origTotMoRate);
-		targetMFD.setName("Target MFD");
-		String tempString = "total rate = "+(float)targetMFD.getTotalIncrRate();
-		tempString += "\ntotal rate >= 6.7 = "+(float)targetMFD.getCumRate(6.75);
-		tempString += "\ntotal MoRate = "+(float)origTotMoRate;
-		targetMFD.setInfo(tempString);
-		
-		// MFD for simulation
-		SummedMagFreqDist obsMFD = new SummedMagFreqDist(5.05,8.95,40);
-		double obsMoRate = 0;
-		
-		// set the ave cond recurrence intervals
-		double[] aveCondRecurIntervalForFltSysRups;
-		if(aveRecurIntervals) {
-			if(aveCondRecurIntervalForFltSysRups_type1 == null)
-				aveCondRecurIntervalForFltSysRups_type1 = computeAveCondRecurIntervalForFltSysRups(1);
-			aveCondRecurIntervalForFltSysRups = aveCondRecurIntervalForFltSysRups_type1;
-		}
-		else {
-			if(aveCondRecurIntervalForFltSysRups_type2 == null)
-				aveCondRecurIntervalForFltSysRups_type2 = computeAveCondRecurIntervalForFltSysRups(2);
-			aveCondRecurIntervalForFltSysRups = aveCondRecurIntervalForFltSysRups_type2;			
-		}
-
-		
-		// initialize things
-		double currentYear=origStartYear;
-		long currentTimeMillis = origStartTimeMillis;
-		
-		// this is to track progress
-		int percDoneThresh=0;
-		int percDoneIncrement=5;
-
-		long startRunTime = System.currentTimeMillis();
-		
-		// read section date of last file if not null
-		if(inputDateOfLastFileName != null && probTypeEnum != ProbabilityModelOptions.POISSON)
-			readSectTimeSinceLastEventFromFile(inputDateOfLastFileName, currentTimeMillis);
-		else {
-			getSectNormTimeSinceLastHistPlot(currentTimeMillis, "From Pref Data");
-		}
-		
-		CalcProgressBar progressBar = new CalcProgressBar(dirNameForSavingFiles,"Num Years Done");
-		progressBar.showProgress(true);
-	
-		
-		boolean firstEvent = true;
-		while (currentYear<numYears+origStartYear) {
-			
-			progressBar.updateProgress((int)Math.round(currentYear-origStartYear), (int)Math.round(numYears));
-			
-			// write progress
-			int percDone = (int)Math.round(100*(currentYear-origStartYear)/numYears);
-			if(percDone >= percDoneThresh) {
-				double timeInMin = ((double)(System.currentTimeMillis()-startRunTime)/(1000.0*60.0));
-				System.out.println("\n"+percDoneThresh+"% done in "+(float)timeInMin+" minutes"+";  totalRate="+(float)totalRate+"; yr="+(float)currentYear+": numRups="+numRups+"\n");	
-				percDoneThresh += percDoneIncrement;
-			}
-			
-			// update gains and sampler if not Poisson
-			if(probTypeEnum != ProbabilityModelOptions.POISSON) {
-				// first the gains
-				if(probTypeEnum == ProbabilityModelOptions.U3_BPT) {
-					for(int fltSysRupIndex:fltSysRupIndicesForParentList) {
-						int s = erf.getSrcIndexForFltSysRup(fltSysRupIndex);
-						probGainForFaultSystemSource[s] = getU3_ProbGainForRup(fltSysRupIndex, 0.0, false, aveRecurIntervals, aveNormTimeSinceLast, currentTimeMillis, simDuration);
-					}
-				}
-				else if(probTypeEnum == ProbabilityModelOptions.WG02_BPT) {
-					sectionGainArray=null; // set this null so it gets updated
-					for(int fltSysRupIndex:fltSysRupIndicesForParentList) {
-						int s = erf.getSrcIndexForFltSysRup(fltSysRupIndex);
-						probGainForFaultSystemSource[s] = getWG02_ProbGainForRup(fltSysRupIndex, false, currentTimeMillis, simDuration);
-					}
-				}		
-				// now update totalRate and ruptureSampler (for all rups since start time changed)
-				for(int fltSysRupIndex:fltSysRupIndicesForParentList) {
-					int srcIndex = erf.getSrcIndexForFltSysRup(fltSysRupIndex);
-					for(int n:erf.get_nthRupIndicesForSource(srcIndex)) {
-						double probGain = probGainForFaultSystemSource[srcIndex];
-						double newRate = longTermRateOfNthRups[n] * probGain;
-						nthRupRandomSampler.set(n, newRate);
-						aveRupProbGainArray[n] += probGain;
-						if(minRupProbGainArray[n]>probGain)
-							minRupProbGainArray[n] = probGain;
-						if(maxRupProbGainArray[n]<probGain)
-							maxRupProbGainArray[n] = probGain;
-					}
-				}
-				totalRate = nthRupRandomSampler.getSumOfY_vals();				
-			}
-			numSteps +=1;	// number of times gain is calculated
-			yearsIntoSimulation.add(currentYear);
-			totRateAtYearsIntoSimulation.add(totalRate);
-			
-			// sample time of next event
-			double timeToNextInYrs;
-			if(totalRate > 1e-6)
-				timeToNextInYrs = randomDataSampler.nextExponential(1.0/totalRate);
-			else
-				timeToNextInYrs = simDuration*10;	// just make the next text fail
-			
-			if(timeToNextInYrs<=simDuration) {	// only keep if withing simDuration
-
-				long eventTimeMillis = currentTimeMillis + (long)(timeToNextInYrs*MILLISEC_PER_YEAR);
-				// System.out.println("Event time: "+eventTimeMillis+" ("+(timeToNextInYrs+timeOfNextInYrs)+" yrs)");
-
-				// sample an event
-				nthRup = nthRupRandomSampler.getRandomInt();
-				int srcIndex = erf.getSrcIndexForNthRup(nthRup);
-
-				//.			System.out.println(numRups+"\t"+currentYear+"\t"+totalRate+"\t"+timeToNextInYrs+"\t"+nthRup);
-
-
-				obsRupRateArray[nthRup] += 1;
-
-				// set that fault system event has occurred (and save normalized RI)
-				if(srcIndex < erf.getNumFaultSystemSources()) {	// ignore other sources
-					int fltSystRupIndex = erf.getFltSysRupIndexForSource(srcIndex);
-					double rupMag = fltSysRupSet.getMagForRup(erf.getFltSysRupIndexForNthRup(nthRup));
-
-					// compute and save the normalize recurrence interval if all sections had date of last
-					if(aveNormTimeSinceLast) {	// average time since last
-						double aveNormYearsSinceLast = getAveNormTimeSinceLastEventWhereKnown(fltSystRupIndex, eventTimeMillis);
-						if(allSectionsHadDateOfLast) {
-							normalizedRupRecurIntervals.add(aveNormYearsSinceLast);
-							if(numAperValues>0)
-								normalizedRupRecurIntervalsMagDepList.get(getAperIndexForRupMag(rupMag)).add(aveNormYearsSinceLast);
-						}					
-					}
-					else {
-						long aveDateOfLastMillis = getAveDateOfLastEventWhereKnown(fltSystRupIndex, eventTimeMillis);
-						if(allSectionsHadDateOfLast) {
-							double timeSinceLast = (eventTimeMillis-aveDateOfLastMillis)/MILLISEC_PER_YEAR;
-							double normRI = timeSinceLast/aveCondRecurIntervalForFltSysRups[fltSystRupIndex];
-							normalizedRupRecurIntervals.add(normRI);
-							if(numAperValues>0)
-								normalizedRupRecurIntervalsMagDepList.get(getAperIndexForRupMag(rupMag)).add(normRI);
-
-						}					
-					}
-
-					// write event info out
-					try {
-						eventFileWriter.write(nthRup+"\t"+fltSystRupIndex+"\t"+(currentYear+timeToNextInYrs)+"\t"+eventTimeMillis+"\t"+normalizedRupRecurIntervals.get(normalizedRupRecurIntervals.size()-1)+"\n");
-					} catch (IOException e1) {
-						e1.printStackTrace();
-					}
-
-
-					// save normalized fault section recurrence intervals & RI along strike
-					int[] sectID_Array = sectIndexArrayForSrcList.get(erf.getSrcIndexForFltSysRup(fltSystRupIndex));
-					int numSectInRup=sectID_Array.length;
-					double slips[];
-					if(fltSysRupSet instanceof InversionFaultSystemRupSet) {
-						slips = ((InversionFaultSystemRupSet) fltSysRupSet).getSlipOnSectionsForRup(erf.getFltSysRupIndexForNthRup(nthRup));
-					}
-					else {	// apply ave to all sections
-						double area = fltSysRupSet.getAreaForRup(erf.getFltSysRupIndexForNthRup(nthRup));
-						double aveSlip = FaultMomentCalc.getSlip(area, MagUtils.magToMoment(rupMag));
-						slips = new double[numSectInRup];
-						for(int i=0;i<slips.length;i++)
-							slips[i]=aveSlip;
-					}
-					// obsSectSlipRateArray
-					int ithSectInRup=0;
-					for(int sect : sectID_Array) {
-						obsSectSlipRateArray[sect] += slips[ithSectInRup];
-						long timeOfLastMillis = dateOfLastForSect[sect];
-						if(timeOfLastMillis != Long.MIN_VALUE) {
-							double normYrsSinceLast = ((eventTimeMillis-timeOfLastMillis)/MILLISEC_PER_YEAR)*longTermPartRateForSectArray[sect];
-							normalizedSectRecurIntervals.add(normYrsSinceLast);
-							if(numAperValues>0)
-								normalizedSectRecurIntervalsMagDepList.get(getAperIndexForRupMag(rupMag)).add(normYrsSinceLast);
-
-						}
-						ithSectInRup += 1;
-					}
-
-					// reset last event time and increment simulated/obs rate on sections
-					for(int sect:sectIndexArrayForSrcList.get(srcIndex)) {
-						dateOfLastForSect[sect] = eventTimeMillis;
-						obsSectRateArray[sect] += 1.0; // add the event
-					}
-				}
-
-				numRups+=1;
-				obsMFD.addResampledMagRate(magOfNthRups[nthRup], 1.0, true);
-				obsMoRate += MagUtils.magToMoment(magOfNthRups[nthRup]);
-
-				// increment time
-				currentYear += timeToNextInYrs;
-				currentTimeMillis = eventTimeMillis;
-				firstEvent=false;
-
-			}
-			else {
-				currentYear+=simDuration;
-				currentTimeMillis += (long)(simDuration*MILLISEC_PER_YEAR);
-			}
-		}
-
-		progressBar.showProgress(false);
-		
-		try {
-			eventFileWriter.close();
-		} catch (IOException e2) {
-			// TODO Auto-generated catch block
-			e2.printStackTrace();
-		}
-		
-		// write section date of last file if not null
-		if(outputDateOfLastFileName != null)
-			writeSectTimeSinceLastEventToFile(outputDateOfLastFileName, currentTimeMillis);
-		
-		String infoString = dirNameForSavingFiles;
-		infoString += "\ninputDateOfLastFileName: "+inputDateOfLastFileName;
-		infoString += "\nnumRups="+numRups;
-		
-		
-		// plot average rupture gains
-		double[] tempMagArray = new double[aveRupProbGainArray.length];
-		for(int i=0;i<aveRupProbGainArray.length;i++) {
-			aveRupProbGainArray[i]/=numSteps;
-			tempMagArray[i]=magOfNthRups[i];	// the latter may include gridded seis rups
-		}
-		DefaultXY_DataSet aveRupProbGainVsMag = new DefaultXY_DataSet(tempMagArray,aveRupProbGainArray);
-		DefaultXY_DataSet minRupProbGainVsMag = new DefaultXY_DataSet(tempMagArray,minRupProbGainArray);
-		DefaultXY_DataSet maxRupProbGainVsMag = new DefaultXY_DataSet(tempMagArray,maxRupProbGainArray);
-		aveRupProbGainVsMag.setName("Ave Rup Prob Gain vs Mag");
-		double meanProbGain =0;
-		for(double val:aveRupProbGainArray) 
-			meanProbGain += val;
-		meanProbGain /= aveRupProbGainArray.length;
-		aveRupProbGainVsMag.setInfo("meanProbGain="+(float)meanProbGain);
-		minRupProbGainVsMag.setName("Min Rup Prob Gain vs Mag");
-		maxRupProbGainVsMag.setName("Max Rup Prob Gain vs Mag");
-		ArrayList<DefaultXY_DataSet> aveRupProbGainVsMagFuncs = new ArrayList<DefaultXY_DataSet>();
-		aveRupProbGainVsMagFuncs.add(aveRupProbGainVsMag);
-		aveRupProbGainVsMagFuncs.add(minRupProbGainVsMag);
-		aveRupProbGainVsMagFuncs.add(maxRupProbGainVsMag);
-		ArrayList<PlotCurveCharacterstics> plotCharsAveGain = new ArrayList<PlotCurveCharacterstics>();
-		plotCharsAveGain.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 4f, Color.BLUE));
-		plotCharsAveGain.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 4f, Color.GREEN));
-		plotCharsAveGain.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 4f, Color.RED));
-		GraphWindow graphAveRupProbGainVsMag = new GraphWindow(aveRupProbGainVsMagFuncs, "Ave Rup Prob Gain vs Mag; "+plotLabelString, plotCharsAveGain); 
-		graphAveRupProbGainVsMag.setX_AxisLabel("Magnitude");
-		graphAveRupProbGainVsMag.setY_AxisLabel("Ave Rup Prob Gain");
-
-		// write out these gains and other stuff
-		for(int i=0;i<obsRupRateArray.length;i++) {
-			obsRupRateArray[i] = obsRupRateArray[i]/numYears;
-		}
-		FileWriter gain_fr;
-		try {
-			gain_fr = new FileWriter(dirNameForSavingFiles+"/aveRupGainData.txt");
-			gain_fr.write("nthRupIndex\taveRupGain\tminRupGain\tmaxRupGain\trupMag\trupLongTermRate\tobsRupRate\texpNumRups\trupCondRI\trupName\n");
-			for(int i=0;i<aveRupProbGainArray.length;i++) {
-				if(longTermRateOfNthRups[i]>0)
-					gain_fr.write(i+"\t"+aveRupProbGainArray[i]+"\t"+minRupProbGainArray[i]+"\t"+maxRupProbGainArray[i]+"\t"+magOfNthRups[i]
-						+"\t"+longTermRateOfNthRups[i]+"\t"+obsRupRateArray[i]+"\t"+numYears*longTermRateOfNthRups[i]+"\t"+aveCondRecurIntervalForFltSysRups[erf.getFltSysRupIndexForNthRup(i)]+"\t"+
-						erf.getSource(erf.getSrcIndexForNthRup(i)).getName()+"\n");
-			}
-			gain_fr.close();
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-
-		// make aveGainVsMagFunction, weighted by rupture rate
-		HistogramFunction aveGainVsMagHist = new HistogramFunction(5.05, 40, 0.1);
-		HistogramFunction tempWtHist = new HistogramFunction(5.05, 40, 0.1);
-		for(int i=0;i<aveRupProbGainArray.length;i++) {
-			aveGainVsMagHist.add(magOfNthRups[i], aveRupProbGainArray[i]*longTermRateOfNthRups[i]);
-			tempWtHist.add(magOfNthRups[i], longTermRateOfNthRups[i]);
-		}
-		for(int i=0;i<aveGainVsMagHist.size();i++) {
-			double wt = tempWtHist.getY(i);
-			if(wt>1e-15) // avoid division by zero
-				aveGainVsMagHist.set(i,aveGainVsMagHist.getY(i)/wt);
-		}
-		aveGainVsMagHist.setName("aveGainVsMagHist");
-		aveGainVsMagHist.setInfo("weighted by rupture long-term rates");
-		GraphWindow graphAveGainVsMagHist = new GraphWindow(aveGainVsMagHist, "Ave Rup Gain vs Mag; "+plotLabelString); 
-		graphAveGainVsMagHist.setX_AxisLabel("Mag");
-		graphAveGainVsMagHist.setY_AxisLabel("Ave Gain");
-		graphAveGainVsMagHist.setAxisLabelFontSize(22);
-		graphAveGainVsMagHist.setTickLabelFontSize(20);
-		graphAveGainVsMagHist.setPlotLabelFontSize(22);
-
-
-		
-		
-		// make normalized rup recurrence interval plots
-		double aper=Double.NaN;
-		if(numAperValues==1)
-			aper=aperValues[0];	// only one value, so include in plot for al ruptures
-		ArrayList<EvenlyDiscretizedFunc> funcList = ProbModelsPlottingUtils.getNormRI_DistributionWithFits(normalizedRupRecurIntervals, aper);
-		GraphWindow grapha_a = ProbModelsPlottingUtils.plotNormRI_DistributionWithFits(funcList, "Normalized Rupture RIs; "+plotLabelString);
-//		GraphWindow grapha_a = General_EQSIM_Tools.plotNormRI_Distribution(normalizedRupRecurIntervals, "Normalized Rupture RIs; "+plotLabelString, aperiodicity);
-		infoString += "\n\nRup "+funcList.get(0).getName()+":";
-		infoString += "\n"+funcList.get(0).getInfo();
-		infoString += "\n\n"+funcList.get(1).getName();
-		infoString += "\n"+funcList.get(1).getInfo();
-		
-		// now mag-dep:
-		if(numAperValues >1) {
-			for(int i=0;i<numAperValues;i++) {
-				ArrayList<EvenlyDiscretizedFunc> funcListMagDep = ProbModelsPlottingUtils.getNormRI_DistributionWithFits(normalizedRupRecurIntervalsMagDepList.get(i), aperValues[i]);
-				String label = getMagDepAperInfoString(i);
-				GraphWindow graphaMagDep = ProbModelsPlottingUtils.plotNormRI_DistributionWithFits(funcListMagDep, "Norm Rup RIs; "+label+"; "+plotLabelString);
-				infoString += "\n\nRup "+funcListMagDep.get(0).getName()+" for "+label+":";
-				infoString += "\n"+funcListMagDep.get(0).getInfo();
-				infoString += "\n\n"+funcListMagDep.get(1).getName();
-				infoString += "\n"+funcListMagDep.get(1).getInfo();	
-				// save plot now
-				try {
-					graphaMagDep.saveAsPDF(dirNameForSavingFiles+"/normRupRecurIntsForMagRange"+i+".pdf");
-					graphaMagDep.saveAsTXT(dirNameForSavingFiles+"/normRupRecurIntsForMagRange"+i+".txt");
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-		}
-
-		// make normalized sect recurrence interval plots
-		ArrayList<EvenlyDiscretizedFunc> funcList2 = ProbModelsPlottingUtils.getNormRI_DistributionWithFits(normalizedSectRecurIntervals, aper);
-		GraphWindow graph2_b = ProbModelsPlottingUtils.plotNormRI_DistributionWithFits(funcList2, "Normalized Section RIs; "+plotLabelString);
-		infoString += "\n\nSect "+funcList2.get(0).getName()+":";
-		infoString += "\n"+funcList2.get(0).getInfo();
-		
-		// now mag-dep:
-		if(numAperValues >1) {
-			for(int i=0;i<numAperValues;i++) {
-				ArrayList<EvenlyDiscretizedFunc> funcListMagDep = ProbModelsPlottingUtils.getNormRI_DistributionWithFits(normalizedSectRecurIntervalsMagDepList.get(i), aperValues[i]);
-				String label = getMagDepAperInfoString(i);
-				GraphWindow graphaMagDep = ProbModelsPlottingUtils.plotNormRI_DistributionWithFits(funcListMagDep, "Norm Sect RIs; "+label+"; "+plotLabelString);
-				infoString += "\n\nSect "+funcListMagDep.get(0).getName()+" for "+label+":";
-				infoString += "\n"+funcListMagDep.get(0).getInfo();
-				infoString += "\n\n"+funcListMagDep.get(1).getName();
-				infoString += "\n"+funcListMagDep.get(1).getInfo();	
-				// save plot now
-				try {
-					graphaMagDep.saveAsPDF(dirNameForSavingFiles+"/normSectRecurIntsForMagRange"+i+".pdf");
-					graphaMagDep.saveAsTXT(dirNameForSavingFiles+"/normSectRecurIntsForMagRange"+i+".txt");
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-		}
-
-		
-
-		// 	plot simNormTimeSinceLastHist & simProbGainHist - these are weighted by long-term rates
-		if(probTypeEnum == ProbabilityModelOptions.U3_BPT) {
-//			int numObs = (int)Math.round(simNormTimeSinceLastHist.calcSumOfY_Vals());
-			simNormTimeSinceLastHist.scale(1.0/(simNormTimeSinceLastHist.calcSumOfY_Vals()*simNormTimeSinceLastHist.getDelta())); // makes it a density function
-			ArrayList<EvenlyDiscretizedFunc> funcListForSimNormTimeSinceLastHist = ProbModelsPlottingUtils.addBPT_Fit(simNormTimeSinceLastHist);
-			simNormTimeSinceLastHist.setName("simNormTimeSinceLastHist");
-//			simNormTimeSinceLastHist.setInfo("Dist of normalized time since last for each rupture at all event times\nMean = "+simNormTimeSinceLastHist.computeMean()+"\nnumObs="+numObs);
-			simNormTimeSinceLastHist.setInfo("Dist of normalized time since last for each rupture at all event times\nMean = "+simNormTimeSinceLastHist.computeMean());
-			GraphWindow graphSimNormTimeSinceLastHist = ProbModelsPlottingUtils.plotNormRI_DistributionWithFits(funcListForSimNormTimeSinceLastHist, "simNormTimeSinceLastHist; "+plotLabelString);
-			
-//			simNormTimeSinceLastForMagBelow7_Hist
-//			numObs = (int)Math.round(simNormTimeSinceLastForMagBelow7_Hist.calcSumOfY_Vals());
-			simNormTimeSinceLastForMagBelow7_Hist.scale(1.0/(simNormTimeSinceLastForMagBelow7_Hist.calcSumOfY_Vals()*simNormTimeSinceLastForMagBelow7_Hist.getDelta())); // makes it a density function
-			ArrayList<EvenlyDiscretizedFunc> funcListForSimNormTimeSinceLastHistForSmall = ProbModelsPlottingUtils.addBPT_Fit(simNormTimeSinceLastForMagBelow7_Hist);
-			simNormTimeSinceLastForMagBelow7_Hist.setName("simNormTimeSinceLastForMagBelow7_Hist");
-//			simNormTimeSinceLastForMagBelow7_Hist.setInfo("Dist of normalized time since last for each rupture at all event times from M<=7\nMean = "+simNormTimeSinceLastForMagBelow7_Hist.computeMean()+"\nnumObs="+numObs);
-			simNormTimeSinceLastForMagBelow7_Hist.setInfo("Dist of normalized time since last for each rupture at all event times from M<=7\nMean = "+simNormTimeSinceLastForMagBelow7_Hist.computeMean());
-			GraphWindow graphSimNormTimeSinceLastForMagBelow7_Hist = ProbModelsPlottingUtils.plotNormRI_DistributionWithFits(funcListForSimNormTimeSinceLastHistForSmall, "simNormTimeSinceLastForMagBelow7_Hist; "+plotLabelString);
-
-			simNormTimeSinceLastForMagAbove7_Hist.scale(1.0/(simNormTimeSinceLastForMagAbove7_Hist.calcSumOfY_Vals()*simNormTimeSinceLastForMagAbove7_Hist.getDelta())); // makes it a density function
-			ArrayList<EvenlyDiscretizedFunc> funcListForSimNormTimeSinceLastHistForLarge = ProbModelsPlottingUtils.addBPT_Fit(simNormTimeSinceLastForMagAbove7_Hist);
-			simNormTimeSinceLastForMagAbove7_Hist.setName("simNormTimeSinceLastForMagAbove7_Hist");
-			simNormTimeSinceLastForMagAbove7_Hist.setInfo("Dist of normalized time since last for each rupture at all event times from M>7\nMean = "+simNormTimeSinceLastForMagAbove7_Hist.computeMean());
-			GraphWindow graphSimNormTimeSinceLastForMagAbove7_Hist = ProbModelsPlottingUtils.plotNormRI_DistributionWithFits(funcListForSimNormTimeSinceLastHistForLarge, "simNormTimeSinceLastForMagAbove7_Hist; "+plotLabelString);
-
-			
-//			numObs = (int)Math.round(simProbGainHist.calcSumOfY_Vals());
-			simProbGainHist.scale(1.0/(simProbGainHist.calcSumOfY_Vals()*simProbGainHist.getDelta())); // makes it a density function
-			simProbGainHist.setName("simProbGainHist");
-//			simProbGainHist.setInfo("Dist of gains for each rupture at all event times (simProbGainHist)\nMean = "+simProbGainHist.computeMean()+"\nnumObs="+numObs);
-			simProbGainHist.setInfo("Dist of gains for each rupture at all event times (simProbGainHist)\nMean = "+simProbGainHist.computeMean());
-			ArrayList<EvenlyDiscretizedFunc> funcListForSimProbGainHist = new ArrayList<EvenlyDiscretizedFunc>();
-			funcListForSimProbGainHist.add(simProbGainHist);
-			simProbGainForMagBelow7_Hist.scale(1.0/(simProbGainForMagBelow7_Hist.calcSumOfY_Vals()*simProbGainForMagBelow7_Hist.getDelta())); // makes it a density function
-			simProbGainForMagAbove7_Hist.scale(1.0/(simProbGainForMagAbove7_Hist.calcSumOfY_Vals()*simProbGainForMagAbove7_Hist.getDelta())); // makes it a density function
-			simProbGainForMagBelow7_Hist.setName("simProbGainForMagBelow7_Hist");
-			simProbGainForMagAbove7_Hist.setName("simProbGainForMagAbove7_Hist");
-			simProbGainForMagBelow7_Hist.setInfo("Mean = "+simProbGainForMagBelow7_Hist.computeMean());
-			simProbGainForMagAbove7_Hist.setInfo("Mean = "+simProbGainForMagAbove7_Hist.computeMean());
-			funcListForSimProbGainHist.add(simProbGainForMagBelow7_Hist);
-			funcListForSimProbGainHist.add(simProbGainForMagAbove7_Hist);
-			ArrayList<PlotCurveCharacterstics> plotCharsForSimProbGainHist = new ArrayList<PlotCurveCharacterstics>();
-			plotCharsForSimProbGainHist.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 2f, Color.RED));
-			plotCharsForSimProbGainHist.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLUE));
-			plotCharsForSimProbGainHist.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
-
-			GraphWindow graphSimProbGainHistWindow = new GraphWindow(funcListForSimProbGainHist, "simProbGainHist", plotCharsForSimProbGainHist); 
-			graphSimProbGainHistWindow.setX_AxisLabel("Gain");
-			graphSimProbGainHistWindow.setY_AxisLabel("Density");
-			graphSimProbGainHistWindow.setAxisLabelFontSize(22);
-			graphSimProbGainHistWindow.setTickLabelFontSize(20);
-			graphSimProbGainHistWindow.setPlotLabelFontSize(22);
-
-			try {
-				graphSimNormTimeSinceLastHist.saveAsPDF(dirNameForSavingFiles+"/simNormTimeSinceLastHist.pdf");
-				graphSimProbGainHistWindow.saveAsPDF(dirNameForSavingFiles+"/simProbGainHist.pdf");
-				graphSimNormTimeSinceLastForMagBelow7_Hist.saveAsPDF(dirNameForSavingFiles+"/simNormTimeSinceLastForMagBelow7_Hist.pdf");
-				graphSimNormTimeSinceLastForMagAbove7_Hist.saveAsPDF(dirNameForSavingFiles+"/simNormTimeSinceLastForMagAbove7_Hist.pdf");
-				graphSimNormTimeSinceLastHist.saveAsTXT(dirNameForSavingFiles+"/simNormTimeSinceLastHist.txt");
-				graphSimProbGainHistWindow.saveAsTXT(dirNameForSavingFiles+"/simProbGainHist.txt");
-				graphSimNormTimeSinceLastForMagBelow7_Hist.saveAsTXT(dirNameForSavingFiles+"/simNormTimeSinceLastForMagBelow7_Hist.txt");
-				graphSimNormTimeSinceLastForMagAbove7_Hist.saveAsTXT(dirNameForSavingFiles+"/simNormTimeSinceLastForMagAbove7_Hist.txt");
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-
-		}
-
-		
-		// plot long-term rate versus time
-		DefaultXY_DataSet totRateVersusTime = new DefaultXY_DataSet(yearsIntoSimulation,totRateAtYearsIntoSimulation);
-		double meanTotRate=0;
-		double totWt=0;
-		for(int i=0;i<totRateAtYearsIntoSimulation.size()-1;i++) {
-			double wt = yearsIntoSimulation.get(i+1)-yearsIntoSimulation.get(i); // apply rate until time of next event
-			meanTotRate+=totRateAtYearsIntoSimulation.get(i)*wt;
-			totWt+=wt;
-		}
-		meanTotRate /= totWt;
-		totRateVersusTime.setName("Total Rate vs Time");
-		totRateVersusTime.setInfo("Mean Total Rate = "+meanTotRate+"\nLong Term Rate = "+totalLongTermRate);
-		DefaultXY_DataSet longTermRateFunc = new DefaultXY_DataSet();
-		longTermRateFunc.set(totRateVersusTime.getMinX(),totalLongTermRate);
-		longTermRateFunc.set(totRateVersusTime.getMaxX(),totalLongTermRate);
-		longTermRateFunc.setName("Long term rate");
-		ArrayList<DefaultXY_DataSet> funcsTotRate = new ArrayList<DefaultXY_DataSet>();
-		funcsTotRate.add(totRateVersusTime);
-		funcsTotRate.add(longTermRateFunc);
-		ArrayList<PlotCurveCharacterstics> plotCharsTotRate = new ArrayList<PlotCurveCharacterstics>();
-		plotCharsTotRate.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 4f, Color.BLUE));
-		plotCharsTotRate.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.RED));
-		GraphWindow graphTotalRateVsTime = new GraphWindow(funcsTotRate, "Total Rate vs Time; "+plotLabelString, plotCharsTotRate); 
-		graphTotalRateVsTime.setX_AxisLabel("Times (years)");
-		graphTotalRateVsTime.setY_AxisLabel("Total Rate (per year)");
-
-
-
-		// plot MFDs
-		obsMFD.scale(1.0/numYears);
-		obsMFD.setName("Simulated MFD");
-		obsMoRate /= numYears;
-		double obsTotRate = obsMFD.getTotalIncrRate();
-		double rateRatio = obsTotRate/targetMFD.getTotalIncrRate();
-		String infoString2 = "total rate = "+(float)obsTotRate+" (ratio="+(float)rateRatio+")";
-		double obsTotRateAbove6pt7 = obsMFD.getCumRate(6.75);
-		double rateAbove6pt7_Ratio = obsTotRateAbove6pt7/targetMFD.getCumRate(6.75);
-		infoString2 += "\ntotal rate >= 6.7 = "+(float)obsTotRateAbove6pt7+" (ratio="+(float)rateAbove6pt7_Ratio+")";
-		double moRateRatio = obsMoRate/origTotMoRate;
-		infoString2 += "\ntotal MoRate = "+(float)obsMoRate+" (ratio="+(float)moRateRatio+")";
-		obsMFD.setInfo(infoString2);
-		
-		infoString += "\n\nSimulationStats:\n";
-		infoString += "totRate\tratio\ttotRateM>=6.7\tratio\ttotMoRate\tratio\n";
-		infoString += (float)obsTotRate+"\t"+(float)rateRatio+"\t"+(float)obsTotRateAbove6pt7+"\t"+(float)rateAbove6pt7_Ratio+"\t"+(float)obsMoRate+"\t"+(float)moRateRatio;
-		
-		// write this now in case of crash
-		FileWriter info_fr;
-		try {
-			info_fr = new FileWriter(dirNameForSavingFiles+"/infoString.txt");
-			info_fr.write(infoString);
-			info_fr.close();
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-
-		
-		System.out.println("INFO STRING:\n\n"+infoString);
-
-		ArrayList<EvenlyDiscretizedFunc> funcs = new ArrayList<EvenlyDiscretizedFunc>();
-		funcs.add(targetMFD);
-		funcs.add(obsMFD);
-		funcs.add(targetMFD.getCumRateDistWithOffset());
-		funcs.add(obsMFD.getCumRateDistWithOffset());
-		GraphWindow graph = new GraphWindow(funcs, "Incremental Mag-Freq Dists; "+plotLabelString); 
-		graph.setX_AxisLabel("Mag");
-		graph.setY_AxisLabel("Rate");
-		graph.setYLog(true);	// this causes problems
-		graph.setY_AxisRange(1e-4, 1.0);
-		graph.setX_AxisRange(5.5, 8.5);
-		
-		// plot observed versus imposed rup rates - Is this really meaningful?
-		DefaultXY_DataSet obsVsImposedRupRates = new DefaultXY_DataSet(longTermRateOfNthRups,obsRupRateArray);
-		obsVsImposedRupRates.setName("Simulated vs Imposed Rup Rates");
-		DefaultXY_DataSet perfectAgreementFunc4 = new DefaultXY_DataSet();
-		perfectAgreementFunc4.set(1e-5,1e-5);
-		perfectAgreementFunc4.set(0.05,0.05);
-		perfectAgreementFunc4.setName("Perfect agreement line");
-		ArrayList<DefaultXY_DataSet> funcs4 = new ArrayList<DefaultXY_DataSet>();
-		funcs4.add(obsVsImposedRupRates);
-		funcs4.add(perfectAgreementFunc4);
-		ArrayList<PlotCurveCharacterstics> plotChars4 = new ArrayList<PlotCurveCharacterstics>();
-		plotChars4.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 4f, Color.BLUE));
-		plotChars4.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.RED));
-		GraphWindow graph4 = new GraphWindow(funcs4, "Obs vs Imposed Rup Rates; "+plotLabelString, plotChars4); 
-		graph4.setX_AxisRange(5d/numYears, 0.01);
-		graph4.setY_AxisRange(5d/numYears, 0.01);
-		graph4.setYLog(true);
-		graph4.setXLog(true);
-		graph4.setX_AxisLabel("Imposed Rup Rate (per yr)");
-		graph4.setY_AxisLabel("Simulated Rup Rate (per yr)");
-
-		
-		
-		// plot observed versus imposed section slip rates
-		for(int i=0;i<obsSectSlipRateArray.length;i++) {
-			obsSectSlipRateArray[i] = obsSectSlipRateArray[i]/numYears;
-		}
-		DefaultXY_DataSet obsVsImposedSectSlipRates = new DefaultXY_DataSet(longTermSlipRateForSectArray,obsSectSlipRateArray);
-		obsVsImposedSectSlipRates.setName("Simulated vs Imposed Section Slip Rates");
-		DefaultXY_DataSet perfectAgreementSlipRateFunc = new DefaultXY_DataSet();
-		perfectAgreementSlipRateFunc.set(1e-5,1e-5);
-		perfectAgreementSlipRateFunc.set(0.05,0.05);
-		perfectAgreementSlipRateFunc.setName("Perfect agreement line");
-		ArrayList<DefaultXY_DataSet> funcsSR = new ArrayList<DefaultXY_DataSet>();
-		funcsSR.add(obsVsImposedSectSlipRates);
-		funcsSR.add(perfectAgreementSlipRateFunc);
-		ArrayList<PlotCurveCharacterstics> plotCharsSR = new ArrayList<PlotCurveCharacterstics>();
-		plotCharsSR.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 4f, Color.BLUE));
-		plotCharsSR.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.RED));
-		GraphWindow graphSR = new GraphWindow(funcsSR, "Obs vs Imposed Section Slip Rates; "+plotLabelString, plotCharsSR); 
-		graphSR.setX_AxisRange(1e-5, 0.05);
-		graphSR.setY_AxisRange(1e-5, 0.05);
-		graphSR.setYLog(true);
-		graphSR.setXLog(true);
-		graphSR.setX_AxisLabel("Imposed Section Slip Rate (mm/yr)");
-		graphSR.setY_AxisLabel("Simulated Section Slip Rate (mm/yr)");
-		
-		
-		// plot observed versus imposed section rates
-		for(int i=0;i<obsSectRateArray.length;i++) {
-			obsSectRateArray[i] = obsSectRateArray[i]/numYears;
-		}
-		DefaultXY_DataSet obsVsImposedSectRates = new DefaultXY_DataSet(longTermPartRateForSectArray,obsSectRateArray);
-		obsVsImposedSectRates.setName("Simulated vs Imposed Section Event Rates");
-		DefaultXY_DataSet perfectAgreementFunc = new DefaultXY_DataSet();
-		perfectAgreementFunc.set(1e-5,1e-5);
-		perfectAgreementFunc.set(0.05,0.05);
-		perfectAgreementFunc.setName("Perfect agreement line");
-		ArrayList<DefaultXY_DataSet> funcs2 = new ArrayList<DefaultXY_DataSet>();
-		funcs2.add(obsVsImposedSectRates);
-		funcs2.add(perfectAgreementFunc);
-		ArrayList<PlotCurveCharacterstics> plotChars = new ArrayList<PlotCurveCharacterstics>();
-		plotChars.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 4f, Color.BLUE));
-		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.RED));
-		GraphWindow graph2 = new GraphWindow(funcs2, "Obs vs Imposed Section Rates; "+probTypeString, plotChars); 
-		graph2.setX_AxisRange(5d/numYears, 0.05);
-		graph2.setY_AxisRange(5d/numYears, 0.05);
-		graph2.setYLog(true);
-		graph2.setXLog(true);
-		graph2.setX_AxisLabel("Imposed Section Participation Rate (per yr)");
-		graph2.setY_AxisLabel("Simulated Section Participation Rate (per yr)");
-		
-		// write section rates with names
-		FileWriter eventRates_fr;
-		try {
-			eventRates_fr = new FileWriter(dirNameForSavingFiles+"/obsVsImposedSectionPartRates.txt");
-			eventRates_fr.write("sectID\timposedRate\tsimulatedRate\tsimOverImpRateRatio\thasDateOfLast\tsectName\n");
-			for(int i=0;i<fltSysRupSet.getNumSections();i++) {
-				FaultSection fltData = fltSysRupSet.getFaultSectionData(i);
-				double ratio = obsSectRateArray[i]/longTermPartRateForSectArray[i];
-				boolean hasDateOfLast=false;
-				if(fltData.getDateOfLastEvent() != Long.MIN_VALUE)
-					hasDateOfLast=true;
-				eventRates_fr.write(fltData.getSectionId()+"\t"+longTermPartRateForSectArray[i]+"\t"+obsSectRateArray[i]+"\t"+ratio+"\t"+hasDateOfLast+"\t"+fltData.getName()+"\n");
-			}
-			eventRates_fr.close();
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-		
-		
-		try {
-			// plots
-			graphAveRupProbGainVsMag.saveAsPDF(dirNameForSavingFiles+"/aveRupProbGainVsMag.pdf");
-			graphAveRupProbGainVsMag.saveAsTXT(dirNameForSavingFiles+"/aveRupProbGainVsMag.txt");
-			grapha_a.saveAsPDF(dirNameForSavingFiles+"/normalizedRupRecurIntervals.pdf");
-			grapha_a.saveAsTXT(dirNameForSavingFiles+"/normalizedRupRecurIntervalsPlot.txt");
-			graph2_b.saveAsPDF(dirNameForSavingFiles+"/normalizedSectRecurIntervals.pdf");
-			graph2_b.saveAsTXT(dirNameForSavingFiles+"/normalizedSectRecurIntervalsPlot.txt");
-			graphTotalRateVsTime.saveAsPDF(dirNameForSavingFiles+"/totalRateVsTime.pdf");
-			graph.saveAsPDF(dirNameForSavingFiles+"/magFreqDists.pdf");
-			graph2.saveAsPDF(dirNameForSavingFiles+"/obsVsImposedSectionPartRates.pdf");
-//			graph2.saveAsTXT(dirNameForSavingFiles+"/obsVsImposedSectionPartRates.txt"); // replaced above
-			graph4.saveAsPDF(dirNameForSavingFiles+"/obsVsImposedRupRates.pdf");
-			graph4.saveAsTXT(dirNameForSavingFiles+"/obsVsImposedRupRates.txt");
-//			graph9.saveAsPDF(dirNameForSavingFiles+"/safEventsVsTime.pdf");
-			graphSR.saveAsPDF(dirNameForSavingFiles+"/obsVsImposedSectionSlipRates.pdf");
-			graphSR.saveAsTXT(dirNameForSavingFiles+"/obsVsImposedSectionSlipRates.txt");
-			graphAveGainVsMagHist.saveAsPDF(dirNameForSavingFiles+"/aveRupGainVsMagHist.pdf");
-			graphAveGainVsMagHist.saveAsTXT(dirNameForSavingFiles+"/aveRupGainVsMagHist.txt");
-			// data:
-			FileWriter fr = new FileWriter(dirNameForSavingFiles+"/normalizedRupRecurIntervals.txt");
-			for (double val : normalizedRupRecurIntervals)
-				fr.write(val + "\n");
-			fr.close();
-
-			fr = new FileWriter(dirNameForSavingFiles+"/normalizedSectRecurIntervals.txt");
-			for (double val : normalizedSectRecurIntervals)
-				fr.write(val + "\n");
-			fr.close();
-
-			AbstractDiscretizedFunc.writeSimpleFuncFile(targetMFD, dirNameForSavingFiles+"/targetMFD.txt");
-			AbstractDiscretizedFunc.writeSimpleFuncFile(obsMFD, dirNameForSavingFiles+"/simulatedMFD.txt");
-			AbstractDiscretizedFunc.writeSimpleFuncFile(targetMFD.getCumRateDistWithOffset(), dirNameForSavingFiles+"/targetCumMFD.txt");
-			AbstractDiscretizedFunc.writeSimpleFuncFile(obsMFD.getCumRateDistWithOffset(), dirNameForSavingFiles+"/simulatedCumMFD.txt");
-
-
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-	}
-
-	
-	
-	
-	
-
-	
 	/**
 	 * This simulates a number of next x-year catalogs (e.g., to check for biases at long durations).
 	 * 
@@ -3189,7 +2408,7 @@ public class ProbabilityModelsCalc {
 	 * 
 	 * Note that the predicted sections rates are expected to be biased high where second events
 	 * are likely (the simulation includes these, but the targets do not).  These cases should be
-	 * closer to the long-term rate to the extend that expected number (longTermSecRate*Duration) is high.
+	 * closer to the long-term rate to the extent that expected number (longTermSecRate*Duration) is high.
 	 * @param erf
 	 * @param dirNameSuffix
 	 * @param inputDateOfLastFileName
@@ -3696,10 +2915,10 @@ public class ProbabilityModelsCalc {
 	
 	
 	
-	private void writeSectTimeSinceLastEventToFile(String fileName, long currentTimeMillis) {		
-		if(!dataDir.exists())
-			dataDir.mkdir();
-		File dataFile = new File(dataDir,File.separator+fileName);
+	private void writeSectTimeSinceLastEventToFile(File outputDir, String fileName, long currentTimeMillis) {		
+		if(!outputDir.exists())
+			outputDir.mkdir();
+		File dataFile = new File(outputDir,fileName);
 		try {
 			FileWriter fileWriter = new FileWriter(dataFile);
 			int numBad=0;
@@ -3731,6 +2950,57 @@ public class ProbabilityModelsCalc {
 			e.printStackTrace();
 		}
 	}
+	
+	
+	/**
+	 * This writes out sectID, rate, areaKm, yrOfLast, dateOfLastEpoch,and name for section.
+	 * @param outputDir
+	 * @param fileName
+	 * @param currentTimeMillis
+	 */
+	public void writeCurrentSectDataToCSV_File(File outputDir, String fileName) {		
+		if(!outputDir.exists())
+			outputDir.mkdir();
+		File dataFile = new File(outputDir,fileName);
+		try {
+			FileWriter fileWriter = new FileWriter(dataFile);
+			fileWriter.write("sectID,rate,areaKm,yrOfLast,dateOfLastEpoch,name\n");					
+
+			for(int i=0; i<dateOfLastForSect.length;i++) {
+				double rate = longTermPartRateForSectArray[i];
+				double areakm = sectionArea[i];
+				String name = fltSysRupSet.getFaultSectionData(i).getName().replace(",", "");
+				if(dateOfLastForSect[i] != Long.MIN_VALUE) {
+					double yrOfLast = (double)dateOfLastForSect[i]/MILLISEC_PER_YEAR+1970.0;
+					fileWriter.write(i+","+rate+","+areakm+","+yrOfLast+","+dateOfLastForSect[i]+","+name+"\n");					
+				}
+				else {
+					fileWriter.write(i+","+rate+","+areakm+",NA,NA,"+name+"\n");					
+				}
+			}
+			fileWriter.close();			
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	
+//	for (int s=0; s<subSects.size(); s++) {
+//		pois_Mgt6pt7_prob[s] = FaultSysSolutionERF_Calc.calcParticipationProbForSect(erf, 6.7, s);
+//		probGain_Mgt6pt7[s] = bpt_Mgt6pt7_prob[s]/pois_Mgt6pt7_prob[s];
+//		String parentName = subSects.get(s).getParentSectionName();
+//		String modParentName=null;
+//		if(parentName != null)
+//			modParentName = parentName.replace(",","_");
+//		csv_dataSring += s+","+(curYear-timeSince[s])+","+timeSince[s]+","+normTimeSince[s]+","+recurInt[s]+","+
+//				bpt_Mgt6pt7_prob[s]+","+pois_Mgt6pt7_prob[s]+","+probGain_Mgt6pt7[s]+","+
+//				subSects.get(s).getParentSectionId()+","+modParentName+"\n";
+//	}
+//	// write out the DOLE mapping report
+//	FileWriter fw2 = new FileWriter(new File(outputDir+"/subSectDataMgt6pt7.csv"));
+//	fw2.write(csv_dataSring); 
+//	fw2.close();
+
 	
 	
 	
@@ -3782,7 +3052,6 @@ public class ProbabilityModelsCalc {
 	private void readSectTimeSinceLastEventFromFile(String fileName, long currentTimeMillis) {
 		
 		try {
-//			File dataFile = new File(dataDir,File.separator+fileName);
 			File dataFile = new File(fileName);
 			
 			System.out.println("Reading file "+fileName+"; currentTimeMillis+"+currentTimeMillis);
@@ -3925,7 +3194,6 @@ public class ProbabilityModelsCalc {
 		for(int rupID:rupIDsList) {
 			info += rupID+"\t"+longTermRateOfFltSysRup[rupID]+"\t"+fltSysRupSet.getMagForRup(rupID)+"\n";
 		}
-//		File dataFile = new File(dataDir,File.separator+fileName);
 		try {
 			FileWriter fileWriter = new FileWriter(fileName);
 			fileWriter.write(info);					
@@ -4113,6 +3381,795 @@ public class ProbabilityModelsCalc {
 	public void setFltSectRupOccurranceTime(int sectIndex, Long epoch) {
 					dateOfLastForSect[sectIndex] = epoch;
 			}
+	
+	
+	
+
+	
+	
+	/**
+	 * This simulates events using elastic rebound probabilities.
+	 * 
+	 * This requires having used the class constructor that takes an ERF, and it is assumed that 
+	 * the state of the ERF is unchanged since instantiation (no parameter values have changed).
+	 * 
+	 * This assumes the rate of each rupture is constant up until the next event is sampled.
+	 * 
+	 * The state of the ERF is preserved (even though it is temporarily switched to Poisson and no background)
+	 * 
+	 * This is a replacement of the old testER_Simulation() method; the following plots are no longer 
+	 * support here (see testER_Simulation code pre 09/17/25 to add them back in):
+	 *  
+	 * FILL IN
+	 * 
+	 */
+	public void simulateEvents(String inputTimeSinceLastMillisFileName, String outputTimesinceLastMillisFileName, 
+			double numYears, File resultsDir, long randomSeed, boolean verbose, boolean makePlots) {
+
+		if(resultsDir != null)
+			if(!resultsDir.exists()) 
+				resultsDir.mkdir();
+		
+		File plotsDir = null;
+		File otherPlotsDir = null;
+		if(makePlots) {
+			if(resultsDir == null)
+				throw new RuntimeException ("Cannot save plots because resultsDir == null");
+			plotsDir = new File(resultsDir, "plots");
+			if(!plotsDir.exists()) plotsDir.mkdir();
+			
+			otherPlotsDir = new File(plotsDir, "otherPlots");
+			if(!otherPlotsDir.exists()) otherPlotsDir.mkdir();
+		}
+		
+
+		if(erf == null)
+			throw new RuntimeException ("erf cannot be null; used the class constructor that takes an erf");
+
+		RandomDataGenerator randomDataSampler = new RandomDataGenerator();
+		randomDataSampler.reSeed(randomSeed);  // for reproducibility; this is for the next event time
+		Random random = new Random(randomSeed);  // this is for the nth rup sampler
+		
+		ProbabilityModelOptions probType = (ProbabilityModelOptions)erf.getParameter(ProbabilityModelParam.NAME).getValue();
+
+		String infoString="";
+		
+		if(resultsDir != null) {
+			infoString = "Information for simulation results in this directory ("+resultsDir+")\n\n"+
+					"inputTimeSinceLastMillisFileName = "+inputTimeSinceLastMillisFileName+"\n\n"+
+					"outputTimesinceLastMillisFileName = "+outputTimesinceLastMillisFileName+"\n\n"+
+					"simulation duration = "+numYears+" (years)\n\n"+
+					"randomSeed = "+randomSeed+"\n\n"+
+					"ERF Parameters:\n\n";
+			for(Parameter param:erf.getAdjustableParameterList())
+				infoString += "\t"+param.getName()+" = "+param.getValue().toString()+"\n";
+			infoString += "\tTimespan duration (ignored) = "+erf.getTimeSpan().getDuration()+"\n";
+			if(probType != ProbabilityModelOptions.POISSON)
+				infoString += "\tTimespan start year = "+erf.getTimeSpan().getStartTimeYear()+"\n\n";
+			else
+				infoString += "\tTimespan start year = 1970 (default for Poisson simulations)\n\n";			
+		}
+		
+//		if(verbose) System.out.println(infoString);
+		
+		// U3 BPT calculation type
+		boolean aveRecurIntervals = erf.aveRecurIntervalsInU3_BPTcalc;
+		boolean aveNormTimeSinceLast = erf.aveNormTimeSinceLastInU3_BPTcalc;
+		
+		// Not sure the following are useful anymore
+//		this.simulationMode=false;
+		this.simulationMode=true;
+		simNormTimeSinceLastHist = new HistogramFunction(0.05, 100, 0.1);	// up to 10
+		simNormTimeSinceLastForMagBelow7_Hist = new HistogramFunction(0.05, 100, 0.1);	// up to 10
+		simNormTimeSinceLastForMagAbove7_Hist = new HistogramFunction(0.05, 100, 0.1);
+		simProbGainHist = new HistogramFunction(0.05, 100, 0.1);	// up to 10
+		simProbGainForMagAbove7_Hist = new HistogramFunction(0.05, 100, 0.1);	// up to 10
+		simProbGainForMagBelow7_Hist = new HistogramFunction(0.05, 100, 0.1);	// up to 10
+		
+		// LABELING AND FILENAME STUFF
+		String typeCalcForU3_Probs;
+		if(aveRecurIntervals)
+			typeCalcForU3_Probs = "aveRI";
+		else
+			typeCalcForU3_Probs = "aveRate";
+		if(aveNormTimeSinceLast)
+			typeCalcForU3_Probs += "_aveNTS";
+		else
+			typeCalcForU3_Probs += "_aveTS";
+		
+		String probTypeString;
+		if (probType == ProbabilityModelOptions.POISSON) {
+			probTypeString= "Pois";
+		}
+		else if(probType == ProbabilityModelOptions.U3_BPT) {
+			probTypeString= "U3BPT";
+		}
+		else if(probType == ProbabilityModelOptions.WG02_BPT) {
+			probTypeString= "WG02BPT";
+		}
+		else
+			throw new RuntimeException("Probability type unrecognized");
+
+		String aperString = "aper";
+		if(probType != ProbabilityModelOptions.POISSON) {
+			boolean first = true;
+			for(double aperVal:aperValues) {
+				if(first)
+					aperString+=aperVal;
+				else
+					aperString+=","+aperVal;
+				first=false;
+			}
+			aperString = aperString.replace(".", "pt");			
+		}
+		
+		if(verbose) System.out.println("\naperString: "+aperString+"\n");
+		
+		int durationKyrs = (int) Math.round(numYears/1000);
+		
+//		String dirNameForSavingFiles = "U3ER_"+probTypeString+"_"+durationKyrs+"kyr";
+//		if(probType != ProbabilityModelOptions.POISSON) {
+//			dirNameForSavingFiles += "_"+aperString;
+//			dirNameForSavingFiles += "_"+typeCalcForU3_Probs;
+//		}
+//		
+		
+		String fullProbTypeString = probTypeString;
+		if(probType == ProbabilityModelOptions.U3_BPT)
+			fullProbTypeString += " ("+aperString+", "+typeCalcForU3_Probs+")";
+		else if(probType == ProbabilityModelOptions.WG02_BPT)
+			fullProbTypeString += " ("+aperString+")";
+
+		// INTIALIZE THINGS:
+		double[] probGainForFaultSystemSource = new double[erf.getNumFaultSystemSources()];
+		for(int s=0;s<probGainForFaultSystemSource.length;s++)
+			probGainForFaultSystemSource[s] = 1.0;	// default is 1.0
+
+		// set original start time and total duration
+		long origStartTimeMillis = 0;
+		if(probType != ProbabilityModelOptions.POISSON)
+			origStartTimeMillis = erf.getTimeSpan().getStartTimeInMillis();
+		double origStartYear = ((double)origStartTimeMillis)/MILLISEC_PER_YEAR+1970.0;
+		if(verbose) {
+			System.out.println("orig start time: "+origStartTimeMillis+ " millis ("+origStartYear+" yrs)");
+			System.out.println("numYears: "+numYears);
+		}
+				
+		TreeMap<Long, Integer> nthRupAtEpochMap = new TreeMap<Long, Integer>();
+		ArrayList<Double> totExpRateAtEventTimeList = new ArrayList<Double>();
+		ArrayList<Double> normRI_ForEventList = new ArrayList<Double>();
+		ArrayList<Double> mag_ForEventList = new ArrayList<Double>();
+
+		
+		// this is for storing section normalized RIs
+		ArrayList<Double> normalizedSectRecurIntervals = new ArrayList<Double>();
+		ArrayList<ArrayList<Double>> normalizedSectRecurIntervalsMagDepList = new ArrayList<ArrayList<Double>>();
+		for(int i=0;i<numAperValues;i++) {
+			normalizedSectRecurIntervalsMagDepList.add(new ArrayList<Double>());
+		}
+		
+    	ArbDiscrEmpiricalDistFunc_3D normRI_AlongStrike = new ArbDiscrEmpiricalDistFunc_3D(0.05d,0.95d,10);
+		double[] obsSectRateArray = new double[numSections];
+		double[] obsSectSlipRateArray = new double[numSections];
+		double[] obsSectRateArrayM6pt05to6pt65 = new double[numSections];
+		double[] obsSectRateArrayM7pt95to8pt25 = new double[numSections];
+
+		double[] obsRupRateArray = new double[erf.getTotNumRups()];
+		double[] aveRupProbGainArray = new double[erf.getTotNumRups()];	// averages the prob gains at each event time
+		double[] minRupProbGainArray = new double[erf.getTotNumRups()];	// averages the prob gains at each event time
+		double[] maxRupProbGainArray = new double[erf.getTotNumRups()];	// averages the prob gains at each event time
+
+		// initialize tracking of sections that had one or more ruptures in simulation
+		boolean[] sectionRupturedDuringSim = new boolean[numSections];  
+		for(int i=0;i<numSections;i++)
+			sectionRupturedDuringSim[i] = false;
+		
+		// this is for writing out simulated events that occur
+		FileWriter eventFileWriter=null;
+		if(resultsDir != null) {
+			eventFileWriter=null;
+			try {
+				eventFileWriter = new FileWriter(resultsDir+"/sampledEventsData.txt");
+				eventFileWriter.write("nthRupIndex\tfssRupIndex\tyear\tepoch\tnormRupRI\n");
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}			
+		}
+
+		// temporarily set the forecast as Poisson, to get long-term rates, & no background 
+		IncludeBackgroundOption includeBackground = (IncludeBackgroundOption)erf.getParameter(IncludeBackgroundParam.NAME).getValue();
+		erf.getParameter(ProbabilityModelParam.NAME).setValue(ProbabilityModelOptions.POISSON);
+		erf.getParameter(IncludeBackgroundParam.NAME).setValue(IncludeBackgroundOption.EXCLUDE);
+		erf.updateForecast();
+
+		// fill in totalRate, longTermRateOfNthRups, magOfNthRups, and longTermSlipRateForSectArray
+		double totalRate=0;
+		IntegerPDF_FunctionSampler nthRupRandomSampler = new IntegerPDF_FunctionSampler(erf.getTotNumRups());
+		double[] longTermRateOfNthRups = new double[erf.getTotNumRups()];	// this will include any aftershock reductions
+		double[] magOfNthRups = new double[erf.getTotNumRups()];
+		double[] longTermSlipRateForSectArray = new double[numSections];
+		for(int nthRup=0; nthRup<erf.getTotNumRups(); nthRup++) {
+			ProbEqkRupture rup = erf.getNthRupture(nthRup);
+			double rate = rup.getMeanAnnualRate(erf.getTimeSpan().getDuration());
+			longTermRateOfNthRups[nthRup] = rate;
+			totalRate += rate;
+			magOfNthRups[nthRup] = rup.getMag();
+			nthRupRandomSampler.set(nthRup, rate);
+			// slip rates
+			int fltSysIndex = erf.getFltSysRupIndexForNthRup(nthRup);
+			List<Integer> sectIndices = fltSysRupSet.getSectionsIndicesForRup(fltSysIndex);
+			double mag = fltSysRupSet.getMagForRup(erf.getFltSysRupIndexForNthRup(nthRup));
+			double slips[] = getAveSlipOnSectionsForRup(nthRup, mag, sectIndices.size());
+			for(int s=0;s<sectIndices.size();s++) {
+				int sectID = sectIndices.get(s);
+				longTermSlipRateForSectArray[sectID] += rate*slips[s];
+			}					
+		}
+		
+		if(verbose) System.out.println("totalRate long term = "+totalRate);
+		if(resultsDir != null) infoString += "Total long-term rate (per year) = "+totalRate+"\n\n";
+
+		
+		double totalLongTermRate = totalRate;
+		
+		double simDuration = 1/totalLongTermRate;  // used to compute next prob gain
+		
+		// make the target MFD - 
+		SummedMagFreqDist targetMFD=null;
+		double origTotMoRate=Double.NaN;
+		targetMFD = ERF_Calculator.getTotalMFD_ForERF(erf, 5.05, 8.95, 40, true);
+		origTotMoRate = ERF_Calculator.getTotalMomentRateInRegion(erf, null);
+		System.out.println("originalTotalMomentRate: "+origTotMoRate);
+		targetMFD.setName("Target MFD");
+		String tempString = "total rate = "+(float)targetMFD.getTotalIncrRate();
+		tempString += "\ntotal rate >= 6.7 = "+(float)targetMFD.getCumRate(6.75);
+		tempString += "\ntotal MoRate = "+(float)origTotMoRate;
+		targetMFD.setInfo(tempString);			
+
+		// reset ERF to original state
+		erf.getParameter(ProbabilityModelParam.NAME).setValue(probType);
+		erf.getParameter(IncludeBackgroundParam.NAME).setValue(includeBackground);
+		erf.updateForecast();
+
+		// MFD & MoRate for simulation
+		SummedMagFreqDist simMFD = new SummedMagFreqDist(5.05,8.95,40);
+		double obsMoRate = 0;
+		
+		// Make local sectIndexArrayForSrcList for faster simulations
+		ArrayList<int[]> sectIndexArrayForSrcList = new ArrayList<int[]>();
+		for(int s=0; s<erf.getNumFaultSystemSources();s++) {
+			List<Integer> indexList = fltSysRupSet.getSectionsIndicesForRup(erf.getFltSysRupIndexForSource(s));
+			int[] indexArray = new int[indexList.size()];
+			for(int i=0;i<indexList.size();i++)
+				indexArray[i] = indexList.get(i);
+			sectIndexArrayForSrcList.add(indexArray);
+		}
+		
+		// set the ave cond recurrence intervals
+		double[] aveCondRecurIntervalForFltSysRups;
+		if(aveRecurIntervals) {
+			if(aveCondRecurIntervalForFltSysRups_type1 == null)
+				aveCondRecurIntervalForFltSysRups_type1 = computeAveCondRecurIntervalForFltSysRups(1);
+			aveCondRecurIntervalForFltSysRups = aveCondRecurIntervalForFltSysRups_type1;
+		}
+		else {
+			if(aveCondRecurIntervalForFltSysRups_type2 == null)
+				aveCondRecurIntervalForFltSysRups_type2 = computeAveCondRecurIntervalForFltSysRups(2);
+			aveCondRecurIntervalForFltSysRups = aveCondRecurIntervalForFltSysRups_type2;			
+		}
+
+		// print minimum and maximum conditional rate of rupture
+		if(verbose || resultsDir != null) {
+			double minCondRI=Double.MAX_VALUE,maxCondRI=0;
+			for(double ri: aveCondRecurIntervalForFltSysRups) {
+				if(!Double.isInfinite(ri)) {
+					if(ri < minCondRI) minCondRI = ri;
+					if(ri > maxCondRI) maxCondRI = ri;
+				}
+			}
+			if(verbose) System.out.println("minCondRI="+minCondRI+"\nmaxCondRI="+maxCondRI);
+			if(resultsDir != null) infoString +="minCondRI="+minCondRI+"\nmaxCondRI="+maxCondRI+"\n\n";
+		}
+		
+		// set simulation time
+		double currentYear=origStartYear;
+		long currentTimeMillis = origStartTimeMillis;
+
+		// read section date of last file if not null
+		if(inputTimeSinceLastMillisFileName != null && probType != ProbabilityModelOptions.POISSON)
+			readSectTimeSinceLastEventFromFile(inputTimeSinceLastMillisFileName, currentTimeMillis);
+
+		// remove date of last event if Poisson
+		if(probType == ProbabilityModelOptions.POISSON)
+			for(int s=0; s<dateOfLastForSect.length;s++)
+				dateOfLastForSect[s]= Long.MIN_VALUE;
+
+		// this is to track progress
+		int percDoneThresh=0;
+		int percDoneIncrement=5;
+
+		long startRunTime = System.currentTimeMillis();	
+		if(verbose) System.out.println("Starting simulation loop");
+		
+		int numSectThatRuptured = 0;
+		int numSimulatedRups=0;
+		
+		while (currentYear<numYears+origStartYear) {
+			
+			// write progress
+			if(verbose) {
+				int percDone = (int)Math.round(100*(currentYear-origStartYear)/numYears);
+				if(percDone >= percDoneThresh) {
+					double timeInMin = ((double)(System.currentTimeMillis()-startRunTime)/(1000.0*60.0));
+					int numGoodDateOfLast=0;
+					for(long dateOfLast:dateOfLastForSect) {
+						if(dateOfLast != Long.MIN_VALUE)
+							numGoodDateOfLast+=1;					
+					}
+					int percentGood = (int)Math.round((100.0*(double)numGoodDateOfLast/(double)dateOfLastForSect.length));
+					System.out.println("\n"+percDoneThresh+"% done in "+(float)timeInMin+" minutes"+";  totalRate="+(float)totalRate+"; yr="+(float)currentYear+";  % sect with date of last = "+percentGood);	
+					System.out.println("\tFraction of sections that ruptured: "+ (double)numSectThatRuptured/(double)numSections+"\n");
+			
+					percDoneThresh += percDoneIncrement;
+				}				
+			}
+			
+			// update gains and sampler if not Poisson
+			if(probType != ProbabilityModelOptions.POISSON) {
+				// first the gains
+				if(probType == ProbabilityModelOptions.U3_BPT) {
+					for(int s=0;s<erf.getNumFaultSystemSources();s++) {
+						int fltSysRupIndex = erf.getFltSysRupIndexForSource(s);
+						probGainForFaultSystemSource[s] = getU3_ProbGainForRup(fltSysRupIndex, 0.0, false, aveRecurIntervals, aveNormTimeSinceLast, currentTimeMillis, simDuration);
+					}
+				}
+				else if(probType == ProbabilityModelOptions.WG02_BPT) {
+					sectionGainArray=null; // set this null so it gets updated
+					for(int s=0;s<erf.getNumFaultSystemSources();s++) {
+						int fltSysRupIndex = erf.getFltSysRupIndexForSource(s);
+						probGainForFaultSystemSource[s] = getWG02_ProbGainForRup(fltSysRupIndex, false, currentTimeMillis, simDuration);
+					}
+				}		
+				// now update totalRate and ruptureSampler (for all rups since start time changed)
+				for(int n=0; n<erf.getTotNumRupsFromFaultSystem();n++) {
+					double probGain = probGainForFaultSystemSource[erf.getSrcIndexForNthRup(n)];
+					double newRate = longTermRateOfNthRups[n] * probGain;	// applied as a rate gain
+					nthRupRandomSampler.set(n, newRate);
+					aveRupProbGainArray[n] += probGain;
+					if(minRupProbGainArray[n]>probGain)
+						minRupProbGainArray[n] = probGain;
+					if(maxRupProbGainArray[n]<probGain)
+						maxRupProbGainArray[n] = probGain;
+				}
+				totalRate = nthRupRandomSampler.getSumOfY_vals();				
+			}
+			
+			// sample time of next event
+			double timeToNextInYrs = randomDataSampler.nextExponential(1.0/totalRate);
+			long eventTimeMillis = currentTimeMillis + (long)(timeToNextInYrs*MILLISEC_PER_YEAR);
+
+			// sample an event
+			int nthRup = nthRupRandomSampler.getRandomInt(random);
+			int srcIndex = erf.getSrcIndexForNthRup(nthRup);
+			int fltSystRupIndex = erf.getFltSysRupIndexForSource(srcIndex);
+			double rupMag = magOfNthRups[nthRup];
+			mag_ForEventList.add(rupMag);
+
+			nthRupAtEpochMap.put(eventTimeMillis,nthRup);
+			totExpRateAtEventTimeList.add(totalRate); // assumed constant since last event
+			obsRupRateArray[nthRup] += 1;
+			numSimulatedRups+=1;
+			simMFD.addResampledMagRate(rupMag, 1.0, true);
+			obsMoRate += MagUtils.magToMoment(rupMag);
+
+			// compute and save the normalized rup recurrence interval if all sections had date of last
+			double aveNormRI;
+			if(aveNormTimeSinceLast) {	// average time since last
+				aveNormRI = getAveNormTimeSinceLastEventWhereKnown(fltSystRupIndex, eventTimeMillis);
+			}
+			else {
+				long aveDateOfLastMillis = getAveDateOfLastEventWhereKnown(fltSystRupIndex, eventTimeMillis);
+				double timeSinceLast = (eventTimeMillis-aveDateOfLastMillis)/MILLISEC_PER_YEAR;
+				aveNormRI = timeSinceLast/aveCondRecurIntervalForFltSysRups[fltSystRupIndex];
+			}		
+			// only keep if all sections had date of last
+			if(allSectionsHadDateOfLast) {
+				normRI_ForEventList.add(aveNormRI);
+			}	
+			else
+				normRI_ForEventList.add(Double.NaN);		
+			
+
+			// write event info out UPDATE THIS
+			try {
+				if(resultsDir != null) eventFileWriter.write(nthRup+"\t"+fltSystRupIndex+"\t"+(currentYear+timeToNextInYrs)+"\t"+eventTimeMillis+"\t"+aveNormRI+"\n");
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+
+			// compute things that are function of subsection
+			int[] sectID_Array = sectIndexArrayForSrcList.get(erf.getSrcIndexForFltSysRup(fltSystRupIndex));
+			int numSectInRup=sectID_Array.length;
+			double mag = fltSysRupSet.getMagForRup(erf.getFltSysRupIndexForNthRup(nthRup));
+			double slips[] = getAveSlipOnSectionsForRup(nthRup, mag, numSectInRup);
+
+			if (makePlots) {  // only do this if plots being made
+				HistogramFunction sumRI_AlongHist = new HistogramFunction(normRI_AlongStrike.getMinX(), normRI_AlongStrike.getMaxX(), normRI_AlongStrike.getNumX());
+				HistogramFunction numRI_AlongHist = new HistogramFunction(normRI_AlongStrike.getMinX(), normRI_AlongStrike.getMaxX(), normRI_AlongStrike.getNumX());
+				int ithSectInRup=0;
+				for(int sect : sectID_Array) {
+					obsSectSlipRateArray[sect] += slips[ithSectInRup];
+					long timeOfLastMillis = dateOfLastForSect[sect];
+					if(timeOfLastMillis != Long.MIN_VALUE) {
+						double normYrsSinceLast = ((eventTimeMillis-timeOfLastMillis)/MILLISEC_PER_YEAR)*longTermPartRateForSectArray[sect];
+						normalizedSectRecurIntervals.add(normYrsSinceLast);
+						//						if(sect == testSectionIndex)
+						//							normalizedSectRecurIntervalsForTestSect.add(normYrsSinceLast);;
+						if(numAperValues>0)
+							normalizedSectRecurIntervalsMagDepList.get(getAperIndexForRupMag(rupMag)).add(normYrsSinceLast);
+
+						double normDistAlong = ((double)ithSectInRup+0.5)/(double)numSectInRup;
+						sumRI_AlongHist.add(normDistAlong, normYrsSinceLast);
+						numRI_AlongHist.add(normDistAlong, 1.0);
+					}
+					ithSectInRup += 1;
+				}
+				// now put above averages in normRI_AlongStrike
+				if(numSectInRup>10) {
+					for(int i =0;i<sumRI_AlongHist.size();i++) {
+						double num = numRI_AlongHist.getY(i);
+						if(num > 0) {
+							normRI_AlongStrike.set(sumRI_AlongHist.getX(i), sumRI_AlongHist.getY(i)/num, 1.0);
+						}
+					}				
+				}
+			}
+
+
+			// reset last event time and increment simulated/obs rate on sections
+			for(int sect:sectIndexArrayForSrcList.get(srcIndex)) {
+				dateOfLastForSect[sect] = eventTimeMillis;
+				obsSectRateArray[sect] += 1.0; // add the event
+
+				if(sectionRupturedDuringSim[sect]==false) // first time ruptured
+					numSectThatRuptured += 1;
+				sectionRupturedDuringSim[sect] = true;
+
+				if(rupMag>6 && rupMag<6.7)  // STILL NEEDED?
+					obsSectRateArrayM6pt05to6pt65[sect] += 1;
+				else if (rupMag>7.9 && rupMag<8.3)
+					obsSectRateArrayM7pt95to8pt25[sect] += 1;
+			}
+
+			// increment time
+			currentYear += timeToNextInYrs;
+			currentTimeMillis = eventTimeMillis;
+		}
+		
+		double simLoopTimeInMin = ((double)(System.currentTimeMillis()-startRunTime)/(1000.0*60.0));
+		if(verbose) System.out.println("Simulation loop took "+simLoopTimeInMin+" min\n");
+		if(resultsDir != null) infoString +="Simulation loop took "+(float)simLoopTimeInMin+" min\n\n";
+		
+		numSectThatRuptured=0;
+		for(boolean ruptured:sectionRupturedDuringSim)
+			if(ruptured)
+				numSectThatRuptured += 1;
+
+		if (verbose) System.out.println("\tFinal fraction of sections that ruptured: "+ (double)numSectThatRuptured/(double)numSections+"\n");
+		if(resultsDir != null) {
+			infoString += "Final fraction of sections that ruptured: "+ (double)numSectThatRuptured/(double)numSections+"\n\n";
+			try {
+				eventFileWriter.close();
+			} catch (IOException e2) {
+				// TODO Auto-generated catch block
+				e2.printStackTrace();
+			}
+		}
+		
+		// check that no time to next were zero millisec
+		if(nthRupAtEpochMap.size() != totExpRateAtEventTimeList.size())
+			throw new RuntimeException("nthRupAtEpochMap.size() != totExpRateAtEventTime.size()");
+
+		// write section date of last file if not null
+		if(outputTimesinceLastMillisFileName != null && resultsDir != null)
+			writeSectTimeSinceLastEventToFile(resultsDir, outputTimesinceLastMillisFileName, currentTimeMillis);
+		
+		if(resultsDir != null) {
+			simMFD.scale(1.0/numYears);
+			simMFD.setName("Simulated MFD");
+			obsMoRate /= numYears;
+			double obsTotRate = simMFD.getTotalIncrRate();
+			double rateRatio = obsTotRate/targetMFD.getTotalIncrRate();
+			String infoString2 = "total rate = "+(float)obsTotRate+" (ratio="+(float)rateRatio+")";
+			double obsTotRateAbove6pt7 = simMFD.getCumRate(6.75);
+			double rateAbove6pt7_Ratio = obsTotRateAbove6pt7/targetMFD.getCumRate(6.75);
+			infoString2 += "\ntotal rate >= 6.7 = "+(float)obsTotRateAbove6pt7+" (ratio="+(float)rateAbove6pt7_Ratio+")";
+			double moRateRatio = obsMoRate/origTotMoRate;
+			infoString2 += "\ntotal MoRate = "+(float)obsMoRate+" (ratio="+(float)moRateRatio+")";
+			simMFD.setInfo(infoString2);
+			
+			infoString += "\n\nSimulationStats:\n";
+			infoString += "totRate\tratio\ttotRateM>=6.7\tratio\ttotMoRate\tratio\n";
+			infoString += (float)obsTotRate+"\t"+(float)rateRatio+"\t"+(float)obsTotRateAbove6pt7+"\t"+(float)rateAbove6pt7_Ratio+"\t"+(float)obsMoRate+"\t"+(float)moRateRatio;			
+		}
+		
+		
+		// ******************* Plot Making and finish infoString **************************
+		if(makePlots) {
+			
+			// MFDs
+			ProbModelsPlottingUtils.writeMFD_ComprisonPlot(targetMFD, simMFD, plotsDir);
+			
+			
+			// make normalized rup recurrence interval plots
+			ArrayList<Double> normalizedRupRecurIntervals = new ArrayList<Double>();
+			ArrayList<ArrayList<Double>> normalizedRupRecurIntervalsMagDepList = new ArrayList<ArrayList<Double>>();
+			for(int i=0;i<numAperValues;i++) {
+				normalizedRupRecurIntervalsMagDepList.add(new ArrayList<Double>());
+			}
+			for(int e=0;e<normRI_ForEventList.size();e++) {
+				double normRI = normRI_ForEventList.get(e);
+				if(Double.isNaN(normRI))
+					continue;
+				normalizedRupRecurIntervals.add(normRI);
+				double rupMag = mag_ForEventList.get(e);
+				if(numAperValues>0)
+					normalizedRupRecurIntervalsMagDepList.get(getAperIndexForRupMag(rupMag)).add(normRI);
+			}
+			double aper=Double.NaN;
+			if(numAperValues==1)
+				aper=aperValues[0];	// only one value, so include for comparison
+			infoString += ProbModelsPlottingUtils.writeNormalizedDistPlotWithFits(normalizedRupRecurIntervals, aper, 
+					plotsDir, "Normalized Rupture RIs", "normalizedRupRecurIntervals");		
+			// now mag-dep:
+			if(numAperValues >1) {
+				for(int i=0;i<numAperValues;i++) {
+					String label = getMagDepAperInfoString(i);
+					infoString += ProbModelsPlottingUtils.writeNormalizedDistPlotWithFits(normalizedRupRecurIntervalsMagDepList.get(i), aperValues[i], 
+							plotsDir, "Norm Rup RIs; "+label, "normRupRecurIntsForMagRange"+i);
+				}
+			}
+			
+			
+			// make normalized section recurrence interval plots
+			aper=Double.NaN;
+			infoString += ProbModelsPlottingUtils.writeNormalizedDistPlotWithFits(normalizedSectRecurIntervals, aper, 
+					plotsDir, "Normalized Section RIs", "normalizedSectRecurIntervals");		
+			// now mag-dep:
+			if(numAperValues >1) {
+				for(int i=0;i<numAperValues;i++) {
+					String label = getMagDepAperInfoString(i);
+					infoString += ProbModelsPlottingUtils.writeNormalizedDistPlotWithFits(normalizedSectRecurIntervalsMagDepList.get(i), aperValues[i], 
+							otherPlotsDir, "Norm Sect RIs; "+label, "normSectRecurIntsForMagRange"+i);
+				}
+			}
+
+			
+			// plot long-term rate versus time
+			ProbModelsPlottingUtils.writeSimExpRateVsTime(nthRupAtEpochMap,totExpRateAtEventTimeList,
+					totalLongTermRate, plotsDir);
+
+			
+			// plot simulated versus imposed rup rates
+			for(int i=0;i<obsRupRateArray.length;i++) {
+				obsRupRateArray[i] = obsRupRateArray[i]/numYears;
+			}
+			ProbModelsPlottingUtils.writeSimVsImposedRateScatterPlot(longTermRateOfNthRups, obsRupRateArray, plotsDir, "simVsImposedRupRates", 
+					"", "Imposed Rup Rate (/yr)", "Simulated Rup Rate (/yr)",Double.NaN,Double.NaN);
+
+
+			// plot observed versus imposed section slip rates
+			for(int i=0;i<obsSectSlipRateArray.length;i++) {
+				obsSectSlipRateArray[i] = obsSectSlipRateArray[i]/numYears;
+			}
+			ProbModelsPlottingUtils.writeSimVsImposedRateScatterPlot(longTermSlipRateForSectArray, obsSectSlipRateArray, plotsDir, "simVsImposedSectionSlipRates", 
+					"", "Imposed Slip Rate (mm/yr)", "Simulated Slip Rate (mm/yr)", Double.NaN,Double.NaN);
+
+			
+			// plot observed versus imposed section rates
+			for(int i=0;i<obsSectRateArray.length;i++) {
+				obsSectRateArray[i] = obsSectRateArray[i]/numYears;
+				obsSectRateArrayM6pt05to6pt65[i] = obsSectRateArrayM6pt05to6pt65[i]/numYears;
+				obsSectRateArrayM7pt95to8pt25[i] = obsSectRateArrayM7pt95to8pt25[i]/numYears;
+			}
+			ProbModelsPlottingUtils.writeSimVsImposedRateScatterPlot(longTermPartRateForSectArray, obsSectRateArray, plotsDir, "simVsImposedSectionPartRates", 
+					"", "Imposed Sect Part Rate (/yr)", "Simulated Sect Part Rate (/yr)", Double.NaN,Double.NaN);
+			
+			
+			// write section rates with names
+			FileWriter eventRates_fw;
+			try {
+				eventRates_fw = new FileWriter(new File(resultsDir,"/obsVsImposedSectionPartRates.txt"));
+				eventRates_fw.write("sectID\timposedRate\tsimulatedRate\tsimOverImpRateRatio\tsectName\n");
+				for(int i=0;i<fltSysRupSet.getNumSections();i++) {
+					FaultSection fltData = fltSysRupSet.getFaultSectionData(i);
+					double ratio = obsSectRateArray[i]/longTermPartRateForSectArray[i];
+					eventRates_fw.write(fltData.getSectionId()+"\t"+longTermPartRateForSectArray[i]+"\t"+obsSectRateArray[i]+"\t"+ratio+"\t"+fltData.getName()+"\n");
+				}
+				eventRates_fw.close();
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+			
+			
+			// OTHER PLOTS BELOW (in "otherPlots" dir)
+
+			
+			// plot ave norm RI along strike
+			ProbModelsPlottingUtils.writeNormRI_SlongStrikePlot(normRI_AlongStrike, otherPlotsDir);
+
+			// make aveGainVsMagFunction, weighted by rupture rate.  note that these are for all 
+			//ruptures (not just the one that occurred at each event time)
+			for(int i=0;i<aveRupProbGainArray.length;i++) aveRupProbGainArray[i] /= numSimulatedRups;
+			ProbModelsPlottingUtils.writeAveGainVsMagHistPlot(magOfNthRups, aveRupProbGainArray, longTermRateOfNthRups, otherPlotsDir);
+
+			// plot ave, min, and max gain of each rupture vs mag (averaged over simulation regardless 
+			//of whether the event occurred).  Not sure how useful this is. It's a big file
+			ProbModelsPlottingUtils.writeRupGainMeanMinMaxVsMagPlot(magOfNthRups, aveRupProbGainArray, minRupProbGainArray, maxRupProbGainArray, otherPlotsDir);
+	
+			// write out these gains and other stuff (big file)
+			FileWriter gain_fr;
+			try {
+				gain_fr = new FileWriter(new File(otherPlotsDir,"aveRupGainData.txt"));
+				gain_fr.write("nthRupIndex\taveRupGain\tminRupGain\tmaxRupGain\trupMag\trupLongTermRate\trupCondRI\trupName\n");
+				for(int i=0;i<aveRupProbGainArray.length;i++) {
+					gain_fr.write(i+"\t"+aveRupProbGainArray[i]+"\t"+minRupProbGainArray[i]+"\t"+maxRupProbGainArray[i]+"\t"+magOfNthRups[i]
+							+"\t"+longTermRateOfNthRups[i]+"\t"+aveCondRecurIntervalForFltSysRups[erf.getFltSysRupIndexForNthRup(i)]+"\t"+
+							erf.getSource(erf.getSrcIndexForNthRup(i)).getName()+"\n");
+				}
+				gain_fr.close();
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}	
+			
+			
+			// plot simNormTimeSinceLastHist & simProbGainHist data - these are weighted by long-term rates; 
+			// note that these are for all ruptures (not just the one that occurred at each event time)
+			if(probType == ProbabilityModelOptions.U3_BPT) {
+				ProbModelsPlottingUtils.writeNormTS_andGainForAllRupsOverSimPlots(otherPlotsDir, 
+						simNormTimeSinceLastHist,
+						simNormTimeSinceLastForMagBelow7_Hist,
+						simNormTimeSinceLastForMagAbove7_Hist,
+						simProbGainHist,
+						simProbGainForMagBelow7_Hist,
+						simProbGainForMagAbove7_Hist);
+			}
+			
+			
+			// this makes mag dependent section participation stuff; not sure it's still useful
+			ArrayList<String> outStringList = new ArrayList<String>();
+			int numSect=fltSysRupSet.getNumSections();
+			double[] targetSectRateArrayM6pt05to6pt65 = new double[numSect];
+			double[] targetSectRateArrayM7pt95to8pt25 = new double[numSect];
+			for(int s=0;s<numSect;s++) {
+				double partRateMlow=0;
+				double partRateMhigh=0;
+				for (int r : fltSysRupSet.getRupturesForSection(s)) {
+					double mag = fltSysRupSet.getMagForRup(r);
+					if(mag>6 && mag<6.7)
+						partRateMlow += fltSysSolution.getRateForRup(r);
+					else if (mag>7.9 && mag<8.3)
+						partRateMhigh = fltSysSolution.getRateForRup(r);
+				}
+				targetSectRateArrayM6pt05to6pt65[s]=partRateMlow;
+				targetSectRateArrayM7pt95to8pt25[s]=partRateMhigh;
+				outStringList.add(s+"\t"+obsSectRateArray[s]+"\t"+longTermPartRateForSectArray[s]+"\t"+
+						(obsSectRateArray[s]/longTermPartRateForSectArray[s])+"\t"+
+						targetSectRateArrayM6pt05to6pt65[s]+"\t"+
+						obsSectRateArrayM6pt05to6pt65[s]+"\t"+
+						targetSectRateArrayM7pt95to8pt25[s]+"\t"+
+						obsSectRateArrayM7pt95to8pt25[s]+"\t"+
+						fltSysRupSet.getFaultSectionData(s).getName()+"\n");
+			}
+			File dataFile = new File(resultsDir,"magDepSectRates_mag6to6pt7_vs_mag7pt9to8pt3.txt");
+			try {
+				FileWriter fileWriter = new FileWriter(dataFile);
+				fileWriter.write("secID\tsimRate\ttargetRate\tratio\ttargetLowMrate\tsimLowMrate\ttargetHighMrate\tsimHighMrate\tsectName\n");
+				for(String line:outStringList) {
+					fileWriter.write(line);
+				}
+				fileWriter.close();
+			}catch(Exception e) {
+				e.printStackTrace();
+			}
+			ProbModelsPlottingUtils.writeSimOverImposedVsImposedSecPartRatesM6to6pt7_Plot(otherPlotsDir, targetSectRateArrayM6pt05to6pt65, 
+					obsSectRateArrayM6pt05to6pt65, 10d, numYears);
+		}
+		
+		
+		// write infoString
+		if(resultsDir != null) {
+			FileWriter info_fr;
+			try {
+				info_fr = new FileWriter(new File(resultsDir,"INFO.txt"));
+				info_fr.write(infoString);
+				info_fr.close();
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}			
+		}
+
+		if(verbose) System.out.println("INFO STRING:\n\n"+infoString);
+	}
+	
+	
+	private double[] getAveSlipOnSectionsForRup(int nthRup, double rupMag, int numSectInRup) {
+		double slips[];
+		if(fltSysRupSet instanceof InversionFaultSystemRupSet) {
+			slips = ((InversionFaultSystemRupSet) fltSysRupSet).getSlipOnSectionsForRup(erf.getFltSysRupIndexForNthRup(nthRup));
+		}
+		else {	// apply ave to all sections
+			//					double mag = fltSysRupSet.getMagForRup(erf.getFltSysRupIndexForNthRup(nthRup));
+			double area = fltSysRupSet.getAreaForRup(erf.getFltSysRupIndexForNthRup(nthRup));
+			double aveSlip = FaultMomentCalc.getSlip(area, MagUtils.magToMoment(rupMag));
+			slips = new double[numSectInRup];
+			for(int i=0;i<slips.length;i++)
+				slips[i]=aveSlip;
+		}
+		return slips;
+	}
+	
+
+	/**
+	 * This verifies that nth rup indices do not get messed up by turning on and off background seismicity
+	 */
+	private static void test_nthRupState() {
+		String fileName="/Users/field/Library/CloudStorage/OneDrive-DOI/Field_Other/CEA_WGCEP/UCERF3/UCERF3-TI/Figures/Fig11_FaultClusterFig/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip";
+		FaultSystemSolutionERF erf = new FaultSystemSolutionERF(fileName);
+		erf.getParameter(IncludeBackgroundParam.NAME).setValue(IncludeBackgroundOption.EXCLUDE);
+		erf.getParameter(ProbabilityModelParam.NAME).setValue(ProbabilityModelOptions.U3_BPT);
+		erf.getParameter(MagDependentAperiodicityParam.NAME).setValue(MagDependentAperiodicityOptions.MID_VALUES);
+		erf.setParameter(BPTAveragingTypeParam.NAME, BPTAveragingTypeOptions.AVE_RI_AVE_NORM_TIME_SINCE);
+		erf.updateForecast();	
+		
+		int numRup = erf.getTotNumRups();
+		int[] srcIndex = new int[numRup];
+		int[] fssRupIndex = new int[numRup];
+		int[]  rupIndexInSource = new int[numRup];
+		
+		for(int nthRup=0;nthRup<numRup;nthRup++) {
+			srcIndex[nthRup] = erf.getFltSysRupIndexForNthRup(nthRup);
+			rupIndexInSource[nthRup] = erf.getRupIndexInSourceForNthRup(nthRup);
+			fssRupIndex[nthRup] = erf.getFltSysRupIndexForNthRup(nthRup);
+		}
+		
+		erf.getParameter(IncludeBackgroundParam.NAME).setValue(IncludeBackgroundOption.INCLUDE);
+		erf.updateForecast();	
+		for(int nthRup=0;nthRup<numRup;nthRup++) {
+			if(srcIndex[nthRup] != erf.getFltSysRupIndexForNthRup(nthRup))
+				throw new RuntimeException("Problem");
+			if(rupIndexInSource[nthRup] != erf.getRupIndexInSourceForNthRup(nthRup))
+				throw new RuntimeException("Problem");
+			if(fssRupIndex[nthRup] != erf.getFltSysRupIndexForNthRup(nthRup))
+				throw new RuntimeException("Problem");
+		}
+
+		
+		erf.getParameter(IncludeBackgroundParam.NAME).setValue(IncludeBackgroundOption.EXCLUDE);
+		erf.updateForecast();	
+		for(int nthRup=0;nthRup<numRup;nthRup++) {
+			if(srcIndex[nthRup] != erf.getFltSysRupIndexForNthRup(nthRup))
+				throw new RuntimeException("Problem");
+			if(rupIndexInSource[nthRup] != erf.getRupIndexInSourceForNthRup(nthRup))
+				throw new RuntimeException("Problem");
+			if(fssRupIndex[nthRup] != erf.getFltSysRupIndexForNthRup(nthRup))
+				throw new RuntimeException("Problem");
+		}
+		
+		erf.getParameter(IncludeBackgroundParam.NAME).setValue(IncludeBackgroundOption.INCLUDE);
+		erf.updateForecast();	
+		for(int nthRup=0;nthRup<numRup;nthRup++) {
+			if(srcIndex[nthRup] != erf.getFltSysRupIndexForNthRup(nthRup))
+				throw new RuntimeException("Problem");
+			if(rupIndexInSource[nthRup] != erf.getRupIndexInSourceForNthRup(nthRup))
+				throw new RuntimeException("Problem");
+			if(fssRupIndex[nthRup] != erf.getFltSysRupIndexForNthRup(nthRup))
+				throw new RuntimeException("Problem");
+		}
+		System.out.println("success!");
+
+
+	}
 
 	
 	/**
@@ -4120,19 +4177,56 @@ public class ProbabilityModelsCalc {
 	 */
 	public static void main(String[] args) {
 		
+//		test_nthRupState();
+//		System.exit(0);;
 		
 		// This is a rerun test in March 2025 (extracted to un-commented stuff below); input file locations had changed.
 		String fileName="/Users/field/Library/CloudStorage/OneDrive-DOI/Field_Other/CEA_WGCEP/UCERF3/UCERF3-TI/Figures/Fig11_FaultClusterFig/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip";
 		String timeSinceLastFileName = "/Users/field/FilesFromOldComputerTransfer/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/erSimulations/timeSinceLastForSimulation.txt"; 
+ // timeSinceLastFileName=null;
 		FaultSystemSolutionERF erf = new FaultSystemSolutionERF(fileName);
 		erf.getParameter(IncludeBackgroundParam.NAME).setValue(IncludeBackgroundOption.EXCLUDE);
 		erf.getParameter(ProbabilityModelParam.NAME).setValue(ProbabilityModelOptions.U3_BPT);
 		erf.getParameter(MagDependentAperiodicityParam.NAME).setValue(MagDependentAperiodicityOptions.MID_VALUES);
 		BPTAveragingTypeOptions aveType = BPTAveragingTypeOptions.AVE_RI_AVE_NORM_TIME_SINCE;
 		erf.setParameter(BPTAveragingTypeParam.NAME, aveType);
-		erf.updateForecast();
+ // erf.getParameter(ProbabilityModelParam.NAME).setValue(ProbabilityModelOptions.POISSON);
+		erf.updateForecast();	
+		
 		ProbabilityModelsCalc testCalc = new ProbabilityModelsCalc(erf);
-		testCalc.testER_Simulation(timeSinceLastFileName, null, erf, 20000d, "TestRun_120915");
+		long seed = 1234567l;
+//		long seed = 4562l;
+		long startTime = System.currentTimeMillis();
+
+//		testCalc.testER_Simulation(timeSinceLastFileName, null, 1000d, "TestRun_091725_1", seed);
+		
+		File outputDir = new File("/Users/field/Library/CloudStorage/OneDrive-DOI/Field_Other/ERF_Coordination/LongTermTD_2025/Analysis/Test8");
+//		File outputDir=null;
+		boolean makePlots=true;
+		double numYrs=200000; // This took ~20 hrs;  =1000
+		testCalc.simulateEvents(timeSinceLastFileName, null, numYrs, outputDir, seed, true, makePlots);
+		
+//		try {
+//			testCalc.testER_NextXyrSimulation(new File("TestRunNextXyrSim"), timeSinceLastFileName, 100, true, seed, 50.0);
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
+		double runtimeMin = (double)(System.currentTimeMillis()- startTime)/60000d;
+		System.out.println("runtime (min) = "+(float)runtimeMin);
+
+		
+//		// This is a rerun test in March 2025 (extracted to un-commented stuff below); input file locations had changed.
+//		String fileName="/Users/field/Library/CloudStorage/OneDrive-DOI/Field_Other/CEA_WGCEP/UCERF3/UCERF3-TI/Figures/Fig11_FaultClusterFig/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip";
+//		String timeSinceLastFileName = "/Users/field/FilesFromOldComputerTransfer/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/erSimulations/timeSinceLastForSimulation.txt"; 
+//		FaultSystemSolutionERF erf = new FaultSystemSolutionERF(fileName);
+//		erf.getParameter(IncludeBackgroundParam.NAME).setValue(IncludeBackgroundOption.EXCLUDE);
+//		erf.getParameter(ProbabilityModelParam.NAME).setValue(ProbabilityModelOptions.U3_BPT);
+//		erf.getParameter(MagDependentAperiodicityParam.NAME).setValue(MagDependentAperiodicityOptions.MID_VALUES);
+//		BPTAveragingTypeOptions aveType = BPTAveragingTypeOptions.AVE_RI_AVE_NORM_TIME_SINCE;
+//		erf.setParameter(BPTAveragingTypeParam.NAME, aveType);
+//		erf.updateForecast();
+//		ProbabilityModelsCalc testCalc = new ProbabilityModelsCalc(erf);
+//		testCalc.testER_Simulation(timeSinceLastFileName, null, erf, 20000d, "TestRun_120915");
 
 
 		
