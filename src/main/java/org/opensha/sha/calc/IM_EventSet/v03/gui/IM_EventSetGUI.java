@@ -385,9 +385,9 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 					}
 					
 					// imrs
-					ArrayList<ScalarIMR> imrs = calc.getIMRs();
-					imrChooser.setForIMRS(imrs);
-					
+//					ArrayList<ScalarIMR> imrs = calc.getIMRs();
+//					imrChooser.setForIMRS(imrs);
+
 					// imts
 					imtChooser.setIMRs(imrChooser.getSelectedIMRs());
 					imtChooser.setIMTs(calc.getIMTs());
