@@ -1,5 +1,6 @@
 package org.opensha.sha.calc.IM_EventSet.v03.gui;
 
+import java.util.List;
 import java.util.ArrayList;
 import java.util.StringTokenizer;
 
@@ -9,38 +10,51 @@ import javax.swing.ListModel;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
+import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetOutputWriter;
-import org.opensha.sha.gui.beans.IMT_GuiBean;
-
+import org.opensha.sha.gui.beans.IMR_MultiGuiBean;
+import org.opensha.sha.gui.beans.IMT_NewGuiBean;
+import org.opensha.sha.gui.beans.event.IMTChangeEvent;
+import org.opensha.sha.gui.beans.event.IMTChangeListener;
+import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.CB_2008_AttenRel;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PeriodParam;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
 
 public class IMT_ChooserPanel extends NamesListPanel implements ParameterChangeListener {
-	
-	private IMT_GuiBean imtGuiBean;
-	
+
+    // The IMT Gui bean shows IMTs that can be selected
+	private final IMT_NewGuiBean imtGuiBean;
+    // This IMTs list shows what have been selected
+    private final ArrayList<Parameter<?>> imts;
 	private boolean masterDisable = false;
-	
-	private ArrayList<Parameter<?>> imts;
-	
+
 	public IMT_ChooserPanel() {
 		super("Selected IMT(s):");
-		imtGuiBean = new IMT_GuiBean(null);
+
+        // Initially shows no IMTs eligible by taking intersection of params from all IMRs
+        List<? extends ScalarIMR> imrs =
+                AttenRelRef.instanceList(null, true, ServerPrefUtils.SERVER_PREFS);
+        for (ScalarIMR imr : imrs) {
+            imr.setParamDefaults();
+        }
+
+        // Initialize the IMT GUI Bean
+		imtGuiBean = new IMT_NewGuiBean(imrs, /*commonParamsOnly=*/true);
+//        imtGuiBean.setSelectedIMT(SA_Param.NAME);
+//        imtGuiBean.addIMTChangeListener(this);
 		imts = new ArrayList<Parameter<?>>();
-		initIMRs(); // TODO: Find out why isn't this working
 		setLowerPanel(imtGuiBean);
 	}
 	
 	public void setForceDisableAddButton(boolean disable) {
-//		System.out.println("Setting force disable: " + disable);
 		masterDisable = disable;
 		this.addButton.setEnabled(shouldEnableAddButton());
 	}
 	
 	protected void rebuildList() {
-		Object names[] = new Object[imts.size()];
+		String[] names = new String[imts.size()];
 		for (int i=0; i<imts.size(); i++) {
 			Parameter<?> imt = imts.get(i);
 			names[i] = IM_EventSetOutputWriter.getRegularIMTString(imt) + " (HAZ01 code: " + IM_EventSetOutputWriter.getHAZ01IMTString(imt) + ")";
@@ -50,12 +64,14 @@ public class IMT_ChooserPanel extends NamesListPanel implements ParameterChangeL
 
 	@Override
 	public void addButton_actionPerformed() {
-		ListModel model = namesList.getModel();
-		Parameter<?> newIMT = (Parameter<?>) imtGuiBean.getIntensityMeasure();
+		ListModel<String> model = namesList.getModel();
+		Parameter<?> newIMT = (Parameter<?>) imtGuiBean.getSelectedIM();
 		Parameter<?> clone = (Parameter<?>) newIMT.clone();
-		for (Parameter<?> param : newIMT.getIndependentParameterList())
-			clone.addIndependentParameter((Parameter<?>)param.clone());
-//		System.out.println("Adding " + clone.getClass().getName());
+		for (Parameter<?> param : newIMT.getIndependentParameterList()) {
+            if (!clone.containsIndependentParameter(param.getName())) {
+                clone.addIndependentParameter((Parameter<?>) param.clone());
+            }
+        }
 		imts.add(clone);
 		
 		rebuildList();
@@ -63,8 +79,8 @@ public class IMT_ChooserPanel extends NamesListPanel implements ParameterChangeL
 
 	@Override
 	public void removeButton_actionPerformed() {
-		ListModel model = namesList.getModel();
-		Object names[] = new Object[model.getSize()-1];
+		ListModel<String> model = namesList.getModel();
+		String[] names = new String[model.getSize()-1];
 		int selected = namesList.getSelectedIndex();
 		int cnt = 0;
 		for (int i=0; i<model.getSize(); i++) {
@@ -82,11 +98,13 @@ public class IMT_ChooserPanel extends NamesListPanel implements ParameterChangeL
 
 	@Override
 	public boolean shouldEnableAddButton() {
-		if (masterDisable)
+		if (masterDisable || !imtGuiBean.areIMTsAvailable())
 			return false;
-		Parameter<?> imt = imtGuiBean.getIntensityMeasure();
+		Parameter<?> imt = imtGuiBean.getSelectedIM();
 		for (Parameter<?> oldIMT : imts) {
 			if (imt.getName().equals(oldIMT.getName())) {
+                // TODO: This allows selecting multiple SA IMTs with unique periods.
+                //       Is this a good idea? Why only with SA and not other IMTs?
 				if (imt.getName().equals(SA_Param.NAME)) {
 					Parameter<?> oldParam = (Parameter<?>) oldIMT;
 					Parameter<?> newParam = (Parameter<?>) imt;
@@ -104,13 +122,16 @@ public class IMT_ChooserPanel extends NamesListPanel implements ParameterChangeL
 		}
 		return true;
 	}
-	
+
+    /**
+     * Set the IMRs in the IMT GUI bean to show only IMTs that work for all IMRs.
+     * Also unsets any already selected IMTs that are no longer valid.
+     * @param imrs
+     */
 	public void setIMRs(ArrayList<ScalarIMR> imrs) {
-		// this sets the IMRs in the IMT gui bean (so that only ones that work for all
-		// IMRs can be used.
-		imtGuiBean.setIM(imrs);
+		imtGuiBean.setIMRs(imrs);
 		
-		if (imrs == null || imrs.size() == 0) {
+		if (imrs == null || imrs.isEmpty()) {
 //			System.err.println("WARNING: empty IMR array!");
 			this.setForceDisableAddButton(true);
 			return;
@@ -128,15 +149,15 @@ public class IMT_ChooserPanel extends NamesListPanel implements ParameterChangeL
 				}
 			}
 		}
-		if (toRemove.size() > 0) {
+		if (!toRemove.isEmpty()) {
 			for (int index : toRemove) {
 //				System.out.println("Removing a now-invalid IMT!");
 				imts.remove(index);
 			}
 			rebuildList();
 		}
-		this.setForceDisableAddButton(imrs.size() == 0);
-		imtGuiBean.getParameterList().getParameter(IMT_GuiBean.IMT_PARAM_NAME).addParameterChangeListener(this);
+		this.setForceDisableAddButton(imrs.isEmpty());
+		imtGuiBean.getParameterList().getParameter(IMT_NewGuiBean.IMT_PARAM_NAME).addParameterChangeListener(this);
 		imtGuiBean.refreshParamEditor();
 		imtGuiBean.invalidate();
 		imtGuiBean.validate();
@@ -144,6 +165,7 @@ public class IMT_ChooserPanel extends NamesListPanel implements ParameterChangeL
 	}
 
 	/**
+     * Demo
 	 * @param args
 	 */
 	public static void main(String[] args) {
@@ -152,32 +174,16 @@ public class IMT_ChooserPanel extends NamesListPanel implements ParameterChangeL
 		frame.setSize(400, 600);
 		
 		IMT_ChooserPanel choose = new IMT_ChooserPanel();
-		choose.initIMRs();
-		
+
 		frame.setContentPane(choose);
 		frame.setVisible(true);
 	}
 	
-	/**
-	 * Some IMR needs to be initially set to build the IMT Editor
-	 */
-	private void initIMRs() {
-		ArrayList<ScalarIMR> imrs = new ArrayList<ScalarIMR>();
-		CB_2008_AttenRel cb08 = new CB_2008_AttenRel(null);
-		cb08.setParamDefaults();
-		imrs.add(cb08);
-		
-		this.setIMRs(imrs);
-	}
-
 	public void parameterChange(ParameterChangeEvent event) {
-//		System.out.println("pchange");
 		if (event.getNewValue().equals(SA_Param.NAME)) {
-//			System.out.println("Selected SA!");
 			Parameter<?> periodParam = imtGuiBean.getParameterList().getParameter(PeriodParam.NAME);
 			periodParam.addParameterChangeListener(this);
 		}
-//		System.out.println("ParamChange!!!!!!!!!");
 		addButton.setEnabled(shouldEnableAddButton());
 	}
 	
@@ -195,8 +201,8 @@ public class IMT_ChooserPanel extends NamesListPanel implements ParameterChangeL
 			String imtName = tok.nextToken();
 			
 			this.imtGuiBean.getParameterList();
-			this.imtGuiBean.getParameterList().getParameter(IMT_GuiBean.IMT_PARAM_NAME);
-			this.imtGuiBean.getParameterList().getParameter(IMT_GuiBean.IMT_PARAM_NAME).setValue(imtName);
+			this.imtGuiBean.getParameterList().getParameter(IMT_NewGuiBean.IMT_PARAM_NAME);
+			this.imtGuiBean.getParameterList().getParameter(IMT_NewGuiBean.IMT_PARAM_NAME).setValue(imtName);
 			if (tok.hasMoreTokens()) {
 				Double period = Double.parseDouble(tok.nextToken());
 				this.imtGuiBean.getParameterList().getParameter(PeriodParam.NAME).setValue(period);

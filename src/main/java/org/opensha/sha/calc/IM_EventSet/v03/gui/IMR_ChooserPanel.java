@@ -30,23 +30,24 @@ import org.opensha.sha.util.TectonicRegionType;
 public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeListener {
 	
 	private final IMR_MultiGuiBean imrGuiBean;
-	private final IMT_ChooserPanel imtChooser; // TODO: Finish migrating IMT_GuiBean to IMT_NewGuiBean
+	private final IMT_ChooserPanel imtChooser;
 	private final ParameterListEditor imrSiteParamsEdit;
     private final HashMap<String, ScalarIMR> imrNameMap = new HashMap<>(); // Lookup IMR by name in O(1)
+    private final List<? extends ScalarIMR> allIMRs;
 	
 	public IMR_ChooserPanel(IMT_ChooserPanel imtChooser) {
 		super(null, "Selected IMR(s):");
-		
+
 		imtChooser.setForceDisableAddButton(true);
 		this.imtChooser = imtChooser;
 
-        List<? extends ScalarIMR> imrs =
-                AttenRelRef.instanceList(null, true, ServerPrefUtils.SERVER_PREFS);
-        for (ScalarIMR imr : imrs) {
+        allIMRs = AttenRelRef.instanceList(
+                null, true, ServerPrefUtils.SERVER_PREFS);
+        for (ScalarIMR imr : allIMRs) {
             imr.setParamDefaults();
             imrNameMap.put(imr.getName(), imr);
         }
-        imrGuiBean = new IMR_MultiGuiBean(imrs);
+        imrGuiBean = new IMR_MultiGuiBean(allIMRs);
         // TODO: What is multiple IMR mode w/ multiple tectonic regions?
         // imrGuiBean.setMultipleIMRs(true);
 		imrGuiBean.addIMRChangeListener(this);
@@ -101,7 +102,7 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
      * @return if the add button should be clickable or greyed out
      */
 	private boolean shouldEnableAddButton(ScalarIMR imr) {
-		ListModel model = namesList.getModel();
+		ListModel<?> model = namesList.getModel();
 		boolean match = false;
 		for (int i=0; i<model.getSize(); i++) {
 			if (model.getElementAt(i).toString().equals(imr.getName())) {
@@ -129,13 +130,14 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 		HashMap<TectonicRegionType, ScalarIMR> imrMap = event.getNewIMRs();
 		ScalarIMR imr = TRTUtils.getFirstIMR(imrMap);
 		addButton.setEnabled(shouldEnableAddButton(imr));
+        updateSiteParams();
 	}
 
 	@Override
 	public void addButton_actionPerformed() {
-		ListModel model = namesList.getModel();
+		ListModel<String> model = namesList.getModel();
 		ScalarIMR imr = imrGuiBean.getSelectedIMR();
-		Object names[] = new Object[model.getSize()+1];
+		String names[] = new String[model.getSize()+1];
 		for (int i=0; i<model.getSize(); i++) {
 			names[i] = model.getElementAt(i);
 		}
@@ -147,9 +149,9 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 
 	@Override
 	public void removeButton_actionPerformed() {
-		ListModel model = namesList.getModel();
+		ListModel<String> model = namesList.getModel();
 		ScalarIMR imr = imrGuiBean.getSelectedIMR();
-		Object names[] = new Object[model.getSize()-1];
+		String names[] = new String[model.getSize()-1];
 		int selected = namesList.getSelectedIndex();
 		int cnt = 0;
 		for (int i=0; i<model.getSize(); i++) {
@@ -166,42 +168,30 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 	}
 	
 	public void clear() {
-		namesList.setListData(new Object[0]);
+		namesList.setListData(new String[0]);
 		updateIMTs();
 	}
 
-    // TODO: Delete
-    // This method sets the parameters for each of the IMRs passed in the Gui Bean parameter list
-    // This list in IMR_GuiBean does not exist in IMR_MultiGuiBean, making this unnecessary
-//	public void setForIMRS(ArrayList<ScalarIMR> imrs) {
-//		this.clear();
-//		String names[] = new String[imrs.size()];
-//		for (int i=0; i<imrs.size(); i++) {
-//			ScalarIMR imr = imrs.get(i);
-//			ScalarIMR myIMR = imrGuiBean.getIMR_Instance(imr.getName());
-//			ListIterator<Parameter<?>> paramIt = myIMR.getOtherParamsIterator();
-//			while (paramIt.hasNext()) {
-//				Parameter param = paramIt.next();
-//				param.setValue(imr.getParameter(param.getName()).getValue());
-//			}
-//			names[i] = imr.getName();
-//		}
-//		this.namesList.setListData(names);
-//		this.imrGuiBean.refreshParamEditor();
-//	}
-
 	public ArrayList<ScalarIMR> getSelectedIMRs() {
-		ListModel model = namesList.getModel();
+		ListModel<String> model = namesList.getModel();
 		ArrayList<ScalarIMR> imrs = new ArrayList<ScalarIMR>();
 		for (int i=0; i<model.getSize(); i++) {
-            String name = (String)model.getElementAt(i);
+            String name = model.getElementAt(i);
 			imrs.add(imrNameMap.get(name));
 		}
 		return imrs;
 	}
-	
+
+    /**
+     * The list of eligible IMTs in the IMT Chooser should reflect the
+     * intersection of selected IMRs. updateIMTs is invoked whenever an IMR
+     * is added or removed.
+     */
 	private void updateIMTs() {
 		ArrayList<ScalarIMR> imrs = getSelectedIMRs();
+        if (imrs.isEmpty()) {
+            imrs = (ArrayList<ScalarIMR>) allIMRs;
+        }
 		imtChooser.setIMRs(imrs);
 	}
 
@@ -218,7 +208,7 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 	public void valueChanged(ListSelectionEvent e) {
 		int index = namesList.getSelectedIndex();
 		if (index >= 0) {
-            String name = namesList.getSelectedValue().toString();
+            String name = namesList.getSelectedValue();
             imrGuiBean.setSelectedSingleIMR(name);
 		}
 		super.valueChanged(e);
