@@ -177,63 +177,6 @@ implements ParameterChangeListener, ScalarIMRChangeListener {
         if (paramList.containsParameter(SA_Param.NAME)) {
             oldSAParam = (SA_Param) paramList.getParameter(SA_Param.NAME);
         }
-//        for (Parameter<?> param : paramList) {
-//            if (param.getName().equals(SA_Param.NAME)) {
-//                oldSAParam = (SA_Param) param;
-//                break;
-//            }
-//        }
-
-        // TODO: Finish rewriting code below
-		// first get a master list of all of the supported Params
-		// this is hardcoded to allow for checking of common SA period
-//		for (ScalarIMR imr : imrs) {
-//			for (Parameter<?> param : imr.getSupportedIntensityMeasures()) {
-//				if (paramList.containsParameter(param.getName())) {
-//					// it's already in there, do nothing
-//				} else {
-//					paramList.addParameter(param);
-//				}
-//			}
-//		}
-
-//		if (commonParamsOnly) {
-//			// now we weed out the ones that aren't supported by everyone
-//			ParameterList toBeRemoved = new ParameterList();
-//			for (Parameter param : paramList) {
-//				boolean remove = false;
-//				for (ScalarIMR imr : imrs) {
-//					if (!imr.getSupportedIntensityMeasures().containsParameter(param.getName())) {
-//						remove = true;
-//						break;
-//					}
-//				}
-//				if (remove) {
-//					if (!toBeRemoved.containsParameter(param.getName())) {
-//						toBeRemoved.addParameter(param);
-//					}
-//					// if SA isn't supported, we can skip the below logic
-//					continue;
-//				}
-//				ArrayList<Double> badPeriods = new ArrayList<Double>();
-//				if (param.getName().equals(SA_Param.NAME)) {
-//					oldSAParam = (SA_Param)param;
-//				}
-//			}
-//			// now we remove them
-//			for (Parameter badParam : toBeRemoved) {
-//				paramList.removeParameter(badParam.getName());
-//			}
-//			saPeriods = getCommonPeriods(imrs);
-//		} else {
-//			for (Parameter<?> param : paramList) {
-//				if (param.getName().equals(SA_Param.NAME)) {
-//					oldSAParam = (SA_Param) param;
-//					break;
-//				}
-//			}
-//			saPeriods = getAllSupportedPeriods(imrs);
-//		}
         // Update the periods in the SA parameter
 		if (oldSAParam != null && paramList.containsParameter(oldSAParam.getName())) {
 			Collections.sort(saPeriods);
@@ -261,18 +204,15 @@ implements ParameterChangeListener, ScalarIMRChangeListener {
 		for (Parameter<?> param : paramList) {
 			imtNames.add(param.getName());
 		}
-
 		// add the IMT parameter
         ParameterList finalParamList = new ParameterList();
 		imtParameter = new StringParameter(IMT_PARAM_NAME, imtNames, imtNames.get(0));
 		imtParameter.addParameterChangeListener(this);
 		finalParamList.addParameter(imtParameter);
         finalParamList.addParameterList(paramList);
-
         // Update GUI
 		updateGUI();
 		fireIMTChangeEvent();
-        System.out.println(imtParams + " " + finalParamList); // TODO: delete
 	}
 	
 	private void updateGUI() {
