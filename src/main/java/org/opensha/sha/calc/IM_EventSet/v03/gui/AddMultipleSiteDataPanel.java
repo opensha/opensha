@@ -14,8 +14,8 @@ import org.opensha.commons.gui.LabeledBoxPanel;
 public class AddMultipleSiteDataPanel extends NamesListPanel {
 	
 	private static final long serialVersionUID = -7721445360673234470L;
-	private ArrayList<SiteDataValue<?>> vals;
-	private AddSiteDataPanel adder;
+	private final ArrayList<SiteDataValue<?>> vals;
+	private final AddSiteDataPanel adder;
 	
 	public AddMultipleSiteDataPanel() {
 		super(/*upperPanel=*/new AddSiteDataPanel(), "Site Data Values:");
@@ -31,7 +31,7 @@ public class AddMultipleSiteDataPanel extends NamesListPanel {
 	}
 	
 	public void rebuildList() {
-		Object names[] = new String[vals.size()];
+		String[] names = new String[vals.size()];
 		for (int i=0; i<vals.size(); i++) {
 			SiteDataValue<?> val = vals.get(i);
 			names[i] = SitesPanel.getDataListString(i, val);

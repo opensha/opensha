@@ -19,7 +19,7 @@ import javax.swing.event.ListSelectionListener;
 
 public abstract class NamesListPanel extends JPanel implements ListSelectionListener, ActionListener {
 	
-	protected JList namesList;
+	protected JList<String> namesList;
 	
 	protected JButton addButton = new JButton("Add");
 	protected JButton removeButton = new JButton("Remove");
@@ -35,7 +35,7 @@ public abstract class NamesListPanel extends JPanel implements ListSelectionList
 	public NamesListPanel(JPanel upperPanel, String label) {
 		super(new BorderLayout());
 		
-		namesList = new JList();
+		namesList = new JList<>();
 		namesList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		namesList.setSelectedIndex(0);
 		namesList.addListSelectionListener(this);
