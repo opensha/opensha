@@ -698,13 +698,13 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 
     /**
      * Build a new ParameterList with the intersection of ParameterLists.
-     * Contains only parameters found in all lists
+     * Contains only parameters found in all lists.
+     * For a deep copy, invoke ParameterList.clone on intersection output
      * @param lists ParameterLists to build intersection
-     * @return new deep-copied ParameterList
+     * @return new shallow-copy ParameterList
      * @throws ParameterException Could throw exception from getParameter
      */
     public static ParameterList intersection(ParameterList... lists) throws ParameterException {
-        // TODO: Create unit test
         if (lists == null || lists.length == 0) return new ParameterList();
 
         // Step 1: Start with the names from the first list
@@ -724,7 +724,7 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
         ParameterList result = new ParameterList();
         for (String name : commonNames) {
             Parameter<?> param = lists[0].getParameter(name);
-            result.addParameter((Parameter<?>) param.clone());
+            result.addParameter((Parameter<?>) param);
         }
 
         return result;
@@ -733,12 +733,12 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
     /**
      * Build a new ParameterList with the union of provided parameters
      * Contains parameters found in at least one of the lists
+     * For a deep copy, invoke ParameterList.clone on union output
      * @param lists ParameterList to build union
-     * @return new deep-copied ParameterList
+     * @return new shallow-copy ParameterList
      * @throws ParameterException Could throw exception from getParameter
      */
     public static ParameterList union(ParameterList... lists) throws ParameterException {
-        // TODO: Create unit test
         ParameterList result = new ParameterList();
         if (lists == null || lists.length == 0) return result;
 
@@ -746,13 +746,12 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
             for (Parameter<?> param : list) {
                 // Add only if not already present
                 if (!result.containsParameter(param.getName())) {
-                    result.addParameter((Parameter<?>) param.clone());
+                    result.addParameter((Parameter<?>) param);
                 }
             }
         }
 
         return result;
     }
-
 
 }
