@@ -20,6 +20,7 @@ import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.event.ScalarIMRChangeEvent;
 import org.opensha.sha.imr.event.ScalarIMRChangeListener;
+import org.opensha.sha.imr.param.OtherParams.StdDevTypeParam;
 import org.opensha.sha.util.TRTUtils;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -33,7 +34,7 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 	private final IMT_ChooserPanel imtChooser;
 	private final ParameterListEditor imrSiteParamsEdit;
     private final HashMap<String, ScalarIMR> imrNameMap = new HashMap<>(); // Lookup IMR by name in O(1)
-    private final List<? extends ScalarIMR> allIMRs;
+    private List<? extends ScalarIMR> allIMRs;
 	
 	public IMR_ChooserPanel(IMT_ChooserPanel imtChooser) {
 		super(null, "Selected IMR(s):");
@@ -41,15 +42,9 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 		imtChooser.setForceDisableAddButton(true);
 		this.imtChooser = imtChooser;
 
-        allIMRs = AttenRelRef.instanceList(
-                null, true, ServerPrefUtils.SERVER_PREFS);
-        for (ScalarIMR imr : allIMRs) {
-            imr.setParamDefaults();
-            imrNameMap.put(imr.getName(), imr);
-        }
+        //buildValidIMRs(/*filterParams=*/List.of(StdDevTypeParam.NAME));
+        buildValidIMRs();
         imrGuiBean = new IMR_MultiGuiBean(allIMRs);
-        // TODO: What is multiple IMR mode w/ multiple tectonic regions?
-        // imrGuiBean.setMultipleIMRs(true);
 		imrGuiBean.addIMRChangeListener(this);
 		
 		imrSiteParamsEdit = new ParameterListEditor();
@@ -65,6 +60,47 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 		setLowerPanel(imPanel);
 		updateIMTs();
 	}
+
+    /**
+     * Include all available IMRs
+     */
+    private void buildValidIMRs() {
+       buildValidIMRs(null);
+    }
+
+    /**
+     * Creates a list of IMRs valid for selection and sets allIMRs and imrNameMap.
+     * Only considers IMRs with the IMR parameters specified in filterParams.
+     * @param filterParams Names of all IMR params to filter on.
+     */
+    private void buildValidIMRs(List<String> filterParams) {
+        this.allIMRs = AttenRelRef.instanceList(
+                null, true, ServerPrefUtils.SERVER_PREFS);
+        if (filterParams == null || filterParams.isEmpty()) {
+            for (ScalarIMR imr : allIMRs) {
+                imr.setParamDefaults();
+                imrNameMap.put(imr.getName(), imr);
+            }
+            return;
+        }
+        this.allIMRs = AttenRelRef.instanceList(
+                null, true, ServerPrefUtils.SERVER_PREFS);
+        List<ScalarIMR> toRemove = new ArrayList<>();
+        for (ScalarIMR imr : allIMRs) {
+            imr.setParamDefaults();
+            for (String filterParam : filterParams) {
+                if (!imr.getStdDevIndependentParams().containsParameter(filterParam)) {
+                    toRemove.add(imr);
+                }
+            }
+        }
+        for (ScalarIMR remove : toRemove) {
+           allIMRs.remove(remove);
+        }
+        for (ScalarIMR imr : allIMRs) {
+            imrNameMap.put(imr.getName(), imr);
+        }
+    }
 
     /**
      * Gets default parameters for first IMR in list (AS1997)
@@ -137,7 +173,7 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 	public void addButton_actionPerformed() {
 		ListModel<String> model = namesList.getModel();
 		ScalarIMR imr = imrGuiBean.getSelectedIMR();
-		String names[] = new String[model.getSize()+1];
+		String[] names = new String[model.getSize()+1];
 		for (int i=0; i<model.getSize(); i++) {
 			names[i] = model.getElementAt(i);
 		}
@@ -150,8 +186,7 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 	@Override
 	public void removeButton_actionPerformed() {
 		ListModel<String> model = namesList.getModel();
-		ScalarIMR imr = imrGuiBean.getSelectedIMR();
-		String names[] = new String[model.getSize()-1];
+		String[] names = new String[model.getSize()-1];
 		int selected = namesList.getSelectedIndex();
 		int cnt = 0;
 		for (int i=0; i<model.getSize(); i++) {
@@ -174,7 +209,7 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 
 	public ArrayList<ScalarIMR> getSelectedIMRs() {
 		ListModel<String> model = namesList.getModel();
-		ArrayList<ScalarIMR> imrs = new ArrayList<ScalarIMR>();
+		ArrayList<ScalarIMR> imrs = new ArrayList<>();
 		for (int i=0; i<model.getSize(); i++) {
             String name = model.getElementAt(i);
 			imrs.add(imrNameMap.get(name));
