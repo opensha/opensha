@@ -7,6 +7,7 @@ import java.util.StringTokenizer;
 import javax.swing.JFrame;
 import javax.swing.ListModel;
 
+import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
@@ -64,17 +65,18 @@ public class IMT_ChooserPanel extends NamesListPanel implements ParameterChangeL
 
 	@Override
 	public void addButton_actionPerformed() {
-		ListModel<String> model = namesList.getModel();
-		Parameter<?> newIMT = (Parameter<?>) imtGuiBean.getSelectedIM();
-		Parameter<?> clone = (Parameter<?>) newIMT.clone();
-		for (Parameter<?> param : newIMT.getIndependentParameterList()) {
+        Parameter<?> newIMT = imtGuiBean.getSelectedIM();
+        Parameter<?> clone = (Parameter<?>) newIMT.clone();
+        for (Parameter<?> param : newIMT.getIndependentParameterList()) {
             if (!clone.containsIndependentParameter(param.getName())) {
-                clone.addIndependentParameter((Parameter<?>) param.clone());
+                Parameter<?> independentParamClone = (Parameter<?>) param.clone();
+                independentParamClone.addParameterChangeListener(this);
+                clone.addIndependentParameter(independentParamClone);
             }
         }
-		imts.add(clone);
-		
-		rebuildList();
+        clone.addParameterChangeListener(this);
+        imts.add(clone);
+        rebuildList();
 	}
 
 	@Override
@@ -103,13 +105,10 @@ public class IMT_ChooserPanel extends NamesListPanel implements ParameterChangeL
 		Parameter<?> imt = imtGuiBean.getSelectedIM();
 		for (Parameter<?> oldIMT : imts) {
 			if (imt.getName().equals(oldIMT.getName())) {
-                // TODO: This allows selecting multiple SA IMTs with unique periods.
-                //       Is this a good idea? Why only with SA and not other IMTs?
 				if (imt.getName().equals(SA_Param.NAME)) {
-					Parameter<?> oldParam = (Parameter<?>) oldIMT;
-					Parameter<?> newParam = (Parameter<?>) imt;
-					double oldPeriod = (Double) oldParam.getIndependentParameter(PeriodParam.NAME).getValue();
-					double newPeriod = (Double) imtGuiBean.getParameterList().getParameter(PeriodParam.NAME).getValue();
+					double oldPeriod = (Double) oldIMT.getIndependentParameter(PeriodParam.NAME).getValue();
+//					double newPeriod = (Double) imtGuiBean.getParameterList().getParameter(PeriodParam.NAME).getValue();
+                    double newPeriod = (Double) imt.getIndependentParameter(PeriodParam.NAME).getValue();
 					if (newPeriod == oldPeriod) {
 //						System.out.println("Returning a SA false: " + newPeriod + ", " + oldPeriod);
 						return false;
