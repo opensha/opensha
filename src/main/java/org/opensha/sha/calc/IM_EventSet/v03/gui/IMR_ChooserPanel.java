@@ -1,6 +1,7 @@
 package org.opensha.sha.calc.IM_EventSet.v03.gui;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
@@ -12,9 +13,9 @@ import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.sha.gui.beans.IMR_MultiGuiBean;
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.ScalarIMR;
+import org.opensha.sha.imr.attenRelImpl.Abrahamson_2000_AttenRel;
 import org.opensha.sha.imr.event.ScalarIMRChangeEvent;
 import org.opensha.sha.imr.event.ScalarIMRChangeListener;
-import org.opensha.sha.imr.param.OtherParams.StdDevTypeParam;
 import org.opensha.sha.util.TRTUtils;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -36,8 +37,7 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 		imtChooser.setForceDisableAddButton(true);
 		this.imtChooser = imtChooser;
 
-        //buildValidIMRs(/*filterParams=*/List.of(StdDevTypeParam.NAME));
-        buildValidIMRs();
+        buildValidIMRs(/*excludedIMRs=*/List.of(Abrahamson_2000_AttenRel.NAME));
         imrGuiBean = new IMR_MultiGuiBean(allIMRs);
 		imrGuiBean.addIMRChangeListener(this);
 		
@@ -64,36 +64,19 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 
     /**
      * Creates a list of IMRs valid for selection and sets allIMRs and imrNameMap.
-     * Only considers IMRs with the IMR parameters specified in filterParams.
-     * @param filterParams Names of all IMR params to filter on.
+     * Only considers IMRs not in excluded list
+     * @param excluded Names of IMRs to exclude from the list of selectable IMRs
      */
-    private void buildValidIMRs(List<String> filterParams) {
+    private void buildValidIMRs(List<String> excluded) {
         this.allIMRs = AttenRelRef.instanceList(
                 null, true, ServerPrefUtils.SERVER_PREFS);
-        if (filterParams == null || filterParams.isEmpty()) {
+        if (excluded != null && !excluded.isEmpty()) {
+            allIMRs.removeIf(imr -> excluded.contains(imr.getName()));
+        }
             for (ScalarIMR imr : allIMRs) {
                 imr.setParamDefaults();
                 imrNameMap.put(imr.getName(), imr);
             }
-            return;
-        }
-        this.allIMRs = AttenRelRef.instanceList(
-                null, true, ServerPrefUtils.SERVER_PREFS);
-        List<ScalarIMR> toRemove = new ArrayList<>();
-        for (ScalarIMR imr : allIMRs) {
-            imr.setParamDefaults();
-            for (String filterParam : filterParams) {
-                if (!imr.getStdDevIndependentParams().containsParameter(filterParam)) {
-                    toRemove.add(imr);
-                }
-            }
-        }
-        for (ScalarIMR remove : toRemove) {
-           allIMRs.remove(remove);
-        }
-        for (ScalarIMR imr : allIMRs) {
-            imrNameMap.put(imr.getName(), imr);
-        }
     }
 
     /**

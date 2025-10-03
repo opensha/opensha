@@ -41,7 +41,7 @@ public class IMT_ChooserPanel extends NamesListPanel implements ParameterChangeL
 		imtGuiBean = new IMT_NewGuiBean(imrs, /*commonParamsOnly=*/true);
 //        imtGuiBean.setSelectedIMT(SA_Param.NAME);
 //        imtGuiBean.addIMTChangeListener(this);
-		imts = new ArrayList<Parameter<?>>();
+		imts = new ArrayList<>();
 		setLowerPanel(imtGuiBean);
 	}
 	
@@ -161,7 +161,7 @@ public class IMT_ChooserPanel extends NamesListPanel implements ParameterChangeL
 		
 		// now we need to see if we have already selected any IMTs that don't work
 		// for one of the new IMRs
-		ArrayList<Integer> toRemove = new ArrayList<Integer>();
+		ArrayList<Integer> toRemove = new ArrayList<>();
 		for (int i=imts.size()-1; i>=0; i--) {
 			Parameter<?> imt = imts.get(i);
 			for (ScalarIMR imr : imrs) {
@@ -210,7 +210,7 @@ public class IMT_ChooserPanel extends NamesListPanel implements ParameterChangeL
 	}
 	
 	public ArrayList<String> getIMTStrings() {
-		ArrayList<String> strings = new ArrayList<String>();
+		ArrayList<String> strings = new ArrayList<>();
 		for (Parameter<?> param : imts) {
 			strings.add(IM_EventSetOutputWriter.getRegularIMTString(param));
 		}
