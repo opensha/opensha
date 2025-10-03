@@ -1,14 +1,8 @@
 package org.opensha.sha.calc.IM_EventSet.v03.gui;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.ListIterator;
+import java.util.*;
 
-import javax.swing.BoxLayout;
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.ListModel;
+import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
 
 import org.opensha.commons.param.Parameter;
@@ -171,6 +165,7 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 
 	@Override
 	public void addButton_actionPerformed() {
+        // Select the new IMR
 		ListModel<String> model = namesList.getModel();
 		ScalarIMR imr = imrGuiBean.getSelectedIMR();
 		String[] names = new String[model.getSize()+1];
@@ -180,7 +175,28 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 		names[names.length - 1] = imr.getName();
 		namesList.setListData(names);
 		addButton.setEnabled(false);
-		updateIMTs();
+        // Get names of IMTs we would need to remove
+        List<String> removedIMTs = imtChooser.getIMTsRemoveFor(getSelectedIMRs());
+        int confirmation = 0;
+        if (!removedIMTs.isEmpty()) {
+           // If there are IMTs that need to be removed from adding this IMR, prompt the user to confirm.
+            confirmation = JOptionPane.showConfirmDialog(null,
+                    "Are you sure you want to select IMR: " + imr.getName() + "?\n"
+                              + "This will result in the deselection of IMT"
+                              + (removedIMTs.size() > 1 ? "s: \n" : ": ")
+                              + String.join(", ", removedIMTs),
+                    "Confirm IMR Selection",
+                    JOptionPane.YES_NO_OPTION);
+        }
+        // Proceed with IMR selection
+        if (confirmation == 0) {
+            // Update IMTs accordingly
+            updateIMTs();
+        // If user selected "No" or closed dialog without choosing
+        } else {
+            // Deselect the new IMR and don't touch selected IMTs.
+           namesList.setListData(Arrays.copyOf(names, names.length-1));
+        }
 	}
 
 	@Override

@@ -1,5 +1,6 @@
 package org.opensha.sha.calc.IM_EventSet.v03.gui;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.StringTokenizer;
@@ -7,19 +8,14 @@ import java.util.StringTokenizer;
 import javax.swing.JFrame;
 import javax.swing.ListModel;
 
-import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetOutputWriter;
-import org.opensha.sha.gui.beans.IMR_MultiGuiBean;
 import org.opensha.sha.gui.beans.IMT_NewGuiBean;
-import org.opensha.sha.gui.beans.event.IMTChangeEvent;
-import org.opensha.sha.gui.beans.event.IMTChangeListener;
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.ScalarIMR;
-import org.opensha.sha.imr.attenRelImpl.CB_2008_AttenRel;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PeriodParam;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
 
@@ -121,6 +117,33 @@ public class IMT_ChooserPanel extends NamesListPanel implements ParameterChangeL
 		}
 		return true;
 	}
+
+    /**
+     * This method returns a list of IMTs would be deselected if the given IMRs were selected.
+     * This considers the current state of IMTs and IMRs selected without modifying state or actually selecting the IMRs.
+     * This allows us to prompt a user "Are you sure?" before they add an IMR that could potentially deselect IMTs.
+     * @param imrs Potential new IMR list
+     * @return list of names of IMTs to remove if the given IMRs were selected
+     */
+    public List<String> getIMTsRemoveFor(List<ScalarIMR> imrs) {
+        List<String> toRemove = new ArrayList<>();
+        for (int i=imts.size()-1; i>=0; i--) {
+            Parameter<?> imt = imts.get(i);
+            for (ScalarIMR imr : imrs) {
+                if (!imr.isIntensityMeasureSupported(imt)) {
+                    String name = imt.getName();
+                    if (name.equals(SA_Param.NAME)) {
+                        // Add period to differentiate multiple SA IMTs.
+                        name += "(" + imt.getIndependentParameter(PeriodParam.NAME).getValue() + ")";
+                    }
+                    toRemove.add(name);
+                    break;
+                }
+            }
+        }
+        Collections.reverse(toRemove);
+        return toRemove;
+    }
 
     /**
      * Set the IMRs in the IMT GUI bean to show only IMTs that work for all IMRs.
