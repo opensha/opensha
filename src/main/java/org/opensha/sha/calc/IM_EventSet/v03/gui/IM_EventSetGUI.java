@@ -27,7 +27,6 @@ import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
 import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.data.siteData.gui.beans.OrderedSiteDataGUIBean;
-import org.opensha.commons.data.siteData.impl.WillsMap2006;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.ServerPrefUtils;
@@ -74,11 +73,11 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 	private Timer doneTimer = null; // show when calculation is done
 	
 	public IM_EventSetGUI() {
-		sitesPanel = new SitesPanel();
 		erfGuiBean = createERF_GUI_Bean();
 		imtChooser = new IMT_ChooserPanel();
 		imrChooser = new IMR_ChooserPanel(imtChooser);
-		
+        sitesPanel = new SitesPanel(imtChooser, imrChooser);
+
 		OrderedSiteDataProviderList providers = OrderedSiteDataProviderList.createSiteDataProviderDefaults();
 
 		dataBean = new OrderedSiteDataGUIBean(providers);
