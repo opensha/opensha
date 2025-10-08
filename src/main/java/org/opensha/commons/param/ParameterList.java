@@ -247,7 +247,7 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	 * Returns a Parameter at the given index, cast to the given type.
 	 * 
 	 * @param type
-	 * @param name
+	 * @param index
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")

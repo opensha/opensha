@@ -11,6 +11,10 @@ import javax.swing.JLabel;
 import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.gui.LabeledBoxPanel;
 
+/**
+ * We no longer require an adder panel since we're no longer using AddSiteDataPanel.
+ */
+@Deprecated
 public class AddMultipleSiteDataPanel extends NamesListPanel {
 	
 	private static final long serialVersionUID = -7721445360673234470L;

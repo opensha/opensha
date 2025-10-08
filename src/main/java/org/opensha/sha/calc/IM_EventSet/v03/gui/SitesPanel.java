@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -26,6 +27,9 @@ import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.exceptions.InvalidRangeException;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.param.ParameterList;
+import org.opensha.sha.imr.IntensityMeasureRelationship;
+import org.opensha.sha.imr.ScalarIMR;
 
 public class SitesPanel extends JPanel implements ListSelectionListener, ActionListener {
 	
@@ -36,9 +40,6 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 	protected JButton removeSiteButton = new JButton("Remove Site(s)");
 	protected JButton importSitesButton = new JButton("Import Sites From File");
 	
-	protected JButton addDataButton = new JButton("Add Site Data Value");
-	protected JButton removeDataButton = new JButton("Remove Site Data Value(s)");
-	
 	private ArrayList<Location> locs;
 	private ArrayList<ArrayList<SiteDataValue<?>>> dataLists;
 	
@@ -47,9 +48,6 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
     // Need to track selected IMRs and IMTs
     private final IMT_ChooserPanel imtChooser;
     private final IMR_ChooserPanel imrChooser;
-
-    // TODO: Generate Site Data types from selected IMRs. Initially panel is empty.
-    //       * We need to remove existing preselected types and list in AddSite panel.
 
     // TODO: We need to dynamically regenerate Site Data types on IMChooserChange.
     //       * Read selected IMRs from imrChooser
@@ -67,6 +65,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
         imtChooser.addIMChooserChangeListener(this::checkEnableAddSite);
         this.imrChooser = imrChooser;
         imrChooser.addIMChooserChangeListener(this::checkEnableAddSite);
+
 
 		locs = new ArrayList<Location>();
 		dataLists = new ArrayList<ArrayList<SiteDataValue<?>>>();
@@ -111,12 +110,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 		
 		JPanel dataButtonPanel = new JPanel();
 		dataButtonPanel.setLayout(new BoxLayout(dataButtonPanel, BoxLayout.X_AXIS));
-		dataButtonPanel.add(addDataButton);
-		dataButtonPanel.add(removeDataButton);
-		removeDataButton.setEnabled(false);
-		addDataButton.addActionListener(this);
-		removeDataButton.addActionListener(this);
-		
+
 		southPanel.add(dataButtonPanel, BorderLayout.SOUTH);
 		
 		rebuildSiteList();
@@ -133,9 +127,6 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 		if (e.getSource().equals(sitesList)) {
 			// value changed in the sites list
 			rebuildSiteDataList();
-		} else {
-			// value changed in the site data list
-			checkEnableRemoveSiteData();
 		}
 	}
 
@@ -152,26 +143,13 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 		removeSiteButton.setEnabled(!sitesList.isSelectionEmpty());
 	}
 	
-	private void checkEnableRemoveSiteData() {
-		boolean enable = !siteDataList.isSelectionEmpty() && !sitesList.isSelectionEmpty()
-							&& getSingleSelectedIndex() >= 0;
-		removeDataButton.setEnabled(enable);
-	}
-	
 	protected void addSite(Location loc, ArrayList<SiteDataValue<?>> data) {
 		this.locs.add(loc);
 		if (data == null) {
-			data = new ArrayList<SiteDataValue<?>>();
+			data = new ArrayList<>();
 		}
 		this.dataLists.add(data);
 		this.rebuildSiteList();
-	}
-	
-	private void addSiteDataValue(int i, SiteDataValue<?> val) {
-        if (this.dataLists.get(i).contains(val)) {
-            throw new IllegalArgumentException("Can't add duplicate site data values");
-        }
-		this.dataLists.get(i).add(val);
 	}
 	
 	public void clear() {
@@ -193,15 +171,6 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 			dataLists.remove(i);
 		}
 		this.rebuildSiteList();
-	}
-	
-	private void removeSiteData(int i, int indices[]) {
-		ArrayList<SiteDataValue<?>> dataVals = dataLists.get(i);
-		Arrays.sort(indices);
-		for (int j=indices.length-1; j>=0; j--) {
-			dataVals.remove(j);
-		}
-		this.rebuildSiteDataList();
 	}
 	
 	private void rebuildSiteList() {
@@ -247,13 +216,13 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 		}
 		siteDataList.setListData(data);
 		checkEnableRemoveSite();
-		checkEnableRemoveSiteData();
 	}
 	
 	public static String getDataListString(int index, SiteDataValue<?> val) {
 		return (index+1) + ". " + val.getDataType() + ": " + val.getValue();
 	}
-	
+
+    // TODO: Should we remove this?
 	private void importSites() {
 		if (imp == null)
 			imp = new SiteImporterPanel();
@@ -299,7 +268,9 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 	public void actionPerformed(ActionEvent e) {
 		if (e.getSource().equals(addSiteButton)) {
 			// adding a site
-			AddSitePanel siteAdd = new AddSitePanel();
+            // Unique set of site data params per new site added
+            ParameterList siteDataParams = getSiteDataParams();
+			AddSitePanel siteAdd = new AddSitePanel(siteDataParams);
 			int selection = JOptionPane.showConfirmDialog(this, siteAdd, "Add Site",
 					JOptionPane.OK_CANCEL_OPTION);
 			if (selection == JOptionPane.OK_OPTION) {
@@ -310,38 +281,25 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 				rebuildSiteDataList();
 			}
 		} else if (e.getSource().equals(removeSiteButton)) {
-			// removing a site
-			int indices[] = sitesList.getSelectedIndices();
-			removeSite(indices);
-		} else if (e.getSource().equals(addDataButton)) {
-			// adding a site data val
-			AddSiteDataPanel dataAdd = new AddSiteDataPanel();
-			int selection = JOptionPane.showConfirmDialog(this, dataAdd, "Add Site Data Value",
-					JOptionPane.OK_CANCEL_OPTION);
-			if (selection == JOptionPane.OK_OPTION) {
-				try {
-					SiteDataValue<?> val = dataAdd.getValue();
-					int index = getSingleSelectedIndex();
-					this.addSiteDataValue(index, val);
-					rebuildSiteDataList();
-				} catch (Exception e1) {
-					JOptionPane.showMessageDialog(this, "Error adding value:\n" + e1.getMessage(),
-							"Error!", JOptionPane.ERROR_MESSAGE);
-				}
-			}
-			rebuildSiteDataList();
-		} else if (e.getSource().equals(removeDataButton)) {
-			// removing a site data val
-			int i = getSingleSelectedIndex();
-			if (i >= 0)
-				removeSiteData(i, siteDataList.getSelectedIndices());
-			checkEnableRemoveSiteData();
-		} else if (e.getSource().equals(importSitesButton)) {
-			importSites();
-		}
+            // removing a site
+            int indices[] = sitesList.getSelectedIndices();
+            removeSite(indices);
+        }
 	}
 
-	
+    /**
+     * Dynamically builds the site data parameters from the selected IMRs
+     * @return
+     */
+    private ParameterList getSiteDataParams() {
+        // Get all selected IMRs
+        List<ScalarIMR> imrs = imrChooser.getSelectedIMRs();
+        // Take a union of the lists of all supported site params per IMR
+        return ParameterList.union(imrs.stream()
+                .map(IntensityMeasureRelationship::getSiteParams)
+                .toArray(ParameterList[]::new));
+    }
+
 	/**
 	 * tester main method
 	 * @param args

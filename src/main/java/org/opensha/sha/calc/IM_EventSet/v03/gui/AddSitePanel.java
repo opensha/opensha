@@ -1,6 +1,7 @@
 package org.opensha.sha.calc.IM_EventSet.v03.gui;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -10,32 +11,51 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.border.Border;
 
+import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.data.siteData.impl.WillsMap2000;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.gui.LabeledBoxPanel;
+import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.editor.impl.ParameterListEditor;
 import org.opensha.commons.param.impl.DoubleParameter;
+import org.opensha.nshmp2.imr.impl.Campbell_2003_AttenRel;
+import org.opensha.sha.imr.IntensityMeasureRelationship;
+import org.opensha.sha.imr.ScalarIMR;
+import org.opensha.sha.imr.attenRelImpl.Field_2000_AttenRel;
+import org.opensha.sha.imr.param.SiteParams.DepthTo1pt0kmPerSecParam;
+import org.opensha.sha.imr.param.SiteParams.DepthTo2pt5kmPerSecParam;
+import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
+import org.opensha.sha.imr.param.SiteParams.Vs30_TypeParam;
 
+/**
+ * Panel to add multiple sites and set its corresponding set of site data params.
+ */
 public class AddSitePanel extends JPanel {
 	
-	private AddMultipleSiteDataPanel adder;
+    private ParameterListEditor siteDataParamEditor;
 	
 	private DoubleParameter latParam = new DoubleParameter("Latitude", 34.0);
 	private DoubleParameter lonParam = new DoubleParameter("Longitude", -118.0);
-	
-	public AddSitePanel() {
+
+    /**
+     * Constructor for AddSitePanel
+     * @param siteDataParams List of site data parameters to edit in this panel
+     */
+	public AddSitePanel(ParameterList siteDataParams) {
 		this.setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 		
 
+        // Create a location list to specify sites
 		ParameterList paramList = new ParameterList();
 		paramList.addParameter(latParam);
 		paramList.addParameter(lonParam);
 		ParameterListEditor paramEdit = new ParameterListEditor(paramList);
 		paramEdit.setTitle("New Site Location");
 //		paramEdit.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
-		
+
+        // TODO: Update or remove help textArea.
 		LabeledBoxPanel help = new LabeledBoxPanel();
 		help.setTitle("Help");
 		JTextArea helpText = new JTextArea(5, 20);
@@ -59,22 +79,102 @@ public class AddSitePanel extends JPanel {
 		leftCol.add(help);
 		
 		this.add(leftCol);
-		
-		adder = new AddMultipleSiteDataPanel();
-		this.add(adder);
-	}	
-	
+
+        // Create editor for provided site data parameters
+        siteDataParamEditor = new ParameterListEditor(siteDataParams);
+        siteDataParamEditor.setTitle("Site Params");
+        this.add(siteDataParamEditor);
+	}
+
 	public Location getSiteLocation() {
 		return new Location(latParam.getValue(), lonParam.getValue());
 	}
-	
+
+    /**
+     * Gets the site data values from the site data parameters
+     * @return ArrayList of SiteDataValue objects with proper metadata
+     */
 	public ArrayList<SiteDataValue<?>> getDataVals() {
-		ArrayList<SiteDataValue<?>> vals = adder.getValues();
-		return vals;
+        ArrayList<SiteDataValue<?>> values = new ArrayList<>();
+        
+        // Iterate through all parameters in the editor
+        for (Parameter<?> param : siteDataParamEditor.getParameterList()) {
+            String paramName = param.getName();
+            Object paramValue = param.getValue();
+            
+            // Skip if value is null
+            if (paramValue == null) continue;
+            
+            // Map parameter name to SiteData type and create SiteDataValue
+            String dataType = null;
+            String measurementType = SiteData.TYPE_FLAG_INFERRED; // default
+            Object value = paramValue;
+            
+            // Map common site parameters to their SiteData types
+            if (paramName.equals(Vs30_Param.NAME)) {
+                dataType = SiteData.TYPE_VS30;
+                value = (Double) paramValue;
+            } else if (paramName.equals(Vs30_TypeParam.NAME)) {
+                // Handle Vs30 Type - this determines measurement type for Vs30
+                String vs30Type = (String) paramValue;
+                if (vs30Type.equals(Vs30_TypeParam.VS30_TYPE_MEASURED)) {
+                    measurementType = SiteData.TYPE_FLAG_MEASURED;
+                }
+                // Don't add Vs30_Type as its own SiteDataValue
+                continue;
+            } else if (paramName.equals(DepthTo2pt5kmPerSecParam.NAME)) {
+                dataType = SiteData.TYPE_DEPTH_TO_2_5;
+                value = (Double) paramValue;
+            } else if (paramName.equals(DepthTo1pt0kmPerSecParam.NAME)) {
+                dataType = SiteData.TYPE_DEPTH_TO_1_0;
+                value = (Double) paramValue;
+            } else {
+                // For other parameters, use parameter name as dataType
+                dataType = paramName;
+                // Try to determine if it's a numeric or string parameter
+                if (paramValue instanceof Double || paramValue instanceof Integer) {
+                    value = ((Number) paramValue).doubleValue();
+                } else {
+                    value = paramValue.toString();
+                }
+            }
+            
+            // Create and add the SiteDataValue
+            if (dataType != null) {
+                if (value instanceof Double) {
+                    SiteDataValue<Double> sdv = new SiteDataValue<>(
+                            dataType, measurementType, (Double) value);
+                    values.add(sdv);
+                } else if (value instanceof String) {
+                    SiteDataValue<String> sdv = new SiteDataValue<>(
+                            dataType, measurementType, (String) value);
+                    values.add(sdv);
+                }
+            }
+        }
+        
+        return values;
 	}
-	
+
+    /**
+     * Tester main function
+     * @param args
+     */
 	public static void main(String args[]) {
-		JOptionPane.showConfirmDialog(null, new AddSitePanel(), "Add Site", JOptionPane.OK_CANCEL_OPTION);
+        // For demo, get siteDataParams for Campbell(2003) and Field(2000)
+        List<ScalarIMR> imrs = new ArrayList<>();
+        imrs.add(new Campbell_2003_AttenRel(null));
+        imrs.add(new Field_2000_AttenRel(null));
+
+        ParameterList siteDataParams = ParameterList.union(imrs.stream()
+                .map(IntensityMeasureRelationship::getSiteParams)
+                .toArray(ParameterList[]::new));
+
+		JOptionPane.showConfirmDialog(
+                null,
+                siteDataParams,
+                "Add Site",
+                JOptionPane.OK_CANCEL_OPTION);
 	}
 
 }
