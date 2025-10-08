@@ -178,7 +178,7 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
                     JOptionPane.YES_NO_OPTION);
         }
         // Proceed with IMR selection
-        if (confirmation == 0) {
+        if (confirmation == JOptionPane.OK_OPTION) {
             // Update IMTs accordingly
             updateIMTs();
             // Notify external panels of broad change to intensity measure selection
@@ -200,7 +200,7 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
                     + "This will result in the removal of your selected IMTs.",
                     "Confirm IMR Deselection",
                     JOptionPane.YES_NO_OPTION);
-            if (confirmation != 0) return; // "No" or closed dialog
+            if (confirmation != JOptionPane.OK_OPTION) return; // "No" or closed dialog
         }
 		String[] names = new String[model.getSize()-1];
 		int selected = namesList.getSelectedIndex();

@@ -399,7 +399,6 @@ implements ParameterChangeListener, ScalarIMRChangeListener {
 			for (ScalarIMR imr : imrs) {
                 if (!imr.isIntensityMeasureSupported(SA_Param.NAME)) {
                     // Return an empty list of there is an IMR that can't support SA periods
-                    System.out.println(imr);
                    return new ArrayList<Double>();
                 }
                 imr.setIntensityMeasure(SA_Param.NAME);
