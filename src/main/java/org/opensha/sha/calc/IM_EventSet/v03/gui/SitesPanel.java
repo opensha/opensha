@@ -4,14 +4,9 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.File;
-import java.io.IOException;
-import java.lang.reflect.Array;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -27,7 +22,6 @@ import javax.swing.event.ListSelectionListener;
 
 import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.SiteDataValue;
-import org.opensha.commons.exceptions.InvalidRangeException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
@@ -239,26 +233,42 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
     /**
      * Dynamically builds the site data parameters from the selected IMRs.
      * Should be invoked by the IMR_ChooserPanel.
-     * @return
      */
     public void updateSiteDataParams(List<ScalarIMR> imrs) {
         // Create a new list with only supported site data params
+        ParameterList oldSiteDataParams = (ParameterList)siteDataParams.clone();
         siteDataParams = ParameterList.union(imrs.stream()
                 .map(IntensityMeasureRelationship::getSiteParams)
                 .toArray(ParameterList[]::new));
-
         // Remove any selected site data values now unsupported across all sites
-        ArrayList<ArrayList<SiteDataValue<?>>> newDataList = new ArrayList<>();
-        for (List<SiteDataValue<?>> siteVals : dataLists) {
-            ArrayList<SiteDataValue<?>> newVals = new ArrayList<>();
-            for (SiteDataValue<?> val : siteVals) {
-                if (siteDataParams.containsParameter(val.getDataType())) {
-                    newVals.add(val);
+        if (siteDataParams.size() < oldSiteDataParams.size()) {
+            ArrayList<ArrayList<SiteDataValue<?>>> newDataList = new ArrayList<>();
+            ArrayList<String> invalidatedSiteData = new ArrayList<>();
+            for (Parameter<?> param : oldSiteDataParams) {
+                if (!siteDataParams.containsParameter(param.getName())) {
+                    invalidatedSiteData.add(param.getName());
                 }
             }
-            newDataList.add(newVals);
+            for (List<SiteDataValue<?>> siteVals : dataLists) {
+                ArrayList<SiteDataValue<?>> newVals = new ArrayList<>();
+                for (SiteDataValue<?> val : siteVals) {
+                    if (!invalidatedSiteData.contains(val.getDataType())) {
+                       newVals.add(val);
+                    }
+                }
+                newDataList.add(newVals);
+            }
+            dataLists = newDataList;
+            // Notify user that previously selected site data types were invalidated
+            if (!invalidatedSiteData.isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                        "The following site data parameters were previously set and have been removed across all sites added so far.\n"
+                            + "Removed Site Data Types: " + String.join(",", invalidatedSiteData) + "\n"
+                            + "Site data parameters are generated from the selected IMRs. To avoid this in the future, select all desired IMRs before adding sites.",
+                        "Site Data Parameter Removal",
+                        JOptionPane.INFORMATION_MESSAGE);
+            }
         }
-        dataLists = newDataList;
        // Update GUI
         rebuildSiteDataList();
     }
@@ -283,7 +293,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 		SitesPanel sites = new SitesPanel();
 		
 		sites.addSite(new Location(34, -118), null);
-		ArrayList<SiteDataValue<?>> vals = new ArrayList<SiteDataValue<?>>();
+		ArrayList<SiteDataValue<?>> vals = new ArrayList<>();
 		vals.add(new SiteDataValue<Double>(SiteData.TYPE_VS30, SiteData.TYPE_FLAG_INFERRED, 760.0));
 		sites.addSite(new Location(34, -118.1), vals);
 		
