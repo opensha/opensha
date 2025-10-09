@@ -123,12 +123,6 @@ public class AddSitePanel extends JPanel {
                 }
                 // Don't add Vs30_Type as its own SiteDataValue
                 continue;
-            } else if (paramName.equals(DepthTo2pt5kmPerSecParam.NAME)) {
-                dataType = SiteData.TYPE_DEPTH_TO_2_5;
-                value = (Double) paramValue;
-            } else if (paramName.equals(DepthTo1pt0kmPerSecParam.NAME)) {
-                dataType = SiteData.TYPE_DEPTH_TO_1_0;
-                value = (Double) paramValue;
             } else {
                 // For other parameters, use the parameter name as dataType
                 dataType = paramName;
