@@ -9,8 +9,6 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.editor.impl.ParameterListEditor;
 import org.opensha.commons.util.ServerPrefUtils;
-import org.opensha.sha.calc.IM_EventSet.v03.SelectedIMRChangeEvent;
-import org.opensha.sha.calc.IM_EventSet.v03.SelectedIMRChangeListener;
 import org.opensha.sha.gui.beans.IMR_MultiGuiBean;
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.ScalarIMR;
@@ -28,17 +26,18 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 	
 	private final IMR_MultiGuiBean imrGuiBean;
 	private final IMT_ChooserPanel imtChooser;
+    private final SitesPanel sitesPanel; // Update site params
 	private final ParameterListEditor imrSiteParamsEdit;
     private final HashMap<String, ScalarIMR> imrNameMap = new HashMap<>(); // Lookup IMR by name in O(1)
     private List<? extends ScalarIMR> allIMRs;
-    // Signal broad IM signals to external panels
-    private final List<SelectedIMRChangeListener> listeners = new ArrayList<>();
-	
-	public IMR_ChooserPanel(IMT_ChooserPanel imtChooser) {
+
+	public IMR_ChooserPanel(IMT_ChooserPanel imtChooser, SitesPanel sitesPanel) {
 		super(null, "Selected IMR(s):");
 
 		imtChooser.setForceDisableAddButton(true);
 		this.imtChooser = imtChooser;
+
+        this.sitesPanel = sitesPanel;
 
         buildValidIMRs(/*excludedIMRs=*/List.of(Abrahamson_2000_AttenRel.NAME));
         imrGuiBean = new IMR_MultiGuiBean(allIMRs);
@@ -80,25 +79,6 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
                 imr.setParamDefaults();
                 imrNameMap.put(imr.getName(), imr);
             }
-    }
-
-    /**
-     * External panels can register to be notified when the selected IMR changes.
-     * @param listener
-     */
-    public void addIMRChooserChangeListener(SelectedIMRChangeListener listener) {
-        listeners.add(listener);
-    }
-
-    /**
-     * Track changes to selected IMRs whenever a change occurs
-     * @param oldIMRList copy of names selected before change
-     * @param newIMRList copy of names selected after change
-     */
-    private void fireSelectedIMRChangeEvent(ArrayList<String> oldIMRList, ArrayList<String> newIMRList) {
-        for (SelectedIMRChangeListener listener : listeners) {
-            listener.imrChange(new SelectedIMRChangeEvent(this, oldIMRList, newIMRList));
-        }
     }
 
     /**
@@ -151,7 +131,8 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setSize(400, 600);
 		
-		frame.setContentPane(new IMR_ChooserPanel(new IMT_ChooserPanel()));
+		frame.setContentPane(new IMR_ChooserPanel(
+                new IMT_ChooserPanel(), new SitesPanel()));
 		frame.setVisible(true);
 	}
 
@@ -210,8 +191,8 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
         if (confirmation == JOptionPane.OK_OPTION) {
             // Update IMTs accordingly
             updateIMTs();
-            // Notify external panels of IMR change
-            fireSelectedIMRChangeEvent(oldIMRList, getSelectedIMRsNames());
+            // Generate site data parameters from selected IMRs
+            sitesPanel.updateSiteDataParams(getSelectedIMRs());
         // If the user selected "No" or closed the dialog without choosing
         } else {
             // Deselect the new IMR and don't touch selected IMTs.
@@ -247,7 +228,7 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 		}
 		namesList.setListData(names);
 		updateIMTs();
-        fireSelectedIMRChangeEvent(oldIMRList, getSelectedIMRsNames());
+        sitesPanel.updateSiteDataParams(getSelectedIMRs());
 	}
 	
 	public ArrayList<ScalarIMR> getSelectedIMRs() {
