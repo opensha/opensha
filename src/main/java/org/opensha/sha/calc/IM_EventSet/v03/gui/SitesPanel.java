@@ -33,7 +33,9 @@ import org.opensha.sha.calc.IM_EventSet.v03.SelectedIMRChangeListener;
 import org.opensha.sha.imr.IntensityMeasureRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 
-// TODO: Implement IMRChangeListener.
+// TODO: Instead of using SelectedIMRChangeListener, we could just pass SitesPanel to the IMR_ChooserPanel
+//       and expose a method to trigger an update of the selected site data parameters.
+//       This would allow us to simplify the code and remove the listener/event structure (i.e. only trigger on removal)
 public class SitesPanel extends JPanel implements SelectedIMRChangeListener, ListSelectionListener, ActionListener {
 	
 	protected JList sitesList;
