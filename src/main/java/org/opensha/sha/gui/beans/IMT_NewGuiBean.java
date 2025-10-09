@@ -3,7 +3,6 @@ package org.opensha.sha.gui.beans;
 import java.util.*;
 
 import com.google.common.base.Preconditions;
-import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.constraint.impl.DoubleDiscreteConstraint;
@@ -12,7 +11,6 @@ import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.ServerPrefUtils;
-import org.opensha.nshmp2.imr.impl.Campbell_2003_AttenRel;
 import org.opensha.sha.gui.beans.event.IMTChangeEvent;
 import org.opensha.sha.gui.beans.event.IMTChangeListener;
 import org.opensha.sha.imr.AttenRelRef;

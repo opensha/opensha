@@ -8,7 +8,6 @@ import javax.swing.BoxLayout;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
-import javax.swing.JTextField;
 import javax.swing.border.Border;
 
 import org.opensha.commons.data.siteData.SiteData;
@@ -82,7 +81,7 @@ public class AddSitePanel extends JPanel {
 
         // Create editor for provided site data parameters
         siteDataParamEditor = new ParameterListEditor(siteDataParams);
-        siteDataParamEditor.setTitle("Site Params");
+        siteDataParamEditor.setTitle("Set Site Params");
         this.add(siteDataParamEditor);
 	}
 
@@ -129,11 +128,13 @@ public class AddSitePanel extends JPanel {
                 dataType = SiteData.TYPE_DEPTH_TO_1_0;
                 value = (Double) paramValue;
             } else {
-                // For other parameters, use parameter name as dataType
+                // For other parameters, use the parameter name as dataType
                 dataType = paramName;
                 // Try to determine if it's a numeric or string parameter
                 if (paramValue instanceof Double || paramValue instanceof Integer) {
                     value = ((Number) paramValue).doubleValue();
+                } else if (paramValue instanceof Boolean) {
+                    value = ((Boolean) paramValue).booleanValue();
                 } else {
                     value = paramValue.toString();
                 }
@@ -145,10 +146,17 @@ public class AddSitePanel extends JPanel {
                     SiteDataValue<Double> sdv = new SiteDataValue<>(
                             dataType, measurementType, (Double) value);
                     values.add(sdv);
-                } else if (value instanceof String) {
+
+                } else if (value instanceof Boolean) {
+                    SiteDataValue<Boolean> sdv = new SiteDataValue<>(
+                            dataType, measurementType, (Boolean) value);
+                    values.add(sdv);
+                } else if (value != null) {
                     SiteDataValue<String> sdv = new SiteDataValue<>(
                             dataType, measurementType, (String) value);
                     values.add(sdv);
+                } else {
+                    throw new RuntimeException("Null value for data type: " + dataType);
                 }
             }
         }

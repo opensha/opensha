@@ -28,10 +28,13 @@ import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.exceptions.InvalidRangeException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.ParameterList;
+import org.opensha.sha.calc.IM_EventSet.v03.SelectedIMRChangeEvent;
+import org.opensha.sha.calc.IM_EventSet.v03.SelectedIMRChangeListener;
 import org.opensha.sha.imr.IntensityMeasureRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 
-public class SitesPanel extends JPanel implements ListSelectionListener, ActionListener {
+// TODO: Implement IMRChangeListener.
+public class SitesPanel extends JPanel implements SelectedIMRChangeListener, ListSelectionListener, ActionListener {
 	
 	protected JList sitesList;
 	protected JList siteDataList;
@@ -45,11 +48,10 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 	
 	private SiteImporterPanel imp;
 
-    // Need to track selected IMRs and IMTs
-    private final IMT_ChooserPanel imtChooser;
+    // Need to track selected IMRs to dynamically update Site Data types
     private final IMR_ChooserPanel imrChooser;
 
-    // TODO: We need to dynamically regenerate Site Data types on IMChooserChange.
+    // TODO: Finish imrChange implementation
     //       * Read selected IMRs from imrChooser
     //       * Update selected SiteData values accordingly.
     //       * Update IMR add/remove prompt to generically state:
@@ -57,15 +59,12 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
     //       * Give an info dialog that "Site Data values <List> have been removed."
     //          * Only do this if the values were already set, otherwise can be annoying.
 
-	public SitesPanel(IMT_ChooserPanel imtChooser, IMR_ChooserPanel imrChooser) {
+	public SitesPanel(IMR_ChooserPanel imrChooser) {
 		super();
         this.setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 
-        this.imtChooser = imtChooser;
-        imtChooser.addIMChooserChangeListener(this::checkEnableAddSite);
         this.imrChooser = imrChooser;
-        imrChooser.addIMChooserChangeListener(this::checkEnableAddSite);
-
+        imrChooser.addIMRChooserChangeListener(this);
 
 		locs = new ArrayList<Location>();
 		dataLists = new ArrayList<ArrayList<SiteDataValue<?>>>();
@@ -130,15 +129,6 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 		}
 	}
 
-    /**
-     * Only allow adding sites if we have at least 1 IMR and 1 IMT selected
-     */
-    private void checkEnableAddSite() {
-        boolean hasIMR = !imrChooser.getSelectedIMRs().isEmpty();
-        boolean hasIMT = !imtChooser.getIMTStrings().isEmpty();
-        addSiteButton.setEnabled(hasIMR && hasIMT);
-    }
-	
 	private void checkEnableRemoveSite() {
 		removeSiteButton.setEnabled(!sitesList.isSelectionEmpty());
 	}
@@ -182,7 +172,6 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 //		System.out.println("rebuilding with length " + data.length);
 		sitesList.setListData(data);
 		checkEnableRemoveSite();
-        checkEnableAddSite();
 		rebuildSiteDataList();
 		this.validate();
 	}
@@ -267,6 +256,12 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
      */
 	public void actionPerformed(ActionEvent e) {
 		if (e.getSource().equals(addSiteButton)) {
+            // Don't allow user to add sites if IMRs aren't selected
+            if (imrChooser.getSelectedIMRs().isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Must have at least 1 IMR selected to add sites", "Cannot add site",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
 			// adding a site
             // Unique set of site data params per new site added
             ParameterList siteDataParams = getSiteDataParams();
@@ -311,7 +306,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 
         IMT_ChooserPanel imtChooser = new IMT_ChooserPanel();
         IMR_ChooserPanel imrChooser = new IMR_ChooserPanel(imtChooser);
-		SitesPanel sites = new SitesPanel(imtChooser, imrChooser);
+		SitesPanel sites = new SitesPanel(imrChooser);
 		
 		sites.addSite(new Location(34, -118), null);
 		ArrayList<SiteDataValue<?>> vals = new ArrayList<SiteDataValue<?>>();
@@ -329,4 +324,23 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 	public ArrayList<ArrayList<SiteDataValue<?>>> getDataLists() {
 		return dataLists;
 	}
+
+    /**
+     * Change in selected IMRs in IMR_ChooserPanel
+     *
+     * @param event
+     */
+    @Override
+    public void imrChange(SelectedIMRChangeEvent event) {
+        // TODO: Check if the change in selected IMRs affects the Site Data types
+        //       * If so, update the Site Data types accordingly.
+        //       * Prompt the user which sites were removed.
+        //       * invoke rebuildSiteDataList to show removed data
+        List<String> oldIMRList = event.getOldIMRList();
+        List<String> newIMRList = event.getNewIMRList();
+        // An IMR was removed, we may need to update site data parameters accordingly
+        if (!dataLists.isEmpty() && newIMRList.size() < oldIMRList.size()) {
+            System.out.println("Updating site data params");
+        }
+    }
 }

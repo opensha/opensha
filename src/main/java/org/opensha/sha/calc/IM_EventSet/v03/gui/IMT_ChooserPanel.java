@@ -12,7 +12,6 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.util.ServerPrefUtils;
-import org.opensha.sha.calc.IM_EventSet.v03.IMChooserChangeListener;
 import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetOutputWriter;
 import org.opensha.sha.gui.beans.IMT_NewGuiBean;
 import org.opensha.sha.imr.AttenRelRef;
@@ -27,8 +26,6 @@ public class IMT_ChooserPanel extends NamesListPanel implements ParameterChangeL
     // This IMTs list shows what have been selected
     private final ArrayList<Parameter<?>> imts;
 	private boolean masterDisable = false;
-    // Signal broad IM signals to external panels
-    private final List<IMChooserChangeListener> listeners = new ArrayList<>();
 
 	public IMT_ChooserPanel() {
 		super("Selected IMT(s):");
@@ -62,16 +59,6 @@ public class IMT_ChooserPanel extends NamesListPanel implements ParameterChangeL
 		namesList.setListData(names);
 	}
 
-    public void addIMChooserChangeListener(IMChooserChangeListener listener) {
-        listeners.add(listener);
-    }
-
-    private void notifyListeners() {
-        for (IMChooserChangeListener listener : listeners) {
-            listener.selectionChanged();
-        }
-    }
-
 	@Override
 	public void addButton_actionPerformed() {
         Parameter<?> newIMT = imtGuiBean.getSelectedIM();
@@ -86,7 +73,6 @@ public class IMT_ChooserPanel extends NamesListPanel implements ParameterChangeL
         clone.addParameterChangeListener(this);
         imts.add(clone);
         rebuildList();
-        notifyListeners();
 	}
 
 	@Override
@@ -106,7 +92,6 @@ public class IMT_ChooserPanel extends NamesListPanel implements ParameterChangeL
 			}
 		}
 		namesList.setListData(names);
-        notifyListeners();
 	}
 
 	@Override
