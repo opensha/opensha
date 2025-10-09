@@ -76,7 +76,7 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 		erfGuiBean = createERF_GUI_Bean();
 		imtChooser = new IMT_ChooserPanel();
 		imrChooser = new IMR_ChooserPanel(imtChooser);
-        sitesPanel = new SitesPanel(imtChooser, imrChooser);
+        sitesPanel = new SitesPanel(imrChooser);
 
 		OrderedSiteDataProviderList providers = OrderedSiteDataProviderList.createSiteDataProviderDefaults();
 

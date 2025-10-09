@@ -206,7 +206,7 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	 * Parameter<String> instead of a raw typed Parameter instance.
 	 * 
 	 * @param type
-	 * @param name
+	 * @param index
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
