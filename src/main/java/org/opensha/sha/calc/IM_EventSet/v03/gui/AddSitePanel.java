@@ -38,46 +38,48 @@ public class AddSitePanel extends JPanel {
 	private DoubleParameter latParam = new DoubleParameter("Latitude", 34.0);
 	private DoubleParameter lonParam = new DoubleParameter("Longitude", -118.0);
 
+    // TODO: Create constructor with SiteDataValue list to populate our parameterlist.
+    //      This is necessary to edit an existing site.
+    //      We'll get index of site edited and pass dataLists.get(i)
+
     /**
      * Constructor for AddSitePanel
      * @param siteDataParams List of site data parameters to edit in this panel
      */
 	public AddSitePanel(ParameterList siteDataParams) {
-		this.setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
-		
-
+        this.setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
         // Create a location list to specify sites
-		ParameterList paramList = new ParameterList();
-		paramList.addParameter(latParam);
-		paramList.addParameter(lonParam);
-		ParameterListEditor paramEdit = new ParameterListEditor(paramList);
-		paramEdit.setTitle("New Site Location");
+        ParameterList paramList = new ParameterList();
+        paramList.addParameter(latParam);
+        paramList.addParameter(lonParam);
+        ParameterListEditor paramEdit = new ParameterListEditor(paramList);
+        paramEdit.setTitle("New Site Location");
 //		paramEdit.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
 
         // TODO: Update or remove help textArea.
-		LabeledBoxPanel help = new LabeledBoxPanel();
-		help.setTitle("Help");
-		JTextArea helpText = new JTextArea(5, 20);
-		helpText.setText(
-				"Specify location and data value, then click \"Add\".\n"
-				+ "After adding all values, click \"OK\" to continue.\n\n"
-				+ "Default Location (34.0, -118.0) = Los Angeles\n\n"
-				+ "Vs30, Depth to Vs : Numeric\n\n"
-				+ "Wills Class : " + WillsMap2000.wills_vs30_map.keySet());
-		help.add(helpText);
+        LabeledBoxPanel help = new LabeledBoxPanel();
+        help.setTitle("Help");
+        JTextArea helpText = new JTextArea(5, 20);
+        helpText.setText(
+                "Specify location and data value, then click \"Add\".\n"
+                        + "After adding all values, click \"OK\" to continue.\n\n"
+                        + "Default Location (34.0, -118.0) = Los Angeles\n\n"
+                        + "Vs30, Depth to Vs : Numeric\n\n"
+                        + "Wills Class : " + WillsMap2000.wills_vs30_map.keySet());
+        help.add(helpText);
 
-		Border line = BorderFactory.createLineBorder(help.getBorderColor());
-		Border padding = BorderFactory.createEmptyBorder(10, 0, 0, 0);
-		help.setBorder(BorderFactory.createCompoundBorder(padding, line));
+        Border line = BorderFactory.createLineBorder(help.getBorderColor());
+        Border padding = BorderFactory.createEmptyBorder(10, 0, 0, 0);
+        help.setBorder(BorderFactory.createCompoundBorder(padding, line));
 
-		JPanel leftCol = new JPanel();
-		leftCol.setLayout(new BoxLayout(leftCol, BoxLayout.Y_AXIS));
-		leftCol.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 10));
+        JPanel leftCol = new JPanel();
+        leftCol.setLayout(new BoxLayout(leftCol, BoxLayout.Y_AXIS));
+        leftCol.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 10));
 
-		leftCol.add(paramEdit);
-		leftCol.add(help);
-		
-		this.add(leftCol);
+        leftCol.add(paramEdit);
+        leftCol.add(help);
+
+        this.add(leftCol);
 
         // Create editor for provided site data parameters
         siteDataParamEditor = new ParameterListEditor(siteDataParams);
