@@ -7,7 +7,6 @@ import javax.swing.event.ListSelectionEvent;
 
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
-import org.opensha.commons.param.editor.impl.ParameterListEditor;
 import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.sha.gui.beans.IMR_MultiGuiBean;
 import org.opensha.sha.imr.AttenRelRef;
@@ -27,7 +26,6 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 	private final IMR_MultiGuiBean imrGuiBean;
 	private final IMT_ChooserPanel imtChooser;
     private final SitesPanel sitesPanel; // Update site params
-	private final ParameterListEditor imrSiteParamsEdit;
     private final HashMap<String, ScalarIMR> imrNameMap = new HashMap<>(); // Lookup IMR by name in O(1)
     private List<? extends ScalarIMR> allIMRs;
 
@@ -43,14 +41,10 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
         imrGuiBean = new IMR_MultiGuiBean(allIMRs);
 		imrGuiBean.addIMRChangeListener(this);
 		
-		imrSiteParamsEdit = new ParameterListEditor();
-		imrSiteParamsEdit.setTitle("Default Site Params");
-		
 		JPanel imPanel = new JPanel();
 		imPanel.setLayout(new BoxLayout(imPanel, BoxLayout.Y_AXIS));
 		imPanel.add(imrGuiBean);
-		imPanel.add(imrSiteParamsEdit);
-		
+
 		updateSiteParams();
 		
 		setLowerPanel(imPanel);
@@ -99,9 +93,6 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 //			System.out.println("adding: " + param.getName());
 			list.addParameter(param);
 		}
-		imrSiteParamsEdit.setParameterList(list);
-		imrSiteParamsEdit.refreshParamEditor();
-		imrSiteParamsEdit.validate();
 		this.validate();
 	}
 
@@ -147,23 +138,8 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
         updateSiteParams();
 	}
 
-    /**
-     * Gets a copy of the currently selected IMR names
-     * @return
-     */
-    private ArrayList<String> getSelectedIMRsNames() {
-        ListModel<String> model = namesList.getModel();
-        ArrayList<String> names = new ArrayList<>();
-        for (int i=0; i<model.getSize(); i++) {
-            names.add(model.getElementAt(i));
-        }
-        return names;
-    }
-
 	@Override
 	public void addButton_actionPerformed() {
-        // Get the initial state before adding new IMR
-        ArrayList<String> oldIMRList = getSelectedIMRsNames();
         // Select the new IMR
 		ListModel<String> model = namesList.getModel();
 		ScalarIMR imr = imrGuiBean.getSelectedIMR();
@@ -202,8 +178,6 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 
 	@Override
 	public void removeButton_actionPerformed() {
-        // Get the initial state before removing IMR
-        ArrayList<String> oldIMRList = getSelectedIMRsNames();
 		ListModel<String> model = namesList.getModel();
         // Removing the last IMR will clear selected IMTs
         if (model.getSize() == 1 && !imtChooser.getIMTStrings().isEmpty()) {
