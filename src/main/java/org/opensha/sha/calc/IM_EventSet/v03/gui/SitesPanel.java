@@ -207,6 +207,43 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 	}
 
     /**
+     * Prompts the user with a confirmation dialog to add or edit a site
+     * using the provided <code>AddSitePanel</code>.
+     * <p>
+     * This method reprompts the user with the same panel while preserving
+     * selections made by the user in the previous dialog. This is required
+     * to prevent duplicate locations.
+     * An exception for the duplicate location check includes the provided
+     * <code>exception</code> parameter. This is required to enable editing
+     * the same site.
+     * </p>
+     * @param siteAdd preserved <code>AddSitePanel</code> with user selections for a new site
+     * @param exception location to exclude from duplicate location check
+     * @return user selection decision (<code>OK</code> or <code>CANCEL</code>)
+     */
+    private int promptNewSite(AddSitePanel siteAdd, Location exception) {
+        int selection = JOptionPane.showConfirmDialog(this, siteAdd, "Add Site",
+                JOptionPane.OK_CANCEL_OPTION);
+        if (selection == JOptionPane.OK_OPTION) {
+            Location loc = siteAdd.getSiteLocation();
+            // Locations are considered duplicates if they have the same latitude and longitude.
+            // We do not consider depth in this check.
+            boolean allowDuplicateSite =
+                    (exception != null && exception.getLongitude() == loc.getLongitude() && exception.getLatitude() == loc.getLatitude());
+            if (!allowDuplicateSite && locs.contains(loc)) {
+                JOptionPane.showMessageDialog(this, "Site with coordinates (" + loc.getLatitude() + ", " + loc.getLongitude() + ") already exists", "Cannot add site",
+                        JOptionPane.ERROR_MESSAGE);
+                return promptNewSite(siteAdd, exception);
+            }
+        }
+        return selection;
+    }
+
+    private int promptNewSite(AddSitePanel siteAdd) {
+        return promptNewSite(siteAdd, null);
+    }
+
+    /**
      * Execute when a button is pressed in the SitesPanel
      * @param e the event to be processed
      */
@@ -221,8 +258,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 			// adding a site
             // Unique set of site data params per new site added
 			AddSitePanel siteAdd = new AddSitePanel(siteDataParams);
-			int selection = JOptionPane.showConfirmDialog(this, siteAdd, "Add Site",
-					JOptionPane.OK_CANCEL_OPTION);
+            int selection = promptNewSite(siteAdd);
 			if (selection == JOptionPane.OK_OPTION) {
 				Location loc = siteAdd.getSiteLocation();
 				ArrayList<SiteDataValue<?>> vals = siteAdd.getDataVals();
@@ -238,8 +274,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
             // edit the selected site
             int siteIndex = sitesList.getSelectedIndex();
             AddSitePanel siteAdd = new AddSitePanel(siteDataParams, dataLists.get(siteIndex), locs.get(siteIndex));
-            int selection = JOptionPane.showConfirmDialog(this, siteAdd, "Add Site",
-                    JOptionPane.OK_CANCEL_OPTION);
+            int selection = promptNewSite(siteAdd, /*exception=*/locs.get(siteIndex));
             if (selection == JOptionPane.OK_OPTION) {
                 Location loc = siteAdd.getSiteLocation();
                 ArrayList<SiteDataValue<?>> vals = siteAdd.getDataVals();
