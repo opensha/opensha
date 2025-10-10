@@ -678,7 +678,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	 * @return
 	 */
 	protected boolean isRateGainValid(double rateGain, int fltSystRupIndex, double duration) {
-		return rateGain > 0d;
+		return rateGain >= 0d;
 	}
 	
 	/**

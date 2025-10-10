@@ -307,16 +307,17 @@ public class FaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 						break;
 					}
 				}
-				if (!hasTD) {
-					String message = "WARNING: TD calculation but no sections contain date of last event data.\n"
-							+ "Only historical open interval will be used in TD calculations.";
-					System.out.println(message);
-					try {
-						JOptionPane.showMessageDialog(null, message, "WARNING: No Last Event Data", JOptionPane.ERROR_MESSAGE);
-					} catch (HeadlessException e) {
-						// do nothing
-					}
-				}
+				// commenting the following out because it screws up non-gui calculations
+//				if (!hasTD) {
+//					String message = "WARNING: TD calculation but no sections contain date of last event data.\n"
+//							+ "Only historical open interval will be used in TD calculations.";
+//					System.out.println(message);
+//					try {
+//						JOptionPane.showMessageDialog(null, message, "WARNING: No Last Event Data", JOptionPane.ERROR_MESSAGE);
+//					} catch (HeadlessException e) {
+//						// do nothing
+//					}
+//				}
 				if (probModel == ProbabilityModelOptions.U3_PREF_BLEND) {
 					// now do preferred blend
 					prefBlendProbModelsCalc = new HashMap<>(4);

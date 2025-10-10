@@ -7,6 +7,7 @@ import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.TreeMap;
 
 import org.jfree.chart.axis.NumberAxis;
@@ -16,6 +17,7 @@ import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
@@ -25,6 +27,9 @@ import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.sha.earthquake.calc.recurInterval.BPT_DistCalc;
 import org.opensha.sha.earthquake.calc.recurInterval.LognormalDistCalc;
 import org.opensha.sha.earthquake.calc.recurInterval.WeibullDistCalc;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 /**
@@ -423,6 +428,10 @@ public class ProbModelsPlottingUtils {
 		double maxDif = 1.1*Math.max(totRateVersusTime.getMaxY()-totalLongTermRate, totalLongTermRate-totRateVersusTime.getMinY());
 		double minY =totalLongTermRate-maxDif;
 		double maxY =totalLongTermRate+maxDif;
+		if(minY==maxY) {
+			minY *= 0.9;
+			maxY *= 1.1;
+		}
 		
 		ArrayList<XY_DataSet> funcs = new ArrayList<XY_DataSet>();
 		funcs.add(totRateVersusTime);
@@ -659,12 +668,12 @@ public class ProbModelsPlottingUtils {
 	/**
 	 * 
 	 */
-	public static void writeSimOverImposedVsImposedSecPartRatesM6to6pt7_Plot(File outputDir, double[] imposedSectRateArrayM6pt05to6pt65, 
-			double[] simSectRateArrayM6pt05to6pt65, double minNumSimEvents, double numYears) {
+	public static void writeSimOverImposedVsImposedSecPartRates_Plot(File outputDir, double[] imposedSectRateArray, 
+			double[] simSectRateArray, double minNumSimEvents, double numYears, String fileNameSuffix) {
 		DefaultXY_DataSet obs_pred_ratioForSections = new DefaultXY_DataSet();
-		for(int s=0;s<simSectRateArrayM6pt05to6pt65.length;s++) {
-			if(imposedSectRateArrayM6pt05to6pt65[s] >= minNumSimEvents/numYears) {	// only keep where 10 should have occurred
-				obs_pred_ratioForSections.set(imposedSectRateArrayM6pt05to6pt65[s], simSectRateArrayM6pt05to6pt65[s]/imposedSectRateArrayM6pt05to6pt65[s]);
+		for(int s=0;s<simSectRateArray.length;s++) {
+			if(imposedSectRateArray[s] >= minNumSimEvents/numYears && imposedSectRateArray[s]>0) {	// only keep where 10 should have occurred
+				obs_pred_ratioForSections.set(imposedSectRateArray[s], simSectRateArray[s]/imposedSectRateArray[s]);
 			}
 		}
 		DefaultXY_DataSet perfectAgreementFunc2 = new DefaultXY_DataSet();
@@ -678,7 +687,7 @@ public class ProbModelsPlottingUtils {
 		plotChars.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 4f, Color.BLUE));
 		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.RED));
 		
-		String xAxisLabel = "Imposed Rate";
+		String xAxisLabel = "Imposed Part Rate";
 		String yAxisLabel = "Part Rate Ratio";
 		Range xAxisRange = null;
 		Range yAxisRange = null;
@@ -688,11 +697,71 @@ public class ProbModelsPlottingUtils {
 		double heightInches = 6; // inches
 		
 		boolean popupWindow = false;
-		writeAndOrPlotFuncs(funcs,plotChars,"simOverImposedVsImposedSectionPartRatesM6to6pt7",xAxisLabel,yAxisLabel,xAxisRange,yAxisRange,
-				logX,logY,widthInches,heightInches, new File(outputDir,"simOverImposedVsImposedSectionPartRatesM6to6pt7"), popupWindow);
+		writeAndOrPlotFuncs(funcs,plotChars,fileNameSuffix,xAxisLabel,yAxisLabel,xAxisRange,yAxisRange,
+				logX,logY,widthInches,heightInches, new File(outputDir,"simOverImposedVsImposedSectionPartRates"+fileNameSuffix), popupWindow);
 	}
 
+	/*
+	 * The gets the color for the map of simulated to target value ratios, where
+	 * the colors fades to white as the uncertainty increases.
+	 * 
+	 * sigma is the uncertainty on ratio
+	 */
+	public static Color getRatioMapColor(double ratio, double sigma) {
+		Color color;
+		float h=-100f,s=1f, b=1f;
+		double numSigmaDiff = 10; // the default for zero sigma
+		if(sigma>0.0) {
+			numSigmaDiff = Math.abs(ratio-1.0)/sigma;
+		}
+		s = (float)Math.min(1.0, numSigmaDiff/3.0); // richest color when ratio is at 3 sigma
+//		s=0.66f;
+		if(ratio<0.9) {
+			h = (float)(240.0/360.0); // blue
+			color = Color.getHSBColor(h, s, b);
+		}
+		else if(ratio<0.95) {
+			h = (float)(120.0/360.0); // green
+			color = Color.getHSBColor(h, s, b);
+		}
+		else if(ratio<1.05) {// this covers -0.05 to 0.05
+			color = Color.gray;
+		}
+		else if (ratio<1.1) {
+			h = (float)(35.0/360.0); // orange
+			color = Color.getHSBColor(h, s, b);
+		}
+		else {
+			h = 0f; // red
+			color = Color.getHSBColor(h, s, b);
+		}
+		
+		return color;
+	}
+	
+	public static void writeMapOfSimOverTargetPartRates (double[] sectRatioArray, double[] sectSigmaArray, 
+			List<? extends FaultSection> subSects, File outputDir) {
+		try {
+			Color[] sectColorArray = new Color[subSects.size()];
+			GeographicMapMaker mapMaker = new GeographicMapMaker(subSects);
+			mapMaker.setWriteGeoJSON(true);
+			mapMaker.clearSectScalars();
+			
+			List<Color> sectColorList = new ArrayList<>();
+			for (int i=0;i<sectRatioArray.length;i++) {
+				Color color = ProbModelsPlottingUtils.getRatioMapColor(sectRatioArray[i], sectSigmaArray[i]);
+				sectColorList.add(color);
+			}
+			mapMaker.plotSectColors(sectColorList, null, null);
+			mapMaker.setSectNaNChar(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, new Color(0, 0, 255)));
+			mapMaker.plot(outputDir, "mapOfSectPartRatios", " ");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 
+	}
+	
+	
 	/**
 	 * @param args
 	 */
