@@ -17,6 +17,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.gui.LabeledBoxPanel;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
+import org.opensha.commons.param.editor.ParameterEditor;
 import org.opensha.commons.param.editor.impl.ParameterListEditor;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.nshmp2.imr.impl.Campbell_2003_AttenRel;
@@ -38,15 +39,13 @@ public class AddSitePanel extends JPanel {
 	private DoubleParameter latParam = new DoubleParameter("Latitude", 34.0);
 	private DoubleParameter lonParam = new DoubleParameter("Longitude", -118.0);
 
-    // TODO: Create constructor with SiteDataValue list to populate our parameterlist.
-    //      This is necessary to edit an existing site.
-    //      We'll get index of site edited and pass dataLists.get(i)
-
     /**
-     * Constructor for AddSitePanel
+     * Constructor for AddSitePanel with existing site data values
+     * Used for editing an existing site.
      * @param siteDataParams List of site data parameters to edit in this panel
+     * @param dataList values for site data parameters to populate this panel
      */
-	public AddSitePanel(ParameterList siteDataParams) {
+    public AddSitePanel(ParameterList siteDataParams, ArrayList<SiteDataValue<?>> dataList) {
         this.setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
         // Create a location list to specify sites
         ParameterList paramList = new ParameterList();
@@ -56,35 +55,28 @@ public class AddSitePanel extends JPanel {
         paramEdit.setTitle("New Site Location");
 //		paramEdit.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
 
-        // TODO: Update or remove help textArea.
-        LabeledBoxPanel help = new LabeledBoxPanel();
-        help.setTitle("Help");
-        JTextArea helpText = new JTextArea(5, 20);
-        helpText.setText(
-                "Specify location and data value, then click \"Add\".\n"
-                        + "After adding all values, click \"OK\" to continue.\n\n"
-                        + "Default Location (34.0, -118.0) = Los Angeles\n\n"
-                        + "Vs30, Depth to Vs : Numeric\n\n"
-                        + "Wills Class : " + WillsMap2000.wills_vs30_map.keySet());
-        help.add(helpText);
-
-        Border line = BorderFactory.createLineBorder(help.getBorderColor());
-        Border padding = BorderFactory.createEmptyBorder(10, 0, 0, 0);
-        help.setBorder(BorderFactory.createCompoundBorder(padding, line));
-
         JPanel leftCol = new JPanel();
         leftCol.setLayout(new BoxLayout(leftCol, BoxLayout.Y_AXIS));
         leftCol.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 10));
 
         leftCol.add(paramEdit);
-        leftCol.add(help);
 
         this.add(leftCol);
 
         // Create editor for provided site data parameters
+        setSiteDataParams(siteDataParams, dataList);
         siteDataParamEditor = new ParameterListEditor(siteDataParams);
         siteDataParamEditor.setTitle("Set Site Params");
         this.add(siteDataParamEditor);
+    }
+
+    /**
+     * Constructor for AddSitePanel.
+     * Used for creating a new site.
+     * @param siteDataParams List of site data parameters to edit in this panel
+     */
+	public AddSitePanel(ParameterList siteDataParams) {
+        this(siteDataParams, null);
 	}
 
 	public Location getSiteLocation() {
@@ -159,6 +151,26 @@ public class AddSitePanel extends JPanel {
         
         return values;
 	}
+
+    private void setSiteDataParams(ParameterList siteDataParams, ArrayList<SiteDataValue<?>> dataVals) {
+      if (dataVals != null) {
+          String measurementType = Vs30_TypeParam.VS30_TYPE_INFERRED;
+          for (SiteDataValue<?> sdv : dataVals) {
+              if (sdv.getDataType().equals(Vs30_Param.NAME)) {
+                  measurementType = sdv.getDataMeasurementType();
+                  continue;
+              }
+              if (siteDataParams.containsParameter(sdv.getDataType())) {
+                  ParameterEditor param = siteDataParams.getParameter(sdv.getDataType()).getEditor();
+                  param.setValue(sdv.getValue());
+              }
+          }
+          if (siteDataParams.containsParameter(Vs30_TypeParam.NAME)) {
+            ParameterEditor param = siteDataParams.getParameter(Vs30_TypeParam.NAME).getEditor();
+            param.setValue(measurementType);
+          }
+      }
+    }
 
     /**
      * Tester main function
