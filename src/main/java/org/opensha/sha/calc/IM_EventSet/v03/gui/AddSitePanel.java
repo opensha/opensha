@@ -20,6 +20,8 @@ import org.opensha.nshmp2.imr.impl.Campbell_2003_AttenRel;
 import org.opensha.sha.imr.IntensityMeasureRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.Field_2000_AttenRel;
+import org.opensha.sha.imr.param.SiteParams.DepthTo1pt0kmPerSecParam;
+import org.opensha.sha.imr.param.SiteParams.DepthTo2pt5kmPerSecParam;
 import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
 import org.opensha.sha.imr.param.SiteParams.Vs30_TypeParam;
 
@@ -152,23 +154,33 @@ public class AddSitePanel extends JPanel {
 	}
 
     private void setSiteDataParams(ParameterList siteDataParams, ArrayList<SiteDataValue<?>> dataVals) {
-      if (dataVals != null) {
-          String measurementType = Vs30_TypeParam.VS30_TYPE_INFERRED;
-          for (SiteDataValue<?> sdv : dataVals) {
-              if (sdv.getDataType().equals(Vs30_Param.NAME)) {
-                  measurementType = sdv.getDataMeasurementType();
-                  continue;
-              }
-              if (siteDataParams.containsParameter(sdv.getDataType())) {
-                  ParameterEditor param = siteDataParams.getParameter(sdv.getDataType()).getEditor();
-                  param.setValue(sdv.getValue());
-              }
-          }
-          if (siteDataParams.containsParameter(Vs30_TypeParam.NAME)) {
-            ParameterEditor param = siteDataParams.getParameter(Vs30_TypeParam.NAME).getEditor();
-            param.setValue(measurementType);
-          }
-      }
+        if (siteDataParams == null) return;
+        // Need to explicitly set parameters with default null values or they are overwritten with last non-null value
+        if (siteDataParams.containsParameter(DepthTo1pt0kmPerSecParam.NAME)) {
+            ParameterEditor param = siteDataParams.getParameter(DepthTo1pt0kmPerSecParam.NAME).getEditor();
+            param.setValue(null);
+        }
+        if (siteDataParams.containsParameter(DepthTo2pt5kmPerSecParam.NAME)) {
+            ParameterEditor param = siteDataParams.getParameter(DepthTo2pt5kmPerSecParam.NAME).getEditor();
+            param.setValue(null);
+        }
+        if (dataVals != null) {
+            String measurementType = Vs30_TypeParam.VS30_TYPE_INFERRED;
+            for (SiteDataValue<?> sdv : dataVals) {
+                if (sdv.getDataType().equals(Vs30_Param.NAME)) {
+                    measurementType = sdv.getDataMeasurementType();
+                    continue;
+                }
+                if (siteDataParams.containsParameter(sdv.getDataType())) {
+                    ParameterEditor param = siteDataParams.getParameter(sdv.getDataType()).getEditor();
+                    param.setValue(sdv.getValue());
+                }
+            }
+            if (siteDataParams.containsParameter(Vs30_TypeParam.NAME)) {
+              ParameterEditor param = siteDataParams.getParameter(Vs30_TypeParam.NAME).getEditor();
+              param.setValue(measurementType);
+            }
+        }
     }
 
     /**
