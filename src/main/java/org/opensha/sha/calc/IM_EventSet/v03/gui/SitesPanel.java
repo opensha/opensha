@@ -6,6 +6,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 
 import javax.swing.BoxLayout;
@@ -35,7 +36,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 	
 	protected JButton addSiteButton = new JButton("Add Site");
 	protected JButton removeSiteButton = new JButton("Remove Site(s)");
-	protected JButton importSitesButton = new JButton("Import Sites From File");
+	protected JButton editSiteButton = new JButton("Edit Site");
 
     // List of locations for each site
 	private ArrayList<Location> locs;
@@ -72,11 +73,11 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 		leftButtonPanel.add(addSiteButton);
 		leftButtonPanel.add(removeSiteButton);
 		buttonPanel.add(leftButtonPanel, BorderLayout.WEST);
-		buttonPanel.add(importSitesButton, BorderLayout.EAST);
+		buttonPanel.add(editSiteButton, BorderLayout.EAST);
 		removeSiteButton.setEnabled(false);
 		addSiteButton.addActionListener(this);
 		removeSiteButton.addActionListener(this);
-		importSitesButton.addActionListener(this);
+		editSiteButton.addActionListener(this);
 		
 		northPanel.add(buttonPanel, BorderLayout.SOUTH);
 		
@@ -118,7 +119,15 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 		removeSiteButton.setEnabled(!sitesList.isSelectionEmpty());
 	}
 
-    // TODO: editSite, checkEnableEditSite
+    private void checkEnableEditSite() {
+        editSiteButton.setEnabled(!sitesList.isSelectionEmpty());
+    }
+
+    private void replaceSite(int index, Location loc, ArrayList<SiteDataValue<?>> vals) {
+        locs.set(index, loc);
+        dataLists.set(index, vals);
+        rebuildSiteList();
+    }
 
 	protected void addSite(Location loc, ArrayList<SiteDataValue<?>> data) {
 		this.locs.add(loc);
@@ -159,6 +168,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 //		System.out.println("rebuilding with length " + data.length);
 		sitesList.setListData(data);
 		checkEnableRemoveSite();
+        checkEnableEditSite();
 		rebuildSiteDataList();
 		this.validate();
 	}
@@ -192,6 +202,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 		}
 		siteDataList.setListData(data);
 		checkEnableRemoveSite();
+        checkEnableEditSite();
 	}
 	
 	public static String getDataListString(int index, SiteDataValue<?> val) {
@@ -210,7 +221,6 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
                         JOptionPane.ERROR_MESSAGE);
                 return;
             }
-            // TODO: Logic for edit site
 			// adding a site
             // Unique set of site data params per new site added
 			AddSitePanel siteAdd = new AddSitePanel(siteDataParams);
@@ -227,6 +237,19 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
             // removing a site
             int indices[] = sitesList.getSelectedIndices();
             removeSite(indices);
+        } else if (e.getSource().equals(editSiteButton)) {
+            // edit the selected site
+            int siteIndex = sitesList.getSelectedIndex();
+            AddSitePanel siteAdd = new AddSitePanel(siteDataParams, dataLists.get(siteIndex));
+            int selection = JOptionPane.showConfirmDialog(this, siteAdd, "Add Site",
+                    JOptionPane.OK_CANCEL_OPTION);
+            if (selection == JOptionPane.OK_OPTION) {
+                Location loc = siteAdd.getSiteLocation();
+                ArrayList<SiteDataValue<?>> vals = siteAdd.getDataVals();
+                System.out.println("Editing site: " + loc + " (" + vals.size() + " vals)");
+                this.replaceSite(siteIndex, loc, vals);
+                rebuildSiteDataList();
+            }
         }
 	}
 
@@ -235,25 +258,21 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
      * Should be invoked by the IMR_ChooserPanel.
      */
     public void updateSiteDataParams(List<ScalarIMR> imrs) {
-        // Create a new list with only supported site data params
-        ParameterList oldSiteDataParams = (ParameterList)siteDataParams.clone();
+        int oldSiteDataParamsSize = siteDataParams.size();
         siteDataParams = ParameterList.union(imrs.stream()
                 .map(IntensityMeasureRelationship::getSiteParams)
                 .toArray(ParameterList[]::new));
         // Remove any selected site data values now unsupported across all sites
-        if (siteDataParams.size() < oldSiteDataParams.size()) {
+        if (siteDataParams.size() < oldSiteDataParamsSize) {
             ArrayList<ArrayList<SiteDataValue<?>>> newDataList = new ArrayList<>();
-            ArrayList<String> invalidatedSiteData = new ArrayList<>();
-            for (Parameter<?> param : oldSiteDataParams) {
-                if (!siteDataParams.containsParameter(param.getName())) {
-                    invalidatedSiteData.add(param.getName());
-                }
-            }
+            HashSet<String> invalidatedSiteData = new HashSet<>();
             for (List<SiteDataValue<?>> siteVals : dataLists) {
                 ArrayList<SiteDataValue<?>> newVals = new ArrayList<>();
                 for (SiteDataValue<?> val : siteVals) {
-                    if (!invalidatedSiteData.contains(val.getDataType())) {
-                       newVals.add(val);
+                    if (siteDataParams.containsParameter(val.getDataType())) {
+                        newVals.add(val);
+                    } else {
+                        invalidatedSiteData.add(val.getDataType());
                     }
                 }
                 newDataList.add(newVals);
