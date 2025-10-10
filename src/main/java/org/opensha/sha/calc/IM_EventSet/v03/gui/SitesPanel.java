@@ -147,7 +147,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 		this.rebuildSiteList();
 	}
 	
-	private void removeSite(int indices[]) {
+	private void removeSite(int[] indices) {
 		Arrays.sort(indices);
 		for (int i=indices.length-1; i>=0; i--) {
 			locs.remove(i);
@@ -157,7 +157,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 	}
 	
 	private void rebuildSiteList() {
-		Object data[] = new String[locs.size()];
+		Object[] data = new String[locs.size()];
 		for (int i=0; i<locs.size(); i++) {
 			Location loc = locs.get(i);
 			data[i] = (i+1) + ". " + loc.getLatitude() + ", " + loc.getLongitude();
