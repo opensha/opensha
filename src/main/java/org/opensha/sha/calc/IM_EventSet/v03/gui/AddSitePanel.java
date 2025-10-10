@@ -7,14 +7,10 @@ import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JTextArea;
-import javax.swing.border.Border;
 
 import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.SiteDataValue;
-import org.opensha.commons.data.siteData.impl.WillsMap2000;
 import org.opensha.commons.geo.Location;
-import org.opensha.commons.gui.LabeledBoxPanel;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.editor.ParameterEditor;
@@ -24,8 +20,6 @@ import org.opensha.nshmp2.imr.impl.Campbell_2003_AttenRel;
 import org.opensha.sha.imr.IntensityMeasureRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.Field_2000_AttenRel;
-import org.opensha.sha.imr.param.SiteParams.DepthTo1pt0kmPerSecParam;
-import org.opensha.sha.imr.param.SiteParams.DepthTo2pt5kmPerSecParam;
 import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
 import org.opensha.sha.imr.param.SiteParams.Vs30_TypeParam;
 
@@ -34,26 +28,31 @@ import org.opensha.sha.imr.param.SiteParams.Vs30_TypeParam;
  */
 public class AddSitePanel extends JPanel {
 	
-    private ParameterListEditor siteDataParamEditor;
-	
-	private DoubleParameter latParam = new DoubleParameter("Latitude", 34.0);
-	private DoubleParameter lonParam = new DoubleParameter("Longitude", -118.0);
+    private final ParameterListEditor siteDataParamEditor;
+    private final DoubleParameter latParam;
+    private final DoubleParameter lonParam;
+
+
 
     /**
      * Constructor for AddSitePanel with existing site data values
      * Used for editing an existing site.
      * @param siteDataParams List of site data parameters to edit in this panel
      * @param dataList values for site data parameters to populate this panel
+     * @param loc location of site to edit
      */
-    public AddSitePanel(ParameterList siteDataParams, ArrayList<SiteDataValue<?>> dataList) {
+    public AddSitePanel(ParameterList siteDataParams,
+                        ArrayList<SiteDataValue<?>> dataList,
+                        Location loc) {
         this.setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
         // Create a location list to specify sites
         ParameterList paramList = new ParameterList();
+        this.latParam = new DoubleParameter("Latitude", loc.getLatitude());
+        this.lonParam = new DoubleParameter("Longitude", loc.getLongitude());
         paramList.addParameter(latParam);
         paramList.addParameter(lonParam);
         ParameterListEditor paramEdit = new ParameterListEditor(paramList);
         paramEdit.setTitle("New Site Location");
-//		paramEdit.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
 
         JPanel leftCol = new JPanel();
         leftCol.setLayout(new BoxLayout(leftCol, BoxLayout.Y_AXIS));
@@ -76,7 +75,7 @@ public class AddSitePanel extends JPanel {
      * @param siteDataParams List of site data parameters to edit in this panel
      */
 	public AddSitePanel(ParameterList siteDataParams) {
-        this(siteDataParams, null);
+        this(siteDataParams, /*dataList=*/null, new Location(34.0, -118.0));
 	}
 
 	public Location getSiteLocation() {
@@ -95,7 +94,7 @@ public class AddSitePanel extends JPanel {
             String paramName = param.getName();
             Object paramValue = param.getValue();
             
-            // Skip if value is null
+            // Skip if the value is null
             if (paramValue == null) continue;
             
             // Map parameter name to SiteData type and create SiteDataValue
@@ -109,7 +108,7 @@ public class AddSitePanel extends JPanel {
                 value = (Double) paramValue;
             } else if (paramName.equals(Vs30_TypeParam.NAME)) {
                 // Handle Vs30 Type - this determines measurement type for Vs30
-                String vs30Type = (String) paramValue;
+                String vs30Type = (String)paramValue;
                 if (vs30Type.equals(Vs30_TypeParam.VS30_TYPE_MEASURED)) {
                     measurementType = SiteData.TYPE_FLAG_MEASURED;
                 }
@@ -176,7 +175,7 @@ public class AddSitePanel extends JPanel {
      * Tester main function
      * @param args
      */
-	public static void main(String args[]) {
+	public static void main(String[] args) {
         // For demo, get siteDataParams for Campbell(2003) and Field(2000)
         List<ScalarIMR> imrs = new ArrayList<>();
         imrs.add(new Campbell_2003_AttenRel(null));

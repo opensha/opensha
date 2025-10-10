@@ -24,7 +24,6 @@ import javax.swing.event.ListSelectionListener;
 import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.geo.Location;
-import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.imr.IntensityMeasureRelationship;
 import org.opensha.sha.imr.ScalarIMR;
@@ -44,8 +43,6 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 	private ArrayList<ArrayList<SiteDataValue<?>>> dataLists;
     // List of all supported site data parameters for building new sites
     private ParameterList siteDataParams;
-
-	private SiteImporterPanel imp;
 
 	public SitesPanel() {
 		super();
@@ -182,20 +179,20 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 	
 	private void rebuildSiteDataList() {
 		if (sitesList.isSelectionEmpty()) {
-			Object data[] = new String[1];
+			Object[] data = new String[1];
 			data[0] = "(no site(s) selected)";
 			siteDataList.setListData(data);
 			return;
 		}
 		int index = getSingleSelectedIndex();
 		if (index < 0) {
-			Object data[] = new String[1];
+			Object[] data = new String[1];
 			data[0] = "(multiple selected)";
 			siteDataList.setListData(data);
 			return;
 		}
 		ArrayList<SiteDataValue<?>> vals = dataLists.get(index);
-		Object data[] = new String[vals.size()];
+		Object[] data = new String[vals.size()];
 		for (int i=0; i<vals.size(); i++) {
 			SiteDataValue<?> val = vals.get(i);
 			data[i] = getDataListString(i, val);
@@ -240,7 +237,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
         } else if (e.getSource().equals(editSiteButton)) {
             // edit the selected site
             int siteIndex = sitesList.getSelectedIndex();
-            AddSitePanel siteAdd = new AddSitePanel(siteDataParams, dataLists.get(siteIndex));
+            AddSitePanel siteAdd = new AddSitePanel(siteDataParams, dataLists.get(siteIndex), locs.get(siteIndex));
             int selection = JOptionPane.showConfirmDialog(this, siteAdd, "Add Site",
                     JOptionPane.OK_CANCEL_OPTION);
             if (selection == JOptionPane.OK_OPTION) {
