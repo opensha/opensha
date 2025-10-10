@@ -268,7 +268,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 			}
 		} else if (e.getSource().equals(removeSiteButton)) {
             // removing a site
-            int indices[] = sitesList.getSelectedIndices();
+            int[] indices = sitesList.getSelectedIndices();
             removeSite(indices);
         } else if (e.getSource().equals(editSiteButton)) {
             // edit the selected site
