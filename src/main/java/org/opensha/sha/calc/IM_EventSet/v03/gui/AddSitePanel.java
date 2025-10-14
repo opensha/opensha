@@ -33,7 +33,7 @@ public class AddSitePanel extends JPanel {
     private final ParameterListEditor siteDataParamEditor;
     private final DoubleParameter latParam;
     private final DoubleParameter lonParam;
-
+    private final static boolean D = false;
 
 
     /**
@@ -89,64 +89,50 @@ public class AddSitePanel extends JPanel {
      * @return ArrayList of SiteDataValue objects with proper metadata
      */
 	public ArrayList<SiteDataValue<?>> getDataVals() {
+        ParameterList siteDataParams = siteDataParamEditor.getParameterList();
         ArrayList<SiteDataValue<?>> values = new ArrayList<>();
-        
-        // Iterate through all parameters in the editor
-        for (Parameter<?> param : siteDataParamEditor.getParameterList()) {
+
+        // Handle adding Vs30 value separately
+        boolean hasVs30 = siteDataParams.containsParameter(Vs30_Param.NAME);
+        boolean hasVs30Type = siteDataParams.containsParameter(Vs30_TypeParam.NAME);
+        String measurementType = SiteData.TYPE_FLAG_INFERRED; // default
+        if (hasVs30Type) {
+            measurementType = siteDataParams
+                    .getParameter(Vs30_TypeParam.NAME)
+                    .getValue().toString();
+        }
+        if (hasVs30) {
+            Double vs30Value = (Double)siteDataParams.getValue(Vs30_Param.NAME);
+            SiteDataValue<Double> sdv = new SiteDataValue<>(
+                    Vs30_Param.NAME, measurementType, vs30Value);
+            values.add(sdv);
+        }
+
+
+        // Add all other site data values
+        for (Parameter<?> param : siteDataParams) {
             String paramName = param.getName();
             Object paramValue = param.getValue();
             
             // Skip if the value is null
             if (paramValue == null) continue;
             
-            // Map parameter name to SiteData type and create SiteDataValue
-            String dataType = null;
-            String measurementType = SiteData.TYPE_FLAG_INFERRED; // default
-            Object value = paramValue;
-            
-            // Map common site parameters to their SiteData types
-            if (paramName.equals(Vs30_Param.NAME)) {
-                dataType = SiteData.TYPE_VS30;
-                value = (Double) paramValue;
-            } else if (paramName.equals(Vs30_TypeParam.NAME)) {
-                // Handle Vs30 Type - this determines measurement type for Vs30
-                String vs30Type = (String)paramValue;
-                if (vs30Type.equals(Vs30_TypeParam.VS30_TYPE_MEASURED)) {
-                    measurementType = SiteData.TYPE_FLAG_MEASURED;
-                }
-                // Don't add Vs30_Type as its own SiteDataValue
-                continue;
-            } else {
-                // For other parameters, use the parameter name as dataType
-                dataType = paramName;
-                // Try to determine if it's a numeric or string parameter
+            // Cast paramValue to the appropriate type and add new SiteDataValue
+           if (!(paramName.equals(Vs30_TypeParam.NAME) || paramName.equals(Vs30_Param.NAME))) {
+               SiteDataValue<?> sdv;
                 if (paramValue instanceof Double || paramValue instanceof Integer) {
-                    value = ((Number) paramValue).doubleValue();
+                    paramValue = ((Number) paramValue).doubleValue();
+                    sdv = new SiteDataValue<Double>(paramName, measurementType, (Double)paramValue);
                 } else if (paramValue instanceof Boolean) {
-                    value = ((Boolean) paramValue).booleanValue();
+                    sdv = new SiteDataValue<Boolean>(paramName, measurementType, (Boolean)paramValue);
+                } else if (paramValue instanceof String) {
+                    paramValue = paramValue.toString();
+                    sdv = new SiteDataValue<String>(paramName, measurementType, (String)paramValue);
                 } else {
-                    value = paramValue.toString();
+                    sdv = new SiteDataValue<>(paramName, measurementType, paramValue);
                 }
-            }
-            
-            // Create and add the SiteDataValue
-            if (dataType != null) {
-                if (value instanceof Double) {
-                    SiteDataValue<Double> sdv = new SiteDataValue<>(
-                            dataType, measurementType, (Double) value);
-                    values.add(sdv);
-
-                } else if (value instanceof Boolean) {
-                    SiteDataValue<Boolean> sdv = new SiteDataValue<>(
-                            dataType, measurementType, (Boolean) value);
-                    values.add(sdv);
-                } else if (value != null) {
-                    SiteDataValue<String> sdv = new SiteDataValue<>(
-                            dataType, measurementType, (String) value);
-                    values.add(sdv);
-                } else {
-                    throw new RuntimeException("Null value for data type: " + dataType);
-                }
+                if (D) System.out.println("Adding site data value: " + sdv);
+               values.add(sdv);
             }
         }
         
@@ -155,7 +141,8 @@ public class AddSitePanel extends JPanel {
 
     private void setSiteDataParams(ParameterList siteDataParams, ArrayList<SiteDataValue<?>> dataVals) {
         if (siteDataParams == null) return;
-        // Need to explicitly set parameters with default null values or they are overwritten with last non-null value
+        // Need to explicitly set parameters with default null values or they are overwritten with the last non-null value
+        // This is because null paramValues are skipped in AddSitePanel.getDataVals
         if (siteDataParams.containsParameter(DepthTo1pt0kmPerSecParam.NAME)) {
             ParameterEditor param = siteDataParams.getParameter(DepthTo1pt0kmPerSecParam.NAME).getEditor();
             param.setValue(null);
@@ -169,7 +156,6 @@ public class AddSitePanel extends JPanel {
             for (SiteDataValue<?> sdv : dataVals) {
                 if (sdv.getDataType().equals(Vs30_Param.NAME)) {
                     measurementType = sdv.getDataMeasurementType();
-                    continue;
                 }
                 if (siteDataParams.containsParameter(sdv.getDataType())) {
                     ParameterEditor param = siteDataParams.getParameter(sdv.getDataType()).getEditor();
