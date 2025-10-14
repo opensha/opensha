@@ -38,6 +38,7 @@ public class IndeterminateProgressBar extends JProgressBar {
 	
 	public IndeterminateProgressBar(String loadingMessage) {
 		setString(loadingMessage);
+        setPreferredSize(new Dimension(300, 24));
 	}
 	
 	public IndeterminateProgressBar() {
