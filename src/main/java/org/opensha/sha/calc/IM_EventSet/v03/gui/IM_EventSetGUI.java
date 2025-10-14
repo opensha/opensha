@@ -262,6 +262,7 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 
                                     bar.setString("Done!");
                                     bar.setStringPainted(true);
+                                    sitesPanel.rebuildSiteDataList();
                                     doneTimer = new Timer(1200, e -> {
                                         bar.setStringPainted(false);
                                         bar.setString("Calculating...");
