@@ -23,7 +23,8 @@ public abstract class IM_EventSetCalc_v3_0 implements IM_EventSetCalc_v3_0_API {
 			parent.setLevel(level);
 			parent = parent.getParent();
 		}
-		logger.setLevel(level);
+        assert logger != null;
+        logger.setLevel(level);
 	}
 	
 	public static final float MIN_SOURCE_DIST = 200;

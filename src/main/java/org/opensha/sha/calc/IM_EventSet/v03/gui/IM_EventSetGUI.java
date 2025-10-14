@@ -53,39 +53,39 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 	
 	private final IndeterminateProgressBar bar = new IndeterminateProgressBar("Calculating...");
 	private Timer doneTimer = null; // show when calculation is done
-	
+
 	public IM_EventSetGUI() {
-		erfGuiBean = createERF_GUI_Bean();
-		imtChooser = new IMT_ChooserPanel();
+        erfGuiBean = createERF_GUI_Bean();
+        imtChooser = new IMT_ChooserPanel();
         sitesPanel = new SitesPanel();
-		imrChooser = new IMR_ChooserPanel(imtChooser, sitesPanel);
+        imrChooser = new IMR_ChooserPanel(imtChooser, sitesPanel);
 
-		OrderedSiteDataProviderList providers = OrderedSiteDataProviderList.createSiteDataProviderDefaults();
+        OrderedSiteDataProviderList providers = OrderedSiteDataProviderList.createSiteDataProviderDefaults();
 
-		dataBean = new OrderedSiteDataGUIBean(providers);
+        dataBean = new OrderedSiteDataGUIBean(providers);
 
         JPanel imPanel = new JPanel();
         imPanel.setLayout(new BoxLayout(imPanel, BoxLayout.X_AXIS));
-		imPanel.add(imrChooser);
-		imPanel.add(imtChooser);
+        imPanel.add(imrChooser);
+        imPanel.add(imtChooser);
 
         JPanel siteERFPanel = new JPanel();
         siteERFPanel.setLayout(new BoxLayout(siteERFPanel, BoxLayout.X_AXIS));
-		siteERFPanel.add(sitesPanel);
-		siteERFPanel.add(erfGuiBean);
+        siteERFPanel.add(sitesPanel);
+        siteERFPanel.add(erfGuiBean);
 
         JTabbedPane tabbedPane = new JTabbedPane();
 
         tabbedPane.addTab("IMRs/IMTs", imPanel);
-		tabbedPane.addTab("Sites/ERF", siteERFPanel);
-		tabbedPane.addTab("Site Data Providers", dataBean);
-		
-		JPanel mainPanel = new JPanel(new BorderLayout());
-		
-		String[] writers = new String[2];
-		writers[0] = OriginalModWriter.NAME;
-		writers[1] = HAZ01Writer.NAME;
-		outputWriterChooser = new JComboBox(writers);
+        tabbedPane.addTab("Sites/ERF", siteERFPanel);
+        tabbedPane.addTab("Site Data Providers", dataBean);
+
+        JPanel mainPanel = new JPanel(new BorderLayout());
+
+        String[] writers = new String[2];
+        writers[0] = OriginalModWriter.NAME;
+        writers[1] = HAZ01Writer.NAME;
+        outputWriterChooser = new JComboBox(writers);
 
         JPanel botLeftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         botLeftPanel.add(outputWriterChooser);
@@ -104,16 +104,16 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
         bottomPanel.add(botRightPanel);
         bottomPanel.add(Box.createHorizontalStrut(5));
 
-		calcButton.addActionListener(this);
+        calcButton.addActionListener(this);
 
-		mainPanel.add(tabbedPane, BorderLayout.CENTER);
-		mainPanel.add(bottomPanel, BorderLayout.SOUTH);
+        mainPanel.add(tabbedPane, BorderLayout.CENTER);
+        mainPanel.add(bottomPanel, BorderLayout.SOUTH);
 
         setTitle(APP_NAME + " (" + getAppVersion() + ")");
-		setContentPane(mainPanel);
-		pack();
-	}
-	
+        setContentPane(mainPanel);
+        pack();
+    }
+
 	private ERF_GuiBean createERF_GUI_Bean() {
 		try {
 			return new ERF_GuiBean(ERF_Ref.get(false, ServerPrefUtils.SERVER_PREFS));
@@ -125,7 +125,7 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
     private boolean isReadyForCalc(ArrayList<Location> locs, ArrayList<ArrayList<SiteDataValue<?>>> dataLists,
 			ERF erf, ArrayList<ScalarIMR> imrs, ArrayList<String> imts) {
 		
-		if (locs.size() < 1) {
+		if (locs.isEmpty()) {
 			JOptionPane.showMessageDialog(this, "You must add at least 1 site!", "No Sites Selected!",
 					JOptionPane.ERROR_MESSAGE);
 			return false;
@@ -140,12 +140,12 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 					JOptionPane.ERROR_MESSAGE);
 			return false;
 		}
-		if (imrs.size() < 1) {
+		if (imrs.isEmpty()) {
 			JOptionPane.showMessageDialog(this, "You must add at least 1 IMR!", "No IMRs Selected!",
 					JOptionPane.ERROR_MESSAGE);
 			return false;
 		}
-		if (imts.size() < 1) {
+		if (imts.isEmpty()) {
 			JOptionPane.showMessageDialog(this, "You must add at least 1 IMT!", "No IMTs Selected!",
 					JOptionPane.ERROR_MESSAGE);
 			return false;
@@ -198,11 +198,12 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
                         precalcException = e;
                     }
                     if (!readyForCalc) {
-                        if (precalcException != null)
+                        if (precalcException != null) {
                             precalcException.printStackTrace();
-                        JOptionPane.showMessageDialog(
-                                instance, precalcException.getMessage(), "Exception Preparing Calculation",
-                                JOptionPane.ERROR_MESSAGE);
+                            JOptionPane.showMessageDialog(
+                                    instance, precalcException.getMessage(), "Exception Preparing Calculation",
+                                    JOptionPane.ERROR_MESSAGE);
+                        }
                         return;
                     }
                     // Ask user for output directory on Event Dispatch Thread
@@ -220,12 +221,16 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
                                     outputDir, dataBean.getProviderList());
                             IM_EventSetOutputWriter writer;
                             String writerName = (String) outputWriterChooser.getSelectedItem();
-                            if (writerName.equals(OriginalModWriter.NAME))
+                            if (writerName == null) {
+                                throw new RuntimeException("No output writer selected");
+                            }
+                            if (writerName.equals(OriginalModWriter.NAME)) {
                                 writer = new OriginalModWriter(calc);
-                            else if (writerName.equals(HAZ01Writer.NAME))
+                            } else if (writerName.equals(HAZ01Writer.NAME)) {
                                 writer = new HAZ01Writer(calc);
-                            else
+                            } else {
                                 throw new RuntimeException("Unknown writer: " + writerName);
+                            }
 
                             // Spawn thread for calculation. Returns true if ran successfully.
                             SwingWorker<Boolean, Integer> calcWorker = new SwingWorker<>() {

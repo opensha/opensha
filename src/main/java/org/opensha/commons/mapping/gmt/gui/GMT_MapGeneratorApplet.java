@@ -180,7 +180,7 @@ public class GMT_MapGeneratorApplet extends JPanel{
 		GMT_MapGeneratorApplet applet = new GMT_MapGeneratorApplet();
 		JFrame frame = new JFrame();
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frame.setTitle("Maps");
+        frame.setTitle(APP_NAME + " (" + getAppVersion() + ")");
 		frame.getContentPane().add(applet, BorderLayout.CENTER);
 		applet.init();
 		frame.setIconImages(IconFetcher.fetchIcons(APP_SHORT_NAME));
