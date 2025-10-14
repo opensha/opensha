@@ -17,6 +17,7 @@ import org.opensha.commons.data.siteData.gui.beans.OrderedSiteDataGUIBean;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.gui.DisclaimerDialog;
 import org.opensha.commons.util.ApplicationVersion;
+import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.commons.util.bugReports.BugReport;
 import org.opensha.commons.util.bugReports.BugReportDialog;
@@ -26,6 +27,7 @@ import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.HAZ01Writer;
 import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.OriginalModWriter;
 import org.opensha.sha.earthquake.ERF_Ref;
 import org.opensha.sha.earthquake.ERF;
+import org.opensha.sha.gui.HazardCurveApplication;
 import org.opensha.sha.gui.beans.ERF_GuiBean;
 import org.opensha.sha.gui.infoTools.IndeterminateProgressBar;
 import org.opensha.sha.imr.ScalarIMR;
@@ -47,10 +49,8 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 	private IMT_ChooserPanel imtChooser = null;
 	private OrderedSiteDataGUIBean dataBean = null;
 
-    private final JButton calcButton = new JButton("Start Calculation");
-
+    private JButton computeButton;
 	private JFileChooser outputChooser;
-	
 	private JComboBox<?> outputWriterChooser;
 	
 	private final IndeterminateProgressBar bar = new IndeterminateProgressBar("Calculating...");
@@ -64,9 +64,9 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
             imrChooser = new IMR_ChooserPanel(imtChooser, sitesPanel);
 
             OrderedSiteDataProviderList providers = OrderedSiteDataProviderList.createSiteDataProviderDefaults();
-
             dataBean = new OrderedSiteDataGUIBean(providers);
 
+            // ======== app tabs ========
             JPanel imPanel = new JPanel();
             imPanel.setLayout(new BoxLayout(imPanel, BoxLayout.X_AXIS));
             imPanel.add(imrChooser);
@@ -78,39 +78,89 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
             siteERFPanel.add(erfGuiBean);
 
             JTabbedPane tabbedPane = new JTabbedPane();
-
             tabbedPane.addTab("IMRs/IMTs", imPanel);
             tabbedPane.addTab("Sites/ERF", siteERFPanel);
             tabbedPane.addTab("Site Data Providers", dataBean);
 
-            JPanel mainPanel = new JPanel(new BorderLayout());
+            // ======== button panel ========
+            JPanel buttonPanel = new JPanel(new GridBagLayout()) {
+                private static final long serialVersionUID = 1L;
+
+                @Override
+                public void paintComponent(Graphics g) {
+                    super.paintComponent(g);
+                    g.setColor(Color.gray);
+                    g.drawLine(0, 0, getWidth(), 0);
+                }
+            };
+            buttonPanel.setBorder(BorderFactory.createEmptyBorder(12, 24, 12, 40));
+            buttonPanel.setBackground(HazardCurveApplication.getBottomBarColor()); // we should move this out somewhere else
+
+            JLabel shaLogo = new JLabel(new ImageIcon(
+                    FileUtils.loadImage("logos/opensha_64.png")));
 
             String[] writers = new String[2];
             writers[0] = OriginalModWriter.NAME;
             writers[1] = HAZ01Writer.NAME;
             outputWriterChooser = new JComboBox(writers);
 
-            JPanel botLeftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-            botLeftPanel.add(outputWriterChooser);
+            computeButton = new JButton("Compute");
+            computeButton.addActionListener(this);
+            JPanel buttonWrapper = new JPanel(new BorderLayout());
+            buttonWrapper.setOpaque(false);
+            buttonWrapper.setBorder(BorderFactory.createEmptyBorder(-4, 0, 2, 0));
+            buttonWrapper.add(computeButton, BorderLayout.CENTER);
 
-            JPanel botRightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-            botRightPanel.add(calcButton);
-            botRightPanel.add(bar);
-            botRightPanel.setBorder(BorderFactory.createEmptyBorder(-4, 0, 0, 0));
+            // Create a panel to hold the combo box and button together
+            JPanel controlsPanel = new JPanel();
+            controlsPanel.setLayout(new BoxLayout(controlsPanel, BoxLayout.X_AXIS));
+            controlsPanel.setOpaque(false);
+            controlsPanel.add(outputWriterChooser);
+            controlsPanel.add(Box.createHorizontalStrut(18));
+            controlsPanel.add(buttonWrapper);
 
-            JPanel bottomPanel = new JPanel();
-            bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.X_AXIS));
-            bottomPanel.add(Box.createHorizontalStrut(5));
-            bottomPanel.add(botLeftPanel);
-            bottomPanel.add(Box.createHorizontalStrut(20));
-            bottomPanel.add(Box.createHorizontalGlue());
-            bottomPanel.add(botRightPanel);
-            bottomPanel.add(Box.createHorizontalStrut(5));
+            // Set the progress bar to match the width of the controls above
+            Dimension controlsPanelSize = controlsPanel.getPreferredSize();
+            bar.setPreferredSize(new Dimension(controlsPanelSize.width, bar.getPreferredSize().height));
+            bar.setMaximumSize(new Dimension(controlsPanelSize.width, bar.getPreferredSize().height));
 
-            calcButton.addActionListener(this);
+            // Create a panel to stack controls and progress bar vertically
+            JPanel rightPanel = new JPanel();
+            rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS));
+            rightPanel.setOpaque(false);
+            rightPanel.add(controlsPanel);
+            rightPanel.add(Box.createVerticalStrut(5));
+            rightPanel.add(bar);
 
+            GridBagConstraints gbc = new GridBagConstraints();
+
+            // Logo on the left
+            gbc.gridx = 0;
+            gbc.gridy = 0;
+            gbc.weightx = 0.0;
+            gbc.weighty = 1.0;
+            gbc.anchor = GridBagConstraints.LINE_START;
+            gbc.fill = GridBagConstraints.NONE;
+            gbc.insets = new Insets(0, 0, 0, 0);
+            buttonPanel.add(shaLogo, gbc);
+
+            // Spacer in the middle to push right panel to the right
+            gbc.gridx = 1;
+            gbc.weightx = 1.0;
+            gbc.fill = GridBagConstraints.HORIZONTAL;
+            buttonPanel.add(Box.createHorizontalGlue(), gbc);
+
+            // Right panel (controls + progress bar) on the right
+            gbc.gridx = 2;
+            gbc.weightx = 0.0;
+            gbc.anchor = GridBagConstraints.LINE_END;
+            gbc.fill = GridBagConstraints.NONE;
+            buttonPanel.add(rightPanel, gbc);
+
+            // ======== main panel ========
+            JPanel mainPanel = new JPanel(new BorderLayout());
             mainPanel.add(tabbedPane, BorderLayout.CENTER);
-            mainPanel.add(bottomPanel, BorderLayout.SOUTH);
+            mainPanel.add(buttonPanel, BorderLayout.SOUTH);
 
             setTitle(APP_NAME + " (" + getAppVersion() + ")");
             setContentPane(mainPanel);
@@ -165,7 +215,7 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 	
 	public void actionPerformed(ActionEvent e) {
 		IM_EventSetGUI instance = this; // Need to get instance inside SwingWorker
-		if (e.getSource().equals(calcButton)) {
+		if (e.getSource().equals(computeButton)) {
 
             // Spawn thread for precalculation logic to determine if ready
             SwingWorker<Boolean, Integer> precalcWorker = new SwingWorker<>() {
@@ -268,12 +318,12 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
                                     }
                                     if (!calcSuccess) {
                                         bar.toggle();
-                                        calcButton.setEnabled(true);
+                                        computeButton.setEnabled(true);
                                         if (calcException != null)
                                             calcException.printStackTrace();
                                         throw new RuntimeException(calcException);
                                     }
-                                    calcButton.setEnabled(true);
+                                    computeButton.setEnabled(true);
                                     // Stop progress bar after calculation over
                                     bar.toggle();
 
@@ -290,7 +340,7 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 
                             // Show progress bar on bottom panel
                             bar.toggle();
-                            calcButton.setEnabled(false);
+                            computeButton.setEnabled(false);
 
                             calcWorker.execute();
                             // Give EDT a moment to update before kicking off background work
