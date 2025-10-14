@@ -18,6 +18,8 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.gui.DisclaimerDialog;
 import org.opensha.commons.util.ApplicationVersion;
 import org.opensha.commons.util.ServerPrefUtils;
+import org.opensha.commons.util.bugReports.BugReport;
+import org.opensha.commons.util.bugReports.BugReportDialog;
 import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetOutputWriter;
 import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.HAZ01Writer;
@@ -49,69 +51,77 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 
 	private JFileChooser outputChooser;
 	
-	private final JComboBox<?> outputWriterChooser;
+	private JComboBox<?> outputWriterChooser;
 	
 	private final IndeterminateProgressBar bar = new IndeterminateProgressBar("Calculating...");
 	private Timer doneTimer = null; // show when calculation is done
 
 	public IM_EventSetGUI() {
-        erfGuiBean = createERF_GUI_Bean();
-        imtChooser = new IMT_ChooserPanel();
-        sitesPanel = new SitesPanel();
-        imrChooser = new IMR_ChooserPanel(imtChooser, sitesPanel);
+        try {
+            erfGuiBean = createERF_GUI_Bean();
+            imtChooser = new IMT_ChooserPanel();
+            sitesPanel = new SitesPanel();
+            imrChooser = new IMR_ChooserPanel(imtChooser, sitesPanel);
 
-        OrderedSiteDataProviderList providers = OrderedSiteDataProviderList.createSiteDataProviderDefaults();
+            OrderedSiteDataProviderList providers = OrderedSiteDataProviderList.createSiteDataProviderDefaults();
 
-        dataBean = new OrderedSiteDataGUIBean(providers);
+            dataBean = new OrderedSiteDataGUIBean(providers);
 
-        JPanel imPanel = new JPanel();
-        imPanel.setLayout(new BoxLayout(imPanel, BoxLayout.X_AXIS));
-        imPanel.add(imrChooser);
-        imPanel.add(imtChooser);
+            JPanel imPanel = new JPanel();
+            imPanel.setLayout(new BoxLayout(imPanel, BoxLayout.X_AXIS));
+            imPanel.add(imrChooser);
+            imPanel.add(imtChooser);
 
-        JPanel siteERFPanel = new JPanel();
-        siteERFPanel.setLayout(new BoxLayout(siteERFPanel, BoxLayout.X_AXIS));
-        siteERFPanel.add(sitesPanel);
-        siteERFPanel.add(erfGuiBean);
+            JPanel siteERFPanel = new JPanel();
+            siteERFPanel.setLayout(new BoxLayout(siteERFPanel, BoxLayout.X_AXIS));
+            siteERFPanel.add(sitesPanel);
+            siteERFPanel.add(erfGuiBean);
 
-        JTabbedPane tabbedPane = new JTabbedPane();
+            JTabbedPane tabbedPane = new JTabbedPane();
 
-        tabbedPane.addTab("IMRs/IMTs", imPanel);
-        tabbedPane.addTab("Sites/ERF", siteERFPanel);
-        tabbedPane.addTab("Site Data Providers", dataBean);
+            tabbedPane.addTab("IMRs/IMTs", imPanel);
+            tabbedPane.addTab("Sites/ERF", siteERFPanel);
+            tabbedPane.addTab("Site Data Providers", dataBean);
 
-        JPanel mainPanel = new JPanel(new BorderLayout());
+            JPanel mainPanel = new JPanel(new BorderLayout());
 
-        String[] writers = new String[2];
-        writers[0] = OriginalModWriter.NAME;
-        writers[1] = HAZ01Writer.NAME;
-        outputWriterChooser = new JComboBox(writers);
+            String[] writers = new String[2];
+            writers[0] = OriginalModWriter.NAME;
+            writers[1] = HAZ01Writer.NAME;
+            outputWriterChooser = new JComboBox(writers);
 
-        JPanel botLeftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        botLeftPanel.add(outputWriterChooser);
+            JPanel botLeftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+            botLeftPanel.add(outputWriterChooser);
 
-        JPanel botRightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        botRightPanel.add(calcButton);
-        botRightPanel.add(bar);
-        botRightPanel.setBorder(BorderFactory.createEmptyBorder(-4, 0, 0, 0));
+            JPanel botRightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+            botRightPanel.add(calcButton);
+            botRightPanel.add(bar);
+            botRightPanel.setBorder(BorderFactory.createEmptyBorder(-4, 0, 0, 0));
 
-        JPanel bottomPanel = new JPanel();
-        bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.X_AXIS));
-        bottomPanel.add(Box.createHorizontalStrut(5));
-        bottomPanel.add(botLeftPanel);
-        bottomPanel.add(Box.createHorizontalStrut(20));
-        bottomPanel.add(Box.createHorizontalGlue());
-        bottomPanel.add(botRightPanel);
-        bottomPanel.add(Box.createHorizontalStrut(5));
+            JPanel bottomPanel = new JPanel();
+            bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.X_AXIS));
+            bottomPanel.add(Box.createHorizontalStrut(5));
+            bottomPanel.add(botLeftPanel);
+            bottomPanel.add(Box.createHorizontalStrut(20));
+            bottomPanel.add(Box.createHorizontalGlue());
+            bottomPanel.add(botRightPanel);
+            bottomPanel.add(Box.createHorizontalStrut(5));
 
-        calcButton.addActionListener(this);
+            calcButton.addActionListener(this);
 
-        mainPanel.add(tabbedPane, BorderLayout.CENTER);
-        mainPanel.add(bottomPanel, BorderLayout.SOUTH);
+            mainPanel.add(tabbedPane, BorderLayout.CENTER);
+            mainPanel.add(bottomPanel, BorderLayout.SOUTH);
 
-        setTitle(APP_NAME + " (" + getAppVersion() + ")");
-        setContentPane(mainPanel);
-        pack();
+            setTitle(APP_NAME + " (" + getAppVersion() + ")");
+            setContentPane(mainPanel);
+            pack();
+        } catch (Exception e) {
+            e.printStackTrace();
+            BugReport bug = new BugReport(e, "Error occurred during app initialization.", APP_SHORT_NAME, getAppVersion(), this);
+            BugReportDialog bugDialog = new BugReportDialog(this, bug, true);
+            bugDialog.setVisible(true);
+
+        }
     }
 
 	private ERF_GuiBean createERF_GUI_Bean() {
