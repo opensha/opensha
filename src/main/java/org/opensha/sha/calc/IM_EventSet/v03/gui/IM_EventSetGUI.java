@@ -15,7 +15,10 @@ import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
 import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.data.siteData.gui.beans.OrderedSiteDataGUIBean;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.gui.DisclaimerDialog;
+import org.opensha.commons.util.ApplicationVersion;
 import org.opensha.commons.util.ServerPrefUtils;
+import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetOutputWriter;
 import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.HAZ01Writer;
 import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.OriginalModWriter;
@@ -29,26 +32,24 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 	
 	private static final long serialVersionUID = 1L;
 
-	private static File cwd = new File(System.getProperty("user.dir"));
+    private static ApplicationVersion version;
+
+    public static final String APP_NAME = "IM Event Set Calculator";
+    public static final String APP_SHORT_NAME = "IM_EventSetCalc";
+
+	private static final File cwd = new File(System.getProperty("user.dir"));
 	
 	private SitesPanel sitesPanel = null;
 	private ERF_GuiBean erfGuiBean = null;
 	private IMR_ChooserPanel imrChooser = null;
 	private IMT_ChooserPanel imtChooser = null;
 	private OrderedSiteDataGUIBean dataBean = null;
-	
-	private JTabbedPane tabbedPane;
-	
-	private JPanel imPanel = new JPanel();
-	private JPanel siteERFPanel = new JPanel();
-	
-	private JButton calcButton = new JButton("Start Calculation");
 
-	private JFileChooser openChooser;
-	private JFileChooser saveChooser;
+    private final JButton calcButton = new JButton("Start Calculation");
+
 	private JFileChooser outputChooser;
 	
-	private JComboBox<?> outputWriterChooser;
+	private final JComboBox<?> outputWriterChooser;
 	
 	private final IndeterminateProgressBar bar = new IndeterminateProgressBar("Calculating...");
 	private Timer doneTimer = null; // show when calculation is done
@@ -62,16 +63,18 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 		OrderedSiteDataProviderList providers = OrderedSiteDataProviderList.createSiteDataProviderDefaults();
 
 		dataBean = new OrderedSiteDataGUIBean(providers);
-		
-		imPanel.setLayout(new BoxLayout(imPanel, BoxLayout.X_AXIS));
+
+        JPanel imPanel = new JPanel();
+        imPanel.setLayout(new BoxLayout(imPanel, BoxLayout.X_AXIS));
 		imPanel.add(imrChooser);
 		imPanel.add(imtChooser);
-		
-		siteERFPanel.setLayout(new BoxLayout(siteERFPanel, BoxLayout.X_AXIS));
+
+        JPanel siteERFPanel = new JPanel();
+        siteERFPanel.setLayout(new BoxLayout(siteERFPanel, BoxLayout.X_AXIS));
 		siteERFPanel.add(sitesPanel);
 		siteERFPanel.add(erfGuiBean);
-		
-		tabbedPane = new JTabbedPane();
+
+        JTabbedPane tabbedPane = new JTabbedPane();
 
         tabbedPane.addTab("IMRs/IMTs", imPanel);
 		tabbedPane.addTab("Sites/ERF", siteERFPanel);
@@ -105,10 +108,9 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 
 		mainPanel.add(tabbedPane, BorderLayout.CENTER);
 		mainPanel.add(bottomPanel, BorderLayout.SOUTH);
-		
-		this.setTitle("IM Event Set Calculator");
-		
-		this.setContentPane(mainPanel); 
+
+        setTitle(APP_NAME + " (" + getAppVersion() + ")");
+		setContentPane(mainPanel);
 		pack();
 	}
 	
@@ -287,12 +289,41 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
         }
 	}
 
+    // Main method
 	public static void main(String[] args) {
-		IM_EventSetGUI gui = new IM_EventSetGUI();
-		gui.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		gui.setSize(900, 700);
-		
-		gui.setVisible(true);
+        new DisclaimerDialog(APP_NAME, APP_SHORT_NAME, getAppVersion());
+        DefaultExceptionHandler exp = new DefaultExceptionHandler(
+                APP_SHORT_NAME, getAppVersion(), null, null);
+        Thread.setDefaultUncaughtExceptionHandler(exp);
+        launch(exp);
 	}
+
+    public static IM_EventSetGUI launch(DefaultExceptionHandler handler) {
+        IM_EventSetGUI applet = new IM_EventSetGUI();
+        if (handler != null) {
+            handler.setApp(applet);
+            handler.setParent(applet);
+        }
+        applet.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        applet.setSize(900, 700);
+
+        applet.setVisible(true);
+        return applet;
+    }
+
+    /**
+     * Returns the Application version
+     * @return ApplicationVersion
+     */
+    public static ApplicationVersion getAppVersion(){
+        if (version == null) {
+            try {
+                version = ApplicationVersion.loadBuildVersion();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return version;
+    }
 
 }
