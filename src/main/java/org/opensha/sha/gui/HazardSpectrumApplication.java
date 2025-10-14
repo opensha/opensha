@@ -142,7 +142,7 @@ public class HazardSpectrumApplication extends HazardCurveApplication {
 			BugReportDialog bugDialog = new BugReportDialog(this, bug, true);
 			bugDialog.setVisible(true);
 		}
-		this.setTitle("Hazard Spectrum Application ("+getAppVersion()+")");
+        setTitle(APP_NAME + " (" + getAppVersion() + ")");
 		startAppProgressClass.dispose();
 		( (JPanel) getContentPane()).updateUI();
 		graphWidget.setPlotLabel(DEFAULT_TITLE);
