@@ -78,13 +78,21 @@ public abstract class IM_EventSetCalc_v3_0 implements IM_EventSetCalc_v3_0_API {
 					}
 				}
 				if (hasNewType) {
-					// only fetch site data if it's actually needed
+					// only fetch site data if it's actually necessary
+                    // TODO: We need to inform users when values are overridden
 					ArrayList<SiteDataValue<?>> provData = providers.getBestAvailableData(site.getLocation());
 					if (provData != null) {
 						for (SiteDataValue<?> dataVal : provData) {
                             logger.log(Level.FINE, "Provider data value for site " + i + ": " + dataVal);
                         }
-						dataVals.addAll(provData);
+                        // Remove all dataVals that have a matching dataType in provData
+                        dataVals.removeIf(dataVal ->
+                                provData.stream()
+                                        .anyMatch(provVal ->provVal.getDataType().equals(dataVal.getDataType()))
+                        );
+
+                        // Add all provider values
+                        dataVals.addAll(provData);
 					}
 				}
 			}

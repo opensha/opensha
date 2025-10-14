@@ -177,7 +177,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 		return selection[0];
 	}
 	
-	private void rebuildSiteDataList() {
+	public void rebuildSiteDataList() {
 		if (sitesList.isSelectionEmpty()) {
 			Object[] data = new String[1];
 			data[0] = "(no site(s) selected)";
