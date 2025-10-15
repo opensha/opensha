@@ -12,10 +12,8 @@ public class HAZ01A_FakeERF extends AbstractERF {
 	ArrayList<ProbEqkSource> sources;
 	
 	public ERF erf;
-	
-	public HAZ01A_FakeERF() {}
-	
-	public HAZ01A_FakeERF(ERF erf) {
+
+    public HAZ01A_FakeERF(ERF erf) {
 		this.erf = erf;
 	}
 
