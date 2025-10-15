@@ -534,8 +534,8 @@ public class ProbModelsPlottingUtils {
 	 * @param outputDir
 	 */
 	public static void writeAveGainVsMagHistPlot(double magOfNthRups[], double aveRupProbGainArray[], double longTermRateOfNthRups[], File outputDir) {
-		HistogramFunction aveGainVsMagHist = new HistogramFunction(5.05, 40, 0.1);
-		HistogramFunction tempWtHist = new HistogramFunction(5.05, 40, 0.1);
+		HistogramFunction aveGainVsMagHist = new HistogramFunction(5.05, 50, 0.1);
+		HistogramFunction tempWtHist = new HistogramFunction(5.05, 50, 0.1);
 		for(int i=0;i<aveRupProbGainArray.length;i++) {
 			aveGainVsMagHist.add(magOfNthRups[i], aveRupProbGainArray[i]*longTermRateOfNthRups[i]);
 			tempWtHist.add(magOfNthRups[i], longTermRateOfNthRups[i]);
@@ -672,33 +672,35 @@ public class ProbModelsPlottingUtils {
 			double[] simSectRateArray, double minNumSimEvents, double numYears, String fileNameSuffix) {
 		DefaultXY_DataSet obs_pred_ratioForSections = new DefaultXY_DataSet();
 		for(int s=0;s<simSectRateArray.length;s++) {
-			if(imposedSectRateArray[s] >= minNumSimEvents/numYears && imposedSectRateArray[s]>0) {	// only keep where 10 should have occurred
+			if(imposedSectRateArray[s]*numYears>=10 && imposedSectRateArray[s]>0)	// only keep where 10 are expected have occurred
 				obs_pred_ratioForSections.set(imposedSectRateArray[s], simSectRateArray[s]/imposedSectRateArray[s]);
-			}
 		}
-		DefaultXY_DataSet perfectAgreementFunc2 = new DefaultXY_DataSet();
-		perfectAgreementFunc2.set(10.0/numYears,1d);
-		perfectAgreementFunc2.set(0.1,1d);
-		perfectAgreementFunc2.setName("Perfect agreement line");
-		ArrayList<XY_DataSet> funcs = new ArrayList<XY_DataSet>();
-		funcs.add(obs_pred_ratioForSections);
-		funcs.add(perfectAgreementFunc2);
-		ArrayList<PlotCurveCharacterstics> plotChars = new ArrayList<PlotCurveCharacterstics>();
-		plotChars.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 4f, Color.BLUE));
-		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.RED));
-		
-		String xAxisLabel = "Imposed Part Rate";
-		String yAxisLabel = "Part Rate Ratio";
-		Range xAxisRange = null;
-		Range yAxisRange = null;
-		boolean logX = true;
-		boolean logY = false;
-		double widthInches = 7; // inches
-		double heightInches = 6; // inches
-		
-		boolean popupWindow = false;
-		writeAndOrPlotFuncs(funcs,plotChars,fileNameSuffix,xAxisLabel,yAxisLabel,xAxisRange,yAxisRange,
-				logX,logY,widthInches,heightInches, new File(outputDir,"simOverImposedVsImposedSectionPartRates"+fileNameSuffix), popupWindow);
+		// make sure there is enough data to warrant a plot
+		if(obs_pred_ratioForSections.size()>2) {
+			DefaultXY_DataSet perfectAgreementFunc2 = new DefaultXY_DataSet();
+			perfectAgreementFunc2.set(10.0/numYears,1d);
+			perfectAgreementFunc2.set(0.1,1d);
+			perfectAgreementFunc2.setName("Perfect agreement line");
+			ArrayList<XY_DataSet> funcs = new ArrayList<XY_DataSet>();
+			funcs.add(obs_pred_ratioForSections);
+			funcs.add(perfectAgreementFunc2);
+			ArrayList<PlotCurveCharacterstics> plotChars = new ArrayList<PlotCurveCharacterstics>();
+			plotChars.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 4f, Color.BLUE));
+			plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.RED));
+			
+			String xAxisLabel = "Imposed Part Rate";
+			String yAxisLabel = "Part Rate Ratio";
+			Range xAxisRange = null;
+			Range yAxisRange = null; //new Range(0,3);
+			boolean logX = true;
+			boolean logY = false;
+			double widthInches = 7; // inches
+			double heightInches = 6; // inches
+			
+			boolean popupWindow = false;
+			writeAndOrPlotFuncs(funcs,plotChars,fileNameSuffix,xAxisLabel,yAxisLabel,xAxisRange,yAxisRange,
+					logX,logY,widthInches,heightInches, new File(outputDir,"simOverImposedVsImposedSectionPartRates"+fileNameSuffix), popupWindow);
+		}
 	}
 
 	/*

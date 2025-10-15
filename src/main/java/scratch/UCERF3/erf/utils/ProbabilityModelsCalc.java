@@ -13,10 +13,10 @@ import java.util.PriorityQueue;
 import java.util.Random;
 import java.util.TreeMap;
 
-import javax.swing.JFrame;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.distribution.GammaDistribution;
+import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.apache.commons.math3.random.RandomDataGenerator;
 import org.apache.commons.math3.random.RandomDataImpl;
 import org.opensha.commons.calc.FaultMomentCalc;
@@ -3394,14 +3394,11 @@ public class ProbabilityModelsCalc {
 	 * This requires having used the class constructor that takes an ERF, and it is assumed that 
 	 * the state of the ERF is unchanged since instantiation (no parameter values have changed).
 	 * 
-	 * This assumes the rate of each rupture is constant up until the next event is sampled.
+	 * This also assumes the probability of each rupture is constant up until the next event is sampled.
 	 * 
 	 * The state of the ERF is preserved (even though it is temporarily switched to Poisson and no background)
 	 * 
-	 * This is a replacement of the old testER_Simulation() method; the following plots are no longer 
-	 * support here (see testER_Simulation code pre 09/17/25 to add them back in):
-	 *  
-	 * FILL IN
+	 * This is a replacement of the old testER_Simulation() method.
 	 * 
 	 */
 	public void simulateEvents(String inputTimeSinceLastMillisFileName, String outputTimesinceLastMillisFileName, 
@@ -3616,7 +3613,6 @@ public class ProbabilityModelsCalc {
 		if(resultsDir != null) infoString += "Total long-term rate (per year) = "+totalRate+"\n\n";
 		
 		double totalLongTermRate = totalRate;
-		
 		double simDuration = 1/totalLongTermRate;  // used to compute next prob gain
 		
 		// make the target MFD - 
@@ -3751,6 +3747,7 @@ public class ProbabilityModelsCalc {
 			
 			// sample time of next event
 			double timeToNextInYrs = randomDataSampler.nextExponential(1.0/totalRate);
+
 			long eventTimeMillis = currentTimeMillis + (long)(timeToNextInYrs*MILLISEC_PER_YEAR);
 
 			// sample an event
@@ -4156,7 +4153,12 @@ public class ProbabilityModelsCalc {
 	 */
 	public static void main(String[] args) {
 		
-		
+		double rate = 1d/100d;
+		double duration = 5d;
+		PoissonDistribution pd = new PoissonDistribution(rate*duration);
+		double oneOrMore = 1d-pd.probability(0);
+		double one = pd.probability(1);
+		System.out.println((oneOrMore+"\t"+one+"\t"+oneOrMore/one));
 		
 //		// This is a rerun test in March 2025 (extracted to un-commented stuff below); input file locations had changed.
 //		String fileName="/Users/field/Library/CloudStorage/OneDrive-DOI/Field_Other/CEA_WGCEP/UCERF3/UCERF3-TI/Figures/Fig11_FaultClusterFig/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip";
