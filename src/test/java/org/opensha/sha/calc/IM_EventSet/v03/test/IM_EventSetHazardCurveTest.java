@@ -43,6 +43,7 @@ public class IM_EventSetHazardCurveTest implements IM_EventSetCalc_v3_0_API {
 	HeadlessGraphPanel gp;
 	
 	String imt = "SA 1.0";
+//    String imt = "PGA";
 
 	public IM_EventSetHazardCurveTest() {
 		
@@ -55,8 +56,8 @@ public class IM_EventSetHazardCurveTest implements IM_EventSetCalc_v3_0_API {
 		imr = new CB_2008_AttenRel(null);
 		imr.setParamDefaults();
 		IM_EventSetOutputWriter.setIMTFromString(imt, imr);
-		site = new Site(new Location(34d, -118d));
-		
+		site = new Site(new Location(34d, -118d), "Los Angeles");
+
 		ListIterator<Parameter<?>> it = imr.getSiteParamsIterator();
 		while (it.hasNext()) {
 			Parameter<?> param = it.next();
@@ -83,7 +84,7 @@ public class IM_EventSetHazardCurveTest implements IM_EventSetCalc_v3_0_API {
 	public void testHazardCurve() throws IOException {
 		HazardCurveCalculator calc = new HazardCurveCalculator();
 		
-		ArbitrarilyDiscretizedFunc realCurve = IMT_Info.getUSGS_PGA_Function();
+		ArbitrarilyDiscretizedFunc realCurve = IMT_Info.getUSGS_SA_Function();
 		ArbitrarilyDiscretizedFunc rLogHazFunction = getLogFunction(realCurve);
 		System.out.println("IMR Params: " + imr.getAllParamMetadata());
 		System.out.println("Calculating regular curve");
@@ -93,12 +94,13 @@ public class IM_EventSetHazardCurveTest implements IM_EventSetCalc_v3_0_API {
 		runHAZ01A();
 		String fileName = outputDir.getAbsolutePath() + File.separator + HAZ01Writer.HAZ01A_FILE_NAME;
 		ScalarIMR hIMR = new HAZ01A_FakeAttenRel(fileName);
-		ERF hERF = new HAZ01A_FakeERF(erf);
+		ERF hERF = new HAZ01A_FakeERF(erf, fileName); // Pass filename so it knows which sources to include
 		hERF.updateForecast();
 		
-		ArbitrarilyDiscretizedFunc hCurve = IMT_Info.getUSGS_PGA_Function();
+		ArbitrarilyDiscretizedFunc hCurve = IMT_Info.getUSGS_SA_Function();
 		System.out.println("Calculating IM based curve");
 		ArbitrarilyDiscretizedFunc hLogHazFunction = getLogFunction(hCurve);
+        System.out.println("hLogHazFunction: " + hLogHazFunction.getName() + " site:" + site + " hIMR:" + hIMR + " hERF:" + hERF);
 		calc.getHazardCurve(hLogHazFunction, site, hIMR, hERF);
 		hCurve = unLogFunction(hCurve, hLogHazFunction);
 //		ArbitrarilyDiscretizedFunc realCurve =

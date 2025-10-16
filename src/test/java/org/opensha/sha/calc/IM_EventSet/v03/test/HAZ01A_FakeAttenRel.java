@@ -28,7 +28,13 @@ public class HAZ01A_FakeAttenRel extends AttenuationRelationship {
 	}
 	
 	private int getIndex(int sourceID, int rupID) {
-		return sourceRupIDMap.get(getSourceRupKey(sourceID, rupID));
+		String key = getSourceRupKey(sourceID, rupID);
+		Integer index = sourceRupIDMap.get(key);
+		if (index == null) {
+			throw new RuntimeException("No entry found in HAZ01A data for sourceID=" + 
+				sourceID + ", rupID=" + rupID + " (key: " + key + ")");
+		}
+		return index;
 	}
 
 	@Override
