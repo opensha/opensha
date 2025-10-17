@@ -252,7 +252,8 @@ public class GeographicMapMaker {
 		for (FaultSection sect : sects) {
 			for (Location loc : bufferPerimLocsForSect(sect)) {
 				latTrack.addValue(loc.getLatitude());
-				lonTrack.addValue(loc.getLongitude());
+				if(loc.getLongitude()<0 && loc.getLongitude()>=-180)  // hack to avoid crossing -180 boundary in Alaska (not a general solution) 
+					lonTrack.addValue(loc.getLongitude());
 			}
 		}
 		double minLat = Math.floor(latTrack.getMin()-0.05);
