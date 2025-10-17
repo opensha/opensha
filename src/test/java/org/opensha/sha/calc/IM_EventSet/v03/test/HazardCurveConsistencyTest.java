@@ -61,8 +61,7 @@ public class HazardCurveConsistencyTest implements IM_EventSetCalc_v3_0_API {
 //    String imt = "PGA";
 
 	public HazardCurveConsistencyTest() {
-		
-		outputDir = IM_EventSetTest.getTempDir();
+		outputDir = getTempDir();
 		erf = new Frankel96_AdjustableEqkRupForecast();
 		erf.getAdjustableParameterList()
 				.getParameter(Frankel96_AdjustableEqkRupForecast.BACK_SEIS_NAME)
@@ -85,6 +84,20 @@ public class HazardCurveConsistencyTest implements IM_EventSetCalc_v3_0_API {
 		
 		gp = new HeadlessGraphPanel();
 	}
+
+    private static File getTempDir() {
+        File tempDir;
+        try {
+            tempDir = File.createTempFile("asdf", "fdsa").getParentFile();
+        } catch (IOException e) {
+            e.printStackTrace();
+            tempDir = new File("/tmp");
+        }
+        tempDir = new File(tempDir.getAbsolutePath() + File.separator + "imEventSetTest");
+        if (!tempDir.exists())
+            tempDir.mkdir();
+        return tempDir;
+    }
 	
 	private void runHAZ01A() throws IOException {
 		HAZ01Writer writer = new HAZ01Writer(this);
