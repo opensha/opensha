@@ -70,7 +70,7 @@ Campbell & Bozorgnia (2008)
 #
 # If "SA" is chosen, then  give the period as well in one of the following formats
 # (format will be automatically detected):
-#		HAZO1: SAxy where x.y is the period (e.g., "SA10" for 1 second, and "SA02" for 0.2 seconds).
+#		HAZO1: SAabcd where a.bcd is the period (e.g., "SA1000" for 1 second, and "SA200" for 0.2 seconds).
 #		Regular: SA period (e.g., "SA 1.0" for 1 second, "SA 0.2" for 0.2 seconds)
 # The code will throw and exception (show an error message) if the chosen 
 # intensity-measure type is not supported by the chosen attenuation 
@@ -80,7 +80,7 @@ Campbell & Bozorgnia (2008)
 3
 # Identify those IMT's:
 PGA
-SA02
+SA200
 SA 1.0
 # 
 # Next, give the number of sites and then the lat, lon, and  
