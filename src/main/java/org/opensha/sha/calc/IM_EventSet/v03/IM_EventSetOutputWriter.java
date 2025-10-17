@@ -56,7 +56,13 @@ public abstract class IM_EventSetOutputWriter {
 	}
 	
 	public abstract String getName();
-	
+
+    /**
+     * HAZ01 IMT period strings only have precision up to 0.001 seconds.
+     * Example: SA 1.0 = SA1000, SA 0.1 = SA100, SA 0.005 = SA5
+     * @param param
+     * @return
+     */
 	public static String getHAZ01IMTString(Parameter<?> param) {
 		String imt = param.getName();
 		
@@ -65,7 +71,7 @@ public abstract class IM_EventSetOutputWriter {
 			for (Parameter<?> dep : depParam.getIndependentParameterList()) {
 				if (dep.getName().equals(PeriodParam.NAME)) {
 					double period = (Double)dep.getValue();
-					int p10 = (int)(period * 10.0 + 0.5);
+					int p10 = (int)(period * 1000.0 + 0.5);
 					String p10Str = p10 + "";
 					if (p10Str.length() < 2)
 						p10Str = "0" + p10Str;
@@ -76,7 +82,12 @@ public abstract class IM_EventSetOutputWriter {
 		}
 		return imt;
 	}
-	
+
+    /**
+     * Regular IMT strings have precision of `double` type.
+     * @param param
+     * @return
+     */
 	public static String getRegularIMTString(Parameter<?> param) {
 		String imt = param.getName();
 		
@@ -96,7 +107,7 @@ public abstract class IM_EventSetOutputWriter {
 	/**
 	 * Sets the IMT from the string specification
 	 * 
-	 * @param imtLine
+	 * @param imtStr
 	 * @param attenRel
 	 */
 	public static void setIMTFromString(String imtStr, ScalarIMR attenRel) {
@@ -115,7 +126,7 @@ public abstract class IM_EventSetOutputWriter {
 			} else {
 				// this is a HAZ01 style IMT
 				logger.log(Level.FINEST, "Split into IMT: " + theIMT + ", Period portion (HAZ01 style): " + perSt);
-				period = Double.parseDouble(perSt) / 10d;
+				period = Double.parseDouble(perSt) / 1000d;
 			}
 			attenRel.setIntensityMeasure(theIMT);
 			Parameter imtParam = (Parameter)attenRel.getIntensityMeasure();
@@ -124,7 +135,7 @@ public abstract class IM_EventSetOutputWriter {
 //			System.out.println("imtstr: " + imt + ", " + attenRel.getIntensityMeasure().getName()
 //						+ ": " + attenRel.getParameter(PeriodParam.NAME).getValue());
 		} else {
-			logger.log(Level.FINE, "Setting IMT  from String");
+			logger.log(Level.FINE, "Setting IMT from String");
 			attenRel.setIntensityMeasure(imt);
 		}
 	}
