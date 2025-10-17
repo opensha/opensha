@@ -318,7 +318,7 @@ public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener
    *  Function that must be implemented by all Listeners for
    *  ParameterChangeWarnEvents.
    *
-   * @param  e  The Event which triggered this function call
+   * @param e The Event which triggered this function call
    */
   public void parameterChangeWarning(ParameterChangeWarningEvent e) {
 
