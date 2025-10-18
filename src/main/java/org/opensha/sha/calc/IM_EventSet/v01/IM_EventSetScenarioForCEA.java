@@ -36,12 +36,18 @@ import org.opensha.sha.util.SiteTranslator;
 /**
  * <p>Title: PagerShakeMapCalc</p>
  *
- * <p>Description: </p>
+ * <p>Description:
+ * Hardcoded calculator for a single earthquake scenario
+ * for the California Earthquake Authority (CEA).
+ * Provides quick scenario analysis for CEA with pre-defined parameters.
+ * Unlike the IM_EventSetCalc, this calculator does not allow any flexibility to
+ * change the rupture, GMMs, or IMTs.
+ * </p>
  *
  * @author Nitin Gupta, Vipin Gupta, and Ned Field
  * @version 1.0
  */
-public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener{
+public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener {
 
 
 	private EqkRupture eqkRupture;
@@ -65,8 +71,7 @@ public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener
 	private double maxLon = Double.NEGATIVE_INFINITY;
 	SimpleFaultParameter faultParameter;
 	
-	public void  createSimpleFaultParam(SimpleFaultParameter faultParameter){
-		
+	public void createSimpleFaultParam(SimpleFaultParameter faultParameter) {
 		ArrayList lats = new ArrayList();
 		lats.add(Double.valueOf(33.875));
 		lats.add(Double.valueOf( (33.933+ 33.966)/2));
@@ -96,8 +101,7 @@ public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener
 		faultParameter.setEvenlyGriddedSurfaceFromParams();
 	}
 	
-	private void createRuptureSurface(){
-	
+	private void createRuptureSurface() {
 	    eqkRupture = new EqkRupture();
 	    faultParameter = new SimpleFaultParameter("Set Fault Surface");
 		createSimpleFaultParam(faultParameter);
@@ -105,9 +109,8 @@ public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener
 		eqkRupture.setAveRake(90);
 		eqkRupture.setMag(7.15);
 	}
-	
-	
-	private void readSiteFile(){
+
+	private void readSiteFile() {
 		ArrayList fileLines = null;
 		vs30List = new ArrayList();
 		stationIds = new ArrayList();
@@ -128,28 +131,24 @@ public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener
 				vs30List.add(Integer.parseInt(st.nextToken().trim()));
 				double lon = Double.parseDouble(st.nextToken().trim());
 				double lat = Double.parseDouble(st.nextToken().trim());
-				if(lat < this.minLat)
+				if (lat < this.minLat)
 					minLat = lat;
-				if(lat > this.maxLat)
+				if (lat > this.maxLat)
 					maxLat = lat;
-				if(lon < this.minLon)
+				if (lon < this.minLon)
 					minLon = lon;
-				if(lon > this.maxLon)
+				if (lon > this.maxLon)
 					maxLon = lon;
 					
 				locList.add(new Location(lat,lon));
 			}
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}		
 	}
 	
 	
-	private void createAttenRelInstances(){
+	private void createAttenRelInstances() {
 		attenRelList = new ArrayList();
 		attenRelList.add(createIMRClassInstance("BA_2006_AttenRel"));
 		attenRelList.add(createIMRClassInstance("CB_2006_AttenRel"));
@@ -166,7 +165,7 @@ public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener
 	  *
 	  * <code>BJF_1997_AttenRel imr = new BJF_1997_AttenRel()</code><p>
 	  *
-	  * If your not sure the user wants this one or AS_1997_AttenRel you can use this function
+	  * If you're not sure the user wants this one or AS_1997_AttenRel you can use this function
 	  * instead to create the same class by:<P>
 	  *
 	  * <code>BJF_1997_AttenRel imr =
@@ -175,7 +174,7 @@ public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener
 	  *
 	  */
 
-	  private ScalarIMR createIMRClassInstance(String AttenRelClassName){
+	  private ScalarIMR createIMRClassInstance(String AttenRelClassName) {
 	    String attenRelClassPackage = "org.opensha.sha.imr.attenRelImpl.";
 	      try {
 	        Class listenerClass = Class.forName( "org.opensha.commons.param.event.ParameterChangeWarningListener" );
@@ -203,15 +202,13 @@ public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener
 	      return null;
 	  }
 	
-	  
-	  private void createIMTList(){
+	  private void createIMTList() {
 		  imtSupported = new ArrayList();
 		  imtSupported.add(PGA_Param.NAME);
 		  imtSupported.add(SA_Param.NAME+" "+"0.3");
 		  imtSupported.add(SA_Param.NAME+" "+"1.0");
 	  }
 
-	  
 	  /**
 	   * set the site params in IMR according to basin Depth and vs 30
 	   * @param imr
@@ -219,7 +216,6 @@ public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener
 	   */
 	  private void setSiteParamsInIMR(ScalarIMR imr,
 	                                  int vs30) {
-
 	    Iterator it = imr.getSiteParamsIterator(); // get site params for this IMR
 	    while (it.hasNext()) {
 	      Parameter tempParam = (Parameter) it.next();
@@ -237,9 +233,7 @@ public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener
 	    }
 	  }
 	  
-	  
-	  private void createMeanStdDevFile(){
-		  
+	  private void createMeanStdDevFile() {
 		  try {
 			FileWriter fw = new FileWriter("IM_MeanStdDevFile.txt");
 			FileWriter fwTest;
@@ -298,14 +292,10 @@ public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener
 			}
 			fw.close();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		  
 	  }
 
-	  
-	  
    public static void main(String args[]){
 	   IM_EventSetScenarioForCEA imEventSetScenario = new IM_EventSetScenarioForCEA();
 	   imEventSetScenario.createAttenRelInstances();
@@ -314,6 +304,7 @@ public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener
 	   imEventSetScenario.readSiteFile();
 	   imEventSetScenario.createMeanStdDevFile();
    }
+
   /**
    *  Function that must be implemented by all Listeners for
    *  ParameterChangeWarnEvents.
@@ -321,7 +312,6 @@ public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener
    * @param e The Event which triggered this function call
    */
   public void parameterChangeWarning(ParameterChangeWarningEvent e) {
-
     String S = " : parameterChangeWarning(): ";
 
     WarningParameter param = e.getWarningParameter();
@@ -330,6 +320,4 @@ public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener
     param.setValueIgnoreWarning(e.getNewValue());
 
   }
-
-
 }

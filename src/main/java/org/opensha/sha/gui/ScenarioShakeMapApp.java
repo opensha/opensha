@@ -60,7 +60,6 @@ import org.opensha.sha.gui.controls.CalculationSettingsControlPanel;
 import org.opensha.sha.gui.controls.CalculationSettingsControlPanelAPI;
 import org.opensha.sha.gui.controls.GMTMapCalcOptionControl;
 import org.opensha.sha.gui.controls.GenerateHazusControlPanelForSingleMultipleIMRs;
-import org.opensha.sha.gui.controls.IM_EventSetCEA_ControlPanel;
 import org.opensha.sha.gui.controls.PuenteHillsScenarioControlPanelUsingEqkRuptureCreation;
 import org.opensha.sha.gui.controls.RegionsOfInterestControlPanel;
 import org.opensha.sha.gui.controls.SanAndreasScenarioControlPanel;
@@ -166,7 +165,6 @@ AttenuationRelationshipSiteParamsRegionAPI,CalculationSettingsControlPanelAPI,Ru
 	protected RegionsOfInterestControlPanel regionsOfInterest;
 	protected PuenteHillsScenarioControlPanelUsingEqkRuptureCreation puenteHillsControlUsingEqkRupture;
 	protected SanAndreasScenarioControlPanel  sanAndreasControlUsingEqkRupture;
-	protected IM_EventSetCEA_ControlPanel imSetScenarioControl;
 	//protected PuenteHillsScenarioControlPanelForSingleMultipleAttenRel puenteHillsControl;
 	protected GenerateHazusControlPanelForSingleMultipleIMRs hazusControl;
 	//private SF_BayAreaScenarioControlPanel bayAreaControl;
@@ -862,16 +860,6 @@ AttenuationRelationshipSiteParamsRegionAPI,CalculationSettingsControlPanelAPI,Ru
 		controlComboBox.addItem(SanAndreasScenarioControlPanel.NAME);
 		controlPanels.add(new SanAndreasScenarioControlPanel(erfGuiBean,imrGuiBean,
 				sitesGuiBean,mapGuiBean, this));
-		
-		/*		IM Event Set Scen Control		*/
-		controlComboBox.addItem(IM_EventSetCEA_ControlPanel.NAME);
-		controlPanels.add(new IM_EventSetCEA_ControlPanel(erfGuiBean,imrGuiBean,
-				sitesGuiBean,mapGuiBean, this));
-		
-		/*		Map Calc Control				*/
-		// this really isn't applicable anymore
-//		controlComboBox.addItem(GMTMapCalcOptionControl.NAME);
-//		controlPanels.add(new GMTMapCalcOptionControl(this));
 		
 		/*		Calc Params Control				*/
 		ParameterList params = getCalcAdjustableParams();
