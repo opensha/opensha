@@ -54,7 +54,7 @@ import scratch.UCERF3.erf.mean.MeanUCERF3.Presets;
 
 
 /**
- * <p>Title: IM_EventSetCalc</p>
+ * <p>Title: IMEventSetCalculatorCLT</p>
  *
  * <p>Description: This class computes the Mean and Sigma for any Attenuation
  * supported and any IMT supported by these AttenuationRelationships.
