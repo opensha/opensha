@@ -10,6 +10,14 @@ import org.opensha.commons.geo.Location;
 import org.opensha.sha.calc.IM_EventSet.IM_EventSetCalc_v3_0;
 import org.opensha.sha.calc.IM_EventSet.IM_EventSetCalc_v3_0_API;
 
+/**
+ * Implementation of the IM Event Set Calculator API for use in the GUI application.
+ * This allows us to centrally structure site data, outputs.
+ * <p>
+ * Logic from the abstract implementation of the CLT is used as a fallback for the GUI
+ * if the site data is missing.
+ * </p>
+ */
 public class GUICalcAPI_Impl implements IM_EventSetCalc_v3_0_API {
 	
 	private ArrayList<Site> sites;

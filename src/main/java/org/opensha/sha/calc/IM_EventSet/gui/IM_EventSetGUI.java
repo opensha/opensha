@@ -32,6 +32,11 @@ import org.opensha.sha.gui.beans.ERF_GuiBean;
 import org.opensha.sha.gui.infoTools.IndeterminateProgressBar;
 import org.opensha.sha.imr.ScalarIMR;
 
+/**
+ * This GUI application calculates intensity measures on event sets.
+ * Pass multiple IMRs, IMTs, sites, and data providers to compute
+ * means and standard deviations.
+ */
 public class IM_EventSetGUI extends JFrame implements ActionListener {
 	
 	private static final long serialVersionUID = 1L;

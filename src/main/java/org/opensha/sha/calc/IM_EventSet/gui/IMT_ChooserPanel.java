@@ -19,6 +19,10 @@ import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PeriodParam;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
 
+/**
+ * Select multiple IMTs from a list of IMTs and set corresponding IMT parameters (i.e., Period/Damping).
+ * As an extension of the NamesListPanel, our namesList represents selected IMTs.
+ */
 public class IMT_ChooserPanel extends NamesListPanel implements ParameterChangeListener {
 
     // The IMT Gui bean shows IMTs that can be selected

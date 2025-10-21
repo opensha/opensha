@@ -26,7 +26,7 @@ import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
 import org.opensha.sha.imr.param.SiteParams.Vs30_TypeParam;
 
 /**
- * Panel to add multiple sites and set its corresponding set of site data params.
+ * Panel to add or edit sites and set corresponding site data params.
  */
 public class AddSitePanel extends JPanel {
 	

@@ -16,6 +16,15 @@ import javax.swing.ListSelectionModel;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
+/**
+ * Abstract Swing panel for maintaining a scrollable list of strings with add/remove functionality.
+ * Used as a base class for selection panels in the IM Event Set Calculator GUI, specifically
+ * for managing lists of IMRs (Attenuation Relationships) and IMTs (Intensity Measure Types).
+ * <p>
+ * Provides standard UI layout with JList, add/remove buttons, and selection handling.
+ * Subclasses implement domain-specific logic for adding/removing items and button enablement.
+ * </p>
+ */
 public abstract class NamesListPanel extends JPanel implements ListSelectionListener, ActionListener {
 	
 	protected JList<String> namesList;

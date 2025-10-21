@@ -28,6 +28,11 @@ import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.imr.IntensityMeasureRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 
+/**
+ * Panel to display and edit a list of multiple sites and their associated site data.
+ * This panel contains buttons to add, remove, and edit sites.
+ * Add or edit a site via the AddSitePanel.
+ */
 public class SitesPanel extends JPanel implements ListSelectionListener, ActionListener {
 	
 	protected JList sitesList;

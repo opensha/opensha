@@ -18,7 +18,7 @@ import org.opensha.sha.util.TRTUtils;
 import org.opensha.sha.util.TectonicRegionType;
 
 /**
- * Select multiple IMRs from a list of IMRs and set corresponding IMR parameters and site params.
+ * Select multiple IMRs from a list of IMRs and set corresponding IMR parameters.
  * As an extension of the NamesListPanel, our namesList represents selected IMRs.
  */
 public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeListener {
