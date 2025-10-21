@@ -1,4 +1,4 @@
-package org.opensha.sha.calc.IM_EventSet.v03;
+package org.opensha.sha.calc.IM_EventSet;
 
 
 import java.io.File;
@@ -26,8 +26,8 @@ import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.ServerPrefUtils;
-import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.HAZ01Writer;
-import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.OriginalModWriter;
+import org.opensha.sha.calc.IM_EventSet.outputImpl.HAZ01Writer;
+import org.opensha.sha.calc.IM_EventSet.outputImpl.OriginalModWriter;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.param.AleatoryMagAreaStdDevParam;
 import org.opensha.sha.earthquake.param.BackgroundRupParam;
@@ -44,28 +44,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.MeanUCERF2
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
-import org.opensha.sha.imr.attenRelImpl.AS_1997_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.AS_2008_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.Abrahamson_2000_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.BA_2006_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.BA_2008_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.BC_2004_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.BJF_1997_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.BS_2003_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.CB_2003_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.CB_2006_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.CB_2008_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.CS_2005_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.CY_2006_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.CY_2008_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.Campbell_1997_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.Field_2000_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.GouletEtAl_2006_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.SEA_1999_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.SadighEtAl_1997_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.ShakeMap_2003_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.USGS_Combined_2004_AttenRel;
-import org.opensha.sha.util.SiteTranslator;
 
 import com.google.common.base.Preconditions;
 
@@ -570,7 +549,7 @@ implements ParameterChangeWarningListener {
 	 *  Function that must be implemented by all Listeners for
 	 *  ParameterChangeWarnEvents.
 	 *
-	 * @param  event  The Event which triggered this function call
+	 * @param e The Event which triggered this function call
 	 */
 	public void parameterChangeWarning(ParameterChangeWarningEvent e) {
 

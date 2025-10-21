@@ -1,4 +1,4 @@
-package org.opensha.sha.calc.IM_EventSet.v03.gui;
+package org.opensha.sha.calc.IM_EventSet.gui;
 
 import java.util.Collections;
 import java.util.List;
@@ -12,7 +12,7 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.util.ServerPrefUtils;
-import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetOutputWriter;
+import org.opensha.sha.calc.IM_EventSet.IM_EventSetOutputWriter;
 import org.opensha.sha.gui.beans.IMT_NewGuiBean;
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.ScalarIMR;

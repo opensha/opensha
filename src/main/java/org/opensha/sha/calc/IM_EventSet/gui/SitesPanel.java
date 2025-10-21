@@ -1,4 +1,4 @@
-package org.opensha.sha.calc.IM_EventSet.v03.gui;
+package org.opensha.sha.calc.IM_EventSet.gui;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;

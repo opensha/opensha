@@ -1,4 +1,4 @@
-package org.opensha.sha.calc.IM_EventSet.v03;
+package org.opensha.sha.calc.IM_EventSet;
 
 import java.io.File;
 import java.io.IOException;
@@ -9,7 +9,7 @@ import java.util.StringTokenizer;
 import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.util.FileUtils;
-import org.opensha.sha.calc.IM_EventSet.v03.gui.AddSiteDataPanel;
+import org.opensha.sha.calc.IM_EventSet.gui.AddSiteDataPanel;
 
 public class SiteFileLoader {
 	

@@ -1,4 +1,4 @@
-package org.opensha.sha.calc.IM_EventSet.v03.test;
+package org.opensha.sha.calc.IM_EventSet;
 
 import org.opensha.commons.geo.Location;
 import org.opensha.sha.earthquake.ProbEqkRupture;

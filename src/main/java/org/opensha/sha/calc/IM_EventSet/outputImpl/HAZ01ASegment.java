@@ -1,4 +1,4 @@
-package org.opensha.sha.calc.IM_EventSet.v03.outputImpl;
+package org.opensha.sha.calc.IM_EventSet.outputImpl;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.StringTokenizer;
 
 import org.opensha.commons.util.FileUtils;
-import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetOutputWriter;
+import org.opensha.sha.calc.IM_EventSet.IM_EventSetOutputWriter;
 
 /**
  * This class represents a segment (constant ERF, site, imr, and imt) of a HAZ01A file

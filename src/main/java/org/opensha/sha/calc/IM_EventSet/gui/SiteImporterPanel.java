@@ -1,4 +1,4 @@
-package org.opensha.sha.calc.IM_EventSet.v03.gui;
+package org.opensha.sha.calc.IM_EventSet.gui;
 
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
@@ -21,7 +21,7 @@ import javax.swing.JTextField;
 import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.geo.Location;
-import org.opensha.sha.calc.IM_EventSet.v03.SiteFileLoader;
+import org.opensha.sha.calc.IM_EventSet.SiteFileLoader;
 
 public class SiteImporterPanel extends JPanel implements ActionListener {
 	

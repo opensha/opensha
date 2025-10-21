@@ -1,4 +1,4 @@
-package org.opensha.sha.calc.IM_EventSet.v03.gui;
+package org.opensha.sha.calc.IM_EventSet.gui;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -7,8 +7,8 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
 import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.geo.Location;
-import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetCalc_v3_0;
-import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetCalc_v3_0_API;
+import org.opensha.sha.calc.IM_EventSet.IM_EventSetCalc_v3_0;
+import org.opensha.sha.calc.IM_EventSet.IM_EventSetCalc_v3_0_API;
 
 public class GUICalcAPI_Impl implements IM_EventSetCalc_v3_0_API {
 	

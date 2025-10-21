@@ -1,4 +1,4 @@
-package org.opensha.sha.calc.IM_EventSet.v03.gui;
+package org.opensha.sha.calc.IM_EventSet.gui;
 
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -22,9 +22,9 @@ import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.commons.util.bugReports.BugReport;
 import org.opensha.commons.util.bugReports.BugReportDialog;
 import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
-import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetOutputWriter;
-import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.HAZ01Writer;
-import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.OriginalModWriter;
+import org.opensha.sha.calc.IM_EventSet.IM_EventSetOutputWriter;
+import org.opensha.sha.calc.IM_EventSet.outputImpl.HAZ01Writer;
+import org.opensha.sha.calc.IM_EventSet.outputImpl.OriginalModWriter;
 import org.opensha.sha.earthquake.ERF_Ref;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.gui.HazardCurveApplication;

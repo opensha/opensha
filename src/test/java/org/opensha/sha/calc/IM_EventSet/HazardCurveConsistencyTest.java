@@ -1,4 +1,4 @@
-package org.opensha.sha.calc.IM_EventSet.v03.test;
+package org.opensha.sha.calc.IM_EventSet;
 
 import java.awt.geom.Point2D;
 import java.io.File;
@@ -20,9 +20,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.param.Parameter;
 import org.opensha.sha.calc.HazardCurveCalculator;
-import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetCalc_v3_0_API;
-import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetOutputWriter;
-import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.HAZ01Writer;
+import org.opensha.sha.calc.IM_EventSet.outputImpl.HAZ01Writer;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.rupForecastImpl.Frankel96.Frankel96_AdjustableEqkRupForecast;
 import org.opensha.sha.gui.infoTools.IMT_Info;

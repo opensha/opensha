@@ -1,8 +1,6 @@
-package org.opensha.sha.calc.IM_EventSet.v03.gui;
+package org.opensha.sha.calc.IM_EventSet.gui;
 
 import java.util.ArrayList;
-
-import javax.swing.BoxLayout;
 
 import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.SiteDataValue;
@@ -10,9 +8,6 @@ import org.opensha.commons.data.siteData.impl.WillsMap2000;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.editor.impl.ParameterListEditor;
 import org.opensha.commons.param.impl.StringParameter;
-import org.opensha.sha.gui.servlets.siteEffect.WillsSiteClass;
-import org.opensha.sha.imr.param.SiteParams.Vs30_TypeParam;
-import org.opensha.sha.util.SiteTranslator;
 
 /**
  * The AddSiteDataPanel is no longer required as we will directly use ParameterListEditor.

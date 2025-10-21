@@ -1,9 +1,9 @@
-package org.opensha.sha.calc.IM_EventSet.v03.test;
+package org.opensha.sha.calc.IM_EventSet;
 
 import java.io.IOException;
 import java.util.HashMap;
 
-import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.HAZ01ASegment;
+import org.opensha.sha.calc.IM_EventSet.outputImpl.HAZ01ASegment;
 import org.opensha.sha.imr.AttenuationRelationship;
 
 public class HAZ01A_FakeAttenRel extends AttenuationRelationship {

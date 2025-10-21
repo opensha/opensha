@@ -1,4 +1,4 @@
-package org.opensha.sha.calc.IM_EventSet.v03.test;
+package org.opensha.sha.calc.IM_EventSet;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -6,7 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.HAZ01ASegment;
+import org.opensha.sha.calc.IM_EventSet.outputImpl.HAZ01ASegment;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkSource;

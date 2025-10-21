@@ -1,4 +1,4 @@
-package org.opensha.sha.calc.IM_EventSet.v03.test;
+package org.opensha.sha.calc.IM_EventSet;
 
 import java.util.ArrayList;
 
