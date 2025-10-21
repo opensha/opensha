@@ -1,16 +1,15 @@
 package org.opensha.sha.calc.IM_EventSet.v03.gui;
 
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
+import javax.swing.*;
 
 import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.gui.LabeledBoxPanel;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.editor.ParameterEditor;
@@ -56,17 +55,29 @@ public class AddSitePanel extends JPanel {
         ParameterListEditor paramEdit = new ParameterListEditor(paramList);
         paramEdit.setTitle("New Site Location");
 
+        // Add an informational message about site data precedence
+        LabeledBoxPanel dataNoticePanel = new LabeledBoxPanel();
+        dataNoticePanel.setTitle("Note: Site Data Precedence");
+        JTextArea infoText = new JTextArea(
+                "User-provided site data values are overridden by\n"
+                + "selected Site Data Providers where applicable.\n"
+                + "Check enabled \"Site Data Providers\" and if their\n"
+                + "regions overlap with this site.");
+        dataNoticePanel.add(infoText);
+
+        // Create and populate the left column
         JPanel leftCol = new JPanel();
         leftCol.setLayout(new BoxLayout(leftCol, BoxLayout.Y_AXIS));
         leftCol.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 10));
-
         leftCol.add(paramEdit);
-
+        leftCol.add(dataNoticePanel);
         this.add(leftCol);
 
         // Create editor for provided site data parameters
         setSiteDataParams(siteDataParams, dataList);
         siteDataParamEditor = new ParameterListEditor(siteDataParams);
+        siteDataParamEditor.setPreferredSize(new Dimension(250, siteDataParamEditor.getPreferredSize().height));
+        siteDataParamEditor.setMaximumSize(new Dimension(250, 500));
         siteDataParamEditor.setTitle("Set Site Params");
         this.add(siteDataParamEditor);
     }
