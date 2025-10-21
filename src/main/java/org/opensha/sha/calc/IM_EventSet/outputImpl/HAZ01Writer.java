@@ -21,6 +21,9 @@ import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.OtherParams.StdDevTypeParam;
 import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
 
+/**
+ * Writes the HAZ01 format files for the IM Event Set Calculator.
+ */
 public class HAZ01Writer extends IM_EventSetOutputWriter {
 	
 	public static final String NAME = "HAZ01 Format Writer";
@@ -36,7 +39,6 @@ public class HAZ01Writer extends IM_EventSetOutputWriter {
 	public void writeFiles(ArrayList<ERF> erfs,
 			ArrayList<ScalarIMR> attenRels, ArrayList<String> imts) throws IOException {
 		logger.log(Level.INFO, "Writing HAZ01 files");
-		// TODO Auto-generated method stub
 		String fileA = this.calc.getOutputDir().getAbsolutePath() + File.separator + HAZ01A_FILE_NAME;
 		String fileB = this.calc.getOutputDir().getAbsolutePath() + File.separator + HAZ01B_FILE_NAME;
 		logger.log(Level.FINE, "Opening HAZ01A file for writing: " + fileA);

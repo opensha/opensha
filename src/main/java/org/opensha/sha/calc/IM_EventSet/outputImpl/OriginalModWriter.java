@@ -19,6 +19,9 @@ import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.OtherParams.StdDevTypeParam;
 
+/**
+ * Writes the original format files for the IM Event Set Calculator.
+ */
 public class OriginalModWriter extends IM_EventSetOutputWriter {
 	public static final String NAME = "OpenSHA Format Writer";
 	
