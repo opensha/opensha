@@ -23,10 +23,7 @@ import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.commons.util.bugReports.BugReport;
 import org.opensha.commons.util.bugReports.BugReportDialog;
 import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
-<<<<<<<< HEAD:src/main/java/org/opensha/sha/calc/IM_EventSet/gui/IMEventSetCalculatorGUI.java
 import org.opensha.sha.calc.IM_EventSet.AbstractIMEventSetCalc;
-========
->>>>>>>> 2f18dbdd (Move v3 directly into IM_EventSet package. Update references and add Gradle build task for 'appJarIM-CLT' and 'appJarIM-GUI'):src/main/java/org/opensha/sha/calc/IM_EventSet/gui/IM_EventSetGUI.java
 import org.opensha.sha.calc.IM_EventSet.IM_EventSetOutputWriter;
 import org.opensha.sha.calc.IM_EventSet.outputImpl.HAZ01Writer;
 import org.opensha.sha.calc.IM_EventSet.outputImpl.OriginalModWriter;

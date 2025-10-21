@@ -7,13 +7,8 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
 import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.geo.Location;
-<<<<<<<< HEAD:src/main/java/org/opensha/sha/calc/IM_EventSet/gui/IMEventSetCalcGUIImpl.java
 import org.opensha.sha.calc.IM_EventSet.AbstractIMEventSetCalc;
 import org.opensha.sha.calc.IM_EventSet.IMEventSetCalcAPI;
-========
-import org.opensha.sha.calc.IM_EventSet.IM_EventSetCalc_v3_0;
-import org.opensha.sha.calc.IM_EventSet.IM_EventSetCalc_v3_0_API;
->>>>>>>> 2f18dbdd (Move v3 directly into IM_EventSet package. Update references and add Gradle build task for 'appJarIM-CLT' and 'appJarIM-GUI'):src/main/java/org/opensha/sha/calc/IM_EventSet/gui/GUICalcAPI_Impl.java
 
 /**
  * Implementation of the IM Event Set Calculator API for use in the GUI application.
