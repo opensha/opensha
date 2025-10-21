@@ -266,7 +266,7 @@ public abstract class IM_EventSetOutputWriter {
 		double middleLon = (minLon + maxLon) / 2;
 		double middleLat = (minLat + maxLat) / 2;
 
-		//getting the source-site cuttoff distance
+		//getting the source-site cutoff distance
 		sourceCutOffDistance = (float) LocationUtils.horzDistance(
 				new Location(middleLat, middleLon),
 				new Location(minLat, minLon)) + 
@@ -296,7 +296,6 @@ public abstract class IM_EventSetOutputWriter {
 
 	@Override
 	public String toString() {
-		// TODO Auto-generated method stub
 		return getName();
 	}
 

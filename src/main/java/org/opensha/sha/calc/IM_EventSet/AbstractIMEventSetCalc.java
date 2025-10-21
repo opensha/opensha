@@ -11,9 +11,13 @@ import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
 import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.SiteDataValue;
 
+/**
+ * The abstract IM Event Set calculator allows for site data parsing logic to
+ * be shared between the GUI and CLI implementations.
+ */
 public abstract class AbstractIMEventSetCalc implements IMEventSetCalcAPI {
 	
-	public static Logger logger = Logger.getLogger("IMv3Log");
+	public static Logger logger = Logger.getLogger("IMEventSetLog");
 	
 	public static void initLogger(Level level) {
 		Logger parent = logger;
@@ -37,9 +41,7 @@ public abstract class AbstractIMEventSetCalc implements IMEventSetCalcAPI {
 
 	private ArrayList<ArrayList<SiteDataValue<?>>> sitesData = null;
 
-	public AbstractIMEventSetCalc() {
-
-	}
+	public AbstractIMEventSetCalc() {}
 
 	public final ArrayList<Site> getSites() {
 		if (sites == null) {
@@ -80,7 +82,6 @@ public abstract class AbstractIMEventSetCalc implements IMEventSetCalcAPI {
 				}
 				if (hasNewType) {
 					// only fetch site data if it's actually necessary
-                    // TODO: We need to inform users when values are overridden
 					ArrayList<SiteDataValue<?>> provData = providers.getBestAvailableData(site.getLocation());
 					if (provData != null) {
 						for (SiteDataValue<?> dataVal : provData) {

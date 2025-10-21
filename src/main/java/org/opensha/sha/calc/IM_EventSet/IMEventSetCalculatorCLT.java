@@ -612,8 +612,7 @@ implements ParameterChangeWarningListener {
 		//IM_EventSetCalc calc = new IM_EventSetCalc("org/opensha/sha/calc/IM_EventSetCalc_v02/ExampleInputFile.txt","org/opensha/sha/calc/IM_EventSetCalc_v02/test");
 		try {
 			calc.parseFile();
-		}
-		catch (Exception ex) {
+		} catch (Exception ex) {
 			logger.log(Level.INFO, "Error parsing input file!", ex);
 //			ex.printStackTrace();
 			System.exit(1);

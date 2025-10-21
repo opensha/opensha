@@ -12,11 +12,7 @@ import org.opensha.sha.calc.IM_EventSet.IMEventSetCalcAPI;
 
 /**
  * Implementation of the IM Event Set Calculator API for use in the GUI application.
- * This allows us to centrally structure site data, outputs.
- * <p>
- * Logic from the abstract implementation of the CLT is used as a fallback for the GUI
- * if the site data is missing.
- * </p>
+ * This allows us to structure, parse, and pass site data and outputs for the writers.
  */
 public class IMEventSetCalcGUIImpl implements IMEventSetCalcAPI {
 	

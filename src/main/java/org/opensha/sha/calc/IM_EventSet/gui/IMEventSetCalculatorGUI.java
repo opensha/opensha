@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
+import java.util.logging.Level;
 
 import javax.swing.*;
 
@@ -22,6 +23,7 @@ import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.commons.util.bugReports.BugReport;
 import org.opensha.commons.util.bugReports.BugReportDialog;
 import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
+import org.opensha.sha.calc.IM_EventSet.AbstractIMEventSetCalc;
 import org.opensha.sha.calc.IM_EventSet.IM_EventSetOutputWriter;
 import org.opensha.sha.calc.IM_EventSet.outputImpl.HAZ01Writer;
 import org.opensha.sha.calc.IM_EventSet.outputImpl.OriginalModWriter;
@@ -63,6 +65,8 @@ public class IMEventSetCalculatorGUI extends JFrame implements ActionListener {
 
 	public IMEventSetCalculatorGUI() {
         try {
+            AbstractIMEventSetCalc.initLogger(Level.CONFIG);
+
             erfGuiBean = createERF_GUI_Bean();
             imtChooser = new IMT_ChooserPanel();
             sitesPanel = new SitesPanel();
