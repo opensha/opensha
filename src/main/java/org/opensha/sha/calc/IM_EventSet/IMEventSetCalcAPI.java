@@ -8,7 +8,7 @@ import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
 import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.geo.Location;
 
-public interface IM_EventSetCalc_v3_0_API {
+public interface IMEventSetCalcAPI {
 	
 	/**
 	 * Returns the number of sites for the calculation

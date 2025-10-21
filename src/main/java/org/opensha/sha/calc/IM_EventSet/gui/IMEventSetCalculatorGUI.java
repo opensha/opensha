@@ -37,7 +37,7 @@ import org.opensha.sha.imr.ScalarIMR;
  * Pass multiple IMRs, IMTs, sites, and data providers to compute
  * means and standard deviations.
  */
-public class IM_EventSetGUI extends JFrame implements ActionListener {
+public class IMEventSetCalculatorGUI extends JFrame implements ActionListener {
 	
 	private static final long serialVersionUID = 1L;
 
@@ -61,7 +61,7 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 	private final IndeterminateProgressBar bar = new IndeterminateProgressBar("Calculating...");
 	private Timer doneTimer = null; // show when calculation is done
 
-	public IM_EventSetGUI() {
+	public IMEventSetCalculatorGUI() {
         try {
             erfGuiBean = createERF_GUI_Bean();
             imtChooser = new IMT_ChooserPanel();
@@ -219,7 +219,7 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 	}
 	
 	public void actionPerformed(ActionEvent e) {
-		IM_EventSetGUI instance = this; // Need to get instance inside SwingWorker
+		IMEventSetCalculatorGUI instance = this; // Need to get instance inside SwingWorker
 		if (e.getSource().equals(computeButton)) {
 
             // Spawn thread for precalculation logic to determine if ready
@@ -282,7 +282,7 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 
                         if (returnVal == JFileChooser.APPROVE_OPTION) {
                             File outputDir = outputChooser.getSelectedFile();
-                            GUICalcAPI_Impl calc = new GUICalcAPI_Impl(locs, dataLists,
+                            IMEventSetCalcGUIImpl calc = new IMEventSetCalcGUIImpl(locs, dataLists,
                                     outputDir, dataBean.getProviderList());
                             IM_EventSetOutputWriter writer;
                             String writerName = (String) outputWriterChooser.getSelectedItem();
@@ -368,8 +368,8 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
         launch(exp);
 	}
 
-    public static IM_EventSetGUI launch(DefaultExceptionHandler handler) {
-        IM_EventSetGUI applet = new IM_EventSetGUI();
+    public static IMEventSetCalculatorGUI launch(DefaultExceptionHandler handler) {
+        IMEventSetCalculatorGUI applet = new IMEventSetCalculatorGUI();
         if (handler != null) {
             handler.setApp(applet);
             handler.setParent(applet);

@@ -39,7 +39,7 @@ import org.opensha.sha.imr.attenRelImpl.CB_2008_AttenRel;
  * </ul>
  * </p>
  */
-public class HazardCurveConsistencyTest implements IM_EventSetCalc_v3_0_API {
+public class HazardCurveConsistencyTest implements IMEventSetCalcAPI {
 	
 	/**
 	 * Maximum acceptable percent difference between direct calculation and HAZ01A-based calculation.

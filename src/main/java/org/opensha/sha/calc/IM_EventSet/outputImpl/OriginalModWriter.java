@@ -11,7 +11,7 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.param.Parameter;
-import org.opensha.sha.calc.IM_EventSet.IM_EventSetCalc_v3_0_API;
+import org.opensha.sha.calc.IM_EventSet.IMEventSetCalcAPI;
 import org.opensha.sha.calc.IM_EventSet.IM_EventSetOutputWriter;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
@@ -27,7 +27,7 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 	
 	File outputDir;
 
-	public OriginalModWriter(IM_EventSetCalc_v3_0_API calc) {
+	public OriginalModWriter(IMEventSetCalcAPI calc) {
 		super(calc);
 	}
 

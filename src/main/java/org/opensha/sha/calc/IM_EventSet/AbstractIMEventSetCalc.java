@@ -11,7 +11,7 @@ import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
 import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.SiteDataValue;
 
-public abstract class IM_EventSetCalc_v3_0 implements IM_EventSetCalc_v3_0_API {
+public abstract class AbstractIMEventSetCalc implements IMEventSetCalcAPI {
 	
 	public static Logger logger = Logger.getLogger("IMv3Log");
 	
@@ -37,7 +37,7 @@ public abstract class IM_EventSetCalc_v3_0 implements IM_EventSetCalc_v3_0_API {
 
 	private ArrayList<ArrayList<SiteDataValue<?>>> sitesData = null;
 
-	public IM_EventSetCalc_v3_0() {
+	public AbstractIMEventSetCalc() {
 
 	}
 
@@ -53,7 +53,7 @@ public abstract class IM_EventSetCalc_v3_0 implements IM_EventSetCalc_v3_0_API {
 		return sites;
 	}
 	
-	public static ArrayList<ArrayList<SiteDataValue<?>>> getSitesData(IM_EventSetCalc_v3_0_API calc) {
+	public static ArrayList<ArrayList<SiteDataValue<?>>> getSitesData(IMEventSetCalcAPI calc) {
 		ArrayList<ArrayList<SiteDataValue<?>>> sitesData = new ArrayList<ArrayList<SiteDataValue<?>>>();
 		ArrayList<Site> sites = calc.getSites();
 		OrderedSiteDataProviderList providers = calc.getSiteDataProviders();

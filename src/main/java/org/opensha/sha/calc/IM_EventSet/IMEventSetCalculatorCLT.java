@@ -58,13 +58,13 @@ import scratch.UCERF3.erf.mean.MeanUCERF3.Presets;
  *
  * <p>Description: This class computes the Mean and Sigma for any Attenuation
  * supported and any IMT supported by these AttenuationRelationships.
- * Sites information is read from a input file.
+ * Sites information is read from an input file.
  * </p>
  *
  * @author Ned Field, Nitin Gupta and Vipin Gupta
  * @version 1.0
  */
-public class IM_EventSetCalc_v3_0_ASCII extends IM_EventSetCalc_v3_0
+public class IMEventSetCalculatorCLT extends AbstractIMEventSetCalc
 implements ParameterChangeWarningListener {
 
 	protected LocationList locList;
@@ -146,7 +146,7 @@ implements ParameterChangeWarningListener {
 		}
 	}
 
-	public IM_EventSetCalc_v3_0_ASCII(String inpFile,String outDir) {
+	public IMEventSetCalculatorCLT(String inpFile, String outDir) {
 		inputFileName = inpFile;
 		dirName = outDir ;
 		outputDir = new File(dirName);
@@ -166,7 +166,7 @@ implements ParameterChangeWarningListener {
 		}
 	}
 
-	public void parseFile() throws FileNotFoundException,IOException{
+	public void parseFile() throws IOException {
 
 		ArrayList<String> fileLines = null;
 		
@@ -595,9 +595,9 @@ implements ParameterChangeWarningListener {
 		
 		initLogger(level);
 
-		IM_EventSetCalc_v3_0_ASCII calc = null;
+		IMEventSetCalculatorCLT calc = null;
 		if (parsedArgs.size() == 2) {
-			calc = new IM_EventSetCalc_v3_0_ASCII(parsedArgs.get(0),parsedArgs.get(1));
+			calc = new IMEventSetCalculatorCLT(parsedArgs.get(0),parsedArgs.get(1));
 //		} else if (args.length == 3) {
 //			if (args[0].trim().toLowerCase().equals("--haz01"))
 //				haz01 = true;
@@ -605,7 +605,7 @@ implements ParameterChangeWarningListener {
 //				System.out.println("Unknown option: " + args[0]);
 //				printUsage();
 //			}
-//			calc = new IM_EventSetCalc_v3_0_ASCII(args[1],args[2]);
+//			calc = new IMEventSetCalculatorCLT(args[1],args[2]);
 		} else {
 			printUsage();
 		}

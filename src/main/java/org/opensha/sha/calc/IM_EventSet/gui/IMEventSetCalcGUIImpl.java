@@ -7,8 +7,8 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
 import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.geo.Location;
-import org.opensha.sha.calc.IM_EventSet.IM_EventSetCalc_v3_0;
-import org.opensha.sha.calc.IM_EventSet.IM_EventSetCalc_v3_0_API;
+import org.opensha.sha.calc.IM_EventSet.AbstractIMEventSetCalc;
+import org.opensha.sha.calc.IM_EventSet.IMEventSetCalcAPI;
 
 /**
  * Implementation of the IM Event Set Calculator API for use in the GUI application.
@@ -18,7 +18,7 @@ import org.opensha.sha.calc.IM_EventSet.IM_EventSetCalc_v3_0_API;
  * if the site data is missing.
  * </p>
  */
-public class GUICalcAPI_Impl implements IM_EventSetCalc_v3_0_API {
+public class IMEventSetCalcGUIImpl implements IMEventSetCalcAPI {
 	
 	private ArrayList<Site> sites;
 	private ArrayList<ArrayList<SiteDataValue<?>>> userSitesData;
@@ -26,8 +26,8 @@ public class GUICalcAPI_Impl implements IM_EventSetCalc_v3_0_API {
 	private File outputDir;
 	private OrderedSiteDataProviderList providers;
 	
-	public GUICalcAPI_Impl(ArrayList<Location> locs, ArrayList<ArrayList<SiteDataValue<?>>> userSitesData,
-			File outputDir, OrderedSiteDataProviderList providers) {
+	public IMEventSetCalcGUIImpl(ArrayList<Location> locs, ArrayList<ArrayList<SiteDataValue<?>>> userSitesData,
+                                 File outputDir, OrderedSiteDataProviderList providers) {
 		sites = new ArrayList<Site>();
 		for (Location loc : locs) {
 			sites.add(new Site(loc));
@@ -59,7 +59,7 @@ public class GUICalcAPI_Impl implements IM_EventSetCalc_v3_0_API {
 
 	public ArrayList<ArrayList<SiteDataValue<?>>> getSitesData() {
 		if (sitesData == null) {
-			sitesData = IM_EventSetCalc_v3_0.getSitesData(this);
+			sitesData = AbstractIMEventSetCalc.getSitesData(this);
 		}
 		return sitesData;
 	}

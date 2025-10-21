@@ -12,7 +12,7 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.param.Parameter;
-import org.opensha.sha.calc.IM_EventSet.IM_EventSetCalc_v3_0_API;
+import org.opensha.sha.calc.IM_EventSet.IMEventSetCalcAPI;
 import org.opensha.sha.calc.IM_EventSet.IM_EventSetOutputWriter;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
@@ -31,7 +31,7 @@ public class HAZ01Writer extends IM_EventSetOutputWriter {
 	public static final String HAZ01A_FILE_NAME = "haz01a.txt";
 	public static final String HAZ01B_FILE_NAME = "haz01b.txt";
 
-	public HAZ01Writer(IM_EventSetCalc_v3_0_API calc) {
+	public HAZ01Writer(IMEventSetCalcAPI calc) {
 		super(calc);
 	}
 

@@ -1,4 +1,4 @@
-# This is an example input file for IM_EventSetCal program.
+# This is an example input file for the IM Event Set Calculator CLT.
 #
 # All lines that start with "#" here are comments and are ignored by the code (and can be removed if you want); 
 # Choices below can be modified by uncommenting the "#";   

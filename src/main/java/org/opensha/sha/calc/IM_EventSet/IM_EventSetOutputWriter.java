@@ -20,9 +20,9 @@ import org.opensha.sha.util.SiteTranslator;
 
 public abstract class IM_EventSetOutputWriter {
 	
-	protected static Logger logger = IM_EventSetCalc_v3_0.logger;
+	protected static Logger logger = AbstractIMEventSetCalc.logger;
 	
-	protected IM_EventSetCalc_v3_0_API calc;
+	protected IMEventSetCalcAPI calc;
 	private static SiteTranslator siteTrans = new SiteTranslator();
 	
 	private float sourceCutOffDistance = 0;
@@ -32,7 +32,7 @@ public abstract class IM_EventSetOutputWriter {
 	public static final DecimalFormat distFormat = new DecimalFormat("0.###");
 	public static final DecimalFormat rateFormat = new DecimalFormat("####0E0");
 	
-	public IM_EventSetOutputWriter(IM_EventSetCalc_v3_0_API calc) {
+	public IM_EventSetOutputWriter(IMEventSetCalcAPI calc) {
 		this.calc = calc;
 	}
 	
@@ -270,7 +270,7 @@ public abstract class IM_EventSetOutputWriter {
 		sourceCutOffDistance = (float) LocationUtils.horzDistance(
 				new Location(middleLat, middleLon),
 				new Location(minLat, minLon)) + 
-				IM_EventSetCalc_v3_0.MIN_SOURCE_DIST;
+				AbstractIMEventSetCalc.MIN_SOURCE_DIST;
 		siteForSourceCutOff = new Site(new Location(middleLat, middleLon));
 
 		return;
