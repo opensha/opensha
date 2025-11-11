@@ -31,16 +31,18 @@ public class ServerPrefUtils {
 	/**
 	 * Hostname for all production services
 	 */
-	static final String OPENSHA_SERVER_PRODUCTION_HOST = "data.opensha.org";
-	
+//	static final String OPENSHA_SERVER_PRODUCTION_HOST = "data.opensha.org";
+    static final String OPENSHA_SERVER_PRODUCTION_HOST = "opensha.scec.org";
+
 	/**
 	 * Hostname for all development services
 	 */
-	static final String OPENSHA_SERVER_DEV_HOST = "data.opensha.org";
+//    static final String OPENSHA_SERVER_DEV_HOST = "data.opensha.org";
+	static final String OPENSHA_SERVER_DEV_HOST = "opensha.scec.org";
 	
-//	static final String OPENSHA_TOMCAT_WEBAPPS_DIR = "/usr/local/tomcat/default/webapps";
-	static final String OPENSHA_TOMCAT_WEBAPPS_DIR = "/var/lib/tomcat/webapps/";
-	
+//	static final String OPENSHA_TOMCAT_WEBAPPS_DIR = "/var/lib/tomcat/webapps/";
+    static final String OPENSHA_TOMCAT_WEBAPPS_DIR = "/var/lib/tomcat9/webapps/";
+
 	/**
 	 * Directories for storing data and temporary files
 	 */
@@ -76,7 +78,7 @@ public class ServerPrefUtils {
 		} catch (Exception e) {
 			hostName = null;
 		}
-		// TODO: switch to SSL. USC's firewall currently doesn't allow 8443 traffic, so we can't yet
+		// TODO: switch to SSL. 8443 is the default port for Tomcat
 		String PROD_URL = "http://"+OPENSHA_SERVER_PRODUCTION_HOST+":8080/OpenSHA_"+PROD_VERSION+"/";
 		String DEV_URL = "http://"+OPENSHA_SERVER_DEV_HOST+":8080/OpenSHA_master/";
 		if (hostName != null && !hostName.isEmpty()) {
@@ -97,6 +99,7 @@ public class ServerPrefUtils {
 	 * In practice, this means that it should be development prefs on trunk and nightly builds, and production
 	 * prefs on release branches and distribution applications.
 	 */
+    // TODO: Switch to PRODUCTION_PREFS before merging
 	public static final ServerPrefs SERVER_PREFS = ServerPrefs.DEV_PREFS;
 	
 	public static void debug(String debugName, String message) {
