@@ -24,13 +24,17 @@ import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
+import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
+import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.calc.recurInterval.BPT_DistCalc;
 import org.opensha.sha.earthquake.calc.recurInterval.LognormalDistCalc;
 import org.opensha.sha.earthquake.calc.recurInterval.WeibullDistCalc;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.timeDependence.TimeDependentReportPageGen;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.magdist.SummedMagFreqDist;
 
 /**
  * @author field
@@ -188,6 +192,100 @@ public class ProbModelsPlottingUtils {
 		writeAndOrPlotFuncs(funcs,plotChars,plotName,xAxisLabel,yAxisLabel,xAxisRange,yAxisRange,
 				logX,logY,widthInches,heightInches, new File(outputDir,fileNamePrefix), popupWindow);
 	}
+	
+	
+	public static void writeMFD_ComprisonPlot(IncrementalMagFreqDist targetMFD, ArrayList<SummedMagFreqDist> mfdList, File outputDir) {
+		double maxX = Math.ceil(targetMFD.getMaxMagWithNonZeroRate()/0.5)*0.5;
+		double minX = Math.floor(targetMFD.getMinMagWithNonZeroRate()/0.5)*0.5;
+		
+		SummedMagFreqDist aveMFD = new SummedMagFreqDist(targetMFD.getMinX(), targetMFD.getMaxX(),targetMFD.size());
+		IncrementalMagFreqDist minMFD = new IncrementalMagFreqDist(targetMFD.getMinX(), targetMFD.getMaxX(),targetMFD.size());
+		IncrementalMagFreqDist maxMFD = new IncrementalMagFreqDist(targetMFD.getMinX(), targetMFD.getMaxX(),targetMFD.size());
+		EvenlyDiscretizedFunc aveCumMFD=null;
+		EvenlyDiscretizedFunc minCumMFD=null;
+		EvenlyDiscretizedFunc maxCumMFD=null;
+
+		for(int i=0;i<mfdList.size(); i++) {
+			IncrementalMagFreqDist mfd = mfdList.get(i);
+			aveMFD.addIncrementalMagFreqDist(mfd);
+			if(i==1) {
+				for(int m=0;m<mfd.size();m++) {
+					minMFD.set(m,mfd.getY(m));
+					maxMFD.set(m,mfd.getY(m));
+				}
+			}
+			else {
+				for(int m=0;m<mfd.size();m++) {
+					if(minMFD.getY(m)>mfd.getY(m))
+						minMFD.set(m,mfd.getY(m));
+					if(maxMFD.getY(m)<mfd.getY(m))
+						maxMFD.set(m,mfd.getY(m));
+				}
+			}
+			EvenlyDiscretizedFunc cumMFD = mfd.getCumRateDistWithOffset();
+			if(i==0) {
+				aveCumMFD = new EvenlyDiscretizedFunc(cumMFD.getMinX(),cumMFD.getMaxX(),cumMFD.size());
+				minCumMFD = new EvenlyDiscretizedFunc(cumMFD.getMinX(),cumMFD.getMaxX(),cumMFD.size());
+				maxCumMFD = new EvenlyDiscretizedFunc(cumMFD.getMinX(),cumMFD.getMaxX(),cumMFD.size());
+				for(int m=0;m<cumMFD.size();m++) {
+					minCumMFD.set(m,cumMFD.getY(m));
+					maxCumMFD.set(m,cumMFD.getY(m));
+					aveCumMFD.set(m,cumMFD.getY(m));
+				}
+			}
+			else {
+				for(int m=0;m<cumMFD.size();m++) {
+					if(minCumMFD.getY(m)>cumMFD.getY(m))
+						minCumMFD.set(m,cumMFD.getY(m));
+					if(maxCumMFD.getY(m)<cumMFD.getY(m))
+						maxCumMFD.set(m,cumMFD.getY(m));
+					aveCumMFD.set(m,aveCumMFD.getY(m)+cumMFD.getY(m));
+				}
+			}	
+		}
+		aveMFD.scale(1.0/(double)mfdList.size());
+		aveCumMFD.scale(1.0/(double)mfdList.size());
+		aveMFD.setName("aveMFD");
+		minMFD.setName("minMFD");
+		maxMFD.setName("maxMFD");
+		aveCumMFD.setName("aveCumMFD");
+		minCumMFD.setName("minCumMFD");
+		maxCumMFD.setName("maxCumMFD");
+		
+		ArrayList<XY_DataSet> funcs = new ArrayList<XY_DataSet>();
+		funcs.add(targetMFD);
+		funcs.add(aveMFD);
+		funcs.add(minMFD);
+		funcs.add(maxMFD);
+		funcs.add(targetMFD.getCumRateDistWithOffset());
+		funcs.add(aveCumMFD);
+		funcs.add(minCumMFD);
+		funcs.add(maxCumMFD);
+		ArrayList<PlotCurveCharacterstics> plotChars = new ArrayList<PlotCurveCharacterstics>();
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.BLACK));
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.RED));
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 1f, Color.RED));
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 1f, Color.RED));
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.BLACK));
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.RED));
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 1f, Color.RED));
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 1f, Color.RED));
+
+		String plotName = "MFD Comparsion";
+		String xAxisLabel = "Magnitude";
+		String yAxisLabel = "Rate (per year)";
+		Range xAxisRange = new Range(minX,maxX);
+		Range yAxisRange = new Range(1e-5,1);
+		boolean logX = false;
+		boolean logY = true;
+		double widthInches = 7; // inches
+		double heightInches = 6; // inches
+		String fileNamePrefix = "magFreqDists";
+		boolean popupWindow = false;
+		writeAndOrPlotFuncs(funcs,plotChars,plotName,xAxisLabel,yAxisLabel,xAxisRange,yAxisRange,
+				logX,logY,widthInches,heightInches, new File(outputDir,fileNamePrefix), popupWindow);
+	}
+
 	
 	
 	
@@ -621,11 +719,13 @@ public class ProbModelsPlottingUtils {
 			simNormTimeSinceLastHist.setInfo("Dist of normalized time since last for each rupture at all event times (not just events that occurred)\nMean = "+simNormTimeSinceLastHist.computeMean());
 			writeNormalizedDistPlotWithFits(funcListForSimNormTimeSinceLastHist, outputDir, "simNormTimeSinceLastHist", "simNormTimeSinceLastHist");
 									
-			simNormTimeSinceLastForMagBelow7_Hist.scale(1.0/(simNormTimeSinceLastForMagBelow7_Hist.calcSumOfY_Vals()*simNormTimeSinceLastForMagBelow7_Hist.getDelta())); // makes it a density function
-			ArrayList<EvenlyDiscretizedFunc> funcListForSimNormTimeSinceLastHistForSmall = ProbModelsPlottingUtils.addBPT_Fit(simNormTimeSinceLastForMagBelow7_Hist);
-			simNormTimeSinceLastForMagBelow7_Hist.setName("simNormTimeSinceLastForMagBelow7_Hist");
-			simNormTimeSinceLastForMagBelow7_Hist.setInfo("Dist of normalized time since last for each rupture at all event times for M<=7 (not just events that occurred)\nMean = "+simNormTimeSinceLastForMagBelow7_Hist.computeMean());
-			writeNormalizedDistPlotWithFits(funcListForSimNormTimeSinceLastHistForSmall, outputDir, "simNormTimeSinceLastForMagBelow7_Hist", "simNormTimeSinceLastForMagBelow7_Hist");
+			if(simNormTimeSinceLastForMagBelow7_Hist.calcSumOfY_Vals()>0) { // ERF may not have any M<7 events
+				simNormTimeSinceLastForMagBelow7_Hist.scale(1.0/(simNormTimeSinceLastForMagBelow7_Hist.calcSumOfY_Vals()*simNormTimeSinceLastForMagBelow7_Hist.getDelta())); // makes it a density function
+				ArrayList<EvenlyDiscretizedFunc> funcListForSimNormTimeSinceLastHistForSmall = ProbModelsPlottingUtils.addBPT_Fit(simNormTimeSinceLastForMagBelow7_Hist);
+				simNormTimeSinceLastForMagBelow7_Hist.setName("simNormTimeSinceLastForMagBelow7_Hist");
+				simNormTimeSinceLastForMagBelow7_Hist.setInfo("Dist of normalized time since last for each rupture at all event times for M<=7 (not just events that occurred)\nMean = "+simNormTimeSinceLastForMagBelow7_Hist.computeMean());
+				writeNormalizedDistPlotWithFits(funcListForSimNormTimeSinceLastHistForSmall, outputDir, "simNormTimeSinceLastForMagBelow7_Hist", "simNormTimeSinceLastForMagBelow7_Hist");
+			}
 
 			simNormTimeSinceLastForMagAbove7_Hist.scale(1.0/(simNormTimeSinceLastForMagAbove7_Hist.calcSumOfY_Vals()*simNormTimeSinceLastForMagAbove7_Hist.getDelta())); // makes it a density function
 			ArrayList<EvenlyDiscretizedFunc> funcListForSimNormTimeSinceLastHistForLarge = ProbModelsPlottingUtils.addBPT_Fit(simNormTimeSinceLastForMagAbove7_Hist);
@@ -762,6 +862,21 @@ public class ProbModelsPlottingUtils {
 		}
 
 	}
+	
+	public static void writeMapOfSectionProbGains (double[] sectGainsArray, List<? extends FaultSection> subSects, File outputDir, String fileName) {
+		try {
+			GeographicMapMaker mapMaker = new GeographicMapMaker(subSects);
+			mapMaker.setWriteGeoJSON(true);
+			mapMaker.clearSectScalars();
+			CPT probGainCPT = TimeDependentReportPageGen.getProbGainCPT();
+			mapMaker.plotSectScalars(sectGainsArray, probGainCPT, fileName);
+			mapMaker.plot(outputDir, fileName, " ");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+	}
+
 	
 	
 	/**
