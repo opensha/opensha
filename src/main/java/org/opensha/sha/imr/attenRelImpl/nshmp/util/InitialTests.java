@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.opensha.commons.param.Parameter;
@@ -13,6 +14,8 @@ import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_GMM_Wrapper;
 
 import gov.usgs.earthquake.nshmp.gmm.Gmm;
 import gov.usgs.earthquake.nshmp.gmm.GmmInput;
+import gov.usgs.earthquake.nshmp.gmm.GmmInput.Constraints;
+import gov.usgs.earthquake.nshmp.gmm.GmmInput.Field;
 import gov.usgs.earthquake.nshmp.gmm.GroundMotion;
 import gov.usgs.earthquake.nshmp.gmm.GroundMotionModel;
 import gov.usgs.earthquake.nshmp.gmm.GroundMotions;
@@ -53,6 +56,9 @@ class InitialTests {
 				Gmm.PRVI_2025_INTERFACE_ADJUSTED,
 				Gmm.PRVI_2025_INTRASLAB,
 				Gmm.PRVI_2025_INTRASLAB_ADJUSTED,
+				Gmm.TOTAL_TREE_PRVI_ACTIVE_CRUST_2025,
+				Gmm.TOTAL_TREE_PRVI_INTERFACE_2025,
+				Gmm.TOTAL_TREE_PRVI_INTRASLAB_2025,
 				Gmm.COMBINED_PRVI_ACTIVE_CRUST_2025,
 				Gmm.COMBINED_PRVI_INTERFACE_2025,
 				Gmm.COMBINED_PRVI_INTRASLAB_2025,
@@ -66,6 +72,17 @@ class InitialTests {
 		for (Gmm gmm : gmms) {
 			try {
 				wrappers.add(new NSHMP_GMM_Wrapper.Single(gmm));
+				
+				System.out.println("GMM: "+gmm);
+				Constraints constraints = gmm.constraints();
+				
+				for (Field field : Field.values()) {
+					Optional<?> fieldConstr = constraints.get(field);
+					if (fieldConstr.isPresent())
+						System.out.println("\t"+field+":\t"+fieldConstr.get());
+					else
+						System.out.println("\t"+field+":\t(missing)");
+				}
 			} catch (Exception e) {
 				System.out.flush();
 				System.err.println("FAILED for "+gmm+": "+e.getMessage());
@@ -77,6 +94,7 @@ class InitialTests {
 				continue;
 			}
 		}
+		System.exit(0);
 		
 		wrappers.add((NSHMP_GMM_Wrapper)AttenRelRef.USGS_NSHM23_ACTIVE.get());
 		

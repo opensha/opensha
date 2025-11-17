@@ -43,5 +43,9 @@ public enum PRVI25_SubductionSlabGMMs implements ScalarIMRsLogicTreeNode.SingleT
 	public TectonicRegionType getTectonicRegion() {
 		return TectonicRegionType.SUBDUCTION_SLAB;
 	}
+	
+	public Gmm getGMM() {
+		return gmm;
+	}
 
 }

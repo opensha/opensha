@@ -184,6 +184,10 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 			return gmm.type();
 		}
 		
+		public Gmm getGmmRef() {
+			return gmm;
+		}
+		
 		private GroundMotionModel getBuildGMM(Imt imt) {
 			Preconditions.checkNotNull(imt);
 			GroundMotionModel gmmInstance = instanceMap.get(imt);
@@ -1054,6 +1058,15 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 	@Override
 	public void setSite(Site site) {
 		this.setSite(site, true);
+	}
+
+	@Override
+	public void setSiteLocation(Location loc) {
+		if (site == null || site.getLocation() != loc) {
+			perRuptureInputCache = null;
+			clearCachedGmmInputs();
+		}
+		super.setSiteLocation(loc);
 	}
 
 	protected void setSite(Site site, boolean requireAllParams) {

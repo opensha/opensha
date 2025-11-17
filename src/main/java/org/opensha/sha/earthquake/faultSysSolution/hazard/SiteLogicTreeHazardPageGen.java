@@ -72,8 +72,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.primitives.Doubles;
 
-import net.mahdilamb.colormap.Colors;
-
 public class SiteLogicTreeHazardPageGen {
 
 	@SuppressWarnings("unused")
@@ -96,6 +94,8 @@ public class SiteLogicTreeHazardPageGen {
 		
 		CommandLine cmd = FaultSysTools.parseOptions(createOptions(), args, SiteLogicTreeHazardPageGen.class);
 		args = cmd.getArgs();
+		
+		boolean resume = cmd.hasOption("resume");
 		
 		if (args.length < 2 || args.length > 3) {
 			System.err.println("USAGE: <zip-file> <output-dir> [<comp-zip-file>]");
@@ -270,8 +270,11 @@ public class SiteLogicTreeHazardPageGen {
 				double[] xVals = xVals(curves.get(0));
 				
 				System.out.println("\tBuilding plots");
-				File plot = curveDistPlot(resourcesDir, prefix+"_curve_dists", site.getName(), perLabel, perUnits, dists,
-						xVals, primaryColor, rps, compMeanCurve, compColor, exec, plotFutures);
+				String plotPrefix = prefix+"_curve_dists";
+				File plot = new File(resourcesDir, plotPrefix+".png");
+				if (!resume || !plot.exists())
+					curveDistPlot(resourcesDir, plotPrefix, site.getName(), perLabel, perUnits, dists,
+							xVals, primaryColor, rps, compMeanCurve, compColor, exec, plotFutures);
 				
 				if (compDists == null || compCurves.size() < 2) {
 					lines.add("![Curve Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
@@ -286,9 +289,12 @@ public class SiteLogicTreeHazardPageGen {
 					
 					table.initNewLine();
 					table.addColumn("![Curve Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
-					plot = curveDistPlot(resourcesDir, prefix+"_comp_curve_dists", site.getName(), perLabel, perUnits, compDists,
-							xVals(compCurves.get(0)), compColor, rps, calcMeanCurve(dists, xVals(compCurves.get(0))), primaryColor,
-							exec, plotFutures);
+					plotPrefix = prefix+"_comp_curve_dists";
+					plot = new File(resourcesDir, plotPrefix+".png");
+					if (!resume || !plot.exists())
+						plot = curveDistPlot(resourcesDir, plotPrefix, site.getName(), perLabel, perUnits, compDists,
+								xVals(compCurves.get(0)), compColor, rps, calcMeanCurve(dists, xVals(compCurves.get(0))), primaryColor,
+								exec, plotFutures);
 					table.addColumn("![Curve Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
 					table.finalizeLine();
 					
@@ -359,11 +365,13 @@ public class SiteLogicTreeHazardPageGen {
 					rpMeans.add(mean);
 					
 					String label = perLabel+", "+rp.label+" ("+perUnits+")";
-					String valPrefix = prefix+"_"+rp.name();
 					
-					plot = valDistPlot(resourcesDir, valPrefix, site.getName(), label,
-							hist, mean, branchDists[r], primaryColor, null,
-							compHist, compMean, compColor, compHistColor, "Comparison", exec, plotFutures);
+					plotPrefix = prefix+"_"+rp.name();
+					plot = new File(resourcesDir, plotPrefix+".png");
+					if (!resume || !plot.exists())
+						plot = valDistPlot(resourcesDir, plotPrefix, site.getName(), label,
+								hist, mean, branchDists[r], primaryColor, null,
+								compHist, compMean, compColor, compHistColor, "Comparison", exec, plotFutures);
 					table.addColumn("![Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
 				}
 				table.finalizeLine();
@@ -380,14 +388,16 @@ public class SiteLogicTreeHazardPageGen {
 							HistogramFunction compHist = rpCompHists.get(r);
 							
 							String label = perLabel+", "+rps[r].label+" ("+perUnits+")";
-							String valPrefix = prefix+"_"+rps[r].name();
 							
 							HistogramFunction origHist = rpHists.get(r);
 							origHist.setName("Primary Distribution");
 							
-							plot = valDistPlot(resourcesDir, valPrefix+"_comp", site.getName(), label,
-									compHist, compMean, compBranchDists[r], compColor, "Comparison",
-									origHist, mean, primaryColor, primaryHistColorOnCompPlot, "Primary", exec, plotFutures);
+							plotPrefix = prefix+"_"+rps[r].name()+"_comp";
+							plot = new File(resourcesDir, plotPrefix+".png");
+							if (!resume || !plot.exists())
+								plot = valDistPlot(resourcesDir, plotPrefix, site.getName(), label,
+										compHist, compMean, compBranchDists[r], compColor, "Comparison",
+										origHist, mean, primaryColor, primaryHistColorOnCompPlot, "Primary", exec, plotFutures);
 							table.addColumn("![Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
 							
 						}
@@ -548,10 +558,17 @@ public class SiteLogicTreeHazardPageGen {
 								MarkdownUtils.boldCentered("Choice Mean Curves"));
 						
 						table.initNewLine();
-						plot = curveBranchPlot(resourcesDir, ltPrefix+"_indv", site.getName(), perLabel, perUnits,
+						plotPrefix = ltPrefix+"_indv";
+						plot = new File(resourcesDir, plotPrefix+".png");
+						if (!resume || !plot.exists())
+							plot = curveBranchPlot(resourcesDir, plotPrefix, site.getName(), perLabel, perUnits,
 								dists, xVals, Color.BLACK, rps, compDists, Color.GRAY, nodes, nodeCurves, downsample, null, exec, plotFutures);
 						table.addColumn("!["+level.getShortName()+" Individual]("+resourcesDir.getName()+"/"+plot.getName()+")");
-						plot = curveBranchPlot(resourcesDir, ltPrefix+"_means", site.getName(), perLabel, perUnits,
+						
+						plotPrefix = ltPrefix+"_means";
+						plot = new File(resourcesDir, plotPrefix+".png");
+						if (!resume || !plot.exists())
+							plot = curveBranchPlot(resourcesDir, plotPrefix, site.getName(), perLabel, perUnits,
 								dists, xVals, Color.BLACK, rps, compDists, Color.GRAY, nodes, null, downsample, nodeMeanCurves, exec, plotFutures);
 						String plotEmbed = "!["+level.getShortName()+" Means]("+resourcesDir.getName()+"/"+plot.getName()+")";
 						table.addColumn(plotEmbed);
@@ -571,7 +588,6 @@ public class SiteLogicTreeHazardPageGen {
 						table.finalizeLine();
 						table.initNewLine();
 						for (int r=0; r<rps.length; r++) {
-							String rpPrefix = ltPrefix+"_"+rps[r].name();
 							String label = perLabel+", "+rps[r].label+" ("+perUnits+")";
 							
 							Double compVal = rpCompMeans == null ? null : rpCompMeans.get(r);
@@ -580,7 +596,10 @@ public class SiteLogicTreeHazardPageGen {
 							// clear the name
 							hist.setName(null);
 							
-							plot = valDistPlot(resourcesDir, rpPrefix, site.getName(), label,
+							plotPrefix = ltPrefix+"_"+rps[r].name();
+							plot = new File(resourcesDir, plotPrefix+".png");
+							if (!resume || !plot.exists())
+								plot = valDistPlot(resourcesDir, plotPrefix, site.getName(), label,
 									hist, rpMeans.get(r), null, Color.BLACK, null,
 									null, compVal, Color.GRAY, null, "Comparison",
 									nodes, nodeHists.get(r), nodeMeans.get(r), exec, plotFutures);
@@ -732,9 +751,11 @@ public class SiteLogicTreeHazardPageGen {
 	
 	public static Options createOptions() {
 		Options ops = new Options();
-		
+
 		ops.addOption(null, "downsample", true,
 				"Maximum number of individual curves to include in plots (will be randomly downsampled to match if more curves exist).");
+		ops.addOption(null, "resume", false,
+				"Flag to resume a previos plot without regenerating everything.");
 		ops.addOption(FaultSysTools.threadsOption());
 		
 		return ops;
@@ -991,6 +1012,10 @@ public class SiteLogicTreeHazardPageGen {
 				}
 			}
 		}
+		if (minX >= maxX || !Double.isFinite(minX) || !Double.isFinite(maxX)) {
+			System.out.println("min="+minX+", max="+maxX+" for "+siteName+" per="+perLabel);
+			System.out.println(meanCurve);
+		}
 		minX = Math.pow(10, Math.floor(Math.log10(minX)));
 		maxX = Math.pow(10, Math.ceil(Math.log10(maxX)));
 		Range xRange = new Range(minX, maxX);
@@ -1244,6 +1269,7 @@ public class SiteLogicTreeHazardPageGen {
 		public final int size;
 		public final double stdDev;
 		public final LightFixedXFunc normCDF;
+		public final boolean allZero;
 		
 		public ValueDistribution(List<Double> values, List<Double> weights) {
 			Preconditions.checkState(values.size() == weights.size());
@@ -1253,11 +1279,14 @@ public class SiteLogicTreeHazardPageGen {
 				this.mean = values.get(0);
 				this.stdDev = Double.NaN;
 				this.normCDF = null;
+				this.allZero = this.mean == 0d;
 			} else {
 				double weightedMean = 0d;
 				double sumOrigWeights = 0d;
+				boolean allZero = true;
 				for (int i=0; i<values.size(); i++) {
 					double val = values.get(i);
+					allZero &= val == 0d;
 					double weight = weights.get(i);
 					weightedMean += val*weight;
 					sumOrigWeights += weight;
@@ -1269,10 +1298,13 @@ public class SiteLogicTreeHazardPageGen {
 				double var = new Variance(false).evaluate(valsArray, weightsArray, weightedMean);
 				this.stdDev = Math.sqrt(var);
 				this.normCDF = ArbDiscrEmpiricalDistFunc.calcQuickNormCDF(valsArray, weightsArray);
+				this.allZero = allZero;
 			}
 		}
 		
 		public double getInterpolatedFractile(double fractile) {
+			if (allZero)
+				return 0d;
 			return ArbDiscrEmpiricalDistFunc.calcFractileFromNormCDF(normCDF, fractile);
 		}
 		
@@ -1569,11 +1601,11 @@ public class SiteLogicTreeHazardPageGen {
 			funcs.add(vertLine(dist.getInterpolatedFractile(0.975), 0d, maxY, null));
 			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, color));
 			
-			// +/- sigma
-			funcs.add(vertLine(mean-dist.stdDev, 0d, maxY, "Mean +/- σ"));
-			chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 1f, Colors.DARK_GRAY));
-			funcs.add(vertLine(mean+dist.stdDev, 0d, maxY, null));
-			chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 1f, Colors.DARK_GRAY));
+//			// +/- sigma
+//			funcs.add(vertLine(mean-dist.stdDev, 0d, maxY, "Mean +/- σ"));
+//			chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 1f, Colors.DARK_GRAY));
+//			funcs.add(vertLine(mean+dist.stdDev, 0d, maxY, null));
+//			chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 1f, Colors.DARK_GRAY));
 		}
 		
 		Range xRange = new Range(hist.getMinX()-0.5*hist.getDelta(), hist.getMaxX()+0.5*hist.getDelta());

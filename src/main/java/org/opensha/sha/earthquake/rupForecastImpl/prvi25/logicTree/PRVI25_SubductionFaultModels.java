@@ -48,7 +48,7 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel, RupSetSubs
 	PRVI_SUB_FM_LARGE("Subduction FM, Large", "Large", 0.5d),
 	PRVI_SUB_FM_SMALL("Subduction FM, Small", "Small", 0.5d);
 	
-	private static final String VERSION = "v4";
+	private static final String VERSION = "v5";
 	private static final String PREFIX = "/data/erf/prvi25/fault_models/subduction/"+VERSION+"/";
 	
 	private String name;

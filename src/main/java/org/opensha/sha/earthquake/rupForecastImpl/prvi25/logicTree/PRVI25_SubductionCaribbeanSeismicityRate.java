@@ -134,7 +134,7 @@ public enum PRVI25_SubductionCaribbeanSeismicityRate implements LogicTreeNode {
 		if (rateModel != null)
 			return rateModel;
 		if (epoch == PRVI25_SeismicityRateEpoch.RECENT_SCALED) {
-			rateModel = PRVI25_CrustalSeismicityRate.getScaledToFull(loadRateModel(PRVI25_SeismicityRateEpoch.RECENT, slab), type);
+			rateModel = PRVI25_CrustalSeismicityRate.getScaledToFull(loadRateModel(PRVI25_SeismicityRateEpoch.RECENT, type, slab), type);
 		} else {
 			CSVFile<String> csv = loadCSV(epoch, slab);
 			rateModel = new SeismicityRateModel(csv, type, BOUND_TYPE);

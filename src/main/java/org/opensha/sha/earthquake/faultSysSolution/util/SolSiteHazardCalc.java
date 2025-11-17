@@ -195,7 +195,7 @@ public class SolSiteHazardCalc {
 		
 		// calculation parameters
 		
-		SolHazardMapCalc.addCommonOptions(ops, false);
+		FaultSysHazardCalcSettings.addCommonOptions(ops, false);
 		
 		ops.addOption(null, "spectra", false, "Flag to calculate and plot hazard spectra. Usually used in conjunction "
 				+ "with --all-periods. Also see --return-periods.");
@@ -280,7 +280,7 @@ public class SolSiteHazardCalc {
 		IncludeBackgroundOption mainGridOp = getGridOp(cmd, sol);
 		IncludeBackgroundOption compGridOp = compSol == null ? null : getGridOp(cmd, compSol);
 		
-		Map<TectonicRegionType, ? extends AttenRelSupplier> gmmSuppliers = SolHazardMapCalc.getGMMs(cmd);
+		Map<TectonicRegionType, ? extends AttenRelSupplier> gmmSuppliers = FaultSysHazardCalcSettings.getGMMs(cmd);
 		
 		if (gmmSuppliers.size() > 1) {
 			// see which ones we actually need
@@ -316,7 +316,7 @@ public class SolSiteHazardCalc {
 						gmmSuppliers.remove(trt);
 		}
 
-		SourceFilterManager sourceFilters = SolHazardMapCalc.getSourceFilters(cmd);
+		SourceFilterManager sourceFilters = FaultSysHazardCalcSettings.getSourceFilters(cmd);
 		double largestMaxDist = Double.NaN;
 		double smallestMaxDist = Double.NaN;
 		if (sourceFilters.isEnabled(SourceFilters.FIXED_DIST_CUTOFF)) {
@@ -340,7 +340,7 @@ public class SolSiteHazardCalc {
 			smallestMaxDist = largestMaxDist;
 		}
 		
-		Map<TectonicRegionType, ScalarIMR> gmms0 = SolHazardMapCalc.getGmmInstances(gmmSuppliers);
+		Map<TectonicRegionType, ScalarIMR> gmms0 = FaultSysHazardCalcSettings.getGmmInstances(gmmSuppliers);
 		
 		List<Site> sites = new ArrayList<>();
 		if (cmd.hasOption("site-location")) {
@@ -533,7 +533,7 @@ public class SolSiteHazardCalc {
 		System.out.println("Building ERF for "+name);
 		GriddedSeismicitySettings griddedSettings = GriddedSeismicitySettings.DEFAULT;
 		if (mainGridOp != IncludeBackgroundOption.EXCLUDE || (compGridOp != null && compGridOp != IncludeBackgroundOption.EXCLUDE)) {
-			griddedSettings = SolHazardMapCalc.getGridSeisSettings(cmd);
+			griddedSettings = FaultSysHazardCalcSettings.getGridSeisSettings(cmd);
 			System.out.println("Gridded seismicity settings: "+griddedSettings);
 		}
 		FaultSystemSolutionERF erf = buildERF(sol, mainGridOp, griddedSettings, duration);
@@ -541,7 +541,7 @@ public class SolSiteHazardCalc {
 		List<HazardCalcThread> calcThreads = new ArrayList<>(threads);		
 		for (int i=0; i<threads; i++) {
 			HazardCurveCalculator calc = new HazardCurveCalculator(sourceFilters);
-			calcThreads.add(new HazardCalcThread(calc, i == 0 ? gmms0 : SolHazardMapCalc.getGmmInstances(gmmSuppliers)));
+			calcThreads.add(new HazardCalcThread(calc, i == 0 ? gmms0 : FaultSysHazardCalcSettings.getGmmInstances(gmmSuppliers)));
 		}
 		
 		List<DiscretizedFunc[]> curves = calcHazardCurves(calcThreads, sites, erf, periods, periodXVals);
@@ -1521,7 +1521,7 @@ public class SolSiteHazardCalc {
 	}
 	
 	private static void addDefaultSiteParams(Site site, Map<TectonicRegionType, ScalarIMR> gmms0, CommandLine cmd) {
-		for (Parameter<?> param : SolHazardMapCalc.getDefaultSiteParams(gmms0)) {
+		for (Parameter<?> param : FaultSysHazardCalcSettings.getDefaultSiteParams(gmms0)) {
 			param = (Parameter<?>) param.clone();
 			if (param.getName().equals(Vs30_Param.NAME) && cmd.hasOption("vs30"))
 				setDoubleParam(param, Double.parseDouble(cmd.getOptionValue("vs30")));
@@ -1856,7 +1856,7 @@ public class SolSiteHazardCalc {
 				
 				LightFixedXFunc logCurve = new LightFixedXFunc(logXVals, new double[logXVals.length]);
 				
-				SolHazardMapCalc.setIMforPeriod(gmms, task.period);
+				FaultSysHazardCalcSettings.setIMforPeriod(gmms, task.period);
 				
 				calc.getHazardCurve(logCurve, task.site, gmms, erf);
 				
@@ -2362,7 +2362,7 @@ public class SolSiteHazardCalc {
 				numDisagg += disaggIMLs.length;
 			
 			while (task != null) {
-				SolHazardMapCalc.setIMforPeriod(gmms, task.period);
+				FaultSysHazardCalcSettings.setIMforPeriod(gmms, task.period);
 				
 				DisaggResult[] results = new DisaggResult[numDisagg];
 				for (int i=0; i<numDisagg; i++) {
