@@ -43,6 +43,7 @@ import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.SiteAdaptiveSource;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
@@ -327,7 +328,7 @@ public class QuickGriddedHazardMapCalc {
 					}
 					Preconditions.checkNotNull(gmmSupplier, "No GMPE supplied for TRT: %s", trt);
 					ScalarIMR gmm = gmmSupplier.get();
-					SolHazardMapCalc.setIMforPeriod(gmm, period);
+					FaultSysHazardCalcSettings.setIMforPeriod(gmm, period);
 					Site testSite = new Site(new Location(0d, 0d));
 					testSite.addParameterList(gmm.getSiteParams());
 					gmm.setSite(testSite);
@@ -385,6 +386,9 @@ public class QuickGriddedHazardMapCalc {
 		double[] distVals = trtDistVals.get(trt);
 		EvenlyDiscretizedFunc logSpacedDiscr = trtLogSpacedDiscrs.get(trt);
 		DiscretizedFunc distDiscr = trtDistDiscr.get(trt);
+		
+//		System.out.println("Calc for trt="+trt.name()+", gmm="+gmpe.getShortName()+", maxDist="+maxDist
+//				+", imt="+gmpe.getIntensityMeasure().getName()+", sourceType="+origSource.getClass().getName());
 		
 		// these will keep track of sources for individual adaptive instances, if applicable
 		List<List<Integer>> nodeIndexesList = new ArrayList<>();
@@ -491,9 +495,16 @@ public class QuickGriddedHazardMapCalc {
 			if (!truePointSource) {
 				if (trackStats) numNonTruePointSources.incrementAndGet();
 				// no shortcut for this one
+				Preconditions.checkState(exceedFunc.size() == curves[0].size());
+				Preconditions.checkState(exceedFunc.getX(0) == curves[0].getX(0));
 				for (ProbEqkRupture rup : rups) {
 					gmpe.setEqkRupture(rup);
-					double invQkProb = 1d-rup.getProbability();
+					// we're going to do a bunch of (1-prob)^value
+					// we can speed this up by replacing the power with this log equation:
+					// a^b = exp(b*ln(a))
+//					double lnBase = Math.log(1-rup.getProbability());
+					double lnBase = Math.log1p(-rup.getProbability());
+//					double invQkProb = 1d-rup.getProbability();
 					
 					for (int l=0; l<numNodes; l++) {
 						int index = nodeIndexes.get(l);
@@ -502,7 +513,8 @@ public class QuickGriddedHazardMapCalc {
 						gmpe.getExceedProbabilities(exceedFunc);
 						
 						for(int k=0; k<exceedFunc.size(); k++)
-							curves[index].set(k, curves[index].getY(k)*Math.pow(invQkProb, exceedFunc.getY(k)));
+//							curves[index].set(k, curves[index].getY(k)*Math.pow(invQkProb, exceedFunc.getY(k)));
+							curves[index].set(k, curves[index].getY(k)*Math.exp(lnBase*exceedFunc.getY(k)));
 					}
 				}
 			} else if (!allSameLoc || nodeCalcs < minNodeCalcsForSourcewise || numNodes < theSource.getNumRuptures()) {
@@ -527,7 +539,8 @@ public class QuickGriddedHazardMapCalc {
 					// we're going to do a bunch of (1-prob)^value
 					// we can speed this up by replacing the power with this log equation:
 					// a^b = exp(b*ln(a))
-					double lnBase = Math.log(1-rup.getProbability());
+//					double lnBase = Math.log(1-rup.getProbability());
+					double lnBase = Math.log1p(-rup.getProbability());
 //					double invQkProb = 1d-rup.getProbability();
 					for (int l=0; l<numNodes; l++) {
 						int index = nodeIndexes.get(l);

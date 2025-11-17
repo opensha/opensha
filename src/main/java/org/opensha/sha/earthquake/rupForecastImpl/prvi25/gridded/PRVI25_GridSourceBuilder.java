@@ -105,6 +105,11 @@ public class PRVI25_GridSourceBuilder {
 	public static double INTERFACE_CAR_MAX_DEPTH = 50d;
 	public static double INTERFACE_MUE_MAX_DEPTH = 50d;
 	
+	// for intraslab sources, assign these IDs as associated sections (even though there aren't sections with these IDs)
+	// so that we can track them later and in nshmp-haz
+	public static final int CAR_SLAB_ASSOC_ID = 7510;
+	public static final int MUE_SLAB_ASSOC_ID = 7511;
+	
 	public static boolean MUERTOS_AS_CRUSTAL = false;
 	
 	public static final double OVERALL_MMIN= 2.55;
@@ -525,6 +530,11 @@ public class PRVI25_GridSourceBuilder {
 		Preconditions.checkState(seisRegion == PRVI25_SeismicityRegions.CAR_INTRASLAB
 				|| seisRegion == PRVI25_SeismicityRegions.MUE_INTRASLAB);
 		
+		// this will allow us to track mue and car separately
+		int assocID = seisRegion == PRVI25_SeismicityRegions.CAR_INTRASLAB ? CAR_SLAB_ASSOC_ID : MUE_SLAB_ASSOC_ID;
+		int[] assocIDarray = {assocID};
+		double[] assocFractArray = {1d};
+		
 		PRVI25_DeclusteringAlgorithms declusteringAlg = branch.requireValue(PRVI25_DeclusteringAlgorithms.class);
 		PRVI25_SeisSmoothingAlgorithms seisSmooth = branch.requireValue(PRVI25_SeisSmoothingAlgorithms.class);
 		
@@ -595,7 +605,7 @@ public class PRVI25_GridSourceBuilder {
 				
 				GriddedRuptureProperties props = new GriddedRuptureProperties(mag, rake, dip, strike, null,
 						upper, lower, length, hypocentralDepth, hypocentralDAS, TectonicRegionType.SUBDUCTION_SLAB);
-				ruptureList.add(new GriddedRupture(gridIndex, loc, props, rate));
+				ruptureList.add(new GriddedRupture(gridIndex, loc, props, rate, assocIDarray, assocFractArray));
 			}
 		}
 		
@@ -1323,7 +1333,7 @@ public class PRVI25_GridSourceBuilder {
 		
 //		INTERFACE_USE_SECT_PROPERTIES = false;
 		FaultSystemSolution sol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
-				+ "2025_07_15-prvi25_subduction_branches/results_PRVI_SUB_FM_LARGE_branch_averaged.zip"));
+				+ "2025_08_01-prvi25_subduction_branches/results_PRVI_SUB_FM_LARGE_branch_averaged.zip"));
 		branch.setValue(PRVI25_SubductionFaultModels.PRVI_SUB_FM_LARGE);
 //		FaultSystemSolution sol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
 //				+ "2024_12_12-prvi25_subduction_branches/results_PRVI_SUB_FM_SMALL_branch_averaged.zip"));
@@ -1339,7 +1349,10 @@ public class PRVI25_GridSourceBuilder {
 //					rateM5 += rup.rate;
 //		System.out.println("rate M>5: "+(float)rateM5);
 		
-		buildCombinedSubductionGridSourceList(sol, branch);
+		GridSourceList combSources = buildCombinedSubductionGridSourceList(sol, branch);
+		sol.setGridSourceProvider(combSources);
+		sol.write(new File("/tmp/prvi_comb_grid_source_test.zip"));
+		FaultSystemSolution.load(new File("/tmp/prvi_comb_grid_source_test.zip")).getGridSourceProvider();
 		
 //		RATE_BALANCE_INTERFACE_GRIDDED = false;
 //		PRVI25_SeismicityRegions seisReg = PRVI25_SeismicityRegions.CAR_INTERFACE;

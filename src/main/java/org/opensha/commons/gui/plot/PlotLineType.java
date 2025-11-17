@@ -203,6 +203,10 @@ public enum PlotLineType {
 			if (item != 0) {
 				return;
 			}
+			// this will be called twice, only plot on first pass
+			if (pass != 0) {
+				return;
+			}
 
 			// Prepare the path for the polygon
 			Path2D polygon = new Path2D.Double();

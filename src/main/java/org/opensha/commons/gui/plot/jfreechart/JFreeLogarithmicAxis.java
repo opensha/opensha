@@ -636,7 +636,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 	}
 	
 	private static final double MIN_PIXELS_PER_DECADE_FOR_MINOR = 100d;
-	private static double MIN_NUM_MINOR = 2; // if fewer minor than this, don't show any
+	private static double MIN_NUM_MINOR = 3; // if fewer minor than this, don't show any
 	
 	private boolean shouldShowMinor(Rectangle2D dataArea, RectangleEdge edge) {
 		Range range = getRange();
@@ -858,20 +858,30 @@ public class JFreeLogarithmicAxis extends LogAxis {
 		
 	}
 	
-	private static List<MajorMinorNumberTick> checkMinNumMinor(List<MajorMinorNumberTick> ticks) {
+	private List<MajorMinorNumberTick> checkMinNumMinor(List<MajorMinorNumberTick> ticks) {
 		if (MIN_NUM_MINOR == 0)
+			// no restriction
 			return ticks;
+		
+		Range range = getRange();
+		double decades = switchedLog10(range.getUpperBound()) - switchedLog10(range.getLowerBound());
+		if (decades < 1.001d)
+			// we don't even have a full decade, so we expect to only have a few
+			return ticks;
+		
+		int numMajor = 0;
 		int curNumMinor = 0;
 		int maxNumMinor = 0;
 		for (MajorMinorNumberTick tick : ticks) {
 			if (tick.major) {
 				curNumMinor = 0;
+				numMajor++;
 			} else if (!tick.getText().equals("") && !tick.getText().contains("E")) {
 				curNumMinor++;
 				maxNumMinor = Integer.max(maxNumMinor, curNumMinor);
 			}
 		}
-		if (maxNumMinor > 0 && maxNumMinor < MIN_NUM_MINOR) {
+		if (numMajor > 1 && maxNumMinor > 0 && maxNumMinor < MIN_NUM_MINOR) {
 			// we don't have enough minor ticks, clear them all
 			for (int i=0; i<ticks.size(); i++) {
 				MajorMinorNumberTick tick = ticks.get(i);
@@ -1230,6 +1240,10 @@ public class JFreeLogarithmicAxis extends LogAxis {
 			// ensure the autorange is at least <minRange> in size...
 			double minRange = getAutoRangeMinimumSize();
 			if (upper - lower < minRange) {
+				// Edge case: where <minRange> would lead us to a negative lower boundary, we adjust it.
+				if (upper + lower <= minRange / 2){
+					minRange = upper / 2;
+				}
 				upper = (upper + lower + minRange) / 2;
 				lower = (upper + lower - minRange) / 2;
 				//if autorange still below minimum then adjust by 1%
