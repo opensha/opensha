@@ -196,9 +196,10 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			Unmodifiable<Gmm> gmms = WeightedList.evenlyWeighted(
-					Gmm.ASK_14_BASIN, Gmm.BSSA_14_BASIN, Gmm.CB_14_BASIN, Gmm.CY_14_BASIN);
-			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
+//			Unmodifiable<Gmm> gmms = WeightedList.evenlyWeighted(
+//					Gmm.ASK_14_BASIN, Gmm.BSSA_14_BASIN, Gmm.CB_14_BASIN, Gmm.CY_14_BASIN);
+//			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_CONUS_ACTIVE_CRUST_2023, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -326,9 +327,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.WeightedCombination(
-					WeightedList.evenlyWeighted(Gmm.PRVI_2025_ACTIVE_CRUST, Gmm.PRVI_2025_ACTIVE_CRUST_ADJUSTED),
-					getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_PRVI_ACTIVE_CRUST_2025, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -339,9 +338,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.WeightedCombination(
-					WeightedList.evenlyWeighted(Gmm.PRVI_2025_INTERFACE, Gmm.PRVI_2025_INTERFACE_ADJUSTED),
-					getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_PRVI_INTERFACE_2025, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -352,9 +349,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.WeightedCombination(
-					WeightedList.evenlyWeighted(Gmm.PRVI_2025_INTRASLAB, Gmm.PRVI_2025_INTRASLAB_ADJUSTED),
-					getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_PRVI_INTRASLAB_2025, getName(), getShortName(), false, null);
 		}
 		
 	},

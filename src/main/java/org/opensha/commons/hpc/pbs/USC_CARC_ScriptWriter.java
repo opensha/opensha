@@ -7,11 +7,11 @@ import java.util.List;
 
 public class USC_CARC_ScriptWriter extends BatchScriptWriter {
 
-	public static final File FMPJ_HOME = new File("/project/scec_608/kmilner/mpj/FastMPJ");
-	public static final File MPJ_HOME = new File("/project/scec_608/kmilner/mpj/mpj-current");
+	public static final File FMPJ_HOME = new File("/project2/scec_608/kmilner/mpj/FastMPJ");
+	public static final File MPJ_HOME = new File("/project2/scec_608/kmilner/mpj/mpj-current");
 	public static final File JAVA_BIN = new File("java");
 	
-	public static final String SHARED_SCRATCH_DIR = "/scratch2";
+	public static final String SHARED_SCRATCH_DIR = "/scratch1";
 	public static final String NODE_TEMP_DIR = "${TMPDIR}";
 	
 	private String nodesAddition;

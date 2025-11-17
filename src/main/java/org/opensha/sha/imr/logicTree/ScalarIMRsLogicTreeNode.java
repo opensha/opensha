@@ -19,9 +19,9 @@ import org.opensha.sha.util.TectonicRegionType;
  */
 public interface ScalarIMRsLogicTreeNode extends LogicTreeNode {
 	
-	public Map<TectonicRegionType, Supplier<ScalarIMR>> getSuppliers();
+	public Map<TectonicRegionType, AttenRelSupplier> getSuppliers();
 	
-	public Supplier<ScalarIMR> getSupplier(TectonicRegionType trt);
+	public AttenRelSupplier getSupplier(TectonicRegionType trt);
 	
 	/**
 	 * 
@@ -38,14 +38,14 @@ public interface ScalarIMRsLogicTreeNode extends LogicTreeNode {
 		public TectonicRegionType getTectonicRegion();
 
 		@Override
-		default Map<TectonicRegionType, Supplier<ScalarIMR>> getSuppliers() {
-			EnumMap<TectonicRegionType, Supplier<ScalarIMR>> ret = new EnumMap<>(TectonicRegionType.class);
+		default Map<TectonicRegionType, AttenRelSupplier> getSuppliers() {
+			EnumMap<TectonicRegionType, AttenRelSupplier> ret = new EnumMap<>(TectonicRegionType.class);
 			ret.put(getTectonicRegion(), getSupplier());
 			return ret;
 		}
 
 		@Override
-		default Supplier<ScalarIMR> getSupplier(TectonicRegionType trt) {
+		default AttenRelSupplier getSupplier(TectonicRegionType trt) {
 			if (trt == getTectonicRegion())
 				return getSupplier();
 			return null;
@@ -79,7 +79,7 @@ public interface ScalarIMRsLogicTreeNode extends LogicTreeNode {
 		}
 
 		@Override
-		default Supplier<ScalarIMR> getSupplier(TectonicRegionType trt) {
+		default AttenRelSupplier getSupplier(TectonicRegionType trt) {
 			return getSupplier();
 		}
 	}

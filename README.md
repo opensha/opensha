@@ -61,6 +61,12 @@ Once you have eclipse installed and running, do the following:
 
 You can either use Eclipse's built in Git tools, or the Git command line client to pull/push changes. Any time any of the `.gradle` files are modified, or you see many unexpected compilation errors, right click on the project within eclipse and select `Gradle >  Refresh Gradle Project`.
 
+If that doesn't work and gradle dependency update still fails to take in eclipse (you'll see "Synchronize Gradle projects with workspace failed..." messages in the Error Log), you may need to do the following to fix it:
+
+* Option 1: Remove all projects from eclipse (do not check the delete contents on disk box!), then re-import them following the steps above
+* Option 2: Run this command in the terminal for each project: `./gradlew cleanEclipse eclipse --refresh-dependencies`
+    - Then right click on each project in eclipse and do a refresh (regular refresh, not a gradle refresh) so that eclipse sees that the project classpath files have been updated
+
 ## Repository history
 
 OpenSHA has been in active development since the early 2000's. It was originally in CVS version control, and was ported to [this SVN repository](https://source.usc.edu/svn/opensha/trunk/) circa 2008. In 2017, it was migrated to GitHub and split into a number of sub-projects. History from the SVN repository was not retained, but it is [archived here](https://github.com/opensha/opensha-svn-archive). The main codebase, which was re-unified into this repository in 2021, was previously stored in the now-archived [opensha-commons](https://github.com/opensha/opensha-commons), [opensha-core](https://github.com/opensha/opensha-core), [opensha-ucerf3](https://github.com/opensha/opensha-ucerf3), and [opensha-apps](https://github.com/opensha/opensha-apps).

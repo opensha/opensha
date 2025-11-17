@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 
@@ -2174,6 +2175,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		private GridSourceList orig;
 		private Map<Integer, Integer> sectRemappings;
 		private Map<Integer, Integer> sectRemappingsReversed;
+		private HashSet<Integer> unmappedAssociations;
 
 		public GridSourceListAssocRemapper(GridSourceList orig, Map<Integer, Integer> sectRemappings) {
 			super(orig.getTectonicRegionTypes(), orig.getGriddedRegion(), orig.locs, orig.getRefMFD());
@@ -2182,6 +2184,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 			sectRemappingsReversed = new HashMap<>(sectRemappings.size());
 			for (int key : sectRemappings.keySet())
 				sectRemappingsReversed.put(sectRemappings.get(key), key);
+			unmappedAssociations = new HashSet<>();
 		}
 
 		@Override
@@ -2205,9 +2208,24 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 					int[] remapped = new int[rup.associatedSections.length];
 					for (int i=0; i<rup.associatedSections.length; i++) {
 						int origIndex = rup.associatedSections[i];
-						Preconditions.checkState(sectRemappings.containsKey(origIndex),
-								"No remapping exists for sectIndex=%s", origIndex);
-						remapped[i] = sectRemappings.get(rup.associatedSections[i]);
+						if (!sectRemappings.containsKey(origIndex)) {
+							if (!unmappedAssociations.contains(origIndex)) {
+								// first time we've encountered it
+								// make sure there are no conflicts that map to this index
+								for (Entry<Integer, Integer> remapping : sectRemappings.entrySet()) {
+									Preconditions.checkState(!remapping.getValue().equals(origIndex),
+											"Encountered association with index=%s for which no remapping exists, and it "
+											+ "conflicts with a remapping from %s->%s.",
+											origIndex, remapping.getKey(), remapping.getValue());
+								}
+								unmappedAssociations.add(origIndex);
+								System.err.println("WARNING (GridSourceListAssocRemapper): encountered unexpected association ID of "
+										+origIndex+" without a remapping; allowing it because there are no ID conflicts.");
+							}
+							remapped[i] = origIndex;
+						} else {
+							remapped[i] = sectRemappings.get(rup.associatedSections[i]);
+						}
 					}
 					ret.add(new GriddedRupture(rup.gridIndex, rup.location, rup.properties, rup.rate, remapped, rup.associatedSectionFracts));
 				} else {

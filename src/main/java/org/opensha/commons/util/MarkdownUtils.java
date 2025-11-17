@@ -25,6 +25,7 @@ import org.apache.commons.text.StringEscapeUtils;
 import org.commonmark.Extension;
 import org.commonmark.ext.gfm.tables.TablesExtension;
 import org.commonmark.ext.heading.anchor.HeadingAnchorExtension;
+import org.commonmark.ext.heading.anchor.IdGenerator;
 import org.commonmark.node.AbstractVisitor;
 import org.commonmark.node.HardLineBreak;
 import org.commonmark.node.Image;
@@ -39,7 +40,6 @@ import org.commonmark.renderer.html.HtmlRenderer;
 import org.commonmark.renderer.html.HtmlWriter;
 import org.opensha.commons.data.CSVFile;
 
-import com.google.common.base.CharMatcher;
 import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
 
@@ -402,9 +402,6 @@ public class MarkdownUtils {
 		return null;
 	}
 	
-	private static final CharMatcher ALNUM = CharMatcher.inRange('a', 'z').or(CharMatcher.inRange('A', 'Z'))
-			  .or(CharMatcher.inRange('0', '9')).or(CharMatcher.is('_')).or(CharMatcher.is('-'));
-	
 	/**
 	 * Builds a table of contents with links to all headers. Each header should be unique
 	 * @param lines
@@ -426,18 +423,22 @@ public class MarkdownUtils {
 	public static List<String> buildTOC(List<String> lines, int minLevel, int maxLevel) {
 		LinkedList<String> toc = new LinkedList<>();
 		
+		IdGenerator idGen = IdGenerator.builder().build();
+		
 		for (int i=0; i<lines.size(); i++) {
 			String line = lines.get(i);
 			if (line.startsWith("#")) {
 				String headerPart = line.substring(0, line.lastIndexOf('#')+1);
 				int level = headerPart.length();
+				String title = line.substring(headerPart.length()).trim();
+				// do this outside of the level check to make sure that duplicates are handled the same way as in commonmark
+				String anchor = getAnchorName(title, idGen);
 				if (level >= minLevel && (maxLevel <=0 || level <= maxLevel)) {
 					String tocLine = "";
 					while ((level > minLevel)) {
 						tocLine += "  ";
 						level--;
 					}
-					String title = line.substring(headerPart.length()).trim();
 					
 					String link = null;
 					// see if it's just a link, if so use that link rather than a link to the link
@@ -471,7 +472,7 @@ public class MarkdownUtils {
 						}
 					}
 					if (link == null)
-						link = "#"+getAnchorName(title);
+						link = "#"+anchor;
 					tocLine += "* ["+title+"]("+link+")";
 					toc.add(tocLine);
 				}
@@ -486,31 +487,21 @@ public class MarkdownUtils {
 	 * @return the name of the anchor link for a given heading
 	 */
 	public static String getAnchorName(String heading) {
+		return getAnchorName(heading, IdGenerator.builder().build());
+	}
+	
+	/**
+	 * 
+	 * @param heading
+	 * @param idGen stateful ID generator that handles duplicates
+	 * @return the name of the anchor link for a given heading
+	 */
+	public static String getAnchorName(String heading, IdGenerator idGen) {
+		heading = StringEscapeUtils.unescapeHtml4(heading).trim();
 		while (heading.startsWith("#"))
-			heading = heading.substring(1);
-		while (heading.contains("&") && heading.contains(";")) {
-			int indexAnd = heading.indexOf("&");
-			int indexSemi = heading.indexOf(";");
-			if (indexSemi > indexAnd) {
-				// remove special symbol
-				String symbol = heading.substring(indexAnd, indexSemi+1);
-				heading = heading.replace(symbol, "");
-			}
-		}
-		while (heading.contains("<") && heading.contains(">")) {
-			int indexStart = heading.indexOf("<");
-			int indexEnd = heading.indexOf(">");
-			if (indexStart < indexEnd) {
-				// remove html tag
-				String tag = heading.substring(indexStart, indexEnd+1);
-				heading = heading.replaceAll(tag, "");
-			} else {
-				// greater than sign? remove it
-				heading.replaceFirst(">", "");
-			}
-		}
-		heading = heading.trim();
-		return ALNUM.retainFrom(heading.toLowerCase().replaceAll(" ", "-")).toLowerCase();
+			heading = heading.substring(1).trim();
+		
+		return idGen.generateId(heading);
 	}
 	
 	/**

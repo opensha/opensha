@@ -14,7 +14,6 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -51,7 +50,6 @@ import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
-import org.opensha.commons.param.WarningParameter;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.ReturnPeriodUtils;
@@ -88,16 +86,8 @@ import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.gui.infoTools.IMT_Info;
-import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.ScalarIMR;
-import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
-import org.opensha.sha.imr.param.IntensityMeasureParams.PGV_Param;
-import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
-import org.opensha.sha.imr.param.OtherParams.SigmaTruncLevelParam;
-import org.opensha.sha.imr.param.OtherParams.SigmaTruncTypeParam;
-import org.opensha.sha.imr.param.OtherParams.TectonicRegionTypeParam;
-import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -122,177 +112,6 @@ public class SolHazardMapCalc {
 		}
 	}
 	
-	static AttenRelRef CRUSTAL_GMPE_DEFAULT = AttenRelRef.WRAPPED_ASK_2014;
-	static AttenRelRef STABLE_GMPE_DEFAULT = AttenRelRef.ASK_2014; // TODO
-	static AttenRelRef INTERFACE_GMPE_DEFAULT = AttenRelRef.PSBAH_2020_GLOBAL_INTERFACE;
-	static AttenRelRef SLAB_GMPE_DEFAULT = AttenRelRef.PSBAH_2020_GLOBAL_SLAB;
-	
-	public static Map<TectonicRegionType, AttenRelSupplier> getGMMs(CommandLine cmd) {
-		Map<TectonicRegionType, AttenRelSupplier> ret = new EnumMap<>(TectonicRegionType.class);
-		if (cmd.hasOption("gmpe")) {
-			Preconditions.checkState(!cmd.hasOption("trt-gmpe"), "Can't specify both --gmpe and --trt-gmpe");
-			String[] gmmStrs = cmd.getOptionValues("gmpe");
-			for (String gmmStr : gmmStrs) {
-				AttenRelRef gmpeRef = AttenRelRef.valueOf(gmmStr);
-				if (gmmStrs.length > 1) {
-					// TRT specific
-					TectonicRegionTypeParam trtParam = (TectonicRegionTypeParam)gmpeRef.get().getParameter(TectonicRegionTypeParam.NAME);
-					Preconditions.checkState(trtParam != null, "Multiple GMPEs supplied, but GMPE "+gmpeRef.getShortName()+" doesn't have a TRT");
-					TectonicRegionType trt = trtParam.getValueAsTRT();
-					ret.put(trt, gmpeRef);
-				} else {
-					// single, just use ACTIVE_SHALLOW (will be used for all)
-					ret.put(TectonicRegionType.ACTIVE_SHALLOW, gmpeRef);
-				}
-			}
-		} else {
-			ret.putAll(getDefaultGMMs());
-			if (cmd.hasOption("trt-gmpe")) {
-				for (String val : cmd.getOptionValues("gmmRefs")) {
-					Preconditions.checkState(val.contains(":"), "Expected <trt>:<gmm>, can't parse argument: %s", val);
-					int index = val.indexOf(":");
-					String trtName = val.substring(0, index);
-					TectonicRegionType trt = TectonicRegionType.valueOf(trtName);
-					String gmmName = val.substring(index+1);
-					AttenRelRef gmm = AttenRelRef.valueOf(gmmName);
-					ret.put(trt, gmm);
-				}
-			}
-		}
-		
-		Map<String, Object> parameterOverrides = new LinkedHashMap<>(); // linked preserves order, which could be important
-		
-		if (cmd.hasOption("vs30")) {
-			double vs30 = Double.parseDouble(cmd.getOptionValue("vs30"));
-			System.out.println("Setting GMM Vs30="+(float)vs30);
-			parameterOverrides.put(Vs30_Param.NAME, vs30);
-		}
-		
-		if (cmd.hasOption("gmm-sigma-trunc-one-sided") || cmd.hasOption("gmm-sigma-trunc-two-sided")) {
-			double sigma;
-			boolean twoSided;
-			if (cmd.hasOption("gmm-sigma-trunc-one-sided")) {
-				Preconditions.checkState(!cmd.hasOption("gmm-sigma-trunc-two-sided"), "can't enable both one- and two-sided truncation");
-				sigma = Double.parseDouble(cmd.getOptionValue("gmm-sigma-trunc-one-sided"));
-				twoSided = false;
-				System.out.println("Enabling GMM one-sided sigma truncation at "+(float)sigma+" sigma");
-			} else {
-				sigma = Double.parseDouble(cmd.getOptionValue("gmm-sigma-trunc-two-sided"));
-				twoSided = true;
-				System.out.println("Enabling GMM two-sided sigma truncation at "+(float)sigma+" sigma");
-			}
-			parameterOverrides.put(SigmaTruncTypeParam.NAME, twoSided ?
-					SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_2SIDED : SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_1SIDED);
-			parameterOverrides.put(SigmaTruncLevelParam.NAME, sigma);
-		}
-		
-		if (!parameterOverrides.isEmpty()) {
-			List<TectonicRegionType> trts = List.copyOf(ret.keySet());
-			for (TectonicRegionType trt : trts) {
-				AttenRelSupplier supplier = ret.get(trt);
-				ret.put(trt, new AttenRelSupplier() {
-					
-					@Override
-					public String getName() {
-						return supplier.getName();
-					}
-					
-					@Override
-					public String getShortName() {
-						return supplier.getShortName();
-					}
-					
-					@Override
-					public ScalarIMR get() {
-						ScalarIMR gmm = supplier.get();
-						for (String paramName : parameterOverrides.keySet()) {
-							Parameter param = gmm.getParameter(paramName);
-							Object value = parameterOverrides.get(paramName);
-							if (param instanceof WarningParameter<?>)
-								((WarningParameter)param).setValueIgnoreWarning(value);
-							else
-								param.setValue(value);
-						}
-						return gmm;
-					}
-				});
-			}
-		}
-		
-		return ret;
-	}
-	
-	public static Map<TectonicRegionType, AttenRelRef> getDefaultGMMs() {
-		EnumMap<TectonicRegionType, AttenRelRef> ret = new EnumMap<>(TectonicRegionType.class);
-		ret.put(TectonicRegionType.ACTIVE_SHALLOW, CRUSTAL_GMPE_DEFAULT);
-		ret.put(TectonicRegionType.STABLE_SHALLOW, STABLE_GMPE_DEFAULT);
-		ret.put(TectonicRegionType.SUBDUCTION_INTERFACE, INTERFACE_GMPE_DEFAULT);
-		ret.put(TectonicRegionType.SUBDUCTION_SLAB, SLAB_GMPE_DEFAULT);
-		return ret;
-	}
-	
-	public static Map<TectonicRegionType, Supplier<ScalarIMR>> wrapInTRTMap(Supplier<ScalarIMR> gmpeRef) {
-		if (gmpeRef == null)
-			return null;
-		EnumMap<TectonicRegionType, Supplier<ScalarIMR>> ret = new EnumMap<>(TectonicRegionType.class);
-		ret.put(TectonicRegionType.ACTIVE_SHALLOW, gmpeRef);
-		return ret;
-	}
-	
-	public static SourceFilterManager getDefaultSourceFilters() {
-		SourceFilterManager sourceFilters = new SourceFilterManager(SourceFilters.TRT_DIST_CUTOFFS);
-		return sourceFilters;
-	}
-	
-	public static SourceFilterManager getSourceFilters(CommandLine cmd) {
-		SourceFilterManager sourceFilters;
-		if (cmd.hasOption("max-distance")) {
-			sourceFilters = new SourceFilterManager(SourceFilters.FIXED_DIST_CUTOFF);
-			double maxDist = Double.parseDouble(cmd.getOptionValue("max-distance"));
-			((FixedDistanceCutoffFilter)sourceFilters.getFilterInstance(SourceFilters.FIXED_DIST_CUTOFF)).setMaxDistance(maxDist);
-		} else {
-			sourceFilters = getDefaultSourceFilters();
-		}
-		return sourceFilters;
-	}
-	
-	public static SourceFilterManager getDefaultSiteSkipSourceFilters(SourceFilterManager sourceFilters) {
-		SourceFilterManager ret = null;
-		if (sourceFilters.isEnabled(SourceFilters.TRT_DIST_CUTOFFS)) {
-			TectonicRegionDistCutoffFilter fullFilter = (TectonicRegionDistCutoffFilter)
-					sourceFilters.getFilterInstance(SourceFilters.TRT_DIST_CUTOFFS);
-			TectonicRegionDistanceCutoffs fullCutoffs = fullFilter.getCutoffs();
-			ret = new SourceFilterManager(SourceFilters.TRT_DIST_CUTOFFS);
-			TectonicRegionDistCutoffFilter skipFilter = (TectonicRegionDistCutoffFilter)
-					ret.getFilterInstance(SourceFilters.TRT_DIST_CUTOFFS);
-			TectonicRegionDistanceCutoffs skipCutoffs = skipFilter.getCutoffs();
-			for (TectonicRegionType trt : TectonicRegionType.values())
-				skipCutoffs.setCutoffDist(trt, fullCutoffs.getCutoffDist(trt)*SITE_SKIP_FRACT);
-		}
-		if (sourceFilters.isEnabled(SourceFilters.FIXED_DIST_CUTOFF)) {
-			if (ret == null)
-				ret = new SourceFilterManager(SourceFilters.FIXED_DIST_CUTOFF);
-			else
-				ret.setEnabled(SourceFilters.FIXED_DIST_CUTOFF, true);
-			FixedDistanceCutoffFilter fullFilter = (FixedDistanceCutoffFilter)sourceFilters.getFilterInstance(SourceFilters.FIXED_DIST_CUTOFF);
-			FixedDistanceCutoffFilter skipFilter = (FixedDistanceCutoffFilter)ret.getFilterInstance(SourceFilters.FIXED_DIST_CUTOFF);
-			skipFilter.setMaxDistance(fullFilter.getMaxDistance()*SITE_SKIP_FRACT);
-		}
-		return ret;
-	}
-	
-	public static SourceFilterManager getSiteSkipSourceFilters(SourceFilterManager sourceFilters, CommandLine cmd) {
-		SourceFilterManager siteSkipSourceFilters;
-		if (cmd.hasOption("skip-max-distance")) {
-			siteSkipSourceFilters = new SourceFilterManager(SourceFilters.FIXED_DIST_CUTOFF);
-			double maxDist = Double.parseDouble(cmd.getOptionValue("skip-max-distance"));
-			((FixedDistanceCutoffFilter)siteSkipSourceFilters.getFilterInstance(SourceFilters.FIXED_DIST_CUTOFF)).setMaxDistance(maxDist);
-		} else {
-			siteSkipSourceFilters = getDefaultSiteSkipSourceFilters(sourceFilters);
-		}
-		return siteSkipSourceFilters;
-	}
-	
 	private FaultSystemSolution sol;
 	private Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeRefMap;
 	private GriddedRegion region;
@@ -311,8 +130,7 @@ public class SolHazardMapCalc {
 	private List<XY_DataSet> extraFuncs;
 	private List<PlotCurveCharacterstics> extraChars;
 
-	static final SourceFilterManager SOURCE_FILTER_DEFAULT = new SourceFilterManager(SourceFilters.TRT_DIST_CUTOFFS);
-	private SourceFilterManager sourceFilter = SOURCE_FILTER_DEFAULT;
+	private SourceFilterManager sourceFilter = FaultSysHazardCalcSettings.SOURCE_FILTER_DEFAULT;
 	
 	static final SourceFilterManager SITE_SKIP_SOURCE_FILTER_DEFAULT = new SourceFilterManager(SourceFilters.TRT_DIST_CUTOFFS);
 	static {
@@ -363,7 +181,7 @@ public class SolHazardMapCalc {
 
 	public SolHazardMapCalc(FaultSystemSolution sol, Supplier<ScalarIMR> gmpeRef, GriddedRegion region,
 			IncludeBackgroundOption backSeisOption, double... periods) {
-		this(sol, wrapInTRTMap(gmpeRef), region, backSeisOption, periods);
+		this(sol, FaultSysHazardCalcSettings.wrapInTRTMap(gmpeRef), region, backSeisOption, periods);
 	}
 
 	public SolHazardMapCalc(FaultSystemSolution sol, Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeRefMap, GriddedRegion region,
@@ -373,35 +191,9 @@ public class SolHazardMapCalc {
 
 	public SolHazardMapCalc(FaultSystemSolution sol, Supplier<ScalarIMR> gmpeRef, GriddedRegion region,
 			IncludeBackgroundOption backSeisOption, boolean applyAftershockFilter, double... periods) {
-		this(sol, wrapInTRTMap(gmpeRef), region, backSeisOption, applyAftershockFilter, periods);
+		this(sol, FaultSysHazardCalcSettings.wrapInTRTMap(gmpeRef), region, backSeisOption, applyAftershockFilter, periods);
 	}
 	
-	public static Map<TectonicRegionType, ScalarIMR> getGmmInstances(Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeRefMap) {
-		EnumMap<TectonicRegionType, ScalarIMR> ret = new EnumMap<>(TectonicRegionType.class);
-		for (TectonicRegionType trt : gmpeRefMap.keySet())
-			ret.put(trt, gmpeRefMap.get(trt).get());
-		return ret;
-	}
-	
-	public static ParameterList getDefaultRefSiteParams(Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeRefMap) {
-		return getDefaultSiteParams(getGmmInstances(gmpeRefMap));
-	}
-	
-	public static ParameterList getDefaultSiteParams(Map<TectonicRegionType, ScalarIMR> gmpeMap) {
-		if (gmpeMap.size() == 1) {
-			return gmpeMap.values().iterator().next().getSiteParams();
-		} else {
-			ParameterList siteParams = new ParameterList();
-			for (ScalarIMR gmpe: gmpeMap.values()) {
-				for (Parameter<?> param : gmpe.getSiteParams()) {
-					if (!siteParams.containsParameter(param.getName()))
-						siteParams.addParameter(param);
-				}
-			}
-			return siteParams;
-		}
-	}
-
 	public SolHazardMapCalc(FaultSystemSolution sol, Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeRefMap, GriddedRegion region,
 			IncludeBackgroundOption backSeisOption, boolean applyAftershockFilter, double... periods) {
 		this.sol = sol;
@@ -417,7 +209,7 @@ public class SolHazardMapCalc {
 		
 		if (gmpeRefMap != null) {
 			sites = new ArrayList<>();
-			ParameterList siteParams = getDefaultRefSiteParams(gmpeRefMap);
+			ParameterList siteParams = FaultSysHazardCalcSettings.getDefaultRefSiteParams(gmpeRefMap);
 			
 			for (Location loc : region.getNodeList()) {
 				Site site = new Site(loc);
@@ -527,19 +319,6 @@ public class SolHazardMapCalc {
 		this.siteSkipSourceFilter = siteSkipSourceFilter;
 	}
 	
-	public static DiscretizedFunc getDefaultXVals(double period) {
-		return getDefaultXVals(new IMT_Info(), period);
-	}
-	
-	public static DiscretizedFunc getDefaultXVals(IMT_Info imtInfo, double period) {
-		if (period == -1d)
-			return imtInfo.getDefaultHazardCurve(PGV_Param.NAME);
-		else if (period == 0d)
-			return imtInfo.getDefaultHazardCurve(PGA_Param.NAME);
-		else
-			return imtInfo.getDefaultHazardCurve(SA_Param.NAME);
-	}
-	
 	private void checkInitXVals() {
 		if (xVals == null) {
 			synchronized (this) {
@@ -548,7 +327,7 @@ public class SolHazardMapCalc {
 					DiscretizedFunc[] logXVals = new DiscretizedFunc[periods.length];
 					IMT_Info imtInfo = new IMT_Info();
 					for (int p=0; p<periods.length; p++) {
-						xVals[p] = getDefaultXVals(imtInfo, periods[p]);
+						xVals[p] = FaultSysHazardCalcSettings.getDefaultXVals(imtInfo, periods[p]);
 						logXVals[p] = new ArbitrarilyDiscretizedFunc();
 						for (Point2D pt : xVals[p])
 							logXVals[p].set(Math.log(pt.getX()), 0d);
@@ -783,7 +562,7 @@ public class SolHazardMapCalc {
 		List<DiscretizedFunc> ret = new ArrayList<>(periods.length);
 		
 		for (int p=0; p<periods.length; p++) {
-			setIMforPeriod(gmpeMap, periods[p]);
+			FaultSysHazardCalcSettings.setIMforPeriod(gmpeMap, periods[p]);
 			DiscretizedFunc logCurve = logXVals[p].deepClone();
 			calc.getHazardCurve(logCurve, site, gmpeMap, erf);
 			DiscretizedFunc curve = xVals[p].deepClone();
@@ -800,23 +579,6 @@ public class SolHazardMapCalc {
 			ret.add(curve);
 		}
 		return ret;
-	}
-	
-	public static void setIMforPeriod(Map<TectonicRegionType, ScalarIMR> gmpeMap, double period) {
-		for (ScalarIMR gmpe : gmpeMap.values())
-			setIMforPeriod(gmpe, period);
-	}
-	
-	public static void setIMforPeriod(ScalarIMR gmpe, double period) {
-		if (period == -1d) {
-			gmpe.setIntensityMeasure(PGV_Param.NAME);
-		} else if (period == 0d) {
-			gmpe.setIntensityMeasure(PGA_Param.NAME);
-		} else {
-			Preconditions.checkState(period > 0);
-			gmpe.setIntensityMeasure(SA_Param.NAME);
-			SA_Param.setPeriodInSA_Param(gmpe.getIntensityMeasure(), period);
-		}
 	}
 	
 	public static void combineIn(DiscretizedFunc curve, DiscretizedFunc oCurve) {
@@ -1478,54 +1240,12 @@ public class SolHazardMapCalc {
 		return curves;
 	}
 
-	static final double SITE_SKIP_FRACT = 0.8;
-	public static void addCommonOptions(Options ops, boolean includeSiteSkip) {
-		ops.addOption("gm", "gmpe", true, "Sets a single GMPE that will be used for all TectonicRegionTypes. If this is supplied "
-				+ "multiple times, then each gmpe must have a TectonicRegionTypeParameter that will be used to determine the GMPE "
-				+ "for each TRT. Note that this will be overriden if the Logic Tree supplies GMPE choices. Default is TectonicRegionType-specific.");
-		ops.addOption(null, "trt-gmpe", true, "Sets the GMPE for the given TectonicRegionType in the format: <TRT>:<GMM>. "
-				+ "For example: ACTIVE_SHALLOW:ASK_2014. Note that this will be overriden if the Logic Tree supplies GMPE choices.");
-		ops.addOption("p", "periods", true, "Calculation period(s). Mutliple can be comma separated");
-		ops.addOption("md", "max-distance", true, "Maximum source-site distance in km. Default is TectonicRegionType-specific.");
-		ops.addOption(null, "vs30", true, "Site Vs30 value (uses GMM default otherwise)");
-		ops.addOption(null, "gmm-sigma-trunc-one-sided", true, "Enables one-sided GMM sigma truncation; default is disabled.");
-		ops.addOption(null, "gmm-sigma-trunc-two-sided", true, "Enables two-sided GMM sigma truncation; default is disabled.");
-		ops.addOption(null, "supersample", false, "Flag to enable grid cell supersampling (default is disabled)");
-		ops.addOption(null, "supersample-quick", false, "Flag to enable grid cell supersampling with faster parameters (default is disabled)");
-		ops.addOption(null, "dist-corr", true, "Set the point-source distance correction method. Default is "
-				+BaseFaultSystemSolutionERF.DIST_CORR_TYPE_DEFAULT.name()+"; options are: "+FaultSysTools.enumOptions(PointSourceDistanceCorrections.class));
-		ops.addOption(null, "point-source-type", true, "Sets the point source surface type. Default is "
-				+BaseFaultSystemSolutionERF.BG_RUP_TYPE_DEFAULT.name()+"; options are: "+FaultSysTools.enumOptions(BackgroundRupType.class));
-		if (includeSiteSkip)
-			ops.addOption("smd", "skip-max-distance", true, "Skip sites with no source-site distances below this value, in km. "
-					+ "Default is "+(int)(SITE_SKIP_FRACT*100d)+"% of the TectonicRegionType-specific default maximum distance.");
-	}
-	
-	public static GriddedSeismicitySettings getGridSeisSettings(CommandLine cmd) {
-		GriddedSeismicitySettings settings = BaseFaultSystemSolutionERF.GRID_SETTINGS_DEFAULT;
-		
-		if (cmd.hasOption("supersample"))
-			settings = settings.forSupersamplingSettings(GridCellSupersamplingSettings.DEFAULT);
-		else if (cmd.hasOption("supersample-quick"))
-			settings = settings.forSupersamplingSettings(GridCellSupersamplingSettings.QUICK);
-		else
-			settings = settings.forSupersamplingSettings(null);
-		
-		if (cmd.hasOption("dist-corr"))
-			settings = settings.forDistanceCorrections(PointSourceDistanceCorrections.valueOf(cmd.getOptionValue("dist-corr")));
-		
-		if (cmd.hasOption("point-source-type"))
-			settings = settings.forSurfaceType(BackgroundRupType.valueOf(cmd.getOptionValue("point-source-type")));
-		
-		return settings;
-	}
-	
 	private static Options createOptions() {
 		Options ops = new Options();
 		
 		ops.addOption(FaultSysTools.threadsOption());
 		
-		addCommonOptions(ops, true);
+		FaultSysHazardCalcSettings.addCommonOptions(ops, true);
 		
 		Option inputOption = new Option("if", "input-file", true, "Input solution file");
 		inputOption.setRequired(true);
@@ -1571,16 +1291,16 @@ public class SolHazardMapCalc {
 		if (cmd.hasOption("gridded-seis"))
 			gridSeisOp = IncludeBackgroundOption.valueOf(cmd.getOptionValue("gridded-seis"));
 		
-		GriddedSeismicitySettings griddedSettings = getGridSeisSettings(cmd);
+		GriddedSeismicitySettings griddedSettings = FaultSysHazardCalcSettings.getGridSeisSettings(cmd);
 		
 		if (gridSeisOp != IncludeBackgroundOption.EXCLUDE)
 			System.out.println("Gridded settings: "+griddedSettings);
 		
-		SourceFilterManager sourceFilter = getSourceFilters(cmd);
+		SourceFilterManager sourceFilter = FaultSysHazardCalcSettings.getSourceFilters(cmd);
 		
-		SourceFilterManager siteSkipSourceFilter = getSiteSkipSourceFilters(sourceFilter, cmd);
+		SourceFilterManager siteSkipSourceFilter = FaultSysHazardCalcSettings.getSiteSkipSourceFilters(sourceFilter, cmd);
 		
-		Map<TectonicRegionType, AttenRelSupplier> gmmRefs = getGMMs(cmd);
+		Map<TectonicRegionType, AttenRelSupplier> gmmRefs = FaultSysHazardCalcSettings.getGMMs(cmd);
 		System.out.println("GMMs:");
 		for (TectonicRegionType trt : gmmRefs.keySet())
 			System.out.println("\tGMM for "+trt.name()+": "+gmmRefs.get(trt).getName());

@@ -477,10 +477,15 @@ public final class GeoJSONFaultSection implements FaultSection {
 
 		// if "index" exists use above feature.id as parent id and index as id
 		if (origProps.containsKey("index")) {
+// System.out.println("INDEX HERE: "+origProps.getInt("index", -0)+"\t"+id+"\t"+name);
 			mappedProps.set(PARENT_ID, id);
 //			id = origProps.require("index", Integer.class);
 			id = origProps.getInt("index", -0);
 		}
+		if (origProps.containsKey("parent-id")) {
+			mappedProps.set(PARENT_ID, origProps.getInt("parent-id", -0));
+		}
+
 
 		
 		return new GeoJSONFaultSection(new Feature(id, geometry, mappedProps));

@@ -111,7 +111,7 @@ public enum PRVI25_SeismicityRateEpoch implements LogicTreeNode {
 				if (y > 0d) {
 					double weight = weights.get(j);
 					sumNonzeroWeight += weight;
-					average += weight*mfd.getY(i);
+					average += weight*y;
 					double lowerY = mfd.getLowerY(i);
 					double upperY = mfd.getUpperY(i);
 					if (AVG_UNCERT_IN_LOG10)
@@ -146,9 +146,12 @@ public enum PRVI25_SeismicityRateEpoch implements LogicTreeNode {
 		double sumWeight = 0d;
 		for (int i=0; i<mfds.size(); i++) {
 			UncertainArbDiscFunc mfd = mfds.get(i);
-			Preconditions.checkState(mfd.getMinX() == refMFD.getMinX());
-			Preconditions.checkState(mfd.getMaxX() == refMFD.getMaxX());
-			Preconditions.checkState(mfd.size() == refMFD.size());
+			Preconditions.checkState(mfd.getMinX() == refMFD.getMinX(), "MFD minX=%s != ref minX=%s",
+					mfd.getMinX(), refMFD.getMinX());
+			Preconditions.checkState(mfd.getMaxX() == refMFD.getMaxX(), "MFD maxX=%s != ref maxX=%s",
+					mfd.getMaxX(), refMFD.getMaxX());
+			Preconditions.checkState(mfd.size() == refMFD.size(), "MFD size=%s != ref size=%s", mfd.size(),
+					refMFD.size());
 			sumWeight += weights.get(i);
 		}
 		Preconditions.checkState(Precision.equals(sumWeight, 1d, 1e-4));
