@@ -2331,7 +2331,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			maxMag = Math.max(maxMag, rupSet.getMaxMagForSection(sect.getSectionId()));
 		}
 		
-		double legendRelX = latX ? 0.975 : 0.025;
+        double legendRelX = 0.025;
 		
 		Map<Integer, List<FaultSection>> parentsMap = faultSects.stream().collect(Collectors.groupingBy(s->s.getParentSectionId()));
 
