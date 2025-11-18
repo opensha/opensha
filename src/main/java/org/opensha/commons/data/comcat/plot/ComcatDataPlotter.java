@@ -851,14 +851,18 @@ public class ComcatDataPlotter {
 		double maxDataMag = Double.NEGATIVE_INFINITY;
 		
 		if (aftershocksFunc != null) {
-			minDataMag = Math.min(minDataMag, aftershocksFunc.getMinY());
-			maxDataMag = Math.max(maxDataMag, aftershocksFunc.getMaxY());
+            if (!Double.isNaN(aftershocksFunc.getMinY()))
+                minDataMag = Math.min(minDataMag, aftershocksFunc.getMinY());
+            if (!Double.isNaN(aftershocksFunc.getMaxY()))
+                maxDataMag = Math.max(maxDataMag, aftershocksFunc.getMaxY());
 		}
 		if (foreshocksFunc != null) {
-			minDataMag = Math.min(minDataMag, foreshocksFunc.getMinY());
-			maxDataMag = Math.max(maxDataMag, foreshocksFunc.getMaxY());
+            if (!Double.isNaN(foreshocksFunc.getMinY()))
+                minDataMag = Math.min(minDataMag, foreshocksFunc.getMinY());
+            if (!Double.isNaN(foreshocksFunc.getMaxY()))
+                maxDataMag = Math.max(maxDataMag, foreshocksFunc.getMaxY());
 		}
-		if (mainshock != null) {
+		if (mainshock != null && !Double.isNaN(mainshock.getMag())) {
 			minDataMag = Math.min(minDataMag, mainshock.getMag());
 			maxDataMag = Math.max(maxDataMag, mainshock.getMag());
 		}
