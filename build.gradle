@@ -71,7 +71,7 @@ task testOperational (type: Test) {
 
 dependencies {
 
-	api "ghsc:nshmp-gmm:1.7.14" // when you update this, also update nshmp-haz in dev to match
+	api "ghsc:nshmp-gmm:1.7.15" // when you update this, also update nshmp-haz in dev to match
 
     api 'com.google.guava:guava:31.1-jre'
     api 'com.google.code.gson:gson:2.8.9'
