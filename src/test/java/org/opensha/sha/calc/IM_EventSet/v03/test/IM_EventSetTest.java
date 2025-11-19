@@ -80,12 +80,12 @@ public class IM_EventSetTest {
 	}
 	
 	@Test
-	public void testCB08_SA200() throws IOException {
+	public void testCB08_SA02() throws IOException {
 		File dir2 = getVer2DirFile();
 		File dir3 = getVer3DirFile();
 		System.out.println("Testing CB 08 SA 0.2sec");
 		File PGA2 = new File(dir2.getAbsolutePath() + File.separator + "CB2008_SA_0_2.txt");
-		File PGA3 = new File(dir3.getAbsolutePath() + File.separator + "CB2008_SA200.txt");
+		File PGA3 = new File(dir3.getAbsolutePath() + File.separator + "CB2008_SA02.txt");
 		verifyFiles(PGA2, PGA3);
 	}
 
