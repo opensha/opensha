@@ -50,16 +50,16 @@ Campbell & Bozorgnia (2008)
 #
 # Currently the following are supported: "PGA", "PGV", "SA", and "MMI".  
 #
-# If "SA" is chosen, then give the period as well (e.g., "SA10000" for 10 seconds, and "SA200" for 0.2 seconds).
+# If "SA" is chosen, then  give the period as well (e.g., "SA10" for 10 second, and "SA02" for 0.2 second).
 # The code will throw and exception (show an error message) if the chosen 
 # intensity-measure type is not supported by the chosen attenuation 
-# relationship (the HTML documentation given above lists those that are supported)
+# relationship (the html documentation given above lists those that are supported)
 # 
 # Number of IMTs for which computation needs to be done
 2
 # Identify those IMT's:
 PGA
-SA200
+SA02
 # 
 # Next, give the number of sites and then the lat, lon, and  
 # Vs30 (m/sec) or Wills site classification for each. If no Vs30 is given, then it will 
