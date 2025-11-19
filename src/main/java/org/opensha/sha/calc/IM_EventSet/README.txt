@@ -7,7 +7,7 @@ This application is run by typing the following on the command line:
 where <name of the inputfile> is the input file and <output-files directory> is a directory where the output files go. The location of the output directory is relative to the location of the jar file.
 
 If the --HAZ01 flag is specified, the output files will follow the HAZ01 as specified in "Data Interchange Formats for the Global Earthquake Model (GEM)", 4 May 2009.
-Note that this format has since been adapted to support SA periods with precision of up to 0.001 seconds.
+Note that this format has since been adapted to support SA periods with precision of up to 0.1 seconds.
 
 To turn on debug messages, supply the --d flag for some information messages, --dd for more finely tuned messages, and --ddd for highly detailed tracing information. 
 
