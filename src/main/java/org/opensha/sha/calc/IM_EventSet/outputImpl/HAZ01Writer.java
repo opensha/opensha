@@ -161,8 +161,12 @@ public class HAZ01Writer extends IM_EventSetOutputWriter {
 					double rupDist = rup.getRuptureSurface().getDistanceRup(site.getLocation());
 					
 					double mean = attenRel.getMean();
-					stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL);
-					double total = attenRel.getStdDev();
+                    if (stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_TOTAL)) {
+                        stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL);
+                    } else if (stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_TOTAL_MAG_DEP)) {
+                        stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL_MAG_DEP);
+                    }
+                    double total = attenRel.getStdDev();
 					double inter = -1;
 					if (hasInterIntra) {
 						stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_INTER);

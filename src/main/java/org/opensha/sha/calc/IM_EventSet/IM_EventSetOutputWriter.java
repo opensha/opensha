@@ -66,8 +66,8 @@ public abstract class IM_EventSetOutputWriter {
 	public abstract String getName();
 
     /**
-     * HAZ01 IMT period strings only have precision up to 0.001 seconds.
-     * Example: SA 1.0 = SA1000, SA 0.1 = SA100, SA 0.005 = SA5
+     * HAZ01 IMT period strings only have precision up to 0.1 seconds.
+     * Example: SA 1.0 = SA10, SA 0.1 = SA01, SA 0.25 = SA 0.3, SA 0.005 = SA 0
      * @param param
      * @return
      */
@@ -79,7 +79,7 @@ public abstract class IM_EventSetOutputWriter {
 			for (Parameter<?> dep : depParam.getIndependentParameterList()) {
 				if (dep.getName().equals(PeriodParam.NAME)) {
 					double period = (Double)dep.getValue();
-					int p10 = (int)(period * 1000.0 + 0.5);
+                    int p10 = (int)(period * 10.0 + 0.5);
 					String p10Str = p10 + "";
 					if (p10Str.length() < 2)
 						p10Str = "0" + p10Str;
@@ -134,7 +134,7 @@ public abstract class IM_EventSetOutputWriter {
 			} else {
 				// this is a HAZ01 style IMT
 				logger.log(Level.FINEST, "Split into IMT: " + theIMT + ", Period portion (HAZ01 style): " + perSt);
-				period = Double.parseDouble(perSt) / 1000d;
+				period = Double.parseDouble(perSt) / 10d;
 			}
 			attenRel.setIntensityMeasure(theIMT);
 			Parameter imtParam = (Parameter)attenRel.getIntensityMeasure();
