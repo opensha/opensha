@@ -109,7 +109,11 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 					attenRel.setSite(site);
 					double mean = attenRel.getMean();
                     if (stdDevParam != null) {
-                        stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL);
+                        if (stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_TOTAL)) {
+                            stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL);
+                        } else if (stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_TOTAL_MAG_DEP)) {
+                            stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL_MAG_DEP);
+                        }
                     }
                     double total = attenRel.getStdDev();
 					double inter = -1;
