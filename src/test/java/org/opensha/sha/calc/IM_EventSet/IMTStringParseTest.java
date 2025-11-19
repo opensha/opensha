@@ -84,9 +84,14 @@ public class IMTStringParseTest {
 
     // HAZ01 tests commented out are due to constraint exceptions.
     // We can't set that SA period value for the given IMT (CB08).
+
     // This is not an issue in the IM Event Set Calculator, since we don't
     // set the IMT period from the HAZ01 string, we always use the period directly.
     // Expected HAZ01 string representations are observed in the GUI app.
+
+    // Constraint exceptions can be encountered in the CLT if an unsupported SA period is passed.
+    // To provide periods with greater precision than 0.1, the HAZ01 format cannot be used.
+
 
 	@Test
 	public void test0_01Sec() {
