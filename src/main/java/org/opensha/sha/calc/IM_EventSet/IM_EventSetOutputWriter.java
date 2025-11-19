@@ -67,7 +67,7 @@ public abstract class IM_EventSetOutputWriter {
 
     /**
      * HAZ01 IMT period strings only have precision up to 0.1 seconds.
-     * Example: SA 1.0 = SA10, SA 0.1 = SA01, SA 0.25 = SA 0.3, SA 0.005 = SA 0
+     * Example: SA 1.0 = SA10, SA 0.1 = SA01, SA 0.25 = SA03, SA 0.005 = SA00
      * @param param
      * @return
      */
