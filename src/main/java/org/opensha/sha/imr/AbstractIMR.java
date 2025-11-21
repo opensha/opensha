@@ -278,7 +278,7 @@ implements IntensityMeasureRelationship {
 	 *  passed in; no value (level) is set, nor are any of the IM's independent
 	 *  parameters set (since it's only given the name).
 	 *
-	 * @param  intensityMeasure  The new intensityMeasureParameter name
+	 * @param  intensityMeasureName The new intensityMeasure Parameter name
 	 */
 	public void setIntensityMeasure(String intensityMeasureName) throws
 	ParameterException {

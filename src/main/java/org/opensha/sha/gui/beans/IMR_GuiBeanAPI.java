@@ -6,10 +6,12 @@ package org.opensha.sha.gui.beans;
 
 
 /**
+ * The IMR_GuiBeanAPI should be implemented by any application which uses the IMR_GuiBean.
  * @author nitingupta
  *
  */
-public interface  IMR_GuiBeanAPI {
+@Deprecated
+public interface IMR_GuiBeanAPI {
 
 	/**
 	 * Updates the application using the IMR_GuiBean to update its Supported IM and show the correct 
@@ -18,7 +20,7 @@ public interface  IMR_GuiBeanAPI {
 	public void updateIM();
 	
     /**
-     * Update the Site Params for the selected AttenutionRelationship, so the similar can be shown by the application and shown by 
+     * Update the Site Params for the selected AttenuationRelationship, so the similar can be shown by the application and shown by
      * siteGuiBean.
      */	
     public void updateSiteParams();

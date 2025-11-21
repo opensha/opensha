@@ -1,12 +1,8 @@
 package org.opensha.sha.gui.beans;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
+import java.util.*;
 
+import com.google.common.base.Preconditions;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.constraint.impl.DoubleDiscreteConstraint;
@@ -14,14 +10,18 @@ import org.opensha.commons.param.editor.impl.ParameterListEditor;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.param.impl.StringParameter;
+import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.sha.gui.beans.event.IMTChangeEvent;
 import org.opensha.sha.gui.beans.event.IMTChangeListener;
+import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.event.ScalarIMRChangeEvent;
 import org.opensha.sha.imr.event.ScalarIMRChangeListener;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PeriodParam;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
 import org.opensha.sha.util.TectonicRegionType;
+
+import javax.swing.*;
 
 /**
  * This is a GUI bean for selecting IMTs with an IMT-First approach. It takes a list
@@ -43,8 +43,11 @@ implements ParameterChangeListener, ScalarIMRChangeListener {
 	public final static String IMT_PARAM_NAME =  "IMT";
 	
 	public final static String TITLE =  "Set IMT";
-	
+
+    // Can be set at construction, determines if we should use union or intersect on params
 	private boolean commonParamsOnly = false;
+
+    private boolean imtsAvailable;
 	
 	private ParameterList imtParams;
 	
@@ -57,38 +60,63 @@ implements ParameterChangeListener, ScalarIMRChangeListener {
 	private List<Double> allPeriods;
 	private List<Double> currentSupportedPeriods;
 
+    /**
+     * Init with single IMR and set commonParamsOnly
+     * @param imr
+     * @param commonParamsOnly
+     */
+    public IMT_NewGuiBean(ScalarIMR imr, boolean commonParamsOnly) {
+        this(wrapInList(imr), commonParamsOnly);
+    }
+
 	/**
 	 * Init with single IMR
-	 * 
 	 * @param imr
 	 */
 	public IMT_NewGuiBean(ScalarIMR imr) {
 		this(wrapInList(imr));
 	}
-	
+
 	/**
 	 * Init with an IMR gui bean. Listeners will be set up so that the IMT GUI will be updated
 	 * when the IMRs change, and visa-versa.
-	 * 
 	 * @param imrGuiBean
 	 */
 	public IMT_NewGuiBean(IMR_MultiGuiBean imrGuiBean) {
-		this(imrGuiBean.getIMRs());
-		this.addIMTChangeListener(imrGuiBean);
-		imrGuiBean.addIMRChangeListener(this);
-		fireIMTChangeEvent();
+        this(imrGuiBean, false);
 	}
-	
+
+    /**
+     * Init with GUI bean and set commonParamsOnly
+     * @param imrGuiBean
+     * @param commonParamsOnly
+     */
+    public IMT_NewGuiBean(IMR_MultiGuiBean imrGuiBean, boolean commonParamsOnly) {
+        this(imrGuiBean.getIMRs(), commonParamsOnly);
+        this.addIMTChangeListener(imrGuiBean);
+        imrGuiBean.addIMRChangeListener(this);
+        fireIMTChangeEvent();
+    }
+
 	/**
 	 * Init with a list of IMRs
-	 * 
 	 * @param imrs
 	 */
 	public IMT_NewGuiBean(List<? extends ScalarIMR> imrs) {
-		this.setTitle(TITLE);
-		setIMRs(imrs);
+        this(imrs, false);
 	}
-	
+
+    /**
+     * Init with a list of IMRs and set commonParamsOnly
+     * @param imrs
+     * @param commonParamsOnly
+     */
+    public IMT_NewGuiBean(List<? extends ScalarIMR> imrs, boolean commonParamsOnly) {
+        this.commonParamsOnly = commonParamsOnly;
+        this.setTitle(TITLE);
+        setIMRs(imrs);
+    }
+
 	private static ArrayList<ScalarIMR> wrapInList(
 			ScalarIMR imr) {
 		ArrayList<ScalarIMR> imrs =
@@ -96,6 +124,15 @@ implements ParameterChangeListener, ScalarIMRChangeListener {
 		imrs.add(imr);
 		return imrs;
 	}
+
+    /**
+     * If there is a valid IMT available for selection or just the "No IMTs available" placeholder.
+     * Is used in IMT_Chooser to determine if Add button should be enabled.
+     * @return if IMTs can be selected
+     */
+    public boolean areIMTsAvailable() {
+        return imtsAvailable;
+    }
 	
 	/**
 	 * Setup IMT GUI for single IMR
@@ -107,68 +144,41 @@ implements ParameterChangeListener, ScalarIMRChangeListener {
 	}
 	
 	/**
-	 * Set IMT GUI for multiple IMRs. All IMTs supported by at least one IMR will be displayed.
+	 * Set IMT GUI for multiple IMRs to show supported IMTs.
 	 * 
 	 * @param imrs
 	 */
 	public void setIMRs(List<? extends ScalarIMR> imrs) {
-		this.imrs = imrs;
-		
-		// first get a master list of all of the supported Params
-		// this is hardcoded to allow for checking of common SA period
-		ArrayList<Double> saPeriods;
-		ParameterList paramList = new ParameterList();
-		for (ScalarIMR imr : imrs) {
-			for (Parameter<?> param : imr.getSupportedIntensityMeasures()) {
-				if (paramList.containsParameter(param.getName())) {
-					// it's already in there, do nothing
-				} else {
-					paramList.addParameter(param);
-				}
-			}
-		}
-		
-		SA_Param oldSAParam = null;
-		if (commonParamsOnly) {
-			// now we weed out the ones that aren't supported by everyone
-			ParameterList toBeRemoved = new ParameterList();
-			for (Parameter param : paramList) {
-				boolean remove = false;
-				for (ScalarIMR imr : imrs) {
-					if (!imr.getSupportedIntensityMeasures().containsParameter(param.getName())) {
-						remove = true;
-						break;
-					}
-				}
-				if (remove) {
-					if (!toBeRemoved.containsParameter(param.getName())) {
-						toBeRemoved.addParameter(param);
-					}
-					// if SA isn't supported, we can skip the below logic
-					continue;
-				}
-				ArrayList<Double> badPeriods = new ArrayList<Double>();
-				if (param.getName().equals(SA_Param.NAME)) {
-					oldSAParam = (SA_Param)param;
-				}
-			}
-			// now we remove them
-			for (Parameter badParam : toBeRemoved) {
-				paramList.removeParameter(badParam.getName());
-			}
-			saPeriods = getCommonPeriods(imrs);
-		} else {
-			for (Parameter<?> param : paramList) {
-				if (param.getName().equals(SA_Param.NAME)) {
-					oldSAParam = (SA_Param) param;
-					break;
-				}
-			}
-			saPeriods = getAllSupportedPeriods(imrs);
-		}
+        this.imrs = imrs;
+        Preconditions.checkNotNull(imrs, "IMR list cannot be null!");
+        Preconditions.checkArgument(!imrs.isEmpty(), "IMR list cannot be empty!");
+
+        // Build ParameterList of supported params per IMR
+        ParameterList[] supportedParamsPerIMR = new ParameterList[imrs.size()];
+        for (int i = 0; i < supportedParamsPerIMR.length; i++) {
+            supportedParamsPerIMR[i] = imrs.get(i).getSupportedIntensityMeasures();
+        }
+
+        // Build supported params and SA periods
+        ParameterList paramList;
+        ArrayList<Double> saPeriods;
+        if (commonParamsOnly) {
+            paramList = ParameterList.intersection(supportedParamsPerIMR);
+            saPeriods = getCommonPeriods(imrs);
+        } else {
+            paramList = ParameterList.union(supportedParamsPerIMR);
+            saPeriods = getAllSupportedPeriods(imrs);
+        }
+
+        // Get SA param if it is supported
+        SA_Param oldSAParam = null;
+        if (paramList.containsParameter(SA_Param.NAME)) {
+            oldSAParam = (SA_Param) paramList.getParameter(SA_Param.NAME);
+        }
+        // Update the periods in the SA parameter
 		if (oldSAParam != null && paramList.containsParameter(oldSAParam.getName())) {
 			Collections.sort(saPeriods);
-			allPeriods = saPeriods;
+			this.allPeriods = saPeriods;
 			DoubleDiscreteConstraint pConst = new DoubleDiscreteConstraint(saPeriods);
 			double defaultPeriod = default_period;
 			if (!pConst.isAllowed(defaultPeriod))
@@ -180,24 +190,25 @@ implements ParameterChangeListener, ScalarIMRChangeListener {
 			replaceSA.setValue(defaultPeriod);
 			paramList.replaceParameter(replaceSA.getName(), replaceSA);
 		}
-		
+
 		this.imtParams = paramList;
-		
-		ParameterList finalParamList = new ParameterList();
-		
+
+        imtsAvailable = !paramList.isEmpty();
+        if (!imtsAvailable) {
+            paramList.addParameter(new StringParameter("No IMTs available for selected IMRs"));
+        }
+
 		ArrayList<String> imtNames = new ArrayList<String>();
 		for (Parameter<?> param : paramList) {
 			imtNames.add(param.getName());
 		}
-		
-		// add the IMT paramter
-		imtParameter = new StringParameter (IMT_PARAM_NAME,imtNames,
-				(String)imtNames.get(0));
+		// add the IMT parameter
+        ParameterList finalParamList = new ParameterList();
+		imtParameter = new StringParameter(IMT_PARAM_NAME, imtNames, imtNames.get(0));
 		imtParameter.addParameterChangeListener(this);
 		finalParamList.addParameter(imtParameter);
-		for (Parameter<?> param : paramList) {
-			finalParamList.addParameter(param);
-		}
+        finalParamList.addParameterList(paramList);
+        // Update GUI
 		updateGUI();
 		fireIMTChangeEvent();
 	}
@@ -372,8 +383,8 @@ implements ParameterChangeListener, ScalarIMRChangeListener {
 	}
 	
 	/**
-	 * Creates a list of periods common to all of the given IMRs
-	 * 
+	 * Creates a list of periods common to all given IMRs.
+	 *
 	 * @param imrs
 	 * @return
 	 */
@@ -384,13 +395,17 @@ implements ParameterChangeListener, ScalarIMRChangeListener {
 		for (Double period : allPeriods) {
 			boolean include = true;
 			for (ScalarIMR imr : imrs) {
-				imr.setIntensityMeasure(SA_Param.NAME);
-				SA_Param saParam = (SA_Param)imr.getIntensityMeasure();
-				PeriodParam periodParam = saParam.getPeriodParam();
-				if (!periodParam.isAllowed(period)) {
-					include = false;
-					break;
-				}
+                if (!imr.isIntensityMeasureSupported(SA_Param.NAME)) {
+                    // Return an empty list of there is an IMR that can't support SA periods
+                   return new ArrayList<Double>();
+                }
+                imr.setIntensityMeasure(SA_Param.NAME);
+                SA_Param saParam = (SA_Param) imr.getIntensityMeasure();
+                PeriodParam periodParam = saParam.getPeriodParam();
+                if (!periodParam.isAllowed(period)) {
+                    include = false;
+                    break;
+                }
 			}
 			
 			if (include)
@@ -427,4 +442,26 @@ implements ParameterChangeListener, ScalarIMRChangeListener {
 		this.setSupportedPeriods(getCommonPeriods(event.getNewIMRs().values()));
 	}
 
+    /**
+     * IMT gui bean demo
+     * @param args
+     */
+    public static void main(String[] args) {
+
+        JFrame frame = new JFrame();
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(600, 800);
+
+        List<? extends ScalarIMR> imrs =
+                AttenRelRef.instanceList(null, true, ServerPrefUtils.SERVER_PREFS);
+        for (ScalarIMR imr : imrs) {
+            imr.setParamDefaults();
+        }
+        IMT_NewGuiBean choose = new IMT_NewGuiBean(imrs);
+
+
+        frame.setContentPane(choose);
+        frame.setVisible(true);
+
+    }
 }

@@ -93,7 +93,7 @@ public class Site_GuiBean extends JPanel implements ParameterChangeListener,
 		latitude.addParameterChangeFailListener(this);
 		longitude.addParameterChangeFailListener(this);
 
-		// maake the new site object
+		// make the new site object
 		site = new Site(new Location(((Double) latitude.getValue())
 				.doubleValue(), ((Double) longitude.getValue()).doubleValue()));
 		parameterEditor = new ParameterListEditor(parameterList);
