@@ -110,7 +110,7 @@ ParameterChangeWarningListener, ParameterChangeFailListener {
 	}
 	
 	private void init(IMR_GuiBeanAPI api, Collection<AttenRelRef> imrRefs) {
-		application  = api;
+		application = api;
 		//attenRelInstances = new AttenuationRelationshipsInstance(classNames);
 		//supportedAttenRels = attenRelInstances.createIMRClassInstance(this);
 		supportedAttenRels = AttenRelRef.instanceList(this, true, imrRefs);
@@ -264,7 +264,7 @@ ParameterChangeWarningListener, ParameterChangeFailListener {
 		// if we are entering this function for the first time, then make imr objects
 		if(!parameterList.containsParameter(IMR_PARAM_NAME)) {
 			parameterList = new ParameterList();
-			Iterator it= supportedAttenRels.iterator();
+			Iterator it = supportedAttenRels.iterator();
 
 			ArrayList supportedIMRNames = new ArrayList();
 			while(it.hasNext()){
@@ -577,7 +577,7 @@ ParameterChangeWarningListener, ParameterChangeFailListener {
 	}
 	
 //	/**
-//	 * Setds the selected IMR.
+//	 * Sets the selected IMR.
 //	 */
 //	public void setSelectedIMR_Instance(
 //			) {

@@ -16,15 +16,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.JComboBox;
-import javax.swing.JComponent;
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.JPanel;
-import javax.swing.UIManager;
+import javax.swing.*;
 import javax.swing.plaf.basic.BasicComboBoxRenderer;
 
 import org.opensha.commons.gui.LabeledBoxPanel;
@@ -32,8 +24,10 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.util.ListUtils;
 import org.opensha.commons.util.NtoNMap;
+import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.sha.gui.beans.event.IMTChangeEvent;
 import org.opensha.sha.gui.beans.event.IMTChangeListener;
+import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.event.ScalarIMRChangeEvent;
 import org.opensha.sha.imr.event.ScalarIMRChangeListener;
@@ -117,10 +111,10 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 		
 		imrEnables = new ArrayList<Boolean>();
 		for (int i=0; i<imrs.size(); i++) {
-			imrEnables.add(Boolean.valueOf(true));
+			imrEnables.add(Boolean.TRUE);
 		}
 
-		// TODO add make the multi imr bean handle warnings
+		// TODO: Make the multi imr bean handle warnings
 		initGUI();
 		updateIMRMap();
 	}
@@ -589,7 +583,7 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 			throw new RuntimeException("Cannot get single selected IMR when multiple selected!");
 		return getIMRForChooser(0);
 	}
-	
+
 	/**
 	 * In multiple IMR mode, shows the parameter editor for the IMR associated with the
 	 * given tectonic region type.
@@ -646,7 +640,7 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 
 	/**
 	 * Sets the GUI to multiple/single IMR mode. If setting to multiple, but multiple isn't
-	 * supported, a <code>RundimeException</code> is thrown.
+	 * supported, a <code>RuntimeException</code> is thrown.
 	 * 
 	 * The GUI will be updated, and IMR an change event will be fired as needed.
 	 * 
@@ -890,4 +884,25 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 		this.maxChooserChars = maxChooserChars;
 	}
 
+    /**
+     * Demonstration of how to use IMR_MultiGuiBean
+     * @param args
+     */
+    public static void main(String[] args) {
+
+        JFrame frame = new JFrame();
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(600, 800);
+
+        List<? extends ScalarIMR> imrs =
+                AttenRelRef.instanceList(null, true, ServerPrefUtils.SERVER_PREFS);
+        for (ScalarIMR imr : imrs) {
+            imr.setParamDefaults();
+        }
+        IMR_MultiGuiBean choose = new IMR_MultiGuiBean(imrs);
+
+        frame.setContentPane(choose);
+        frame.setVisible(true);
+
+    }
 }
