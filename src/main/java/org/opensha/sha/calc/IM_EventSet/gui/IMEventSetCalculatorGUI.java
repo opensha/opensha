@@ -385,6 +385,20 @@ public class IMEventSetCalculatorGUI extends JFrame implements ActionListener {
         return applet;
     }
 
+    // static initializer for setting look & feel
+    static {
+        try {
+            System.setProperty("apple.laf.useScreenMenuBar", "true");
+        } catch (Exception e1) {
+            System.err.println("WARNING: could not set property 'apple.laf.useScreenMenuBar'");
+        }
+//		String osName = System.getProperty("os.name");
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception e) {
+        }
+    }
+
     /**
      * Returns the Application version
      * @return ApplicationVersion
