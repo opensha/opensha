@@ -77,7 +77,7 @@ public enum MagDependentAperiodicityOptions {
 		return aperValuesArray[getAperIndexForRupMag(rupMag)];
 	}
 	
-	protected String getMagDepAperInfoString(int aperIndex) {
+	public String getMagDepAperInfoString(int aperIndex) {
 		if(aperValuesArray.length == 1) {
 			return "aper="+aperValuesArray[0];
 		}

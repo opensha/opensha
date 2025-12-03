@@ -654,7 +654,7 @@ public class ProbabilityModelsCalc {
 					+ "\taveCondRecurInterval=%s\taveTimeSinceLastWhereKnownYears=%s\n"
 					+ "\thistOpenInterval=%s\tdurationYears=%s\texpNum=%s\n"+
 					"\tcondProb=%s\taper=%s",
-					probGain, aveCondRecurInterval, aveTimeSinceLastWhereKnownYears, histOpenInterval, durationYears, expNum, condProb, aperValues[getAperIndexForRupMag(rupMag)]);
+					probGain, aveCondRecurInterval, aveTimeSinceLastWhereKnownYears, histOpenInterval, durationYears, expNum, condProb, magDepAperiodicity.getAperForRupMag(rupMag));
 		}
 		else if (noSectionsHadDateOfLast) {
 			condProb = computeBPT_ProbForUnknownDateOfLastFast(aveCondRecurInterval, histOpenInterval, durationYears, rupMag);
@@ -669,7 +669,7 @@ public class ProbabilityModelsCalc {
 //  if(fltSysRupIndex==testRupID) System.out.println("Here4");
 
 			// set normBPT_CDF based on magnitude
-			EvenlyDiscretizedFunc normBPT_CDF=normBPT_CDF_Array[getAperIndexForRupMag(rupMag)];
+			EvenlyDiscretizedFunc normBPT_CDF=normBPT_CDF_Array[magDepAperiodicity.getAperIndexForRupMag(rupMag)];
 			double sumCondProbGain=0;
 			double totWeight=0;
 			double areaWithOutDateOfLast = totRupArea-totRupAreaWithDateOfLast;
@@ -771,7 +771,7 @@ public class ProbabilityModelsCalc {
 		u3_ProgGainForRupInfoString += totRupArea+",";
 		u3_ProgGainForRupInfoString += totRupAreaWithDateOfLast+",";
 		u3_ProgGainForRupInfoString += fractAreaWithDateOfLast+",";
-		u3_ProgGainForRupInfoString += aperValues[getAperIndexForRupMag(rupMag)]+",";
+		u3_ProgGainForRupInfoString += magDepAperiodicity.getAperForRupMag(rupMag)+",";// magDepAperiodicity.getAperForRupMag(rupMag)+",";
 		u3_ProgGainForRupInfoString += numSubsectForRup;
 
 //		u3_ProgGainForRupInfoString += allSectionsHadDateOfLast+",";
@@ -1043,7 +1043,7 @@ public class ProbabilityModelsCalc {
 	 */
 	public double computeBPT_ProbFast(double aveRecurIntervalYears, double aveTimeSinceLastYears, double durationYears, double rupMag) {
 		
-		BPT_DistCalc refBPT_DistributionCalc = refBPT_CalcArray[getAperIndexForRupMag(rupMag)];
+		BPT_DistCalc refBPT_DistributionCalc = refBPT_CalcArray[magDepAperiodicity.getAperIndexForRupMag(rupMag)];
 				
 		
 		double newTimeSinceLast = aveTimeSinceLastYears*refRI/aveRecurIntervalYears;
@@ -1080,7 +1080,7 @@ public class ProbabilityModelsCalc {
 	 * @return
 	 */
 	public double computeBPT_ProbForUnknownDateOfLastFast(double aveRecurIntervalYears, double histOpenIntervalYears, double durationYears, double rupMag) {
-		BPT_DistCalc refBPT_DistributionCalc = refBPT_CalcArray[getAperIndexForRupMag(rupMag)];
+		BPT_DistCalc refBPT_DistributionCalc = refBPT_CalcArray[magDepAperiodicity.getAperIndexForRupMag(rupMag)];
 		refBPT_DistributionCalc.setDurationAndHistOpenInterval(durationYears*refRI/aveRecurIntervalYears, histOpenIntervalYears*refRI/aveRecurIntervalYears);
 		return refBPT_DistributionCalc.getCondProbForUnknownTimeSinceLastEvent();	 
 	}
@@ -1153,38 +1153,6 @@ public class ProbabilityModelsCalc {
 	}
 	
 	
-	protected int getAperIndexForRupMag(double rupMag) {
-		int index = -1;
-		if(numAperValues==1)
-			index = 0;	// only one
-		else if(rupMag>aperMagBoundaries[numAperValues-2])	// minus 2 to get last value since aperMagBoundaries has one less element
-			index = numAperValues-1;	// the last one
-		else {
-			for(int m=0; m<aperMagBoundaries.length;m++) {
-				if(rupMag<=aperMagBoundaries[m]) {
-					index = m;
-					break;
-				}
-			}
-		}
-		return index;
-	}
-	
-	protected String getMagDepAperInfoString(int aperIndex) {
-		if(numAperValues == 1) {
-			return "aper="+aperValues[0];
-		}
-		if(aperIndex == 0) {	// first one
-			return "M<="+aperMagBoundaries[0]+"; aper="+aperValues[0];
-		}
-		else if(aperIndex == numAperValues-1) {	// last one
-			return "M>"+aperMagBoundaries[numAperValues-2]+"; aper="+aperValues[numAperValues-1];
-		}
-		else {	// intermediate one
-			return aperMagBoundaries[aperIndex-1]+"<M<="+aperMagBoundaries[aperIndex]+"; aper="+aperValues[aperIndex];
-		}
-		
-	}
 
 	
 	/**
@@ -1204,12 +1172,6 @@ public class ProbabilityModelsCalc {
 		
 		return normCDF_Array;
 	}
-
-	
-
-	
-	
-
 	
 	/**
 	 * This test the slow versus fact computations here, monte carlo sampling over a range of aver recur intervals, 
@@ -1693,7 +1655,7 @@ public class ProbabilityModelsCalc {
 					if(allSectionsHadDateOfLast) {
 						normalizedRupRecurIntervals.add(aveNormRI);
 						if(numAperValues>0)
-							normalizedRupRecurIntervalsMagDepList.get(getAperIndexForRupMag(rupMag)).add(aveNormRI);
+							normalizedRupRecurIntervalsMagDepList.get(magDepAperiodicity.getAperIndexForRupMag(rupMag)).add(aveNormRI);
 					}					
 				}
 				else {
@@ -1703,7 +1665,7 @@ public class ProbabilityModelsCalc {
 						aveNormRI = timeSinceLast/aveCondRecurIntervalForFltSysRups[fltSystRupIndex];
 						normalizedRupRecurIntervals.add(aveNormRI);
 						if(numAperValues>0)
-							normalizedRupRecurIntervalsMagDepList.get(getAperIndexForRupMag(rupMag)).add(aveNormRI);
+							normalizedRupRecurIntervalsMagDepList.get(magDepAperiodicity.getAperIndexForRupMag(rupMag)).add(aveNormRI);
 
 					}					
 				}
@@ -1745,7 +1707,7 @@ public class ProbabilityModelsCalc {
 						if(sect == testSectionIndex)
 							normalizedSectRecurIntervalsForTestSect.add(normYrsSinceLast);;
 						if(numAperValues>0)
-							normalizedSectRecurIntervalsMagDepList.get(getAperIndexForRupMag(rupMag)).add(normYrsSinceLast);
+							normalizedSectRecurIntervalsMagDepList.get(magDepAperiodicity.getAperIndexForRupMag(rupMag)).add(normYrsSinceLast);
 						
 						double normDistAlong = ((double)ithSectInRup+0.5)/(double)numSectInRup;
 						sumRI_AlongHist.add(normDistAlong, normYrsSinceLast);
@@ -1985,7 +1947,7 @@ public class ProbabilityModelsCalc {
 		if(numAperValues >1) {
 			for(int i=0;i<numAperValues;i++) {
 				ArrayList<EvenlyDiscretizedFunc> funcListMagDep = ProbModelsPlottingUtils.getNormRI_DistributionWithFits(normalizedRupRecurIntervalsMagDepList.get(i), aperValues[i]);
-				String label = getMagDepAperInfoString(i);
+				String label = magDepAperiodicity.getMagDepAperInfoString(i);
 				GraphWindow graphaMagDep = ProbModelsPlottingUtils.plotNormRI_DistributionWithFits(funcListMagDep, "Norm Rup RIs; "+label+"; "+plotLabelString);
 				infoString += "\n\nRup "+funcListMagDep.get(0).getName()+" for "+label+":";
 				infoString += "\n"+funcListMagDep.get(0).getInfo();
@@ -2022,7 +1984,7 @@ public class ProbabilityModelsCalc {
 		if(numAperValues >1) {
 			for(int i=0;i<numAperValues;i++) {
 				ArrayList<EvenlyDiscretizedFunc> funcListMagDep = ProbModelsPlottingUtils.getNormRI_DistributionWithFits(normalizedSectRecurIntervalsMagDepList.get(i), aperValues[i]);
-				String label = getMagDepAperInfoString(i);
+				String label = magDepAperiodicity.getMagDepAperInfoString(i);
 				GraphWindow graphaMagDep = ProbModelsPlottingUtils.plotNormRI_DistributionWithFits(funcListMagDep, "Norm Sect RIs; "+label+"; "+plotLabelString);
 				infoString += "\n\nSect "+funcListMagDep.get(0).getName()+" for "+label+":";
 				infoString += "\n"+funcListMagDep.get(0).getInfo();
@@ -3169,7 +3131,7 @@ public class ProbabilityModelsCalc {
 							"\t"+aveCondRecurIntervalForFltSysRups_type2[fltSystRupIndex]+
 							"\t"+longTermRateOfFltSysRup[fltSystRupIndex]+
 							"\t"+(max/min)+"\t"+(max-min)+"\t"+sigDiff+
-							"\t"+rupMag+"\t"+aperValues[getAperIndexForRupMag(rupMag)]+
+							"\t"+rupMag+"\t"+magDepAperiodicity.getAperForRupMag(rupMag)+
 							"\t"+name;
 					if(subSectIndex == -1)
 						fileWriter.write(line+"\n");
@@ -3866,7 +3828,7 @@ public class ProbabilityModelsCalc {
 						//						if(sect == testSectionIndex)
 						//							normalizedSectRecurIntervalsForTestSect.add(normYrsSinceLast);;
 						if(numAperValues>0)
-							normalizedSectRecurIntervalsMagDepList.get(getAperIndexForRupMag(rupMag)).add(normYrsSinceLast);
+							normalizedSectRecurIntervalsMagDepList.get(magDepAperiodicity.getAperIndexForRupMag(rupMag)).add(normYrsSinceLast);
 
 						double normDistAlong = ((double)ithSectInRup+0.5)/(double)numSectInRup;
 						sumRI_AlongHist.add(normDistAlong, normYrsSinceLast);
@@ -3981,7 +3943,7 @@ public class ProbabilityModelsCalc {
 				normalizedRupRecurIntervals.add(normRI);
 				double rupMag = mag_ForEventList.get(e);
 				if(numAperValues>0)
-					normalizedRupRecurIntervalsMagDepList.get(getAperIndexForRupMag(rupMag)).add(normRI);
+					normalizedRupRecurIntervalsMagDepList.get(magDepAperiodicity.getAperIndexForRupMag(rupMag)).add(normRI);
 			}
 			double aper=Double.NaN;
 			if(numAperValues==1)
@@ -3991,7 +3953,7 @@ public class ProbabilityModelsCalc {
 			// now mag-dep:
 			if(numAperValues >1) {
 				for(int i=0;i<numAperValues;i++) {
-					String label = getMagDepAperInfoString(i);
+					String label = magDepAperiodicity.getMagDepAperInfoString(i);
 					infoString += ProbModelsPlottingUtils.writeNormalizedDistPlotWithFits(normalizedRupRecurIntervalsMagDepList.get(i), aperValues[i], 
 							plotsDir, "Norm Rup RIs; "+label, "normRupRecurIntsForMagRange"+i);
 				}
@@ -4005,7 +3967,7 @@ public class ProbabilityModelsCalc {
 			// now mag-dep:
 			if(numAperValues >1) {
 				for(int i=0;i<numAperValues;i++) {
-					String label = getMagDepAperInfoString(i);
+					String label = magDepAperiodicity.getMagDepAperInfoString(i);
 					infoString += ProbModelsPlottingUtils.writeNormalizedDistPlotWithFits(normalizedSectRecurIntervalsMagDepList.get(i), aperValues[i], 
 							otherPlotsDir, "Norm Sect RIs; "+label, "normSectRecurIntsForMagRange"+i);
 				}
@@ -4063,7 +4025,7 @@ public class ProbabilityModelsCalc {
 				sectPartRateRatioArray[i] = obsSectRateArray[i]/longTermPartRateForSectArray[i];
 				// Compute sigma as Poisson hi to low confidence bound ratio divided by 4.0.
 				// use this for now until PoissonRateFromNinT_Calc is moved out of scratch 
-				double alpha = numObsOnSectionArray[i]+1;  // also called shape paramter
+				double alpha = numObsOnSectionArray[i]+1;  // also called shape parameter
 				double beta = 1d/numYears; 
 				GammaDistribution gd = new GammaDistribution(alpha,beta);
 				sectPartRateRatioSigmaArray[i] = (gd.inverseCumulativeProbability(0.975)/gd.inverseCumulativeProbability(0.025))/4.0;;
@@ -4235,15 +4197,18 @@ public class ProbabilityModelsCalc {
 	 */
 	public static void main(String[] args) {
 		
-		testFastCalculations(10000);
-		System.exit(0);
+		ProbabilityModelsCalc calc = new ProbabilityModelsCalc(MagDependentAperiodicityOptions.ALL_PT4_VALUES);
+		calc.plotXYZ_FuncOfCondProb();
 		
-		double rate = 1d/100d;
-		double duration = 5d;
-		PoissonDistribution pd = new PoissonDistribution(rate*duration);
-		double oneOrMore = 1d-pd.probability(0);
-		double one = pd.probability(1);
-		System.out.println((oneOrMore+"\t"+one+"\t"+oneOrMore/one));
+//		testFastCalculations(10000);
+//		System.exit(0);
+//		
+//		double rate = 1d/100d;
+//		double duration = 5d;
+//		PoissonDistribution pd = new PoissonDistribution(rate*duration);
+//		double oneOrMore = 1d-pd.probability(0);
+//		double one = pd.probability(1);
+//		System.out.println((oneOrMore+"\t"+one+"\t"+oneOrMore/one));
 		
 //		// This is a rerun test in March 2025 (extracted to un-commented stuff below); input file locations had changed.
 //		String fileName="/Users/field/Library/CloudStorage/OneDrive-DOI/Field_Other/CEA_WGCEP/UCERF3/UCERF3-TI/Figures/Fig11_FaultClusterFig/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip";

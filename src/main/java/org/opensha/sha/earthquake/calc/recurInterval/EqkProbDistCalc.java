@@ -95,6 +95,17 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 		cdf.setInfo(adjustableParams.toString());
 		return cdf;
 	}
+	
+	public EvenlyDiscretizedFunc getSurvivorFunc() {
+		if(!upToDate) computeDistributions();
+		EvenlyDiscretizedFunc survFunc = new EvenlyDiscretizedFunc(0, cdf.getMaxX(), cdf.size());
+		survFunc.setName(NAME+" Survivor Function (1-CDF)");
+		survFunc.setInfo(adjustableParams.toString());
+		for(int i=0;i<cdf.size();i++)
+			survFunc.set(i,1.0-cdf.getY(i));
+		return survFunc;
+	}
+
 
 	public EvenlyDiscretizedFunc getPDF() {
 		if(!upToDate) computeDistributions();

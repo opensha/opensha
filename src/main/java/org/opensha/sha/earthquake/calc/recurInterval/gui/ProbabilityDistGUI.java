@@ -171,15 +171,16 @@ public class ProbabilityDistGUI extends JFrame implements ParameterChangeListene
 	private void makePlottingPanels() {
 		plottingPanelsList = new ArrayList<PlottingPanel>();
 		plottingPanelNames = new ArrayList<String>();
-		int numPlottingPanels = 6;
+		int numPlottingPanels = 7;
 		for(int i=0; i<numPlottingPanels; ++i)
 			plottingPanelsList.add(new PlottingPanel());
 		plottingPanelNames.add("PDF");
 		plottingPanelNames.add("CDF");
-		plottingPanelNames.add("Cond Prob");
+		plottingPanelNames.add("Survivor Func");
 		plottingPanelNames.add("Haz Func");	
-		plottingPanelNames.add("Time Since Last PDF");	
+		plottingPanelNames.add("Cond Prob");
 		plottingPanelNames.add("Cond Prob Gain");	
+		plottingPanelNames.add("Time Since Last PDF");	
 	}
 
 	/**
@@ -366,16 +367,17 @@ public class ProbabilityDistGUI extends JFrame implements ParameterChangeListene
 			EqkProbDistCalc selectedProbDist = getSelectedProbDist();
 			this.plottingPanelsList.get(0).addFunc(selectedProbDist.getPDF());
 			this.plottingPanelsList.get(1).addFunc(selectedProbDist.getCDF());
+			this.plottingPanelsList.get(2).addFunc(selectedProbDist.getSurvivorFunc());
+			this.plottingPanelsList.get(3).addFunc(selectedProbDist.getHazFunc());
 			EvenlyDiscretizedFunc condFunc = selectedProbDist.getCondProbFunc();
 			// now add the CondProbForUnknownTimeSinceLastEvent to the info string
 			Parameter param = selectedProbDist.getAdjParams().getParameter(EqkProbDistCalc.HIST_OPEN_INTERVAL_PARAM_NAME);
 			condFunc.setInfo(condFunc.getInfo()+
 					"\nCond Prob = "+(float)selectedProbDist.getCondProbForUnknownTimeSinceLastEvent()+
 					" if date of last event unknown, but "+param.getName() +" = "+param.getValue()+"\n");
-			this.plottingPanelsList.get(2).addFunc(condFunc);
-			this.plottingPanelsList.get(3).addFunc(selectedProbDist.getHazFunc());
-			this.plottingPanelsList.get(4).addFunc(selectedProbDist.getTimeSinceLastEventPDF());
+			this.plottingPanelsList.get(4).addFunc(condFunc);
 			this.plottingPanelsList.get(5).addFunc(selectedProbDist.getCondProbGainFunc());
+			this.plottingPanelsList.get(6).addFunc(selectedProbDist.getTimeSinceLastEventPDF());
 
 			// catch the error and display messages in case of input error
 		}

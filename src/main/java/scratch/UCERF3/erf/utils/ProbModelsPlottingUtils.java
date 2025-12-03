@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
 
+import org.jfree.chart.annotations.XYBoxAnnotation;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.data.Range;
 import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc_3D;
@@ -17,15 +18,19 @@ import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.data.xyz.EvenlyDiscrXYZ_DataSet;
 import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
+import org.opensha.commons.gui.plot.PlotPreferences;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
+import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.cpt.CPT;
+import org.opensha.commons.util.cpt.CPTVal;
 import org.opensha.sha.earthquake.calc.recurInterval.BPT_DistCalc;
 import org.opensha.sha.earthquake.calc.recurInterval.LognormalDistCalc;
 import org.opensha.sha.earthquake.calc.recurInterval.WeibullDistCalc;
@@ -441,7 +446,67 @@ public class ProbModelsPlottingUtils {
 		return spec;
 	}
 	
-	
+	public static void plotScaleForSectRatioWithUncert(File outputDir) {
+		XY_DataSet junk = new  DefaultXY_DataSet();
+		junk.set(1d, 1d);
+		PlotCurveCharacterstics plotChar = new  PlotCurveCharacterstics(PlotSymbol.CIRCLE, 1f, Color.red);
+		double minX = 0.8, maxX = 1.2, minY = 0d, maxY=3;
+		Range xAxisRange = new Range(minX,maxX);
+		Range yAxisRange = new Range(minY,maxY);
+		int numX=40;
+		int numY = 30;
+		boolean logX = false;
+		boolean logY = false;
+		double widthInches = 4;
+		double heightInches = 3;
+		File fileNamePrefix = new File(outputDir, "scaleForSectRatioWithUncert");
+		ArrayList<XY_DataSet> funcList = new ArrayList<XY_DataSet>();
+		funcList.add(junk);
+		ArrayList<PlotCurveCharacterstics> plotCharList = new ArrayList<PlotCurveCharacterstics>();
+		plotCharList.add(plotChar);
+		PlotSpec spec = new PlotSpec(funcList, plotCharList, "", "Ratio", "Num Stdom");
+		
+		double deltaX = (maxX-minX)/(double)numX;
+		double deltaY = (maxY-minY)/(double)numY;
+		for(int x=0;x<numX;x++) {
+			for(int y=0;y<numY;y++) {
+				double x1 = minX+x*deltaX;
+				double x2 = minX+(x+1)*deltaX;
+				double y1 = minY+y*deltaY;
+				double y2 = minY+(y+1)*deltaY;
+				double midX = (x1+x2)/2d; // the ratio
+				double midY = (y1+y2)/2d; // num stdoms away
+//						numSigmaDiff = Math.abs(ratio-1.0)/sigma;
+				double sigma = Math.abs(midX-1.0)/midY;
+				Color color = getRatioMapColor(midX, sigma);
+				spec.addPlotAnnotation(new XYBoxAnnotation(x1, y1, x2, y2, null, null, color));
+			}
+		}
+
+		HeadlessGraphPanel gp = new HeadlessGraphPanel();
+		gp.setUserBounds(xAxisRange, yAxisRange);
+		gp.setTickLabelFontSize(16);
+		gp.setAxisLabelFontSize(22);
+		gp.setPlotLabelFontSize(16);
+		gp.setBackgroundColor(Color.WHITE);
+		gp.drawGraphPanel(spec, logX, logY); // spec can be a list
+		int width = (int)(widthInches*72.);
+		int height = (int)(heightInches*72.);
+		gp.getChartPanel().setSize(width, height); 
+
+		if(integerYaxisTickLabeIncrements)
+			gp.getChartPanel().getChart().getXYPlot().getRangeAxis().setStandardTickUnits(NumberAxis.createIntegerTickUnits());
+
+		try {
+			gp.saveAsPNG(fileNamePrefix+".png");
+			gp.saveAsPDF(fileNamePrefix+".pdf");
+			gp.saveAsTXT(fileNamePrefix+".txt");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		
+	}
 	
 	public static HistogramFunction getNormRI_Distribution(ArrayList<Double> normRI_List, double deltaT) {
 		// find max value
@@ -840,6 +905,10 @@ public class ProbModelsPlottingUtils {
 		
 		return color;
 	}
+	
+	
+
+	
 	
 	public static void writeMapOfSimOverTargetPartRates (double[] sectRatioArray, double[] sectSigmaArray, 
 			List<? extends FaultSection> subSects, File outputDir) {
