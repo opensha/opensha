@@ -73,26 +73,33 @@ public abstract class IM_EventSetCalc_v3_0 implements IM_EventSetCalc_v3_0_API {
 			if (providers != null) {
 				boolean hasNewType = false;
 				for (SiteData<?> provider : providers) {
+                    // The provider specifies a data type that the user didn't
 					if (!userTypes.contains(provider.getDataType())) {
 						hasNewType = true;
 						break;
 					}
 				}
+                // Only fetch site data if it's actually necessary
 				if (hasNewType) {
-					// only fetch site data if it's actually necessary
-                    // TODO: We need to inform users when values are overridden
+                    // Fetch all data values from providers that provide at least one new data type
 					ArrayList<SiteDataValue<?>> provData = providers.getBestAvailableData(site.getLocation());
+
 					if (provData != null) {
+                        // Ignore provider data types where user types are already specified
+                        provData.removeIf(dataVal ->
+                                userTypes.stream()
+                                        .anyMatch(userVal -> userVal.equals(dataVal.getDataType())));
+
 						for (SiteDataValue<?> dataVal : provData) {
                             logger.log(Level.FINE, "Provider data value for site " + i + ": " + dataVal);
                         }
-                        // Remove all dataVals that have a matching dataType in provData
+                        // Remove all dataVals that have a matching dataType in provData (i.e. Use the provider value)
                         dataVals.removeIf(dataVal ->
                                 provData.stream()
                                         .anyMatch(provVal ->provVal.getDataType().equals(dataVal.getDataType()))
                         );
 
-                        // Add all provider values
+                        // Add all provider values for new data types
                         dataVals.addAll(provData);
 					}
 				}
