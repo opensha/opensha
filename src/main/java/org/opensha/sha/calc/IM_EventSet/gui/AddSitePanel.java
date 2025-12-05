@@ -1,51 +1,49 @@
 package org.opensha.sha.calc.IM_EventSet.gui;
 
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.*;
 
+import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
 import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.geo.Location;
-import org.opensha.commons.gui.LabeledBoxPanel;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
-import org.opensha.commons.param.editor.ParameterEditor;
 import org.opensha.commons.param.editor.impl.ParameterListEditor;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.nshmp2.imr.impl.Campbell_2003_AttenRel;
 import org.opensha.sha.imr.IntensityMeasureRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.Field_2000_AttenRel;
-import org.opensha.sha.imr.param.SiteParams.DepthTo1pt0kmPerSecParam;
-import org.opensha.sha.imr.param.SiteParams.DepthTo2pt5kmPerSecParam;
 import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
 import org.opensha.sha.imr.param.SiteParams.Vs30_TypeParam;
+import org.opensha.sha.util.SiteTranslator;
 
 /**
  * Panel to add or edit sites and set corresponding site data params.
  */
-public class AddSitePanel extends JPanel {
+public class AddSitePanel extends JPanel implements ActionListener {
 	
     private final ParameterListEditor siteDataParamEditor;
     private final DoubleParameter latParam;
     private final DoubleParameter lonParam;
     private final static boolean D = false;
-
+    private JButton setFromWebButton;
+    OrderedSiteDataProviderList providers;
 
     /**
-     * Constructor for AddSitePanel with existing site data values
      * Used for editing an existing site.
      * @param siteDataParams List of site data parameters to edit in this panel
-     * @param dataList values for site data parameters to populate this panel
      * @param loc location of site to edit
      */
-    public AddSitePanel(ParameterList siteDataParams,
-                        ArrayList<SiteDataValue<?>> dataList,
-                        Location loc) {
+    public AddSitePanel(ParameterList siteDataParams, OrderedSiteDataProviderList providers, Location loc) {
         this.setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+        this.providers = providers;
         // Create a location list to specify sites
         ParameterList paramList = new ParameterList();
         this.latParam = new DoubleParameter("Latitude", loc.getLatitude());
@@ -55,26 +53,35 @@ public class AddSitePanel extends JPanel {
         ParameterListEditor paramEdit = new ParameterListEditor(paramList);
         paramEdit.setTitle("New Site Location");
 
+
         // Add an informational message about site data precedence
-        LabeledBoxPanel dataNoticePanel = new LabeledBoxPanel();
-        dataNoticePanel.setTitle("Note: Site Data Precedence");
+//        LabeledBoxPanel setFromWebPanel = new LabeledBoxPanel();
+        JPanel setFromWebPanel = new JPanel();
+        setFromWebPanel.setLayout(new BoxLayout(setFromWebPanel, BoxLayout.Y_AXIS));
+        setFromWebPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+//        setFromWebPanel.setTitle("Site Data Providers");
+        setFromWebButton = new JButton("Set Params from Web Services");
         JTextArea infoText = new JTextArea(
-                "User-provided site data values are overridden by\n"
-                + "selected Site Data Providers where applicable.\n"
-                + "Check enabled \"Site Data Providers\" and if their\n"
-                + "regions overlap with this site.");
-        dataNoticePanel.add(infoText);
+                "Clicking the above button will overwrite user-provided site data values\n"
+                + "with the values from the web services. See the \"Site Data Providers\" pane\n"
+                + "to add or remove selected providers.\n\n"
+                + "Hover over site data types on right for more information.\n"
+                + "Hover over text fields for min and max values for numeric inputs.\n");
+        setFromWebPanel.add(Box.createVerticalStrut(5));
+        setFromWebPanel.add(setFromWebButton);
+        setFromWebButton.addActionListener(this);
+        setFromWebPanel.add(Box.createVerticalStrut(5));
+        setFromWebPanel.add(infoText);
 
         // Create and populate the left column
         JPanel leftCol = new JPanel();
         leftCol.setLayout(new BoxLayout(leftCol, BoxLayout.Y_AXIS));
         leftCol.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 10));
         leftCol.add(paramEdit);
-        leftCol.add(dataNoticePanel);
+        leftCol.add(setFromWebPanel);
         this.add(leftCol);
 
         // Create editor for provided site data parameters
-        setSiteDataParams(siteDataParams, dataList);
         siteDataParamEditor = new ParameterListEditor(siteDataParams);
         siteDataParamEditor.setPreferredSize(new Dimension(250, siteDataParamEditor.getPreferredSize().height));
         siteDataParamEditor.setMaximumSize(new Dimension(250, 500));
@@ -83,12 +90,11 @@ public class AddSitePanel extends JPanel {
     }
 
     /**
-     * Constructor for AddSitePanel.
      * Used for creating a new site.
      * @param siteDataParams List of site data parameters to edit in this panel
      */
-	public AddSitePanel(ParameterList siteDataParams) {
-        this(siteDataParams, /*dataList=*/null, new Location(34.0, -118.0));
+	public AddSitePanel(ParameterList siteDataParams, OrderedSiteDataProviderList providers) {
+        this(siteDataParams, providers, new Location(34.0, -118.0));
 	}
 
 	public Location getSiteLocation() {
@@ -96,9 +102,11 @@ public class AddSitePanel extends JPanel {
 	}
 
     /**
+     * TODO: Delete this before next OpenSHA release (v26.1.0)
      * Gets the site data values from the site data parameters
      * @return ArrayList of SiteDataValue objects with proper metadata
      */
+    @Deprecated
 	public ArrayList<SiteDataValue<?>> getDataVals() {
         ParameterList siteDataParams = siteDataParamEditor.getParameterList();
         ArrayList<SiteDataValue<?>> values = new ArrayList<>();
@@ -150,33 +158,17 @@ public class AddSitePanel extends JPanel {
         return values;
 	}
 
-    private void setSiteDataParams(ParameterList siteDataParams, ArrayList<SiteDataValue<?>> dataVals) {
-        if (siteDataParams == null) return;
-        // Need to explicitly set parameters with default null values or they are overwritten with the last non-null value
-        // This is because null paramValues are skipped in AddSitePanel.getDataVals
-        if (siteDataParams.containsParameter(DepthTo1pt0kmPerSecParam.NAME)) {
-            ParameterEditor param = siteDataParams.getParameter(DepthTo1pt0kmPerSecParam.NAME).getEditor();
-            param.setValue(null);
-        }
-        if (siteDataParams.containsParameter(DepthTo2pt5kmPerSecParam.NAME)) {
-            ParameterEditor param = siteDataParams.getParameter(DepthTo2pt5kmPerSecParam.NAME).getEditor();
-            param.setValue(null);
-        }
-        if (dataVals != null) {
-            String measurementType = Vs30_TypeParam.VS30_TYPE_INFERRED;
-            for (SiteDataValue<?> sdv : dataVals) {
-                if (sdv.getDataType().equals(Vs30_Param.NAME)) {
-                    measurementType = sdv.getDataMeasurementType();
-                }
-                if (siteDataParams.containsParameter(sdv.getDataType())) {
-                    ParameterEditor param = siteDataParams.getParameter(sdv.getDataType()).getEditor();
-                    param.setValue(sdv.getValue());
-                }
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource().equals(setFromWebButton)) {
+            // Fetch all data values from providers that provide at least one new data type
+            ArrayList<SiteDataValue<?>> provData = providers.getBestAvailableData(getSiteLocation());
+            ParameterList siteDataParams = siteDataParamEditor.getParameterList();
+            SiteTranslator siteTrans = new SiteTranslator();
+            for (Parameter<?> param : siteDataParams) {
+                siteTrans.setParameterValue(param, provData);
             }
-            if (siteDataParams.containsParameter(Vs30_TypeParam.NAME)) {
-              ParameterEditor param = siteDataParams.getParameter(Vs30_TypeParam.NAME).getEditor();
-              param.setValue(measurementType);
-            }
+            siteDataParamEditor.refreshParamEditor();
         }
     }
 
@@ -200,5 +192,4 @@ public class AddSitePanel extends JPanel {
                 "Add Site",
                 JOptionPane.OK_CANCEL_OPTION);
 	}
-
 }
