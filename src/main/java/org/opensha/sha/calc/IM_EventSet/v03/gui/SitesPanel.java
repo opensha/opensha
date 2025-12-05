@@ -21,14 +21,17 @@ import javax.swing.ListSelectionModel;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
+import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
 import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.data.siteData.gui.beans.OrderedSiteDataGUIBean;
+import org.opensha.commons.data.siteData.impl.WillsMap2000;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.imr.IntensityMeasureRelationship;
 import org.opensha.sha.imr.ScalarIMR;
+import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
 
 public class SitesPanel extends JPanel implements ListSelectionListener, ActionListener {
 	
@@ -251,6 +254,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
      * @param e the event to be processed
      */
 	public void actionPerformed(ActionEvent e) {
+        OrderedSiteDataProviderList providers = siteDataGUIBean.getProviderList();
 		if (e.getSource().equals(addSiteButton)) {
             // Don't allow user to add sites if IMRs aren't selected
             if (defaultSiteDataParams.isEmpty()) {
@@ -261,7 +265,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 			// adding a site
             // Unique set of site data params per new site added
             ParameterList params = (ParameterList)defaultSiteDataParams.clone();
-			AddSitePanel siteAdd = new AddSitePanel(params);
+			AddSitePanel siteAdd = new AddSitePanel(params, providers);
             int selection = promptNewSite(siteAdd);
 			if (selection == JOptionPane.OK_OPTION) {
 				Location loc = siteAdd.getSiteLocation();
@@ -277,7 +281,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
             // edit the selected site
             int siteIndex = sitesList.getSelectedIndex();
             ParameterList params = siteDataParams.get(siteIndex);
-            AddSitePanel siteAdd = new AddSitePanel(params, locs.get(siteIndex));
+            AddSitePanel siteAdd = new AddSitePanel(params, providers, locs.get(siteIndex));
             int selection = promptNewSite(siteAdd, /*exception=*/locs.get(siteIndex));
             if (selection == JOptionPane.OK_OPTION) {
                 Location loc = siteAdd.getSiteLocation();
@@ -357,6 +361,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
         return locs;
     }
 
+    // TODO: Delete before next OpenSHA release v26.1.0
     @Deprecated
     public ArrayList<ArrayList<SiteDataValue<?>>> getDataLists() {
         // TODO: We need to fix invocations in the IM_EventSetGUI to read SiteDataParams directly
@@ -381,7 +386,12 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setSize(400, 600);
 
-		SitesPanel sites = new SitesPanel();
+        // Creating a SitesPanel requires a site data gui bean to monitor for provider changes
+        // To mock this we'll create a new gui bean with only one provider (WillsMap2000).
+        ArrayList<SiteData<?>> params = new ArrayList<>();
+        params.add(new WillsMap2000());
+        OrderedSiteDataProviderList providers = new OrderedSiteDataProviderList(params);
+		SitesPanel sites = new SitesPanel(new OrderedSiteDataGUIBean(providers));
 		sites.addSite(new Location(34, -118), null);
 
 		frame.setContentPane(sites);

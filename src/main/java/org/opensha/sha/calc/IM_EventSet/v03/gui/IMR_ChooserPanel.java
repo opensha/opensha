@@ -5,6 +5,10 @@ import java.util.*;
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
 
+import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
+import org.opensha.commons.data.siteData.SiteData;
+import org.opensha.commons.data.siteData.gui.beans.OrderedSiteDataGUIBean;
+import org.opensha.commons.data.siteData.impl.WillsMap2000;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.util.ServerPrefUtils;
@@ -121,9 +125,13 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 		JFrame frame = new JFrame();
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setSize(400, 600);
-		
+
+        ArrayList<SiteData<?>> params = new ArrayList<>();
+        params.add(new WillsMap2000());
+        OrderedSiteDataProviderList providers = new OrderedSiteDataProviderList(params);
+        SitesPanel sites = new SitesPanel(new OrderedSiteDataGUIBean(providers));
 		frame.setContentPane(new IMR_ChooserPanel(
-                new IMT_ChooserPanel(), new SitesPanel()));
+                new IMT_ChooserPanel(), sites));
 		frame.setVisible(true);
 	}
 
