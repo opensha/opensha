@@ -34,7 +34,8 @@ import org.jfree.data.Range;
 
 public final class WeibullDistCalc extends EqkProbDistCalc implements ParameterChangeListener {
 	 
-	
+	double k = Double.NaN;
+	double lambda = Double.NaN;
 	
 	public WeibullDistCalc() {
 		NAME = "Weibull";
@@ -92,8 +93,8 @@ public final class WeibullDistCalc extends EqkProbDistCalc implements ParameterC
 		cdf.set(0,0);
 		
 		// convert aperiodicity to shape parameter (k)
-		double k = getShapeParameter(aperiodicity);
-		double lambda = getScaleParameter(mean,k);
+		k = getShapeParameter(aperiodicity);
+		lambda = getScaleParameter(mean,k);
 		WeibullDistribution weibullDist = new WeibullDistribution(k,lambda);
 
 // System.out.println("k="+k+"\nlambda="+lambda+"\ngamma1="+gamma1);
@@ -286,6 +287,23 @@ public final class WeibullDistCalc extends EqkProbDistCalc implements ParameterC
     		}
     	}
     }
+    
+    /**
+     * Override this to avoid numerical problems
+     */
+	public EvenlyDiscretizedFunc getHazFunc() {
+		if(!upToDate) computeDistributions();
+		EvenlyDiscretizedFunc hazFunc = new EvenlyDiscretizedFunc(0, pdf.getMaxX(), pdf.size());
+		double haz;
+		for(int i=0;i<hazFunc.size();i++) {
+			haz = k*Math.pow(lambda, -k)*Math.pow(hazFunc.getX(i), k-1);// pdf.getY(i)/(1.0-cdf.getY(i));
+			if(Double.isInfinite(haz) || Double.isInfinite(-haz)) haz = Double.NaN;
+			hazFunc.set(i,haz);
+		}
+		hazFunc.setName(NAME+" Hazard Function");
+		hazFunc.setInfo(adjustableParams.toString());
+		return hazFunc;
+	}
 
 
 	/**

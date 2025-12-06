@@ -174,10 +174,9 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	 * This computes the the probability of occurrence over the given duration conditioned 
 	 * on timeSinceLast (how long it has been since the last event).
 	 * 
-	 * The commented out code gives the non-interpolated result, which is not as accurate.
-	 * 
-	 * This does not check for numerical errors where the denominator approaches zero at high 
-	 * timeSinceLast (look for a getSafeCondProb(*) version of this method in subclasses).
+	 * This returns Double.NaN is the denominator (total area/prob remaining) is less than 
+	 * 1e-14 to avoid numerical problems.
+	 *  
 	 * @param timeSinceLast
 	 * @param duration
 	 * @return
@@ -204,8 +203,10 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 			p2 = cdf.getY(pt2);
 			p1 = cdf.getY(pt1);
 		}
-		
-		return (p2-p1)/(1.0-p1);
+		if((1.0-p1) > 1e-14) // avoid numerical problems
+			return (p2-p1)/(1.0-p1);
+		else
+			return Double.NaN;
 	}	
 
 	/**
