@@ -28,7 +28,6 @@ import org.opensha.sha.earthquake.rupForecastImpl.Point2MultVertSS_Fault.Point2M
 import org.opensha.sha.earthquake.rupForecastImpl.Point2MultVertSS_Fault.Point2MultVertSS_FaultERF_List;
 import org.opensha.sha.earthquake.rupForecastImpl.WG02.WG02_ERF_Epistemic_List;
 import org.opensha.sha.earthquake.rupForecastImpl.WG02.WG02_EqkRupForecast;
-import org.opensha.sha.earthquake.rupForecastImpl.WG02.WG02_FortranWrappedERF_EpistemicList;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF1.WGCEP_UCERF1_EqkRupForecast;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2_TimeIndependentEpistemicList;
@@ -76,10 +75,6 @@ public enum ERF_Ref {
 	
 	/** WGCEP 2002 ERF Epistemic List */
 	WGCEP_02_LIST(WG02_ERF_Epistemic_List.class, WG02_ERF_Epistemic_List.NAME, PRODUCTION, true),
-	
-	/** WGCEP 2002 Fortran Wrapped ERF */
-	WGCEP_02_WRAPPED_LIST(WG02_FortranWrappedERF_EpistemicList.class,
-			WG02_FortranWrappedERF_EpistemicList.NAME, PRODUCTION, true),
 	
 	/** WGCEP UCERF 1 */
 	WGCEP_UCERF_1(WGCEP_UCERF1_EqkRupForecast.class, WGCEP_UCERF1_EqkRupForecast.NAME, PRODUCTION, false),
