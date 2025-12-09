@@ -88,9 +88,9 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 
 	/*				opensha.scec.edu paths				*/
 //	public static final String OPENSHA_GMT_PATH="/usr/local/GMT4.2.1/bin/";
-	public static final String OPENSHA_GMT_PATH="/home/akash/miniconda3/bin/gmt "; // needs the space after
-    public static final String OPENSHA_GS_PATH="/home/akash/miniconda3/bin/gs";
-	public static final String OPENSHA_PS2PDF_PATH = "/home/akash/miniconda3/bin/ps2pdf";
+	public static final String OPENSHA_GMT_PATH="/usr/bin/gmt "; // needs the space after
+    public static final String OPENSHA_GS_PATH="/usr/bin/gs";
+	public static final String OPENSHA_PS2PDF_PATH = "/usr/bin/ps2pdf";
 	public static final String OPENSHA_CONVERT_PATH="/usr/bin/convert";
 	public static final String OPENSHA_GMT_DATA_PATH =
 			ServerPrefUtils.SERVER_PREFS.getDataDir().getAbsolutePath()+File.separator+"gmt"+File.separator;
