@@ -82,8 +82,8 @@ public class GMT_MapGeneratorApplet extends JPanel{
 
 
 	private final static String URL_NAME = "Enter URL";
-	private StringParameter xyzFileName=
-		new StringParameter(URL_NAME,"http://opensha.scec.org/data/step/backGround.txt");
+	private StringParameter xyzFileName =
+		new StringParameter(URL_NAME,"https://data.opensha.org/data/step/backGround.txt");
 	private StringParameterEditor xyzFileEditor;
 	private JPanel parameterPanel = new JPanel();
 	private GridBagLayout gridBagLayout1 = new GridBagLayout();
