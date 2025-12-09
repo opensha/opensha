@@ -86,7 +86,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 
 	protected String SCALE_LABEL; // what's used to label the color scale
 
-	/*				opensha.scec.edu paths				*/
+	/*				opensha.scec.org paths				*/
 //	public static final String OPENSHA_GMT_PATH="/usr/local/GMT4.2.1/bin/";
 	public static final String OPENSHA_GMT_PATH="/usr/bin/gmt "; // needs the space after
     public static final String OPENSHA_GS_PATH="/usr/bin/gs";
