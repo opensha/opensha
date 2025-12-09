@@ -26,22 +26,19 @@ public class ServerPrefUtils {
 	 * Update this when distributing a new OpenSHA release.
 	 * This same backend may be in use for more than one OpenSHA version.
 	 */
-	private static final String PROD_VERSION = "25.4";
-	
+	private static final String PROD_VERSION = "26.1";
+
 	/**
 	 * Hostname for all production services
 	 */
-//	static final String OPENSHA_SERVER_PRODUCTION_HOST = "data.opensha.org";
-    static final String OPENSHA_SERVER_PRODUCTION_HOST = "opensha.scec.org";
+	static final String OPENSHA_SERVER_PRODUCTION_HOST = "data.opensha.org";
 
 	/**
 	 * Hostname for all development services
 	 */
-//    static final String OPENSHA_SERVER_DEV_HOST = "data.opensha.org";
-	static final String OPENSHA_SERVER_DEV_HOST = "opensha.scec.org";
-	
-//	static final String OPENSHA_TOMCAT_WEBAPPS_DIR = "/var/lib/tomcat/webapps/";
-    static final String OPENSHA_TOMCAT_WEBAPPS_DIR = "/var/lib/tomcat9/webapps/";
+    static final String OPENSHA_SERVER_DEV_HOST = "data.opensha.org";
+
+    static final String OPENSHA_TOMCAT_WEBAPPS_DIR = "/var/lib/tomcat/webapps/";
 
 	/**
 	 * Directories for storing data and temporary files
@@ -99,7 +96,6 @@ public class ServerPrefUtils {
 	 * In practice, this means that it should be development prefs on trunk and nightly builds, and production
 	 * prefs on release branches and distribution applications.
 	 */
-    // TODO: Switch to PRODUCTION_PREFS before merging
 	public static final ServerPrefs SERVER_PREFS = ServerPrefs.DEV_PREFS;
 	
 	public static void debug(String debugName, String message) {
