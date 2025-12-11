@@ -6,17 +6,14 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
 public class HAZ01A_FakeSource extends ProbEqkSource {
 	
 	private ArrayList<HAZ01A_FakeRupture> rups;
 	private ProbEqkSource source;
-	
-	public HAZ01A_FakeSource() {}
-	
-	public HAZ01A_FakeSource(ProbEqkSource source, int sourceID) {
+
+    public HAZ01A_FakeSource(ProbEqkSource source, int sourceID) {
 		rups = new ArrayList<HAZ01A_FakeRupture>();
 		this.source = source;
 		

@@ -963,9 +963,11 @@ public class SiteLogicTreeHazardPageGen {
 		
 		meanCurve.setName("Mean");
 		funcs.add(meanCurve);
-		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, color.darker()));
-		
-		if (compMeanCurve != null) {
+		if (compMeanCurve == null) {
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK));
+		} else {
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, color.darker()));
+			
 			compMeanCurve.setName("Comparison Mean");
 			funcs.add(compMeanCurve);
 			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, compColor.darker()));
@@ -1249,7 +1251,7 @@ public class SiteLogicTreeHazardPageGen {
 		}
 	}
 	
-	private static List<String> buildDistHeader(String firstCol, String units) {
+	static List<String> buildDistHeader(String firstCol, String units) {
 		if (units == null)
 			units = "";
 		else if (!units.isBlank() && !units.startsWith(" "))
@@ -1264,8 +1266,10 @@ public class SiteLogicTreeHazardPageGen {
 		return header;
 	}
 	
-	private static class ValueDistribution {
+	static class ValueDistribution {
 		public final double mean;
+		public final double min;
+		public final double max;
 		public final int size;
 		public final double stdDev;
 		public final LightFixedXFunc normCDF;
@@ -1277,6 +1281,8 @@ public class SiteLogicTreeHazardPageGen {
 			this.size = values.size();
 			if (size == 1) {
 				this.mean = values.get(0);
+				this.min = mean;
+				this.max = mean;
 				this.stdDev = Double.NaN;
 				this.normCDF = null;
 				this.allZero = this.mean == 0d;
@@ -1284,8 +1290,12 @@ public class SiteLogicTreeHazardPageGen {
 				double weightedMean = 0d;
 				double sumOrigWeights = 0d;
 				boolean allZero = true;
+				double min = Double.POSITIVE_INFINITY;
+				double max = Double.NEGATIVE_INFINITY;
 				for (int i=0; i<values.size(); i++) {
 					double val = values.get(i);
+					min = Math.min(min, val);
+					max = Math.max(max, val);
 					allZero &= val == 0d;
 					double weight = weights.get(i);
 					weightedMean += val*weight;
@@ -1293,6 +1303,8 @@ public class SiteLogicTreeHazardPageGen {
 				}
 				weightedMean /= sumOrigWeights;
 				this.mean = weightedMean;
+				this.min = min;
+				this.max = max;
 				double[] valsArray = Doubles.toArray(values);
 				double[] weightsArray = MathArrays.normalizeArray(Doubles.toArray(weights), weights.size());
 				double var = new Variance(false).evaluate(valsArray, weightsArray, weightedMean);
@@ -1582,11 +1594,15 @@ public class SiteLogicTreeHazardPageGen {
 			// if we have a comp hist, it's already in the legend earlier
 			String lineLabel = compHist == null ? compName+" Mean" : null;
 			funcs.add(vertLine(compMean, 0d, maxY, lineLabel));
-			chars.add(new PlotCurveCharacterstics(nodeHists == null ? PlotLineType.SOLID : PlotLineType.DASHED, 4f, compColor));
+			chars.add(new PlotCurveCharacterstics(nodeHists == null ? PlotLineType.SOLID : PlotLineType.DASHED, 4f, compColor.darker()));
 		}
 		
 		funcs.add(vertLine(mean, 0d, maxY, (primaryName != null && !primaryName.isBlank() ? primaryName+" " : "")+"Mean"));
-		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, color));
+		if (compMean == null)
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK));
+		else
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, color.darker()));
+		
 		
 		if (dist != null && dist.size > 1) {
 			// fractiles
