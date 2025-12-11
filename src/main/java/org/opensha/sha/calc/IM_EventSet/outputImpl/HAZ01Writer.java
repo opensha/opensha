@@ -119,11 +119,17 @@ public class HAZ01Writer extends IM_EventSetOutputWriter {
 		ArrayList<Parameter> defaultSiteParams = getDefaultSiteParams(attenRel);
 		
 		ArrayList<Site> sites = getInitializedSites(attenRel);
-		
-		StdDevTypeParam stdDevParam = (StdDevTypeParam)attenRel.getParameter(StdDevTypeParam.NAME);
-		boolean hasInterIntra = stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_INTER) &&
-									stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_INTRA);
-		
+
+        StdDevTypeParam stdDevParam = null;
+        boolean hasInterIntra = false;
+        try {
+            stdDevParam = (StdDevTypeParam) attenRel.getParameter(StdDevTypeParam.NAME);
+            hasInterIntra = stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_INTER) &&
+                    stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_INTRA);
+        } catch (ParameterException e) {
+            logger.log(Level.INFO, "IMR " + attenRel.getShortName() + " missing Std Dev Type parameter.");
+        }
+
 		if (!hasInterIntra)
 			logger.log(Level.WARNING, "Selected IMR, " + attenRel.getShortName() + ", doesn't allow " +
 					"inter event Std Dev...all values will be set to -1");
@@ -161,10 +167,12 @@ public class HAZ01Writer extends IM_EventSetOutputWriter {
 					double rupDist = rup.getRuptureSurface().getDistanceRup(site.getLocation());
 					
 					double mean = attenRel.getMean();
-                    if (stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_TOTAL)) {
-                        stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL);
-                    } else if (stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_TOTAL_MAG_DEP)) {
-                        stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL_MAG_DEP);
+                    if (stdDevParam != null) {
+                        if (stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_TOTAL)) {
+                            stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL);
+                        } else if (stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_TOTAL_MAG_DEP)) {
+                            stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL_MAG_DEP);
+                        }
                     }
                     double total = attenRel.getStdDev();
 					double inter = -1;
