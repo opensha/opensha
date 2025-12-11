@@ -75,9 +75,10 @@ public class ServerPrefUtils {
 		} catch (Exception e) {
 			hostName = null;
 		}
-		// TODO: switch to SSL. 8443 is the default port for Tomcat
-		String PROD_URL = "http://"+OPENSHA_SERVER_PRODUCTION_HOST+":8080/OpenSHA_"+PROD_VERSION+"/";
-		String DEV_URL = "http://"+OPENSHA_SERVER_DEV_HOST+":8080/OpenSHA_master/";
+//		String PROD_URL = "http://"+OPENSHA_SERVER_PRODUCTION_HOST+":8080/OpenSHA_"+PROD_VERSION+"/";
+//		String DEV_URL = "http://"+OPENSHA_SERVER_DEV_HOST+":8080/OpenSHA_master/";
+        String PROD_URL = "https://"+OPENSHA_SERVER_PRODUCTION_HOST+"/tomcat/OpenSHA_"+PROD_VERSION+"/";
+        String DEV_URL = "https://"+OPENSHA_SERVER_DEV_HOST+"/tomcat/OpenSHA_master/";
 		if (hostName != null && !hostName.isEmpty()) {
 			if (hostName.equalsIgnoreCase(OPENSHA_SERVER_PRODUCTION_HOST))
 				PROD_URL = "http://localhost:8080/OpenSHA_"+PROD_VERSION+"/";
