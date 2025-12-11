@@ -9,7 +9,6 @@ import java.util.List;
 import javax.swing.*;
 
 import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
-import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.Parameter;
@@ -20,8 +19,6 @@ import org.opensha.nshmp2.imr.impl.Campbell_2003_AttenRel;
 import org.opensha.sha.imr.IntensityMeasureRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.Field_2000_AttenRel;
-import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
-import org.opensha.sha.imr.param.SiteParams.Vs30_TypeParam;
 import org.opensha.sha.util.SiteTranslator;
 
 /**
@@ -99,63 +96,6 @@ public class AddSitePanel extends JPanel implements ActionListener {
 
 	public Location getSiteLocation() {
 		return new Location(latParam.getValue(), lonParam.getValue());
-	}
-
-    /**
-     * TODO: Delete this before next OpenSHA release (v26.1.0)
-     * Gets the site data values from the site data parameters
-     * @return ArrayList of SiteDataValue objects with proper metadata
-     */
-    @Deprecated
-	public ArrayList<SiteDataValue<?>> getDataVals() {
-        ParameterList siteDataParams = siteDataParamEditor.getParameterList();
-        ArrayList<SiteDataValue<?>> values = new ArrayList<>();
-
-        // Handle adding Vs30 value separately
-        boolean hasVs30 = siteDataParams.containsParameter(Vs30_Param.NAME);
-        boolean hasVs30Type = siteDataParams.containsParameter(Vs30_TypeParam.NAME);
-        String measurementType = SiteData.TYPE_FLAG_INFERRED; // default
-        if (hasVs30Type) {
-            measurementType = siteDataParams
-                    .getParameter(Vs30_TypeParam.NAME)
-                    .getValue().toString();
-        }
-        if (hasVs30) {
-            Double vs30Value = (Double)siteDataParams.getValue(Vs30_Param.NAME);
-            SiteDataValue<Double> sdv = new SiteDataValue<>(
-                    Vs30_Param.NAME, measurementType, vs30Value);
-            values.add(sdv);
-        }
-
-
-        // Add all other site data values
-        for (Parameter<?> param : siteDataParams) {
-            String paramName = param.getName();
-            Object paramValue = param.getValue();
-            
-            // Skip if the value is null
-            if (paramValue == null) continue;
-            
-            // Cast paramValue to the appropriate type and add new SiteDataValue
-           if (!(paramName.equals(Vs30_TypeParam.NAME) || paramName.equals(Vs30_Param.NAME))) {
-               SiteDataValue<?> sdv;
-                if (paramValue instanceof Double || paramValue instanceof Integer) {
-                    paramValue = ((Number) paramValue).doubleValue();
-                    sdv = new SiteDataValue<Double>(paramName, measurementType, (Double)paramValue);
-                } else if (paramValue instanceof Boolean) {
-                    sdv = new SiteDataValue<Boolean>(paramName, measurementType, (Boolean)paramValue);
-                } else if (paramValue instanceof String) {
-                    paramValue = paramValue.toString();
-                    sdv = new SiteDataValue<String>(paramName, measurementType, (String)paramValue);
-                } else {
-                    sdv = new SiteDataValue<>(paramName, measurementType, paramValue);
-                }
-                if (D) System.out.println("Adding site data value: " + sdv);
-               values.add(sdv);
-            }
-        }
-        
-        return values;
 	}
 
     @Override
