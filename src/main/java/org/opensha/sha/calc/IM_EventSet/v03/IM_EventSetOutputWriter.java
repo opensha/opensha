@@ -8,7 +8,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.opensha.commons.data.Site;
-import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.param.Parameter;
@@ -17,7 +16,6 @@ import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PeriodParam;
-import org.opensha.sha.util.SiteTranslator;
 
 public abstract class IM_EventSetOutputWriter {
 	
@@ -221,12 +219,11 @@ public abstract class IM_EventSetOutputWriter {
 				}
 			}
 		}
-        // TODO: Delete debug
-		for (int i=0; i<sites.size(); i++) {
-			Site site = sites.get(i);
-			ParameterList siteData = sitesData.get(i);
-            System.out.println(siteData);
-		}
+//		for (int i=0; i<sites.size(); i++) {
+//			Site site = sites.get(i);
+//			ParameterList siteData = sitesData.get(i);
+//            System.out.println(siteData);
+//		}
 		return sites;
 	}
 	

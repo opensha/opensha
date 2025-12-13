@@ -1,7 +1,6 @@
 package org.opensha.sha.calc.IM_EventSet.v03;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -74,8 +73,6 @@ public abstract class IM_EventSetCalc_v3_0 implements IM_EventSetCalc_v3_0_API {
 				boolean hasNewType = false;
 				for (SiteData<?> provider : providers) {
                     for (Parameter<?> userVal : userSiteData) {
-                        // TODO: Delete debug
-                        System.out.println("isValidMapping: " + provider.getDataType() + ", " + userVal.getName() + " = " + SiteTranslator.DATA_TYPE_PARAM_NAME_MAP.isValidMapping(provider.getDataType(), userVal.getName()));
                         if (SiteTranslator.DATA_TYPE_PARAM_NAME_MAP.isValidMapping(provider.getDataType(), userVal.getName())
                             && userVal.getValue() == null) {
                             hasNewType = true;

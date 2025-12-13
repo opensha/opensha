@@ -1,7 +1,6 @@
 package org.opensha.sha.calc.IM_EventSet.v03.gui;
 
 import java.awt.BorderLayout;
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;

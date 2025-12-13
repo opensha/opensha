@@ -12,7 +12,6 @@ import java.util.concurrent.ExecutionException;
 import javax.swing.*;
 
 import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
-import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.data.siteData.gui.beans.OrderedSiteDataGUIBean;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.gui.DisclaimerDialog;
