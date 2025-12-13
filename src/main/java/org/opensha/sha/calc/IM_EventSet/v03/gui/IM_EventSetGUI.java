@@ -16,6 +16,7 @@ import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.data.siteData.gui.beans.OrderedSiteDataGUIBean;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.gui.DisclaimerDialog;
+import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.util.ApplicationVersion;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.ServerPrefUtils;
@@ -186,7 +187,7 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 		}
 	}
 
-    private boolean isReadyForCalc(ArrayList<Location> locs, ArrayList<ArrayList<SiteDataValue<?>>> dataLists,
+    private boolean isReadyForCalc(ArrayList<Location> locs, ArrayList<ParameterList> dataLists,
 			ERF erf, ArrayList<ScalarIMR> imrs, ArrayList<String> imts) {
 		
 		if (locs.isEmpty()) {
@@ -224,7 +225,7 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
             // Spawn thread for precalculation logic to determine if ready
             SwingWorker<Boolean, Integer> precalcWorker = new SwingWorker<>() {
                 ArrayList<Location> locs = null;
-                ArrayList<ArrayList<SiteDataValue<?>>> dataLists = null;
+                ArrayList<ParameterList> dataLists = null;
                 ERF erf = null;
                 ArrayList<ScalarIMR> imrs = null;
                 ArrayList<String> imts = null;
@@ -240,7 +241,7 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
                         }
                         // Get data for calculation
                         locs = sitesPanel.getLocs();
-                        dataLists = sitesPanel.getDataLists();
+                        dataLists = sitesPanel.getSiteDataParams();
                         erf = (ERF) erfGuiBean.getSelectedERF();
                         imrs = imrChooser.getSelectedIMRs();
                         imts = imtChooser.getIMTStrings();

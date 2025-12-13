@@ -7,6 +7,7 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
 import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.param.ParameterList;
 
 public interface IM_EventSetCalc_v3_0_API {
 	
@@ -33,13 +34,13 @@ public interface IM_EventSetCalc_v3_0_API {
 	public OrderedSiteDataProviderList getSiteDataProviders();
 
 	/**
-	 * Returns the user specified (in the input file) site data values for the site
-	 * or null to try to use site data providers
+     * Returns the user specified (in the input file) site data for the site
+     * or null to try to use site data providers
 	 * 
-	 * @param i
-	 * @return
+	 * @param i ith site user created
+	 * @return list of parameters holding site data
 	 */
-	public ArrayList<SiteDataValue<?>> getUserSiteDataValues(int i);
+	public ParameterList getUserSiteData(int i);
 	
 	/**
 	 * Returns the output directory for all results
@@ -49,7 +50,7 @@ public interface IM_EventSetCalc_v3_0_API {
 	public abstract File getOutputDir();
 	
 	/**
-	 * This initializes the site data values for each site.
+	 * This initializes the site data for each site.
 	 * 
 	 * If there is user specified data for the specific site, that is given top
 	 * priority. If there are also site data providers available, those will
@@ -57,7 +58,7 @@ public interface IM_EventSetCalc_v3_0_API {
 	 * 
 	 * @return
 	 */
-	public ArrayList<ArrayList<SiteDataValue<?>>> getSitesData();
+	public ArrayList<ParameterList> getSitesData();
 	
 	public ArrayList<Site> getSites();
 

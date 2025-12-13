@@ -51,17 +51,16 @@ public class AddSitePanel extends JPanel implements ActionListener {
         paramEdit.setTitle("New Site Location");
 
 
-        // Add an informational message about site data precedence
-//        LabeledBoxPanel setFromWebPanel = new LabeledBoxPanel();
+        // Create button and description for setting site data from web services
         JPanel setFromWebPanel = new JPanel();
         setFromWebPanel.setLayout(new BoxLayout(setFromWebPanel, BoxLayout.Y_AXIS));
         setFromWebPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-//        setFromWebPanel.setTitle("Site Data Providers");
         setFromWebButton = new JButton("Set Params from Web Services");
         JTextArea infoText = new JTextArea(
                 "Clicking the above button will overwrite user-provided site data values\n"
                 + "with the values from the web services. See the \"Site Data Providers\" pane\n"
-                + "to add or remove selected providers.\n\n"
+                + "to add or remove selected providers.\n"
+                + "Leaving a field blank will also fetch from web services.\n\n"
                 + "Hover over site data types on right for more information.\n"
                 + "Hover over text fields for min and max values for numeric inputs.\n");
         setFromWebPanel.add(Box.createVerticalStrut(5));

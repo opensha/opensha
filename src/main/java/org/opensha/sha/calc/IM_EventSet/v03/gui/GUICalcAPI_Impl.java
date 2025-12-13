@@ -5,20 +5,20 @@ import java.util.ArrayList;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
-import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetCalc_v3_0;
 import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetCalc_v3_0_API;
 
 public class GUICalcAPI_Impl implements IM_EventSetCalc_v3_0_API {
 	
 	private ArrayList<Site> sites;
-	private ArrayList<ArrayList<SiteDataValue<?>>> userSitesData;
-	private ArrayList<ArrayList<SiteDataValue<?>>> sitesData;
+	private ArrayList<ParameterList> userSitesData;
+	private ArrayList<ParameterList> sitesData;
 	private File outputDir;
 	private OrderedSiteDataProviderList providers;
 	
-	public GUICalcAPI_Impl(ArrayList<Location> locs, ArrayList<ArrayList<SiteDataValue<?>>> userSitesData,
+	public GUICalcAPI_Impl(ArrayList<Location> locs, ArrayList<ParameterList> userSitesData,
 			File outputDir, OrderedSiteDataProviderList providers) {
 		sites = new ArrayList<Site>();
 		for (Location loc : locs) {
@@ -49,14 +49,14 @@ public class GUICalcAPI_Impl implements IM_EventSetCalc_v3_0_API {
 		return sites;
 	}
 
-	public ArrayList<ArrayList<SiteDataValue<?>>> getSitesData() {
+	public ArrayList<ParameterList> getSitesData() {
 		if (sitesData == null) {
 			sitesData = IM_EventSetCalc_v3_0.getSitesData(this);
 		}
 		return sitesData;
 	}
 
-	public ArrayList<SiteDataValue<?>> getUserSiteDataValues(int i) {
+	public ParameterList getUserSiteData(int i) {
 		return userSitesData.get(i);
 	}
 
