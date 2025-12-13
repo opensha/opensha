@@ -8,15 +8,14 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.opensha.commons.data.Site;
-import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.param.Parameter;
+import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PeriodParam;
-import org.opensha.sha.util.SiteTranslator;
 
 /**
  * Abstract base class for writing IM Event Set calculation outputs.
@@ -31,8 +30,7 @@ public abstract class IM_EventSetOutputWriter {
 	protected static Logger logger = AbstractIMEventSetCalc.logger;
 	
 	protected IMEventSetCalcAPI calc;
-	private static SiteTranslator siteTrans = new SiteTranslator();
-	
+
 	private float sourceCutOffDistance = 0;
 	private Site siteForSourceCutOff = null;
 	
@@ -193,7 +191,7 @@ public abstract class IM_EventSetOutputWriter {
 		logger.log(Level.FINE, "Retrieving and setting Site related params for IMR");
 		// get the list of sites
 		ArrayList<Site> sites = this.calc.getSites();
-		ArrayList<ArrayList<SiteDataValue<?>>> sitesData = this.calc.getSitesData();
+		ArrayList<ParameterList> sitesData = this.calc.getSitesData();
 
 		// we need to make sure that the site has parameters for this atten rel
 		ListIterator<Parameter<?>> siteParamsIt = attenRel.getSiteParamsIterator();
@@ -201,7 +199,7 @@ public abstract class IM_EventSetOutputWriter {
 			Parameter attenParam = siteParamsIt.next();
 			for (int i=0; i<sites.size(); i++) {
 				Site site = sites.get(i);
-				ArrayList<SiteDataValue<?>> siteData = sitesData.get(i);
+				ParameterList siteData = sitesData.get(i);
 				Parameter siteParam;
 				if (site.containsParameter(attenParam.getName())) {
 					siteParam = site.getParameter(attenParam.getName());
@@ -210,7 +208,14 @@ public abstract class IM_EventSetOutputWriter {
 					site.addParameter(siteParam);
 				}
 				// now try to set this parameter from the site data
-				boolean success = siteTrans.setParameterValue(siteParam, siteData);
+                boolean success = false;
+                for (Parameter<?> siteDatum : siteData) {
+                    if (siteDatum.getName().equals(siteParam.getName())) {
+                        siteParam.setValue(siteDatum.getValue());
+                        success = true;
+                        break;
+                    }
+                }
 				if (success) {
 					logger.log(Level.FINE, "Set site "+i+" param '"+siteParam.getName()
 							+"' from data. New value: "+siteParam.getValue());
@@ -224,8 +229,8 @@ public abstract class IM_EventSetOutputWriter {
 		}
 //		for (int i=0; i<sites.size(); i++) {
 //			Site site = sites.get(i);
-//			ArrayList<SiteDataValue<?>> siteData = sitesData.get(i);
-//			printSiteParams(site, siteData);
+//			ParameterList siteData = sitesData.get(i);
+//            System.out.println(siteData);
 //		}
 		return sites;
 	}

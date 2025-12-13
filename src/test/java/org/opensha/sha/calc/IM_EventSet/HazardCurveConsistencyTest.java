@@ -19,6 +19,7 @@ import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.param.Parameter;
+import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.IM_EventSet.outputImpl.HAZ01Writer;
 import org.opensha.sha.earthquake.ERF;
@@ -52,7 +53,7 @@ public class HazardCurveConsistencyTest implements IMEventSetCalcAPI {
 	ScalarIMR imr;
 	Site site;
 	ArrayList<Site> sites;
-	ArrayList<ArrayList<SiteDataValue<?>>> sitesData;
+	ArrayList<ParameterList> sitesData;
 	HeadlessGraphPanel gp;
 	
 	String imt = "SA 1.0";
@@ -77,8 +78,8 @@ public class HazardCurveConsistencyTest implements IMEventSetCalcAPI {
 		}
 		sites = new ArrayList<Site>();
 		sites.add(site);
-		sitesData = new ArrayList<ArrayList<SiteDataValue<?>>>();
-		sitesData.add(new ArrayList<SiteDataValue<?>>());
+		sitesData = new ArrayList<ParameterList>();
+		sitesData.add(new ParameterList());
 		
 		gp = new HeadlessGraphPanel();
 	}
@@ -227,11 +228,11 @@ public class HazardCurveConsistencyTest implements IMEventSetCalcAPI {
 		return sites;
 	}
 
-	public ArrayList<ArrayList<SiteDataValue<?>>> getSitesData() {
+	public ArrayList<ParameterList> getSitesData() {
 		return sitesData;
 	}
 
-	public ArrayList<SiteDataValue<?>> getUserSiteDataValues(int i) {
+	public ParameterList getUserSiteData(int i) {
 		return sitesData.get(i);
 	}
 

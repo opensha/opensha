@@ -5,8 +5,8 @@ import java.util.ArrayList;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
-import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.calc.IM_EventSet.AbstractIMEventSetCalc;
 import org.opensha.sha.calc.IM_EventSet.IMEventSetCalcAPI;
 
@@ -17,12 +17,12 @@ import org.opensha.sha.calc.IM_EventSet.IMEventSetCalcAPI;
 public class IMEventSetCalcGUIImpl implements IMEventSetCalcAPI {
 	
 	private ArrayList<Site> sites;
-	private ArrayList<ArrayList<SiteDataValue<?>>> userSitesData;
-	private ArrayList<ArrayList<SiteDataValue<?>>> sitesData;
+	private ArrayList<ParameterList> userSitesData;
+	private ArrayList<ParameterList> sitesData;
 	private File outputDir;
 	private OrderedSiteDataProviderList providers;
 	
-	public IMEventSetCalcGUIImpl(ArrayList<Location> locs, ArrayList<ArrayList<SiteDataValue<?>>> userSitesData,
+	public IMEventSetCalcGUIImpl(ArrayList<Location> locs, ArrayList<ParameterList> userSitesData,
                                  File outputDir, OrderedSiteDataProviderList providers) {
 		sites = new ArrayList<Site>();
 		for (Location loc : locs) {
@@ -53,14 +53,14 @@ public class IMEventSetCalcGUIImpl implements IMEventSetCalcAPI {
 		return sites;
 	}
 
-	public ArrayList<ArrayList<SiteDataValue<?>>> getSitesData() {
+	public ArrayList<ParameterList> getSitesData() {
 		if (sitesData == null) {
 			sitesData = AbstractIMEventSetCalc.getSitesData(this);
 		}
 		return sitesData;
 	}
 
-	public ArrayList<SiteDataValue<?>> getUserSiteDataValues(int i) {
+	public ParameterList getUserSiteData(int i) {
 		return userSitesData.get(i);
 	}
 

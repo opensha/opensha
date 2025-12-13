@@ -6,7 +6,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 
 import javax.swing.BoxLayout;
@@ -23,7 +22,6 @@ import javax.swing.event.ListSelectionListener;
 
 import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
 import org.opensha.commons.data.siteData.SiteData;
-import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.data.siteData.gui.beans.OrderedSiteDataGUIBean;
 import org.opensha.commons.data.siteData.impl.WillsMap2000;
 import org.opensha.commons.geo.Location;
@@ -31,7 +29,6 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.imr.IntensityMeasureRelationship;
 import org.opensha.sha.imr.ScalarIMR;
-import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
 
 /**
  * Panel to display and edit a list of multiple sites and their associated site data.
@@ -366,20 +363,13 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
         return locs;
     }
 
-    // TODO: Delete before next OpenSHA release v26.1.0
-    @Deprecated
-    public ArrayList<ArrayList<SiteDataValue<?>>> getDataLists() {
-        // TODO: We need to fix invocations in the IM_EventSetGUI to read SiteDataParams directly
-//        return dataLists;
-        ArrayList<ArrayList<SiteDataValue<?>>> ret = new ArrayList<>();
-        for (ParameterList paramList : siteDataParams) {
-            ArrayList<SiteDataValue<?>> values = new ArrayList<>();
-            for (Parameter<?> param : paramList) {
-               values.add(new SiteDataValue<>(param.getName(), null, param.getValue()));
-            }
-            ret.add(values);
-        }
-       return ret;
+    /**
+     * Gets the list of site data parameters.
+     * Each parameter list represents all of the site data and its values for each site.
+     * @return
+     */
+    public ArrayList<ParameterList> getSiteDataParams() {
+        return siteDataParams;
     }
 
 	/**

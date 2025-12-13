@@ -1,7 +1,6 @@
 package org.opensha.sha.calc.IM_EventSet;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -10,6 +9,10 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
 import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.SiteDataValue;
+import org.opensha.commons.param.Parameter;
+import org.opensha.commons.param.ParameterList;
+import org.opensha.sha.calc.IM_EventSet.IMEventSetCalcAPI;
+import org.opensha.sha.util.SiteTranslator;
 
 /**
  * The abstract IM Event Set calculator allows for site data parsing logic to
@@ -33,13 +36,15 @@ public abstract class AbstractIMEventSetCalc implements IMEventSetCalcAPI {
 	
 	public static final float MIN_SOURCE_DIST = 200;
 
+    private static final SiteTranslator siteTrans = new SiteTranslator();
+
 	/**
 	 * This should ONLY be accessed through the getter method as it may
 	 * be uninitialized
 	 */
 	private ArrayList<Site> sites = null;
 
-	private ArrayList<ArrayList<SiteDataValue<?>>> sitesData = null;
+	private ArrayList<ParameterList> sitesData = null;
 
 	public AbstractIMEventSetCalc() {}
 
@@ -54,64 +59,51 @@ public abstract class AbstractIMEventSetCalc implements IMEventSetCalcAPI {
 		}
 		return sites;
 	}
-	
-	public static ArrayList<ArrayList<SiteDataValue<?>>> getSitesData(IMEventSetCalcAPI calc) {
-		ArrayList<ArrayList<SiteDataValue<?>>> sitesData = new ArrayList<ArrayList<SiteDataValue<?>>>();
+
+	public static ArrayList<ParameterList> getSitesData(IMEventSetCalcAPI calc) {
+		ArrayList<ParameterList> sitesData = new ArrayList<ParameterList>();
 		ArrayList<Site> sites = calc.getSites();
 		OrderedSiteDataProviderList providers = calc.getSiteDataProviders();
 		for (int i=0; i<sites.size(); i++) {
 			Site site = sites.get(i);
-			ArrayList<SiteDataValue<?>> dataVals = calc.getUserSiteDataValues(i);
-			HashSet<String> userTypes = new HashSet<>();
-			if (dataVals == null) {
+			ParameterList userSiteData = calc.getUserSiteData(i);
+			if (userSiteData == null) {
 				logger.log(Level.FINE, "No user site data for site "+i);
-				dataVals = new ArrayList<SiteDataValue<?>>();
-			} else {
-				for (SiteDataValue<?> dataVal : dataVals) {
-					userTypes.add(dataVal.getDataType());
-					logger.log(Level.FINE, "User data value for site "+i+": "+dataVal);
-				}
+				userSiteData = new ParameterList();
 			}
 			if (providers != null) {
+                // Check if there is a provider applicable to user provided site data
 				boolean hasNewType = false;
 				for (SiteData<?> provider : providers) {
-                    // The provider specifies a data type that the user didn't
-					if (!userTypes.contains(provider.getDataType())) {
-						hasNewType = true;
-						break;
-					}
-				}
+                    for (Parameter<?> userVal : userSiteData) {
+                        if (SiteTranslator.DATA_TYPE_PARAM_NAME_MAP.isValidMapping(provider.getDataType(), userVal.getName())
+                            && userVal.getValue() == null) {
+                            hasNewType = true;
+                            break;
+                        }
+                    }
+                }
                 // Only fetch site data if it's actually necessary
 				if (hasNewType) {
                     // Fetch all data values from providers that provide at least one new data type
 					ArrayList<SiteDataValue<?>> provData = providers.getBestAvailableData(site.getLocation());
 
 					if (provData != null) {
-                        // Ignore provider data types where user types are already specified
-                        provData.removeIf(dataVal ->
-                                userTypes.stream()
-                                        .anyMatch(userVal -> userVal.equals(dataVal.getDataType())));
-
-						for (SiteDataValue<?> dataVal : provData) {
-                            logger.log(Level.FINE, "Provider data value for site " + i + ": " + dataVal);
+                        // Set site data params where user did not specify values
+                        for (Parameter<?> param : userSiteData) {
+                            if (param.getValue() == null) {
+                                siteTrans.setParameterValue(param, provData);
+                            }
                         }
-                        // Remove all dataVals that have a matching dataType in provData (i.e. Use the provider value)
-                        dataVals.removeIf(dataVal ->
-                                provData.stream()
-                                        .anyMatch(provVal ->provVal.getDataType().equals(dataVal.getDataType()))
-                        );
-
-                        // Add all provider values for new data types
-                        dataVals.addAll(provData);
 					}
 				}
 			}
-			sitesData.add(dataVals);
+			sitesData.add(userSiteData);
 		}
 		return sitesData;
 	}
 
-	public final ArrayList<ArrayList<SiteDataValue<?>>> getSitesData() {
+	public final ArrayList<ParameterList> getSitesData() {
 		if (sitesData == null) {
 			logger.log(Level.FINE, "Generating site data providers lists");
 			sitesData = getSitesData(this);

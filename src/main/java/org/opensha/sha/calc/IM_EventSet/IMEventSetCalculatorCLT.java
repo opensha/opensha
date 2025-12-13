@@ -19,9 +19,11 @@ import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.param.Parameter;
+import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.WarningParameter;
 import org.opensha.commons.param.event.ParameterChangeWarningEvent;
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
+import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
@@ -44,10 +46,13 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.MeanUCERF2
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
+import org.opensha.sha.imr.attenRelImpl.ShakeMap_2003_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.USGS_Combined_2004_AttenRel;
 
 import com.google.common.base.Preconditions;
 
+import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
+import org.opensha.sha.imr.param.SiteParams.Vs30_TypeParam;
 import scratch.UCERF3.erf.mean.MeanUCERF3;
 import scratch.UCERF3.erf.mean.MeanUCERF3.Presets;
 
@@ -84,7 +89,7 @@ implements ParameterChangeWarningListener {
 	
 	private OrderedSiteDataProviderList providers;
 	
-	private ArrayList<ArrayList<SiteDataValue<?>>> userDataVals;
+	private ArrayList<ParameterList> userDataVals;
 
 	/**
 	 *  ArrayList that maps picklist attenRel string names to the real fully qualified
@@ -232,11 +237,11 @@ implements ParameterChangeWarningListener {
 	 * Gets the list of locations with their Wills Site Class values
 	 * @param line String
 	 */
-	private void setSite(String line){
+	private void setSite(String line) {
 		if(locList == null)
 			locList = new LocationList();
 		if (userDataVals == null)
-			userDataVals = new ArrayList<ArrayList<SiteDataValue<?>>>();
+			userDataVals = new ArrayList<ParameterList>();
 		StringTokenizer st = new StringTokenizer(line);
 		int tokens = st.countTokens();
 		if(tokens > 3 || tokens < 2){
@@ -246,56 +251,32 @@ implements ParameterChangeWarningListener {
 		double lon = Double.parseDouble(st.nextToken().trim());
 		Location loc = new Location(lat,lon);
 		locList.add(loc);
-		ArrayList<SiteDataValue<?>> dataVals = new ArrayList<SiteDataValue<?>>();
+		ParameterList dataVals = new ParameterList();
 		String dataVal = null;
 		if (tokens == 3) {
 			dataVal = st.nextToken().trim();
 		}
-		if (WillsMap2000.wills_vs30_map.keySet().contains(dataVal)) {
+		if (WillsMap2000.wills_vs30_map.containsKey(dataVal)) {
 			// this is a wills class
-			dataVals.add(new SiteDataValue<String>(SiteData.TYPE_WILLS_CLASS,
-					SiteData.TYPE_FLAG_MEASURED, dataVal));
+            dataVals.addParameter(new StringParameter(ShakeMap_2003_AttenRel.WILLS_SITE_NAME, dataVal));
 		} else if (dataVal != null) {
 			// Vs30 value
 			try {
-				double vs30 = Double.parseDouble(dataVal);
-				dataVals.add(new SiteDataValue<Double>(SiteData.TYPE_VS30,
-						SiteData.TYPE_FLAG_MEASURED, vs30));
+                Vs30_Param vs30 = new Vs30_Param();
+                vs30.setValue(Double.parseDouble(dataVal));
+                dataVals.addParameter(vs30);
+                Vs30_TypeParam vs30Type = new Vs30_TypeParam();
+                vs30Type.setValue(Vs30_TypeParam.VS30_TYPE_MEASURED);
+                dataVals.addParameter(vs30Type);
 			} catch (NumberFormatException e) {
-//				e.printStackTrace();
 				System.err.println("*** WARNING: Site Wills/Vs30 value unknown: " + dataVal);
 			}
 		}
 		userDataVals.add(dataVals);
 	}
-	
-//	/**
-//	 * Sets the IMT from the string specification
-//	 * 
-//	 * @param imtLine
-//	 * @param attenRel
-//	 */
-//	public static String getIMTForLine(String imtLine) {
-//		StringTokenizer st = new StringTokenizer(imtLine);
-//		int numTokens = st.countTokens();
-//		String imt = st.nextToken().trim();
-//		if (numTokens == 2) {
-//			// this is SA
-//			double period = Double.parseDouble(st.nextToken().trim());
-//			int per10int = (int)(period * 10d + 0.5);
-//			String per10str = per10int + "";
-//			if (per10str.length() < 2)
-//				per10str = "0" + per10str;
-////			ParameterAPI imtParam = (ParameterAPI)attenRel.getIntensityMeasure();
-////			imtParam.getIndependentParameter(PeriodParam.NAME).setValue(period);
-//			imt += per10str;
-//		}
-//		System.out.println(imtLine + " => " + imt);
-//		return imt;
-//	}
 
 	/**
-	 * Gets the suported IMTs as String
+	 * Gets the supported IMTs as String
 	 * @param line String
 	 */
 	private void setIMT(String line){
@@ -643,7 +624,7 @@ implements ParameterChangeWarningListener {
 		return locList.get(i);
 	}
 
-	public ArrayList<SiteDataValue<?>> getUserSiteDataValues(int i) {
+	public ParameterList getUserSiteData(int i) {
 		return userDataVals.get(i);
 	}
 }

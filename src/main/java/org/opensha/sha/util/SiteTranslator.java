@@ -136,7 +136,7 @@ implements java.io.Serializable {
 	 * Method to set a site parameter from a single site data value
 	 * 
 	 * @param param
-	 * @param datas
+	 * @param data
 	 * @return true if the parameter was set, false otherwise
 	 */
 	public boolean setParameterValue(Parameter param, SiteDataValue<?> data) {
