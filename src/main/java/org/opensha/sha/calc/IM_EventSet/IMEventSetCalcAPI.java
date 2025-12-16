@@ -56,13 +56,6 @@ public interface IMEventSetCalcAPI {
     public Location getSiteLocation(int i);
 
     /**
-     * Returns the ordered site data provider list, or null to not use site data providers
-     *
-     * @return
-     */
-    public OrderedSiteDataProviderList getSiteDataProviders();
-
-    /**
      * Returns the user specified (in the input file) site data for the site
      * or null to try to use site data providers
      *

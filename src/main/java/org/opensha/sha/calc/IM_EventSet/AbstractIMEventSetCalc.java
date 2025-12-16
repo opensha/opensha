@@ -6,10 +6,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.opensha.commons.data.Site;
-import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
-import org.opensha.commons.data.siteData.SiteData;
-import org.opensha.commons.data.siteData.SiteDataValue;
-import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.calc.IM_EventSet.IMEventSetCalcAPI;
 import org.opensha.sha.util.SiteTranslator;
@@ -63,50 +59,12 @@ public abstract class AbstractIMEventSetCalc implements IMEventSetCalcAPI {
 	public static ArrayList<ParameterList> getSitesData(IMEventSetCalcAPI calc) {
 		ArrayList<ParameterList> sitesData = new ArrayList<ParameterList>();
 		ArrayList<Site> sites = calc.getSites();
-//		OrderedSiteDataProviderList providers = calc.getSiteDataProviders();
 		for (int i=0; i<sites.size(); i++) {
-//			Site site = sites.get(i);
 			ParameterList userSiteData = calc.getUserSiteData(i);
 			if (userSiteData == null) {
 				logger.log(Level.FINE, "No user site data for site "+i);
-//				userSiteData = new ParameterList();
                 continue;
 			}
-            // TODO: Don't we still need to apply providers when using the CLT?
-            //  * Site data providers are retrieved inside AddSitePanel for GUI.
-            //    * This is necessary as there is a button in this panel for retrieval.
-            //    * We don't overwrite user-provided values and null values must remain null
-            //      :. We should never use providers here for GUI.
-            //  * Is there a case for setting Vs30 via provider for CLT if not user-provided (i.e. null)?
-
-
-//			if (providers != null) {
-//                // Check if there is a provider applicable to user provided site data
-//				boolean hasNewType = false;
-//				for (SiteData<?> provider : providers) {
-//                    for (Parameter<?> userVal : userSiteData) {
-//                        if (SiteTranslator.DATA_TYPE_PARAM_NAME_MAP.isValidMapping(provider.getDataType(), userVal.getName())
-//                            && userVal.getValue() == null) {
-//                            hasNewType = true;
-//                            break;
-//                        }
-//                    }
-//                }
-//                // Only fetch site data if it's actually necessary
-//				if (hasNewType) {
-//                    // Fetch all data values from providers that provide at least one new data type
-//					ArrayList<SiteDataValue<?>> provData = providers.getBestAvailableData(site.getLocation());
-//
-//					if (provData != null) {
-//                        // Set site data params where user did not specify values
-//                        for (Parameter<?> param : userSiteData) {
-//                            if (param.getValue() == null) {
-//                                siteTrans.setParameterValue(param, provData);
-//                            }
-//                        }
-//					}
-//				}
-//			}
 			sitesData.add(userSiteData);
 		}
 		return sitesData;

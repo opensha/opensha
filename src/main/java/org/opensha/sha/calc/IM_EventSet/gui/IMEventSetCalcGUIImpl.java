@@ -41,10 +41,6 @@ public class IMEventSetCalcGUIImpl implements IMEventSetCalcAPI {
 		return outputDir;
 	}
 
-	public OrderedSiteDataProviderList getSiteDataProviders() {
-		return providers;
-	}
-
 	public Location getSiteLocation(int i) {
 		return sites.get(i).getLocation();
 	}
