@@ -122,6 +122,8 @@ public class RSQSimFileReader {
 					if (tok.hasMoreTokens()) {
 						String sectNumStr = tok.nextToken();
 						if (!sectNumStr.equals("NA")) {
+							if (sectNumStr.endsWith(".0"))
+								sectNumStr = sectNumStr.substring(0, sectNumStr.length()-2);
 							sectNum = Integer.parseInt(sectNumStr);
 							if (tok.hasMoreTokens())
 								sectName = tok.nextToken();

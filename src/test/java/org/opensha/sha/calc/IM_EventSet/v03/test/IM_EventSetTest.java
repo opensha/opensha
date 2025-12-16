@@ -14,6 +14,11 @@ import org.opensha.commons.util.FileUtils;
 import org.opensha.sha.calc.IM_EventSet.v02.IM_EventSetCalc_v2_1;
 import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetCalc_v3_0_ASCII;
 
+/**
+ * Tests for consistent outputs for IM Event Set Calculator v2 and v3.
+ * @deprecated IM Event Set Calculator v2 will be removed
+ */
+@Deprecated
 public class IM_EventSetTest {
 	
 	public static double TOLERANCE = 0.05;
@@ -83,7 +88,14 @@ public class IM_EventSetTest {
 		File PGA3 = new File(dir3.getAbsolutePath() + File.separator + "CB2008_SA02.txt");
 		verifyFiles(PGA2, PGA3);
 	}
-	
+
+    /**
+     * Verify outputs of v2 and v3 are consistent.
+     * Checks that sources and ruptures match, and that the mean and standard deviations match
+     * @param ver2File
+     * @param ver3File
+     * @throws IOException
+     */
 	private void verifyFiles(File ver2File, File ver3File) throws IOException {
 		ArrayList<String> lines2 = FileUtils.loadFile(ver2File.getAbsolutePath());
 		ArrayList<String> lines3 = FileUtils.loadFile(ver3File.getAbsolutePath());

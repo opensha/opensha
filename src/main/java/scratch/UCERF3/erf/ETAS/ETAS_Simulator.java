@@ -240,6 +240,7 @@ public class ETAS_Simulator {
 		ArrayList<ETAS_EqkRupture> obsEqkRuptureList = new ArrayList<ETAS_EqkRupture>();
 		
 		Range<Integer> rangeHistCatalogParentIDs = null;
+		int maxObsEqkRupID = 0;
 		if(histQkList != null) {
 			// zero is reserved for scenarios if included
 			int id;
@@ -258,6 +259,7 @@ public class ETAS_Simulator {
 					else
 						etasRup = new ETAS_EqkRupture(qk);
 					etasRup.setID(id);
+					maxObsEqkRupID = id;
 					obsEqkRuptureList.add(etasRup);
 					id+=1;
 				}
@@ -269,6 +271,7 @@ public class ETAS_Simulator {
 		}
 		
 		// add scenario rup to beginning of obsEqkRuptureList
+		// TODO: it looks like they're actually added the end? doesn't seem to matter? 
 		int[] scenarioRupIDs = null;
 		Map<Integer, Integer> numPrimaryAshockForScenarios = null;
 		Range<Integer> rangeTriggerRupIDs = null;
@@ -282,6 +285,7 @@ public class ETAS_Simulator {
 				ETAS_EqkRupture scenarioRup = scenarioRups.get(i);
 				scenarioRupIDs[i] = i;
 				scenarioRup.setID(i);
+				maxObsEqkRupID = Integer.max(maxObsEqkRupID, i);
 				obsEqkRuptureList.add(scenarioRup);		
 				if(D) {
 					System.out.println("Num locs on scenario "+i+" rup surface: "
@@ -367,7 +371,8 @@ public class ETAS_Simulator {
 		if (D) System.out.println("Making primary aftershocks from input obsEqkRuptureList, size = "+obsEqkRuptureList.size());
 		PriorityQueue<ETAS_EqkRupture>  eventsToProcess = new PriorityQueue<ETAS_EqkRupture>(1000, oigTimeComparator);	// not sure about the first field
 //		int testParID=0;	// this will be used to test IDs
-		int eventID = obsEqkRuptureList.size();	// start IDs after input events
+		// start IDs after input events
+		int eventID = maxObsEqkRupID+1;
 		for(ETAS_EqkRupture parRup: obsEqkRuptureList) {
 			int parID = parRup.getID();
 //			if(parID != testParID) 

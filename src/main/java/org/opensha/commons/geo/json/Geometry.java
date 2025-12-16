@@ -669,6 +669,12 @@ public class Geometry {
 	
 	public static final DepthSerializationType DEPTH_SERIALIZATION_DEFAULT = DepthSerializationType.DEPTH_KM;
 	
+	/*
+	 * The GeoJSON spec doesn't seem to state anything about the valid range of longitude values.
+	 * 
+	 * TODO: values not allowed by GeoTools.validate*() will throw exceptions, but could be converted. Consider
+	 * converting values outside that range (e.g., longitude of -181 would throw an exception). 
+	 */
 	
 	public static void serializeLoc(JsonWriter out, Location loc, DepthSerializationType depthType,
 			boolean serializeZeros) throws IOException {

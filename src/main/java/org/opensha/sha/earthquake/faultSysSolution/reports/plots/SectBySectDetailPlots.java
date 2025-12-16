@@ -112,6 +112,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistance
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
+import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
@@ -971,16 +972,34 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		MinMaxAveTracker latTrack = new MinMaxAveTracker();
 		MinMaxAveTracker lonTrack = new MinMaxAveTracker();
 		for (FaultSection plotSect : plotSectsSet) {
-			for (Location loc : plotSect.getFaultTrace()) {
+			LocationList perim;
+			RuptureSurface surf = plotSect.getFaultSurface(5d);
+			try {
+				perim = surf.getPerimeter();
+			} catch (RuntimeException e) {
+				perim = surf.getEvenlyDiscritizedPerimeter();
+			}
+			for (Location loc : perim) {
 				latTrack.addValue(loc.lat);
 				lonTrack.addValue(loc.lon);
 			}
 		}
 		// also buffer around our trace
-		for (FaultSection sect : mySects) {
-			for (Location loc : new Region(sect.getFaultTrace(), maxNeighborDistance).getBorder()) {
-				latTrack.addValue(loc.lat);
-				lonTrack.addValue(loc.lon);
+		if (maxNeighborDistance > 0d && maxNeighborDistance < 500d) {
+			for (FaultSection sect : mySects) {
+				LocationList traceBuffer;
+				try {
+					traceBuffer = new Region(sect.getFaultTrace(), maxNeighborDistance).getBorder();
+				} catch (RuntimeException e) {
+					// that can fail for some weird-squirrely fault traces
+					// fall back to juse using the first/last location
+					traceBuffer = new Region(LocationList.of(sect.getFaultTrace().first(), sect.getFaultTrace().last()),
+							maxNeighborDistance).getBorder();
+				}
+				for (Location loc : traceBuffer) {
+					latTrack.addValue(loc.lat);
+					lonTrack.addValue(loc.lon);
+				}
 			}
 		}
 		Region plotRegion = new Region(new Location(latTrack.getMin()-0.1, lonTrack.getMin()-0.1),
@@ -2312,7 +2331,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			maxMag = Math.max(maxMag, rupSet.getMaxMagForSection(sect.getSectionId()));
 		}
 		
-		double legendRelX = latX ? 0.975 : 0.025;
+        double legendRelX = 0.025;
 		
 		Map<Integer, List<FaultSection>> parentsMap = faultSects.stream().collect(Collectors.groupingBy(s->s.getParentSectionId()));
 
