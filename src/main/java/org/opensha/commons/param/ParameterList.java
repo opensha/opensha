@@ -754,4 +754,18 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
         return result;
     }
 
+    /**
+     * Gets a new ParameterList with only the parameters in this ParameterList that are visible.
+     * For a deep copy, invoke ParameterList.clone on output
+     * @return new shallow-copy ParameterList
+     */
+    public ParameterList getVisibleParams() {
+        ParameterList visible = new ParameterList();
+        for (Parameter<?> param : this) {
+            if (param.isEditorBuilt() && param.getEditor().isVisible()) {
+                visible.addParameter(param);
+            }
+        }
+        return visible;
+    }
 }
