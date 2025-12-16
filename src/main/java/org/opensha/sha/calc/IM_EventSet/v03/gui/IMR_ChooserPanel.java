@@ -12,6 +12,8 @@ import org.opensha.commons.data.siteData.impl.WillsMap2000;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.util.ServerPrefUtils;
+import org.opensha.nshmp2.imr.impl.AB2006_140_AttenRel;
+import org.opensha.nshmp2.imr.impl.AB2006_200_AttenRel;
 import org.opensha.sha.gui.beans.IMR_MultiGuiBean;
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.ScalarIMR;
@@ -41,7 +43,10 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 
         this.sitesPanel = sitesPanel;
 
-        buildValidIMRs(/*excludedIMRs=*/List.of(Abrahamson_2000_AttenRel.NAME));
+        buildValidIMRs(/*excludedIMRs=*/List.of(
+                Abrahamson_2000_AttenRel.NAME,
+                AB2006_140_AttenRel.NAME, // TODO: Fails to set Site Type in IM Event Set Calc, but works in other apps
+                AB2006_200_AttenRel.NAME));
         imrGuiBean = new IMR_MultiGuiBean(allIMRs);
 		imrGuiBean.addIMRChangeListener(this);
 		
