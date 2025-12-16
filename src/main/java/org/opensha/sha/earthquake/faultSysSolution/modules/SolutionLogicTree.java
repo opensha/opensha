@@ -948,6 +948,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		String entryPrefix = null; // prefixes will be encoded in the results of getBranchFileName(...) calls
 		
+		// linked so that the order will be preserved (not really necessary, but nice to have constant ordering in the output files)
 		Map<String, String> mappings = new LinkedHashMap<>();
 		
 		String rsPrefix = FaultSystemRupSet.NESTING_PREFIX;
