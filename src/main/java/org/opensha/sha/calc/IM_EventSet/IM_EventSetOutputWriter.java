@@ -1,5 +1,7 @@
 package org.opensha.sha.calc.IM_EventSet;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -49,6 +51,7 @@ public abstract class IM_EventSetOutputWriter {
 			ArrayList<String> imts) throws IOException {
 		ArrayList<ERF> erfs = new ArrayList<ERF>();
 		erfs.add(erf);
+        writeErfImrMetaFile(erfs, attenRels);
 		writeFiles(erfs, attenRels, imts);
 	}
 	
@@ -62,6 +65,28 @@ public abstract class IM_EventSetOutputWriter {
 	}
 	
 	public abstract String getName();
+
+    /**
+     * Writes out ERF and IMR inputs to a metadata file with output files.
+     */
+    private void writeErfImrMetaFile(ArrayList<ERF> erfs, ArrayList<ScalarIMR> attenRels) throws IOException {
+        logger.log(Level.INFO, "Writing ERF/IMR metadata file");
+        String fname = "erf_imr_metadata.txt";
+        File outputDir = calc.getOutputDir();
+        FileWriter fw = new FileWriter(outputDir.getAbsolutePath() + File.separator + fname);
+
+        fw.write("IMR Param List:\n---------------");
+        for (ScalarIMR attenRel : attenRels) {
+            fw.write("\nIMR = " + attenRel.getName()+"; ");
+            fw.write(attenRel.getOtherParams().getVisibleParams().getParameterListMetadataString());
+        }
+        fw.write("\n\nForecast Param List:\n---------------");
+        for (ERF erf : erfs) {
+            fw.write("\nEqk Rup Forecast = " + erf.getName()+"; ");
+            fw.write(erf.getAdjustableParameterList().getParameterListMetadataString());
+        }
+        fw.close();
+    }
 
     /**
      * HAZ01 IMT period strings only have precision up to 0.1 seconds.

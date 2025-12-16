@@ -2267,7 +2267,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 		
 		StringBuilder str = new java.lang.StringBuilder();
 
-		str.append("<br>" + "Cacluation Type = ").append(calcType)
+		str.append("<br>" + "Calculation Type = ").append(calcType)
 		.append("<br><br>" + "IMR Param List:" + "<br>" + "---------------" + "<br>").append(imrMetadata)
 		.append("<br><br>")
 		.append("Site Param List: ")
