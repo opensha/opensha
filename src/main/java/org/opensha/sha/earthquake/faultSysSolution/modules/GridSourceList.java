@@ -453,34 +453,39 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		for (int i=0; i<getNumLocations(); i++) {
 			for (TectonicRegionType trt : getTectonicRegionTypes()) {
 				for (GriddedRupture rup : getRuptures(trt, i)) {
-					List<String> line = new ArrayList<>();
-					line.add(i+"");
-					line.add(getFixedPrecision(rup.properties.magnitude, magRoundScale));
-					line.add(getSigFigs(rup.rate, rateRoundSigFigs));
-					line.add(getSigFigs(rup.properties.rake, mechRoundSigFigs));
-					line.add(getSigFigs(rup.properties.dip, mechRoundSigFigs));
-					if (rup.properties.strikeRange != null)
-						line.add(rangeToString(rup.properties.strikeRange));
-					else
-						line.add(getSigFigs(rup.properties.strike, mechRoundSigFigs));
-					line.add(getSigFigs(rup.properties.upperDepth, depthRoundSigFigs));
-					line.add(getSigFigs(rup.properties.lowerDepth, depthRoundSigFigs));
-					line.add(getSigFigs(rup.properties.length, lenRoundSigFigs));
-					line.add(getSigFigs(rup.properties.hypocentralDepth, depthRoundSigFigs));
-					line.add(getSigFigs(rup.properties.hypocentralDAS, lenRoundSigFigs));
-					line.add(rup.properties.tectonicRegionType.name());
-					if (rup.associatedSections != null) {
-						for (int s=0; s<rup.associatedSections.length; s++) {
-							line.add(rup.associatedSections[s]+"");
-							line.add(getSigFigs(rup.associatedSectionFracts[s], rateRoundSigFigs)+"");
-						}
-					}
+					List<String> line = buildRuptureCSVLine(rup);
 					rupCSV.write(line);
 				}
 			}
 		}
 		rupCSV.flush();
 		output.closeEntry();
+	}
+	
+	public List<String> buildRuptureCSVLine(GriddedRupture rup) {
+		List<String> line = new ArrayList<>(12);
+		line.add(rup.gridIndex+"");
+		line.add(getFixedPrecision(rup.properties.magnitude, magRoundScale));
+		line.add(getSigFigs(rup.rate, rateRoundSigFigs));
+		line.add(getSigFigs(rup.properties.rake, mechRoundSigFigs));
+		line.add(getSigFigs(rup.properties.dip, mechRoundSigFigs));
+		if (rup.properties.strikeRange != null)
+			line.add(rangeToString(rup.properties.strikeRange));
+		else
+			line.add(getSigFigs(rup.properties.strike, mechRoundSigFigs));
+		line.add(getSigFigs(rup.properties.upperDepth, depthRoundSigFigs));
+		line.add(getSigFigs(rup.properties.lowerDepth, depthRoundSigFigs));
+		line.add(getSigFigs(rup.properties.length, lenRoundSigFigs));
+		line.add(getSigFigs(rup.properties.hypocentralDepth, depthRoundSigFigs));
+		line.add(getSigFigs(rup.properties.hypocentralDAS, lenRoundSigFigs));
+		line.add(rup.properties.tectonicRegionType.name());
+		if (rup.associatedSections != null) {
+			for (int s=0; s<rup.associatedSections.length; s++) {
+				line.add(rup.associatedSections[s]+"");
+				line.add(getSigFigs(rup.associatedSectionFracts[s], rateRoundSigFigs)+"");
+			}
+		}
+		return line;
 	}
 
 	@Override
@@ -547,7 +552,10 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 			return (int)val+"";
 		if (!round)
 			return val+"";
-		return DataUtils.roundFixed(val, scale)+"";
+		val = DataUtils.roundFixed(val, scale);
+		if (val == Math.floor(val))
+			return (int)val+"";
+		return val+"";
 	}
 	
 	private String getSigFigs(double val, int sigFigs) {
@@ -559,7 +567,10 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 			return (int)val+"";
 		if (!round)
 			return val+"";
-		return DataUtils.roundSigFigs(val, sigFigs)+"";
+		val = DataUtils.roundSigFigs(val, sigFigs);
+		if (val == Math.floor(val))
+			return (int)val+"";
+		return val+"";
 	}
 	
 	public static LocationList loadGridLocsCSV(CSVFile<String> gridCSV, GriddedRegion gridReg) {
