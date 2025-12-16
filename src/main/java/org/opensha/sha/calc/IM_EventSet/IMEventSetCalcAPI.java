@@ -79,11 +79,8 @@ public interface IMEventSetCalcAPI {
     public abstract File getOutputDir();
 
     /**
-     * This initializes the site data for each site.
-     *
-     * If there is user specified data for the specific site, that is given top
-     * priority. If there are also site data providers available, those will
-     * be used (but given lower priority than any user values).
+     * This retrieves the site data parameter list for each site.
+     * Each entry in the list corresponds to a single site.
      *
      * @return
      */
