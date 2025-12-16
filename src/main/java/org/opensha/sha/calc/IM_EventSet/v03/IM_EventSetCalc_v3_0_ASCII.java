@@ -10,9 +10,7 @@ import java.util.ArrayList;
 import java.util.StringTokenizer;
 import java.util.logging.Level;
 
-import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
 import org.opensha.commons.data.siteData.SiteData;
-import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.data.siteData.impl.WillsMap2000;
 import org.opensha.commons.data.siteData.impl.WillsMap2006;
 import org.opensha.commons.exceptions.ParameterException;
@@ -23,7 +21,6 @@ import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.WarningParameter;
 import org.opensha.commons.param.event.ParameterChangeWarningEvent;
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
-import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
@@ -86,8 +83,6 @@ implements ParameterChangeWarningListener {
 	protected String dirName = "MeanSigma";
 	
 	private File outputDir;
-	
-	private OrderedSiteDataProviderList providers;
 	
 	private ArrayList<ParameterList> userDataVals;
 
@@ -155,20 +150,6 @@ implements ParameterChangeWarningListener {
 		inputFileName = inpFile;
 		dirName = outDir ;
 		outputDir = new File(dirName);
-		
-//		providers = OrderedSiteDataProviderList.createCompatibilityProviders(false);
-		ArrayList<SiteData<?>> p = new ArrayList<>();
-		try {
-			p.add(new WillsMap2006());
-		} catch (IOException e) {
-			throw ExceptionUtils.asRuntimeException(e);
-		}
-		providers = new OrderedSiteDataProviderList(p);
-		// disable non-Vs30 providers
-		for (int i=0; i<providers.size(); i++) {
-			if (!providers.getProvider(i).getDataType().equals(SiteData.TYPE_VS30))
-				providers.setEnabled(i, false);
-		}
 	}
 
 	public void parseFile() throws FileNotFoundException,IOException{
@@ -615,10 +596,6 @@ implements ParameterChangeWarningListener {
 
 	public File getOutputDir() {
 		return outputDir;
-	}
-
-	public OrderedSiteDataProviderList getSiteDataProviders() {
-		return providers;
 	}
 
 	public Location getSiteLocation(int i) {

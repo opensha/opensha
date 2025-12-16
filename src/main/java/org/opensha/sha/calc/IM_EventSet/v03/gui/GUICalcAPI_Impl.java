@@ -37,10 +37,6 @@ public class GUICalcAPI_Impl implements IM_EventSetCalc_v3_0_API {
 		return outputDir;
 	}
 
-	public OrderedSiteDataProviderList getSiteDataProviders() {
-		return providers;
-	}
-
 	public Location getSiteLocation(int i) {
 		return sites.get(i).getLocation();
 	}
