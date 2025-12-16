@@ -9,6 +9,8 @@ import org.opensha.sha.util.TectonicRegionType;
 
 /**
  * Called "Field" in the original distance correction enum, obviously from Ned, no known reference
+ * 
+ * TODO: continue to include this? rename it?
  */
 public class FieldPointSourceCorrection implements Single {
 
