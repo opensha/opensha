@@ -16,7 +16,6 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Arrays;
 
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
@@ -291,8 +290,8 @@ implements Runnable, ParameterChangeListener, CurveDisplayAppAPI, IMR_GuiBeanAPI
 	}
 	
 	public static List<AbstractVulnerability> fetchVulns() throws IOException {
-//		VulnerabilityServletAccessor access = new VulnerabilityServletAccessor();
-		VulnerabilityLocalAccessor access = new VulnerabilityLocalAccessor();
+		VulnerabilityServletAccessor access = new VulnerabilityServletAccessor();
+//		VulnerabilityLocalAccessor access = new VulnerabilityLocalAccessor();
 		ArrayList<AbstractVulnerability> vms = new ArrayList<AbstractVulnerability>();
 		for (Vulnerability vuln : access.getVulnMap().values()) {
 			if (vuln instanceof AbstractVulnerability)
@@ -899,16 +898,7 @@ implements Runnable, ParameterChangeListener, CurveDisplayAppAPI, IMR_GuiBeanAPI
 			(ArbitrarilyDiscretizedFunc)calc.getAnnualizedRates(currentHazardCurve, 
 					forecast.getTimeSpan().getDuration());
 		getAnnualizedPE(currentAnnualizedRates);
-	}*/
-		
-		System.out.println("IMT=" + currentIMT +
-                ", Period=" + currentPeriod +
-                ", IMLs=" + Arrays.toString(currentIMLs));
-		System.out.println("Hazard curve:\n" + currentHazardCurve);		System.out.println("IMT=" + currentIMT +
-                ", Period=" + currentPeriod +
-                ", IMLs=" + Arrays.toString(currentIMLs));
-		System.out.println("Hazard curve:\n" + currentHazardCurve);
-		
+	}*/	
 		AbstractVulnerability vuln = vulnBean.getCurrentModel();
 		Preconditions.checkNotNull(vuln, "Vulnerability model is null");
 		System.out.println("Vuln model: "+vuln.getName()+" ("+vuln.getClass()+")");
