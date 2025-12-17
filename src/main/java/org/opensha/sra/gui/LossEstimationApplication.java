@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Arrays;
 
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
@@ -899,6 +900,15 @@ implements Runnable, ParameterChangeListener, CurveDisplayAppAPI, IMR_GuiBeanAPI
 					forecast.getTimeSpan().getDuration());
 		getAnnualizedPE(currentAnnualizedRates);
 	}*/
+		
+		System.out.println("IMT=" + currentIMT +
+                ", Period=" + currentPeriod +
+                ", IMLs=" + Arrays.toString(currentIMLs));
+		System.out.println("Hazard curve:\n" + currentHazardCurve);		System.out.println("IMT=" + currentIMT +
+                ", Period=" + currentPeriod +
+                ", IMLs=" + Arrays.toString(currentIMLs));
+		System.out.println("Hazard curve:\n" + currentHazardCurve);
+		
 		AbstractVulnerability vuln = vulnBean.getCurrentModel();
 		Preconditions.checkNotNull(vuln, "Vulnerability model is null");
 		System.out.println("Vuln model: "+vuln.getName()+" ("+vuln.getClass()+")");
