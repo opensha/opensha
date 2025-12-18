@@ -13,6 +13,7 @@ import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.opensha.commons.geo.GeoTools;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
@@ -530,27 +531,29 @@ public class Geometry {
 		LonRange range = new LonRange();
 		lonRangeRecursive(coords, range);
 		double span = range.max - range.min;
-		if (range.min < -180d || range.max > 360d) {
+		if (range.min < GeoTools.LON_MIN || range.max > GeoTools.LON_MAX) {
 			if (span > 360d) {
-				System.err.println("WARNING loading GeoJSON coordinates: longitudes range outside of [-180, 360] and can't "
-						+ "correct because span is > 360: ["+(float)range.min+", "+(float)range.max+"]");
+				System.err.println("WARNING loading GeoJSON coordinates: longitudes range outside of ["
+						+GeoTools.LON_MIN+", "+GeoTools.LON_MAX+"] and can't correct because span is > 360: "
+								+ "["+(float)range.min+", "+(float)range.max+"]");
 			} else {
 				double delta = 0d;
-				if (range.min < -180d) {
+				if (range.min < GeoTools.LON_MIN) {
 					double min = range.min;
-					while (min < -180d) {
+					while (min < GeoTools.LON_MIN) {
 						delta += 360;
 						min = range.min + delta;
 					}
 				} else {
 					double max = range.max;
-					while (max > 360d) {
+					while (max > GeoTools.LON_MAX) {
 						delta -= 360;
 						max = range.max + delta;
 					}
 				}
-				System.err.println("WARNING loading GeoJSON coordinates: longitudes range outside of [-180, 360], "
-						+ "shifting by "+(float)delta+" degrees. Original range: ["+(float)range.min+", "+(float)range.max+"]");
+				System.err.println("WARNING loading GeoJSON coordinates: longitudes range outside of ["
+						+GeoTools.LON_MIN+", "+GeoTools.LON_MAX+"], shifting by "+(float)delta+" degrees. "
+								+ "Original range: ["+(float)range.min+", "+(float)range.max+"]");
 				coordLonShiftRecursive(coords, delta);
 			}
 		}
