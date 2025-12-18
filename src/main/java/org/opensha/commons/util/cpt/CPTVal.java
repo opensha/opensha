@@ -159,8 +159,8 @@ public class CPTVal implements Comparable<CPTVal>, Serializable, Cloneable, XMLS
 
 
 	public String toString() {
-		return start + "\t" + CPT.tabDelimColor(minColor) + "\t" + end
-		+ "\t" + CPT.tabDelimColor(maxColor);
+		return (float)start + "\t" + CPT.tabDelimColor(minColor) + "\t" + (float)end
+				+ "\t" + CPT.tabDelimColor(maxColor);
 	}
 
 	@Override

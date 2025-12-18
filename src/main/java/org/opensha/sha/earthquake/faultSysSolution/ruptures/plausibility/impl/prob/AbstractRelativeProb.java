@@ -171,7 +171,10 @@ public abstract class AbstractRelativeProb implements RuptureProbabilityCalc {
 				&& !fullFrom.endSects.contains(add.fromSect)) {
 			// need to add continuing on this cluster as a possible "jump"
 			int fromSectIndex = fullFrom.subSects.indexOf(add.fromSect);
-			Preconditions.checkState(fromSectIndex >=0, "From section not found in full cluster?");
+			Preconditions.checkState(fromSectIndex >=0, "From section (%s. %s) not found in full cluster for that "
+					+"parent (parentID=%s, name=%s): %s",
+					add.fromSect.getSectionId(), add.fromSect.getSectionName(),
+					fullFrom.parentSectionID, fullFrom.parentSectionName, fullFrom);
 			if (fromSectIndex < fullFrom.subSects.size()-1) {
 				// try going forward in list
 				List<FaultSection> possibleSects = new ArrayList<>();

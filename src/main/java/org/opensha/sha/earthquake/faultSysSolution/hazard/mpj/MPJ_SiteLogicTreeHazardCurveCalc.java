@@ -573,16 +573,23 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		}
 	}
 	
-	private String getCSVName(int siteIndex, int periodIndex) {
-		String ret = sitePrefixes.get(siteIndex);
-		if (periods[periodIndex] == -1d)
+	public static String getSitePeriodPrefix(String siteName, double period) {
+		return getSitePeriodPrefixConcat(FileNameUtils.simplify(siteName), period);
+	}
+	
+	private static String getSitePeriodPrefixConcat(String sitePrefix, double period) {
+		String ret = sitePrefix;
+		if (period == -1d)
 			ret += "_pgv";
-		else if (periods[periodIndex] == 0d)
+		else if (period == 0d)
 			ret += "_pga";
 		else
-			ret += "_sa_"+(float)periods[periodIndex];
-		ret += ".csv";
+			ret += "_sa_"+(float)period;
 		return ret;
+	}
+	
+	private String getCSVName(int siteIndex, int periodIndex) {
+		return getSitePeriodPrefixConcat(sitePrefixes.get(siteIndex), periods[periodIndex])+".csv";
 	}
 
 	public static Options createOptions() {
