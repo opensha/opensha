@@ -424,6 +424,9 @@ public class FaultSysHazardCalcSettings {
 				+ "to enable random sampling of the position of the grid cell along-strike of the rupture.");
 		ops.addOption(null, "point-finite-sample-down-dip", false, "If --point-source-type FINITE is supplied, this can be used "
 				+ "to enable random sampling of the position of the grid cell down-dip of the rupture.");
+		ops.addOption(null, "point-min-mag", true, "Minimum magnitude for point sources; "
+				+ "all gridded seismicity ruptures below this magnitude will be skipped. Default: "
+				+(float)GriddedSeismicitySettings.DEFAULT.minimumMagnitude);
 		ops.addOption(null, "point-finite-min-mag", true, "Minimum magnitude for finite (or distance-corrected point) sources; "
 				+ "all ruptures below this magnitude will be treated as pure point sources. Default: "
 				+(float)GriddedSeismicitySettings.DEFAULT.pointSourceMagnitudeCutoff);
@@ -458,6 +461,9 @@ public class FaultSysHazardCalcSettings {
 		
 		if (cmd.hasOption("point-source-type"))
 			settings = settings.forSurfaceType(BackgroundRupType.valueOf(cmd.getOptionValue("point-source-type")));
+		
+		if (cmd.hasOption("point-min-mag"))
+			settings = settings.forMinimumMagnitude(Double.parseDouble(cmd.getOptionValue("point-min-mag")));
 		
 		if (cmd.hasOption("point-finite-min-mag"))
 			settings = settings.forPointSourceMagCutoff(Double.parseDouble(cmd.getOptionValue("point-finite-min-mag")));

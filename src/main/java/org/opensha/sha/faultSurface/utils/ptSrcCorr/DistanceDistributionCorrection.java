@@ -565,7 +565,7 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 	
 	private static boolean D = false;
 	private static boolean D_ALL_AZ = false;
-	private static boolean FIRST_D = true;
+	private static boolean FIRST_D = true; // TODO: disable when ready
 	
 	static class DistCalcSupplier implements Supplier<PrecomputedComparableDistances[]> {
 
@@ -598,20 +598,6 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 			double y1 = y0 + rupture.rupLength;
 			
 			double zTopSq = rupture.zTop*rupture.zTop;
-			double seisX0, zSeisSq;
-			if (rupture.zTop >= GriddedSurfaceUtils.SEIS_DEPTH) {
-				seisX0 = x0;
-				zSeisSq = zTopSq;
-			} else {
-				zSeisSq = GriddedSurfaceUtils.SEIS_DEPTH*GriddedSurfaceUtils.SEIS_DEPTH;
-				if (rupture.dip < 90d) {
-					// trace at seis depth is right of x0
-					double deltaSeis = GriddedSurfaceUtils.SEIS_DEPTH - rupture.zTop;
-					seisX0 = x0 + deltaSeis / Math.tan(dipRad);
-				} else {
-					seisX0 = x0;
-				}
-			}
 			
 			boolean D = DistanceDistributionCorrection.D;
 			if (!D && FIRST_D) {
