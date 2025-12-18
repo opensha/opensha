@@ -100,9 +100,9 @@ public class DOLE_SubsectionMapper {
 //	public static final String HIST_PATH = REL_PATH+"/HistDOLE_v1.1.geojson";
 	
 	// UPDATE
-	public static final String REL_PATH = "/data/erf/nshm23/date_of_last_event/2025_07_07";
+	public static final String REL_PATH = "/data/erf/nshm23/date_of_last_event/2025_12_17_v1.2";
 	public static final String PALEO_DOLE_PATH = REL_PATH+"/PaleoDOLE_v1.2.geojson";
-	public static final String HIST_PATH = REL_PATH+"/HistDOLE_v1.1.geojson";
+	public static final String HIST_PATH = REL_PATH+"/HistDOLE_v1.2.geojson";
 
 	
 	private static final String YEAR_PROP_NAME = "CalYear";
@@ -181,7 +181,7 @@ public class DOLE_SubsectionMapper {
 	}
 	
 	public static List<PaleoDOLE_Data> loadPaleoDOLE() throws IOException {
-//		System.out.println(PALEO_DOLE_PATH);
+		System.out.println(PALEO_DOLE_PATH);
 		FeatureCollection features = loadGeoJSON(PALEO_DOLE_PATH);
 		List<PaleoDOLE_Data> ret = new ArrayList<>(features.features.size());
 		for (Feature feature : features) {
@@ -691,12 +691,14 @@ public class DOLE_SubsectionMapper {
 	public static void main(String[] args) throws IOException {
 
 		// this only tests WUS
-		List<? extends FaultSection> subSects = NSHM23_DeformationModels.GEOLOGIC.build(NSHM23_FaultModels.WUS_FM_v3);
+//		List<? extends FaultSection> subSects = NSHM23_DeformationModels.GEOLOGIC.build(NSHM23_FaultModels.WUS_FM_v3);
 		
-		System.out.println("Loading Paleo DOLE data");
-		List<PaleoDOLE_Data> paleoData = loadPaleoDOLE();
+//		System.out.println("Loading Paleo DOLE data");
+//		List<PaleoDOLE_Data> paleoData = loadPaleoDOLE();
 		System.out.println("Loading Historical Rupture data");
 		List<HistoricalRupture> histRupData = loadHistRups();
+//		mapDOLE(subSects, histRupData, paleoData, PaleoMappingAlgorithm.CLOSEST_SECT, true);
+
 		
 //		// see if we have any duplicates
 //		Map<Integer, List<PaleoDOLE_Data>> paleoForParentMap = paleoData.stream().collect(
@@ -750,6 +752,6 @@ public class DOLE_SubsectionMapper {
 //		}
 
 		
-		mapDOLE(subSects, histRupData, paleoData, PaleoMappingAlgorithm.CLOSEST_SECT, true);
+//		mapDOLE(subSects, histRupData, paleoData, PaleoMappingAlgorithm.CLOSEST_SECT, true);
 	}
 }

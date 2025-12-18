@@ -299,39 +299,17 @@ public class ProbModelsPlottingUtils {
 		
 		ArrayList<EvenlyDiscretizedFunc> funcList = ProbModelsPlottingUtils.getNormRI_DistributionWithFits(normRI_List, bptAperForComparison);
 
-		ArrayList<XY_DataSet> funcs = new ArrayList<XY_DataSet>();
-		funcs.addAll(funcList);
-//		GraphWindow grapha_a = ProbModelsPlottingUtils.plotNormRI_DistributionWithFits(funcList, "Normalized Rupture RIs; "+plotLabelString);
-//
+		writeNormalizedDistPlotWithFits(funcList, outputDir, plotTitle, fileNamePrefix);
+
+		// make info string
 		String infoString = "\n\nNorm "+funcList.get(0).getName()+" for "+fileNamePrefix+":\n";
 		infoString += "\n"+funcList.get(0).getInfo();
 //		infoString += "\n\n"+funcList.get(1).getName(); // this BPT fit is included right above
 //		infoString += "\n"+funcList.get(1).getInfo();
 		
-		ArrayList<PlotCurveCharacterstics> plotChars = new ArrayList<PlotCurveCharacterstics>();
-		plotChars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 2f, Color.RED));
-		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.BLACK));
-		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.BLUE));
-		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.GREEN));
-		if(funcList.size()==5) {
-			plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.GRAY));
-		}
-		
-		String xAxisLabel = "RI (yrs)";
-		String yAxisLabel = "Density";
-		Range xAxisRange = new Range(0, 5);
-		Range yAxisRange = new Range(0, 5);
-		boolean logX = false;
-		boolean logY = false;
-		double widthInches = 7; // inches
-		double heightInches = 6; // inches
-		
-		boolean popupWindow = false;
-		writeAndOrPlotFuncs(funcs,plotChars,plotTitle,xAxisLabel,yAxisLabel,xAxisRange,yAxisRange,
-				logX,logY,widthInches,heightInches, new File(outputDir,fileNamePrefix), popupWindow);
-
 		return infoString;
 	}
+	
 	
 	public static void writeNormalizedDistPlotWithFits(ArrayList<EvenlyDiscretizedFunc> funcList, 
 			File outputDir, String plotTitle, String fileNamePrefix) {
