@@ -6,6 +6,7 @@ import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.geo.Location;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.PointSurface.DistanceCorrectable;
 import org.opensha.sha.faultSurface.PointSurface.SiteSpecificDistanceCorrected;

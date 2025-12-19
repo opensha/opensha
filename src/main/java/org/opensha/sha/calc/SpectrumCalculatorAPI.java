@@ -11,11 +11,6 @@ import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.imr.ScalarIMR;
 
 public interface SpectrumCalculatorAPI extends CalculatorAPI {
-	/**
-	 *
-	 * @return the current rupture being traversed
-	 */
-	public int getCurrRuptures();
 
 	/**
 	 * This function computes a deterministic exceedance curve for the given Site, IMR, and ProbEqkrupture.  The curve
@@ -34,42 +29,52 @@ public interface SpectrumCalculatorAPI extends CalculatorAPI {
 	/**
 	 * This function computes a spectrum curve for all SA Period supported
 	 * by the IMR and then interpolates the IML value from all the computed curves.
-	 * The curve in place in the passed in hazFunction
-	 * (with the X-axis values being the IMLs for which exceedance probabilites are desired).
-	 * @param specFunction: This function is where the final interplotaed spectrum
-	 * for the IML@prob curve is placed.
-	 * @param site: site object
-	 * @param imr: selected IMR object
-	 * @param eqkRupForecast: selected Earthquake rup forecast
-	 * @return
+	 * 
+	 * @param hazardXValues Hazard curve x values, already in log units
+	 * @param site site
+	 * @param imr selected IMR
+	 * @param eqkRupForecast selected ERF
+	 * @param probVal probability at which to compute spectrum
+	 * @return hazard spectrum of log IMLs for the given probability
 	 */
 	public DiscretizedFunc getIML_SpectrumCurve(DiscretizedFunc
-			spectrumFunction, Site site,
+			hazardXValues, Site site,
 			ScalarIMR imr,
 			ERF
-			eqkRupForecast, double probVal, List supportedSA_Periods);
+			eqkRupForecast, double probVal);
 
 	/**
-	 * This function computes a spectrum curve for the given Site, IMR, and ERF.  The curve
-	 * in place in the passed in hazFunction (with the X-axis values being the SA
-	 * Periods for which exceedance probabilites are desired).
-	 * @param hazFunction: This function is where the hazard curve is placed
-	 * @param site: site object
-	 * @param imr: selected IMR object
-	 * @param eqkRupForecast: selected Earthquake rup forecast
-	 * @return
+	 * This function computes a spectrum curve for the given Site, IMR, and ERF.
+	 * @param site site
+	 * @param imr selected IMR
+	 * @param eqkRupForecast selected ERF
+	 * @param imlVal IML in log units
+	 * @return probability spectrum at the given IML
 	 */
 	public DiscretizedFunc getSpectrumCurve(Site site,
 			ScalarIMR imr,
 			ERF eqkRupForecast,
-			double imlVal,
-			List supportedSA_Periods);
+			double imlVal);
 
 	/**
-	 *
-	 * @return the total number of ruptures in the earthquake rupture forecast model
+	 * gets the current calculation progress that is being processed, or -1 if the calculation has not started
+	 * 
+	 * This will either be the current rupture or source index (depending on calculation type), and is relative to
+	 * the value of {@link #getTotalProgressCount()}.
+	 * 
+	 * @see {@link #setTrackProgress(boolean)}
+	 * @see {@link #getTotalProgressCount()}
+	 * @return current rupture that is being processed
 	 */
-	public int getTotRuptures();
+	public int getCurrentProgress();
+
+	/**
+	 * gets the total number of calculation steps
+	 * 
+	 * @see {@link #setTrackProgress(boolean)}
+	 * @return total number of ruptures.
+	 */
+	public int getTotalProgressCount();
 	
 	// TODO: methods to get and set source filters if we want programatic access
 
