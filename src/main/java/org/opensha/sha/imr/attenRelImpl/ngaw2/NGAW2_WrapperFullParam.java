@@ -3,6 +3,8 @@ package org.opensha.sha.imr.attenRelImpl.ngaw2;
 import static java.lang.Math.sin;
 import static org.opensha.commons.geo.GeoTools.TO_RAD;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
@@ -290,13 +292,14 @@ public class NGAW2_WrapperFullParam extends AttenuationRelationship implements P
 		supportedIMParams.clear();
 		
 		// Create saParam:
-		DoubleDiscreteConstraint periodConstraint = new DoubleDiscreteConstraint();
 		HashSet<IMT> imtsSet = new HashSet<IMT>(gmpe.getSupportedIMTs());
+		List<Double> periods = new ArrayList<>();
 		for (IMT imt : imtsSet) {
-			Double p = imt.getPeriod();
-			if (p != null)
-				periodConstraint.addDouble(p);
+			if (imt.isSA())
+				periods.add(imt.getPeriod());
 		}
+		Collections.sort(periods);
+		DoubleDiscreteConstraint periodConstraint = new DoubleDiscreteConstraint(periods);
 		periodConstraint.setNonEditable();
 		saPeriodParam = new PeriodParam(periodConstraint);
 		saPeriodParam.setValueAsDefault();

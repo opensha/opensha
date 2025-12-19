@@ -48,6 +48,7 @@ import org.opensha.sha.imr.param.OtherParams.StdDevTypeParam;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.google.common.primitives.Doubles;
 
 public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	
@@ -364,6 +365,7 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 			if (include)
 				commonPeriods.add(period);
 		}
+		Collections.sort(commonPeriods);
 		
 		return commonPeriods;
 	}
@@ -690,18 +692,6 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 		}
 		return weighted;
 	}
-	
-	private double[] getWeightedSpectra(double[][] vals) {
-		if (!weights.isNormalized()) {
-			weights.normalize();
-			if (weightsParam != null)
-				weightsParam.refreshEditor();
-		}
-		double[] weighted = new double[vals.length];
-		for (int p=0; p<weighted.length; p++)
-			weighted[p] = weights.getWeightedAverage(vals[p]);
-		return weighted;
-	}
 
 	@Override
 	public double getMean() {
@@ -844,22 +834,26 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	@Override
 	public DiscretizedFunc getSA_ExceedProbSpectrum(double iml)
 			throws ParameterException, IMRException {
-		double[] periods = null;
-		double[][] allValues = null;
+		List<Double> periodsList = this.saPeriodParam.getAllowedDoubles();
+		double[] periods = Doubles.toArray(periodsList);
+		double[][] allValues = new double[periods.length][imrs.size()];
 		for (int i=0; i<imrs.size(); i++) {
 			if (canSkipIMR(i))
 				continue;
 			ScalarIMR imr = imrs.get(i);
 			DiscretizedFunc rawSpectrum = imr.getSA_ExceedProbSpectrum(iml);
-			LightFixedXFunc spectrum = rawSpectrum instanceof LightFixedXFunc ? (LightFixedXFunc)rawSpectrum : new LightFixedXFunc(rawSpectrum);
-			if (periods == null) {
-				// first time
-				periods = spectrum.getXVals();
-				allValues = new double[periods.length][imrs.size()];
-				allValues[i] = spectrum.getYVals();
+			if (periods.length == rawSpectrum.size()) {
+				// same periods
+				for (int p=0; p<periods.length; p++) {
+					Preconditions.checkState((float)rawSpectrum.getX(p) == (float)periods[p],
+							"Periods mismatch between IMRs");
+					allValues[p][i] = rawSpectrum.getY(p);
+				}
 			} else {
-				Preconditions.checkState(periods.length == spectrum.size());
-				allValues[i] = spectrum.getYVals();
+				// this one has extra that we should skip
+				Preconditions.checkState(rawSpectrum.size() > periods.length);
+				for (int p=0; p<periods.length; p++)
+					allValues[p][i] = rawSpectrum.getY(periods[p]);
 			}
 		}
 		return new LightFixedXFunc(periods, getWeightedSpectra(allValues));
@@ -868,25 +862,41 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	@Override
 	public DiscretizedFunc getSA_IML_AtExceedProbSpectrum(double exceedProb)
 			throws ParameterException, IMRException {
-		double[] periods = null;
-		double[][] allValues = null;
+		List<Double> periodsList = this.saPeriodParam.getAllowedDoubles();
+		double[] periods = Doubles.toArray(periodsList);
+		double[][] allValues = new double[periods.length][imrs.size()];
 		for (int i=0; i<imrs.size(); i++) {
 			if (canSkipIMR(i))
 				continue;
 			ScalarIMR imr = imrs.get(i);
 			DiscretizedFunc rawSpectrum = imr.getSA_IML_AtExceedProbSpectrum(exceedProb);
-			LightFixedXFunc spectrum = rawSpectrum instanceof LightFixedXFunc ? (LightFixedXFunc)rawSpectrum : new LightFixedXFunc(rawSpectrum);
-			if (periods == null) {
-				// first time
-				periods = spectrum.getXVals();
-				allValues = new double[periods.length][imrs.size()];
-				allValues[i] = spectrum.getYVals();
+			if (periods.length == rawSpectrum.size()) {
+				// same periods
+				for (int p=0; p<periods.length; p++) {
+					Preconditions.checkState((float)rawSpectrum.getX(p) == (float)periods[p],
+							"Periods mismatch between IMRs");
+					allValues[p][i] = rawSpectrum.getY(p);
+				}
 			} else {
-				Preconditions.checkState(periods.length == spectrum.size());
-				allValues[i] = spectrum.getYVals();
+				// this one has extra that we should skip
+				Preconditions.checkState(rawSpectrum.size() > periods.length);
+				for (int p=0; p<periods.length; p++)
+					allValues[p][i] = rawSpectrum.getY(periods[p]);
 			}
 		}
 		return new LightFixedXFunc(periods, getWeightedSpectra(allValues));
+	}
+	
+	private double[] getWeightedSpectra(double[][] vals) {
+		if (!weights.isNormalized()) {
+			weights.normalize();
+			if (weightsParam != null)
+				weightsParam.refreshEditor();
+		}
+		double[] weighted = new double[vals.length];
+		for (int p=0; p<weighted.length; p++)
+			weighted[p] = weights.getWeightedAverage(vals[p]);
+		return weighted;
 	}
 
 	@Override
