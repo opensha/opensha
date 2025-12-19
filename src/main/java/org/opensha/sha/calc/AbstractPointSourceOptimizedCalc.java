@@ -144,8 +144,11 @@ public abstract class AbstractPointSourceOptimizedCalc {
 			super(imr);
 			isCloned = clone;
 			
+			String imrName = imr.getShortName();
+			
 			params = new ParameterList();
 			for (Parameter<?> param : imr.getOtherParams()) {
+				Preconditions.checkNotNull(param, "Null param found in %s getOtherParams().", imrName);
 				for (Parameter<?> depParam : param.getIndependentParameterList()) {
 					if (listen)
 						depParam.addParameterChangeListener(this);
@@ -155,22 +158,31 @@ public abstract class AbstractPointSourceOptimizedCalc {
 				}
 				if (listen)
 					param.addParameterChangeListener(this);
-				if (clone)
-					param = (Parameter<?>)param.clone();
+				if (clone) {
+					Object copy = param.clone();
+					Preconditions.checkNotNull(copy, "Paramter %s clone() returned null for %s", param.getName(), imrName);
+					param = (Parameter<?>)copy;
+				}
 				params.addParameter(param);
 			}
 			
 			// the IMT itself is checked in upstream UniqueIMR we don't want to check the IMT value, it is supposed to
 			// change, but we do want to check any dependent parameters and their values
 			Parameter<?> imt = imr.getIntensityMeasure();
+			Preconditions.checkNotNull(imt, "IMT is null for %s", imrName);
 			imtParams = new ParameterList();
 			for (Parameter<?> imtParam : imt.getIndependentParameterList()) {
+				Preconditions.checkNotNull(imtParam, "Null param found in %s IMT (%).getIndependentParameterList().",
+						imrName, imt.getName());
 				if (!trackSAPeriod && imtParam instanceof PeriodParam)
 					continue;
 				if (listen)
 					imtParam.addParameterChangeListener(this);
-				if (clone)
-					imtParam = (Parameter<?>)imtParam.clone();
+				if (clone) {
+					Object copy = imtParam.clone();
+					Preconditions.checkNotNull(copy, "Paramter %s clone() returned null for %s", imtParam.getName(), imrName);
+					imtParam = (Parameter<?>)copy;
+				}
 				imtParams.addParameter(imtParam);
 			}
 		}
