@@ -633,7 +633,6 @@ implements Runnable, ParameterChangeListener, CurveDisplayAppAPI, IMR_GuiBeanAPI
 	protected void createCalcInstance(){
 		try {
 			calc = new HazardCurveCalculator();
-			calc.setTrackProgress(true);
 		}
 		catch (Exception ex) {
 			ex.printStackTrace();
@@ -670,15 +669,12 @@ implements Runnable, ParameterChangeListener, CurveDisplayAppAPI, IMR_GuiBeanAPI
 				public void actionPerformed(ActionEvent evt) {
 					try{
 
-						int totRupture = calc.getTotRuptures();
-						int currRupture = calc.getCurrRuptures();
-						boolean totCurCalculated = true;
-						if(currRupture ==-1){
-							progressClass.setProgressMessage("Please wait, calculating total rutures ....");
-							totCurCalculated = false;
-						}
-						if(!isHazardCalcDone && totCurCalculated)
-							progressClass.updateProgress(currRupture, totRupture);
+						int totProgress = calc.getTotalProgressCount();
+						int currProgress = calc.getCurrentProgress();
+						boolean totCurCalculated = currProgress >= 0 && currProgress > 0;
+						if (!isHazardCalcDone && totCurCalculated)
+							progressClass.updateProgress(currProgress,
+									totProgress);
 
 						if (isHazardCalcDone) {
 							timer.stop();

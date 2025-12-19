@@ -822,7 +822,6 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 		try {
 			if (calc == null) {
 				calc = new HazardCurveCalculator();
-				calc.setTrackProgress(true);
 				if (this.calcParamsControl != null) {
 					calc.setAdjustableParams(calcParamsControl.getAdjustableCalcParams());
 				}
@@ -858,17 +857,12 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 			public void actionPerformed(ActionEvent evt) {
 				try {
 					if (!isEqkList) {
-						int totRupture = calc.getTotRuptures();
-						int currRupture = calc.getCurrRuptures();
-						boolean totCurCalculated = true;
-						if (currRupture == -1) {
-							progressClass
-							.setProgressMessage("Calculating total ruptures\u2026");
-							totCurCalculated = false;
-						}
+						int totProgress = calc.getTotalProgressCount();
+						int currProgress = calc.getCurrentProgress();
+						boolean totCurCalculated = currProgress >= 0 && currProgress > 0;
 						if (!isHazardCalcDone && totCurCalculated)
-							progressClass.updateProgress(currRupture,
-									totRupture);
+							progressClass.updateProgress(currProgress,
+									totProgress);
 					} else {
 						if ((numERFsInEpistemicList) != 0)
 							progressClass

@@ -612,12 +612,12 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 	}
 
 	@Override
-	public int getCurrRuptures(){
+	public int getCurrentProgress(){
 		return this.currRuptures;
 	}
 
 	@Override
-	public int getTotRuptures(){
+	public int getTotalProgressCount(){
 		return this.totRuptures;
 	}
 
@@ -736,19 +736,6 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 			filters.add(magDistFilter);
 		return filters;
 	}
-
-
-	@Override
-	public void setTrackProgress(boolean trackProgress) {
-		// always enabled
-	}
-
-
-	@Override
-	public boolean isTrackProgress() {
-		// always enabled
-		return true;
-	};
 
 
 }

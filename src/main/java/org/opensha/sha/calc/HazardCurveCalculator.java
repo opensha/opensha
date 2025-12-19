@@ -94,11 +94,8 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 	private ParameterList adjustableParams;
 
 	// misc counting and index variables
-	private boolean trackProgress = false;
-	private int currRuptures = -1;
-	private int totRuptures = 0;
-	private int sourceIndex;
-	private int numSources;
+	private int currProgress = -1;
+	private int totProgress = 0;
 
 
 	/**
@@ -258,7 +255,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 		if (setTRTinIMR_FromSource)
 			trtOrigVals = TRTUtils.getTRTsSetInIMRs(imrMap);
 
-		this.currRuptures = -1;
+		this.currProgress = -1;
 
 		/*
 		 * this determines how the calculations are done (doing it the way it's outlined
@@ -295,25 +292,14 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 		}
 
 		// get total number of sources
-		numSources = eqkRupForecast.getNumSources();
+		int numSources = eqkRupForecast.getNumSources();
 		//System.out.println("Number of Sources: "+numSources);
 		//System.out.println("ERF info: "+ eqkRupForecast.getClass().getName());
 
-
-		// compute the total number of ruptures for updating the progress bar
-		if (trackProgress) {
-			totRuptures = 0;
-			sourceIndex =0;
-			for(sourceIndex=0;sourceIndex<numSources;++sourceIndex) {
-				ProbEqkSource source = eqkRupForecast.getSource(sourceIndex);
-				totRuptures += source.getNumRuptures();
-			}
-		}
-		//System.out.println("Total number of ruptures:"+ totRuptures);
-
-
 		// init the current rupture number (also for progress bar)
-		currRuptures = 0;
+		currProgress = 0;
+		totProgress = numSources;
+		
 		// initialize the hazard function to 1.0
 		initDiscretizeValues(hazFunction, 1.0);
 
@@ -324,7 +310,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 		if (D) System.out.println(C+": starting hazard curve calculation");
 
 		// loop over sources
-		for(sourceIndex=0;sourceIndex < numSources ;sourceIndex++) {
+		for(int sourceIndex=0; sourceIndex < numSources; sourceIndex++) {
 			if (isCancelled()) return null;
 			//if (sourceIndex%1000 ==0) System.out.println("SourceIdx: " + sourceIndex);
 			
@@ -333,9 +319,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 			TectonicRegionType trt = source.getTectonicRegionType();
 			
 			int numRuptures = source.getNumRuptures();
-			int origNumRuptures = numRuptures;
 			if (source instanceof SiteAdaptiveSource) {
-				origNumRuptures = numRuptures;
 				source = ((SiteAdaptiveSource)source).getForSite(site);
 				numRuptures = source.getNumRuptures();
 			}
@@ -350,7 +334,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 
 			// apply any filters
 			if (canSkipSource(filters, source, site)) {
-				currRuptures += origNumRuptures;  //update progress bar for skipped ruptures
+				currProgress++;  //update progress bar for skipped source
 				continue;
 			}
 
@@ -363,9 +347,6 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 
 			// loop over these ruptures
 			for(int n=0; n < numRuptures ; n++) {
-				if (n < origNumRuptures)
-					// won't increment if it's after the original (non-site-adaptive) rupture count
-					currRuptures++;
 				ProbEqkRupture rupture = source.getRupture(n);
 
 				try {
@@ -432,13 +413,11 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 					ExceptionUtils.throwAsRuntimeException(t);
 				}
 			}
-			if (numRuptures < origNumRuptures)
-				// site adaptive is smaller, catch up with were we would be in the original count
-				currRuptures += (origNumRuptures-numRuptures);
 			// for non-poisson source:
 			if(!poissonSource)
 				for(k=0;k<numPoints;k++)
 					hazFunction.set(k,hazFunction.getY(k)*(1-sourceHazFunc.getY(k)));
+			currProgress++;
 		}
 
 		int i;
@@ -506,18 +485,32 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 		initDiscretizeValues(hazFunction, 0);
 		int numPts=hazCurve.size();
 		// for progress bar
-		currRuptures=0;
+		currProgress=0;
 		//	  totRuptures=numEventSets;
 
 		for(int i=0;i<numEventSets;i++) {
 			if (isCancelled()) return null;
 			List<EqkRupture> events = eqkRupForecast.drawRandomEventSet(site, getSourceFilters());
-			if(i==0) totRuptures = events.size()*numEventSets; // this is an approximate total number of events
-			currRuptures+=events.size();
+			// update totProgress with our current best estimate
+			if (i == 0) {
+				// first one, all we know is the size of the first event set
+				totProgress = events.size()*numEventSets;
+			} else {
+				// what we know so far
+				int totProgress = currProgress + events.size();
+				if (i < numEventSets-1) {
+					// assume future are the same as the average encountered so far
+					double curAvg = (double)totProgress/(double)(i+1);
+					totProgress += (int)(curAvg*(numEventSets-2));
+				}
+				this.totProgress = totProgress;
+			}
 			getEventSetHazardCurve( hazCurve,site, imr, events, false);
 			for(int x=0; x<numPts; x++)
 				hazFunction.set(x, hazFunction.getY(x)+hazCurve.getY(x));
+			currProgress += events.size();
 		}
+		currProgress = totProgress;
 		for(int x=0; x<numPts; x++)
 			hazFunction.set(x, hazFunction.getY(x)/numEventSets);
 		return hazFunction;
@@ -552,8 +545,8 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 		int totRups = eqkRupList.size();
 		// progress bar stuff
 		if(updateCurrRuptures) {
-			totRuptures = totRups;
-			currRuptures = 0;
+			totProgress = totRups;
+			currProgress = 0;
 		}
 
 		// initialize the hazard function to 1.0 (initial total non-exceedance probability)
@@ -571,7 +564,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 		for(int n=0; n < totRups ; n++) {
 			if (isCancelled()) return null;
 
-			if(updateCurrRuptures)++currRuptures;
+			if(updateCurrRuptures)++currProgress;
 
 			EqkRupture rupture = eqkRupList.get(n);
 			
@@ -644,8 +637,8 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 		int totRups = eqkRupList.size();
 		// progress bar stuff
 		if(updateCurrRuptures) {
-			totRuptures = totRups;
-			currRuptures = 0;
+			totProgress = totRups;
+			currProgress = 0;
 		}
 
 		// initialize the hazard function to 1.0 (initial total non-exceedance probability)
@@ -663,7 +656,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 		for(int n=0; n < totRups ; n++) {
 			if (isCancelled()) return null;
 			
-			if(updateCurrRuptures)++currRuptures;
+			if(updateCurrRuptures)++currProgress;
 
 			EqkRupture rupture = eqkRupList.get(n);
 			
@@ -736,8 +729,8 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 		int totRups = eqkRupList.size();
 		// progress bar stuff
 		if(updateCurrRuptures) {
-			totRuptures = totRups;
-			currRuptures = 0;
+			totProgress = totRups;
+			currProgress = 0;
 		}
 
 		// set the Site in IMR
@@ -753,7 +746,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 		for(int n=0; n < totRups ; n++) {
 			if (isCancelled()) return null;
 
-			if(updateCurrRuptures)++currRuptures;
+			if(updateCurrRuptures)++currProgress;
 
 			EqkRupture rupture = eqkRupList.get(n);
 			
@@ -818,8 +811,8 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 		int totRups = eqkRupList.size();
 		// progress bar stuff
 		if(updateCurrRuptures) {
-			totRuptures = totRups;
-			currRuptures = 0;
+			totProgress = totRups;
+			currProgress = 0;
 		}
 
 		// set the Site in IMR
@@ -833,7 +826,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 		for(int n=0; n < totRups ; n++) {
 			if (isCancelled()) return null;
 
-			if(updateCurrRuptures)++currRuptures;
+			if(updateCurrRuptures)++currProgress;
 
 			EqkRupture rupture = eqkRupList.get(n);
 			
@@ -907,29 +900,15 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 
 		return hazFunction;
 	}
-	
+
 	@Override
-	public void setTrackProgress(boolean trackProgress) {
-		this.trackProgress = trackProgress;
-	}
-	
-	@Override
-	public boolean isTrackProgress() {
-		return trackProgress;
+	public int getCurrentProgress() {
+		return this.currProgress;
 	}
 
 	@Override
-	public int getCurrRuptures() {
-		if (trackProgress)
-			return this.currRuptures;
-		return -1;
-	}
-
-	@Override
-	public int getTotRuptures() {
-		if (trackProgress)
-			return this.totRuptures;
-		return -1;
+	public int getTotalProgressCount() {
+		return this.totProgress;
 	}
 
 	/**
