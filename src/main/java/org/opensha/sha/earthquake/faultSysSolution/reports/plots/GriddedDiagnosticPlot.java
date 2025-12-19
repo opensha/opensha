@@ -112,6 +112,15 @@ public class GriddedDiagnosticPlot extends AbstractSolutionPlot {
 			String topLink) throws IOException {
 		GridSourceList gridSources = sol.requireModule(GridSourceList.class);
 		
+		GridSourceList compGridSources = null;
+		if (meta.hasComparisonSol()) {
+			FaultSystemSolution compSol = meta.comparison.sol;
+			// still may be null
+			compGridSources = compSol.getModule(GridSourceList.class);
+			if (compGridSources != null)
+				System.out.println("We have comparison gridded");
+		}
+		
 		Set<TectonicRegionType> trts = gridSources.getTectonicRegionTypes();
 		
 		IncrementalMagFreqDist refMFD = gridSources.getRefMFD();
@@ -140,6 +149,26 @@ public class GriddedDiagnosticPlot extends AbstractSolutionPlot {
 					int mechIndex = GridSourceList.getMechForRake(rup.properties.rake).ordinal();
 					mechRates[mechIndex] += rup.rate;
 					mechRupLists.get(mechIndex).add(rup);
+				}
+			}
+			
+			double[] compMechRates = null;
+			List<List<GriddedRupture>> compMechRupLists = null;
+			if (compGridSources != null) {
+				compMechRates = new double[mechs.length];
+				
+				compMechRupLists = new ArrayList<>(mechs.length);
+				for (int i=0; i<mechs.length; i++)
+					compMechRupLists.add(new ArrayList<>());
+				
+				for (int gridIndex=0; gridIndex<compGridSources.getNumLocations(); gridIndex++) {
+					for (GriddedRupture rup : compGridSources.getRuptures(trt, gridIndex)) {
+						if (rup.rate == 0d)
+							continue;
+						int mechIndex = GridSourceList.getMechForRake(rup.properties.rake).ordinal();
+						compMechRates[mechIndex] += rup.rate;
+						compMechRupLists.get(mechIndex).add(rup);
+					}
 				}
 			}
 			
@@ -207,14 +236,30 @@ public class GriddedDiagnosticPlot extends AbstractSolutionPlot {
 						tracks[refMFD.getClosestXIndex(rup.properties.magnitude)].add(q.get(rup), rup.rate);
 				}
 				
+				Map<Quantities, RangeTracker[]> compQuantityTracks = new HashMap<>();
+				boolean hasComp = compGridSources != null && compMechRates[mechIndex] > 0d;
+				if (hasComp) {
+					System.out.println("We have comparison gridded for "+trtName+", "+mechs[mechIndex]);
+					List<GriddedRupture> compMechRups = compMechRupLists.get(mechIndex);
+					for (Quantities q : Quantities.values()) {
+						RangeTracker[] tracks = new RangeTracker[refMFD.size()];
+						for (int i=0; i<tracks.length; i++)
+							tracks[i] = new RangeTracker();
+						compQuantityTracks.put(q, tracks);
+						
+						for (GriddedRupture rup : compMechRups)
+							tracks[refMFD.getClosestXIndex(rup.properties.magnitude)].add(q.get(rup), rup.rate);
+					}
+				}
+				
 				// depths and widths
 				List<DiscretizedFunc> depthFuncs = new ArrayList<>();
 				List<PlotCurveCharacterstics> depthChars = new ArrayList<>();
 				
 				addRangeFuncs(depthFuncs, depthChars, Colors.tab_green, Quantities.UPPER_DEPTH.label,
-						refMFD, quantityTracks.get(Quantities.UPPER_DEPTH));
+						refMFD, quantityTracks.get(Quantities.UPPER_DEPTH), compQuantityTracks.get(Quantities.UPPER_DEPTH));
 				addRangeFuncs(depthFuncs, depthChars, Colors.tab_blue, Quantities.LOWER_DEPTH.label,
-						refMFD, quantityTracks.get(Quantities.LOWER_DEPTH));
+						refMFD, quantityTracks.get(Quantities.LOWER_DEPTH), compQuantityTracks.get(Quantities.LOWER_DEPTH));
 				
 				double maxDepth = Math.max(1, getMax(depthFuncs));
 				Range depthRange = new Range(0d, Math.max(maxDepth*1.1, maxDepth+2));
@@ -227,12 +272,15 @@ public class GriddedDiagnosticPlot extends AbstractSolutionPlot {
 				List<PlotCurveCharacterstics> widthChars = new ArrayList<>();
 				
 				addRangeFuncs(widthFuncs, widthChars, Color.BLACK, null,
-						refMFD, quantityTracks.get(Quantities.WIDTH));
+						refMFD, quantityTracks.get(Quantities.WIDTH), compQuantityTracks.get(Quantities.WIDTH));
 				double maxWidth = Math.max(1d, getMax(widthFuncs));
 				Range widthRange = new Range(0d, Math.max(maxWidth*1.1, maxWidth+2));
 				
 				PlotSpec widthSpec = new PlotSpec(widthFuncs, widthChars, depthSpec.getTitle(), "Magnitude",
 						Quantities.WIDTH.label+" ("+Quantities.WIDTH.units+")");
+				if (hasComp)
+					widthSpec.setLegendInset(RectangleAnchor.TOP_LEFT);
+					
 				
 				HeadlessGraphPanel gp = PlotUtils.initHeadless();
 				
@@ -249,24 +297,28 @@ public class GriddedDiagnosticPlot extends AbstractSolutionPlot {
 				List<PlotCurveCharacterstics> areaChars = new ArrayList<>();
 				
 				addRangeFuncs(areaFuncs, areaChars, Colors.tab_red, null,
-						refMFD, quantityTracks.get(Quantities.AREA));
+						refMFD, quantityTracks.get(Quantities.AREA), compQuantityTracks.get(Quantities.AREA));
 				double minArea = Math.max(0.1d, getMin(areaFuncs));
 				double maxArea = Math.max(100d, getMax(areaFuncs));
 				Range areaRange = new Range(Math.pow(10, Math.floor(Math.log10(minArea))), Math.pow(10, Math.ceil(Math.log10(maxArea))));
 				
 				PlotSpec areaSpec = new PlotSpec(areaFuncs, areaChars, titlePrefix+"Rupture Scaling", "Magnitude",
 						Quantities.AREA.label+" ("+Quantities.AREA.units+")");
+				if (hasComp)
+					areaSpec.setLegendInset(RectangleAnchor.TOP_LEFT);
 				
 				List<DiscretizedFunc> lengthFuncs = new ArrayList<>();
 				List<PlotCurveCharacterstics> lengthChars = new ArrayList<>();
 				
 				addRangeFuncs(lengthFuncs, lengthChars, Colors.tab_purple, null,
-						refMFD, quantityTracks.get(Quantities.LENGTH));
+						refMFD, quantityTracks.get(Quantities.LENGTH), compQuantityTracks.get(Quantities.LENGTH));
 				double maxLength = Math.max(10d, getMax(lengthFuncs));
 				Range lengthRange = new Range(0d, Math.max(maxLength*1.1, maxLength+5));
 				
 				PlotSpec lengthSpec = new PlotSpec(lengthFuncs, lengthChars, titlePrefix+"Rupture Scaling", "Magnitude",
 						Quantities.LENGTH.label+" ("+Quantities.LENGTH.units+")");
+				if (hasComp)
+					lengthSpec.setLegendInset(RectangleAnchor.TOP_LEFT);
 				
 				gp.drawGraphPanel(List.of(areaSpec, lengthSpec), List.of(false), List.of(true, false),
 						List.of(xRange), List.of(areaRange, lengthRange));
@@ -377,66 +429,94 @@ public class GriddedDiagnosticPlot extends AbstractSolutionPlot {
 	}
 	
 	private static boolean addRangeFuncs(List<DiscretizedFunc> funcs, List<PlotCurveCharacterstics> chars,
-			Color color, String label, IncrementalMagFreqDist refMFD, RangeTracker[] tracks) {
-		// split into contiguous bundles
-		List<RangeTracker> curBundle = null;
-		List<Double> curBundleMags = null;
+			Color color, String label, IncrementalMagFreqDist refMFD, RangeTracker[] mainTracks, RangeTracker[] compTracks) {
+		boolean[] comps;
+		if (compTracks == null)
+			comps = new boolean[] {false};
+		else
+			comps = new boolean[] {true, false};
 		
-		List<List<RangeTracker>> allBundles = new ArrayList<>();
-		List<List<Double>> allBundleMags = new ArrayList<>();
-		
-		for (int i=0; i<tracks.length; i++) {
-			if (tracks[i].numFinite > 0) {
-				if (curBundle == null) {
-					curBundle = new ArrayList<>();
-					curBundleMags = new ArrayList<>();
-					
-					allBundles.add(curBundle);
-					allBundleMags.add(curBundleMags);
-				}
-				curBundle.add(tracks[i]);
-				curBundleMags.add(refMFD.getX(i));
-			} else {
-				curBundle = null;
-				curBundleMags = null;
-			}
-		}
-		
-		if (allBundles.isEmpty())
-			return false;
-		
-		for (int b=0; b<allBundles.size(); b++) {
-			List<RangeTracker> bundle = allBundles.get(b);
-			List<Double> bundleMags = allBundleMags.get(b);
+		for (boolean comp : comps) {
+			// split into contiguous bundles
+			List<RangeTracker> curBundle = null;
+			List<Double> curBundleMags = null;
 			
-			boolean anyMultiple = false;
-			for (RangeTracker track : bundle)
-				anyMultiple |= !track.allSame;
+			List<List<RangeTracker>> allBundles = new ArrayList<>();
+			List<List<Double>> allBundleMags = new ArrayList<>();
 			
-			DiscretizedFunc average = new ArbitrarilyDiscretizedFunc();
-			DiscretizedFunc lower = anyMultiple ? new ArbitrarilyDiscretizedFunc() : null;
-			DiscretizedFunc upper = anyMultiple ? new ArbitrarilyDiscretizedFunc() : null;
-			for (int i=0; i<bundle.size(); i++) {
-				double mag = bundleMags.get(i);
-				RangeTracker track = bundle.get(i);
-				average.set(mag, track.getAverage());
-				if (anyMultiple) {
-					lower.set(mag, track.min);
-					upper.set(mag, track.max);
+			RangeTracker[] tracks = comp ? compTracks : mainTracks;
+			
+			for (int i=0; i<tracks.length; i++) {
+				if (tracks[i].numFinite > 0) {
+					if (curBundle == null) {
+						curBundle = new ArrayList<>();
+						curBundleMags = new ArrayList<>();
+						
+						allBundles.add(curBundle);
+						allBundleMags.add(curBundleMags);
+					}
+					curBundle.add(tracks[i]);
+					curBundleMags.add(refMFD.getX(i));
+				} else {
+					curBundle = null;
+					curBundleMags = null;
 				}
 			}
 			
-			if (anyMultiple) {
-				DiscretizedFunc combFunc = new UncertainArbDiscFunc(average, lower, upper);
-				if (b == 0)
-					combFunc.setName(label);
-				funcs.add(combFunc);
-				chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN_TRANS, 1f, color));
+			if (allBundles.isEmpty()) {
+				if (comp)
+					continue;
+				return false;
 			}
-			if (b == 0)
-				average.setName(label);
-			funcs.add(average);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, color));
+			
+			for (int b=0; b<allBundles.size(); b++) {
+				List<RangeTracker> bundle = allBundles.get(b);
+				List<Double> bundleMags = allBundleMags.get(b);
+				
+				boolean anyMultiple = false;
+				for (RangeTracker track : bundle)
+					anyMultiple |= !track.allSame;
+				
+				DiscretizedFunc average = new ArbitrarilyDiscretizedFunc();
+				DiscretizedFunc lower = anyMultiple ? new ArbitrarilyDiscretizedFunc() : null;
+				DiscretizedFunc upper = anyMultiple ? new ArbitrarilyDiscretizedFunc() : null;
+				for (int i=0; i<bundle.size(); i++) {
+					double mag = bundleMags.get(i);
+					RangeTracker track = bundle.get(i);
+					average.set(mag, track.getAverage());
+					if (anyMultiple) {
+						lower.set(mag, track.min);
+						upper.set(mag, track.max);
+					}
+				}
+				
+				if (anyMultiple && !comp) {
+					DiscretizedFunc combFunc = new UncertainArbDiscFunc(average, lower, upper);
+					if (b == 0)
+						combFunc.setName(label);
+					funcs.add(combFunc);
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN_TRANS, 1f, color));
+				}
+				funcs.add(average);
+				if (comp) {
+					if (b == 0) {
+						if (label == null)
+							average.setName("Comparison");
+						else
+							average.setName("Comparison "+label);
+					}
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SHORT_DASHED, 2f,
+							new Color(color.getRed(), color.getGreen(), color.getBlue(), 180)));
+				} else {
+					if (b == 0 && (label != null || compTracks != null)) {
+						if (label == null)
+							average.setName("Primary");
+						else
+							average.setName("Primary "+label);
+					}
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, color));
+				}
+			}
 		}
 		
 		return true;
