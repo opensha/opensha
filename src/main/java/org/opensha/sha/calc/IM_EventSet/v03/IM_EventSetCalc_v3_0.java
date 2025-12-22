@@ -7,7 +7,6 @@ import java.util.logging.Logger;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.param.ParameterList;
-import org.opensha.sha.util.SiteTranslator;
 
 public abstract class IM_EventSetCalc_v3_0 implements IM_EventSetCalc_v3_0_API {
 	
@@ -26,8 +25,6 @@ public abstract class IM_EventSetCalc_v3_0 implements IM_EventSetCalc_v3_0_API {
 	}
 	
 	public static final float MIN_SOURCE_DIST = 200;
-
-    private static final SiteTranslator siteTrans = new SiteTranslator();
 
 	/**
 	 * This should ONLY be accessed through the getter method as it may

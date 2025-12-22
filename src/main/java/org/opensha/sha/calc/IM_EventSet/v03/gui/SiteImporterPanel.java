@@ -21,34 +21,65 @@ import javax.swing.JTextField;
 import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.calc.IM_EventSet.v03.SiteFileLoader;
+import org.opensha.sha.util.SiteTranslator;
 
+/**
+ * Panel for importing sites in bulk from a file
+ * <p>
+ * The <code>SiteImporterPanel</code> allows a user to specify the configuration
+ * of site files and provide the path to the site file to import from.
+ * Site files are read into memory with the <code>SiteFileLoader</code> and then
+ * used to configure a set of site parameters. It is the responsibility of the
+ * calling application, the <code>SitesPanel</code>, to then merge these imported
+ * sites with existing sites for use in IM Event Set calculations.
+ * </p>
+ */
 public class SiteImporterPanel extends JPanel implements ActionListener {
-	
-	private JLabel formatLabel = new JLabel();
-	private JButton reverseButton = new JButton("Swap lat/lon");
-	private JButton addButton = new JButton("Add Site Data Column");
-	private JButton removeButton = new JButton("Remove Site Data Column");
-	private JComboBox typeChooser; 
-	
-	private JComboBox measChooser;
-	private JLabel measLabel = new JLabel("Site Data Measurement Type: ");
-	
-	private JTextField fileField = new JTextField();
-	private JButton browseButton = new JButton("Browse");
+
+	private final JLabel formatLabel = new JLabel();
+    private final JLabel measLabel = new JLabel("Site Data Measurement Type: ");
+
+	private final JButton reverseButton = new JButton("Swap lat/lon");
+	private final JButton addButton = new JButton("Add Site Data Column");
+	private final JButton removeButton = new JButton("Remove Site Data Column");
+
+	private final JComboBox<String> typeChooser;
+	private final JComboBox<String> measChooser;
+
+	private final JTextField fileField = new JTextField();
+	private final JButton browseButton = new JButton("Browse");
 	private JFileChooser chooser;
 	
 	private boolean lonFirst = false;
-	
-	private ArrayList<String> siteDataTypes = new ArrayList<String>();
-	
+
+	private final ArrayList<String> siteDataTypes = new ArrayList<>();
+
 	private ArrayList<Location> locs;
-	private ArrayList<ArrayList<SiteDataValue<?>>> valsList;
-	
-	public SiteImporterPanel() {
+    private ArrayList<ParameterList> siteDataParams;
+
+    private ParameterList defaultSiteDataParams;
+    private final SiteTranslator siteTrans = new SiteTranslator();
+
+    private static final File cwd = new File(System.getProperty("user.dir"));
+
+    // TODO: Add "Set Params from Web Services" here, similar to in AddSitePanel
+    //       Distinction being that these would set params that aren't explicitly defined in the file
+    // TODO: Confirm desired behavior with Kevin
+
+    /**
+     * Constructor creates the UI panel for importing sites from a file
+     * @param defaultSiteDataParams - Params used for creating a new site
+     */
+	public SiteImporterPanel(ParameterList defaultSiteDataParams) {
 		this.setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-		
-		typeChooser = new JComboBox(AddSiteDataPanel.siteDataTypes.toArray());
+
+        this.defaultSiteDataParams = defaultSiteDataParams;
+
+        typeChooser = new JComboBox<>(SiteFileLoader.allSiteDataTypes);
+
+        chooser = new JFileChooser(cwd);
 		
 		updateLabel();
 		
@@ -56,7 +87,7 @@ public class SiteImporterPanel extends JPanel implements ActionListener {
 		addButton.addActionListener(this);
 		removeButton.addActionListener(this);
 		removeButton.setEnabled(false);
-		
+
 		JPanel buttonPanel = new JPanel(new BorderLayout());
 		buttonPanel.add(reverseButton, BorderLayout.WEST);
 		JPanel rightButtonPanel = new JPanel();
@@ -66,10 +97,10 @@ public class SiteImporterPanel extends JPanel implements ActionListener {
 		rightButtonPanel.add(removeButton);
 		buttonPanel.add(rightButtonPanel, BorderLayout.EAST);
 		
-		String measTypes[] = new String[2];
-		measTypes[0] = SiteData.TYPE_FLAG_INFERRED;
-		measTypes[1] = SiteData.TYPE_FLAG_MEASURED;
-		measChooser = new JComboBox(measTypes);
+		measChooser = new JComboBox<>(new String[]{
+            SiteData.TYPE_FLAG_INFERRED,
+            SiteData.TYPE_FLAG_MEASURED
+        });
 		JPanel measPanel = new JPanel();
 		measPanel.setLayout(new BoxLayout(measPanel, BoxLayout.X_AXIS));
 		measLabel.setEnabled(false);
@@ -102,16 +133,16 @@ public class SiteImporterPanel extends JPanel implements ActionListener {
 	}
 	
 	private void updateLabel() {
-		String label = "File format: ";
+		StringBuilder label = new StringBuilder("File format: ");
 		if (lonFirst)
-			label += "<Latitude> <Longitude>";
+			label.append("<Latitude> <Longitude>");
 		else
-			label += "<Longitude> <Latitude>";
+			label.append("<Longitude> <Latitude>");
 		
 		for (String dataType : siteDataTypes) {
-			label += " <" + dataType + ">";
+			label.append(" <").append(dataType).append(">");
 		}
-		formatLabel.setText(label);
+		formatLabel.setText(label.toString());
 	}
 
 	public void actionPerformed(ActionEvent e) {
@@ -126,8 +157,6 @@ public class SiteImporterPanel extends JPanel implements ActionListener {
 			typeChooser.addItem(siteDataTypes.get(index));
 			siteDataTypes.remove(index);
 		} else if (e.getSource().equals(browseButton)) {
-			if (chooser == null)
-				chooser = new JFileChooser();
 			int returnVal = chooser.showOpenDialog(this);
 			if (returnVal == JFileChooser.APPROVE_OPTION) {
 				File file = chooser.getSelectedFile();
@@ -135,7 +164,7 @@ public class SiteImporterPanel extends JPanel implements ActionListener {
 			}
 		}
 		addButton.setEnabled(typeChooser.getItemCount() > 0);
-		boolean hasTypes = siteDataTypes.size() > 0;
+		boolean hasTypes = !siteDataTypes.isEmpty();
 		measLabel.setEnabled(hasTypes);
 		measChooser.setEnabled(hasTypes);
 		removeButton.setEnabled(hasTypes);
@@ -144,34 +173,43 @@ public class SiteImporterPanel extends JPanel implements ActionListener {
 	
 	public File getSelectedFile() {
 		String fileName = fileField.getText();
-		File file = new File(fileName);
-		return file;
+        return new File(fileName);
 	}
-	
+
 	public void importFile(File file) throws IOException, ParseException {
 		SiteFileLoader loader = new SiteFileLoader(lonFirst, (String)measChooser.getSelectedItem(), siteDataTypes);
 		
 		loader.loadFile(file);
 		
 		locs = loader.getLocs();
-		valsList = loader.getValsList();
+
+        siteDataParams = new ArrayList<>();
+		for (ArrayList<SiteDataValue<?>> siteVals : loader.getValsList()) {
+            ParameterList params = (ParameterList) defaultSiteDataParams.clone();
+            params.forEach(param -> siteTrans.setParameterValue(param, siteVals));
+            siteDataParams.add(params);
+        }
 	}
+
+    public void setDefaultSiteDataParams(ParameterList defaultSiteDataParams) {
+        this.defaultSiteDataParams = defaultSiteDataParams;
+    }
 	
 	public ArrayList<Location> getLocs() {
 		return locs;
 	}
 
-	public ArrayList<ArrayList<SiteDataValue<?>>> getValsList() {
-		return valsList;
+	public ArrayList<ParameterList> getSiteData() {
+		return siteDataParams;
 	}
-	
-	public static void main(String args[]) {
+
+	public static void main(String[] args) {
 		JFrame frame = new JFrame();
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frame.setContentPane(new SiteImporterPanel());
+        ParameterList params = new ParameterList();
+		frame.setContentPane(new SiteImporterPanel(params));
 		frame.setSize(700, 150);
 		
 		frame.setVisible(true);
 	}
-
 }
