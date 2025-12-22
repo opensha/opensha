@@ -4,6 +4,9 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
+import java.io.IOException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -24,6 +27,7 @@ import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
 import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.gui.beans.OrderedSiteDataGUIBean;
 import org.opensha.commons.data.siteData.impl.WillsMap2000;
+import org.opensha.commons.exceptions.InvalidRangeException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
@@ -43,6 +47,8 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 	protected JButton addSiteButton = new JButton("Add Site");
 	protected JButton removeSiteButton = new JButton("Remove Site(s)");
 	protected JButton editSiteButton = new JButton("Edit Site");
+    protected JButton importSitesButton = new JButton("Import Sites From File");
+    protected JButton exportSitesButton = new JButton("Export Sites");
 
     // List of locations for each site
 	private ArrayList<Location> locs;
@@ -52,6 +58,9 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
     private ParameterList defaultSiteDataParams;
     // Set sites with selected site data providers
     private final OrderedSiteDataGUIBean siteDataGUIBean;
+
+    private SiteImporterPanel imp;
+    private SiteExporterPanel exp;
 
 	public SitesPanel(OrderedSiteDataGUIBean siteDataGUIBean) {
 		super();
@@ -77,15 +86,22 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 		
 		JPanel buttonPanel = new JPanel(new BorderLayout());
 		JPanel leftButtonPanel = new JPanel();
+        JPanel rightButtonPanel = new JPanel();
 		leftButtonPanel.setLayout(new BoxLayout(leftButtonPanel, BoxLayout.X_AXIS));
+        rightButtonPanel.setLayout(new BoxLayout(rightButtonPanel, BoxLayout.X_AXIS));
+        rightButtonPanel.add(editSiteButton, BorderLayout.EAST);
+        rightButtonPanel.add(importSitesButton, BorderLayout.EAST);
+        rightButtonPanel.add(exportSitesButton, BorderLayout.EAST);
 		leftButtonPanel.add(addSiteButton);
 		leftButtonPanel.add(removeSiteButton);
 		buttonPanel.add(leftButtonPanel, BorderLayout.WEST);
-		buttonPanel.add(editSiteButton, BorderLayout.EAST);
+        buttonPanel.add(rightButtonPanel, BorderLayout.EAST);
 		removeSiteButton.setEnabled(false);
 		addSiteButton.addActionListener(this);
 		removeSiteButton.addActionListener(this);
 		editSiteButton.addActionListener(this);
+        importSitesButton.addActionListener(this);
+        exportSitesButton.addActionListener(this);
 		
 		northPanel.add(buttonPanel, BorderLayout.SOUTH);
 		
@@ -131,6 +147,10 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
         editSiteButton.setEnabled(!sitesList.isSelectionEmpty());
     }
 
+    private void checkEnableExportSite() {
+        exportSitesButton.setEnabled(!locs.isEmpty());
+    }
+
     private void replaceSite(int index, Location loc, ParameterList params) {
         locs.set(index, loc);
         siteDataParams.set(index, params);
@@ -174,6 +194,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 		sitesList.setListData(data);
 		checkEnableRemoveSite();
         checkEnableEditSite();
+        checkEnableExportSite();
 		rebuildSiteDataList();
 		this.validate();
 	}
@@ -208,6 +229,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 		siteDataList.setListData(data);
 		checkEnableRemoveSite();
         checkEnableEditSite();
+        checkEnableExportSite();
 	}
 	
 	public static String getDataListString(int index, Parameter<?> param) {
@@ -252,6 +274,82 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
     }
 
     /**
+     * Logic for importing sites from a file
+     */
+    private void importSites() {
+        if (imp == null)
+            imp = new SiteImporterPanel(defaultSiteDataParams);
+        else
+            imp.setDefaultSiteDataParams(defaultSiteDataParams);
+
+        int selection = JOptionPane.showConfirmDialog(this, imp, "Import Sites",
+                JOptionPane.OK_CANCEL_OPTION);
+        if (selection == JOptionPane.OK_OPTION) {
+            File file = imp.getSelectedFile();
+            if (file.exists()) {
+                try {
+                    imp.importFile(file);
+                    ArrayList<Location> importedLocs = imp.getLocs();
+                    ArrayList<ParameterList> importedVals = imp.getSiteData();
+                    for (int i = 0; i < importedLocs.size(); i++) {
+                       Location impLoc = importedLocs.get(i);
+                       ParameterList impVals = importedVals.get(i);
+                        // Check for existing sites to overwrite values
+                        if (locs.contains(impLoc)) {
+                            this.replaceSite(locs.indexOf(impLoc), impLoc, impVals);
+                        } else {
+                            locs.add(impLoc);
+                            siteDataParams.add(impVals);
+                        }
+
+                    }
+                    this.rebuildSiteList();
+                } catch (IOException e1) {
+                    e1.printStackTrace();
+                    JOptionPane.showMessageDialog(this, "I/O error reading file!",
+                            "I/O error reading file!", JOptionPane.ERROR_MESSAGE);
+                } catch (ParseException e1) {
+                    e1.printStackTrace();
+                    JOptionPane.showMessageDialog(this, e1.getMessage(),
+                            "Error Parsing File", JOptionPane.ERROR_MESSAGE);
+                } catch (NumberFormatException e1) {
+                    e1.printStackTrace();
+                    JOptionPane.showMessageDialog(this, e1.getMessage(),
+                            "Error Parsing Number", JOptionPane.ERROR_MESSAGE);
+                } catch (InvalidRangeException e1) {
+                    e1.printStackTrace();
+                    JOptionPane.showMessageDialog(this, e1.getMessage(),
+                            "Invalid location", JOptionPane.ERROR_MESSAGE);
+                }
+            } else {
+                JOptionPane.showMessageDialog(this, "File '" + file.getPath() + "' doesn't exist!",
+                        "File Not Found", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    /**
+     * Logic for exporting sites to a file
+     */
+    private void exportSites() {
+        if (exp == null)
+            exp = new SiteExporterPanel(locs, siteDataParams);
+        else
+            exp.updateSiteData(locs, siteDataParams);
+        int selection = JOptionPane.showConfirmDialog(this, exp, "Export Sites",
+                JOptionPane.OK_CANCEL_OPTION);
+        if (selection == JOptionPane.OK_OPTION) {
+            try {
+                exp.exportFile();
+            } catch (IOException e1) {
+                e1.printStackTrace();
+                JOptionPane.showMessageDialog(this, "I/O error reading file!",
+                        "I/O error reading file!", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    /**
      * Execute when a button is pressed in the SitesPanel
      * @param e the event to be processed
      */
@@ -291,6 +389,16 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
                 this.replaceSite(siteIndex, loc, params);
                 rebuildSiteDataList();
             }
+        } else if (e.getSource().equals(importSitesButton)) {
+            // Don't allow user to add sites if IMRs aren't selected
+            if (defaultSiteDataParams.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Must have at least 1 IMR selected to import sites", "Cannot import sites",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            importSites();
+        } else if (e.getSource().equals(exportSitesButton)) {
+            exportSites();
         }
 	}
 

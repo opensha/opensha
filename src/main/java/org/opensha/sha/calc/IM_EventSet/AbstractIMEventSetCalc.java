@@ -7,8 +7,6 @@ import java.util.logging.Logger;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.param.ParameterList;
-import org.opensha.sha.calc.IM_EventSet.IMEventSetCalcAPI;
-import org.opensha.sha.util.SiteTranslator;
 
 /**
  * The abstract IM Event Set calculator allows for site data parsing logic to
@@ -31,8 +29,6 @@ public abstract class AbstractIMEventSetCalc implements IMEventSetCalcAPI {
 	}
 	
 	public static final float MIN_SOURCE_DIST = 200;
-
-    private static final SiteTranslator siteTrans = new SiteTranslator();
 
 	/**
 	 * This should ONLY be accessed through the getter method as it may
