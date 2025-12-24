@@ -68,6 +68,7 @@ public class SiteImporterPanel extends JPanel implements ActionListener {
     /**
      * Constructor creates the UI panel for importing sites from a file
      * @param defaultSiteDataParams - Params used for creating a new site
+     * @param providers - site data providers to retrieve from if checkbox to set params from web services is checked
      */
 	public SiteImporterPanel(ParameterList defaultSiteDataParams, OrderedSiteDataProviderList providers) {
 		this.setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
