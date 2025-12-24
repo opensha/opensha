@@ -5,8 +5,8 @@ import java.util.ArrayList;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
-import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.param.ParameterList;
 
 public interface IM_EventSetCalc_v3_0_API {
 	
@@ -26,20 +26,13 @@ public interface IM_EventSetCalc_v3_0_API {
 	public Location getSiteLocation(int i);
 
 	/**
-	 * Returns the ordered site data provider list, or null to not use site data providers
+     * Returns the user specified (in the input file) site data for the site
+     * or null to try to use site data providers
 	 * 
-	 * @return
+	 * @param i ith site user created
+	 * @return list of parameters holding site data
 	 */
-	public OrderedSiteDataProviderList getSiteDataProviders();
-
-	/**
-	 * Returns the user specified (in the input file) site data values for the site
-	 * or null to try to use site data providers
-	 * 
-	 * @param i
-	 * @return
-	 */
-	public ArrayList<SiteDataValue<?>> getUserSiteDataValues(int i);
+	public ParameterList getUserSiteData(int i);
 	
 	/**
 	 * Returns the output directory for all results
@@ -49,15 +42,12 @@ public interface IM_EventSetCalc_v3_0_API {
 	public abstract File getOutputDir();
 	
 	/**
-	 * This initializes the site data values for each site.
-	 * 
-	 * If there is user specified data for the specific site, that is given top
-	 * priority. If there are also site data providers available, those will
-	 * be used (but given lower priority than any user values).
+	 * This retrieves the site data parameter list for each site.
+     * Each entry in the list corresponds to a single site.
 	 * 
 	 * @return
 	 */
-	public ArrayList<ArrayList<SiteDataValue<?>>> getSitesData();
+	public ArrayList<ParameterList> getSitesData();
 	
 	public ArrayList<Site> getSites();
 

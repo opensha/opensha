@@ -35,7 +35,7 @@ If "WGCEP-UCERF-1.0 (2005)" or "WGCEP (2007) UCERF2 - Single Branch" is chosen t
 
 The next choices are which AttenuationRelationships and IMTs to support (see ExampleInputFile.txt file for the many options). If user chooses an IMT that is not supported by one or more of the chosen AttenuationRelationships then the program will terminate with an error message.
 
-Lastly, the input file specifies a list of sites for which Mean and Sigma will to be computed. If Vs30 is provided (third column, after lat and lon) that value will be used for each attenuation relationship (after conversion to the specific site type for each attenuation relationship).  If Vs30 is not given on the third column, then the program will get the value from a digitized version of the Wills et al. classification map for california  (Wills et al., 2000, BSSA, pages S187-S208).  This feature requires an internet connection in order to obtain the Vs30 values; an error message is given if access fails.
+Lastly, the input file specifies a list of sites for which Mean and Sigma will to be computed.
 
 Earthquake Ruptures that are at a distance greater than ~200 km to each site are not listed in the output files (details below).
 

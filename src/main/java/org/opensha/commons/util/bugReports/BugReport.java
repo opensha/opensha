@@ -131,7 +131,7 @@ public class BugReport {
 		descBuild.append("Other info: (PLEASE FILL IN)\n\n");
 		descBuild.append("Application: ").append(appName).append("\n");
 		descBuild.append("Version: ").append(appVersion).append("\n");
-		descBuild.append("Bulid Type: ").append(ServerPrefUtils.SERVER_PREFS.getBuildType());
+		descBuild.append("Build Type: ").append(ServerPrefUtils.SERVER_PREFS.getBuildType());
 		
 		descBuild.append("\nJava Version: ").append(System.getProperty("java.version"));
 		descBuild.append(" (").append(System.getProperty("java.vendor")).append(")");

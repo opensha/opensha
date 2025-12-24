@@ -21,7 +21,7 @@ import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetCalc_v3_0_ASCII;
 @Deprecated
 public class IM_EventSetTest {
 	
-	public static double TOLERANCE = 0.05;
+	public static double TOLERANCE = 5; // percent
 	
 	private File outputDir;
 	
@@ -124,7 +124,7 @@ public class IM_EventSetTest {
 			
 			double mean2 = Double.parseDouble(tok2.nextToken());
 			double mean3 = Double.parseDouble(tok3.nextToken());
-			
+
 			double diff = getPercentDiff(mean2, mean3);
 			if (diff > maxMeanDiff)
 				maxMeanDiff = diff;

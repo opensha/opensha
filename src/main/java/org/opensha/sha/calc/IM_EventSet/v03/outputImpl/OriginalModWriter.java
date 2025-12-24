@@ -9,6 +9,7 @@ import java.util.logging.Level;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.TimeSpan;
+import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.param.Parameter;
 import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetCalc_v3_0_API;
 import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetOutputWriter;
@@ -17,8 +18,6 @@ import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.OtherParams.StdDevTypeParam;
-import org.opensha.sha.imr.param.PropagationEffectParams.DistanceJBParameter;
-import org.opensha.sha.imr.param.PropagationEffectParams.DistanceRupParameter;
 
 public class OriginalModWriter extends IM_EventSetOutputWriter {
 	public static final String NAME = "OpenSHA Format Writer";
@@ -35,10 +34,8 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 			throws IOException {
 		logger.log(Level.INFO, "Writing old format files files");
 		outputDir = null;
-		boolean multipleERFs = true;
-		if (erfs.size() == 1)
-			multipleERFs = false;
-		for (int erfID=0; erfID<erfs.size(); erfID++) {
+		boolean multipleERFs = erfs.size() != 1;
+        for (int erfID=0; erfID<erfs.size(); erfID++) {
 			ERF erf = erfs.get(erfID);
 			if (multipleERFs) {
 				outputDir = new File(calc.getOutputDir().getAbsolutePath() + File.separator + "erf" + erfID);
@@ -48,19 +45,17 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 			logger.log(Level.INFO, "Writing files to: " +  outputDir.getAbsolutePath());
 			this.writeOriginalSrcRupMetaFile(erf);
 			this.writeOriginalRupDistFile(erf);
-			int numIMTs = imts.size();
-			for (int i = 0; i < attenRels.size(); ++i) {
-				ScalarIMR attenRel = attenRels.get(i);
-				for (int j = 0; j < numIMTs; ++j) {
-					this.writeOriginalMeanSigmaFiles(erf, attenRel, imts.get(j));
-				}
-			}
+            for (ScalarIMR attenRel : attenRels) {
+                for (String imt : imts) {
+                    this.writeOriginalMeanSigmaFiles(erf, attenRel, imt);
+                }
+            }
 		}
 		logger.log(Level.INFO, "Done writing files.");
 	}
 	
 	/**
-	 * This writes the mean and lagarithmic standard deviation values to a file following the
+	 * This writes the mean and logarithmic standard deviation values to a file following the
 	 * original IM Event Set calculator format, with the only change being the addition of
 	 * a column for inter event std dev (at Erdem's request).
 	 * 
@@ -74,11 +69,17 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 		ArrayList<Parameter> defaultSiteParams = getDefaultSiteParams(attenRel);
 
 		ArrayList<Site> sites = getInitializedSites(attenRel);
-		
-		StdDevTypeParam stdDevParam = (StdDevTypeParam)attenRel.getParameter(StdDevTypeParam.NAME);
-		boolean hasInterIntra = stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_INTER) &&
-									stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_INTRA);
-		
+
+        StdDevTypeParam stdDevParam = null;
+        boolean hasInterIntra = false;
+        try {
+            stdDevParam = (StdDevTypeParam) attenRel.getParameter(StdDevTypeParam.NAME);
+            hasInterIntra = stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_INTER) &&
+                    stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_INTRA);
+        } catch (ParameterException e) {
+            logger.log(Level.INFO, "IMR " + attenRel.getShortName() + " missing Std Dev Type parameter.");
+        }
+
 		Parameter<?> im = attenRel.getIntensityMeasure();
 		String fname = attenRel.getShortName();
 		StringTokenizer imtTok = new StringTokenizer(imt);
@@ -107,8 +108,14 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 				for (Site site : sites) {
 					attenRel.setSite(site);
 					double mean = attenRel.getMean();
-					stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL);
-					double total = attenRel.getStdDev();
+                    if (stdDevParam != null) {
+                        if (stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_TOTAL)) {
+                            stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL);
+                        } else if (stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_TOTAL_MAG_DEP)) {
+                            stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL_MAG_DEP);
+                        }
+                    }
+                    double total = attenRel.getStdDev();
 					double inter = -1;
 					if (hasInterIntra) {
 						stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_INTER);
@@ -170,7 +177,7 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 	}
 	
 	/**
-	 * This writes source/rupture metadate to the file 'src_rup_metadata.txt'
+	 * This writes source/rupture metadata to the file 'src_rup_metadata.txt'
 	 * 
 	 * @param erf
 	 * @throws IOException

@@ -19,7 +19,7 @@ import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
 
 /**
  * <p>Title: IMT_GuiBean </p>
- * <p>Description: this dispalys the various IMTs supported by the selected IMR</p>
+ * <p>Description: this displays the various IMTs supported by the selected IMR</p>
  * <p>Copyright: Copyright (c) 2002</p>
  * <p>Company: </p>
  * @author : Nitin Gupta and Vipin Gupta
@@ -73,7 +73,7 @@ public class IMT_GuiBean extends ParameterListEditor implements ParameterChangeL
 	
 	/**
 	 * 
-	 * This function accepts AttenuationRelationshipAPI and supprtedIntensity Measure type
+	 * This function accepts AttenuationRelationshipAPI and supportedIntensity Measure type
 	 *
 	 * @param imr Choosen AttenuationRelationship
 	 * @param supportedIntensityMeasureIt Supported Intensity Measure Iterator
@@ -230,7 +230,7 @@ public class IMT_GuiBean extends ParameterListEditor implements ParameterChangeL
 			}
 		}
 		this.editorPanel.removeAll();
-		// now make the editor based on the paramter list
+		// now make the editor based on the parameter list
 		addParameters();
 		setTitle( IMT_EDITOR_TITLE );
 		// update the current IMT

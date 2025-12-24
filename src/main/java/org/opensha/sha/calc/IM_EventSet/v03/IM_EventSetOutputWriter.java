@@ -1,5 +1,7 @@
 package org.opensha.sha.calc.IM_EventSet.v03;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -8,23 +10,21 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.opensha.commons.data.Site;
-import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.param.Parameter;
+import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PeriodParam;
-import org.opensha.sha.util.SiteTranslator;
 
 public abstract class IM_EventSetOutputWriter {
 	
 	protected static Logger logger = IM_EventSetCalc_v3_0.logger;
 	
 	protected IM_EventSetCalc_v3_0_API calc;
-	private static SiteTranslator siteTrans = new SiteTranslator();
-	
+
 	private float sourceCutOffDistance = 0;
 	private Site siteForSourceCutOff = null;
 	
@@ -43,6 +43,7 @@ public abstract class IM_EventSetOutputWriter {
 			ArrayList<String> imts) throws IOException {
 		ArrayList<ERF> erfs = new ArrayList<ERF>();
 		erfs.add(erf);
+        writeErfImrMetaFile(erfs, attenRels);
 		writeFiles(erfs, attenRels, imts);
 	}
 	
@@ -56,6 +57,28 @@ public abstract class IM_EventSetOutputWriter {
 	}
 	
 	public abstract String getName();
+
+    /**
+     * Writes out ERF and IMR inputs to a metadata file with output files.
+     */
+    private void writeErfImrMetaFile(ArrayList<ERF> erfs, ArrayList<ScalarIMR> attenRels) throws IOException {
+        logger.log(Level.INFO, "Writing ERF/IMR metadata file");
+        String fname = "erf_imr_metadata.txt";
+        File outputDir = calc.getOutputDir();
+        FileWriter fw = new FileWriter(outputDir.getAbsolutePath() + File.separator + fname);
+
+        fw.write("IMR Param List:\n---------------");
+        for (ScalarIMR attenRel : attenRels) {
+            fw.write("\nIMR = " + attenRel.getName()+"; ");
+            fw.write(attenRel.getOtherParams().getVisibleParams().getParameterListMetadataString());
+        }
+        fw.write("\n\nForecast Param List:\n---------------");
+        for (ERF erf : erfs) {
+            fw.write("\nEqk Rup Forecast = " + erf.getName()+"; ");
+            fw.write(erf.getAdjustableParameterList().getParameterListMetadataString());
+        }
+        fw.close();
+    }
 
     /**
      * HAZ01 IMT period strings only have precision up to 0.1 seconds.
@@ -185,7 +208,7 @@ public abstract class IM_EventSetOutputWriter {
 		logger.log(Level.FINE, "Retrieving and setting Site related params for IMR");
 		// get the list of sites
 		ArrayList<Site> sites = this.calc.getSites();
-		ArrayList<ArrayList<SiteDataValue<?>>> sitesData = this.calc.getSitesData();
+		ArrayList<ParameterList> sitesData = this.calc.getSitesData();
 
 		// we need to make sure that the site has parameters for this atten rel
 		ListIterator<Parameter<?>> siteParamsIt = attenRel.getSiteParamsIterator();
@@ -193,7 +216,7 @@ public abstract class IM_EventSetOutputWriter {
 			Parameter attenParam = siteParamsIt.next();
 			for (int i=0; i<sites.size(); i++) {
 				Site site = sites.get(i);
-				ArrayList<SiteDataValue<?>> siteData = sitesData.get(i);
+				ParameterList siteData = sitesData.get(i);
 				Parameter siteParam;
 				if (site.containsParameter(attenParam.getName())) {
 					siteParam = site.getParameter(attenParam.getName());
@@ -202,7 +225,14 @@ public abstract class IM_EventSetOutputWriter {
 					site.addParameter(siteParam);
 				}
 				// now try to set this parameter from the site data
-				boolean success = siteTrans.setParameterValue(siteParam, siteData);
+                boolean success = false;
+                for (Parameter<?> siteDatum : siteData) {
+                    if (siteDatum.getName().equals(siteParam.getName())) {
+                        siteParam.setValue(siteDatum.getValue());
+                        success = true;
+                        break;
+                    }
+                }
 				if (success) {
 					logger.log(Level.FINE, "Set site "+i+" param '"+siteParam.getName()
 							+"' from data. New value: "+siteParam.getValue());
@@ -216,8 +246,8 @@ public abstract class IM_EventSetOutputWriter {
 		}
 //		for (int i=0; i<sites.size(); i++) {
 //			Site site = sites.get(i);
-//			ArrayList<SiteDataValue<?>> siteData = sitesData.get(i);
-//			printSiteParams(site, siteData);
+//			ParameterList siteData = sitesData.get(i);
+//            System.out.println(siteData);
 //		}
 		return sites;
 	}
@@ -296,7 +326,6 @@ public abstract class IM_EventSetOutputWriter {
 
 	@Override
 	public String toString() {
-		// TODO Auto-generated method stub
 		return getName();
 	}
 

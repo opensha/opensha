@@ -582,7 +582,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 
 		// frame setup
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setTitle("Hazard Curve Application (" + getAppVersion() + " )");
+		setTitle(APP_NAME + " (" + getAppVersion() + ")");
 		setSize(1000, 720);
 		contentSplitPane.setDividerLocation(500);
 		Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
@@ -674,7 +674,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 		DefaultExceptionHandler exp = new DefaultExceptionHandler(
 				APP_SHORT_NAME, getAppVersion(), null, null);
 		Thread.setDefaultUncaughtExceptionHandler(exp);
-		launch(exp);
+        launch(exp);
 	}
 	
 	public static HazardCurveApplication launch(DefaultExceptionHandler handler) {
@@ -2267,7 +2267,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 		
 		StringBuilder str = new java.lang.StringBuilder();
 
-		str.append("<br>" + "Cacluation Type = ").append(calcType)
+		str.append("<br>" + "Calculation Type = ").append(calcType)
 		.append("<br><br>" + "IMR Param List:" + "<br>" + "---------------" + "<br>").append(imrMetadata)
 		.append("<br><br>")
 		.append("Site Param List: ")

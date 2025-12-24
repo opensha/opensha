@@ -1,10 +1,7 @@
 package org.opensha.commons.param;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Hashtable;
-import java.util.Iterator;
-import java.util.ListIterator;
+import java.util.*;
 
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -209,7 +206,7 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	 * Parameter<String> instead of a raw typed Parameter instance.
 	 * 
 	 * @param type
-	 * @param name
+	 * @param index
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
@@ -250,7 +247,7 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	 * Returns a Parameter at the given index, cast to the given type.
 	 * 
 	 * @param type
-	 * @param name
+	 * @param index
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
@@ -699,4 +696,76 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 		}
 	}
 
+    /**
+     * Build a new ParameterList with the intersection of ParameterLists.
+     * Contains only parameters found in all lists.
+     * For a deep copy, invoke ParameterList.clone on intersection output
+     * @param lists ParameterLists to build intersection
+     * @return new shallow-copy ParameterList
+     * @throws ParameterException Could throw exception from getParameter
+     */
+    public static ParameterList intersection(ParameterList... lists) throws ParameterException {
+        if (lists == null || lists.length == 0) return new ParameterList();
+
+        // Step 1: Start with the names from the first list
+        Set<String> commonNames = new HashSet<>();
+        ListIterator<String> it = lists[0].getParameterNamesIterator();
+        while (it.hasNext()) commonNames.add(it.next());
+
+        // Step 2: Intersect with the rest of the lists
+        for (int i = 1; i < lists.length; i++) {
+            Set<String> currentNames = new HashSet<>();
+            it = lists[i].getParameterNamesIterator();
+            while (it.hasNext()) currentNames.add(it.next());
+            commonNames.retainAll(currentNames); // keep only names present in both
+        }
+
+        // Step 3: Construct new ParameterList with only common parameters
+        ParameterList result = new ParameterList();
+        for (String name : commonNames) {
+            Parameter<?> param = lists[0].getParameter(name);
+            result.addParameter((Parameter<?>) param);
+        }
+
+        return result;
+    }
+
+    /**
+     * Build a new ParameterList with the union of provided parameters
+     * Contains parameters found in at least one of the lists
+     * For a deep copy, invoke ParameterList.clone on union output
+     * @param lists ParameterList to build union
+     * @return new shallow-copy ParameterList
+     * @throws ParameterException Could throw exception from getParameter
+     */
+    public static ParameterList union(ParameterList... lists) throws ParameterException {
+        ParameterList result = new ParameterList();
+        if (lists == null || lists.length == 0) return result;
+
+        for (ParameterList list : lists) {
+            for (Parameter<?> param : list) {
+                // Add only if not already present
+                if (!result.containsParameter(param.getName())) {
+                    result.addParameter((Parameter<?>) param);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Gets a new ParameterList with only the parameters in this ParameterList that are visible.
+     * For a deep copy, invoke ParameterList.clone on output
+     * @return new shallow-copy ParameterList
+     */
+    public ParameterList getVisibleParams() {
+        ParameterList visible = new ParameterList();
+        for (Parameter<?> param : this) {
+            if (param.isEditorBuilt() && param.getEditor().isVisible()) {
+                visible.addParameter(param);
+            }
+        }
+        return visible;
+    }
 }

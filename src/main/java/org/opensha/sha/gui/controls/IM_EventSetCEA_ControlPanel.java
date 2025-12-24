@@ -6,7 +6,6 @@ import java.awt.Component;
 import org.opensha.commons.mapping.gmt.GMT_MapGenerator;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.param.Parameter;
-import org.opensha.commons.param.editor.AbstractParameterEditorOld;
 import org.opensha.commons.param.editor.ParameterEditor;
 import org.opensha.commons.param.editor.impl.ParameterListEditor;
 import org.opensha.commons.param.impl.CPTParameter;
@@ -56,7 +55,8 @@ public class IM_EventSetCEA_ControlPanel extends ConfirmDialogControlPanel {
 	 * @param erfGuiBean
 	 * @param imrGuiBean
 	 * @param regionGuiBean
-	 * @param MapGuiBean
+	 * @param mapGuiBean
+     * @param parent
 	 */
 	public IM_EventSetCEA_ControlPanel(EqkRupSelectorGuiBean erfGuiBean,
 			AttenuationRelationshipGuiBean imrGuiBean, SitesInGriddedRectangularRegionGuiBean regionGuiBean,
