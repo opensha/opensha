@@ -278,7 +278,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
      */
     private void importSites() {
         if (imp == null)
-            imp = new SiteImporterPanel(defaultSiteDataParams);
+            imp = new SiteImporterPanel(defaultSiteDataParams, siteDataGUIBean.getProviderList());
         else
             imp.setDefaultSiteDataParams(defaultSiteDataParams);
 

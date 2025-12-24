@@ -8,21 +8,19 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
 
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JSeparator;
-import javax.swing.JTextField;
+import javax.swing.*;
 
+import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
 import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.calc.IM_EventSet.SiteFileLoader;
+import org.opensha.sha.imr.param.SiteParams.DepthTo1pt0kmPerSecParam;
+import org.opensha.sha.imr.param.SiteParams.DepthTo2pt5kmPerSecParam;
+import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
+import org.opensha.sha.imr.param.SiteParams.Vs30_TypeParam;
 import org.opensha.sha.util.SiteTranslator;
 
 /**
@@ -45,6 +43,8 @@ public class SiteImporterPanel extends JPanel implements ActionListener {
 	private final JButton addButton = new JButton("Add Site Data Column");
 	private final JButton removeButton = new JButton("Remove Site Data Column");
 
+    private final JCheckBox setFromWebCheck = new JCheckBox("Set Params from Web Services");
+
 	private final JComboBox<String> typeChooser;
 	private final JComboBox<String> measChooser;
 
@@ -57,24 +57,22 @@ public class SiteImporterPanel extends JPanel implements ActionListener {
 	private final ArrayList<String> siteDataTypes = new ArrayList<>();
 
 	private ArrayList<Location> locs;
-    private ArrayList<ParameterList> siteDataParams;
+    private ArrayList<ParameterList> userParams;
 
     private ParameterList defaultSiteDataParams;
     private final SiteTranslator siteTrans = new SiteTranslator();
+    private final OrderedSiteDataProviderList providers;
 
     private static final File cwd = new File(System.getProperty("user.dir"));
-
-    // TODO: Add "Set Params from Web Services" here, similar to in AddSitePanel
-    //       Distinction being that these would set params that aren't explicitly defined in the file
-    // TODO: Confirm desired behavior with Kevin
 
     /**
      * Constructor creates the UI panel for importing sites from a file
      * @param defaultSiteDataParams - Params used for creating a new site
      */
-	public SiteImporterPanel(ParameterList defaultSiteDataParams) {
+	public SiteImporterPanel(ParameterList defaultSiteDataParams, OrderedSiteDataProviderList providers) {
 		this.setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 
+        this.providers = providers;
         this.defaultSiteDataParams = defaultSiteDataParams;
 
         typeChooser = new JComboBox<>(SiteFileLoader.allSiteDataTypes);
@@ -96,8 +94,22 @@ public class SiteImporterPanel extends JPanel implements ActionListener {
 		rightButtonPanel.add(addButton);
 		rightButtonPanel.add(removeButton);
 		buttonPanel.add(rightButtonPanel, BorderLayout.EAST);
-		
-		measChooser = new JComboBox<>(new String[]{
+
+        JPanel setFromWebPanel = new JPanel();
+        setFromWebPanel.setLayout(new BoxLayout(setFromWebPanel, BoxLayout.X_AXIS));
+        setFromWebPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        JTextArea infoText = new JTextArea(
+                "Checking the box to the left will retrieve the best available data for each site's location\n"
+                        + "with the values from the web services. Values provided from the imported file are not overwritten.\n"
+                        + "See the \"Site Data Providers\" pane to add or remove selected providers.\n");
+        infoText.setEditable(false);
+        infoText.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        setFromWebPanel.add(setFromWebCheck);
+        setFromWebPanel.add(Box.createHorizontalStrut(10));
+        setFromWebPanel.add(infoText);
+
+
+        measChooser = new JComboBox<>(new String[]{
             SiteData.TYPE_FLAG_INFERRED,
             SiteData.TYPE_FLAG_MEASURED
         });
@@ -119,7 +131,11 @@ public class SiteImporterPanel extends JPanel implements ActionListener {
 		this.add(newButtonPanel);
 		this.add(newMeasPanel);
 		this.add(new JSeparator(JSeparator.HORIZONTAL));
-		
+        JPanel newSetFromWebPanel = new JPanel();
+        newSetFromWebPanel.add(setFromWebPanel);
+        this.add(newSetFromWebPanel);
+        this.add(new JSeparator(JSeparator.HORIZONTAL));
+
 		JPanel browsePanel = new JPanel(new BorderLayout());
 		browsePanel.add(fileField, BorderLayout.CENTER);
 		browsePanel.add(browseButton, BorderLayout.EAST);
@@ -129,7 +145,7 @@ public class SiteImporterPanel extends JPanel implements ActionListener {
 		newBrowsePanel.add(browsePanel);
 		
 		this.add(newBrowsePanel);
-		this.setSize(700, 150);
+		this.setSize(1000, 350);
 	}
 	
 	private void updateLabel() {
@@ -183,11 +199,11 @@ public class SiteImporterPanel extends JPanel implements ActionListener {
 		
 		locs = loader.getLocs();
 
-        siteDataParams = new ArrayList<>();
+        userParams = new ArrayList<>();
 		for (ArrayList<SiteDataValue<?>> siteVals : loader.getValsList()) {
             ParameterList params = (ParameterList) defaultSiteDataParams.clone();
             params.forEach(param -> siteTrans.setParameterValue(param, siteVals));
-            siteDataParams.add(params);
+            userParams.add(params);
         }
 	}
 
@@ -199,16 +215,49 @@ public class SiteImporterPanel extends JPanel implements ActionListener {
 		return locs;
 	}
 
+    /**
+     * Retrieves site data from the sites file
+     * <p>
+     * If provider data is retrieved, it's merged with imported site data while preserving
+     * any site data values the user has requested.
+     * </p>
+     * @return
+     */
 	public ArrayList<ParameterList> getSiteData() {
-		return siteDataParams;
+        if (!setFromWebCheck.isSelected()) {
+            return userParams;
+        }
+
+        ArrayList<ParameterList> siteData = new ArrayList<>();
+
+        // Merge user and provider data, while preserving selected Vs30, Z1.0, and Z2.5 data from sites file
+        for (int i = 0; i < userParams.size(); i++) {
+            if (userParams.get(i) == null) continue;
+            ParameterList mergedData = (ParameterList) userParams.get(i).clone();
+            Location loc = getLocs().get(i);
+            if (loc == null) continue;
+
+            ArrayList<SiteDataValue<?>> provData = providers.getBestAvailableData(loc);
+            for (Parameter<?> param : mergedData) {
+                if (param.getName().equals(Vs30_TypeParam.NAME)) continue; // Always explicitly set by user
+                if (siteDataTypes.contains(SiteData.TYPE_VS30) && param.getName().equals(Vs30_Param.NAME)) continue;
+                if (siteDataTypes.contains(SiteData.TYPE_DEPTH_TO_1_0) && param.getName().equals(DepthTo1pt0kmPerSecParam.NAME)) continue;
+                if (siteDataTypes.contains(SiteData.TYPE_DEPTH_TO_2_5) && param.getName().equals(DepthTo2pt5kmPerSecParam.NAME)) continue;
+                // We only use provider data if the user didn't request to import that data from the site file
+                siteTrans.setParameterValue(param, provData);
+            }
+            siteData.add(mergedData);
+        }
+		return siteData;
 	}
 
 	public static void main(String[] args) {
 		JFrame frame = new JFrame();
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         ParameterList params = new ParameterList();
-		frame.setContentPane(new SiteImporterPanel(params));
-		frame.setSize(700, 150);
+		frame.setContentPane(new SiteImporterPanel(
+                params, OrderedSiteDataProviderList.createSiteDataProviderDefaults()));
+		frame.setSize(1000, 350);
 		
 		frame.setVisible(true);
 	}

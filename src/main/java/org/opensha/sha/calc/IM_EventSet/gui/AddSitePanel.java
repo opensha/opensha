@@ -30,8 +30,8 @@ public class AddSitePanel extends JPanel implements ActionListener {
     private final DoubleParameter latParam;
     private final DoubleParameter lonParam;
     private final static boolean D = false;
-    private JButton setFromWebButton;
-    OrderedSiteDataProviderList providers;
+    private final JButton setFromWebButton;
+    private final OrderedSiteDataProviderList providers;
 
     /**
      * Used for editing an existing site.
@@ -63,6 +63,8 @@ public class AddSitePanel extends JPanel implements ActionListener {
                 + "Leaving a field blank will also fetch from web services.\n\n"
                 + "Hover over site data types on right for more information.\n"
                 + "Hover over text fields for min and max values for numeric inputs.\n");
+        infoText.setEditable(false);
+        infoText.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         setFromWebPanel.add(Box.createVerticalStrut(5));
         setFromWebPanel.add(setFromWebButton);
         setFromWebButton.addActionListener(this);
