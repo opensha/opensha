@@ -1,6 +1,5 @@
 package org.opensha.sha.calc.IM_EventSet.v03.gui;
 
-import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.calc.IM_EventSet.v03.SiteFileLoader;

@@ -4,7 +4,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.ListIterator;
 
 import org.opensha.commons.data.siteData.SiteData;
@@ -13,7 +12,6 @@ import org.opensha.commons.data.siteData.impl.WillsMap2000;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.WarningParameter;
 import org.opensha.commons.param.impl.StringParameter;
-import org.opensha.commons.param.impl.WarningDoubleParameter;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.AS_1997_AttenRel;
@@ -885,7 +883,7 @@ implements java.io.Serializable {
 	}
 
 	/**
-	 * @param parameter: the parameter object to be set
+	 * @param param: the parameter object to be set
 	 * @param willsClass - a String with one of the folowing ("E", "DE", "D", "CD", "C", "BC", or "B")
 	 * @param basinDepth - Depth (in meters) to where Vs = 2.5-km/sec
 	 *

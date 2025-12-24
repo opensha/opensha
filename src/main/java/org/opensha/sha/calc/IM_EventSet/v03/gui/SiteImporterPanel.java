@@ -50,7 +50,7 @@ public class SiteImporterPanel extends JPanel implements ActionListener {
 
 	private final JTextField fileField = new JTextField();
 	private final JButton browseButton = new JButton("Browse");
-	private JFileChooser chooser;
+	private final JFileChooser chooser;
 	
 	private boolean lonFirst = true;
 
