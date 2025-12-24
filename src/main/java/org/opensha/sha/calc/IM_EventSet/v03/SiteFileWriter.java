@@ -90,7 +90,9 @@ public class SiteFileWriter {
                     } else if (siteDataType.equals(SiteData.TYPE_DEPTH_TO_2_5) && siteData.containsParameter(DepthTo2pt5kmPerSecParam.NAME)) {
                         line.add(siteData.getValue(DepthTo2pt5kmPerSecParam.NAME));
                     } else if (siteDataType.equals(SiteData.TYPE_DEPTH_TO_1_0) && siteData.containsParameter(DepthTo1pt0kmPerSecParam.NAME)) {
-                        line.add(siteData.getValue(DepthTo1pt0kmPerSecParam.NAME));
+                        Double val = (Double) siteData.getValue(DepthTo1pt0kmPerSecParam.NAME);
+                        if (val != null) val /= 1000;
+                        line.add(val);
                     }
                 }
                 if (line.size() != (siteDataTypes.size()+2)) {

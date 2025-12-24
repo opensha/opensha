@@ -424,7 +424,7 @@ implements java.io.Serializable {
 		for (SiteDataValue<?> data : datas) {
 			if (data.getDataType().equals(SiteData.TYPE_DEPTH_TO_2_5)) {
 				Double val = (Double)data.getValue();
-				if (Double.isNaN(val)) {
+				if (val == null || Double.isNaN(val)) {
 					continue;
 				}
 				if (D) System.out.println("setSiteParamsForData: +++ Setting dep 2.5: " + val);
@@ -447,7 +447,7 @@ implements java.io.Serializable {
 		for (SiteDataValue<?> data : datas) {
 			if (data.getDataType().equals(SiteData.TYPE_DEPTH_TO_1_0)) {
 				Double val = (Double)data.getValue();
-				if (Double.isNaN(val)) {
+				if (val == null || Double.isNaN(val)) {
 					continue;
 				} else {
 					val = val * 1000d;
