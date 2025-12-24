@@ -50,9 +50,9 @@ public class SiteImporterPanel extends JPanel implements ActionListener {
 
 	private final JTextField fileField = new JTextField();
 	private final JButton browseButton = new JButton("Browse");
-	private JFileChooser chooser;
+	private final JFileChooser chooser;
 	
-	private boolean lonFirst = false;
+	private boolean lonFirst = true;
 
 	private final ArrayList<String> siteDataTypes = new ArrayList<>();
 
@@ -152,10 +152,10 @@ public class SiteImporterPanel extends JPanel implements ActionListener {
 	private void updateLabel() {
 		StringBuilder label = new StringBuilder("File format: ");
 		if (lonFirst)
-			label.append("<Latitude> <Longitude>");
+            label.append("<Longitude> <Latitude>");
 		else
-			label.append("<Longitude> <Latitude>");
-		
+            label.append("<Latitude> <Longitude>");
+
 		for (String dataType : siteDataTypes) {
 			label.append(" <").append(dataType).append(">");
 		}

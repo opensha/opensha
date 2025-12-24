@@ -35,7 +35,7 @@ public class SiteExporterPanel extends JPanel implements ActionListener {
     private final JButton browseButton = new JButton("Browse");
     protected JFileChooser chooser;
 
-    private boolean lonFirst = false;
+    private boolean lonFirst = true;
 
     private final ArrayList<String> siteDataTypes = new ArrayList<>();
 
@@ -110,9 +110,9 @@ public class SiteExporterPanel extends JPanel implements ActionListener {
     private void updateLabel() {
         StringBuilder label = new StringBuilder("File format: ");
         if (lonFirst)
-            label.append("<Latitude> <Longitude>");
-        else
             label.append("<Longitude> <Latitude>");
+        else
+            label.append("<Latitude> <Longitude>");
 
         for (String dataType : siteDataTypes) {
             label.append(" <").append(dataType).append(">");

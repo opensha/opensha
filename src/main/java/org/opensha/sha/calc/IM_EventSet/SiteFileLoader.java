@@ -104,6 +104,9 @@ public class SiteFileLoader {
         Object val;
 
         try {
+            if (valStr.equalsIgnoreCase("null")) {
+                return new SiteDataValue<>(type, measType, null);
+            }
             val = Double.parseDouble(valStr);
         } catch (NumberFormatException e) {
             throw new NumberFormatException("'" + valStr + "' cannot be parsed into a numerical value!");
