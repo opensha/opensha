@@ -8,7 +8,9 @@ import java.util.Map;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
@@ -26,8 +28,9 @@ public class MergedSolutionCreator {
 	}
 	
 	/**
-	 * Mrege the given list of fault system solutions into a single solution. Does not combine any modules, and does
-	 * not yet merge gridded seismicity (TODO)
+	 * This merges the given list of fault system solutions into a single solution. This does not yet combine 
+	 * any modules, with the exception of RupSetTectonicRegimes, for which an exception is thrown if 
+	 * anyone of the FSSs is lacking this module. This also does not yet merge gridded seismicity (TODO)
 	 * 
 	 * @param sols
 	 * @return
@@ -55,13 +58,16 @@ public class MergedSolutionCreator {
 		double[] rupAreas = new double[totNumRups];
 		double[] rupLengths = new double[totNumRups];
 		double[] rates = new double[totNumRups];
+	    TectonicRegionType[] trForRupArray = new TectonicRegionType[totNumRups];
+
 		
 		int sectIndex = 0;
 		int rupIndex = 0;
-		
+		int solIndex = -1;
 		Map<Integer, String> prevParents = new HashMap<>();
 		
 		for (FaultSystemSolution sol : sols) {
+			solIndex+=1;
 			FaultSystemRupSet rupSet = sol.getRupSet();
 			int[] sectMappings = new int[rupSet.getNumSections()];
 			System.out.println("Merging sol with "+rupSet.getNumSections()+" sects and "+rupSet.getNumRuptures()+" rups");
@@ -87,6 +93,10 @@ public class MergedSolutionCreator {
 					prevParents.put(parentID, newParents.get(parentID));
 			}
 			
+			RupSetTectonicRegimes tectonicRegimes = sol.getRupSet().getModule(RupSetTectonicRegimes.class);
+			if(tectonicRegimes==null)
+				throw new RuntimeException("RupSetTectonicRegimes cannot be null; null found for sol index "+solIndex);
+
 			for (int r=0; r<rupSet.getNumRuptures(); r++) {
 				List<Integer> prevSectIDs = rupSet.getSectionsIndicesForRup(r);
 				List<Integer> newSectIDs = new ArrayList<>(prevSectIDs.size());
@@ -98,12 +108,17 @@ public class MergedSolutionCreator {
 				rupAreas[rupIndex] = rupSet.getAreaForRup(r);
 				rupLengths[rupIndex] = rupSet.getLengthForRup(r);
 				rates[rupIndex] = sol.getRateForRup(r);
+				trForRupArray[rupIndex] = tectonicRegimes.get(r);
 				
 				rupIndex++;
 			}
 		}
 		
 		FaultSystemRupSet mergedRupSet = new FaultSystemRupSet(mergedSects, sectionForRups, mags, rakes, rupAreas, rupLengths);
+
+		RupSetTectonicRegimes mergedTectonicRegimes = new RupSetTectonicRegimes(mergedRupSet,trForRupArray);
+		mergedRupSet.addModule(mergedTectonicRegimes);
+		
 		return new FaultSystemSolution(mergedRupSet, rates);
 	}
 

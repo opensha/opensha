@@ -48,7 +48,7 @@ public class GeoTools {
     /** 
      * Minimum longitude value (-180&#176;) used for range checking.
      */
-    public static final double LON_MIN = -180.0;
+    public static final double LON_MIN = -360.0;
     
     /** 
      * Maximum longitude value (180&#176;) used for range checking.

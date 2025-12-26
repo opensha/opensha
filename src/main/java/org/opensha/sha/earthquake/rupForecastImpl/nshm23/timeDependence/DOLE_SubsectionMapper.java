@@ -100,10 +100,10 @@ public class DOLE_SubsectionMapper {
 //	public static final String HIST_PATH = REL_PATH+"/HistDOLE_v1.1.geojson";
 	
 	// UPDATE
-	public static final String REL_PATH = "/data/erf/nshm23/date_of_last_event/2025_12_17_v1.2";
+	public static final String REL_PATH = "/data/erf/nshm23/date_of_last_event/2025_12_18";
 	public static final String PALEO_DOLE_PATH = REL_PATH+"/PaleoDOLE_v1.2.geojson";
-	public static final String HIST_PATH = REL_PATH+"/HistDOLE_v1.2.geojson";
-
+	public static final String HIST_PATH = REL_PATH+"/HistDOLE_v1.3.geojson";
+//	/Users/field/eclipse-workspace/git/opensha/src/main/resources/data/erf/nshm23/date_of_last_event/2025_12_18/HistDole_v1.3.geojson 
 	
 	private static final String YEAR_PROP_NAME = "CalYear";
 	
@@ -132,7 +132,8 @@ public class DOLE_SubsectionMapper {
 			this.feature = feature;
 			year = feature.properties.getInt(YEAR_PROP_NAME, Integer.MIN_VALUE);
 			Preconditions.checkState(year > Integer.MIN_VALUE,
-					"%s property is missing or malformatted: %s", YEAR_PROP_NAME, feature.properties.get(YEAR_PROP_NAME));
+					"%s property is missing or malformatted: %s for %s", YEAR_PROP_NAME, feature.properties.get(YEAR_PROP_NAME),
+					feature.properties.getString("FaultName"));
 			epochMillis = new GregorianCalendar(year, 0, 1).getTimeInMillis();
 			int nshm_hazID = feature.properties.getInt("NSHMhazID",-1); // test to see if we need to override
 			if(nshm_hazID>=0)
@@ -140,7 +141,8 @@ public class DOLE_SubsectionMapper {
 			else
 				faultID = feature.properties.getInt("FaultID", -1);
 			Preconditions.checkState(faultID >= 0,
-						"FaultID is missing or malformatted: %s", feature.properties.get("FaultID"));				
+						"FaultID is missing or malformatted: %s for %s", feature.properties.get("FaultID"),
+						feature.properties.getString("FaultName"));				
 			faultName = feature.properties.getString("FaultName");
 			mappedSubSects = new ArrayList<>();
 			mappedTypes = new ArrayList<>();
@@ -231,7 +233,7 @@ public class DOLE_SubsectionMapper {
 	
 	public static List<HistoricalRupture> loadHistRups() throws IOException {
 		FeatureCollection features = loadGeoJSON(HIST_PATH);
-		
+
 		List<HistoricalRupture> ret = new ArrayList<>(features.features.size());
 		for (Feature feature : features) {
 			if (feature.geometry == null) {
@@ -654,6 +656,12 @@ public class DOLE_SubsectionMapper {
 			if (distsToFillIn != null)
 				distsToFillIn[s] = sectDist;
 		}
+if(minDist >= MAX_DIST_TOL) {
+	System.out.println("loc: "+loc);
+	System.out.println("sectTracesFirst: "+sectTraces.get(0));
+	System.out.println("sectTracesLast: "+sectTraces.get(sectTraces.size()-1));
+	System.out.println("sectTraces.size(): "+sectTraces.size());
+}
 		Preconditions.checkState(minDist < MAX_DIST_TOL,
 				"Closest section on %s. %s was %s km away from DOLE record: %s,  %s",
 				sects.get(0).getParentSectionId(), sects.get(0).getParentSectionName(), (float)minDist, year, id);
@@ -672,7 +680,7 @@ public class DOLE_SubsectionMapper {
 				trace = ((LineString)feature.geometry).line;
 			} else if (feature.geometry.type == GeoJSON_Type.MultiLineString) {
 				MultiLineString mls = (MultiLineString)feature.geometry;
-				Preconditions.checkState(mls.lines.size() == 1, "MultiLineString only supported if it contains a single LineString");
+//				Preconditions.checkState(mls.lines.size() == 1, "MultiLineString only supported if it contains a single LineString");
 				trace = mls.lines.get(0);
 			} else {
 				throw new IllegalStateException("Geometry is of unexpected type: "+feature.geometry.type);
