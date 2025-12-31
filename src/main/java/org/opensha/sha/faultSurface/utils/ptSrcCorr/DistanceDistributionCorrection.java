@@ -162,6 +162,13 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 		else
 			samplesDownDip = new double[] {0.5};
 	}
+	
+	/**
+	 * @return unmodifiable WeightedList of the fractiles used in this distribution 
+	 */
+	public WeightedList<FractileBin> getFractiles() {
+		return fractiles;
+	}
 
 	@Override
 	public WeightedList<SurfaceDistances> getCorrectedDistances(Location siteLoc, PointSurface surf,
