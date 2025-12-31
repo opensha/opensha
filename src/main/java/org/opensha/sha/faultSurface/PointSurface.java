@@ -648,7 +648,7 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	 * Point surface wrapper with that calculates corrected distances on the fly from a
 	 * {@link PointSourceDistanceCorrection.Single} correction.
 	 */
-	public static class DistanceCorrecting extends PointSurface implements DistanceCorrectionAttached,CacheEnabledSurface {
+	public static class DistanceCorrecting extends PointSurface implements DistanceCorrectionAttached, CacheEnabledSurface {
 		
 		private SingleLocDistanceCache cache;
 		private PointSourceDistanceCorrection.Single corr;

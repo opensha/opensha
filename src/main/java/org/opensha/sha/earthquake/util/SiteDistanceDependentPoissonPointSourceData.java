@@ -42,8 +42,8 @@ public class SiteDistanceDependentPoissonPointSourceData implements SiteAdaptive
 			List<Double> cutoffDistances, PoissonPointSourceData fallbackData) {
 		this.centerLoc = centerLoc;
 		this.datas = datas;
-				this.cutoffDistances = cutoffDistances;
-				this.fallbackData = fallbackData;
+		this.cutoffDistances = cutoffDistances;
+		this.fallbackData = fallbackData;
 		Preconditions.checkArgument(datas.size() == cutoffDistances.size());
 		for (int i=1; i<cutoffDistances.size(); i++) {
 			double dist0 = cutoffDistances.get(i-1);

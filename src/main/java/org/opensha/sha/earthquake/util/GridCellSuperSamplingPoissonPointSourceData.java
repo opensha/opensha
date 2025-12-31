@@ -156,6 +156,7 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 			datas.add(new LocSamplingWrapper(data, centerLoc, locs, applyToFinite));
 			cutoffDists.add(cornerDist);
 		}
+		Preconditions.checkState(!datas.isEmpty(), "No supersampling distances encountered");
 		super.init(centerLoc, datas, cutoffDists, data);
 	}
 	
