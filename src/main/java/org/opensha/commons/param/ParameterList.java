@@ -69,7 +69,7 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	protected final static boolean D = false;
 
 	/** Internal vector list of parameters. */
-	protected ArrayList<Parameter<?>> params = new ArrayList<Parameter<?>>();
+	protected ArrayList<Parameter<?>> params;
 
 	/** Internal list of constraint name mapped to parameter name. */
 	protected Hashtable<String, String> constraintNameMap = new Hashtable<String, String>();
@@ -82,7 +82,13 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	/* **********************/
 
 	/** no arg constructor. Does nothing. */
-	public ParameterList() {}
+	public ParameterList() {
+		params = new ArrayList<Parameter<?>>();
+	}
+	
+	public ParameterList(int initialCapacity) {
+		params = new ArrayList<Parameter<?>>(initialCapacity);
+	}
 
 
 
