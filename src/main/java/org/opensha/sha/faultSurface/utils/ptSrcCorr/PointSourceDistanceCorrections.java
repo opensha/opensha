@@ -39,19 +39,19 @@ public enum PointSourceDistanceCorrections implements Supplier<PointSourceDistan
 			return new DistanceCorrection2013();
 		}
 	},
-	AVERAGE_SPINNING("Spinning Average", DistanceDistributionCorrection.class, DevStatus.DEVELOPMENT) {
+	AVERAGE_SPINNING_CENTERED("Spinning Average (centered)", DistanceDistributionCorrection.class, DevStatus.DEVELOPMENT) {
 		@Override
 		protected DistanceDistributionCorrection initCorr() {
 			return DistanceDistributionCorrection.getSingleAverage(false, false);
 		}
 	},
-	AVERAGE_SPINNING_ALONG("Spinning Average (sample along)", DistanceDistributionCorrection.class, DevStatus.DEVELOPMENT) {
+	AVERAGE_SPINNING("Spinning Average (uncentered)", DistanceDistributionCorrection.class, DevStatus.DEVELOPMENT) {
 		@Override
 		protected DistanceDistributionCorrection initCorr() {
 			return DistanceDistributionCorrection.getSingleAverage(true, true);
 		}
 	},
-	FIVE_POINT_SPINNING_DIST("5-Point Spinning Distribution (centered)",
+	FIVE_POINT_SPINNING_DIST_CENTERED("5-Point Spinning Distribution (centered)",
 			DistanceDistributionCorrection.class, DevStatus.DEVELOPMENT) {
 		@Override
 		protected DistanceDistributionCorrection initCorr() {
@@ -59,7 +59,7 @@ public enum PointSourceDistanceCorrections implements Supplier<PointSourceDistan
 			return DistanceDistributionCorrection.getEvenlyWeightedFractiles(5, false, false);
 		}
 	},
-	FIVE_POINT_SPINNING_DIST_ALONG("5-Point Spinning Distribution (sample along)",
+	FIVE_POINT_SPINNING_DIST("5-Point Spinning Distribution (uncentered)",
 			DistanceDistributionCorrection.class, DevStatus.DEVELOPMENT) {
 		@Override
 		protected DistanceDistributionCorrection initCorr() {
@@ -72,14 +72,14 @@ public enum PointSourceDistanceCorrections implements Supplier<PointSourceDistan
 					new double[] {0, 0.05, 0.15, 0.30, 0.55, 1}, true, true); // new "best so far"?
 		}
 	},
-	TWENTY_POINT_SPINNING_DIST("20-Point Spinning Distribution (centered)",
+	TWENTY_POINT_SPINNING_DIST_CENTERED("20-Point Spinning Distribution (centered)",
 			DistanceDistributionCorrection.class, DevStatus.DEVELOPMENT) {
 		@Override
 		protected DistanceDistributionCorrection initCorr() {
 			return DistanceDistributionCorrection.getEvenlyWeightedFractiles(20, false, false);
 		}
 	},
-	TWENTY_POINT_SPINNING_DIST_ALONG("20-Point Spinning Distribution (sample along)",
+	TWENTY_POINT_SPINNING_DIST("20-Point Spinning Distribution (uncentered)",
 			DistanceDistributionCorrection.class, DevStatus.DEVELOPMENT) {
 		@Override
 		protected DistanceDistributionCorrection initCorr() {
