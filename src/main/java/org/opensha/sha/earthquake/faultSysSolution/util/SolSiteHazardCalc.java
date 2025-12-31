@@ -540,23 +540,18 @@ public class SolSiteHazardCalc {
 		}
 		FaultSystemSolutionERF erf = buildERF(sol, mainGridOp, griddedSettings, duration);
 		
-		RuptureExceedProbCalculator[] exceedCalcs;
-		if (FaultSysHazardCalcSettings.arePointSourceOptimizationsEnabled(cmd)) {
-			exceedCalcs = new RuptureExceedProbCalculator[periods.length];
-			for (int p=0; p<periods.length; p++) {
-				FaultSysHazardCalcSettings.setIMforPeriod(gmms0, periods[p]);
-				exceedCalcs[p] = new PointSourceOptimizedExceedProbCalc(gmms0);
-			}
-		} else {
-			exceedCalcs = new RuptureExceedProbCalculator[] {RuptureExceedProbCalculator.BASIC_IMPLEMENTATION};
-		}
+		RuptureExceedProbCalculator exceedCalc;
+		if (FaultSysHazardCalcSettings.arePointSourceOptimizationsEnabled(cmd))
+			exceedCalc = new PointSourceOptimizedExceedProbCalc();
+		else
+			exceedCalc = RuptureExceedProbCalculator.BASIC_IMPLEMENTATION;
 		
 		List<HazardCalcThread> calcThreads = new ArrayList<>(threads);		
 		for (int i=0; i<threads; i++) {
 			HazardCurveCalculator calc = new HazardCurveCalculator(sourceFilters);
 			calcThreads.add(new HazardCalcThread(calc,
 					i == 0 ? gmms0 : FaultSysHazardCalcSettings.getGmmInstances(gmmSuppliers),
-							exceedCalcs, periods));
+							exceedCalc, periods));
 		}
 		
 		List<DiscretizedFunc[]> curves = calcHazardCurves(calcThreads, sites, erf, periods, periodXVals);
@@ -589,7 +584,7 @@ public class SolSiteHazardCalc {
 			ArrayList<HazardCalcThread> compCalcThreads = new ArrayList<>(threads);		
 			for (int i=0; i<threads; i++)
 				compCalcThreads.add(new HazardCalcThread(calcThreads.get(i).calc, calcThreads.get(i).gmms,
-						exceedCalcs, periods));
+						exceedCalc, periods));
 			
 			compCurves = calcHazardCurves(compCalcThreads, sites, compERF, periods, periodXVals);
 			
@@ -1844,14 +1839,14 @@ public class SolSiteHazardCalc {
 		private Map<TectonicRegionType, ScalarIMR> gmms;
 		private SiteHazardTaskDistributor tasks;
 		private ProgressTrack track;
-		private RuptureExceedProbCalculator[] exceedCalcs;
+		private RuptureExceedProbCalculator exceedCalc;
 		private double[] periods;
 
 		public HazardCalcThread(HazardCurveCalculator calc, Map<TectonicRegionType, ScalarIMR> gmms,
-				RuptureExceedProbCalculator[] exceedCalcs, double[] periods) {
+				RuptureExceedProbCalculator exceedCalc, double[] periods) {
 			this.calc = calc;
 			this.gmms = gmms;
-			this.exceedCalcs = exceedCalcs;
+			this.exceedCalc = exceedCalc;
 			this.periods = periods;
 		}
 		
@@ -1878,12 +1873,6 @@ public class SolSiteHazardCalc {
 				LightFixedXFunc logCurve = new LightFixedXFunc(logXVals, new double[logXVals.length]);
 				
 				FaultSysHazardCalcSettings.setIMforPeriod(gmms, task.period);
-				
-				RuptureExceedProbCalculator exceedCalc;
-				if (exceedCalcs.length == 1)
-					exceedCalc = exceedCalcs[0];
-				else
-					exceedCalc = exceedCalcs[Doubles.indexOf(periods, task.period)];
 				
 				calc.getHazardCurve(logCurve, task.site, gmms, erf, exceedCalc);
 				

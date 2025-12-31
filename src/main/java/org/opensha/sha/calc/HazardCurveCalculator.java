@@ -230,7 +230,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 			ERF eqkRupForecast) {
 		RuptureExceedProbCalculator exceedCalc;
 		if (pointSourceOptimizations.getValue())
-			exceedCalc = new PointSourceOptimizedExceedProbCalc(imrMap);
+			exceedCalc = new PointSourceOptimizedExceedProbCalc();
 		else
 			exceedCalc = RuptureExceedProbCalculator.BASIC_IMPLEMENTATION;
 		return getHazardCurve(hazFunction, site, imrMap, eqkRupForecast, exceedCalc);

@@ -486,7 +486,8 @@ public class SolHazardMapCalc {
 				gmpeMap.put(trt, gmpeRefMap.get(trt).get());
 			
 			HazardCurveCalculator calc = new HazardCurveCalculator(sourceFilter);
-			RuptureExceedProbCalculator[] exceedCalcs = new RuptureExceedProbCalculator[periods.length];
+			RuptureExceedProbCalculator exceedCalc = pointSourceOptimizations ?
+					new PointSourceOptimizedExceedProbCalc() : RuptureExceedProbCalculator.BASIC_IMPLEMENTATION;
 			while (true) {
 				Integer index = calcIndexes.pollFirst();
 				if (index == null)
@@ -516,7 +517,7 @@ public class SolHazardMapCalc {
 					}
 				}
 				
-				List<DiscretizedFunc> curves = calcSiteCurves(calc, erf, gmpeMap, site, exceedCalcs, combineWith, index);
+				List<DiscretizedFunc> curves = calcSiteCurves(calc, erf, gmpeMap, site, exceedCalc, combineWith, index);
 				
 				for (int p=0; p<periods.length; p++)
 					curvesList.get(p)[index] = curves.get(p);
@@ -577,21 +578,15 @@ public class SolHazardMapCalc {
 	
 	private List<DiscretizedFunc> calcSiteCurves(HazardCurveCalculator calc, AbstractERF erf,
 			EnumMap<TectonicRegionType, ScalarIMR> gmpeMap, Site site,
-			RuptureExceedProbCalculator[] exceedCalcs,
+			RuptureExceedProbCalculator exceedCalc,
 			SolHazardMapCalc combineWith, int index) {
 		checkInitXVals();
 		List<DiscretizedFunc> ret = new ArrayList<>(periods.length);
 		
 		for (int p=0; p<periods.length; p++) {
 			FaultSysHazardCalcSettings.setIMforPeriod(gmpeMap, periods[p]);
-			if (exceedCalcs[p] == null) {
-				if (pointSourceOptimizations)
-					exceedCalcs[p] = new PointSourceOptimizedExceedProbCalc(gmpeMap);
-				else
-					exceedCalcs[p] = RuptureExceedProbCalculator.BASIC_IMPLEMENTATION;
-			}
 			DiscretizedFunc logCurve = logXVals[p].deepClone();
-			calc.getHazardCurve(logCurve, site, gmpeMap, erf, exceedCalcs[p]);
+			calc.getHazardCurve(logCurve, site, gmpeMap, erf, exceedCalc);
 			DiscretizedFunc curve = xVals[p].deepClone();
 			for (int i=0; i<curve.size(); i++)
 				curve.set(i, logCurve.getY(i));

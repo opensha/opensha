@@ -1,13 +1,7 @@
 package org.opensha.sha.calc;
 
-import static org.opensha.sha.calc.RuptureExceedProbCalculator.calcExceedanceProbabilities;
+import static org.opensha.sha.calc.RuptureExceedProbCalculator.*;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-
-import org.apache.commons.math3.util.Precision;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.geo.Location;
@@ -18,9 +12,6 @@ import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.imr.ScalarIMR;
-import org.opensha.sha.util.TectonicRegionType;
-
-import com.google.common.base.Preconditions;
 
 /**
  * Rupture exceedance probability calculator that includes point-source optimizations. For ruptures with
@@ -36,18 +27,11 @@ import com.google.common.base.Preconditions;
 public class PointSourceOptimizedExceedProbCalc extends AbstractPointSourceOptimizedCalc implements RuptureExceedProbCalculator {
 	
 	// exceedance probability cache for point ruptures, unique to each IMR
-	private final Map<UniqueIMR, ConcurrentMap<UniquePointRupture, LightFixedXFunc[]>> exceedProbCache;
+	private final IMRPointSourceDistanceCache<LightFixedXFunc> exceedProbCache;
 	
-	public PointSourceOptimizedExceedProbCalc(Map<TectonicRegionType, ScalarIMR> imrMap) {
-		super(imrMap, true); // true means we should treat IMRs with different periods as different IMRs
-		if (imrMap.size() == 1) {
-			UniqueIMR_Parameterization unique = imrInstanceReverseCheckMap.values().iterator().next();
-			exceedProbCache = Map.of(unique, new ConcurrentHashMap<>());
-		} else {
-			exceedProbCache = new HashMap<>(imrInstanceCheckMap.size());
-			for (UniqueIMR unique : imrInstanceCheckMap.keySet())
-				exceedProbCache.put(unique, new ConcurrentHashMap<>());
-		}
+	public PointSourceOptimizedExceedProbCalc() {
+		// true here means to track the SA period
+		exceedProbCache = new IMRPointSourceDistanceCache<>(size -> {return new LightFixedXFunc[size];});
 	}
 	
 	private static LightFixedXFunc calcExceedProbsAtDistance(ScalarIMR gmm, EqkRupture eqkRupture,
@@ -81,7 +65,13 @@ public class PointSourceOptimizedExceedProbCalc extends AbstractPointSourceOptim
 			double dist = pointSurf.getQuickDistance(origSiteLoc);
 			
 			QuickInterpolator qi = interp.getQuickInterpolator(dist, true); // true here means interpolate in log-distance domain
-			LightFixedXFunc[] cached = getDistCache(gmm, eqkRupture, exceedProbCache);
+//			LightFixedXFunc[] cached = getDistCache(gmm, eqkRupture, exceedProbCache);
+			
+			UniquePointRupture uniqueRup = new UniquePointRupture(eqkRupture);
+			UniqueIMR uniqueIMR = getUniqueIMR(gmm);
+			UniqueIMT uniqueIMT = new UniqueIMT(gmm, true); // true here means that we're tracking the SA period
+			
+			LightFixedXFunc[] cached = exceedProbCache.getCached(uniqueIMR, uniqueIMT, uniqueRup);
 			
 			int index1 = qi.getIndex1();
 			boolean calculated = false;
@@ -114,6 +104,9 @@ public class PointSourceOptimizedExceedProbCalc extends AbstractPointSourceOptim
 			if (calculated)
 				// we reset the site location, need to change it back
 				gmm.setSiteLocation(origSiteLoc);
+			
+//			if (Math.random() < 0.01)
+//				printCacheStats(exceedProbCache);
 			return;
 		}
 		calcExceedanceProbabilities(gmm, eqkRupture, exceedProbs);

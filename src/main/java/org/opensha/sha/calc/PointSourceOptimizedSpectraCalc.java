@@ -2,11 +2,8 @@ package org.opensha.sha.calc;
 
 import static org.opensha.sha.calc.RuptureSpectraCalculator.*;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
@@ -25,27 +22,16 @@ import com.google.common.base.Preconditions;
 public class PointSourceOptimizedSpectraCalc extends AbstractPointSourceOptimizedCalc implements RuptureSpectraCalculator {
 	
 	// exceedance probability spectra cache for point ruptures, unique to each IMR
-	private final Map<UniqueIMR, ConcurrentMap<UniquePointRupture, LightFixedXFunc[]>> saExceedProbSpectraCache;
-	private final Map<UniqueIMR, ConcurrentMap<UniquePointRupture, LightFixedXFunc[][]>> exceedProbCache;
+	private final IMRPointSourceDistanceCache<LightFixedXFunc> saExceedProbSpectraCache;
+	private final IMRPointSourceDistanceCache<LightFixedXFunc[]> exceedProbCache;
 
 	public PointSourceOptimizedSpectraCalc(ScalarIMR imr) {
 		this(Map.of(TectonicRegionType.ACTIVE_SHALLOW, imr));
 	}
 
 	public PointSourceOptimizedSpectraCalc(Map<TectonicRegionType, ScalarIMR> imrMap) {
-		super(imrMap, false);
-		if (imrMap.size() == 1) {
-			UniqueIMR_Parameterization unique = imrInstanceReverseCheckMap.values().iterator().next();
-			saExceedProbSpectraCache = Map.of(unique, new ConcurrentHashMap<>());
-			exceedProbCache = Map.of(unique, new ConcurrentHashMap<>());
-		} else {
-			saExceedProbSpectraCache = new HashMap<>(imrInstanceCheckMap.size());
-			exceedProbCache = new HashMap<>(imrInstanceCheckMap.size());
-			for (UniqueIMR unique : imrInstanceCheckMap.keySet()) {
-				saExceedProbSpectraCache.put(unique, new ConcurrentHashMap<>());
-				exceedProbCache.put(unique, new ConcurrentHashMap<>());
-			}
-		}
+		saExceedProbSpectraCache = new IMRPointSourceDistanceCache<>(size -> {return new LightFixedXFunc[size];});
+		exceedProbCache = new IMRPointSourceDistanceCache<>(size -> {return new LightFixedXFunc[size][];});
 	}
 	
 	private static LightFixedXFunc calcExceedProbSpectrumAtDistance(ScalarIMR gmm, EqkRupture eqkRupture,
@@ -71,7 +57,12 @@ public class PointSourceOptimizedSpectraCalc extends AbstractPointSourceOptimize
 			double dist = pointSurf.getQuickDistance(origSiteLoc);
 			
 			QuickInterpolator qi = interp.getQuickInterpolator(dist, true); // true here means interpolate in log-distance domain
-			LightFixedXFunc[] cached = getDistCache(gmm, eqkRupture, saExceedProbSpectraCache);
+			
+			UniquePointRupture uniqueRup = new UniquePointRupture(eqkRupture);
+			UniqueIMR uniqueIMR = getUniqueIMR(gmm);
+			UniqueIMT uniqueIMT = new UniqueIMT(gmm, false); // true here means that we're not tracking the SA period
+			
+			LightFixedXFunc[] cached = saExceedProbSpectraCache.getCached(uniqueIMR, uniqueIMT, uniqueRup);
 			
 			int index1 = qi.getIndex1();
 			boolean calculated = false;
@@ -142,7 +133,12 @@ public class PointSourceOptimizedSpectraCalc extends AbstractPointSourceOptimize
 			Preconditions.checkState(periods.size() == exceedProbs.length);
 			
 			QuickInterpolator qi = interp.getQuickInterpolator(dist, true); // true here means interpolate in log-distance domain
-			LightFixedXFunc[][] cached = getMultiPeriodDistCache(gmm, eqkRupture, exceedProbCache);
+			
+			UniquePointRupture uniqueRup = new UniquePointRupture(eqkRupture);
+			UniqueIMR uniqueIMR = getUniqueIMR(gmm);
+			UniqueIMT uniqueIMT = new UniqueIMT(gmm, false); // true here means that we're not tracking the SA period
+			
+			LightFixedXFunc[][] cached = exceedProbCache.getCached(uniqueIMR, uniqueIMT, uniqueRup);
 			
 			int index1 = qi.getIndex1();
 			boolean calculated = false;

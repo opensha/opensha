@@ -1,13 +1,13 @@
 package org.opensha.sha.calc;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Function;
 
 import org.apache.commons.math3.util.Precision;
 import org.opensha.commons.data.function.DiscretizedFunc;
-import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
@@ -24,7 +24,7 @@ import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
-public abstract class AbstractPointSourceOptimizedCalc {
+abstract class AbstractPointSourceOptimizedCalc {
 	
 	/**
 	 * These properties define a unique point source rupture, for which conditional exceedance probabilities will be
@@ -48,7 +48,7 @@ public abstract class AbstractPointSourceOptimizedCalc {
 			this.mag = rup.getMag();
 			this.rake = rup.getAveRake();
 			RuptureSurface surf = rup.getRuptureSurface();
-			Preconditions.checkState(surf instanceof PointSurface);
+			Preconditions.checkState(surf instanceof PointSurface, "Rupture is not a PointSurface: %s", surf);
 			this.zTOR = surf.getAveRupTopDepth();
 			this.length = surf.getAveLength();
 			this.width = surf.getAveWidth();
@@ -89,21 +89,20 @@ public abstract class AbstractPointSourceOptimizedCalc {
 	}
 	
 	/**
-	 * This is used as a key to find the imr-specific cache. It only keys off of the IMR class name, name, and IMT name.
-	 * Parameter values will still be checked each time a new instance is encountered (see {@link UniqueIMR_Parameterization}.
+	 * This is used as a key to find the imr-specific cache. It only keys off of the IMR class name, and name.
+	 * Parameter values will still be checked each time a new instance is encountered, or a parameter is changed in
+	 * an already known instance (see {@link UniqueIMR_Parameterization}.
 	 */
 	static class UniqueIMR {
 		final String className;
 		final String name;
-		final String imtName;
 		
 		private final int hash;
 		
 		public UniqueIMR(ScalarIMR imr) {
 			className = imr.getClass().getName();
 			name = imr.getName();
-			imtName = imr.getIntensityMeasure().getName();
-			hash = Objects.hash(className, name, imtName);
+			hash = Objects.hash(className, name);
 		}
 
 		@Override
@@ -120,27 +119,38 @@ public abstract class AbstractPointSourceOptimizedCalc {
 			if (!(obj instanceof UniqueIMR))
 				return false;
 			UniqueIMR other = (UniqueIMR) obj;
-			return hash == other.hash && Objects.equals(className, other.className) && Objects.equals(name, other.name)
-					&& Objects.equals(imtName, other.imtName);
+			return hash == other.hash && Objects.equals(className, other.className) && Objects.equals(name, other.name);
+		}
+
+		@Override
+		public String toString() {
+			return "UniqueIMR [className=" + className + ", name=" + name + "]";
 		}
 	}
 	
 	/**
-	 * More heavy-weight UniqueIMR instance that keeps track of parameter values
+	 * More heavy-weight UniqueIMR instance that keeps track of parameter values. We use this to store the reference
+	 * parameter values the first time a given IMR is encountered, and also watch for parameter changes to already known
+	 * IMRs.
 	 */
 	static class UniqueIMR_Parameterization extends UniqueIMR implements ParameterChangeListener {
 		
-		private ParameterList params;
-		private ParameterList imtParams;
-		// if true, indicates that the parameter values stored are clone and not necessarily still those of the original
-		// IMR. It implies that value checks should be redone using the current IMR state
-		private boolean isCloned;
+		private final ParameterList params;
+		// if true, indicates that the parameter values stored are cloned and not necessarily still those of the original
+		// IMR. It implies that value checks should be redone using the current IMR state, rather than the list above.
+		private final boolean isCloned;
 		
 		// if true, a parameter of this IMR was changed after it was first encountered and we need to do the value
 		// check again. we skip that check if this is false because it would be costly to do on every rupture
 		volatile boolean paramChanged = false;
 
-		public UniqueIMR_Parameterization(ScalarIMR imr, boolean clone, boolean listen, boolean trackSAPeriod) {
+		/**
+		 * 
+		 * @param imr
+		 * @param clone if true, parameter values will be cloned and stored as is; used for the first time an IMR
+		 * instance is encoutnered
+		 */
+		public UniqueIMR_Parameterization(ScalarIMR imr, boolean clone) {
 			super(imr);
 			isCloned = clone;
 			
@@ -150,14 +160,12 @@ public abstract class AbstractPointSourceOptimizedCalc {
 			for (Parameter<?> param : imr.getOtherParams()) {
 				Preconditions.checkNotNull(param, "Null param found in %s getOtherParams().", imrName);
 				for (Parameter<?> depParam : param.getIndependentParameterList()) {
-					if (listen)
-						depParam.addParameterChangeListener(this);
+					depParam.addParameterChangeListener(this);
 					if (clone)
 						depParam = (Parameter<?>)depParam.clone();
 					params.addParameter(depParam);
 				}
-				if (listen)
-					param.addParameterChangeListener(this);
+				param.addParameterChangeListener(this);
 				if (clone) {
 					Object copy = param.clone();
 					Preconditions.checkNotNull(copy, "Paramter %s clone() returned null for %s", param.getName(), imrName);
@@ -165,45 +173,19 @@ public abstract class AbstractPointSourceOptimizedCalc {
 				}
 				params.addParameter(param);
 			}
-			
-			// the IMT itself is checked in upstream UniqueIMR we don't want to check the IMT value, it is supposed to
-			// change, but we do want to check any dependent parameters and their values
-			Parameter<?> imt = imr.getIntensityMeasure();
-			Preconditions.checkNotNull(imt, "IMT is null for %s", imrName);
-			imtParams = new ParameterList();
-			for (Parameter<?> imtParam : imt.getIndependentParameterList()) {
-				Preconditions.checkNotNull(imtParam, "Null param found in %s IMT (%).getIndependentParameterList().",
-						imrName, imt.getName());
-				if (!trackSAPeriod && imtParam instanceof PeriodParam)
-					continue;
-				if (listen)
-					imtParam.addParameterChangeListener(this);
-				if (clone) {
-					Object copy = imtParam.clone();
-					Preconditions.checkNotNull(copy, "Paramter %s clone() returned null for %s", imtParam.getName(), imrName);
-					imtParam = (Parameter<?>)copy;
-				}
-				imtParams.addParameter(imtParam);
-			}
 		}
 		
 		void assertIMRParamsMatch(UniqueIMR_Parameterization other) {
 			// first time encountering this instance, make sure it's actually the same as the one encountered earlier
 			for (Parameter<?> param : params)
-				assertIMRParamMatch(param, other.params);
-			for (Parameter<?> param : imtParams)
-				assertIMRParamMatch(param, other.imtParams);
+				assertIMRParamMatch(param, other.params, name);
 		}
 		
-		void assertIMRParamMatch(Parameter<?> param, ParameterList newList) {
-			Preconditions.checkState(newList.containsParameter(param.getName()),
-					"We encountered a new instance of %s, but it doesn't have parameter '%s'",
-					name, param.getName());
-			Object refValue = param.getValue();
-			Object newValue = newList.getValue(param.getName());
-			Preconditions.checkState(Objects.equals(newValue, refValue),
-					"We encountered a new instance of %s, but parameter '%s' varies: '%s' != '%s'",
-					name, param.getName(), newValue, refValue);
+		void assertIMRParamsMatch(ScalarIMR other) {
+			// first time encountering this instance, make sure it's actually the same as the one encountered earlier
+			ParameterList otherParams = other.getOtherParams();
+			for (Parameter<?> param : params)
+				assertIMRParamMatch(param, otherParams, name);
 		}
 
 		@Override
@@ -213,89 +195,240 @@ public abstract class AbstractPointSourceOptimizedCalc {
 		
 	}
 	
+	/**
+	 * IMT tracker; keeps track of the IMT name and any dependent parameters. It can be configured to track or ignore
+	 * the SA {@link PeriodParam}; it should be tracked for regular hazard curves, but ignored for specta calculations
+	 * where periods are set and handled externally.
+	 */
+	static class UniqueIMT {
+		final String imtName;
+		final String imtParams;
+		
+		final int hash;
+		
+		public UniqueIMT(ScalarIMR imr, boolean trackSAPeriod) {
+			Parameter<?> imt = imr.getIntensityMeasure();
+			Preconditions.checkNotNull(imt, "IMT is null for %s", imr);
+			imtName = imt.getName();
+			StringBuilder paramsBuilder = null;
+			for (Parameter<?> imtParam : imt.getIndependentParameterList()) {
+				Preconditions.checkNotNull(imtParam, "Null param found in %s IMT (%).getIndependentParameterList().",
+						imr, imt.getName());
+				if (!trackSAPeriod && imtParam instanceof PeriodParam)
+					continue;
+				if (paramsBuilder == null)
+					paramsBuilder = new StringBuilder();
+				else
+					paramsBuilder.append("; ");
+				paramsBuilder.append(imtParam.getName()).append("=").append(imtParam.getValue());
+			}
+			imtParams = paramsBuilder == null ? null : paramsBuilder.toString();
+			hash = Objects.hash(imtName, imtParams);
+		}
+
+		@Override
+		public int hashCode() {
+			return hash;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (!(obj instanceof UniqueIMT))
+				return false;
+			UniqueIMT other = (UniqueIMT) obj;
+			return hash == other.hash && Objects.equals(imtName, other.imtName) && Objects.equals(imtParams, other.imtParams);
+		}
+
+		@Override
+		public String toString() {
+			return "UniqueIMt [imtName=" + imtName + ", imtParams=" + imtParams + "]";
+		}
+	}
+	
+	private static void assertIMRParamMatch(Parameter<?> param, ParameterList newList, String name) {
+		Preconditions.checkState(newList.containsParameter(param.getName()),
+				"We encountered a new instance of %s, but it doesn't have parameter '%s'",
+				name, param.getName());
+		Object refValue = param.getValue();
+		Object newValue = newList.getValue(param.getName());
+		Preconditions.checkState(Objects.equals(newValue, refValue),
+				"We encountered a new instance of %s, but parameter '%s' varies: '%s' != '%s'",
+				name, param.getName(), newValue, refValue);
+	}
+	
 	// distance interpolator; this sets the distance bins and allows for quick interpolation between them
 	protected final DistanceInterpolator interp = DistanceInterpolator.get();
 	protected final int interpSize = interp.size();
 	
-//	// exceedance probability cache for point ruptures, unique to each IMR
-//	private final Map<UniqueIMR, ConcurrentMap<UniquePointRupture, LightFixedXFunc[]>> exceedProbCache;
-//	// exceedance probability spectra cache for point ruptures, unique to each IMR
-//	private final Map<UniqueIMR, ConcurrentMap<UniquePointRupture, LightFixedXFunc[]>> saExceedProbSpectraCache;
-	
 	// This stores the reference IMR instance for any UniqueIMR; when other instances are encountered, we will check
 	// parameters of the new one against the version we have here
-	protected final Map<UniqueIMR, ScalarIMR> imrInstanceCheckMap;
+	protected final ConcurrentMap<UniqueIMR, ScalarIMR> imrInstanceCheckMap;
 	// This is used to see if a passed in IMR is one we've encountered already
-	protected final Map<ScalarIMR, UniqueIMR_Parameterization> imrInstanceReverseCheckMap;
-	protected final boolean trackSAPeriod;
+	protected final ConcurrentMap<ScalarIMR, UniqueIMR_Parameterization> imrInstanceReverseCheckMap;
 	
-	public AbstractPointSourceOptimizedCalc(Map<TectonicRegionType, ScalarIMR> imrMap, boolean trackSAPeriod) {
-		this.trackSAPeriod = trackSAPeriod;
-		if (imrMap.size() == 1) {
-			ScalarIMR imr = imrMap.values().iterator().next();
-			UniqueIMR_Parameterization unique = new UniqueIMR_Parameterization(imr, true, true, trackSAPeriod);
-			imrInstanceCheckMap = Map.of(unique, imr);
-			imrInstanceReverseCheckMap = new HashMap<>(Map.of(imr, unique));
-		} else {
-
-			imrInstanceCheckMap = new HashMap<>(imrMap.size());
-			imrInstanceReverseCheckMap = new HashMap<>(imrMap.size());
-			for (ScalarIMR imr : imrMap.values()) {
-				UniqueIMR unique = getUniqueIMR(imr, true);
-				if (!imrInstanceCheckMap.containsKey(unique)) {
-					imrInstanceCheckMap.put(unique, imr);
-				}
-			}
-		}
+	public AbstractPointSourceOptimizedCalc() {
+		imrInstanceCheckMap = new ConcurrentHashMap<>();
+		imrInstanceReverseCheckMap = new ConcurrentHashMap<>();
 	}
 	
 	/**
-	 * This will ensure that the given IMR matches the parameterization of the IMR used to build this cache. If multiple
-	 * threads use this same calculator with separate IMR instances, we want to make sure they're all parameterized the
-	 * same (otherwise the cache could contain values generated with other parameterizations).
+	 * Cache instance that returns a distance-binned cache array for each unique configuration of IMR, IMT, and rupture
+	 * @param <E>
+	 */
+	class IMRPointSourceDistanceCache<E> {
+		
+		private ConcurrentMap<UniqueIMR, ConcurrentMap<UniqueIMT, ConcurrentMap<UniquePointRupture, E[]>>> cache;
+		private Function<Integer, E[]> arrayBuilder;
+		
+		private volatile PrevIMR_IMT_Container<E> previous;
+		
+		public IMRPointSourceDistanceCache(Function<Integer, E[]> arrayBuilder) {
+			this.arrayBuilder = arrayBuilder;
+			this.cache = new ConcurrentHashMap<>();
+		}
+		
+		public E[] getCached(UniqueIMR uniqueIMR, UniqueIMT uniqueIMT, UniquePointRupture uniqueRup) {
+			final PrevIMR_IMT_Container<E> previous = this.previous;
+			if (previous != null && uniqueIMR.equals(previous.uniqueIMR) && uniqueIMT.equals(previous.uniqueIMT)) {
+				// shortcut that will speed up single IMR/IMT calculations
+				E[] cached = previous.cache.get(uniqueRup);
+				if (cached == null) {
+					previous.cache.putIfAbsent(uniqueRup, arrayBuilder.apply(interpSize));
+					cached = previous.cache.get(uniqueRup);
+				}
+				return cached;
+			}
+			ConcurrentMap<UniqueIMT, ConcurrentMap<UniquePointRupture, E[]>> imrCache = cache.get(uniqueIMR);
+			if (imrCache == null) {
+				// first time we've encountered this IMR
+				cache.putIfAbsent(uniqueIMR, new ConcurrentHashMap<>());
+				imrCache = cache.get(uniqueIMR);
+			}
+			Preconditions.checkNotNull(imrCache, "No IMR cache for: %s", uniqueIMR);
+			ConcurrentMap<UniquePointRupture, E[]> imtCache = imrCache.get(uniqueIMT);
+			if (imtCache == null) {
+				imrCache.putIfAbsent(uniqueIMT, new ConcurrentHashMap<>(1));
+				imtCache = imrCache.get(uniqueIMT);
+			}
+			E[] cached = imtCache.get(uniqueRup);
+			if (cached == null) {
+				imtCache.putIfAbsent(uniqueRup, arrayBuilder.apply(interpSize));
+				cached = imtCache.get(uniqueRup);
+			}
+			this.previous = new PrevIMR_IMT_Container<>(uniqueIMR, uniqueIMT, imtCache);
+			return cached;
+		}
+		
+	}
+	
+	private static class PrevIMR_IMT_Container<E> {
+		final UniqueIMR uniqueIMR;
+		final UniqueIMT uniqueIMT;
+		final ConcurrentMap<UniquePointRupture, E[]> cache;
+		
+		private PrevIMR_IMT_Container(UniqueIMR uniqueIMR, UniqueIMT uniqueIMT,
+				ConcurrentMap<UniquePointRupture, E[]> cache) {
+			super();
+			this.uniqueIMR = uniqueIMR;
+			this.uniqueIMT = uniqueIMT;
+			this.cache = cache;
+		}
+	}
+	
+	protected <E> void printCacheStats(IMRPointSourceDistanceCache<E> cache) {
+		int numIMRinstances = imrInstanceCheckMap.size();
+		int numIMRreverse = imrInstanceReverseCheckMap.size();
+		int numUniqueIMRs = cache.cache.size();
+		int numUniqueIMTs = 0;
+		int numUniqueRups = 0;
+		for (UniqueIMR uniqueIMR : new ArrayList<>(cache.cache.keySet())) {
+			ConcurrentMap<UniqueIMT, ConcurrentMap<UniquePointRupture, E[]>> imrCache = cache.cache.get(uniqueIMR);
+			for (UniqueIMT uniqueIMT : new ArrayList<>(imrCache.keySet())) {
+				numUniqueIMTs++;
+				ConcurrentMap<UniquePointRupture, E[]> imtCache = imrCache.get(uniqueIMT);
+				numUniqueRups += imtCache.size();
+			}
+		}
+		System.out.println("Point Source cache stats: " + "\n\tIMR instances tracked: " + numIMRinstances
+				+ "\n\tIMR instances reverse tracked: " + numIMRreverse + "\n\tUnique IMRs: " + numUniqueIMRs
+				+ "\n\tUnique IMTs: " + numUniqueIMTs + "\n\tUnique Rups: " + numUniqueRups);
+	}
+	
+	/**
+	 * This is the crux of the class; it returns a unique cache key ({@link UniqueIMR}) for the passed in
+	 * {@link ScalarIMR}, and does various consistency checks to ensure that the cache is not stale.
+	 * 
+	 * We ensure that the given IMR matches the parameterization of the first IMR of that instance encountered.
+	 * If multiple threads use this same calculator with separate IMR instances, we need to make sure they're all
+	 * parameterized the same (otherwise the cache could contain values generated with other parameterizations).
 	 * 
 	 * This also applies to using the same IMR for multiple TRTs; currently we assume that the IMRs would be
-	 * parameterized identically, this ensures that.
+	 * parameterized identically, and this ensures that.
+	 * 
+	 * You can safely change the IMT for an IMR and reuse the same cache because values are stored separately for each
+	 * {@link UniqueIMR} and {@link UniqueIMT} pair.
+	 * 
+	 * @param imr
+	 * @return unique cache key for the given IMR
 	 */
-	protected UniqueIMR getUniqueIMR(ScalarIMR imr, boolean allowNew) {
+	protected UniqueIMR getUniqueIMR(ScalarIMR imr) {
 		ScalarIMR refIMR = imrInstanceCheckMap.get(new UniqueIMR(imr));
 		if (refIMR == null) {
-			// we have never encountered this IMR, or the IMT changed in it
-			if (allowNew) {
-				// this is expected during construction, go ahead and add it
-				UniqueIMR_Parameterization unique = new UniqueIMR_Parameterization(imr, true, true, trackSAPeriod);
-				imrInstanceReverseCheckMap.put(imr, unique);
-				return unique;
+			// we have never encountered any instance of this IMR
+			
+			synchronized (imrInstanceReverseCheckMap) {
+				// make sure another thread didn't put it in instead
+				refIMR = imrInstanceCheckMap.get(new UniqueIMR(imr));
+				if (refIMR == null) {
+					// store it in the cache, and clone all parameters so that their settings are stored as is
+					UniqueIMR_Parameterization unique = new UniqueIMR_Parameterization(imr, true);
+					imrInstanceReverseCheckMap.put(imr, unique);
+					imrInstanceCheckMap.put(unique, imr);
+					return unique;
+				}
 			}
-			StringBuilder exception = new StringBuilder("Unexpected IMR passed to PointSourceOptimizedExceedProbCalc that was not "
-					+ "used in initialization: '").append(imr.getName()).append("' w/ imt='").append(imr.getIntensityMeasure().getName());
-			exception.append("\nAvailable IMRs:");
-			for (UniqueIMR unique : imrInstanceCheckMap.keySet())
-				exception.append("\n\t'"+unique.name+"' w/ imt='"+unique.imtName+"'");
-			throw new RuntimeException(exception.toString());
 		}
+		// this is the full parameterization of the passed in IMR instance, if we've enountered that instance
 		UniqueIMR_Parameterization myUnique = imrInstanceReverseCheckMap.get(imr);
 		if (myUnique == null) {
 			synchronized (imrInstanceReverseCheckMap) {
 				// make sure another thread didn't put it in instead
 				myUnique = imrInstanceReverseCheckMap.get(imr);
 				if (myUnique == null) {
-					// first time encountering this IMR instance, make sure it's actually the same as the original
+					// first time encountering this IMR instance, make sure it's the same as the original
+					
+					// this is the original reference parameterization for this IMR; we'll use it to make sure that this
+					// instance matches it
 					UniqueIMR_Parameterization refUnique = imrInstanceReverseCheckMap.get(refIMR);
+					
 					// false here means don't clone parameters; we only need to clone the original reference values 
-					myUnique = new UniqueIMR_Parameterization(refIMR, false, true, trackSAPeriod);
+					// true here means listen to parameter changes so that we know to run checks again if things change in the future
+					myUnique = new UniqueIMR_Parameterization(refIMR, false);
+					
+					// ensure that we match the reference parameters
 					refUnique.assertIMRParamsMatch(myUnique);
-					// store the initial parameterization of this IMR
+					
+					// store the parameterization of this IMR instance, which will track any subsequent changes
 					imrInstanceReverseCheckMap.put(imr, myUnique);
 					return myUnique;
 				}
 			}
 		}
+		// if we're this far, then we have encountered this exact imr instance before
 		if (myUnique.paramChanged) {
-			// we've encountered this before, but a parameter might have changed
+			// a parameter might have changed, make sure we're still the same
+			
+			// this is the original reference parameterization for this IMR; we'll use it to make sure that this
+			// instance matches it
 			UniqueIMR_Parameterization refUnique = imrInstanceReverseCheckMap.get(refIMR);
 			if (myUnique.isCloned) {
-				refUnique.assertIMRParamsMatch(new UniqueIMR_Parameterization(imr, false, false, trackSAPeriod));
+				// myUnique contains the original values (cloned), not the current
+				// check against the current values
+				refUnique.assertIMRParamsMatch(imr);
 				myUnique.paramChanged = false;
 			} else {
 				refUnique.assertIMRParamsMatch(myUnique);
@@ -303,36 +436,6 @@ public abstract class AbstractPointSourceOptimizedCalc {
 			}
 		}
 		return myUnique;
-	}
-	
-	protected LightFixedXFunc[][] getMultiPeriodDistCache(ScalarIMR gmm, EqkRupture eqkRupture,
-			Map<UniqueIMR, ConcurrentMap<UniquePointRupture, LightFixedXFunc[][]>> cache) {
-		UniquePointRupture unique = new UniquePointRupture(eqkRupture);
-		UniqueIMR uniqueIMR = getUniqueIMR(gmm, false);
-		
-		ConcurrentMap<UniquePointRupture, LightFixedXFunc[][]> imrCache = cache.get(uniqueIMR);
-		Preconditions.checkNotNull(imrCache, "No IMR cache for: %s", gmm);
-		LightFixedXFunc[][] cached = imrCache.get(unique);
-		if (cached == null) {
-			imrCache.putIfAbsent(unique, new LightFixedXFunc[interpSize][]);
-			cached = imrCache.get(unique);
-		}
-		return cached;
-	}
-	
-	protected LightFixedXFunc[] getDistCache(ScalarIMR gmm, EqkRupture eqkRupture,
-			Map<UniqueIMR, ConcurrentMap<UniquePointRupture, LightFixedXFunc[]>> cache) {
-		UniquePointRupture unique = new UniquePointRupture(eqkRupture);
-		UniqueIMR uniqueIMR = getUniqueIMR(gmm, false);
-		
-		ConcurrentMap<UniquePointRupture, LightFixedXFunc[]> imrCache = cache.get(uniqueIMR);
-		Preconditions.checkNotNull(imrCache, "No IMR cache for: %s", gmm);
-		LightFixedXFunc[] cached = imrCache.get(unique);
-		if (cached == null) {
-			imrCache.putIfAbsent(unique, new LightFixedXFunc[interpSize]);
-			cached = imrCache.get(unique);
-		}
-		return cached;
 	}
 	
 	protected static void quickAssertSameXVals(DiscretizedFunc cached, DiscretizedFunc passedIn) {
