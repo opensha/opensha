@@ -135,7 +135,9 @@ abstract class AbstractPointSourceOptimizedCalc {
 	 */
 	static class UniqueIMR_Parameterization extends UniqueIMR implements ParameterChangeListener {
 		
+		// IMR parameters that we're tracking
 		private final ParameterList params;
+		
 		// if true, indicates that the parameter values stored are cloned and not necessarily still those of the original
 		// IMR. It implies that value checks should be redone using the current IMR state, rather than the list above.
 		private final boolean isCloned;
@@ -156,22 +158,36 @@ abstract class AbstractPointSourceOptimizedCalc {
 			
 			String imrName = imr.getShortName();
 			
-			params = new ParameterList();
-			for (Parameter<?> param : imr.getOtherParams()) {
-				Preconditions.checkNotNull(param, "Null param found in %s getOtherParams().", imrName);
-				for (Parameter<?> depParam : param.getIndependentParameterList()) {
-					depParam.addParameterChangeListener(this);
-					if (clone)
-						depParam = (Parameter<?>)depParam.clone();
-					params.addParameter(depParam);
+			ParameterList[] inputLists = {
+					// "other" params are settings in the IMR that don't change for individual sites/ruptures and
+					// must be tracked
+					imr.getOtherParams(),
+					// also track site parameters (site data), but not the site location itself
+					imr.getSiteParams()
+			};
+			
+			int capacity = 0;
+			for (ParameterList list : inputLists)
+				capacity += list.size();
+			
+			params = new ParameterList(capacity);
+			for (ParameterList inputList : inputLists) {
+				for (Parameter<?> param : inputList) {
+					Preconditions.checkNotNull(param, "Null param found in %s getOtherParams().", imrName);
+					for (Parameter<?> depParam : param.getIndependentParameterList()) {
+						depParam.addParameterChangeListener(this);
+						if (clone)
+							depParam = (Parameter<?>)depParam.clone();
+						params.addParameter(depParam);
+					}
+					param.addParameterChangeListener(this);
+					if (clone) {
+						Object copy = param.clone();
+						Preconditions.checkNotNull(copy, "Paramter %s clone() returned null for %s", param.getName(), imrName);
+						param = (Parameter<?>)copy;
+					}
+					params.addParameter(param);
 				}
-				param.addParameterChangeListener(this);
-				if (clone) {
-					Object copy = param.clone();
-					Preconditions.checkNotNull(copy, "Paramter %s clone() returned null for %s", param.getName(), imrName);
-					param = (Parameter<?>)copy;
-				}
-				params.addParameter(param);
 			}
 		}
 		
