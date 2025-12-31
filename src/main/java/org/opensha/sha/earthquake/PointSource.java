@@ -90,8 +90,8 @@ public abstract class PointSource extends ProbEqkSource implements SiteAdaptiveS
 	}
 	
 	/**
-	 * {@link PointSource} always implements {@link SiteAdaptiveSource} for distance-corrections; this can be used to
-	 * detect if the underlying data are site adaptive, or if the only site-adaptive aspect are distance corrections. 
+	 * {@link PointSource} always implements {@link SiteAdaptiveSource} in order to support supersampling; this tells
+	 * if the underlying data is actually site-adaptive. If not, {@link #getForSite(Site)} will return this same instance. 
 	 * 
 	 * @return true if the underlying point source data are site adaptive, false otherwise
 	 */
