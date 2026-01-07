@@ -115,7 +115,12 @@ public class DistanceInterpolator {
 		return logDists[index];
 	}
 	
-	int getIndexAtOrBefore(double dist) {
+	/**
+	 * 
+	 * @param dist
+	 * @return index corresponding to the largest distance that is less than or equal to the given distance
+	 */
+	public int getIndexAtOrBefore(double dist) {
 		Preconditions.checkState(dist >= 0d, "Bad dist=%s", dist);
 		if (dist >= OVERALL_MAX_DIST)
 			return lastIndex;
