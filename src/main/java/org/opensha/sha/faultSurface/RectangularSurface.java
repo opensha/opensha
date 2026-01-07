@@ -36,7 +36,7 @@ public class RectangularSurface implements CacheEnabledSurface {
 	// calculated
 	private final double strike;
 	private final double strikeRad;
-	private final double dipDirRad;
+	private final double dipDir;
 	private final double dipRad;
 	private final double ddw;
 	private final double horzWidth;
@@ -70,8 +70,9 @@ public class RectangularSurface implements CacheEnabledSurface {
 		this.zBot = zBot;
 
 		this.strikeRad = LocationUtils.azimuthRad(startLoc, endLoc);
-		this.dipDirRad = strikeRad + 0.5*Math.PI;
 		this.strike = strikeRad * GeoTools.TO_DEG;
+		double dipDirRad = strikeRad + 0.5*Math.PI;
+		this.dipDir = dipDirRad * GeoTools.TO_DEG;
 
 		Preconditions.checkState(zTop < zBot, "zTop=%s must be < zBot=%s", (float)zTop, (float)zBot);
 
@@ -230,7 +231,7 @@ public class RectangularSurface implements CacheEnabledSurface {
 			double widthDownDip = index*ddw/(horzSpans.length-1d);
 			double hDistance = widthDownDip * Math.cos( dipRad );
 			double vDistance = widthDownDip * Math.sin(dipRad);
-			LocationVector dir = new LocationVector(dipDirRad, hDistance, vDistance);
+			LocationVector dir = new LocationVector(dipDir, hDistance, vDistance);
 			for (Location traceLoc : trace)
 				locs.add(LocationUtils.location(traceLoc, dir));
 			horzSpans[index] = locs;
@@ -263,7 +264,7 @@ public class RectangularSurface implements CacheEnabledSurface {
 		LocationList locs = new LocationList();
 		double hDistance = widthDownDip * Math.cos( dipRad );
 		double vDistance = widthDownDip * Math.sin(dipRad);
-		LocationVector dir = new LocationVector(dipDirRad, hDistance, vDistance);
+		LocationVector dir = new LocationVector(dipDir, hDistance, vDistance);
 		for (Location traceLoc : trace) {
 			locs.add(LocationUtils.location(traceLoc, dir));
 		}
