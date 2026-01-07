@@ -163,6 +163,16 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 			samplesDownDip = new double[] {0.5};
 	}
 	
+	@Override
+	public String toString() {
+		String ret = fractiles.size()+"-value distance distribution";
+		if (sampleAlong || sampleDownDip)
+			ret += ", uncentered";
+		else
+			ret += ", centered";
+		return ret;
+	}
+	
 	/**
 	 * @return unmodifiable WeightedList of the fractiles used in this distribution 
 	 */
