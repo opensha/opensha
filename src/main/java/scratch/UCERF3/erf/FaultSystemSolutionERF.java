@@ -125,8 +125,38 @@ public class FaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 	public static final double PREF_BLEND_COV_HIGH_WEIGHT = 0.3;
 	public static final double PREF_BLEND_POISSON_WEIGHT = 0.2;
 	
-	// map of weight to each ProbabilityModelsCalc instance. null value means Poisson
-	Map<ProbabilityModelsCalc, Double> prefBlendProbModelsCalc;
+	// map of weight to each MagDependentAperiodicityOptions for preferred blend. null value means Poisson
+//	Map<ProbabilityModelsCalc, Double> prefBlendProbModelsCalc;
+	Map<MagDependentAperiodicityOptions, Double> prefBlendAperOptionsMap;
+	
+
+	/**
+	 * This gives the aperiodicity for the specified source (using rupture mag from faultSysSolution 
+	 * if aperiodicity is mag dependent, which might differ from rupture magnitudes if there is more
+	 * than one rupture for the source).  This returns Double.NaN is the source is Poisson and throws a 
+	 * runtime exception if probModelParam = ProbabilityModelOptions.U3_PREF_BLEND because this case
+	 * needs to be handled differently.
+	 * @param srcID
+	 * @return
+	 */
+	public double getAperiodicityForSource(int srcID) {
+		if(srcID<this.getNumFaultSystemSources())
+			return getAperiodicityForFltSysRupIndex(getFltSysRupIndexForSource(srcID));
+		else
+			return Double.NaN;
+	}
+	
+	public double getAperiodicityForFltSysRupIndex(int fltSysRupIndex) {
+		if(probModelParam.getValue().equals(ProbabilityModelOptions.POISSON))
+			return Double.NaN;
+		else if (probModelParam.getValue().equals(ProbabilityModelOptions.U3_PREF_BLEND))
+				throw new RuntimeException("Cannot use this method to get aperiodicity when probModelParam = ProbabilityModelOptions.U3_PREF_BLEND");
+		else {
+			double rupMag = faultSysSolution.getRupSet().getMagForRup(fltSysRupIndex);
+			return magDepAperiodicityParam.getValue().getAperForRupMag(rupMag);
+		}
+	}
+
 	
 	/**
 	 * This creates the ERF from the given FaultSystemSolution.  FileParameter is removed 
@@ -248,12 +278,6 @@ public class FaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 		if(probModelsCalc != null) {
 			probModelsCalc.setFltSystemRupOccurranceTime(fltSysRupIndex, epoch);
 		}
-		if(prefBlendProbModelsCalc != null) {
-			for(ProbabilityModelsCalc calc : prefBlendProbModelsCalc.keySet()) {
-				if (calc != null) // will be null for Poisson
-					calc.setFltSystemRupOccurranceTime(fltSysRupIndex, epoch);
-			}
-		}
 		// do this to make sure the probability will be updated even if nothing else changes
 		probModelChanged = true;
 	}
@@ -268,12 +292,6 @@ public class FaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 		// set it in the ProbModelCalc objects
 		if(probModelsCalc != null) {
 			probModelsCalc.setFltSectRupOccurranceTime(sectIndex, epoch);
-		}
-		if(prefBlendProbModelsCalc != null) {
-			for(ProbabilityModelsCalc calc : prefBlendProbModelsCalc.keySet()) {
-				if (calc != null) // will be null for Poisson
-					calc.setFltSectRupOccurranceTime(sectIndex, epoch);
-			}
 		}
 		// do this to make sure the probability will be updated even if nothing else changes
 		probModelChanged = true;
@@ -298,7 +316,7 @@ public class FaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 		// update prob model calculator if needed
 		if (faultSysSolutionChanged || magDepAperiodicityChanged || probModelChanged || probModelsCalc == null) {
 			probModelsCalc = null;
-			prefBlendProbModelsCalc = null;
+//			prefBlendProbModelsCalc = null;
 			if(probModel != ProbabilityModelOptions.POISSON) {
 				boolean hasTD = false;
 				for (FaultSection sect : faultSysSolution.getRupSet().getFaultSectionDataList()) {
@@ -319,28 +337,26 @@ public class FaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 //					}
 //				}
 				if (probModel == ProbabilityModelOptions.U3_PREF_BLEND) {
-					// now do preferred blend
-					prefBlendProbModelsCalc = new HashMap<>(4);
-					prefBlendProbModelsCalc.put(new ProbabilityModelsCalc(faultSysSolution, longTermRateOfFltSysRupInERF,
-							MagDependentAperiodicityOptions.LOW_VALUES), PREF_BLEND_COV_LOW_WEIGHT);
-					prefBlendProbModelsCalc.put(new ProbabilityModelsCalc(faultSysSolution, longTermRateOfFltSysRupInERF,
-							MagDependentAperiodicityOptions.MID_VALUES), PREF_BLEND_COV_MID_WEIGHT);
-					prefBlendProbModelsCalc.put(new ProbabilityModelsCalc(faultSysSolution, longTermRateOfFltSysRupInERF,
-							MagDependentAperiodicityOptions.HIGH_VALUES), PREF_BLEND_COV_HIGH_WEIGHT);
+					prefBlendAperOptionsMap = new HashMap<>(4);
+					prefBlendAperOptionsMap.put(MagDependentAperiodicityOptions.LOW_VALUES, PREF_BLEND_COV_LOW_WEIGHT);
+					prefBlendAperOptionsMap.put(MagDependentAperiodicityOptions.MID_VALUES, PREF_BLEND_COV_MID_WEIGHT);
+					prefBlendAperOptionsMap.put(MagDependentAperiodicityOptions.HIGH_VALUES, PREF_BLEND_COV_HIGH_WEIGHT);
 					// Poisson
-					prefBlendProbModelsCalc.put(null, PREF_BLEND_POISSON_WEIGHT);
+					prefBlendAperOptionsMap.put(null, PREF_BLEND_POISSON_WEIGHT);
+
 
 					// double check that it all sums to 1
 					double sum = 0;
-					for (Double weight : prefBlendProbModelsCalc.values())
+					for (Double weight : prefBlendAperOptionsMap.values())
 						sum += weight;
 					Preconditions.checkState((float)sum == 1f, "Preferred Blend weights don't sum to 1!");
-				} else {
+				} 
+//				else {
 					probModelsCalc = new ProbabilityModelsCalc(faultSysSolution, longTermRateOfFltSysRupInERF, magDepAperiodicity);
 					if(D) {
 						int numSectWith = probModelsCalc.writeSectionsWithDateOfLastEvent();
 						System.out.println(numSectWith+" sections had date of last");
-					}
+//					}
 				}
 			}
 		}
@@ -480,7 +496,7 @@ public class FaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 			probGain = 1.0;
 			break;
 		case U3_BPT:
-			probGain = probModelsCalc.getU3_ProbGainForRup(fltSystRupIndex, histOpenInterval, false, aveRecurIntervalsInU3_BPTcalc, 
+			probGain = probModelsCalc.getU3_ProbGainForRup(fltSystRupIndex, getAperiodicityForFltSysRupIndex(fltSystRupIndex), histOpenInterval, false, aveRecurIntervalsInU3_BPTcalc, 
 					aveNormTimeSinceLastInU3_BPTcalc, timeSpan.getStartTimeInMillis(), duration);
 // TEST FOR CONSIDERING ONLY RUPS WITH DATE OF LAST EVENT ON ALL SECTIONS
 //probGain = probModelsCalc.getU3_ProbGainForRup(fltSystRupIndex, histOpenInterval, true, aveRecurIntervalsInU3_BPTcalc, 
@@ -490,21 +506,23 @@ public class FaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 			break;
 		case U3_PREF_BLEND:
 			probGain = 0;
-			for (ProbabilityModelsCalc calc : prefBlendProbModelsCalc.keySet()) {
-				double weight = prefBlendProbModelsCalc.get(calc);
+			double rupMag = faultSysSolution.getRupSet().getMagForRup(fltSystRupIndex);
+			for (MagDependentAperiodicityOptions aperMod : prefBlendAperOptionsMap.keySet()) {
+				double weight = prefBlendAperOptionsMap.get(aperMod);
 				double subProbGain;
-				if (calc == null) {
+				if (aperMod == null) {
 					// poisson
 					subProbGain = 1d;
 				} else {
-					subProbGain = calc.getU3_ProbGainForRup(fltSystRupIndex, histOpenInterval, false, aveRecurIntervalsInU3_BPTcalc, 
+					double aperiodicity = aperMod.getAperForRupMag(rupMag);
+					subProbGain = probModelsCalc.getU3_ProbGainForRup(fltSystRupIndex, aperiodicity, histOpenInterval, false, aveRecurIntervalsInU3_BPTcalc, 
 							aveNormTimeSinceLastInU3_BPTcalc, timeSpan.getStartTimeInMillis(), duration);
 				}
 				probGain += weight*subProbGain;
 			}
 			break;
 		case WG02_BPT:
-			probGain = probModelsCalc.getWG02_ProbGainForRup(fltSystRupIndex, false, timeSpan.getStartTimeInMillis(), duration);
+			probGain = probModelsCalc.getWG02_ProbGainForRup(fltSystRupIndex, getAperiodicityForFltSysRupIndex(fltSystRupIndex), false, timeSpan.getStartTimeInMillis(), duration);
 			break;
 
 		default:
