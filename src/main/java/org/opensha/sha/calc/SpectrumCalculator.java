@@ -115,7 +115,7 @@ implements SpectrumCalculatorAPI {
 			double probVal) {
 		RuptureSpectraCalculator rupSpectraCalc;
 		if (pointSourceOptimizations.getValue())
-			rupSpectraCalc = new PointSourceOptimizedSpectraCalc(imr);
+			rupSpectraCalc = new PointSourceOptimizedSpectraCalc();
 		else
 			rupSpectraCalc = RuptureSpectraCalculator.BASIC_IMPLEMENTATION;
 		return getIML_SpectrumCurve(hazardXValues, site, imr, eqkRupForecast, probVal, rupSpectraCalc);
@@ -330,7 +330,7 @@ implements SpectrumCalculatorAPI {
 			double imlVal) { // this is already in log units
 		RuptureSpectraCalculator rupSpectraCalc;
 		if (pointSourceOptimizations.getValue())
-			rupSpectraCalc = new PointSourceOptimizedSpectraCalc(imr);
+			rupSpectraCalc = new PointSourceOptimizedSpectraCalc();
 		else
 			rupSpectraCalc = RuptureSpectraCalculator.BASIC_IMPLEMENTATION;
 		return getSpectrumCurve(site, imr, eqkRupForecast, imlVal, rupSpectraCalc);

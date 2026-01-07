@@ -26,6 +26,8 @@ import com.google.common.base.Preconditions;
 
 abstract class AbstractPointSourceOptimizedCalc {
 	
+	private static final boolean D = false;
+	
 	/**
 	 * These properties define a unique point source rupture, for which conditional exceedance probabilities will be
 	 * calculated and cached separately.
@@ -151,20 +153,15 @@ abstract class AbstractPointSourceOptimizedCalc {
 		 * @param imr
 		 * @param clone if true, parameter values will be cloned and stored as is; used for the first time an IMR
 		 * instance is encoutnered
+		 * @param listen if false, this is assumed to be a temporary instance and we won't listen for future parameter changes
 		 */
-		public UniqueIMR_Parameterization(ScalarIMR imr, boolean clone) {
+		public UniqueIMR_Parameterization(ScalarIMR imr, boolean clone, boolean listen) {
 			super(imr);
 			isCloned = clone;
 			
 			String imrName = imr.getShortName();
 			
-			ParameterList[] inputLists = {
-					// "other" params are settings in the IMR that don't change for individual sites/ruptures and
-					// must be tracked
-					imr.getOtherParams(),
-					// also track site parameters (site data), but not the site location itself
-					imr.getSiteParams()
-			};
+			ParameterList[] inputLists = getInputParamLists(imr);
 			
 			int capacity = 0;
 			for (ParameterList list : inputLists)
@@ -175,33 +172,40 @@ abstract class AbstractPointSourceOptimizedCalc {
 				for (Parameter<?> param : inputList) {
 					Preconditions.checkNotNull(param, "Null param found in %s getOtherParams().", imrName);
 					for (Parameter<?> depParam : param.getIndependentParameterList()) {
-						depParam.addParameterChangeListener(this);
+						if (listen)
+							depParam.addParameterChangeListener(this);
 						if (clone)
 							depParam = (Parameter<?>)depParam.clone();
+						if (D) System.out.println("\tAdding parameter "+depParam.getName()+" with value '"+depParam.getValue()+"' (clone="+clone+")");
 						params.addParameter(depParam);
 					}
-					param.addParameterChangeListener(this);
+					if (listen)
+						param.addParameterChangeListener(this);
 					if (clone) {
 						Object copy = param.clone();
 						Preconditions.checkNotNull(copy, "Paramter %s clone() returned null for %s", param.getName(), imrName);
 						param = (Parameter<?>)copy;
 					}
+					if (D) System.out.println("\tAdding parameter "+param.getName()+" with value '"+param.getValue()+"' (clone="+clone+")");
 					params.addParameter(param);
 				}
 			}
+		}
+		
+		private static ParameterList[] getInputParamLists(ScalarIMR imr) {
+			return new ParameterList[] {
+					// "other" params are settings in the IMR that don't change for individual sites/ruptures and
+					// must be tracked
+					imr.getOtherParams(),
+					// also track site parameters (site data), but not the site location itself
+					imr.getSiteParams()
+			};
 		}
 		
 		void assertIMRParamsMatch(UniqueIMR_Parameterization other) {
 			// first time encountering this instance, make sure it's actually the same as the one encountered earlier
 			for (Parameter<?> param : params)
 				assertIMRParamMatch(param, other.params, name);
-		}
-		
-		void assertIMRParamsMatch(ScalarIMR other) {
-			// first time encountering this instance, make sure it's actually the same as the one encountered earlier
-			ParameterList otherParams = other.getOtherParams();
-			for (Parameter<?> param : params)
-				assertIMRParamMatch(param, otherParams, name);
 		}
 
 		@Override
@@ -271,6 +275,7 @@ abstract class AbstractPointSourceOptimizedCalc {
 				name, param.getName());
 		Object refValue = param.getValue();
 		Object newValue = newList.getValue(param.getName());
+		if (D) System.out.println("\tChecking "+param.getName()+": '"+refValue+"'\t'"+newValue+"'");
 		Preconditions.checkState(Objects.equals(newValue, refValue),
 				"We encountered a new instance of %s, but parameter '%s' varies: '%s' != '%s'",
 				name, param.getName(), newValue, refValue);
@@ -392,6 +397,7 @@ abstract class AbstractPointSourceOptimizedCalc {
 	 * @return unique cache key for the given IMR
 	 */
 	protected UniqueIMR getUniqueIMR(ScalarIMR imr) {
+		if (D) System.out.println("getUniqueIMR for "+imr);
 		ScalarIMR refIMR = imrInstanceCheckMap.get(new UniqueIMR(imr));
 		if (refIMR == null) {
 			// we have never encountered any instance of this IMR
@@ -400,15 +406,16 @@ abstract class AbstractPointSourceOptimizedCalc {
 				// make sure another thread didn't put it in instead
 				refIMR = imrInstanceCheckMap.get(new UniqueIMR(imr));
 				if (refIMR == null) {
+					if (D) System.out.println("getUniqueIMR it's our first instance of "+imr.getName());
 					// store it in the cache, and clone all parameters so that their settings are stored as is
-					UniqueIMR_Parameterization unique = new UniqueIMR_Parameterization(imr, true);
+					UniqueIMR_Parameterization unique = new UniqueIMR_Parameterization(imr, true, true);
 					imrInstanceReverseCheckMap.put(imr, unique);
 					imrInstanceCheckMap.put(unique, imr);
 					return unique;
 				}
 			}
 		}
-		// this is the full parameterization of the passed in IMR instance, if we've enountered that instance
+		// this is the full parameterization of the passed in IMR instance, if we've encountered that instance
 		UniqueIMR_Parameterization myUnique = imrInstanceReverseCheckMap.get(imr);
 		if (myUnique == null) {
 			synchronized (imrInstanceReverseCheckMap) {
@@ -416,6 +423,7 @@ abstract class AbstractPointSourceOptimizedCalc {
 				myUnique = imrInstanceReverseCheckMap.get(imr);
 				if (myUnique == null) {
 					// first time encountering this IMR instance, make sure it's the same as the original
+					if (D) System.out.println("getUniqueIMR new instance of "+imr.getName()+"; will validate against "+refIMR);
 					
 					// this is the original reference parameterization for this IMR; we'll use it to make sure that this
 					// instance matches it
@@ -423,7 +431,7 @@ abstract class AbstractPointSourceOptimizedCalc {
 					
 					// false here means don't clone parameters; we only need to clone the original reference values 
 					// true here means listen to parameter changes so that we know to run checks again if things change in the future
-					myUnique = new UniqueIMR_Parameterization(refIMR, false);
+					myUnique = new UniqueIMR_Parameterization(imr, false, true);
 					
 					// ensure that we match the reference parameters
 					refUnique.assertIMRParamsMatch(myUnique);
@@ -444,7 +452,7 @@ abstract class AbstractPointSourceOptimizedCalc {
 			if (myUnique.isCloned) {
 				// myUnique contains the original values (cloned), not the current
 				// check against the current values
-				refUnique.assertIMRParamsMatch(imr);
+				refUnique.assertIMRParamsMatch(new UniqueIMR_Parameterization(imr, false, false));
 				myUnique.paramChanged = false;
 			} else {
 				refUnique.assertIMRParamsMatch(myUnique);

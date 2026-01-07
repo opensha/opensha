@@ -3,7 +3,6 @@ package org.opensha.sha.calc;
 import static org.opensha.sha.calc.RuptureSpectraCalculator.*;
 
 import java.util.List;
-import java.util.Map;
 
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
@@ -15,7 +14,6 @@ import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PeriodParam;
-import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
@@ -25,11 +23,7 @@ public class PointSourceOptimizedSpectraCalc extends AbstractPointSourceOptimize
 	private final IMRPointSourceDistanceCache<LightFixedXFunc> saExceedProbSpectraCache;
 	private final IMRPointSourceDistanceCache<LightFixedXFunc[]> exceedProbCache;
 
-	public PointSourceOptimizedSpectraCalc(ScalarIMR imr) {
-		this(Map.of(TectonicRegionType.ACTIVE_SHALLOW, imr));
-	}
-
-	public PointSourceOptimizedSpectraCalc(Map<TectonicRegionType, ScalarIMR> imrMap) {
+	public PointSourceOptimizedSpectraCalc() {
 		saExceedProbSpectraCache = new IMRPointSourceDistanceCache<>(size -> {return new LightFixedXFunc[size];});
 		exceedProbCache = new IMRPointSourceDistanceCache<>(size -> {return new LightFixedXFunc[size][];});
 	}
@@ -72,8 +66,11 @@ public class PointSourceOptimizedSpectraCalc extends AbstractPointSourceOptimize
 				calculated = true;
 			}
 			LightFixedXFunc cached1 = cached[index1];
-			LightFixedXFunc ret = new LightFixedXFunc(cached1.getXVals(), new double[cached1.size()]);
-			if (!qi.isDiscrete()) {
+			LightFixedXFunc ret;
+			if (qi.isDiscrete()) {
+				ret = cached1.deepClone();
+			} else  {
+				ret = new LightFixedXFunc(cached1.getXVals(), new double[cached1.size()]);
 				// need to interpolate
 				int index2 = qi.getIndex2();
 				if (cached[index2] == null) {
