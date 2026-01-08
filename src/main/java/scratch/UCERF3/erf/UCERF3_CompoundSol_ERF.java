@@ -134,8 +134,7 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 	}
 	
 	@Override
-	protected void createParamList() {
-		super.createParamList();
+	protected void postCreateParamListHook() {
 		if (enumParamsMap == null)
 			return;
 		List<Class<? extends U3LogicTreeBranchNode<?>>> logicTreeNodeClasses = U3LogicTreeBranch.getLogicTreeNodeClasses();

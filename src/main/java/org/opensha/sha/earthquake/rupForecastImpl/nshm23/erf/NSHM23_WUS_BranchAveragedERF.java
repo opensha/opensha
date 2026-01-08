@@ -47,8 +47,7 @@ public class NSHM23_WUS_BranchAveragedERF extends BaseFaultSystemSolutionERF {
 	 * Put parameters in the ParameterList
 	 */
 	@Override
-	protected void createParamList() {
-		super.createParamList();
+	protected void postCreateParamListHook() {
 		if (adjustableParams.containsParameter(FILE_PARAM_NAME)) {
 			adjustableParams.removeParameter(fileParam);
 		}
