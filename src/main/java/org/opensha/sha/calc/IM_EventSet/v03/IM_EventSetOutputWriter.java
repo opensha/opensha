@@ -300,7 +300,7 @@ public abstract class IM_EventSetOutputWriter {
 		sourceCutOffDistance = (float) LocationUtils.horzDistance(
 				new Location(middleLat, middleLon),
 				new Location(minLat, minLon)) + 
-				IM_EventSetCalc_v3_0.MIN_SOURCE_DIST;
+				IM_EventSetCalc_v3_0.MAX_SOURCE_DIST;
 		siteForSourceCutOff = new Site(new Location(middleLat, middleLon));
 
 		return;

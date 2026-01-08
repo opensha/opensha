@@ -24,7 +24,7 @@ public abstract class IM_EventSetCalc_v3_0 implements IM_EventSetCalc_v3_0_API {
         logger.setLevel(level);
 	}
 	
-	public static final float MIN_SOURCE_DIST = 200;
+	public static final float MAX_SOURCE_DIST = 200;
 
 	/**
 	 * This should ONLY be accessed through the getter method as it may

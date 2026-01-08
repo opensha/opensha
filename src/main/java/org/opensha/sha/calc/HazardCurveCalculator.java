@@ -513,7 +513,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 		//parameter changes.
 		((AttenuationRelationship)imr).resetParameterEventListeners();
 
-		// declare some varibles used in the calculation
+		// declare some variables used in the calculation
 		int k;
 
 		// get the number of points

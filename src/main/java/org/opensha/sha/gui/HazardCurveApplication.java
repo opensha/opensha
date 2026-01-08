@@ -2058,9 +2058,8 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	}
 	
 	protected void showControlPanel(String controlName) {
+        if (controlName.trim().equalsIgnoreCase("Select")) return;
 		ControlPanel control = (ControlPanel)ListUtils.getObjectByName(controlPanels, controlName);
-		System.out.println("controlName: " + controlName);
-		System.out.println("control:" + control);
 		if (control == null)
 			throw new NullPointerException("Control Panel '" + controlName + "' not found!");
 		showControlPanel(control);
