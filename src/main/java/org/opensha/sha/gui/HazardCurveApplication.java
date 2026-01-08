@@ -721,8 +721,6 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 
 	/**
 	 * this function is called when Add Graph button is clicked
-	 * 
-	 * @param e
 	 */
 	void addButton_actionPerformed() {
 		if (this.runAllPeerTestsCP != null) {
@@ -1654,7 +1652,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 * 
 	 * @param site
 	 *            : Selected site
-	 * @param imr
+	 * @param imrMap
 	 *            : selected IMR
 	 * @param eqkRupForecast
 	 *            : List of Eqk Rup forecasts
@@ -1769,8 +1767,6 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 
 	/**
 	 * This function is to whether to plot ERF_GuiBean or ERF_RupSelectorGuiBean
-	 * 
-	 * @param e
 	 */
 	protected void probDeterSelectionChange() {
 
@@ -2132,7 +2128,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 * set x values in log space for Hazard Function to be passed to IMR if the
 	 * selected IMT are SA , PGA , PGV or FaultDispl It accepts 1 parameters
 	 * 
-	 * @param originalFunc
+	 * @param arb
 	 *            : this is the function with X values set
 	 */
 	protected void initX_Values(DiscretizedFunc arb) {
@@ -2156,7 +2152,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 * Hazard Function after completion of the Hazard Calculations if the
 	 * selected IMT are SA , PGA or PGV It accepts 1 parameters
 	 * 
-	 * @param hazFunction
+	 * @param hazFunc
 	 *            : this is the function with X values set
 	 */
 	protected ArbitrarilyDiscretizedFunc toggleHazFuncLogValues(
@@ -2538,9 +2534,9 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 * Sets the application with the curve type chosen by the Cybershake
 	 * application
 	 * 
-	 * @param isDeterministic
-	 *            boolean :If deterministic calculation then make the applicaton
-	 *            to plot deterministic curves.
+	 * @param calcType
+	 *            If deterministic calculation then make the application
+	 *            plot deterministic curves.
 	 */
 	public void setCurveType(String calcType) {
 		if (calcType.equals(PROBABILISTIC))
@@ -2657,7 +2653,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 * This function allows showing the GCIM results
 	 * @param imjName 
 	 * 			  The name of the IMT for which the GCIM results are conditioned on
-	 * @param imlBasedDisaggr
+	 * @param imlBasedGcim
 	 *            boolean Disaggregation is done based on chosen IML
 	 * @param imlVal
 	 *            double iml value for the disaggregation
