@@ -316,26 +316,15 @@ public class FaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 		// update prob model calculator if needed
 		if (faultSysSolutionChanged || magDepAperiodicityChanged || probModelChanged || probModelsCalc == null) {
 			probModelsCalc = null;
-//			prefBlendProbModelsCalc = null;
+			//			prefBlendProbModelsCalc = null;
 			if(probModel != ProbabilityModelOptions.POISSON) {
-				boolean hasTD = false;
-				for (FaultSection sect : faultSysSolution.getRupSet().getFaultSectionDataList()) {
-					if (sect.getDateOfLastEvent() > Long.MIN_VALUE) {
-						hasTD = true;
-						break;
-					}
-				}
-				// commenting the following out because it screws up non-gui calculations
-//				if (!hasTD) {
-//					String message = "WARNING: TD calculation but no sections contain date of last event data.\n"
-//							+ "Only historical open interval will be used in TD calculations.";
-//					System.out.println(message);
-//					try {
-//						JOptionPane.showMessageDialog(null, message, "WARNING: No Last Event Data", JOptionPane.ERROR_MESSAGE);
-//					} catch (HeadlessException e) {
-//						// do nothing
-//					}
-//				}
+				//				boolean hasTD = false;
+				//				for (FaultSection sect : faultSysSolution.getRupSet().getFaultSectionDataList()) {
+				//					if (sect.getDateOfLastEvent() > Long.MIN_VALUE) {
+				//						hasTD = true;
+				//						break;
+				//					}
+				//				}
 				if (probModel == ProbabilityModelOptions.U3_PREF_BLEND) {
 					prefBlendAperOptionsMap = new HashMap<>(4);
 					prefBlendAperOptionsMap.put(MagDependentAperiodicityOptions.LOW_VALUES, PREF_BLEND_COV_LOW_WEIGHT);
@@ -344,19 +333,18 @@ public class FaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 					// Poisson
 					prefBlendAperOptionsMap.put(null, PREF_BLEND_POISSON_WEIGHT);
 
-
 					// double check that it all sums to 1
 					double sum = 0;
 					for (Double weight : prefBlendAperOptionsMap.values())
 						sum += weight;
 					Preconditions.checkState((float)sum == 1f, "Preferred Blend weights don't sum to 1!");
 				} 
-//				else {
-					probModelsCalc = new ProbabilityModelsCalc(faultSysSolution, longTermRateOfFltSysRupInERF, magDepAperiodicity);
-					if(D) {
-						int numSectWith = probModelsCalc.writeSectionsWithDateOfLastEvent();
-						System.out.println(numSectWith+" sections had date of last");
-//					}
+
+				probModelsCalc = new ProbabilityModelsCalc(this);
+				if(D) {
+					int numSectWith = probModelsCalc.writeSectionsWithDateOfLastEvent();
+					System.out.println(numSectWith+" sections had date of last");
+
 				}
 			}
 		}

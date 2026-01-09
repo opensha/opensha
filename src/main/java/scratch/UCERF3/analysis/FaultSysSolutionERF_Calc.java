@@ -1972,7 +1972,7 @@ public class FaultSysSolutionERF_Calc {
 				double ri = 1d/partRates[i];
 				normTimeSinceLast[i] = diffYears / ri;
 				// the following throws an deliberate exception because the Double.NaN argument now needs to be aperiodicity, not mag, and I cannot figure out what this is assuming
-				double bptProb = calc.computeBPT_ProbFast(ri, diffYears, duration, Double.NaN);
+				double bptProb = calc.computeCondProbFast(ri, diffYears, duration, Double.NaN);
 //				double bptProb = calc.computeBPT_ProbFast(ri, diffYears, duration, 0d);
 				double poissonProb = ProbabilityModelsCalc.computePoissonProb(ri, duration);
 				sectImpliedProbGain[i] = bptProb/poissonProb;
@@ -2574,7 +2574,7 @@ public class FaultSysSolutionERF_Calc {
 				line.add(bptProb+"");
 				line.add(bptProb/poissonProb+"");
 				// the following throws an deliberate exception because the Double.NaN argument now needs to be aperiodicity, not mag, and I cannot figure out what this is assuming
-				double implBPTProb = calc.computeBPT_ProbFast(ri, oi, duration, Double.NaN);
+				double implBPTProb = calc.computeCondProbFast(ri, oi, duration, Double.NaN);
 //				double implBPTProb = calc.computeBPT_ProbFast(ri, oi, duration, implCompareMag);
 				double implPoissonProb = ProbabilityModelsCalc.computePoissonProb(ri, duration);
 				line.add(implBPTProb/implPoissonProb+"");
