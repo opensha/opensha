@@ -133,6 +133,14 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		this(true);
 	}
 	
+	public BaseFaultSystemSolutionERF(FaultSystemSolution sol) {
+		this(true);
+		if (sol != null) {
+			includeFileParam = false;
+			setSolution(sol);
+		}
+	}
+	
 	protected BaseFaultSystemSolutionERF(boolean doInit) {
 		if (doInit) {
 			initParams();

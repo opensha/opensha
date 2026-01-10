@@ -26,6 +26,16 @@ public class ParamLinker<E> implements ParameterChangeListener {
 	
 	private boolean throwExceptions = true;
 	
+	@SuppressWarnings("unchecked")
+	public static void link(Parameter<?> parentParam, Parameter<?> childParam) {
+		new ParamLinker(parentParam, childParam);
+	}
+
+	@SuppressWarnings("unchecked")
+	public static <E> void link(Parameter<E> parentParam, Parameter<E> childParam, boolean throwExceptions) {
+		new ParamLinker(parentParam, childParam, throwExceptions);
+	}
+	
 	public ParamLinker(Parameter<E> parentParam, Parameter<E> childParam) {
 		this(parentParam, childParam, true);
 	}

@@ -4,15 +4,12 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import org.opensha.commons.geo.Location;
@@ -26,6 +23,7 @@ import org.opensha.commons.geo.json.Geometry.LineString;
 import org.opensha.commons.geo.json.Geometry.MultiLineString;
 import org.opensha.commons.geo.json.Geometry.Point;
 import org.opensha.commons.util.FaultUtils;
+import org.opensha.sha.earthquake.faultSysSolution.erf.td.TimeDepUtils;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader;
@@ -137,7 +135,7 @@ public class DOLE_SubsectionMapper {
 					"%s property is missing or malformatted: %s for %s", YEAR_PROP_NAME, feature.properties.get(YEAR_PROP_NAME),
 					feature.properties.getString("FaultName"));
 //			epochMillis = new GregorianCalendar(year, 0, 1).getTimeInMillis(); // this had problems with time zones
-			epochMillis = utcStartOfYear(year).getTimeInMillis();
+			epochMillis = TimeDepUtils.utcStartOfYear(year).getTimeInMillis();
 			int nshm_hazID = feature.properties.getInt("NSHMhazID",-1); // test to see if we need to override
 			if(nshm_hazID>=0)
 				faultID = nshm_hazID;
@@ -699,30 +697,6 @@ if(minDist >= MAX_DIST_TOL) {
 		System.err.flush();
 	}
 	
-	/**
-	 * Using this avoids any problems associated with being in different time zones 
-	 * (previously, time-since-last calculations could vary by hours depending on where 
-	 * you were running the code from)
-	 * @param year
-	 * @return
-	 */
-	public static GregorianCalendar utcStartOfYear(int year) {
-		TimeZone utc = TimeZone.getTimeZone("UTC");
-	 
-		GregorianCalendar cal = new GregorianCalendar(utc);
-		cal.clear(); // clears all fields to avoid locale/time leftovers
-	 
-		cal.set(Calendar.YEAR, year);
-		cal.set(Calendar.MONTH, Calendar.JANUARY);
-		cal.set(Calendar.DAY_OF_MONTH, 1);
-		cal.set(Calendar.HOUR_OF_DAY, 0);
-		cal.set(Calendar.MINUTE, 0);
-		cal.set(Calendar.SECOND, 0);
-		cal.set(Calendar.MILLISECOND, 0);
-	 
-		return cal;
-	}
-
 	public static void main(String[] args) throws IOException {
 
 		// this only tests WUS
