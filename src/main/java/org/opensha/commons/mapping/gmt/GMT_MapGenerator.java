@@ -1397,10 +1397,14 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 								region+interpSettings.getConvergenceArg()+" "+interpSettings.getSearchArg()
 								+" "+interpSettings.getTensionArg()+" -: -H0";
 				gmtCommandLines.add(commandLine);
-				if (interpSettings.isSaveInterpSurface()) {
+				if (interpSettings.isSaveInterpSurface() || interpSettings.isInterpolateOnly()) {
 					gmtCommandLines.add("# write interpolated XYZ file");
 					commandLine = "${GMT_PATH}grd2xyz "+ grdFileName+ " > "+GMT_InterpolationSettings.INTERP_XYZ_FILE_NAME;
 					gmtCommandLines.add(commandLine);
+				}
+				if (interpSettings.isInterpolateOnly()) {
+					addCleanup(gmtCommandLines, rmFiles);
+					return gmtCommandLines;
 				}
 			}
 		} else if (map.getCustomGRDPath() != null) {
