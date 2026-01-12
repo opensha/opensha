@@ -6,6 +6,8 @@ public abstract class AbstractFSS_ProbabilityModel implements FSS_ProbabilityMod
 
 	protected final FaultSystemSolution fltSysSol;
 	protected final double[] longTermPartRateForSectArray;
+	
+	// TODO: add date of last event array, and ability to set externally
 
 	/**
 	 * Constructor that takes only a {@link FaultSystemSolution} and computes section participation rates directly from

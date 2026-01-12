@@ -62,18 +62,22 @@ public enum FSS_ProbabilityModels {
 			ParameterList params = new ParameterList();
 			for (Parameter<?> param : u3Low.getAdjustableParameters())
 				params.addParameter(param);
+			models.add(u3Low, 0.1);
 			
 			FSS_ProbabilityModel u3Middle = UCERF3_BPT.getProbabilityModel(sol, longTermPartRateForSectArray);
 			u3Middle.getAdjustableParameters().setValue(UCERF3_ProbabilityModel.APERIODICITY_PARAM_NAME, AperiodicityModels.UCERF3_MIDDLE);
 			// link parameters in the reference model to this one 
 			for (Parameter<?> param : params)
 				ParamLinker.link(param, u3Middle.getAdjustableParameters().getParameter(param.getName()));
+			models.add(u3Middle, 0.4);
 			
 			FSS_ProbabilityModel u3High = UCERF3_BPT.getProbabilityModel(sol, longTermPartRateForSectArray);
 			u3High.getAdjustableParameters().setValue(UCERF3_ProbabilityModel.APERIODICITY_PARAM_NAME, AperiodicityModels.UCERF3_HIGH);
 			// link parameters in the reference model to this one 
 			for (Parameter<?> param : params)
 				ParamLinker.link(param, u3High.getAdjustableParameters().getParameter(param.getName()));
+			models.add(u3High, 0.3);
+			
 			models.add(new FSS_ProbabilityModel.Poisson(), 0.2);
 			
 			return new FSS_ProbabilityModel.WeightedCombination(models, params);

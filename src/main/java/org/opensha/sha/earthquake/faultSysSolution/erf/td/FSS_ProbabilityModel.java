@@ -4,6 +4,7 @@ import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.WeightedValue;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.faultSurface.FaultSection;
 
 /**
  * Interface for a probability model for FaultSystemSolution ERFs. Models can define their own parameter lists, which
@@ -35,6 +36,27 @@ public interface FSS_ProbabilityModel {
 	 */
 	public double getProbabilityGain(FaultSystemSolution fltSysSolution, int fltSysRupIndex,
 			long forecastStartTimeMillis, double durationYears);
+	
+	/**
+	 * Returns an array of date of last event for each fault section, which may differ from the original values in the
+	 * {@link FaultSystemSolution}, e.g., during simulations.
+	 * 
+	 * @return array of date of last event for each fault section
+	 */
+	public long[] getSectDatesOfLastEvent();
+	
+	/**
+	 * Sets the date of last event for each fault section.
+	 * 
+	 * @param sectDatesOfLastEvent
+	 */
+	public void setSectDatesOfLastEvent(long[] sectDatesOfLastEvent);
+	
+	/**
+	 * Resets all dates of last event to the original values from the {@link FaultSection}'s within the
+	 * {@link FaultSystemSolution}
+	 */
+	public void resetSectDatesOfLastEvent();
 	
 	/**
 	 * This returns any adjustable parameters for this model, or null if there are none.
