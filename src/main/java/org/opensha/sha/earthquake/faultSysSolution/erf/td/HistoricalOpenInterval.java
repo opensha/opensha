@@ -1,12 +1,12 @@
 package org.opensha.sha.earthquake.faultSysSolution.erf.td;
 
 import org.opensha.commons.param.ParameterList;
-import org.opensha.commons.param.Parameterized;
+import org.opensha.commons.param.ParameterizedModel;
 import org.opensha.commons.param.impl.IntegerParameter;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultSection;
 
-public interface HistoricalOpenInterval extends Parameterized {
+public interface HistoricalOpenInterval extends ParameterizedModel {
 	
 	/**
 	 * Returns the start time in epoch milliseconds of the open interval for the given rupture in the
@@ -98,8 +98,13 @@ public interface HistoricalOpenInterval extends Parameterized {
 		}
 
 		@Override
-		public String toString() {
+		public String getName() {
 			return "None";
+		}
+
+		@Override
+		public String toString() {
+			return getMetadataString();
 		}
 	}
 	
@@ -120,11 +125,12 @@ public interface HistoricalOpenInterval extends Parameterized {
 				int min = Integer.min(1700, year);
 				int max = Integer.max(2100, year);
 				IntegerParameter yearParam = new IntegerParameter(
-						"Historical Open Interval Start Year", min, max, Integer.valueOf(year));
+						"Start Year", min, max, Integer.valueOf(year));
 				yearParam.addParameterChangeListener(l -> {
 					this.year = yearParam.getValue();
 					this.startTimeMillis = TimeDepUtils.utcStartOfYear(year).getTimeInMillis();
 				});
+				params.addParameter(yearParam);
 			}
 		}
 
@@ -142,10 +148,22 @@ public interface HistoricalOpenInterval extends Parameterized {
 		public ParameterList getAdjustableParameters() {
 			return params;
 		}
-
+		
+		@Override
+		public String getName() {
+			StringBuilder ret = new StringBuilder();
+			ret.append("Single Year");
+			if (params == null)
+				// fixed
+				ret.append(": ").append(year);
+			return ret.toString();
+		}
+		
 		@Override
 		public String toString() {
-			return "Single Year: "+year;
+			if (params == null)
+				return year+"";
+			return getMetadataString();
 		}
 		
 	}

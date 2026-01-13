@@ -4,7 +4,7 @@ import java.util.EnumMap;
 import java.util.Map;
 
 import org.opensha.commons.param.ParameterList;
-import org.opensha.commons.param.Parameterized;
+import org.opensha.commons.param.ParameterizedModel;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -21,7 +21,7 @@ import com.google.common.base.Preconditions;
  * discrete values, which they use to construct normalized CDF caches. If we ever implement continous values, that needs
  * to be relaxed.
  */
-public interface AperiodicityModel extends Parameterized {
+public interface AperiodicityModel extends ParameterizedModel {
 
 	/**
 	 * Returns the aperiodicity (COV) for the given rupture (in the {@link FaultSystemSolution} used to instantiate
@@ -79,6 +79,18 @@ public interface AperiodicityModel extends Parameterized {
 			return params;
 		}
 		
+		@Override
+		public String getName() {
+			return "Single Value";
+		}
+		
+		@Override
+		public String toString() {
+			if (params == null)
+				return param.getValue().floatValue()+"";
+			return getMetadataString();
+		}
+		
 	}
 	
 	// TODO: could add a "SectionDependent" variants that return different values for different fault sections,
@@ -126,6 +138,24 @@ public interface AperiodicityModel extends Parameterized {
 			return aperValues[aperValues.length-1];
 		}
 		
+		@Override
+		public String getName() {
+			return "Magnitude-Binned";
+		}
+		
+		@Override
+		public String toString() {
+			StringBuilder name = new StringBuilder();
+			name.append("(");
+			for (int i=0; i<aperValues.length; i++) {
+				if (i > 0)
+					name.append(",");
+				name.append((float)aperValues[i]);
+			}
+			name.append(")");
+			return getMetadataString(name.toString());
+		}
+		
 	}
 	
 	public static class TRT_Dependent implements AperiodicityModel {
@@ -170,6 +200,32 @@ public interface AperiodicityModel extends Parameterized {
 		@Override
 		public ParameterList getAdjustableParameters() {
 			return params;
+		}
+		
+		@Override
+		public String getName() {
+			return "TRT-Dependent";
+		}
+		
+		@Override
+		public String toString() {
+			StringBuilder name = new StringBuilder();
+			name.append(getName()).append(" [");
+			boolean first = true;
+			for (TectonicRegionType trt : models.keySet()) {
+				if (first)
+					first = false;
+				else
+					name.append("; ");
+				name.append(trt.name()+"="+models.get(trt));
+			}
+			if (fallback != null) {
+				if (!models.isEmpty())
+					name.append("; ");
+				name.append("; FALLBACK="+fallback);
+			}
+			name.append("]");
+			return getMetadataString(name.toString());
 		}
 	}
 	

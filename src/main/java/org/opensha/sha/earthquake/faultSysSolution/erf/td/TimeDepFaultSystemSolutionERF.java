@@ -76,6 +76,13 @@ public class TimeDepFaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 	}
 
 	@Override
+	protected void solutionChangedHook() {
+		// need to clear all existing probability models out
+		probModelParam.clearInstances();
+		probModel = null;
+	}
+
+	@Override
 	protected void postCreateParamListHook() {
 		adjustableParams.addParameter(probModelParam);
 	}
@@ -115,18 +122,11 @@ public class TimeDepFaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 			System.out.println("probModelChanged");
 			probModel = null;
 			probModelChoice = null;
+			
+			initTimeSpan();
 		} else {
 			super.parameterChange(event);
 		}
-	}
-	
-	@Override
-	public void setSolution(FaultSystemSolution sol) {
-		super.setSolution(sol);
-		
-		// need to clear all existing probability models out
-		probModelParam.clearInstances();
-		probModel = null;
 	}
 
 	@Override

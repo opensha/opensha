@@ -21,21 +21,24 @@ public enum FSS_ProbabilityModels {
 			return new FSS_ProbabilityModel.Poisson(sol);
 		}
 	},
-	UCERF3_BPT("UCERF3 BPT") {
+	/**
+	 * Flexible option using the UCERF3 methodology and supporting all sub-model parameters and implementations
+	 */
+	UCERF3_METHOD("UCERF3-TD Methodology") {
 		@Override
 		public UCERF3_ProbabilityModel getProbabilityModel(FaultSystemSolution sol, double[] longTermPartRateForSectArray) {
 			return new UCERF3_ProbabilityModel(
 					sol, longTermPartRateForSectArray,
-					// initialize with U3 middle aperiodicity and allow only the 3 UCERF3 aperiodicity branches
-					AperiodicityModels.UCERF3_MIDDLE, AperiodicityModels.UCERF3_MODELS,
-					// allow only BPT
-					RenewalModels.BPT, EnumSet.of(RenewalModels.BPT),
-					// allow U3 and no hist open interval
-					HistoricalOpenIntervals.UCERF3, HistoricalOpenIntervals.UCERF3_MODELS,
-					// U3 default, allow all
-					BPTAveragingTypeOptions.AVE_RI_AVE_NORM_TIME_SINCE, EnumSet.allOf(BPTAveragingTypeOptions.class));
+					AperiodicityModels.NSHM26_MIDDLE,
+					RenewalModels.BPT,
+					HistoricalOpenIntervals.UCERF3,
+					BPTAveragingTypeOptions.AVE_RI_AVE_NORM_TIME_SINCE);
 		}
 	},
+	/**
+	 * NSHM (2026) TD implementation with options defaulting and restricted to those supported by the (to be) published
+	 * model.
+	 */
 	NSHM26("NSHM (2026)") {
 		@Override
 		public UCERF3_ProbabilityModel getProbabilityModel(FaultSystemSolution sol, double[] longTermPartRateForSectArray) {
@@ -51,7 +54,28 @@ public enum FSS_ProbabilityModels {
 					BPTAveragingTypeOptions.AVE_RI_AVE_NORM_TIME_SINCE, EnumSet.of(BPTAveragingTypeOptions.AVE_RI_AVE_NORM_TIME_SINCE));
 		}
 	},
-	UCERF3_PREF_BLEND("UCERF3 Preferred Blend") {
+	/**
+	 * UCERF3-TD (2014) implementation with options defaulting and restricted to those supported by published model
+	 */
+	UCERF3_BPT("UCERF3-TD BPT (2014)") {
+		@Override
+		public UCERF3_ProbabilityModel getProbabilityModel(FaultSystemSolution sol, double[] longTermPartRateForSectArray) {
+			return new UCERF3_ProbabilityModel(
+					sol, longTermPartRateForSectArray,
+					// initialize with U3 middle aperiodicity and allow only the 3 UCERF3 aperiodicity branches
+					AperiodicityModels.UCERF3_MIDDLE, AperiodicityModels.UCERF3_MODELS,
+					// allow only BPT
+					RenewalModels.BPT, EnumSet.of(RenewalModels.BPT),
+					// allow U3 and no hist open interval
+					HistoricalOpenIntervals.UCERF3, HistoricalOpenIntervals.UCERF3_MODELS,
+					// U3 default, allow all
+					BPTAveragingTypeOptions.AVE_RI_AVE_NORM_TIME_SINCE, EnumSet.allOf(BPTAveragingTypeOptions.class));
+		}
+	},
+	/**
+	 * UCERF3-TD (2014) preferred blend, no adjustable parameters
+	 */
+	UCERF3_PREF_BLEND("UCERF3-TD Preferred Blend (2014)") {
 		@Override
 		public FSS_ProbabilityModel getProbabilityModel(FaultSystemSolution sol, double[] longTermPartRateForSectArray) {
 			WeightedList<FSS_ProbabilityModel> models = new WeightedList<>(4);
@@ -83,7 +107,7 @@ public enum FSS_ProbabilityModels {
 			
 			models.add(new FSS_ProbabilityModel.Poisson(sol), 0.2);
 			
-			return new FSS_ProbabilityModel.WeightedCombination(models, params);
+			return new FSS_ProbabilityModel.WeightedCombination(this.toString(), models, params);
 		}
 	},
 	WG02("WGCEP (2002)") {

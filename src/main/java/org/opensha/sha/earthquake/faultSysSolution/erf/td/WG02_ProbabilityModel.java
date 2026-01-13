@@ -22,4 +22,9 @@ public class WG02_ProbabilityModel extends AbstractFSS_ProbabilityModel {
 		throw new UnsupportedOperationException("Not yet implemented");
 	}
 
+	@Override
+	public String getName() {
+		return FSS_ProbabilityModels.WG02.toString();
+	}
+
 }

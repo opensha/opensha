@@ -3,7 +3,7 @@ package org.opensha.sha.earthquake.faultSysSolution.erf.td;
 import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.WeightedValue;
 import org.opensha.commons.param.ParameterList;
-import org.opensha.commons.param.Parameterized;
+import org.opensha.commons.param.ParameterizedModel;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultSection;
 
@@ -11,7 +11,7 @@ import org.opensha.sha.faultSurface.FaultSection;
  * Interface for a probability model for FaultSystemSolution ERFs. Models can define their own parameter lists, which
  * will be shown in the GUI.
  */
-public interface FSS_ProbabilityModel extends Parameterized {
+public interface FSS_ProbabilityModel extends ParameterizedModel {
 	
 	/**
 	 * @return the fault-system solution that this model was instantiated for
@@ -114,6 +114,16 @@ public interface FSS_ProbabilityModel extends Parameterized {
 				long forecastStartTimeMillis, double durationYears) {
 			return 1d;
 		}
+
+		@Override
+		public String getName() {
+			return "Poisson";
+		}
+		
+		@Override
+		public String toString() {
+			return getMetadataString();
+		}
 		
 	}
 	
@@ -126,12 +136,14 @@ public interface FSS_ProbabilityModel extends Parameterized {
 		private FSS_ProbabilityModel refModel;
 		private WeightedList<? extends FSS_ProbabilityModel> probModels;
 		private ParameterList params;
+		private String name;
 
 		public WeightedCombination(WeightedList<? extends FSS_ProbabilityModel> probModels) {
-			this(probModels, null);
+			this(null, probModels, null);
 		}
 
-		public WeightedCombination(WeightedList<? extends FSS_ProbabilityModel> probModels, ParameterList params) {
+		public WeightedCombination(String name, WeightedList<? extends FSS_ProbabilityModel> probModels, ParameterList params) {
+			this.name = name;
 			refModel = probModels.getValue(0);
 			this.params = params;
 			if (!probModels.isNormalized()) {
@@ -142,6 +154,8 @@ public interface FSS_ProbabilityModel extends Parameterized {
 			if (!(probModels instanceof WeightedList.Unmodifiable<?>))
 				// make it unmodifiable
 				probModels = new WeightedList.Unmodifiable<>(probModels);
+			if (name == null)
+				name = "Weighted combination of "+probModels.size()+" models";
 			this.probModels = probModels;
 		}
 
@@ -201,6 +215,16 @@ public interface FSS_ProbabilityModel extends Parameterized {
 		public void resetSectDatesOfLastEvent() {
 			for (int i=0; i<probModels.size(); i++)
 				probModels.getValue(i).resetSectDatesOfLastEvent();
+		}
+		
+		@Override
+		public String getName() {
+			return name;
+		}
+		
+		@Override
+		public String toString() {
+			return getMetadataString();
 		}
 		
 	}

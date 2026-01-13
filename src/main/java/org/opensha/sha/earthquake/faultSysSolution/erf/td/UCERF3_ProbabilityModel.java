@@ -156,4 +156,9 @@ public class UCERF3_ProbabilityModel extends AbstractFSS_ProbabilityModel implem
 		return params;
 	}
 
+	@Override
+	public String getName() {
+		return FSS_ProbabilityModels.UCERF3_METHOD.toString();
+	}
+
 }
