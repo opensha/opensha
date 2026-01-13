@@ -20,6 +20,8 @@ public abstract class AbstractParameterEditor<E> extends LabeledBorderPanel impl
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
+	
+	protected boolean debug = false;
 
 	private Parameter<E> param;
 
@@ -64,6 +66,10 @@ public abstract class AbstractParameterEditor<E> extends LabeledBorderPanel impl
 		super.initParameterLookAndFeel();
 
 		setParameter(param);
+	}
+	
+	protected void setDebug(boolean debug) {
+		this.debug = debug;
 	}
 	
 	public void setIncludeBorder(boolean includeBorder) {
@@ -170,14 +176,24 @@ public abstract class AbstractParameterEditor<E> extends LabeledBorderPanel impl
 
 	@Override
 	public final void refreshParamEditor() {
+		String paramName = null;
+		if (debug) {
+			paramName = param == null ? "null" : param.getName();
+			System.out.println(paramName+": refreshParamEditor()");
+		}
 		if (widget == null) {
+			if (debug) System.out.println(paramName+": refreshParamEditor(): building widget");
 			widget = buildWidget();
 			this.add(widget);
 		} else {
+			if (debug) System.out.println(paramName+": refreshParamEditor(): updating widget");
 			JComponent updated = updateWidget();
-			if (updated == null)
+			if (updated == null) {
+				if (debug) System.out.println(paramName+": refreshParamEditor(): updating widget failed, reverting to build");
 				updated = buildWidget();
+			}
 			if (updated != widget) {
+				if (debug) System.out.println(paramName+": refreshParamEditor(): updating widget failed, reverting to build");
 				// this means it was completely rebuilt
 				this.removeWidget();
 				this.widget = updated;
@@ -194,6 +210,7 @@ public abstract class AbstractParameterEditor<E> extends LabeledBorderPanel impl
 		//		mainPanel.setMinimumSize( WIGET_PANEL_DIM );
 		//		mainPanel.setPreferredSize( WIGET_PANEL_DIM );
 		editorPanel.invalidate();
+		if (debug) System.out.println(paramName+": refreshParamEditor(): invalidating");
 	}
 
 	@Override
