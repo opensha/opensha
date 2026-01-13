@@ -47,6 +47,24 @@ public class ParameterChangeEvent extends EventObject {
         this.oldValue = oldValue;
     }
 
+    /**
+     * Special subclass for a propagated ParameterChangeEvent caused by an underlying parameter
+     */
+    public static class Propagated extends ParameterChangeEvent {
+
+		private ParameterChangeEvent cause;
+
+		public Propagated(ParameterChangeEvent cause,
+				Object reference, String parameterName, Object oldValue, Object newValue) {
+			super(reference, parameterName, oldValue, newValue);
+			this.cause = cause;
+		}
+		
+		public ParameterChangeEvent getCause() {
+			return cause;
+		}
+    	
+    }
 
     /**
      *  Gets the name of Parameter being changed.

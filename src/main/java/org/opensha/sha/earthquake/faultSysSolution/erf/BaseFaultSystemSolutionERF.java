@@ -25,6 +25,7 @@ import org.opensha.sha.earthquake.aftershocks.MagnitudeDependentAftershockFilter
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ProxyFaultSectionInstances;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
@@ -113,6 +114,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	protected FaultSystemSolution faultSysSolution;		// the FFS for the ERF
 	protected Optional<RupMFDsModule> mfdsModuleOptional; // rupture MFDs (if available); null until first load is tried
 	protected Optional<ProxyFaultSectionInstances> proxySectsModuleOptional;					// proxy sects (if available); null until first load is tried
+	protected Optional<ModSectMinMags> modSectMinMagsOptional;
 	protected boolean cacheGridSources = false;			// if true, grid sources are cached instead of built on the fly
 	protected ProbEqkSource[] gridSourceCache = null;
 	protected int numNonZeroFaultSystemSources;			// this is the number of faultSystemRups with non-zero rates (each is a source here)
@@ -408,6 +410,18 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	}
 	
 	protected boolean isRuptureIncluded(int fltSystRupIndex) {
+		// mod sect min mags
+		if (modSectMinMagsOptional == null) {
+			ModSectMinMags minMags = faultSysSolution.getRupSet().getModule(ModSectMinMags.class);
+			if (minMags == null)
+				modSectMinMagsOptional = Optional.empty();
+			else
+				modSectMinMagsOptional = Optional.of(minMags);
+		}
+		if (modSectMinMagsOptional.isPresent()) {
+			ModSectMinMags minMags = modSectMinMagsOptional.get();
+			return !minMags.isRupBelowSectMinMag(fltSystRupIndex);
+		}
 		return true;
 	}
 	
@@ -520,6 +534,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		// clear out any cached values
 		mfdsModuleOptional = null;
 		proxySectsModuleOptional = null;
+		modSectMinMagsOptional = null;
 		gridSourceCache = null;
 		
 		// set flags

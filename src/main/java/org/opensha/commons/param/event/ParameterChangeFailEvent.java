@@ -46,6 +46,24 @@ public class ParameterChangeFailEvent extends EventObject {
         this.oldValue = oldValue;
     }
 
+    /**
+     * Special subclass for a propagated ParameterChangeEvent caused by an underlying parameter
+     */
+    public static class Propagated extends ParameterChangeFailEvent {
+
+		private ParameterChangeFailEvent cause;
+
+		public Propagated(ParameterChangeFailEvent cause,
+				Object reference, String parameterName, Object oldValue, Object newValue) {
+			super(reference, parameterName, oldValue, newValue);
+			this.cause = cause;
+		}
+		
+		public ParameterChangeFailEvent getCause() {
+			return cause;
+		}
+    	
+    }
 
     /**
      *  Gets the name of Parameter that failed a change.

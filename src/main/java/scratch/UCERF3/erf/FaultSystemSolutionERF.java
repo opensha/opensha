@@ -524,24 +524,6 @@ public class FaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 	}
 	
 	/**
-	 * TODO move this elsewhere (e.g., abstract parent)?
-	 * @param fileNameAndPath
-	 */
-	public void writeSourceNamesToFile(String fileNameAndPath) {
-		try{
-			FileWriter fw1 = new FileWriter(fileNameAndPath);
-			fw1.write("s\tname\n");
-			for(int i=0;i<this.getNumSources();i++) {
-				fw1.write(i+"\t"+getSource(i).getName()+"\n");
-			}
-			fw1.close();
-		}catch(Exception e) {
-			e.printStackTrace();
-		}
-
-	}
-	
-	/**
 	 * This is to prevent simulators from evolving into a time where historical date of
 	 * last event data exists on some faults
 	 */

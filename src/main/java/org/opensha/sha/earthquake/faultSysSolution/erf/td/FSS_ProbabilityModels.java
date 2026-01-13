@@ -6,6 +6,7 @@ import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.param.ParamLinker;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
+import org.opensha.commons.param.impl.ParameterizedEnumParameter;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.BPTAveragingTypeOptions;
 
@@ -54,6 +55,8 @@ public enum FSS_ProbabilityModels {
 		@Override
 		public FSS_ProbabilityModel getProbabilityModel(FaultSystemSolution sol, double[] longTermPartRateForSectArray) {
 			WeightedList<FSS_ProbabilityModel> models = new WeightedList<>(4);
+			
+			// TODO: need to figure out param linker stuff for the new ParameterizedEnumParameter, this won't work yet
 			
 			FSS_ProbabilityModel u3Low = UCERF3_BPT.getProbabilityModel(sol, longTermPartRateForSectArray);
 			u3Low.getAdjustableParameters().setValue(AperiodicityModels.PARAM_NAME, AperiodicityModels.UCERF3_LOW);

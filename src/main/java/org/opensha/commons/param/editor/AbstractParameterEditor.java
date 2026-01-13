@@ -36,6 +36,7 @@ public abstract class AbstractParameterEditor<E> extends LabeledBorderPanel impl
 	protected final static Border ETCHED = BorderFactory.createEtchedBorder();
 	
 	private boolean showDisabledStatusInTitle = false;
+	private boolean includeBorder = true;
 
 //	public static Font DEFAULT_LABEL_FONT = new Font( "SansSerif", Font.BOLD, 12 );
 //	public static Color FORE_COLOR = new Color( 80, 80, 140 );
@@ -63,6 +64,10 @@ public abstract class AbstractParameterEditor<E> extends LabeledBorderPanel impl
 		super.initParameterLookAndFeel();
 
 		setParameter(param);
+	}
+	
+	public void setIncludeBorder(boolean includeBorder) {
+		this.includeBorder = includeBorder;
 	}
 
 	/**
@@ -160,7 +165,7 @@ public abstract class AbstractParameterEditor<E> extends LabeledBorderPanel impl
 
 	@Override
 	public final JComponent getComponent() {
-		return this;
+		return includeBorder ? this : widget;
 	}
 
 	@Override
@@ -189,7 +194,6 @@ public abstract class AbstractParameterEditor<E> extends LabeledBorderPanel impl
 		//		mainPanel.setMinimumSize( WIGET_PANEL_DIM );
 		//		mainPanel.setPreferredSize( WIGET_PANEL_DIM );
 		editorPanel.invalidate();
-
 	}
 
 	@Override

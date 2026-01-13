@@ -27,6 +27,8 @@ import org.opensha.commons.param.event.ParameterChangeFailListener;
 import org.opensha.commons.param.event.ParameterChangeListener;
 
 public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameterized> extends AbstractParameter<T> {
+	
+	private static final boolean D = true;
 
 	private EnumParameter<E> enumParam;
 	private Function<E, T> instanceBuilder;
@@ -37,7 +39,7 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 	private EnumParamListener enumParamListener;
 	private InstanceParamListener instanceParamListener;
 	
-	private boolean propagateInstanceParamChangeEvents = false;
+	private boolean propagateInstanceParamChangeEvents = true;
 
 	public ParameterizedEnumParameter(String name, EnumSet<E> choices, E defaultValue, String nullOption,
 			Function<E, T> instanceBuilder) {
@@ -73,19 +75,28 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 			synchronized (instances) {
 				if (instances.get(ordinal) == null) {
 					T instance  = instanceBuilder.apply(enumValue);
-					ParameterList instanceParams = instance.getAdjustableParameters();
-					if (instanceParams != null) {
-						instanceParams.addChangeListener(instanceParamListener); // this will detect and skip duplicate adds
-						for (Parameter<?> param : instanceParams)
-							param.addParameterChangeListener(instanceParamListener);
+					if (instance != null) {
+						ParameterList instanceParams = instance.getAdjustableParameters();
+						if (instanceParams != null) {
+							instanceParams.addChangeListener(instanceParamListener); // this will detect and skip duplicate adds
+							for (Parameter<?> param : instanceParams)
+								param.addParameterChangeListener(instanceParamListener);
+						}
+						instances.set(ordinal, instance);
 					}
-					instances.set(ordinal, instance);
 				}
 			}
 		}
-		return instances.get(ordinal);
+		T ret = instances.get(ordinal);
+		if (D) System.out.println("getCurrentInstance["+enumValue+"]: "+ret);
+		return ret;
 	}
 	
+	@Override
+	public T getValue() {
+		return super.getValue();
+	}
+
 	/**
 	 * This can be used to retrieve a view of the instance list, which, for each enum value indexed by
 	 * {@link Enum#ordinal()}, will contain the corresponding concrete instance, or null if not yet chosen.
@@ -94,6 +105,22 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 	 */
 	public List<T> getInstanceList() {
 		return Collections.unmodifiableList(instances);
+	}
+	
+	public E getEnumValue() {
+		return enumParam.getValue();
+	}
+	
+	public void setEnumValue(E enumValue) {
+		enumParam.setValue(enumValue);
+	}
+	
+	/**
+	 * Clears all instances and sets the parameter value to null
+	 */
+	public void clearInstances() {
+		instances.clear();
+		setValue(null);
 	}
 	
 	private class EnumParamListener implements ParameterChangeListener, ParameterChangeFailListener {
@@ -131,13 +158,14 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 		@Override
 		public void parameterChange(ParameterChangeEvent event) {
 			if (propagateInstanceParamChangeEvents)
+				firePropertyChange(new ParameterChangeEvent.Propagated(event, ParameterizedEnumParameter.this, name, getValue(), getValue()));
 				firePropertyChange(event);
 		}
 
 		@Override
 		public void parameterChangeFailed(ParameterChangeFailEvent event) {
 			if (propagateInstanceParamChangeEvents)
-				firePropertyChangeFailed(event);
+				firePropertyChangeFailed(new ParameterChangeFailEvent.Propagated(event, ParameterizedEnumParameter.this, name, getValue(), getValue()));
 		}
 		
 	}
@@ -187,6 +215,10 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 		private EnumParameterEditor<E> enumEditor;
 		private ParameterList params;
 		private ParameterListEditor paramsEdit;
+		
+		private Editor() {
+			super(ParameterizedEnumParameter.this);
+		}
 
 		@Override
 		public boolean isParameterSupported(Parameter<T> param) {
@@ -204,20 +236,29 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 		protected JComponent buildWidget() {
 			widget = new JPanel(new BorderLayout());
 			enumEditor = new EnumParameterEditor<>(enumParam);
+			enumEditor.setIncludeBorder(false);
 			
 			return updateWidget();
 		}
 
 		@Override
 		protected JComponent updateWidget() {
-			params = getCurrentInstance().getAdjustableParameters();
+			if (D) System.out.println(ParameterizedEnumParameter.this.getName()+": updateWidget()");
 			widget.removeAll();
 
 			widget.add(enumEditor.getComponent(), BorderLayout.NORTH);
+			
+			Parameterized value = getValue();
+			if (value == null)
+				return widget;
+			
+			params = value.getAdjustableParameters();
 			if (params != null && !params.isEmpty()) {
 				paramsEdit = new ParameterListEditor(params);
 				paramsEdit.setTitle(null);
 				widget.add(paramsEdit, BorderLayout.CENTER);
+				if (D) System.out.println(ParameterizedEnumParameter.this.getName()
+						+": updateWidget() with "+params.size()+" parameters");
 			}
 			
 			return widget;

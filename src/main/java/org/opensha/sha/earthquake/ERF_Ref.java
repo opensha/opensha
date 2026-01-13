@@ -13,6 +13,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.opensha.commons.util.DevStatus;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.ServerPrefs;
+import org.opensha.sha.earthquake.faultSysSolution.erf.td.TimeDepFaultSystemSolutionERF;
 import org.opensha.sha.earthquake.rupForecastImpl.FloatingPoissonFaultERF;
 import org.opensha.sha.earthquake.rupForecastImpl.PointSourceERF;
 import org.opensha.sha.earthquake.rupForecastImpl.PoissonFaultERF;
@@ -151,6 +152,9 @@ public enum ERF_Ref {
 	NSHM23_WUS_BRANCH_AVG(NSHM23_WUS_BranchAveragedERF.class, NSHM23_WUS_BranchAveragedERF.NAME, PRODUCTION, false),
 
 	// DEVELOPMENT
+	
+	TD_FSS_ERF(TimeDepFaultSystemSolutionERF.class, TimeDepFaultSystemSolutionERF.NAME,
+			DEVELOPMENT, false),
 	
 	/** STEP Alaska Forecast */
 	STEP_ALASKA(STEP_AlaskanPipeForecast.class, STEP_AlaskanPipeForecast.NAME, DEVELOPMENT, false),
