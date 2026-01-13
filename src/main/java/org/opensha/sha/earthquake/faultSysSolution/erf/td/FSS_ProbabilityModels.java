@@ -17,7 +17,7 @@ public enum FSS_ProbabilityModels {
 	POISSON("Poisson") {
 		@Override
 		public FSS_ProbabilityModel.Poisson getProbabilityModel(FaultSystemSolution sol, double[] longTermPartRateForSectArray) {
-			return new FSS_ProbabilityModel.Poisson();
+			return new FSS_ProbabilityModel.Poisson(sol);
 		}
 	},
 	UCERF3_BPT("UCERF3 BPT") {
@@ -56,7 +56,7 @@ public enum FSS_ProbabilityModels {
 			WeightedList<FSS_ProbabilityModel> models = new WeightedList<>(4);
 			
 			FSS_ProbabilityModel u3Low = UCERF3_BPT.getProbabilityModel(sol, longTermPartRateForSectArray);
-			u3Low.getAdjustableParameters().setValue(UCERF3_ProbabilityModel.APERIODICITY_PARAM_NAME, AperiodicityModels.UCERF3_LOW);
+			u3Low.getAdjustableParameters().setValue(AperiodicityModels.PARAM_NAME, AperiodicityModels.UCERF3_LOW);
 			// we'll show these parameters in the GUI, and the ParamLinker calls below will make sure any changes are
 			// propagated to each other U3 model. Keep all but the aperiodicity parameter
 			ParameterList params = new ParameterList();
@@ -65,20 +65,20 @@ public enum FSS_ProbabilityModels {
 			models.add(u3Low, 0.1);
 			
 			FSS_ProbabilityModel u3Middle = UCERF3_BPT.getProbabilityModel(sol, longTermPartRateForSectArray);
-			u3Middle.getAdjustableParameters().setValue(UCERF3_ProbabilityModel.APERIODICITY_PARAM_NAME, AperiodicityModels.UCERF3_MIDDLE);
+			u3Middle.getAdjustableParameters().setValue(AperiodicityModels.PARAM_NAME, AperiodicityModels.UCERF3_MIDDLE);
 			// link parameters in the reference model to this one 
 			for (Parameter<?> param : params)
 				ParamLinker.link(param, u3Middle.getAdjustableParameters().getParameter(param.getName()));
 			models.add(u3Middle, 0.4);
 			
 			FSS_ProbabilityModel u3High = UCERF3_BPT.getProbabilityModel(sol, longTermPartRateForSectArray);
-			u3High.getAdjustableParameters().setValue(UCERF3_ProbabilityModel.APERIODICITY_PARAM_NAME, AperiodicityModels.UCERF3_HIGH);
+			u3High.getAdjustableParameters().setValue(AperiodicityModels.PARAM_NAME, AperiodicityModels.UCERF3_HIGH);
 			// link parameters in the reference model to this one 
 			for (Parameter<?> param : params)
 				ParamLinker.link(param, u3High.getAdjustableParameters().getParameter(param.getName()));
 			models.add(u3High, 0.3);
 			
-			models.add(new FSS_ProbabilityModel.Poisson(), 0.2);
+			models.add(new FSS_ProbabilityModel.Poisson(sol), 0.2);
 			
 			return new FSS_ProbabilityModel.WeightedCombination(models, params);
 		}

@@ -13,14 +13,12 @@ public class WG02_ProbabilityModel extends AbstractFSS_ProbabilityModel {
 	}
 
 	@Override
-	public double getProbability(FaultSystemSolution fltSysSolution, int fltSysRupIndex,
-			double ruptureRate, long forecastStartTimeMillis, double durationYears) {
+	public double getProbability(int ruptureIndex, double ruptureRate, long forecastStartTimeMillis, double durationYears) {
 		throw new UnsupportedOperationException("Not yet implemented");
 	}
 
 	@Override
-	public double getProbabilityGain(FaultSystemSolution fltSysSolution, int fltSysRupIndex, long forecastStartTimeMillis,
-			double durationYears) {
+	public double getProbabilityGain(int ruptureIndex, long forecastStartTimeMillis, double durationYears) {
 		throw new UnsupportedOperationException("Not yet implemented");
 	}
 

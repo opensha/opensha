@@ -9,6 +9,7 @@ import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.param.impl.EnumParameter;
+import org.opensha.commons.param.impl.ParameterizedEnumParameter;
 import org.opensha.sha.earthquake.calc.recurInterval.EqkProbDistCalc;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.BPTAveragingTypeOptions;
@@ -18,9 +19,12 @@ import com.google.common.base.Preconditions;
 
 public class UCERF3_ProbabilityModel extends AbstractFSS_ProbabilityModel implements ParameterChangeListener {
 	
-	private EnumParameter<AperiodicityModels> aperiodicityParam;
+	private ParameterizedEnumParameter<AperiodicityModels, AperiodicityModel> aperiodicityParam;
+	
 	private EnumParameter<RenewalModels> renewalModelParam;
-	private EnumParameter<HistoricalOpenIntervals> histOpenIntervalParam;
+	
+	private ParameterizedEnumParameter<HistoricalOpenIntervals, HistoricalOpenInterval> histOpenIntervalParam;
+	
 	// TODO: refactor to remove BPT from the name of this and the corresponding enum
 	private BPTAveragingTypeParam averagingTypeParam;
 	
@@ -31,9 +35,7 @@ public class UCERF3_ProbabilityModel extends AbstractFSS_ProbabilityModel implem
 	static double max_time_for_normBPT_CDF=5;
 	static int num_for_normBPT_CDF=501;
 	
-	public static final String APERIODICITY_PARAM_NAME = "Aperiodicity Model";
 	public static final String RENEWAL_MODEL_PARAM_NAME = "Renewal Model";
-	public static final String HISTORICAL_OPEN_INTERVAL_PARAM_NAME = "Historical Open Interval";
 	
 	private ParameterList params;
 	
@@ -61,19 +63,22 @@ public class UCERF3_ProbabilityModel extends AbstractFSS_ProbabilityModel implem
 		super(sol, longTermPartRateForSectArray);
 		params = new ParameterList();
 		
-		aperiodicityParam = initModelParam(APERIODICITY_PARAM_NAME, aperiodicityModel, supportedAperiodicityModels);
+		aperiodicityParam = AperiodicityModels.buildParameter(sol, supportedAperiodicityModels, aperiodicityModel);
 		aperiodicityParam.addParameterChangeListener(this);
-		if (aperiodicityParam.getConstraint().size() > 1)
+		if (supportedAperiodicityModels.size() > 1 || aperiodicityParam.getValue().getAdjustableParameters() != null)
+			// display it if we have multiple options, or a single option with its own parameters
 			params.addParameter(aperiodicityParam);
 		
 		renewalModelParam = initModelParam(RENEWAL_MODEL_PARAM_NAME, renewalModel, supportedRenewalModels);
 		renewalModelParam.addParameterChangeListener(this);
 		if (renewalModelParam.getConstraint().size() > 1)
+			// display it if we have multiple options
 			params.addParameter(renewalModelParam);
 		
-		histOpenIntervalParam = initModelParam(HISTORICAL_OPEN_INTERVAL_PARAM_NAME, histOpenInterval, supportedHistOpenIntervals);
+		histOpenIntervalParam = HistoricalOpenIntervals.buildParameter(sol, supportedHistOpenIntervals, histOpenInterval);
 		histOpenIntervalParam.addParameterChangeListener(this);
-		if (histOpenIntervalParam.getConstraint().size() > 1)
+		if (supportedHistOpenIntervals.size() > 1 || histOpenIntervalParam.getValue().getAdjustableParameters() != null)
+			// display it if we have multiple options, or a single option with its own parameters
 			params.addParameter(histOpenIntervalParam);
 		
 		averagingTypeParam = new BPTAveragingTypeParam(averagingType, supportedAveragingTypes);
@@ -107,39 +112,32 @@ public class UCERF3_ProbabilityModel extends AbstractFSS_ProbabilityModel implem
 	}
 
 	@Override
-	public double getProbability(FaultSystemSolution fltSysSolution, int fltSysRupIndex,
-			double ruptureRate, long forecastStartTimeMillis, double durationYears) {
+	public double getProbability(int ruptureIndex, double ruptureRate, long forecastStartTimeMillis, double durationYears) {
 		// for now just use gain, but could change that if it's more efficient or better in some way to calculate it separately
 		double prob = TimeDepUtils.rateToPoissonProb(ruptureRate, durationYears);
-		return prob * getProbabilityGain(fltSysSolution, fltSysRupIndex, forecastStartTimeMillis, durationYears);
+		return prob * getProbabilityGain(ruptureIndex, forecastStartTimeMillis, durationYears);
 	}
 
 	@Override
-	public double getProbabilityGain(FaultSystemSolution fltSysSolution, int fltSysRupIndex, long forecastStartTimeMillis,
+	public double getProbabilityGain(int ruptureIndex, long forecastStartTimeMillis,
 			double durationYears) {
-		AperiodicityModels aperiodicityModel = aperiodicityParam.getValue();
-		double aperiodicity = aperiodicityModel.getAperiodicity(fltSysSolution, fltSysRupIndex);
+		AperiodicityModel aperiodicityModel = aperiodicityParam.getValue();
+		double aperiodicity = aperiodicityModel.getRuptureAperiodicity(ruptureIndex);
 		
 		EvenlyDiscretizedFunc normCDF = getNormCDF(aperiodicity);
 		
-		// historic open interval
-		// Kevin note: I hated the way it was done in U3 where you had to manually set the parameter to be start - 1875.
-		// Now, the historic open interval provides a start time of that interval, and we compute the interval duration
-		// dynamically.
-		long histOpenIntervalStartTime = histOpenIntervalParam.getValue()
-				.getOpenIntervalStartTime(fltSysSolution, fltSysRupIndex);
-		double histOpenInterval = 0d; // 0 means no historic open interval
-		if (histOpenIntervalStartTime < forecastStartTimeMillis) {
-			// it's before the forecast start time, meaning that we have one for this rupture
-			double interval = forecastStartTimeMillis - histOpenIntervalStartTime;
-			histOpenInterval = (double)interval / TimeDepUtils.MILLISEC_PER_YEAR;
-		}
-		
-		// so far, no caching of things like fault section dates of last event. it's pretty lightweight to grab them
-		// so I don't recommend caching for now; if any of those sorts of things turn into a bottleneck down the road
-		// we can add efficiencies then.
+		// historical open interval in years, or 0 if no historic open interval
+		double histOpenInterval = histOpenIntervalParam.getValue().getRuptureOpenInterval(ruptureIndex, forecastStartTimeMillis);
 		
 		// TODO: do the actual calculation
+		
+		// can access dates of last event by section
+		for (int sectIndex : fltSysSol.getRupSet().getSectionsIndicesForRup(ruptureIndex)) {
+			long sectDateLast = sectDatesOfLastEvent[sectIndex];
+			if (sectDateLast > Long.MIN_VALUE && sectDateLast < forecastStartTimeMillis) {
+				// we have a valid DOLE
+			}
+		}
 		
 		throw new UnsupportedOperationException("Not yet implemented");
 	}
