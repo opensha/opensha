@@ -511,11 +511,12 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	}
 	
 	/**
-	 * Set the current solution. Can overridden to ensure it is a particular subclass.
-	 * This sets both faultSysSolutionChanged and bgRupTypeChanged as true.
+	 * Set the current solution. This sets both faultSysSolutionChanged and bgRupTypeChanged as true.
+	 * <p>
+	 * Subclasses can listen for solution changes by overriding {@link #solutionChangedHook()}.
 	 * @param sol
 	 */
-	public void setSolution(FaultSystemSolution sol) {
+	public final void setSolution(FaultSystemSolution sol) {
 		setSolution(sol, true);
 	}
 	
@@ -554,6 +555,9 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	/**
 	 * Called whenever the solution has been changed (either directly or via the file param) and before
 	 * {@link #createParamList()}.
+	 * <p>
+	 * This differs from waiting for {@link #faultSysSolutionChanged} in {@link #updateForecast()} because it will
+	 * be called immediately when the solution has been changed.
 	 */
 	protected void solutionChangedHook() {
 		// do nothing, can be overridden as needed
