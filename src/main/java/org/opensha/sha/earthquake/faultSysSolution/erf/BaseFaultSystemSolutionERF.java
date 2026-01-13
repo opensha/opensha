@@ -545,8 +545,18 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		// setSolution manually before doing an update forecast
 		fileParamChanged = false;
 		
+		solutionChangedHook();
+		
 		// rebuild the parameter list
 		createParamList();
+	}
+	
+	/**
+	 * Called whenever the solution has been changed (either directly or via the file param) and before
+	 * {@link #createParamList()}.
+	 */
+	protected void solutionChangedHook() {
+		// do nothing, can be overridden as needed
 	}
 	
 	public FaultSystemSolution getSolution() {
