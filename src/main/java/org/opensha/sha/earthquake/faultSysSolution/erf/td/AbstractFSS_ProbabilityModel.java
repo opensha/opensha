@@ -26,7 +26,7 @@ public abstract class AbstractFSS_ProbabilityModel implements FSS_ProbabilityMod
 	}
 	
 	/**
-	 * Constructor that takes in precomputed sectino participation rates that may be different than those computed
+	 * Constructor that takes in precomputed section participation rates that may be different than those computed
 	 * by the passed in {@link FaultSystemSolution} (e.g., if some ruptures are skipped).
 	 * @param fltSysSol
 	 * @param longTermPartRateForSectArray
@@ -34,6 +34,7 @@ public abstract class AbstractFSS_ProbabilityModel implements FSS_ProbabilityMod
 	public AbstractFSS_ProbabilityModel(FaultSystemSolution fltSysSol, double[] longTermPartRateForSectArray) {
 		this.fltSysSol = fltSysSol;
 		this.longTermPartRateForSectArray = longTermPartRateForSectArray;
+		resetSectDatesOfLastEvent();
 	}
 
 	@Override
@@ -74,6 +75,11 @@ public abstract class AbstractFSS_ProbabilityModel implements FSS_ProbabilityMod
 	@Override
 	public void resetSectDatesOfLastEvent() {
 		this.sectDatesOfLastEvent = getOriginalDatesOfLastEvent(fltSysSol.getRupSet());
+	}
+	
+	@Override
+	public String toString() {
+		return getMetadataString();
 	}
 
 }
