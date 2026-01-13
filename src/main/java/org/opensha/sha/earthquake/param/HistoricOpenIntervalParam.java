@@ -5,7 +5,10 @@ import org.opensha.commons.param.impl.DoubleParameter;
 /**
  * This HistoricOpenIntervalParam is used for setting the the time over which an event is
  * known to have not occurred.
+ * 
+ * TODO: remove
  */
+@Deprecated
 public class HistoricOpenIntervalParam extends DoubleParameter {
 	
 	private static final long serialVersionUID = 1L;
