@@ -16,7 +16,7 @@ import org.dom4j.Element;
 import org.opensha.commons.param.AbstractParameter;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
-import org.opensha.commons.param.Parameterized;
+import org.opensha.commons.param.ParameterizedModel;
 import org.opensha.commons.param.editor.AbstractParameterEditor;
 import org.opensha.commons.param.editor.ParameterEditor;
 import org.opensha.commons.param.editor.impl.EnumParameterEditor;
@@ -26,9 +26,20 @@ import org.opensha.commons.param.event.ParameterChangeFailEvent;
 import org.opensha.commons.param.event.ParameterChangeFailListener;
 import org.opensha.commons.param.event.ParameterChangeListener;
 
-public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameterized> extends AbstractParameter<T> {
+/**
+ * Parameter and nested editor for a special class of models where the model choice is specified by an Enum that
+ * provides model instances, and those model instances may have adjustable parameters.
+ * <P>
+ * This was initially constructed for time-dependence where, e.g., you might want an enum of fixed aperiodicity models,
+ * but also want the flexibility of a custom choice with adjustable parameters.
+ * 
+ * @param <E> Enum type for selecting models
+ * @param <T> Underlying model type
+ */
+public class ParameterizedEnumParameter<E extends Enum<E>, T extends ParameterizedModel> extends AbstractParameter<T> {
 	
 	private static final boolean D = true;
+	private static final boolean EDITOR_D = false;
 
 	private EnumParameter<E> enumParam;
 	private Function<E, T> instanceBuilder;
@@ -41,6 +52,15 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 	
 	private boolean propagateInstanceParamChangeEvents = true;
 
+	/**
+	 * 
+	 * 
+	 * @param name parameter name
+	 * @param choices allowed enum choices
+	 * @param defaultValue default (initial) enum value
+	 * @param nullOption string for null enum selection
+	 * @param instanceBuilder function to instantiate a model for a given enum value
+	 */
 	public ParameterizedEnumParameter(String name, EnumSet<E> choices, E defaultValue, String nullOption,
 			Function<E, T> instanceBuilder) {
 		super(name, null, null, null);
@@ -130,8 +150,10 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 
 		@Override
 		public void parameterChange(ParameterChangeEvent event) {
+			if (D) System.out.println(getName()+": underlying enum changed to: "+event.getNewValue());
 			// this means the enum changed, update our instance
 			setValue(getCurrentInstance());
+			if (D) System.out.println(getName()+": value now contains: "+getValue());
 			// refresh the editor (if built)
 			refreshEditor();
 		}
@@ -149,6 +171,7 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 		@Override
 		public void stateChanged(ChangeEvent e) {
 			// called when the contents of an instance parameter list change (not the selected instance itself)
+			if (D) System.out.println(getName()+": underlying instance parameter list changed, current value: "+getValue());
 			
 			// refresh the editor (if built)
 			refreshEditor();
@@ -160,12 +183,15 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 
 		@Override
 		public void parameterChange(ParameterChangeEvent event) {
+			// called when an instance parameter changed (one of the values in the list
+			if (D) System.out.println(getName()+": underlying instance parameter changed: "+event.getParameterName()+": "+event.getNewValue());
 			if (propagateInstanceParamChangeEvents)
 				firePropertyChange(new ParameterChangeEvent.Propagated(event, ParameterizedEnumParameter.this, name, getValue(), getValue()));
 		}
 
 		@Override
 		public void parameterChangeFailed(ParameterChangeFailEvent event) {
+			if (D) System.out.println(getName()+": underlying instance parameter change failed: "+event.getParameterName()+": "+event.getBadValue());
 			if (propagateInstanceParamChangeEvents)
 				firePropertyChangeFailed(new ParameterChangeFailEvent.Propagated(event, ParameterizedEnumParameter.this, name, getValue(), getValue()));
 		}
@@ -174,14 +200,19 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 	
 	@Override
 	public ParameterEditor getEditor() {
-		if (editor == null)
+		if (editor == null) {
+			if (EDITOR_D) System.out.println(getName()+": getEditor(): instantiating new");
 			editor = new Editor();
+		}
+		if (EDITOR_D) System.out.println(getName()+": getEditor()");
 		return editor;
 	}
 
 	@Override
 	public boolean isEditorBuilt() {
-		return editor != null;
+		boolean built = editor != null;
+		if (EDITOR_D) System.out.println(getName()+": isEditorBuilt() ? "+built);
+		return built;
 	}
 
 	@Override
@@ -220,6 +251,7 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 		
 		private Editor() {
 			super(ParameterizedEnumParameter.this);
+			setDebug(ParameterizedEnumParameter.EDITOR_D);
 		}
 
 		@Override
@@ -245,12 +277,12 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 
 		@Override
 		protected JComponent updateWidget() {
-			if (D) System.out.println(ParameterizedEnumParameter.this.getName()+": updateWidget()");
+			if (debug) System.out.println(ParameterizedEnumParameter.this.getName()+": updateWidget()");
 			widget.removeAll();
 
 			widget.add(enumEditor.getComponent(), BorderLayout.NORTH);
 			
-			Parameterized value = getValue();
+			ParameterizedModel value = getValue();
 			if (value == null)
 				return widget;
 			
@@ -259,8 +291,11 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 				paramsEdit = new ParameterListEditor(params);
 				paramsEdit.setTitle(null);
 				widget.add(paramsEdit, BorderLayout.CENTER);
-				if (D) System.out.println(ParameterizedEnumParameter.this.getName()
+				if (debug) System.out.println(ParameterizedEnumParameter.this.getName()
 						+": updateWidget() with "+params.size()+" parameters");
+			} else if (debug) {
+				System.out.println(ParameterizedEnumParameter.this.getName()
+						+": updateWidget() with no params (null ? "+params == null+")");
 			}
 			
 			return widget;
