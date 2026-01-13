@@ -2,7 +2,7 @@ package org.opensha.sha.earthquake.faultSysSolution.erf.td;
 
 import java.util.EnumSet;
 
-import org.opensha.commons.param.impl.ParameterizedEnumParameter;
+import org.opensha.commons.param.impl.EnumParameterizedModelarameter;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 
 public enum HistoricalOpenIntervals {
@@ -26,7 +26,7 @@ public enum HistoricalOpenIntervals {
 		}
 	};
 	
-	public static EnumSet<HistoricalOpenIntervals> UCERF3_MODELS = EnumSet.of(UCERF3, NONE);
+	public static EnumSet<HistoricalOpenIntervals> UCERF3_MODELS = EnumSet.of(UCERF3, SINGLE_YEAR, NONE);
 	
 	private String name;
 
@@ -43,10 +43,10 @@ public enum HistoricalOpenIntervals {
 	
 	public static final String PARAM_NAME = "Historical Open Interval";
 	
-	public static ParameterizedEnumParameter<HistoricalOpenIntervals, HistoricalOpenInterval> buildParameter(
+	public static EnumParameterizedModelarameter<HistoricalOpenIntervals, HistoricalOpenInterval> buildParameter(
 			FaultSystemSolution fltSysSolution, EnumSet<HistoricalOpenIntervals> choices, HistoricalOpenIntervals defaultValue) {
-		return new ParameterizedEnumParameter<HistoricalOpenIntervals, HistoricalOpenInterval>(
-				PARAM_NAME, choices, defaultValue, null, e -> e.instance(fltSysSolution));
+		return new EnumParameterizedModelarameter<HistoricalOpenIntervals, HistoricalOpenInterval>(
+				PARAM_NAME, choices, defaultValue, true, e -> e.instance(fltSysSolution));
 	}
 
 }

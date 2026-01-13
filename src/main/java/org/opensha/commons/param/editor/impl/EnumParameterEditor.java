@@ -39,6 +39,9 @@ public class EnumParameterEditor<E extends Enum<E>> extends
 	private JComboBox widget;
 	private Class<E> clazz;
 
+	private String nullOption;
+	private boolean showNullOptionIfNonNull = true;
+	
 	/**
 	 * Constructs a new editor for the supplied <code>Parameter</code>.
 	 * @param model for editor
@@ -47,6 +50,24 @@ public class EnumParameterEditor<E extends Enum<E>> extends
 	public EnumParameterEditor(EnumParameter<E> model) {
 		super(model);
 		this.clazz = model.getEnumClass();
+		this.nullOption = model.getNullOption();
+	}
+	
+	/**
+	 * Controls whether or not the null option should be shown in the list when a non-null value is currently selected
+	 * @param showNullOptionIfNonNull
+	 * @return
+	 */
+	public void setShowNullOptionIfNonNull(boolean showNullOptionIfNonNull) {
+		this.showNullOptionIfNonNull = showNullOptionIfNonNull;
+	}
+	
+	/**
+	 * Sets the null option string, which will be used instead of that stored in the parameter
+	 * @param nullOption
+	 */
+	public void setNullOption(String nullOption) {
+		this.nullOption = nullOption;
 	}
 
 	@Override
@@ -103,8 +124,15 @@ public class EnumParameterEditor<E extends Enum<E>> extends
 		EnumConstraint<E> con = (EnumConstraint<E>) getParameter()
 			.getConstraint();
 		Vector<Object> v = new Vector<Object>();
-		String nullOption = ((EnumParameter<E>) getParameter()).getNullOption();
-		if (nullOption != null) v.add(nullOption);
+		if (nullOption != null) {
+			if (showNullOptionIfNonNull) {
+				v.add(nullOption);
+			} else {
+				E value = getParameter().getValue();
+				if (value == null)
+					v.add(nullOption);
+			}
+		}
 		v.addAll(con.getAllowedValues());
 		return v;
 	}

@@ -1,12 +1,12 @@
 package org.opensha.commons.param;
 
 import org.opensha.commons.data.Named;
-import org.opensha.commons.param.impl.ParameterizedEnumParameter;
+import org.opensha.commons.param.impl.EnumParameterizedModelarameter;
 
 /**
  * Interface for a model that has adjustable parameters.
  * <p>
- * Potentially useful when paired with an enum to supply instances of the model and an {@link ParameterizedEnumParameter}
+ * Potentially useful when paired with an enum to supply instances of the model and an {@link EnumParameterizedModelarameter}
  * parameter to configure them. 
  */
 public interface ParameterizedModel extends Named {

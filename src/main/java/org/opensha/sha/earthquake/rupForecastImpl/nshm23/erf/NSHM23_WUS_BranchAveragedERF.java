@@ -16,10 +16,33 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_Downloader;
 public class NSHM23_WUS_BranchAveragedERF extends BaseFaultSystemSolutionERF {
 
 	private static final long serialVersionUID = 277613161331416141L;
-	private static final String MODEL = "WUS_branch_averaged_gridded_simplified";
+	public static final String MODEL = "WUS_branch_averaged_gridded_simplified";
 	public static final String NAME = "NSHM23-WUS (crustal only, excl. Cascadia) Branch Avg ERF";
 	private static final boolean D = false;
 	private NSHM23_Downloader downloader;
+	
+	/**
+	 * Convenience method to download (if necessary) and load the WUS BA solution
+	 * 
+	 * @param storeDir
+	 * @return
+	 * @throws IOException
+	 */
+	public static FaultSystemSolution loadSolution(File storeDir) throws IOException {
+		File file = new NSHM23_Downloader(storeDir).updateFile(MODEL).join();
+		return FaultSystemSolution.load(file);
+	}
+	
+	/**
+	 * Convenience method to download (if necessary) and load the WUS BA solution
+	 * 
+	 * @return
+	 * @throws IOException
+	 */
+	public static FaultSystemSolution loadSolution() throws IOException {
+		File file = new NSHM23_Downloader().updateFile(MODEL).join();
+		return FaultSystemSolution.load(file);
+	}
 	
 	/**
 	 * Noarg constructor uses default storeDir for NSHM23 files

@@ -13,10 +13,15 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 import org.dom4j.Element;
+import org.opensha.commons.exceptions.ConstraintException;
+import org.opensha.commons.exceptions.EditableException;
+import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.param.AbstractParameter;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.ParameterizedModel;
+import org.opensha.commons.param.constraint.AbstractParameterConstraint;
+import org.opensha.commons.param.constraint.ParameterConstraint;
 import org.opensha.commons.param.editor.AbstractParameterEditor;
 import org.opensha.commons.param.editor.ParameterEditor;
 import org.opensha.commons.param.editor.impl.EnumParameterEditor;
@@ -29,14 +34,14 @@ import org.opensha.commons.param.event.ParameterChangeListener;
 /**
  * Parameter and nested editor for a special class of models where the model choice is specified by an Enum that
  * provides model instances, and those model instances may have adjustable parameters.
- * <P>
+ * <p>
  * This was initially constructed for time-dependence where, e.g., you might want an enum of fixed aperiodicity models,
  * but also want the flexibility of a custom choice with adjustable parameters.
  * 
  * @param <E> Enum type for selecting models
  * @param <T> Underlying model type
  */
-public class ParameterizedEnumParameter<E extends Enum<E>, T extends ParameterizedModel> extends AbstractParameter<T> {
+public class EnumParameterizedModelarameter<E extends Enum<E>, T extends ParameterizedModel> extends AbstractParameter<T> {
 	
 	private static final boolean D = true;
 	private static final boolean EDITOR_D = false;
@@ -51,21 +56,35 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 	private InstanceParamListener instanceParamListener;
 	
 	private boolean propagateInstanceParamChangeEvents = true;
+	private boolean allowCustomValues;
+	
+	private static final String CUSTOM_VALUE_LABEL_DEFAULT = "External Custom Value";
+	
+	public EnumParameterizedModelarameter(String name, EnumSet<E> choices, E defaultValue, boolean allowCustomValues,
+			Function<E, T> instanceBuilder) {
+		this(name, choices, defaultValue, allowCustomValues, CUSTOM_VALUE_LABEL_DEFAULT, instanceBuilder);
+	}
 
 	/**
-	 * 
+	 * Constructor specifying the enum and it's choices and a function to instantiate models for enum choices.
+	 * <p>
+	 * If allowCustomValues is true, arbitrary external {@link #setValue(Object)} calls are allowed and will cause the
+	 * enum parameter to disappear from the editor (until {@link #setEnumValue(Enum)} is called).
 	 * 
 	 * @param name parameter name
 	 * @param choices allowed enum choices
 	 * @param defaultValue default (initial) enum value
 	 * @param nullOption string for null enum selection
+	 * @param allowCustomValues if custom externally-set values should be allowed
 	 * @param instanceBuilder function to instantiate a model for a given enum value
 	 */
-	public ParameterizedEnumParameter(String name, EnumSet<E> choices, E defaultValue, String nullOption,
-			Function<E, T> instanceBuilder) {
+	public EnumParameterizedModelarameter(String name, EnumSet<E> choices, E defaultValue,
+			boolean allowCustomValues, String customValueLabel, Function<E, T> instanceBuilder) {
 		super(name, null, null, null);
+		this.setConstraint(new CustomValueCheckConstraint());
+		this.allowCustomValues = allowCustomValues;
 		this.instanceBuilder = instanceBuilder;
-		enumParam = new EnumParameter<E>(name, choices, defaultValue, nullOption);
+		enumParam = new EnumParameter<E>(name, choices, defaultValue, allowCustomValues ? customValueLabel : null);
 		this.instances = new ArrayList<>(enumParam.getEnumClass().getEnumConstants().length);
 		// propagate parameter change events
 		instanceParamListener = new InstanceParamListener();
@@ -73,7 +92,36 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 		enumParam.addParameterChangeListener(enumParamListener);
 		enumParam.addParameterChangeFailListener(enumParamListener);
 		
-		setValue(getCurrentInstance());
+		setValueInternal(getCurrentInstance());
+	}
+	
+	private boolean isCustomValue() {
+		if (value == null)
+			return false;
+		for (T existingValue : instances)
+			if (value == existingValue)
+				return false;
+		return true;
+	}
+	
+	private class CustomValueCheckConstraint extends AbstractParameterConstraint<T> {
+		
+		public CustomValueCheckConstraint() {
+			setNullAllowed(true);
+		}
+
+		@Override
+		public boolean isAllowed(T value) {
+			if (value == null || allowCustomValues)
+				return true;
+			return !isCustomValue();
+		}
+
+		@Override
+		public Object clone() {
+			return new CustomValueCheckConstraint();
+		}
+		
 	}
 	
 	/**
@@ -111,10 +159,24 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 		if (D) System.out.println("getCurrentInstance["+enumValue+"]: "+ret);
 		return ret;
 	}
-	
+
 	@Override
-	public T getValue() {
-		return super.getValue();
+	public void setValue(T value) throws ConstraintException, ParameterException {
+		super.setValue(value);
+		if (isCustomValue()) {
+			enumParam.setValue(null);
+		}
+	}
+	
+	/**
+	 * Internally set a value that we know isn't a custom value, skip that check
+	 * 
+	 * @param value
+	 * @throws ConstraintException
+	 * @throws ParameterException
+	 */
+	private void setValueInternal(T value) throws ConstraintException, ParameterException {
+		super.setValue(value);
 	}
 
 	/**
@@ -141,7 +203,7 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 	 */
 	public void clearInstances() {
 		instances.clear();
-		setValue(getCurrentInstance());
+		setValueInternal(getCurrentInstance());
 		// refresh the editor (if built)
 		refreshEditor();
 	}
@@ -151,17 +213,22 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 		@Override
 		public void parameterChange(ParameterChangeEvent event) {
 			if (D) System.out.println(getName()+": underlying enum changed to: "+event.getNewValue());
-			// this means the enum changed, update our instance
-			setValue(getCurrentInstance());
-			if (D) System.out.println(getName()+": value now contains: "+getValue());
+			if (enumParam.getValue() == null && isCustomValue()) {
+				// this was just clearing the enum param, no need to fire a value update
+				if (D) System.out.println(getName()+": custom value already set, won't replace: "+getValue());
+			} else {
+				// this means the enum changed, update our instance
+				setValueInternal(getCurrentInstance());
+				if (D) System.out.println(getName()+": value now contains: "+getValue());
+			}
 			// refresh the editor (if built)
 			refreshEditor();
 		}
 
 		@Override
 		public void parameterChangeFailed(ParameterChangeFailEvent event) {
-			// should never happen
-			throw new IllegalStateException("Underlying EnumParameter change failed event? Bad value: "+event.getBadValue());
+			// can happen if the setEnumValue is called with a non-allowed choice
+			firePropertyChangeFailed(new ParameterChangeFailEvent.Propagated(event, EnumParameterizedModelarameter.this, name, getValue(), getValue()));
 		}
 		
 	}
@@ -178,7 +245,7 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 			
 			if (propagateInstanceParamChangeEvents)
 				// also propagate that event
-				firePropertyChange(new ParameterChangeEvent(ParameterizedEnumParameter.this, name, getValue(), getValue()));
+				firePropertyChange(new ParameterChangeEvent(EnumParameterizedModelarameter.this, name, getValue(), getValue()));
 		}
 
 		@Override
@@ -186,14 +253,14 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 			// called when an instance parameter changed (one of the values in the list
 			if (D) System.out.println(getName()+": underlying instance parameter changed: "+event.getParameterName()+": "+event.getNewValue());
 			if (propagateInstanceParamChangeEvents)
-				firePropertyChange(new ParameterChangeEvent.Propagated(event, ParameterizedEnumParameter.this, name, getValue(), getValue()));
+				firePropertyChange(new ParameterChangeEvent.Propagated(event, EnumParameterizedModelarameter.this, name, getValue(), getValue()));
 		}
 
 		@Override
 		public void parameterChangeFailed(ParameterChangeFailEvent event) {
 			if (D) System.out.println(getName()+": underlying instance parameter change failed: "+event.getParameterName()+": "+event.getBadValue());
 			if (propagateInstanceParamChangeEvents)
-				firePropertyChangeFailed(new ParameterChangeFailEvent.Propagated(event, ParameterizedEnumParameter.this, name, getValue(), getValue()));
+				firePropertyChangeFailed(new ParameterChangeFailEvent.Propagated(event, EnumParameterizedModelarameter.this, name, getValue(), getValue()));
 		}
 		
 	}
@@ -217,9 +284,9 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 
 	@Override
 	public Object clone() {
-		ParameterizedEnumParameter<E, T> copy = new ParameterizedEnumParameter<>(name,
+		EnumParameterizedModelarameter<E, T> copy = new EnumParameterizedModelarameter<>(name,
 				EnumSet.copyOf(enumParam.getConstraint().getAllowedValues()),
-				enumParam.getValue(), enumParam.getNullOption(), instanceBuilder);
+				enumParam.getValue(), allowCustomValues, enumParam.getNullOption(), instanceBuilder);
 		// copy parameter values
 		T origInstance = getCurrentInstance();
 		if (origInstance != null) {
@@ -248,15 +315,16 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 		private EnumParameterEditor<E> enumEditor;
 		private ParameterList params;
 		private ParameterListEditor paramsEdit;
+		private JComponent customValueComponent;
 		
 		private Editor() {
-			super(ParameterizedEnumParameter.this);
-			setDebug(ParameterizedEnumParameter.EDITOR_D);
+			super(EnumParameterizedModelarameter.this);
+			setDebug(EnumParameterizedModelarameter.EDITOR_D);
 		}
 
 		@Override
 		public boolean isParameterSupported(Parameter<T> param) {
-			return param == ParameterizedEnumParameter.this;
+			return param == EnumParameterizedModelarameter.this;
 		}
 
 		@Override
@@ -271,18 +339,26 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 			widget = new JPanel(new BorderLayout());
 			enumEditor = new EnumParameterEditor<>(enumParam);
 			enumEditor.setIncludeBorder(false);
+			enumEditor.setShowNullOptionIfNonNull(false);
 			
 			return updateWidget();
 		}
 
 		@Override
 		protected JComponent updateWidget() {
-			if (debug) System.out.println(ParameterizedEnumParameter.this.getName()+": updateWidget()");
+			if (debug) System.out.println(EnumParameterizedModelarameter.this.getName()+": updateWidget()");
 			widget.removeAll();
 
+			ParameterizedModel value = getValue();
+			if (allowCustomValues && enumEditor.getValue() == null) {
+				if (value == null)
+					enumEditor.setNullOption(enumParam.getNullOption());
+				else
+					enumEditor.setNullOption(enumParam.getNullOption()+": "+value.getName());
+			}
+			enumEditor.refreshParamEditor();
 			widget.add(enumEditor.getComponent(), BorderLayout.NORTH);
 			
-			ParameterizedModel value = getValue();
 			if (value == null)
 				return widget;
 			
@@ -291,10 +367,10 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 				paramsEdit = new ParameterListEditor(params);
 				paramsEdit.setTitle(null);
 				widget.add(paramsEdit, BorderLayout.CENTER);
-				if (debug) System.out.println(ParameterizedEnumParameter.this.getName()
+				if (debug) System.out.println(EnumParameterizedModelarameter.this.getName()
 						+": updateWidget() with "+params.size()+" parameters");
 			} else if (debug) {
-				System.out.println(ParameterizedEnumParameter.this.getName()
+				System.out.println(EnumParameterizedModelarameter.this.getName()
 						+": updateWidget() with no params (null ? "+params == null+")");
 			}
 			

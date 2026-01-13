@@ -4,7 +4,7 @@ import java.util.EnumMap;
 import java.util.EnumSet;
 
 import org.opensha.commons.param.ParameterList;
-import org.opensha.commons.param.impl.ParameterizedEnumParameter;
+import org.opensha.commons.param.impl.EnumParameterizedModelarameter;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -76,10 +76,10 @@ public enum AperiodicityModels {
 	
 	public static final String PARAM_NAME = "Aperiodicity Model";
 	
-	public static ParameterizedEnumParameter<AperiodicityModels, AperiodicityModel> buildParameter(
+	public static EnumParameterizedModelarameter<AperiodicityModels, AperiodicityModel> buildParameter(
 			FaultSystemSolution fltSysSolution, EnumSet<AperiodicityModels> choices, AperiodicityModels defaultValue) {
-		return new ParameterizedEnumParameter<AperiodicityModels, AperiodicityModel>(
-				PARAM_NAME, choices, defaultValue, null, e -> e.instance(fltSysSolution));
+		return new EnumParameterizedModelarameter<AperiodicityModels, AperiodicityModel>(
+				PARAM_NAME, choices, defaultValue, true, e -> e.instance(fltSysSolution));
 	}
 
 }

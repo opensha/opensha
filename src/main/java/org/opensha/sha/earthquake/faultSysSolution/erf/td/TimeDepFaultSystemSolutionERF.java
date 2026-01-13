@@ -3,19 +3,22 @@ package org.opensha.sha.earthquake.faultSysSolution.erf.td;
 import java.util.EnumSet;
 
 import org.opensha.commons.data.TimeSpan;
+import org.opensha.commons.exceptions.ConstraintException;
 import org.opensha.commons.param.event.ParameterChangeEvent;
-import org.opensha.commons.param.impl.ParameterizedEnumParameter;
+import org.opensha.commons.param.impl.EnumParameterizedModelarameter;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
+
+import com.google.common.base.Preconditions;
 
 public class TimeDepFaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 	
 	public static final String NAME = "Time-Dependent Fault System Solution ERF";
 	
 	public static final String PROB_MODEL_PARAM_NAME = "Probability Model";
-	private ParameterizedEnumParameter<FSS_ProbabilityModels, FSS_ProbabilityModel> probModelParam;
-	private FSS_ProbabilityModels probModelChoice;
+	private EnumParameterizedModelarameter<FSS_ProbabilityModels, FSS_ProbabilityModel> probModelParam;
 	private FSS_ProbabilityModel probModel;
+	private boolean probModelChanged = true;
 	
 	// these are to chache timespan object for switching back and forth between time-independent (ti) and time-dependent (td) models.
 	protected TimeSpan tiTimeSpanCache, tdTimeSpanCache;
@@ -32,13 +35,12 @@ public class TimeDepFaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 	public TimeDepFaultSystemSolutionERF(EnumSet<FSS_ProbabilityModels> probModelChoices, FSS_ProbabilityModels probModelChoice) {
 		super(false); // don't initialize, need initialization of class variables first
 		
-		probModelParam = new ParameterizedEnumParameter<>(
-				PROB_MODEL_PARAM_NAME, probModelChoices, probModelChoice, null,
+		probModelParam = new EnumParameterizedModelarameter<>(
+				PROB_MODEL_PARAM_NAME, probModelChoices, probModelChoice, true,
 				model -> buildProbModelInstance(model));
 		// this means that we want to be notified when any lower level parameter changes (e.g., TD internal parameters)
 		probModelParam.setPropagateInstanceParamChangeEvents(true);
 		probModelParam.addParameterChangeListener(this);
-		this.probModelChoice = probModelChoice;
 		
 		// at this point class variables have been initialized, now call init methods
 		initParams();
@@ -87,41 +89,62 @@ public class TimeDepFaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 		adjustableParams.addParameter(probModelParam);
 	}
 	
+	/**
+	 * @return currently selected probability model choice, or null if one was externally set via
+	 * {@link #setCustomProbabilityModel(FSS_ProbabilityModel)}
+	 */
 	public FSS_ProbabilityModels getProbabilityModelChoice() {
 		return probModelParam.getEnumValue();
 	}
 	
+	/**
+	 * Sets the probability model choice to one of the supported enum values. Any underlying parameters can be
+	 * modifying by subsequently calling {@link #getProbabilityModel()}..
+	 * 
+	 * @param model
+	 * @throws ConstraintException if the selected enum is not a valid choice for thie ERF
+	 */
+	public void setProbabilityModelChoice(FSS_ProbabilityModels model) {
+		Preconditions.checkNotNull(model, "Passed in probability model cannot be null");
+		probModelParam.setEnumValue(model);
+	}
+	
+	/**
+	 * @return the currently selected probability model instance
+	 */
 	public FSS_ProbabilityModel getProbabilityModel() {
 		return probModelParam.getValue();
 	}
 	
-	public void setProbabilityModel(FSS_ProbabilityModels model) {
-		probModelParam.setEnumValue(model);
+	/**
+	 * Sets the probability model to a custom value; the GUI will read "External Custom Value: name" until the users
+	 * changes the model selector or calls {@link #setProbabilityModelChoice(FSS_ProbabilityModels)}. Any parameters
+	 * will still be editable.
+	 * 
+	 * @param model
+	 */
+	public void setCustomProbabilityModel(FSS_ProbabilityModel model) {
+		Preconditions.checkNotNull(model, "Passed in probability model cannot be null");
+		probModelParam.setValue(model);
 	}
-	
-	// TODO: if we also want a setProbabilityModel(FSS_ProbabilityModel model), we'll need to allow the parameter
-	// to accept null enum values, and bring back probModelChanged flag (currently null -> needs to be replaced)
 	
 	/**
 	 * @return true if the currently selected probability model is Poisson
 	 */
 	public boolean isPoisson() {
-		if (probModelChoice == null)
-			probModelChoice = probModelParam.getEnumValue();
-		return (probModelChoice == FSS_ProbabilityModels.POISSON);
+		return probModel instanceof FSS_ProbabilityModel.Poisson;
 	}
 	
 	@Override
 	protected boolean shouldRebuildFaultSystemSources() {
-		return super.shouldRebuildFaultSystemSources() || probModel == null;
+		return super.shouldRebuildFaultSystemSources() || probModelChanged;
 	}
 
 	@Override
 	public void parameterChange(ParameterChangeEvent event) {
 		if (event.getParameter() == probModelParam) {
-			System.out.println("probModelChanged");
-			probModel = null;
-			probModelChoice = null;
+			probModel = probModelParam.getValue();
+			System.out.println("probModelChanged: "+probModel);
 			
 			initTimeSpan();
 		} else {
@@ -134,9 +157,9 @@ public class TimeDepFaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 		// update prob model calculator if needed
 		if (probModel == null) {
 			probModel = probModelParam.getValue();
-			probModelChoice = probModelParam.getEnumValue();
-			System.out.println("ProbModel["+probModelChoice+"]: "+probModel);
+			System.out.println("ProbModel: "+probModel);
 		}
+		probModelChanged = false;
 		
 		if (D) {
 			int numSectWith = 0;

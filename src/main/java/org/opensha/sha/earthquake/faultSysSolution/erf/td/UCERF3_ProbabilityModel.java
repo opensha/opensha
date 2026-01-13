@@ -5,11 +5,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.exceptions.ConstraintException;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.param.impl.EnumParameter;
-import org.opensha.commons.param.impl.ParameterizedEnumParameter;
+import org.opensha.commons.param.impl.EnumParameterizedModelarameter;
 import org.opensha.sha.earthquake.calc.recurInterval.EqkProbDistCalc;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.BPTAveragingTypeOptions;
@@ -19,11 +20,11 @@ import com.google.common.base.Preconditions;
 
 public class UCERF3_ProbabilityModel extends AbstractFSS_ProbabilityModel implements ParameterChangeListener {
 	
-	private ParameterizedEnumParameter<AperiodicityModels, AperiodicityModel> aperiodicityParam;
+	private EnumParameterizedModelarameter<AperiodicityModels, AperiodicityModel> aperiodicityParam;
 	
 	private EnumParameter<RenewalModels> renewalModelParam;
 	
-	private ParameterizedEnumParameter<HistoricalOpenIntervals, HistoricalOpenInterval> histOpenIntervalParam;
+	private EnumParameterizedModelarameter<HistoricalOpenIntervals, HistoricalOpenInterval> histOpenIntervalParam;
 	
 	// TODO: refactor to remove BPT from the name of this and the corresponding enum
 	private BPTAveragingTypeParam averagingTypeParam;
@@ -69,9 +70,9 @@ public class UCERF3_ProbabilityModel extends AbstractFSS_ProbabilityModel implem
 			// display it if we have multiple options, or a single option with its own parameters
 			params.addParameter(aperiodicityParam);
 		
-		renewalModelParam = initModelParam(RENEWAL_MODEL_PARAM_NAME, renewalModel, supportedRenewalModels);
+		renewalModelParam = new EnumParameter<>(RENEWAL_MODEL_PARAM_NAME, supportedRenewalModels, renewalModel, null);
 		renewalModelParam.addParameterChangeListener(this);
-		if (renewalModelParam.getConstraint().size() > 1)
+		if (supportedRenewalModels.size() > 1)
 			// display it if we have multiple options
 			params.addParameter(renewalModelParam);
 		
@@ -89,14 +90,14 @@ public class UCERF3_ProbabilityModel extends AbstractFSS_ProbabilityModel implem
 		normCDFsCache = new ConcurrentHashMap<>();
 	}
 	
-	private static <E extends Enum<E>> EnumParameter<E> initModelParam(String name, E defaultValue, EnumSet<E> options) {
-		Preconditions.checkNotNull(defaultValue, "Default value is null");
-		if (options == null)
-			options = EnumSet.of(defaultValue);
-		else
-			Preconditions.checkState(options.contains(defaultValue),
-					"Allowed set doesn't contain default value: "+defaultValue);
-		return new EnumParameter<E>(name, options, defaultValue, null);
+	/**
+	 * Sets a custom historical open interval model to something not controlled by the built-in model enum.
+	 * 
+	 * @param model
+	 */
+	public void setCustomHistOpenIntervalModel(HistoricalOpenInterval model) {
+		Preconditions.checkNotNull(model, "Passed in historical open interval cannot be null");
+		histOpenIntervalParam.setValue(model);
 	}
 	
 	private EvenlyDiscretizedFunc getNormCDF(double aperiodicity) {
@@ -159,6 +160,112 @@ public class UCERF3_ProbabilityModel extends AbstractFSS_ProbabilityModel implem
 	@Override
 	public String getName() {
 		return FSS_ProbabilityModels.UCERF3_METHOD.toString();
+	}
+	
+	/*
+	 * Aperiodicity convenience getters/setters
+	 */
+	
+	/**
+	 * Sets the AperiodicityModel choice via the models enum. Any model parameters can then be set on the underlying
+	 * model by calling {@link #getAperiodicityModel()}.
+	 * @param modelChoice
+	 * @throws ConstraintException if the selected choice is not allowed
+	 */
+	public void setAperiodicityModelChoice(AperiodicityModels modelChoice) {
+		aperiodicityParam.setEnumValue(modelChoice);
+	}
+	
+	/**
+	 * @return aperiodicity model choice, or null if it was set to an external custom value via
+	 * {@link #setCustomAperiodicityModel(AperiodicityModel)}.
+	 */
+	public AperiodicityModels getAperiodicityModelChoice() {
+		return aperiodicityParam.getEnumValue();
+	}
+	
+	/**
+	 * @return current aperiodicity model enum.
+	 */
+	public AperiodicityModel getAperiodicityModel() {
+		return aperiodicityParam.getValue();
+	}
+	
+	/**
+	 * Sets a custom aperiodicity model to something not controlled by the built-in model enum.
+	 * 
+	 * @param model
+	 */
+	public void setCustomAperiodicityModel(AperiodicityModel model) {
+		Preconditions.checkNotNull(model, "Passed in aperiodicity model cannot be null");
+		aperiodicityParam.setValue(model);
+	}
+	
+	/*
+	 * Historical open interval convenience getters/setters
+	 */
+	
+	/**
+	 * Sets the historical open interval choice via the models enum. Any model parameters can then be set on the underlying
+	 * model by calling {@link #getHistOpenInterval()}.
+	 * @param modelChoice
+	 * @throws ConstraintException if the selected choice is not allowed
+	 */
+	public void setHistOpenIntervalChoice(HistoricalOpenIntervals modelChoice) {
+		histOpenIntervalParam.setEnumValue(modelChoice);
+	}
+	
+	/**
+	 * @return historical open interval choice, or null if it was set to an external custom value via
+	 * {@link #setCustomHistOpenIntervalModel(HistoricalOpenInterval)}.
+	 */
+	public HistoricalOpenIntervals getHistOpenIntervalChoice() {
+		return histOpenIntervalParam.getEnumValue();
+	}
+	
+	/**
+	 * @return current aperiodicity model enum.
+	 */
+	public HistoricalOpenInterval getHistOpenInterval() {
+		return histOpenIntervalParam.getValue();
+	}
+	
+	/*
+	 * Renewal model convenience getters/setters
+	 */
+	
+	/**
+	 * @return selected renewal model
+	 */
+	public RenewalModels getRenewalModelChoice() {
+		return renewalModelParam.getValue();
+	}
+	
+	/**
+	 * Sets the renewal model choice to the passed in value
+	 * @param modelChoice
+	 */
+	public void setRenewalModelChoice(RenewalModels modelChoice) {
+		this.renewalModelParam.setValue(modelChoice);
+	}
+	
+	/*
+	 * Averaging type convenience getters/setters
+	 */
+	
+	/**
+	 * @return selected averaging type
+	 */
+	public BPTAveragingTypeOptions getAveragingTypeChoice() {
+		return averagingTypeParam.getValue();
+	}
+	
+	/**
+	 * Sets the averaging type choice to the passed in value
+	 * @param modelChoice
+	 */
+	public void setAveragingTypeChoice(BPTAveragingTypeOptions modelChoice) {
+		this.averagingTypeParam.setValue(modelChoice);
 	}
 
 }
