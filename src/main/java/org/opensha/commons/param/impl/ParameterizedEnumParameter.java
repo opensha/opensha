@@ -112,15 +112,18 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 	}
 	
 	public void setEnumValue(E enumValue) {
+		// this will trigger a setValue(getCurrentInstance()) via EnumParamListener 
 		enumParam.setValue(enumValue);
 	}
 	
 	/**
-	 * Clears all instances and sets the parameter value to null
+	 * Clears all instances and resets the parameter value from the currently selected enum
 	 */
 	public void clearInstances() {
 		instances.clear();
-		setValue(null);
+		setValue(getCurrentInstance());
+		// refresh the editor (if built)
+		refreshEditor();
 	}
 	
 	private class EnumParamListener implements ParameterChangeListener, ParameterChangeFailListener {
@@ -159,7 +162,6 @@ public class ParameterizedEnumParameter<E extends Enum<E>, T extends Parameteriz
 		public void parameterChange(ParameterChangeEvent event) {
 			if (propagateInstanceParamChangeEvents)
 				firePropertyChange(new ParameterChangeEvent.Propagated(event, ParameterizedEnumParameter.this, name, getValue(), getValue()));
-				firePropertyChange(event);
 		}
 
 		@Override

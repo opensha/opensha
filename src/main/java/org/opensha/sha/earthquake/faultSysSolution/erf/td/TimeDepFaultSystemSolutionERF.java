@@ -121,14 +121,17 @@ public class TimeDepFaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 	}
 	
 	@Override
+	public void setSolution(FaultSystemSolution sol) {
+		super.setSolution(sol);
+		
+		// need to clear all existing probability models out
+		probModelParam.clearInstances();
+		probModel = null;
+	}
+
+	@Override
 	protected void updateHookBeforeFaultSourceBuild() {
 		// update prob model calculator if needed
-		if (faultSysSolutionChanged) {
-			// need to clear all existing probability models out
-			probModelParam.clearInstances();
-			probModel = null;
-		}
-		
 		if (probModel == null) {
 			probModel = probModelParam.getValue();
 			probModelChoice = probModelParam.getEnumValue();
