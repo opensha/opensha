@@ -399,6 +399,7 @@ implements ParameterChangeFailListener, ParameterChangeWarningListener, ItemList
 				version = ApplicationVersion.loadBuildVersion();
 			} catch (IOException e) {
 				e.printStackTrace();
+				version = new ApplicationVersion(-1, -1, -1);
 			}
 		}
 		return version;
@@ -684,7 +685,7 @@ implements ParameterChangeFailListener, ParameterChangeWarningListener, ItemList
 		mainSplitPane.setDividerLocation(630 );
 
 		//frame.setTitle( applet.getAppletInfo() + ":  [" + applet.getCurrentAttenuationRelationshipName() + ']' );
-		setTitle( this.getAppInfo() + " (Version:"+getAppVersion()+")");
+		setTitle( this.getAppInfo() + " (Version: "+getAppVersion().getDisplayString()+")");
 		setSize( W, H );
 		Dimension d = Toolkit.getDefaultToolkit().getScreenSize();
 		setLocation( ( d.width - getSize().width ) / 2, ( d.height - getSize().height ) / 2 );
