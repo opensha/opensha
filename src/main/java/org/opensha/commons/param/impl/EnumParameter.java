@@ -66,11 +66,15 @@ public class EnumParameter<E extends Enum<E>> extends AbstractParameter<E> {
 		this.nullOption = nullOption;
 		setDefaultValue(defaultValue);
 	}
+	
+	public Class<E> getEnumClass() {
+		return clazz;
+	}
 
 	@Override
 	public ParameterEditor<E> getEditor() {
 		if (editor == null) {
-			editor = new EnumParameterEditor<E>(this, clazz);
+			editor = new EnumParameterEditor<E>(this);
 		}
 		return editor;
 	}

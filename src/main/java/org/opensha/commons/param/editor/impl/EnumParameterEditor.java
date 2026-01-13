@@ -44,9 +44,9 @@ public class EnumParameterEditor<E extends Enum<E>> extends
 	 * @param model for editor
 	 * @param clazz the class of the supplied <code>Parameter</code>
 	 */
-	public EnumParameterEditor(EnumParameter<E> model, Class<E> clazz) {
+	public EnumParameterEditor(EnumParameter<E> model) {
 		super(model);
-		this.clazz = clazz;
+		this.clazz = model.getEnumClass();
 	}
 
 	@Override
