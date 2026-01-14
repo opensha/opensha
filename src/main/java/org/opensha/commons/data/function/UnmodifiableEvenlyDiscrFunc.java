@@ -9,32 +9,41 @@ import org.opensha.commons.util.ClassUtils;
  */
 public class UnmodifiableEvenlyDiscrFunc extends EvenlyDiscretizedFunc {
 	
+	private boolean initialized = false;
+	
 	public UnmodifiableEvenlyDiscrFunc(EvenlyDiscretizedFunc func) {
 		super(func.getMinX(), func.getMaxX(), func.size(), func.points);
 		
 		this.info = func.info;
-		this.minX = func.minX;
-		this.maxX = func.maxX;
 		this.name = func.name;
 		this.xAxisName = func.xAxisName;
 		this.yAxisName = func.yAxisName;
 		this.tolerance = func.tolerance;
-		this.points = func.points;
+		this.initialized = true;
 	}
 
 	@Override
 	public void set(double min, int num, double delta) {
-		setFail();
+		if (!initialized)
+			super.set(min, num, delta);
+		else
+			setFail();
 	}
 
 	@Override
 	public void set(double min, double max, int num) {
-		setFail();
+		if (!initialized)
+			super.set(min, max, num);
+		else
+			setFail();
 	}
 
 	@Override
 	protected void set(double min, double max, int num, double[] points) {
-		setFail();
+		if (!initialized)
+			super.set(min, max, num, points);
+		else
+			setFail();
 	}
 
 	@Override
