@@ -222,7 +222,7 @@ public interface AperiodicityModel extends ParameterizedModel {
 			if (fallback != null) {
 				if (!models.isEmpty())
 					name.append("; ");
-				name.append("; FALLBACK="+fallback);
+				name.append("FALLBACK="+fallback);
 			}
 			name.append("]");
 			return getMetadataString(name.toString());
