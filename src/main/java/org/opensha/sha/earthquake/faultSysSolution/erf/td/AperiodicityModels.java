@@ -75,11 +75,14 @@ public enum AperiodicityModels {
 	public abstract AperiodicityModel instance(FaultSystemSolution fltSysSolution);
 	
 	public static final String PARAM_NAME = "Aperiodicity Model";
+	private static final String PARAM_INFO = "Aperiodicity model that may depend on factors such as mangitude or tectonic regime.";
 	
 	public static EnumParameterizedModelarameter<AperiodicityModels, AperiodicityModel> buildParameter(
 			FaultSystemSolution fltSysSolution, EnumSet<AperiodicityModels> choices, AperiodicityModels defaultValue) {
-		return new EnumParameterizedModelarameter<AperiodicityModels, AperiodicityModel>(
+		EnumParameterizedModelarameter<AperiodicityModels, AperiodicityModel> param = new EnumParameterizedModelarameter<>(
 				PARAM_NAME, choices, defaultValue, true, e -> e.instance(fltSysSolution));
+		param.setInfo(PARAM_INFO);
+		return param;
 	}
 
 }

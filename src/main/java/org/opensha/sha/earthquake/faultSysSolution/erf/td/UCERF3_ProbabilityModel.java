@@ -36,8 +36,6 @@ public class UCERF3_ProbabilityModel extends AbstractFSS_ProbabilityModel implem
 	static double max_time_for_normBPT_CDF=5;
 	static int num_for_normBPT_CDF=501;
 	
-	public static final String RENEWAL_MODEL_PARAM_NAME = "Renewal Model";
-	
 	private ParameterList params;
 	
 	public UCERF3_ProbabilityModel(FaultSystemSolution sol,
@@ -70,7 +68,7 @@ public class UCERF3_ProbabilityModel extends AbstractFSS_ProbabilityModel implem
 			// display it if we have multiple options, or a single option with its own parameters
 			params.addParameter(aperiodicityParam);
 		
-		renewalModelParam = new EnumParameter<>(RENEWAL_MODEL_PARAM_NAME, supportedRenewalModels, renewalModel, null);
+		renewalModelParam = RenewalModels.buildParameter(supportedRenewalModels, renewalModel);
 		renewalModelParam.addParameterChangeListener(this);
 		if (supportedRenewalModels.size() > 1)
 			// display it if we have multiple options

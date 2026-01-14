@@ -42,11 +42,15 @@ public enum HistoricalOpenIntervals {
 	public abstract HistoricalOpenInterval instance(FaultSystemSolution fltSysSolution);
 	
 	public static final String PARAM_NAME = "Historical Open Interval";
+	private final static String PARAM_INFO = "Historic time interval over which an event is known not to have occurred, "
+			+ "usually described by the start year of that interval.";
 	
 	public static EnumParameterizedModelarameter<HistoricalOpenIntervals, HistoricalOpenInterval> buildParameter(
 			FaultSystemSolution fltSysSolution, EnumSet<HistoricalOpenIntervals> choices, HistoricalOpenIntervals defaultValue) {
-		return new EnumParameterizedModelarameter<HistoricalOpenIntervals, HistoricalOpenInterval>(
+		EnumParameterizedModelarameter<HistoricalOpenIntervals, HistoricalOpenInterval> param = new EnumParameterizedModelarameter<>(
 				PARAM_NAME, choices, defaultValue, true, e -> e.instance(fltSysSolution));
+		param.setInfo(PARAM_INFO);
+		return param;
 	}
 
 }

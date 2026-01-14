@@ -16,6 +16,8 @@ public class TimeDepFaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 	public static final String NAME = "Time-Dependent Fault System Solution ERF";
 	
 	public static final String PROB_MODEL_PARAM_NAME = "Probability Model";
+	private static final String PROB_MODEL_PARAM_INFO = "ERF probability model. Individual options may have their own "
+			+ "adjustable parameters that display below.";
 	private EnumParameterizedModelarameter<FSS_ProbabilityModels, FSS_ProbabilityModel> probModelParam;
 	private FSS_ProbabilityModel probModel;
 	private boolean probModelChanged = true;
@@ -38,6 +40,7 @@ public class TimeDepFaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 		probModelParam = new EnumParameterizedModelarameter<>(
 				PROB_MODEL_PARAM_NAME, probModelChoices, probModelChoice, true,
 				model -> buildProbModelInstance(model));
+		probModelParam.setInfo(PROB_MODEL_PARAM_INFO);
 		// this means that we want to be notified when any lower level parameter changes (e.g., TD internal parameters)
 		probModelParam.setPropagateInstanceParamChangeEvents(true);
 		probModelParam.addParameterChangeListener(this);
