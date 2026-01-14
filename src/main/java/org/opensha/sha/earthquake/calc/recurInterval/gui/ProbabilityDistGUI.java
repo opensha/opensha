@@ -34,10 +34,12 @@ import org.jfree.data.Range;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.gui.plot.ButtonControlPanel;
 import org.opensha.commons.param.Parameter;
+import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.editor.impl.ConstrainedStringParameterEditor;
 import org.opensha.commons.param.editor.impl.ParameterListEditor;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
+import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.sha.earthquake.calc.recurInterval.BPT_DistCalc;
@@ -78,6 +80,15 @@ public class ProbabilityDistGUI extends JFrame implements ParameterChangeListene
 	private static final String PROB_DIST_PARAM_NAME = "Probability Distribution";
 	private StringParameter probDistParam;
 
+	public final static String DURATION_PARAM_NAME = "Duration";
+	protected final static String DURATION_PARAM_INFO = "Duration of the forecast";
+	protected final static Double DEFAULT_DURATION_PARAM_VAL = Double.valueOf(30);
+	private DoubleParameter durationParam;
+
+	public final static String HIST_OPEN_INTERVAL_PARAM_NAME = "Historic Open Interval";
+	protected final static String HIST_OPEN_INTERVAL_PARAM_INFO = "Historic time interval over which event is known not to have occurred";
+	protected final static Double DEFAULT_HIST_OPEN_INTERVAL_PARAM_VAL = Double.valueOf(0.0);
+	private DoubleParameter histOpenIntParam;
 
 	public ProbabilityDistGUI() {
 		try {
@@ -146,7 +157,7 @@ public class ProbabilityDistGUI extends JFrame implements ParameterChangeListene
 		plotSplitPane.add(paramSplitPane, JSplitPane.RIGHT);
 		mainSplitPane.add(buttonPanel, JSplitPane.BOTTOM);
 		paramSplitPane.setOrientation(JSplitPane.VERTICAL_SPLIT);
-		paramSplitPane.setDividerLocation(100);
+		paramSplitPane.setDividerLocation(250);
 		paramSplitPane.add(editorPanel,JSplitPane.BOTTOM);
 		this.getContentPane().add(mainSplitPane, java.awt.BorderLayout.CENTER);
 		plotSplitPane.setDividerLocation(600);
@@ -290,18 +301,34 @@ public class ProbabilityDistGUI extends JFrame implements ParameterChangeListene
 		probDistParam = new StringParameter(PROB_DIST_PARAM_NAME,
 				this.probDistNames,
 				probDistNames.get(0));
-		ConstrainedStringParameterEditor probDistParamEditor = new ConstrainedStringParameterEditor(probDistParam);
-		probDistParam.addParameterChangeListener(this);
+		
+		durationParam = new  DoubleParameter(DURATION_PARAM_NAME, Double.MIN_VALUE, Double.MAX_VALUE, DEFAULT_DURATION_PARAM_VAL);
+		durationParam.setInfo(DURATION_PARAM_INFO);
+
+		histOpenIntParam = new  DoubleParameter(HIST_OPEN_INTERVAL_PARAM_NAME, 0, Double.MAX_VALUE, DEFAULT_HIST_OPEN_INTERVAL_PARAM_VAL);
+		histOpenIntParam.setInfo(HIST_OPEN_INTERVAL_PARAM_INFO);
+		
+		ParameterList params = new ParameterList();
+		params.addParameter(probDistParam);
+		params.addParameter(durationParam);
+		params.addParameter(histOpenIntParam);
+		
+		for (Parameter<?> param : params)
+			param.addParameterChangeListener(this);
+		
+		ParameterListEditor editor = new ParameterListEditor(params);
+		editor.setTitle("Forecast Parameters");
+		
 		JPanel probDistSelectorPanel = new JPanel();
 		probDistSelectorPanel.setLayout(gridBagLayout1);
-		probDistSelectorPanel.add(probDistParamEditor,
+		probDistSelectorPanel.add(editor,
 				new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0
 						, GridBagConstraints.CENTER,
 						GridBagConstraints.BOTH,
 						new Insets(1, 1, 1, 1), 0, 0));
 		probDistSelectorPanel.validate();
 		probDistSelectorPanel.repaint();
-		this.paramSplitPane.add(probDistSelectorPanel,paramSplitPane.TOP);
+		this.paramSplitPane.add(probDistSelectorPanel,JSplitPane.TOP);
 
 	}
 
@@ -312,6 +339,7 @@ public class ProbabilityDistGUI extends JFrame implements ParameterChangeListene
 		EqkProbDistCalc selectedProbDist = getSelectedProbDist();
 		editorPanel.removeAll();
 		ParameterListEditor paramListEditor = new ParameterListEditor(selectedProbDist.getAdjParams());
+		paramListEditor.setTitle("Distribution Parameters");
 		editorPanel.add(paramListEditor,
 				new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0
 						, GridBagConstraints.CENTER,
@@ -369,15 +397,16 @@ public class ProbabilityDistGUI extends JFrame implements ParameterChangeListene
 			this.plottingPanelsList.get(1).addFunc(selectedProbDist.getCDF());
 			this.plottingPanelsList.get(2).addFunc(selectedProbDist.getSurvivorFunc());
 			this.plottingPanelsList.get(3).addFunc(selectedProbDist.getHazFunc());
-			EvenlyDiscretizedFunc condFunc = selectedProbDist.getCondProbFunc();
+			double duration = durationParam.getValue();
+			double histOpenInterval = histOpenIntParam.getValue();
+			EvenlyDiscretizedFunc condFunc = selectedProbDist.getCondProbFunc(duration);
 			// now add the CondProbForUnknownTimeSinceLastEvent to the info string
-			Parameter param = selectedProbDist.getAdjParams().getParameter(EqkProbDistCalc.HIST_OPEN_INTERVAL_PARAM_NAME);
 			condFunc.setInfo(condFunc.getInfo()+
-					"\nCond Prob = "+(float)selectedProbDist.getCondProbForUnknownTimeSinceLastEvent()+
-					" if date of last event unknown, but "+param.getName() +" = "+param.getValue()+"\n");
+					"\nCond Prob = "+(float)selectedProbDist.getCondProbForUnknownTimeSinceLastEvent(duration, histOpenInterval)+
+					" if date of last event unknown, but "+histOpenIntParam.getName() +" = "+histOpenInterval+"\n");
 			this.plottingPanelsList.get(4).addFunc(condFunc);
-			this.plottingPanelsList.get(5).addFunc(selectedProbDist.getCondProbGainFunc());
-			this.plottingPanelsList.get(6).addFunc(selectedProbDist.getTimeSinceLastEventPDF());
+			this.plottingPanelsList.get(5).addFunc(selectedProbDist.getCondProbGainFunc(duration));
+			this.plottingPanelsList.get(6).addFunc(selectedProbDist.getTimeSinceLastEventPDF(histOpenInterval));
 
 			// catch the error and display messages in case of input error
 		}

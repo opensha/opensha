@@ -1,15 +1,14 @@
 package org.opensha.sha.earthquake.calc.recurInterval;
 
-import java.util.ArrayList;
-
-import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
-import org.opensha.commons.gui.plot.GraphWindow;
+import org.opensha.commons.data.function.QuickDiscretizedFuncInterpolator;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.IntegerParameter;
+
+import com.google.common.base.Preconditions;
 
 
 /**
@@ -43,12 +42,16 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	
 	final static boolean D = true;	// debugging flag
 	
+	// distributions
 	protected EvenlyDiscretizedFunc pdf, cdf, integratedCDF, integratedOneMinusCDF;
-	protected double mean, aperiodicity, deltaX, duration, histOpenInterval;
+	// for efficient interpolation of the CDF
+	protected QuickDiscretizedFuncInterpolator cdfInterpolator;
+	
+	protected double mean, aperiodicity, deltaX;
 	protected int numPoints;
 	protected boolean interpolate = true;
 	public static final double DELTA_X_DEFAULT = 0.001;
-	protected boolean upToDate=false;
+	private volatile boolean upToDate = false;
 	protected  String NAME;
 	protected String commonInfoString;
 	
@@ -56,48 +59,96 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	// Parameter names
 	public final static String MEAN_PARAM_NAME= "Mean";
 	public final static String APERIODICITY_PARAM_NAME = "Aperiodicity";
-	public final static String DURATION_PARAM_NAME = "Duration";
 	public final static String DELTA_X_PARAM_NAME = "Delta T";
 	public final static String NUM_POINTS_PARAM_NAME = "Num Points";
-	public final static String HIST_OPEN_INTERVAL_PARAM_NAME = "Historic Open Interval";
 	
 	// Parameter Infos
 	protected final static String MEAN_PARAM_INFO= "Mean";
 	protected final static String APERIODICITY_PARAM_INFO = "Aperiodicity is the standard deviation divided by the mean ";
-	protected final static String DURATION_PARAM_INFO = "Duration of the forecast";
 	protected final static String DELTA_X_PARAM_INFO = "The time discretization for the distribution";
 	protected final static String NUM_POINTS_PARAM_INFO = "The number of points for the distribution";
-	protected final static String HIST_OPEN_INTERVAL_PARAM_INFO = "Historic time interval over which event is known not to have occurred";
 	
 	// default param values
 	protected final static Double DEFAULT_MEAN_PARAM_VAL = Double.valueOf(100);
 	protected final static Double DEFAULT_APERIODICITY_PARAM_VAL = Double.valueOf(0.5);
-	protected final static Double DEFAULT_DURATION_PARAM_VAL = Double.valueOf(30);
 	protected final static Double DEFAULT_DELTAX_PARAM_VAL = Double.valueOf(1);
 	protected final static Integer DEFAULT_NUMPOINTS_PARAM_VAL = Integer.valueOf(500);
-	protected final static Double DEFAULT_HIST_OPEN_INTERVAL_PARAM_VAL = Double.valueOf(0.0);
+	
 	
 	// various adjustable params
-	protected DoubleParameter meanParam, aperiodicityParam, durationParam, deltaX_Param, histOpenIntParam;
+	protected DoubleParameter meanParam, aperiodicityParam, deltaX_Param;
 	protected IntegerParameter numPointsParam;
 	
 	// adjustable parameter list
 	protected ParameterList adjustableParams;
+	
+	void clearCachedDistributions() {
+		pdf = null;
+		cdf = null;
+		integratedCDF = null;
+		integratedOneMinusCDF = null;
+		cdfInterpolator = null;
+	}
 
-	/*
-	 * The method is where subclasses are to compute the pdf and cdf for the given parameters (mean, aperiodicity, delta
+	/**
+	 * The method is where subclasses are to compute the pdf and cdf for the given parameters (mean, aperiodicity, delta).
+	 * 
+	 * This wall be called by {@link #ensureUpToDate()} if {@link #upToDate} is false, first calling
+	 * {@link #clearCachedDistributions()} and then finally setting {@link #upToDate} to true.
 	 */
 	abstract void computeDistributions();
 	
+	/**
+	 * Ensures that {@link #computeDistributions()} is called if any distributions are stale.
+	 */
+	final void ensureUpToDate() {
+		if (!upToDate) {
+			synchronized (this) {
+				if (!upToDate) {
+					clearCachedDistributions();
+					computeDistributions();
+					upToDate = true;
+				}
+			}
+		}
+	}
+	
 	public EvenlyDiscretizedFunc getCDF() {
-		if(!upToDate) computeDistributions();
+		ensureUpToDate();
+		if (cdf.getName() == null) {
+			cdf.setName(NAME+" CDF (Cumulative Density Function)");
+			cdf.setInfo(adjustableParams.toString());
+		}
+		return cdf;
+	}
+	
+	/**
+	 * Same as {@link #getCDF()}, except that the name and info fields are set with parameters; potentially useful for GUIs.
+	 * @return
+	 */
+	public EvenlyDiscretizedFunc getCDF_WithInfo() {
+		ensureUpToDate();
 		cdf.setName(NAME+" CDF (Cumulative Density Function)");
 		cdf.setInfo(adjustableParams.toString());
 		return cdf;
 	}
 	
+	/**
+	 * @return efficient interpolator of the current CDF
+	 */
+	public QuickDiscretizedFuncInterpolator getCDF_Interpolator() {
+		ensureUpToDate();
+		if (cdfInterpolator == null) {
+			synchronized (this) {
+				if (cdfInterpolator == null)
+					cdfInterpolator = cdf.getQuickInterpolator();
+			}
+		}
+		return cdfInterpolator;
+	}
+	
 	public EvenlyDiscretizedFunc getSurvivorFunc() {
-		if(!upToDate) computeDistributions();
+		ensureUpToDate();
 		EvenlyDiscretizedFunc survFunc = new EvenlyDiscretizedFunc(0, cdf.getMaxX(), cdf.size());
 		survFunc.setName(NAME+" Survivor Function (1-CDF)");
 		survFunc.setInfo(adjustableParams.toString());
@@ -108,14 +159,14 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 
 
 	public EvenlyDiscretizedFunc getPDF() {
-		if(!upToDate) computeDistributions();
+		ensureUpToDate();
 		pdf.setName(NAME+" PDF (Probability Density Function)");
 		pdf.setInfo(adjustableParams.toString()+"\nComputed mean = "+(float)computeMeanFromPDF(pdf));
 		return pdf;
 	}
 
 	public EvenlyDiscretizedFunc getHazFunc() {
-		if(!upToDate) computeDistributions();
+		ensureUpToDate();
 		EvenlyDiscretizedFunc hazFunc = new EvenlyDiscretizedFunc(0, pdf.getMaxX(), pdf.size());
 		double haz;
 		for(int i=0;i<hazFunc.size();i++) {
@@ -128,17 +179,34 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 		return hazFunc;
 	}
 	
+	protected static void validateDuration(double duration) {
+		Preconditions.checkState(duration > 0d && Double.isFinite(duration),
+				"Duration must be positive and finite: %s", duration);
+	}
+	
+	protected static void validateHistOpenInterval(double histOpenInterval) {
+		Preconditions.checkState(histOpenInterval >= 0d && Double.isFinite(histOpenInterval),
+				"Historic open interval must be non-negative and finite: %s", histOpenInterval);
+	}
+	
 	/*
 	 * This gives a function of the probability of an event occurring between time T
 	 * (on the x-axis) and T+duration, conditioned that it has not occurred before T.
 	 */
-	public EvenlyDiscretizedFunc getCondProbFunc() {
-		if(duration==0)
-			throw new RuntimeException("duration has not been set");
-		if(!upToDate) computeDistributions();
-		int numPts = numPoints - (int)(duration/deltaX+1);
-//System.out.println("numPts="+numPts+"\t"+duration);
-		EvenlyDiscretizedFunc condFunc = new EvenlyDiscretizedFunc(0.0, numPts , deltaX);
+	public EvenlyDiscretizedFunc getCondProbFunc(double duration) {
+		validateDuration(duration);
+		ensureUpToDate();
+//		int numPts = numPoints - (int)(duration/deltaX+1);
+////System.out.println("numPts="+numPts+"\t"+duration);
+//		EvenlyDiscretizedFunc condFunc = new EvenlyDiscretizedFunc(0.0, numPts , deltaX);
+		int durBins = (int)Math.ceil(duration / deltaX);
+		int maxStartIndex = (numPoints - 1) - durBins;
+		Preconditions.checkState(maxStartIndex >= 0,
+				"Duration too large for distributions: duration=%s, deltaX=%s, numPoints=%s",
+				duration, deltaX, numPoints);
+
+		int numStartPoints = maxStartIndex + 1;
+		EvenlyDiscretizedFunc condFunc = new EvenlyDiscretizedFunc(0.0, numStartPoints, deltaX);
 		for(int i=0;i<condFunc.size();i++) {
 			condFunc.set(i,getCondProb(condFunc.getX(i), duration));
 		}
@@ -147,17 +215,8 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 		return condFunc;
 	}
 	
-	
-	public EvenlyDiscretizedFunc getCondProbFunc(double duration) {
-		this.duration = duration;
-		if(!upToDate) computeDistributions();
-		return getCondProbFunc();
-	}
-	
-	
-	
-	public EvenlyDiscretizedFunc getCondProbGainFunc() {
-		EvenlyDiscretizedFunc func = getCondProbFunc();
+	public EvenlyDiscretizedFunc getCondProbGainFunc(double duration) {
+		EvenlyDiscretizedFunc func = getCondProbFunc(duration);
 //		double poisProb = 1.0-Math.exp(-duration/mean);
 //		func.scale(1.0/poisProb);
 //		func.setName(NAME+" Conditional Probability Gain Function");
@@ -174,7 +233,7 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	 * This computes the the probability of occurrence over the given duration conditioned 
 	 * on timeSinceLast (how long it has been since the last event).
 	 * 
-	 * This returns Double.NaN is the denominator (total area/prob remaining) is less than 
+	 * This returns Double.NaN if the denominator (total area/prob remaining) is less than 
 	 * 1e-14 to avoid numerical problems.
 	 *  
 	 * @param timeSinceLast
@@ -182,31 +241,45 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	 * @return
 	 */
 	public double getCondProb(double timeSinceLast, double duration) {
-		this.duration = duration;
-		if(!upToDate) computeDistributions();
+		ensureUpToDate();
 		
-		boolean interpolate = this.interpolate;
-		int pt1 = 0, pt2 = 0;
-		if (!interpolate) {
-			pt1 = (int)Math.round(timeSinceLast/deltaX);
-			pt2 = (int)Math.round((timeSinceLast+duration)/deltaX);
-			if (pt1 == pt2 || pt1 == 0)
-				// special cases to force interpolation in order to avoid zeros
-				interpolate = true;
+		boolean doInterp = this.interpolate;
+		int index1 = 0, index2 = 0;
+		if (!doInterp) {
+			index1 = (int)Math.floor(timeSinceLast/deltaX);
+			index2 = (int)Math.floor((timeSinceLast+duration)/deltaX);
+			
+			// clamp the indexes in case of precision issues
+			int maxIndex = cdf.size() - 1;
+			if (index1 < 0)
+				index1 = 0;
+			else if (index1 > maxIndex)
+				index1 = maxIndex;
+			if (index2 < 0)
+				index2 = 0;
+			else if (index2 > maxIndex)
+				index2 = maxIndex;
+			
+			if (index1 == index2 || index1 == 0)
+				// special cases to force interpolation in order to avoid zeros, e.g., if duration ~= deltaX
+				doInterp = true;
 		}
 		
 		double p1, p2;
-		if (interpolate) {
-			p1 = cdf.getInterpolatedY(timeSinceLast);
-			p2 = cdf.getInterpolatedY(timeSinceLast+duration);
+		if (doInterp) {
+			QuickDiscretizedFuncInterpolator interp = getCDF_Interpolator();
+			p1 = interp.findY(timeSinceLast);
+			p2 = interp.findY(timeSinceLast+duration);
 		} else {
-			p2 = cdf.getY(pt2);
-			p1 = cdf.getY(pt1);
+			p2 = cdf.getY(index2);
+			p1 = cdf.getY(index1);
 		}
-		if((1.0-p1) > 1e-14) // avoid numerical problems
-			return (p2-p1)/(1.0-p1);
-		else
-			return Double.NaN;
+		double denom = 1d - p1;
+		if(denom > 1e-14)
+			// large enough to be numerically stable
+			return (p2-p1)/denom;
+		// numerical issue
+		return Double.NaN;
 	}	
 
 	/**
@@ -221,30 +294,24 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 		aperiodicityParam  = new DoubleParameter(APERIODICITY_PARAM_NAME, Double.MIN_VALUE, Double.MAX_VALUE, DEFAULT_APERIODICITY_PARAM_VAL);
 		aperiodicityParam.setInfo(APERIODICITY_PARAM_INFO);
 		aperiodicityParam.addParameterChangeListener(this);
-		durationParam = new  DoubleParameter(DURATION_PARAM_NAME, Double.MIN_VALUE, Double.MAX_VALUE, DEFAULT_DURATION_PARAM_VAL);
-		durationParam.setInfo(DURATION_PARAM_INFO);
-		durationParam.addParameterChangeListener(this);
 		deltaX_Param = new  DoubleParameter(DELTA_X_PARAM_NAME, Double.MIN_VALUE, Double.MAX_VALUE, DEFAULT_DELTAX_PARAM_VAL);
 		deltaX_Param.setInfo(DELTA_X_PARAM_INFO);
 		deltaX_Param.addParameterChangeListener(this);
 		numPointsParam = new  IntegerParameter(NUM_POINTS_PARAM_NAME, Integer.MIN_VALUE, Integer.MAX_VALUE, DEFAULT_NUMPOINTS_PARAM_VAL);;
 		numPointsParam.setInfo(NUM_POINTS_PARAM_INFO);
 		numPointsParam.addParameterChangeListener(this);
-		histOpenIntParam = new  DoubleParameter(HIST_OPEN_INTERVAL_PARAM_NAME, 0, Double.MAX_VALUE, DEFAULT_HIST_OPEN_INTERVAL_PARAM_VAL);
-		histOpenIntParam.setInfo(HIST_OPEN_INTERVAL_PARAM_INFO);
-		histOpenIntParam.addParameterChangeListener(this);
 
 		adjustableParams = new ParameterList();
 		adjustableParams.addParameter(meanParam);
 		adjustableParams.addParameter(aperiodicityParam);
-		adjustableParams.addParameter(durationParam);
+//		adjustableParams.addParameter(durationParam);
 		adjustableParams.addParameter(deltaX_Param);
 		adjustableParams.addParameter(numPointsParam);
-		adjustableParams.addParameter(histOpenIntParam);
+//		adjustableParams.addParameter(histOpenIntParam);
 
 		setAll(DEFAULT_MEAN_PARAM_VAL.doubleValue(), DEFAULT_APERIODICITY_PARAM_VAL.doubleValue(),
-				DEFAULT_DELTAX_PARAM_VAL.doubleValue(), DEFAULT_NUMPOINTS_PARAM_VAL.intValue(),
-				DEFAULT_DURATION_PARAM_VAL.doubleValue(), DEFAULT_HIST_OPEN_INTERVAL_PARAM_VAL.doubleValue());
+				DEFAULT_DELTAX_PARAM_VAL.doubleValue(), DEFAULT_NUMPOINTS_PARAM_VAL.intValue());
+//				DEFAULT_DURATION_PARAM_VAL.doubleValue(), DEFAULT_HIST_OPEN_INTERVAL_PARAM_VAL.doubleValue());
 
 	}
 	
@@ -280,8 +347,7 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	 */
 	public void fitToThisFunction(EvenlyDiscretizedFunc dist, double minMean, double maxMean,
 			int numMean, double minAper, double maxAper,int numAper) {
-		
-		if(!upToDate) computeDistributions();
+		ensureUpToDate();
 		
 		deltaX_Param.setValue(dist.getDelta()/2);	// increase discretization here just to be safe
 		numPointsParam.setValue(dist.size()*2+1);	// vals start from zero whereas passed in histograms might start at delta/2
@@ -323,9 +389,10 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	 * interval is applied (the latter defaults to zero if never set).
 	 * @return
 	 */
-	public double getCondProbForUnknownTimeSinceLastEvent() {
-		
-		if(!upToDate) computeDistributions();
+	public double getCondProbForUnknownTimeSinceLastEvent(double duration, double histOpenInterval) {
+		validateDuration(duration);
+		validateHistOpenInterval(histOpenInterval);
+		ensureUpToDate();
 		
 		if(integratedCDF==null) 
 			makeIntegratedCDFs();
@@ -339,7 +406,7 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 			
 			double numer2=0;
 			double denom2=0;
-			EvenlyDiscretizedFunc condProbFunc = getCondProbFunc();
+			EvenlyDiscretizedFunc condProbFunc = getCondProbFunc(duration);
 			int firstIndex = condProbFunc.getClosestXIndex(histOpenInterval);
 			for(int i=firstIndex;i<condProbFunc.size();i++) {
 				double probOfTimeSince = (1-cdf.getY(i));
@@ -405,9 +472,9 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	 * This provides the PDF of the date of last event when only the historic open interval is known.
 	 * @return
 	 */
-	public EvenlyDiscretizedFunc getTimeSinceLastEventPDF() {
-		
-		if(!upToDate) computeDistributions();
+	public EvenlyDiscretizedFunc getTimeSinceLastEventPDF(double histOpenInterval) {
+		validateHistOpenInterval(histOpenInterval);
+		ensureUpToDate();
 
 		EvenlyDiscretizedFunc timeSinceLastPDF = new EvenlyDiscretizedFunc(0.0, numPoints , deltaX);
 		double normDenom=0;
@@ -429,11 +496,9 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	 * This provides the mean date of last event when only the historic open interval is known.
 	 * @return
 	 */
-	public double getMeanTimeSinceLastEventPDF() {
-		return computeMeanFromPDF(getTimeSinceLastEventPDF());
+	public double getMeanTimeSinceLastEventPDF(double histOpenInterval) {
+		return computeMeanFromPDF(getTimeSinceLastEventPDF(histOpenInterval));
 	}
-
-	
 	
 	/**
 	 * This computes the mean from the given PDF
@@ -449,8 +514,6 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 		}
 		return result/normDenom;
 	}
-
-
 	
 	/**
 	 * Method to set several values (but corresponding parameters are not changed,
@@ -460,49 +523,11 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	 * @param deltaX
 	 * @param numPoints
 	 */
-	public void setAll(double mean, double aperiodicity, double deltaX, int numPoints) {
+	public synchronized void setAll(double mean, double aperiodicity, double deltaX, int numPoints) {
 		this.mean=mean;
 		this.aperiodicity=aperiodicity;
 		this.deltaX=deltaX;;
 		this.numPoints=numPoints;
-		upToDate=false;
-	}
-
-	
-	/**
-	 * Method to set several values (but corresponding parameters are not changed,
-	 * for efficiency, so getAdjParams().toString() won't be correct)
-	 * @param mean
-	 * @param aperiodicity
-	 * @param deltaX
-	 * @param numPoints
-	 * @param duration
-	 */
-	public void setAll(double mean, double aperiodicity, double deltaX, int numPoints, double duration) {
-		this.mean=mean;
-		this.aperiodicity=aperiodicity;
-		this.deltaX=deltaX;;
-		this.numPoints=numPoints;
-		this.duration = duration;
-		upToDate=false;
-	}
-	
-	/**
-	 * Method to set several values (but corresponding parameters are not changed,
-	 * for efficiency, so getAdjParams().toString() won't be correct)
-	 * @param mean
-	 * @param aperiodicity
-	 * @param deltaX
-	 * @param numPoints
-	 * @param duration
-	 */
-	public void setAll(double mean, double aperiodicity, double deltaX, int numPoints, double duration, double histOpenInterval) {
-		this.mean=mean;
-		this.aperiodicity=aperiodicity;
-		this.deltaX=deltaX;;
-		this.numPoints=numPoints;
-		this.duration = duration;
-		this.histOpenInterval = histOpenInterval;
 		upToDate=false;
 	}
 	
@@ -522,15 +547,12 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	 * @param aperiodicity
 	 * @param deltaX
 	 * @param numPoints
-	 * @param duration
 	 */
-	public void setAllParameters(double mean, double aperiodicity, double deltaX, int numPoints, double duration, double histOpenInterval) {
+	public synchronized void setAllParameters(double mean, double aperiodicity, double deltaX, int numPoints) {
 		this.meanParam.setValue(mean);
 		this.aperiodicityParam.setValue(aperiodicity);
 		this.deltaX_Param.setValue(deltaX);
 		this.numPointsParam.setValue(numPoints);
-		this.durationParam.setValue(duration);
-		this.histOpenIntParam.setValue(histOpenInterval);
 		upToDate=false;
 	}
 
@@ -544,7 +566,7 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	 * @param mean
 	 * @param aperiodicity
 	 */
-	public void setAll(double mean, double aperiodicity) {
+	public synchronized void setAll(double mean, double aperiodicity) {
 		this.mean=mean;
 		this.aperiodicity=aperiodicity;
 		this.deltaX = DELTA_X_DEFAULT*mean;
@@ -552,31 +574,21 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 		upToDate=false;
 	}
 	
-	
-	
-	public void setDuration(double duration) {
-		this.duration=duration;
-	}
-	
-	public void setDurationAndHistOpenInterval(double duration, double histOpenInterval) {
-		this.duration=duration;
-		this.histOpenInterval=histOpenInterval;
-	}
-	
-	
 	/**
 	 * Set the primitive types whenever a parameter changes
 	 */
-	public void parameterChange(ParameterChangeEvent event) {
+	public synchronized void parameterChange(ParameterChangeEvent event) {
 		String paramName = event.getParameterName();
 		if(paramName.equalsIgnoreCase(MEAN_PARAM_NAME)) this.mean = ((Double) meanParam.getValue()).doubleValue();
 		else if(paramName.equalsIgnoreCase(APERIODICITY_PARAM_NAME)) this.aperiodicity = ((Double) aperiodicityParam.getValue()).doubleValue();
-		else if(paramName.equalsIgnoreCase(DURATION_PARAM_NAME)) this.duration = ((Double) durationParam.getValue()).doubleValue();
+//		else if(paramName.equalsIgnoreCase(DURATION_PARAM_NAME)) this.duration = ((Double) durationParam.getValue()).doubleValue();
 		else if(paramName.equalsIgnoreCase(DELTA_X_PARAM_NAME)) this.deltaX = ((Double) deltaX_Param.getValue()).doubleValue();
 		else if(paramName.equalsIgnoreCase(NUM_POINTS_PARAM_NAME)) this.numPoints = ((Integer) numPointsParam.getValue()).intValue();
-		else if(paramName.equalsIgnoreCase(HIST_OPEN_INTERVAL_PARAM_NAME)) this.histOpenInterval = ((Double) histOpenIntParam.getValue()).doubleValue();
+//		else if(paramName.equalsIgnoreCase(HIST_OPEN_INTERVAL_PARAM_NAME)) this.histOpenInterval = ((Double) histOpenIntParam.getValue()).doubleValue();
 		this.upToDate = false;
 	}
+	
+	
 
 
 }

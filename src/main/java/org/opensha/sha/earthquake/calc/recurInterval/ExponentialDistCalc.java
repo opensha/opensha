@@ -33,54 +33,15 @@ public final class ExponentialDistCalc extends EqkProbDistCalc implements Parame
 	 * @param numPoints
 	 */
 	public void setAll(double mean, double deltaX, int numPoints) {
-		this.mean=mean;
-		this.deltaX=deltaX;;
-		this.numPoints=numPoints;
-		upToDate=false;
+		super.setAll(mean, Double.NaN, deltaX, numPoints);
 	}
-
-	
-	/**
-	 * Alternative without aperiodicity (which this distribution does not depend on)
-	 * @param mean
-	 * @param deltaX
-	 * @param numPoints
-	 * @param duration
-	 */
-	public void setAll(double mean, double deltaX, int numPoints, double duration) {
-		this.mean=mean;
-		this.deltaX=deltaX;;
-		this.numPoints=numPoints;
-		this.duration = duration;
-		upToDate=false;
-	}
-	
-	/**
-	 * Alternative without aperiodicity (which this distribution does not depend on)
-	 * @param mean
-	 * @param deltaX
-	 * @param numPoints
-	 * @param duration
-	 */
-	public void setAll(double mean, double deltaX, int numPoints, double duration, double histOpenInterval) {
-		this.mean=mean;
-		this.deltaX=deltaX;;
-		this.numPoints=numPoints;
-		this.duration = duration;
-		this.histOpenInterval = histOpenInterval;
-		upToDate=false;
-	}
-
 	
 	/**
 	 * Alternative without aperiodicity (which this distribution does not depend on)
 	 * @param mean
 	 */
 	public void setAll(double mean) {
-		this.mean=mean;
-		this.deltaX = DELTA_X_DEFAULT*mean;
-		this.numPoints = (int)Math.round(aperiodicity*10*mean/deltaX)+1;
-		upToDate=false;
+		super.setAll(mean, Double.NaN, DELTA_X_DEFAULT*mean, (int)Math.round(10*mean/deltaX)+1);
 	}
 	
 	
@@ -89,10 +50,8 @@ public final class ExponentialDistCalc extends EqkProbDistCalc implements Parame
 	 * Trapezoidal integration. 
 	 */
 	protected void computeDistributions() {
-		
-		// make these null
-		integratedCDF = null;
-		integratedOneMinusCDF = null;
+		// clear cached values
+		clearCachedDistributions();
 
 		pdf = new EvenlyDiscretizedFunc(0,numPoints,deltaX);
 		cdf = new EvenlyDiscretizedFunc(0,numPoints,deltaX);
@@ -105,7 +64,6 @@ public final class ExponentialDistCalc extends EqkProbDistCalc implements Parame
 			pdf.set(i,rate*Math.exp(-t*rate));
 			cdf.set(i,1-Math.exp(-t*rate));
 		}
-		upToDate = true;
 	}
 	
 	

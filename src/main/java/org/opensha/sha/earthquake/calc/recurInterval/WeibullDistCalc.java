@@ -48,10 +48,7 @@ public final class WeibullDistCalc extends EqkProbDistCalc implements ParameterC
 	 * Trapezoidal integration. 
 	 */
 	protected void computeDistributionsOld() {
-		
-		// make these null
-		integratedCDF = null;
-		integratedOneMinusCDF = null;
+		clearCachedDistributions();
 
 		pdf = new EvenlyDiscretizedFunc(0,numPoints,deltaX);
 		cdf = new EvenlyDiscretizedFunc(0,numPoints,deltaX);
@@ -76,16 +73,10 @@ public final class WeibullDistCalc extends EqkProbDistCalc implements ParameterC
 			pdf.set(i,pd);
 			cdf.set(i,cd);
 		}
-		upToDate = true;
 	}
 	
 	
 	protected void computeDistributions() {
-				
-		// make these null
-		integratedCDF = null;
-		integratedOneMinusCDF = null;
-
 		pdf = new EvenlyDiscretizedFunc(0,numPoints,deltaX);
 		cdf = new EvenlyDiscretizedFunc(0,numPoints,deltaX);
 		// set first y-values to zero
@@ -111,7 +102,6 @@ public final class WeibullDistCalc extends EqkProbDistCalc implements ParameterC
 			pdf.set(i,weibullDist.density(t));
 			cdf.set(i,weibullDist.cumulativeProbability(t));
 		}
-		upToDate = true;
 	}
 
 
@@ -223,7 +213,7 @@ public final class WeibullDistCalc extends EqkProbDistCalc implements ParameterC
     		double mean = getMean_fromShapeAndScaleParams(shape,scale);
     		System.out.println((float)shape+"\t"+(float)mean+"\t"+(float)cov);
     		WeibullDistCalc dist = new WeibullDistCalc();
-    		dist.setAllParameters(mean, cov, 0.01, 250, 0.2, 0d);
+    		dist.setAllParameters(mean, cov, 0.01, 250);
     		//dist.setAll(mean, cov, 0.01, 250); // this doesn't set parameters so info strings not correct
     		pdfList.add(dist.getPDF());
     		cdfList.add(dist.getCDF());
@@ -292,7 +282,7 @@ public final class WeibullDistCalc extends EqkProbDistCalc implements ParameterC
      * Override this to avoid numerical problems
      */
 	public EvenlyDiscretizedFunc getHazFunc() {
-		if(!upToDate) computeDistributions();
+		ensureUpToDate();
 		EvenlyDiscretizedFunc hazFunc = new EvenlyDiscretizedFunc(0, pdf.getMaxX(), pdf.size());
 		double haz;
 		for(int i=0;i<hazFunc.size();i++) {

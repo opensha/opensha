@@ -52,11 +52,6 @@ public final class LognormalDistCalc extends EqkProbDistCalc implements Paramete
 	 * Trapezoidal integration. 
 	 */
 	protected void computeDistributions() {
-		
-		// make these null
-		integratedCDF = null;
-		integratedOneMinusCDF = null;
-
 		pdf = new EvenlyDiscretizedFunc(0,numPoints,deltaX);
 		cdf = new EvenlyDiscretizedFunc(0,numPoints,deltaX);
 		// set first y-values to zero
@@ -82,7 +77,6 @@ public final class LognormalDistCalc extends EqkProbDistCalc implements Paramete
 			pdf.set(i,pd);
 			cdf.set(i,cd);
 		}
-		upToDate = true;
 	}
 
 	
