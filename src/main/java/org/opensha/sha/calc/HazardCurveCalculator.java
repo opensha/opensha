@@ -441,6 +441,8 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 	}
 	
 	public static boolean canSkipSource(Collection<SourceFilter> filters, ProbEqkSource source, Site site) {
+		if (source.getNumRuptures() == 0)
+			return true;
 		if (filters == null || filters.isEmpty())
 			return false;
 		if (!filters.isEmpty()) {
