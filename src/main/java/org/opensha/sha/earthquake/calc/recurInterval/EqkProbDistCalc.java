@@ -1,7 +1,7 @@
 package org.opensha.sha.earthquake.calc.recurInterval;
 
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
-import org.opensha.commons.data.function.QuickDiscretizedFuncInterpolator;
+import org.opensha.commons.data.function.DiscretizedFuncInterpolator;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
@@ -45,11 +45,14 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	// distributions
 	protected EvenlyDiscretizedFunc pdf, cdf, integratedCDF, integratedOneMinusCDF;
 	// for efficient interpolation of the CDF
-	protected QuickDiscretizedFuncInterpolator cdfInterpolator;
+	protected DiscretizedFuncInterpolator interpCDF;
+	protected DiscretizedFuncInterpolator interpIntegratedCDF;
+	protected DiscretizedFuncInterpolator interpIntegratedOneMinusCDF;
 	
 	protected double mean, aperiodicity, deltaX;
 	protected int numPoints;
 	protected boolean interpolate = true;
+	protected boolean quickInterp = true;
 	public static final double DELTA_X_DEFAULT = 0.001;
 	private volatile boolean upToDate = false;
 	protected  String NAME;
@@ -87,7 +90,8 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 		cdf = null;
 		integratedCDF = null;
 		integratedOneMinusCDF = null;
-		cdfInterpolator = null;
+		interpCDF = null;
+		interpIntegratedCDF = null;
 	}
 
 	/**
@@ -136,15 +140,50 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	/**
 	 * @return efficient interpolator of the current CDF
 	 */
-	public QuickDiscretizedFuncInterpolator getCDF_Interpolator() {
+	public DiscretizedFuncInterpolator getCDF_Interpolator() {
 		ensureUpToDate();
-		if (cdfInterpolator == null) {
+		if (interpCDF == null) {
 			synchronized (this) {
-				if (cdfInterpolator == null)
-					cdfInterpolator = cdf.getQuickInterpolator();
+				if (interpCDF == null)
+					// this will precomptue some interpolation constants for speed after it is used 100 times
+					interpCDF = DiscretizedFuncInterpolator.getRepeatOptimized(cdf, 100);
 			}
 		}
-		return cdfInterpolator;
+		return interpCDF;
+	}
+	
+	/**
+	 * @return efficient interpolator of the current integrated CDF
+	 */
+	protected DiscretizedFuncInterpolator getIntegratedCDF_Interpolator() {
+		ensureUpToDate();
+		if (interpIntegratedCDF == null) {
+			synchronized (this) {
+				if (integratedCDF == null)
+					makeIntegratedCDFs();
+				if (interpIntegratedCDF == null)
+					// this will precomptue some interpolation constants for speed after it is used 100 times
+					interpIntegratedCDF = DiscretizedFuncInterpolator.getRepeatOptimized(integratedCDF, 100);
+			}
+		}
+		return interpIntegratedCDF;
+	}
+	
+	/**
+	 * @return efficient interpolator of the current integrated CDF
+	 */
+	protected DiscretizedFuncInterpolator getIntegratedOneMinusCDF_Interpolator() {
+		ensureUpToDate();
+		if (interpIntegratedOneMinusCDF == null) {
+			synchronized (this) {
+				if (integratedOneMinusCDF == null)
+					makeIntegratedCDFs();
+				if (interpIntegratedOneMinusCDF == null)
+					// this will precomptue some interpolation constants for speed after it is used 100 times
+					interpIntegratedOneMinusCDF = DiscretizedFuncInterpolator.getRepeatOptimized(integratedOneMinusCDF, 100);
+			}
+		}
+		return interpIntegratedOneMinusCDF;
 	}
 	
 	public EvenlyDiscretizedFunc getSurvivorFunc() {
@@ -267,7 +306,7 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 		
 		double p1, p2;
 		if (doInterp) {
-			QuickDiscretizedFuncInterpolator interp = getCDF_Interpolator();
+			DiscretizedFuncInterpolator interp = getCDF_Interpolator();
 			p1 = interp.findY(timeSinceLast);
 			p2 = interp.findY(timeSinceLast+duration);
 		} else {
@@ -394,10 +433,14 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 		validateHistOpenInterval(histOpenInterval);
 		ensureUpToDate();
 		
-		if(integratedCDF==null) 
-			makeIntegratedCDFs();
-		double numer = duration - (integratedCDF.getInterpolatedY(histOpenInterval+duration)-integratedCDF.getInterpolatedY(histOpenInterval));
-		double denom = (integratedOneMinusCDF.getY(numPoints-1)-integratedOneMinusCDF.getInterpolatedY(histOpenInterval));
+//		if(integratedCDF==null) 
+//			makeIntegratedCDFs();
+//		double numer = duration - (integratedCDF.getInterpolatedY(histOpenInterval+duration)-integratedCDF.getInterpolatedY(histOpenInterval));
+//		double denom = (integratedOneMinusCDF.getY(numPoints-1)-integratedOneMinusCDF.getInterpolatedY(histOpenInterval));
+		DiscretizedFuncInterpolator interp = getIntegratedCDF_Interpolator();
+		DiscretizedFuncInterpolator oneMinusInterp = getIntegratedOneMinusCDF_Interpolator();
+		double numer = duration - (interp.findY(histOpenInterval+duration)-interp.findY(histOpenInterval));
+		double denom = (integratedOneMinusCDF.getY(numPoints-1)-oneMinusInterp.findY(histOpenInterval));
 		double result = numer/denom;
 		
 		
@@ -455,8 +498,8 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	
 	
 	protected void makeIntegratedCDFs() {
-		integratedCDF = new EvenlyDiscretizedFunc(0,numPoints,deltaX);
-		integratedOneMinusCDF = new EvenlyDiscretizedFunc(0,numPoints,deltaX);
+		EvenlyDiscretizedFunc integratedCDF = new EvenlyDiscretizedFunc(0,numPoints,deltaX);
+		EvenlyDiscretizedFunc integratedOneMinusCDF = new EvenlyDiscretizedFunc(0,numPoints,deltaX);
 		double sum1=0;
 		double sum2=0;
 		for(int i=1;i<numPoints;i++) {
@@ -465,6 +508,8 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 			integratedCDF.set(i,sum1);
 			integratedOneMinusCDF.set(i,sum2);
 		}
+		this.integratedCDF = integratedCDF;
+		this.integratedOneMinusCDF = integratedOneMinusCDF;
 	}
 	
 	
