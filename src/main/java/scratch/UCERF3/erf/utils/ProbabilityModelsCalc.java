@@ -851,8 +851,7 @@ public class ProbabilityModelsCalc {
 				double duration = durOverMean*refRI;
 
 				// get condProbForUnknownTimeSinceLast & condProbFunc from the calculator
-				probDistCalc.setDurationAndHistOpenInterval(duration, histOpenInterval);
-				double condProbForUnknownTimeSinceLast = probDistCalc.getCondProbForUnknownTimeSinceLastEvent();
+				double condProbForUnknownTimeSinceLast = probDistCalc.getCondProbForUnknownTimeSinceLastEvent(duration, histOpenInterval);
 				xyzDataCondProbForUnknown.set(x, y, Math.log10(condProbForUnknownTimeSinceLast));
 				double probGain = condProbForUnknownTimeSinceLast/computePoissonProb(refRI, duration);
 				xyzDataProbGain.set(x, y, Math.log10(probGain));
@@ -1008,8 +1007,7 @@ public class ProbabilityModelsCalc {
 	 */
 	public double computeCondProbForUnknownDateOfLastFast(double aveRecurIntervalYears, double histOpenIntervalYears, double durationYears, double aperiodicity) {
 		EqkProbDistCalc refCalc = getCachedRefProbDistCalc(aperiodicity);
-		refCalc.setDurationAndHistOpenInterval(durationYears*refRI/aveRecurIntervalYears, histOpenIntervalYears*refRI/aveRecurIntervalYears);
-		return refCalc.getCondProbForUnknownTimeSinceLastEvent();	 
+		return refCalc.getCondProbForUnknownTimeSinceLastEvent(durationYears*refRI/aveRecurIntervalYears, histOpenIntervalYears*refRI/aveRecurIntervalYears);	 
 	}
 	
 	
@@ -1023,8 +1021,8 @@ public class ProbabilityModelsCalc {
 		int numPts = (int)Math.round((9*aveRecurIntervalYears)/delta);
 		EqkProbDistCalc calc = getRenewalModelCalc();
 		calc.setInterpolate(interpolate);
-		calc.setAll(aveRecurIntervalYears, aperiodicity, delta, numPts, durationYears, histOpenIntervalYears);
-		return calc.getCondProbForUnknownTimeSinceLastEvent();	 
+		calc.setAll(aveRecurIntervalYears, aperiodicity, delta, numPts);
+		return calc.getCondProbForUnknownTimeSinceLastEvent(durationYears, histOpenIntervalYears);	 
 	}
 
 	

@@ -873,8 +873,8 @@ public class TablesAndPlotsGen {
 			for(int i=0;i<logX_func.size();i++) {
 				double durOverMean = Math.pow(10, logX_func.getX(i));
 				double duration = mean*durOverMean;
-				bptCalc.setAllParameters(mean, aperiodicity, deltaX, numPoints, duration, histOpenInterval);
-				double bptProb = bptCalc.getCondProbForUnknownTimeSinceLastEvent();
+				bptCalc.setAllParameters(mean, aperiodicity, deltaX, numPoints);
+				double bptProb = bptCalc.getCondProbForUnknownTimeSinceLastEvent(duration, histOpenInterval);
 				bpt_func.set(durOverMean,bptProb);
 				double poisNge1_prob = 1.0 - Math.exp(-durOverMean);
 				poisNge1_func.set(durOverMean,poisNge1_prob);
@@ -935,14 +935,14 @@ public class TablesAndPlotsGen {
 		int index = -1;
 		for(double aperiodicity:aperArray) {
 			index+=1;
-			bptCalc.setAllParameters(mean, aperiodicity, deltaX, numPoints, 0.3, 0.0);
+			bptCalc.setAllParameters(mean, aperiodicity, deltaX, numPoints);
 			funcList1.add(bptCalc.getPDF());
 			funcList1.get(funcList1.size()-1).setName("PDF; aper=+aperiodicity");
 			plotChars1.add(new PlotCurveCharacterstics(lineType[index], 3, null, 0, Color.BLACK));
 			funcList2.add(bptCalc.getCDF());
 			funcList2.get(funcList2.size()-1).setName("CDF; aper=+aperiodicity");
 			plotChars2.add(new PlotCurveCharacterstics(lineType[index], 3, null, 0, Color.BLACK));
-			funcList2.add(bptCalc.getTimeSinceLastEventPDF());
+			funcList2.add(bptCalc.getTimeSinceLastEventPDF(0d));
 			funcList2.get(funcList2.size()-1).setName("Prob date of last; aper=+aperiodicity");
 			plotChars2.add(new PlotCurveCharacterstics(lineType[index], 3, null, 0, Color.GRAY));
 		}
@@ -992,18 +992,18 @@ public class TablesAndPlotsGen {
 		double[] aperArray = {0.2,0.3,0.7};
 		double[] yAxisMaxForPlot = {10.0,5.5,1.5};
 		double[] yAxisMinForPlot = {0.0,0.5,0.95};
-		
 
 		int aperIndex = -1;
 		for(double aperiodicity:aperArray) {
 			aperIndex += 1;
 			System.out.println("aperiodicity = "+aperiodicity);
+			
+			bptCalc.setAllParameters(mean, aperiodicity, deltaX, numPoints);
 
 			ArrayList<DiscretizedFunc> funcList = new ArrayList<DiscretizedFunc>();
 			for(double durOverMean:durationOverMeanArray) {
 				double duration = durOverMean*mean;
-				bptCalc.setAllParameters(mean, aperiodicity, deltaX, numPoints, duration, 0d);
-				double zeroOpenIntBPT_Prob = bptCalc.getCondProbForUnknownTimeSinceLastEvent();
+				double zeroOpenIntBPT_Prob = bptCalc.getCondProbForUnknownTimeSinceLastEvent(duration, 0d);
 
 				EvenlyDiscretizedFunc logX_func = new EvenlyDiscretizedFunc(Math.log10(0.0001), Math.log10(2), 100);	// x-axis is log10(openInt/mean)
 				ArbitrarilyDiscretizedFunc bpt_func = new ArbitrarilyDiscretizedFunc();
@@ -1011,8 +1011,7 @@ public class TablesAndPlotsGen {
 				for(int i=0;i<logX_func.size();i++) {
 					double openIntOverMean = Math.pow(10, logX_func.getX(i));
 					double histOpenInterval = mean*openIntOverMean;
-					bptCalc.setAllParameters(mean, aperiodicity, deltaX, numPoints, duration, histOpenInterval);
-					double bptProb = bptCalc.getCondProbForUnknownTimeSinceLastEvent();
+					double bptProb = bptCalc.getCondProbForUnknownTimeSinceLastEvent(duration, histOpenInterval);
 					bpt_func.set(openIntOverMean,bptProb/zeroOpenIntBPT_Prob);
 				}
 				double xAtY_1pt1=Double.NaN;
