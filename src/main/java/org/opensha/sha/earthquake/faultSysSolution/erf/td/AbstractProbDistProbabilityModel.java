@@ -123,7 +123,7 @@ abstract class AbstractProbDistProbabilityModel extends AbstractFSS_ProbabilityM
 		}
 		ConcurrentMap<Double, EqkProbDistCalc> cache = probDistsCache.get(renewalModel);
 		// snap it to our minimum discretization to avoid cache blowup if aperiodicity isn't discrete
-		aperiodicity = DataUtils.roundFixed(aperiodicity, numAperSigFigs);
+		aperiodicity = getRoundedAperiodicity(aperiodicity);
 		if (!cache.containsKey(aperiodicity)) {
 			EqkProbDistCalc distCalc = renewalModel.instance();
 			double delta = calcDelta(maxNormalizedTime, numDiscretizations);
@@ -157,7 +157,7 @@ abstract class AbstractProbDistProbabilityModel extends AbstractFSS_ProbabilityM
 		}
 		ConcurrentMap<Double, UnmodifiableEvenlyDiscrFunc> cache = integrationNormCDFsCache.get(renewalModel);
 		// snap it to our minimum discretization to avoid cache blowup if aperiodicity isn't discrete
-		aperiodicity = DataUtils.roundFixed(aperiodicity, numAperSigFigs);
+		aperiodicity = getRoundedAperiodicity(aperiodicity);
 		if (!cache.containsKey(aperiodicity)) {
 			EqkProbDistCalc distCalc = renewalModel.instance();
 			double delta = calcDelta(maxIntegrationNormalizedTime, numIntegrationDiscretizations);
@@ -168,6 +168,10 @@ abstract class AbstractProbDistProbabilityModel extends AbstractFSS_ProbabilityM
 			cache.putIfAbsent(aperiodicity, cdf);
 		}
 		return cache.get(aperiodicity);
+	}
+	
+	protected double getRoundedAperiodicity(double aperiodicity) {
+		return DataUtils.roundFixed(aperiodicity, numAperSigFigs);
 	}
 
 }

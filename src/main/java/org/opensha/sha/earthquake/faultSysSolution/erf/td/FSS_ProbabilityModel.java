@@ -84,6 +84,12 @@ public interface FSS_ProbabilityModel extends ParameterizedModel {
 	public void resetSectDOLE();
 	
 	/**
+	 * 
+	 * @return the number of sections with a valid date of last event
+	 */
+	public int getNumSectsWithDOLE();
+	
+	/**
 	 * Returns the long-term (time-independent) participation rate for all sections
 	 * 
 	 * @return section participation rates
@@ -249,6 +255,11 @@ public interface FSS_ProbabilityModel extends ParameterizedModel {
 		@Override
 		public double getSectLongTermPartRate(int sectIndex) {
 			return refModel.getSectLongTermPartRate(sectIndex);
+		}
+
+		@Override
+		public int getNumSectsWithDOLE() {
+			return refModel.getNumSectsWithDOLE();
 		}
 		
 	}

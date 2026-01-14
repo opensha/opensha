@@ -119,7 +119,9 @@ public enum FSS_ProbabilityModels {
 	WG02("WGCEP (2002)") {
 		@Override
 		public WG02_ProbabilityModel getProbabilityModel(FaultSystemSolution sol, double[] longTermPartRateForSectArray) {
-			return new WG02_ProbabilityModel(sol, longTermPartRateForSectArray);
+			return new WG02_ProbabilityModel(sol, longTermPartRateForSectArray,
+					// this only supports single-valued models (or section-dependent, but we don't have any of those yet)
+					AperiodicityModels.SINGLE_VALUED, AperiodicityModels.SINGLE_VALUED_MODELS);
 		}
 	};
 	

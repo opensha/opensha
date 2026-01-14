@@ -148,6 +148,7 @@ public class TimeDepFaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 		if (event.getParameter() == probModelParam) {
 			probModel = probModelParam.getValue();
 			System.out.println("probModelChanged: "+probModel);
+			probModelChanged = true;
 			
 			initTimeSpan();
 		} else {
@@ -165,11 +166,8 @@ public class TimeDepFaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 		probModelChanged = false;
 		
 		if (D) {
-			int numSectWith = 0;
-			for (long dole : probModel.getSectDOLE())
-				if (dole > Long.MIN_VALUE)
-					numSectWith++;
-			System.out.println(numSectWith+" sections had date of last");
+			int numWithDOLE = probModel.getNumSectsWithDOLE();
+			System.out.println(numWithDOLE+" sections had date of last");
 		}
 
 		super.updateHookBeforeFaultSourceBuild();
@@ -178,6 +176,10 @@ public class TimeDepFaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 	@Override
 	public void updateForecast() {
 		super.updateForecast();
+		
+		if (!isPoisson()) {
+			int numWithDOLE = probModel.getNumSectsWithDOLE();
+		}
 	}
 	
 	/**

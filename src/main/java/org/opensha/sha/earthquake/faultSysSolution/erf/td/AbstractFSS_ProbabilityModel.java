@@ -10,6 +10,7 @@ import com.google.common.base.Preconditions;
 public abstract class AbstractFSS_ProbabilityModel implements FSS_ProbabilityModel {
 
 	protected final FaultSystemSolution fltSysSol;
+	protected final FaultSystemRupSet fltSysRupSet;
 	// TODO: we could detect multiple section instances to correct this array so that it also worked for branch-averaged
 	// solutions across multiple fault models
 	protected final double[] sectlongTermPartRates;
@@ -36,7 +37,8 @@ public abstract class AbstractFSS_ProbabilityModel implements FSS_ProbabilityMod
 	 */
 	public AbstractFSS_ProbabilityModel(FaultSystemSolution fltSysSol, double[] sectlongTermPartRates) {
 		this.fltSysSol = fltSysSol;
-		Preconditions.checkState(sectlongTermPartRates.length == fltSysSol.getRupSet().getNumRuptures());
+		this.fltSysRupSet = fltSysSol.getRupSet();
+		Preconditions.checkState(sectlongTermPartRates.length == fltSysRupSet.getNumSections());
 		this.sectlongTermPartRates = sectlongTermPartRates;
 		resetSectDOLE();
 	}
@@ -58,7 +60,7 @@ public abstract class AbstractFSS_ProbabilityModel implements FSS_ProbabilityMod
 
 	@Override
 	public void setSectDOLE(long[] sectDatesOfLastEvent) {
-		int numSects = fltSysSol.getRupSet().getNumSections();
+		int numSects = fltSysRupSet.getNumSections();
 		Preconditions.checkState(sectDatesOfLastEvent.length == numSects,
 				"Passed in sectDatesOfLastEvent is of size %s but we have %s sections.", sectDatesOfLastEvent.length, numSects);
 		this.sectDOLE = sectDatesOfLastEvent;
@@ -80,8 +82,25 @@ public abstract class AbstractFSS_ProbabilityModel implements FSS_ProbabilityMod
 
 	@Override
 	public void resetSectDOLE() {
-		this.sectDOLE = getOriginalDOLE(fltSysSol.getRupSet());
+		this.sectDOLE = getOriginalDOLE(fltSysRupSet);
 		sectDOLE_Changed();
+	}
+
+	@Override
+	public int getNumSectsWithDOLE() {
+		int count = 0;
+		for (long dole : sectDOLE)
+			if (dole > Long.MIN_VALUE)
+				count++;
+		return count;
+	}
+
+	/**
+	 * Called whenever the section date-of-last-event (DOLE) is changed. Does nothing but can be overridden to clear
+	 * out any cached data in subclasses.
+	 */
+	protected void sectDOLE_Changed() {
+		
 	}
 
 	@Override
@@ -92,14 +111,6 @@ public abstract class AbstractFSS_ProbabilityModel implements FSS_ProbabilityMod
 	@Override
 	public double getSectLongTermPartRate(int sectIndex) {
 		return sectlongTermPartRates[sectIndex];
-	}
-
-	/**
-	 * Called whenever the section date-of-last-event (DOLE) is changed. Does nothing but can be overridden to clear
-	 * out any cached data in subclasses.
-	 */
-	protected void sectDOLE_Changed() {
-		
 	}
 	
 	@Override

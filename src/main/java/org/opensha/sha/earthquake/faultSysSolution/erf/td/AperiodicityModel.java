@@ -68,6 +68,10 @@ public interface AperiodicityModel extends ParameterizedModel {
 			return param.getValue();
 		}
 		
+		public double getAperiodicity() {
+			return param.getValue();
+		}
+		
 		public void setValue(double aperiodicity) {
 			param.setValue(aperiodicity);
 			if (param.isEditorBuilt())
@@ -93,8 +97,19 @@ public interface AperiodicityModel extends ParameterizedModel {
 		
 	}
 	
-	// TODO: could add a "SectionDependent" variants that return different values for different fault sections,
-	// e.g., for fault maturity.
+	public static interface SectionDependent extends AperiodicityModel {
+		
+		/**
+		 * @param sectIndex
+		 * @return section-specific aperiodicity value
+		 */
+		public double getSectionAperiodicity(int sectIndex);
+		
+		/**
+		 * @return section-specific aperiodicity values array
+		 */
+		public double[] getSectionAperiodicity();
+	}
 	
 	public static abstract class MagnitudeDependent implements AperiodicityModel {
 		
@@ -162,7 +177,7 @@ public interface AperiodicityModel extends ParameterizedModel {
 		
 		private Map<TectonicRegionType, AperiodicityModel> models;
 		private AperiodicityModel fallback;
-		private RupSetTectonicRegimes trts;
+		private TectonicRegionType[] trts;
 		private ParameterList params;
 
 		public TRT_Dependent(FaultSystemRupSet rupSet, Map<TectonicRegionType, AperiodicityModel> models) {
@@ -177,12 +192,21 @@ public interface AperiodicityModel extends ParameterizedModel {
 			this.models = models;
 			this.fallback = fallback;
 			this.params = params;
-			trts = rupSet.requireModule(RupSetTectonicRegimes.class);
+			RupSetTectonicRegimes trtsModule = rupSet.getModule(RupSetTectonicRegimes.class);
+			trts = new TectonicRegionType[rupSet.getNumRuptures()];
+			if (trtsModule == null) {
+				System.err.println("WARNING: No RupSetTectonicRegimes found in solution, assuming all are active crustal");
+				for (int i=0; i<trts.length; i++)
+					trts[i] = TectonicRegionType.ACTIVE_SHALLOW;
+			} else {
+				for (int i=0; i<trts.length; i++)
+					trts[i] = trtsModule.get(i);
+			}
 		}
 
 		@Override
 		public double getRuptureAperiodicity(int ruptureIndex) {
-			TectonicRegionType trt = trts.get(ruptureIndex);
+			TectonicRegionType trt = trts[ruptureIndex];
 			AperiodicityModel model;
 			if (trt == null) {
 				Preconditions.checkNotNull(fallback, "No TectonicRegionType for rupture %s and fallback not provided", ruptureIndex);

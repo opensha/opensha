@@ -113,8 +113,8 @@ public class UCERF3_ProbabilityModel extends AbstractFSS_ProbabilityModel implem
 	@Override
 	public double getProbability(int ruptureIndex, double ruptureRate, long forecastStartTimeMillis, double durationYears) {
 		// for now just use gain, but could change that if it's more efficient or better in some way to calculate it separately
-		double prob = TimeDepUtils.rateToPoissonProb(ruptureRate, durationYears);
-		return prob * getProbabilityGain(ruptureIndex, forecastStartTimeMillis, durationYears);
+		double gain = getProbabilityGain(ruptureIndex, forecastStartTimeMillis, durationYears);
+		return TimeDepUtils.rateToNonPoissonProb(ruptureRate*gain, durationYears);
 	}
 
 	@Override
@@ -183,7 +183,7 @@ public class UCERF3_ProbabilityModel extends AbstractFSS_ProbabilityModel implem
 	}
 	
 	/**
-	 * @return current aperiodicity model enum.
+	 * @return current aperiodicity model.
 	 */
 	public AperiodicityModel getAperiodicityModel() {
 		return aperiodicityParam.getValue();
@@ -222,7 +222,7 @@ public class UCERF3_ProbabilityModel extends AbstractFSS_ProbabilityModel implem
 	}
 	
 	/**
-	 * @return current aperiodicity model enum.
+	 * @return current historical open interval model.
 	 */
 	public HistoricalOpenInterval getHistOpenInterval() {
 		return histOpenIntervalParam.getValue();
