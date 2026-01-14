@@ -8,7 +8,7 @@ import org.junit.Test;
 import org.opensha.commons.exceptions.InvalidRangeException;
 
 /**
- * JUnit4 tests for {@link QuickDiscretizedFuncInterpolator}.
+ * JUnit4 tests for {@link DiscretizedFuncInterpolator}.
  *
  * Compares against {@link DiscretizedFunc#getInterpolatedY(double, boolean, boolean)}.
  */
@@ -20,15 +20,15 @@ public class QuickDiscretizedFuncInterpolatorTest {
 	@Test
 	public void testFactoryType_evenlyVsArbitrary() {
 		EvenlyDiscretizedFunc ef = buildEvenlyFunc(0d, 1d, 11, false);
-		QuickDiscretizedFuncInterpolator qi = QuickDiscretizedFuncInterpolator.get(ef, false, false);
-		assertTrue(qi instanceof QuickDiscretizedFuncInterpolator.EvenlyDiscretized);
+		DiscretizedFuncInterpolator qi = DiscretizedFuncInterpolator.getOptimized(ef, false, false);
+		assertTrue(qi instanceof DiscretizedFuncInterpolator.PrecomputedEvenlyDiscretized);
 
-		QuickDiscretizedFuncInterpolator qiLogX = QuickDiscretizedFuncInterpolator.get(ef, true, false);
-		assertTrue(qiLogX instanceof QuickDiscretizedFuncInterpolator.ArbitrarilyDiscretized);
+		DiscretizedFuncInterpolator qiLogX = DiscretizedFuncInterpolator.getOptimized(ef, true, false);
+		assertTrue(qiLogX instanceof DiscretizedFuncInterpolator.PrecomputedArbitrarilyDiscretized);
 
 		DiscretizedFunc af = buildArbitraryFunc(false);
-		QuickDiscretizedFuncInterpolator qiA = QuickDiscretizedFuncInterpolator.get(af, false, false);
-		assertTrue(qiA instanceof QuickDiscretizedFuncInterpolator.ArbitrarilyDiscretized);
+		DiscretizedFuncInterpolator qiA = DiscretizedFuncInterpolator.getOptimized(af, false, false);
+		assertTrue(qiA instanceof DiscretizedFuncInterpolator.PrecomputedArbitrarilyDiscretized);
 	}
 
 	@Test
@@ -72,7 +72,7 @@ public class QuickDiscretizedFuncInterpolatorTest {
 	@Test
 	public void testExactGridPoints_evenly() {
 		EvenlyDiscretizedFunc f = buildEvenlyFunc(-2d, 0.25d, 33, false);
-		QuickDiscretizedFuncInterpolator qi = QuickDiscretizedFuncInterpolator.get(f, false, false);
+		DiscretizedFuncInterpolator qi = DiscretizedFuncInterpolator.getOptimized(f, false, false);
 
 		for (int i = 0; i < f.size(); i++) {
 			double x = f.getX(i);
@@ -85,7 +85,7 @@ public class QuickDiscretizedFuncInterpolatorTest {
 	@Test
 	public void testExactGridPoints_arbitrary() {
 		DiscretizedFunc f = buildArbitraryFunc(false);
-		QuickDiscretizedFuncInterpolator qi = QuickDiscretizedFuncInterpolator.get(f, false, false);
+		DiscretizedFuncInterpolator qi = DiscretizedFuncInterpolator.getOptimized(f, false, false);
 
 		for (int i = 0; i < f.size(); i++) {
 			double x = f.getX(i);
@@ -98,7 +98,7 @@ public class QuickDiscretizedFuncInterpolatorTest {
 	@Test
 	public void testSnapToEndpointsWithinTolerance() {
 		EvenlyDiscretizedFunc f = buildEvenlyFunc(0d, 1d, 11, false);
-		QuickDiscretizedFuncInterpolator qi = QuickDiscretizedFuncInterpolator.get(f, false, false);
+		DiscretizedFuncInterpolator qi = DiscretizedFuncInterpolator.getOptimized(f, false, false);
 
 		double minX = f.getX(0);
 		double maxX = f.getX(f.size() - 1);
@@ -118,7 +118,7 @@ public class QuickDiscretizedFuncInterpolatorTest {
 	@Test
 	public void testThrowsOutsideTolerance() {
 		EvenlyDiscretizedFunc f = buildEvenlyFunc(0d, 1d, 11, false);
-		QuickDiscretizedFuncInterpolator qi = QuickDiscretizedFuncInterpolator.get(f, false, false);
+		DiscretizedFuncInterpolator qi = DiscretizedFuncInterpolator.getOptimized(f, false, false);
 
 		double minX = f.getX(0);
 		double maxX = f.getX(f.size() - 1);
@@ -151,7 +151,7 @@ public class QuickDiscretizedFuncInterpolatorTest {
 		EvenlyDiscretizedFunc f = buildEvenlyFunc(0d, 1d, 11, false);
 		double xQuery = 3.4;
 
-		QuickDiscretizedFuncInterpolator qi = QuickDiscretizedFuncInterpolator.get(f, false, false);
+		DiscretizedFuncInterpolator qi = DiscretizedFuncInterpolator.getOptimized(f, false, false);
 		double yBefore = qi.findY(xQuery);
 
 		// mutate underlying function after construction
@@ -172,7 +172,7 @@ public class QuickDiscretizedFuncInterpolatorTest {
 	/* ---------------- helpers ---------------- */
 
 	private static void checkMany(DiscretizedFunc f, boolean logX, boolean logY, int num, Random r) {
-		QuickDiscretizedFuncInterpolator qi = QuickDiscretizedFuncInterpolator.get(f, logX, logY);
+		DiscretizedFuncInterpolator qi = DiscretizedFuncInterpolator.getOptimized(f, logX, logY);
 
 		double minX = f.getX(0);
 		double maxX = f.getX(f.size() - 1);
