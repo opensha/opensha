@@ -65,13 +65,6 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	protected int num;
 
 	/**
-	 * Helper boolean that indicates no values have been put
-	 * into this function yet. Used only internally.
-	 */
-	protected boolean first = true;
-
-
-	/**
 	 * This is one of two constructor options
 	 * to fully quantify the domain of this list, i.e.
 	 * the x-axis.
@@ -81,7 +74,6 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	 * @param delta - distance between x values
 	 */
 	public EvenlyDiscretizedFunc(double min, int num, double delta) {
-
 		set(min, num, delta);
 	}
 
@@ -106,8 +98,8 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	 * of this list, i.e. the x-axis.
 	 *
 	 * @param min   - Starting x value
-	 * @param num   - number of points in list
 	 * @param max - Ending x value
+	 * @param num   - number of points in list
 	 */
 	public EvenlyDiscretizedFunc(double min, double max, int num) {
 		this.set(min, max, num);
@@ -118,12 +110,12 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	 * of this list, i.e. the x-axis.
 	 *
 	 * @param min   - Starting x value
-	 * @param num   - number of points in list
 	 * @param max - Ending x value
+	 * @param num   - number of points in list
 	 * @param points - array of y values
 	 */
 	protected EvenlyDiscretizedFunc(double min, double max, int num, double[] points) {
-		this.set(min, max, num);
+		this.set(min, max, num, points);
 	}
 
 	/**
@@ -132,8 +124,8 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	 * previously in this function
 	 *
 	 * @param min   - Starting x value
-	 * @param num   - number of points in list
 	 * @param max - Ending x value
+	 * @param num   - number of points in list
 	 */
 	public void set(double min, double max, int num) {
 		set(min, max, num, new double[num]);
@@ -147,8 +139,8 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	 * previously in this function
 	 *
 	 * @param min   - Starting x value
-	 * @param num   - number of points in list
 	 * @param max - Ending x value
+	 * @param num   - number of points in list
 	 * @param points - array of y values
 	 */
 	protected void set(double min, double max, int num, double[] points) {
