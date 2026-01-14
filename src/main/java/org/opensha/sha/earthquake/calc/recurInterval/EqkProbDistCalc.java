@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.calc.recurInterval;
 
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.function.UnmodifiableEvenlyDiscrFunc;
 import org.opensha.commons.data.function.DiscretizedFuncInterpolator;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.event.ParameterChangeEvent;
@@ -40,7 +41,7 @@ import com.google.common.base.Preconditions;
 
 public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	
-	final static boolean D = true;	// debugging flag
+	final static boolean D = false;	// debugging flag
 	
 	// distributions
 	protected EvenlyDiscretizedFunc pdf, cdf, integratedCDF, integratedOneMinusCDF;
@@ -52,11 +53,11 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	protected double mean, aperiodicity, deltaX;
 	protected int numPoints;
 	protected boolean interpolate = true;
-	protected boolean quickInterp = true;
 	public static final double DELTA_X_DEFAULT = 0.001;
 	private volatile boolean upToDate = false;
 	protected  String NAME;
 	protected String commonInfoString;
+	private boolean unmodifiable = false;
 	
 	// TODO create and get these from ../../../param (hist open interval is already there)
 	// Parameter names
@@ -77,7 +78,6 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	protected final static Double DEFAULT_DELTAX_PARAM_VAL = Double.valueOf(1);
 	protected final static Integer DEFAULT_NUMPOINTS_PARAM_VAL = Integer.valueOf(500);
 	
-	
 	// various adjustable params
 	protected DoubleParameter meanParam, aperiodicityParam, deltaX_Param;
 	protected IntegerParameter numPointsParam;
@@ -86,52 +86,108 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	protected ParameterList adjustableParams;
 	
 	void clearCachedDistributions() {
+		// distributions
 		pdf = null;
 		cdf = null;
 		integratedCDF = null;
 		integratedOneMinusCDF = null;
+		// interpolators
 		interpCDF = null;
 		interpIntegratedCDF = null;
+		interpIntegratedOneMinusCDF = null;
 	}
 
 	/**
 	 * The method is where subclasses are to compute the pdf and cdf for the given parameters (mean, aperiodicity, delta).
 	 * 
-	 * This wall be called by {@link #ensureUpToDate()} if {@link #upToDate} is false, first calling
+	 * This will be called by {@link #ensureUpToDate()} if {@link #upToDate} is false, first calling
 	 * {@link #clearCachedDistributions()} and then finally setting {@link #upToDate} to true.
 	 */
 	abstract void computeDistributions();
 	
 	/**
-	 * Ensures that {@link #computeDistributions()} is called if any distributions are stale.
+	 * Ensures that {@link #computeDistributions()} is called if any distributions are stale. If the integrated flag
+	 * is set, also ensures that {@link #makeIntegratedCDFs()} has been called.
 	 */
-	final void ensureUpToDate() {
-		if (!upToDate) {
+	final void ensureUpToDate(boolean integrated) {
+		if (!upToDate || (integrated && integratedCDF == null)) {
 			synchronized (this) {
 				if (!upToDate) {
+					Preconditions.checkState(!unmodifiable,
+							"%s is set to be unmodifiable, can't rebuild distributions", NAME);
 					clearCachedDistributions();
 					computeDistributions();
 					upToDate = true;
+				}
+				if (integrated && (integratedCDF == null || integratedOneMinusCDF == null)) {
+					makeIntegratedCDFs();
 				}
 			}
 		}
 	}
 	
-	public EvenlyDiscretizedFunc getCDF() {
-		ensureUpToDate();
-		if (cdf.getName() == null) {
-			cdf.setName(NAME+" CDF (Cumulative Density Function)");
-			cdf.setInfo(adjustableParams.toString());
+	/**
+	 * Ensures that all distributions have been computed, and then sets them to be unmodifiable. This ensures that
+	 * values can never change when a distribution calculator is shared, e.g., in a multi-threaded calculation.
+	 */
+	public synchronized void setUnmodifiable() {
+		ensureUpToDate(true);
+		if (!(pdf instanceof UnmodifiableEvenlyDiscrFunc))
+			pdf = new UnmodifiableEvenlyDiscrFunc(pdf);
+		if (!(cdf instanceof UnmodifiableEvenlyDiscrFunc)) {
+			cdf = new UnmodifiableEvenlyDiscrFunc(cdf);
+			interpCDF = null; // make sure this is rebuilt with the final unmodifiable version
 		}
-		return cdf;
+		if (!(integratedCDF instanceof UnmodifiableEvenlyDiscrFunc)) {
+			integratedCDF = new UnmodifiableEvenlyDiscrFunc(integratedCDF);
+			interpIntegratedCDF = null; // make sure this is rebuilt with the final unmodifiable version
+		}
+		if (!(integratedOneMinusCDF instanceof UnmodifiableEvenlyDiscrFunc)) {
+			integratedOneMinusCDF = new UnmodifiableEvenlyDiscrFunc(integratedOneMinusCDF);
+			interpIntegratedOneMinusCDF = null; // make sure this is rebuilt with the final unmodifiable version
+		}
+		unmodifiable = true;
 	}
 	
 	/**
-	 * Same as {@link #getCDF()}, except that the name and info fields are set with parameters; potentially useful for GUIs.
-	 * @return
+	 * @return true if {@link #setUnmodifiable()} has been called.
 	 */
-	public EvenlyDiscretizedFunc getCDF_WithInfo() {
-		ensureUpToDate();
+	public boolean isUnmodifiable() {
+		return unmodifiable;
+	}
+	
+	/**
+	 * Ensures that we're up to date by calling {@link #ensureUpToDate(boolean)}, then further ensures that all
+	 * interpolators have been initialized. 
+	 */
+	final void ensureInterpolators(boolean integrated) {
+		ensureUpToDate(integrated);
+		if (interpCDF == null || (integrated && (interpIntegratedCDF == null || interpIntegratedOneMinusCDF == null))) {
+			synchronized (this) {
+				// it's faster to do repeat interpolation if you precompute the slope at every grid, but that
+				// comes with an overhead cost. these implementations start with basic interpolation, then
+				// switch to the optimized version after it's clear they're being reused
+				
+				// after this many interpolations, go to the trouble to build the optimized versions
+				int reuseCount = 100;
+				if (interpCDF == null)
+					interpCDF = DiscretizedFuncInterpolator.getRepeatOptimized(cdf, reuseCount);
+				if (integrated) {
+					if (interpIntegratedCDF == null)
+						interpIntegratedCDF = DiscretizedFuncInterpolator.getRepeatOptimized(integratedCDF, reuseCount);
+					if (interpIntegratedOneMinusCDF == null)
+						interpIntegratedOneMinusCDF = DiscretizedFuncInterpolator.getRepeatOptimized(integratedOneMinusCDF, reuseCount);
+				}
+			}
+		}
+	}
+	
+	/**
+	 * @return the current CDF, cloned to prevent modification
+	 */
+	public EvenlyDiscretizedFunc getCDF() {
+		ensureUpToDate(false);
+		EvenlyDiscretizedFunc cdf = this.cdf.deepClone();
 		cdf.setName(NAME+" CDF (Cumulative Density Function)");
 		cdf.setInfo(adjustableParams.toString());
 		return cdf;
@@ -141,53 +197,12 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	 * @return efficient interpolator of the current CDF
 	 */
 	public DiscretizedFuncInterpolator getCDF_Interpolator() {
-		ensureUpToDate();
-		if (interpCDF == null) {
-			synchronized (this) {
-				if (interpCDF == null)
-					// this will precomptue some interpolation constants for speed after it is used 100 times
-					interpCDF = DiscretizedFuncInterpolator.getRepeatOptimized(cdf, 100);
-			}
-		}
+		ensureInterpolators(false);
 		return interpCDF;
 	}
 	
-	/**
-	 * @return efficient interpolator of the current integrated CDF
-	 */
-	protected DiscretizedFuncInterpolator getIntegratedCDF_Interpolator() {
-		ensureUpToDate();
-		if (interpIntegratedCDF == null) {
-			synchronized (this) {
-				if (integratedCDF == null)
-					makeIntegratedCDFs();
-				if (interpIntegratedCDF == null)
-					// this will precomptue some interpolation constants for speed after it is used 100 times
-					interpIntegratedCDF = DiscretizedFuncInterpolator.getRepeatOptimized(integratedCDF, 100);
-			}
-		}
-		return interpIntegratedCDF;
-	}
-	
-	/**
-	 * @return efficient interpolator of the current integrated CDF
-	 */
-	protected DiscretizedFuncInterpolator getIntegratedOneMinusCDF_Interpolator() {
-		ensureUpToDate();
-		if (interpIntegratedOneMinusCDF == null) {
-			synchronized (this) {
-				if (integratedOneMinusCDF == null)
-					makeIntegratedCDFs();
-				if (interpIntegratedOneMinusCDF == null)
-					// this will precomptue some interpolation constants for speed after it is used 100 times
-					interpIntegratedOneMinusCDF = DiscretizedFuncInterpolator.getRepeatOptimized(integratedOneMinusCDF, 100);
-			}
-		}
-		return interpIntegratedOneMinusCDF;
-	}
-	
 	public EvenlyDiscretizedFunc getSurvivorFunc() {
-		ensureUpToDate();
+		ensureUpToDate(false);
 		EvenlyDiscretizedFunc survFunc = new EvenlyDiscretizedFunc(0, cdf.getMaxX(), cdf.size());
 		survFunc.setName(NAME+" Survivor Function (1-CDF)");
 		survFunc.setInfo(adjustableParams.toString());
@@ -197,15 +212,19 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	}
 
 
+	/**
+	 * @return the current PDF, cloned to prevent modification
+	 */
 	public EvenlyDiscretizedFunc getPDF() {
-		ensureUpToDate();
+		ensureUpToDate(false);
+		EvenlyDiscretizedFunc pdf = this.pdf.deepClone();
 		pdf.setName(NAME+" PDF (Probability Density Function)");
 		pdf.setInfo(adjustableParams.toString()+"\nComputed mean = "+(float)computeMeanFromPDF(pdf));
 		return pdf;
 	}
 
 	public EvenlyDiscretizedFunc getHazFunc() {
-		ensureUpToDate();
+		ensureUpToDate(false);
 		EvenlyDiscretizedFunc hazFunc = new EvenlyDiscretizedFunc(0, pdf.getMaxX(), pdf.size());
 		double haz;
 		for(int i=0;i<hazFunc.size();i++) {
@@ -228,13 +247,18 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 				"Historic open interval must be non-negative and finite: %s", histOpenInterval);
 	}
 	
+	protected static void validateTimeSinceLast(double timeSinceLast) {
+		Preconditions.checkState(timeSinceLast >= 0d && Double.isFinite(timeSinceLast),
+				"Time-since-last event must be non-negative and finite: %s", timeSinceLast);
+	}
+	
 	/*
 	 * This gives a function of the probability of an event occurring between time T
 	 * (on the x-axis) and T+duration, conditioned that it has not occurred before T.
 	 */
 	public EvenlyDiscretizedFunc getCondProbFunc(double duration) {
 		validateDuration(duration);
-		ensureUpToDate();
+		ensureUpToDate(false);
 //		int numPts = numPoints - (int)(duration/deltaX+1);
 ////System.out.println("numPts="+numPts+"\t"+duration);
 //		EvenlyDiscretizedFunc condFunc = new EvenlyDiscretizedFunc(0.0, numPts , deltaX);
@@ -280,8 +304,8 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	 * @return
 	 */
 	public double getCondProb(double timeSinceLast, double duration) {
-		ensureUpToDate();
-		
+		validateTimeSinceLast(timeSinceLast);
+		validateDuration(duration);
 		boolean doInterp = this.interpolate;
 		int index1 = 0, index2 = 0;
 		if (!doInterp) {
@@ -289,7 +313,7 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 			index2 = (int)Math.floor((timeSinceLast+duration)/deltaX);
 			
 			// clamp the indexes in case of precision issues
-			int maxIndex = cdf.size() - 1;
+			int maxIndex = numPoints - 1;
 			if (index1 < 0)
 				index1 = 0;
 			else if (index1 > maxIndex)
@@ -306,10 +330,13 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 		
 		double p1, p2;
 		if (doInterp) {
-			DiscretizedFuncInterpolator interp = getCDF_Interpolator();
-			p1 = interp.findY(timeSinceLast);
-			p2 = interp.findY(timeSinceLast+duration);
+			// ensures that we're up to date and the CDF interpolator has been built
+			ensureInterpolators(false);
+			p1 = interpCDF.findY(timeSinceLast);
+			p2 = interpCDF.findY(timeSinceLast+duration);
 		} else {
+			// ensures that we're up to date
+			ensureUpToDate(false);
 			p2 = cdf.getY(index2);
 			p1 = cdf.getY(index1);
 		}
@@ -386,7 +413,8 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	 */
 	public void fitToThisFunction(EvenlyDiscretizedFunc dist, double minMean, double maxMean,
 			int numMean, double minAper, double maxAper,int numAper) {
-		ensureUpToDate();
+		Preconditions.checkState(!unmodifiable, "%s has been set to unmodifiable", NAME);
+		ensureUpToDate(false);
 		
 		deltaX_Param.setValue(dist.getDelta()/2);	// increase discretization here just to be safe
 		numPointsParam.setValue(dist.size()*2+1);	// vals start from zero whereas passed in histograms might start at delta/2
@@ -431,16 +459,15 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	public double getCondProbForUnknownTimeSinceLastEvent(double duration, double histOpenInterval) {
 		validateDuration(duration);
 		validateHistOpenInterval(histOpenInterval);
-		ensureUpToDate();
+		// ensures that we're up to date including integrated versions, and the interpolator have been built
+		ensureInterpolators(true);
 		
 //		if(integratedCDF==null) 
 //			makeIntegratedCDFs();
 //		double numer = duration - (integratedCDF.getInterpolatedY(histOpenInterval+duration)-integratedCDF.getInterpolatedY(histOpenInterval));
 //		double denom = (integratedOneMinusCDF.getY(numPoints-1)-integratedOneMinusCDF.getInterpolatedY(histOpenInterval));
-		DiscretizedFuncInterpolator interp = getIntegratedCDF_Interpolator();
-		DiscretizedFuncInterpolator oneMinusInterp = getIntegratedOneMinusCDF_Interpolator();
-		double numer = duration - (interp.findY(histOpenInterval+duration)-interp.findY(histOpenInterval));
-		double denom = (integratedOneMinusCDF.getY(numPoints-1)-oneMinusInterp.findY(histOpenInterval));
+		double numer = duration - (interpCDF.findY(histOpenInterval+duration)-interpIntegratedCDF.findY(histOpenInterval));
+		double denom = (integratedOneMinusCDF.getY(numPoints-1)-interpIntegratedOneMinusCDF.findY(histOpenInterval));
 		double result = numer/denom;
 		
 		
@@ -519,7 +546,7 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	 */
 	public EvenlyDiscretizedFunc getTimeSinceLastEventPDF(double histOpenInterval) {
 		validateHistOpenInterval(histOpenInterval);
-		ensureUpToDate();
+		ensureUpToDate(false);
 
 		EvenlyDiscretizedFunc timeSinceLastPDF = new EvenlyDiscretizedFunc(0.0, numPoints , deltaX);
 		double normDenom=0;
@@ -569,6 +596,7 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	 * @param numPoints
 	 */
 	public synchronized void setAll(double mean, double aperiodicity, double deltaX, int numPoints) {
+		Preconditions.checkState(!unmodifiable, "%s has been set to unmodifiable, can't change distribution", NAME);
 		this.mean=mean;
 		this.aperiodicity=aperiodicity;
 		this.deltaX=deltaX;;
@@ -594,6 +622,7 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	 * @param numPoints
 	 */
 	public synchronized void setAllParameters(double mean, double aperiodicity, double deltaX, int numPoints) {
+		Preconditions.checkState(!unmodifiable, "%s has been set to unmodifiable, can't change distribution", NAME);
 		this.meanParam.setValue(mean);
 		this.aperiodicityParam.setValue(aperiodicity);
 		this.deltaX_Param.setValue(deltaX);
@@ -612,6 +641,7 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	 * @param aperiodicity
 	 */
 	public synchronized void setAll(double mean, double aperiodicity) {
+		Preconditions.checkState(!unmodifiable, "%s has been set to unmodifiable, can't change distribution", NAME);
 		this.mean=mean;
 		this.aperiodicity=aperiodicity;
 		this.deltaX = DELTA_X_DEFAULT*mean;
@@ -623,6 +653,7 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	 * Set the primitive types whenever a parameter changes
 	 */
 	public synchronized void parameterChange(ParameterChangeEvent event) {
+		Preconditions.checkState(!unmodifiable, "%s has been set to unmodifiable, can't change distribution", NAME);
 		String paramName = event.getParameterName();
 		if(paramName.equalsIgnoreCase(MEAN_PARAM_NAME)) this.mean = ((Double) meanParam.getValue()).doubleValue();
 		else if(paramName.equalsIgnoreCase(APERIODICITY_PARAM_NAME)) this.aperiodicity = ((Double) aperiodicityParam.getValue()).doubleValue();

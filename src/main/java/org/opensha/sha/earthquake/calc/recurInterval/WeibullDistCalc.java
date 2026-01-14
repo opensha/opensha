@@ -282,7 +282,7 @@ public final class WeibullDistCalc extends EqkProbDistCalc implements ParameterC
      * Override this to avoid numerical problems
      */
 	public EvenlyDiscretizedFunc getHazFunc() {
-		ensureUpToDate();
+		ensureUpToDate(false);
 		EvenlyDiscretizedFunc hazFunc = new EvenlyDiscretizedFunc(0, pdf.getMaxX(), pdf.size());
 		double haz;
 		for(int i=0;i<hazFunc.size();i++) {

@@ -74,8 +74,6 @@ public final class BPT_DistCalc extends EqkProbDistCalc implements ParameterChan
 		computeSafeTimeSinceLastCutoff();
 	}
 
-	
-
 	/**
 	 * This computed the conditional probability using Trapezoidal integration (slightly more
 	 * accurate that the WGCEP-2002 code, which this method is modeled after). Although this method 
@@ -166,8 +164,9 @@ public final class BPT_DistCalc extends EqkProbDistCalc implements ParameterChan
 	 */
 	@Override
 	public double getCondProb(double timeSinceLast, double duration) {
+		validateTimeSinceLast(timeSinceLast);
 		validateDuration(duration);
-		ensureUpToDate();
+		ensureUpToDate(false);
 		
 		double normDuration = duration/mean;
 		
@@ -258,7 +257,8 @@ public final class BPT_DistCalc extends EqkProbDistCalc implements ParameterChan
 	public double getCondProbForUnknownTimeSinceLastEvent(double duration, double histOpenInterval) {
 		validateDuration(duration);
 		validateHistOpenInterval(histOpenInterval);
-		ensureUpToDate();
+		// ensures we're up to date (indlucing integrated versions) and that interpolators are built
+		ensureInterpolators(true);
 
 		double condProbAtSafeTime = this.getCondProb(safeTimeSinceLast, duration);
 		if(histOpenInterval>=safeTimeSinceLast) {
@@ -272,13 +272,11 @@ public final class BPT_DistCalc extends EqkProbDistCalc implements ParameterChan
 		}
 		
 		// this is the faster calculation:
-		if (integratedCDF == null) 
-			makeIntegratedCDFs();
 		double lastTime = histOpenInterval+duration;
 		if(lastTime>integratedCDF.getMaxX())
 			lastTime=integratedCDF.getMaxX();
-		double numer = duration - (integratedCDF.getInterpolatedY(lastTime)-integratedCDF.getInterpolatedY(histOpenInterval));
-		double denom = (integratedOneMinusCDF.getY(numPoints-1)-integratedOneMinusCDF.getInterpolatedY(histOpenInterval));
+		double numer = duration - (interpIntegratedCDF.findY(lastTime)-interpIntegratedCDF.findY(histOpenInterval));
+		double denom = (integratedOneMinusCDF.getY(numPoints-1)-interpIntegratedOneMinusCDF.findY(histOpenInterval));
 		double result = numer/denom;
 		
 		if(result>1) {
@@ -332,7 +330,7 @@ public final class BPT_DistCalc extends EqkProbDistCalc implements ParameterChan
 	 * @return
 	 */
 	public double getSafeTimeSinceLastCutoff() {
-		ensureUpToDate();
+		ensureUpToDate(false);
 		return safeTimeSinceLast;
 	}
 	
@@ -341,6 +339,7 @@ public final class BPT_DistCalc extends EqkProbDistCalc implements ParameterChan
 	 * (not too close to zero, as this is the denominator of the conditional probability calculation)
 	 */
 	private void computeSafeTimeSinceLastCutoff() {
+		Preconditions.checkState(!isUnmodifiable(), "%s is already set to be unmodifiable", NAME);
 		safeTimeSinceLast = Double.NaN;
 		for(int x=0;x<cdf.size();x++) {
 			if(1.0-cdf.getY(x) < SAFE_ONE_MINUS_CDF) {	// when cdf gets too close to 1, keep last safeTimeSinceLast
