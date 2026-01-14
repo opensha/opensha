@@ -53,6 +53,11 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	protected double mean, aperiodicity, deltaX;
 	protected int numPoints;
 	protected boolean interpolate = true;
+	/**
+	 *  if interpolate == false but the 2 indexes in getCondProb are within this many bins of each other,
+	 *  force interpolation to increase resolution
+	 */
+	protected int maxBinsAwayToForceInterpolate = 10;
 	public static final double DELTA_X_DEFAULT = 0.001;
 	private volatile boolean upToDate = false;
 	protected  String NAME;
@@ -307,25 +312,12 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 		validateTimeSinceLast(timeSinceLast);
 		validateDuration(duration);
 		boolean doInterp = this.interpolate;
-		int index1 = 0, index2 = 0;
-		if (!doInterp) {
-			index1 = (int)Math.floor(timeSinceLast/deltaX);
-			index2 = (int)Math.floor((timeSinceLast+duration)/deltaX);
-			
-			// clamp the indexes in case of precision issues
-			int maxIndex = numPoints - 1;
-			if (index1 < 0)
-				index1 = 0;
-			else if (index1 > maxIndex)
-				index1 = maxIndex;
-			if (index2 < 0)
-				index2 = 0;
-			else if (index2 > maxIndex)
-				index2 = maxIndex;
-			
-			if (index1 == index2 || index1 == 0)
-				// special cases to force interpolation in order to avoid zeros, e.g., if duration ~= deltaX
-				doInterp = true;
+		int index1 = cdf.getClosestXIndex(timeSinceLast);
+		int index2 = cdf.getClosestXIndex(timeSinceLast+duration);
+		if (!doInterp && (index1 == index2 || index1 == 0 || index2-index1 < maxBinsAwayToForceInterpolate)) {
+			// special cases to force interpolation in order to avoid zeros and improve accuracy,
+			// e.g., if duration ~= deltaX
+			doInterp = true;
 		}
 		
 		double p1, p2;
@@ -341,6 +333,12 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 			p1 = cdf.getY(index1);
 		}
 		double denom = 1d - p1;
+		if (D) {
+			System.out.println("index1="+index1+", index2="+index2+" for timeSinceLast="+timeSinceLast
+					+" and duration="+duration+", deltaX="+deltaX
+					+", CDF x[0]"+cdf.getX(0)+", x[1]="+cdf.getX(1)+", ..., x["+(cdf.size()-1)+"]="+cdf.getMaxX());
+			System.out.println("("+p1+" - "+p2+")/(1 - "+p1+") = "+((p2 - p1)/denom));
+		}
 		if(denom > 1e-14)
 			// large enough to be numerically stable
 			return (p2-p1)/denom;
@@ -611,6 +609,18 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	 */
 	public void setInterpolate(boolean interpolate) {
 		this.interpolate = interpolate;
+	}
+	
+	/**
+	 * Interpolation of the CDF is more accurate but can be slow, if numPoints is sufficiently high
+	 * you can speed things up by disabling interpolation
+	 * @param interpolate
+	 * @param maxBinsAwayToForceInterpolate if interpolate == false but the 2 indexes in getCondProb are within this
+	 * many bins of each other, force interpolation to increase resolution
+	 */
+	public void setInterpolate(boolean interpolate, int maxBinsAwayToForceInterpolate) {
+		this.interpolate = interpolate;
+		this.maxBinsAwayToForceInterpolate = maxBinsAwayToForceInterpolate;
 	}
 	
 	/**
