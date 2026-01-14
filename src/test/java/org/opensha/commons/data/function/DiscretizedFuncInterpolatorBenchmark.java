@@ -103,8 +103,12 @@ public class DiscretizedFuncInterpolatorBenchmark {
 		int batchSize = 65536;
 		long seed = 123456789l;
 		int warmupIters = 30;
-		int measureIters = 60;
-		int trials = 7;
+//		int measureIters = 60;
+//		int trials = 7;
+//		int measureIters = 100;
+//		int trials = 20;
+		int measureIters = 200;
+		int trials = 50;
 		
 		boolean[] logXs = {false, true};
 		boolean[] logYs = {false, true};
