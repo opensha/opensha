@@ -137,19 +137,19 @@ public interface DiscretizedFunc extends XY_DataSet {
 	public double getFirstInterpolatedX_inLogXLogYDomain(double y);
 	
 	/**
-	 * Builds a quick interpolator for repeated access taking advantage of precomputed slopes. This has memory and
+	 * Builds an optimized interpolator for repeated access taking advantage of precomputed slopes. This has memory and
 	 * initialization overhead and should only be used if you need to interpolate many times.
 	 * <p>
 	 * Note that this will reflect the function at the time this method is called and its behavior is undefined if the
 	 * underlying function is modified in any way.
 	 * @return
 	 */
-	public default QuickDiscretizedFuncInterpolator getQuickInterpolator() {
-		return getQuickInterpolator(false, false);
+	public default DiscretizedFuncInterpolator getOptimizedInterpolator() {
+		return getOptimizedInterpolator(false, false);
 	}
 	
 	/**
-	 * Builds a quick interpolator for repeated access taking advantage of precomputed slopes. This has memory and
+	 * Builds an optimizedinterpolator for repeated access taking advantage of precomputed slopes. This has memory and
 	 * initialization overhead and should only be used if you need to interpolate many times.
 	 * <p>
 	 * Note that this will reflect the function at the time this method is called and its behavior is undefined if the
@@ -159,8 +159,8 @@ public interface DiscretizedFunc extends XY_DataSet {
 	 * @param logY if true, interpolation is done in the log-Y domain
 	 * @return
 	 */
-	public default QuickDiscretizedFuncInterpolator getQuickInterpolator(boolean logX, boolean logY) {
-		return QuickDiscretizedFuncInterpolator.get(this, logX, logY);
+	public default DiscretizedFuncInterpolator getOptimizedInterpolator(boolean logX, boolean logY) {
+		return DiscretizedFuncInterpolator.getOptimized(this, logX, logY);
 	}
 	
 	
