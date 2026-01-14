@@ -12,9 +12,12 @@ public abstract class AbstractFSS_ProbabilityModel implements FSS_ProbabilityMod
 	protected final FaultSystemSolution fltSysSol;
 	// TODO: we could detect multiple section instances to correct this array so that it also worked for branch-averaged
 	// solutions across multiple fault models
-	protected final double[] longTermPartRateForSectArray;
+	protected final double[] sectlongTermPartRates;
 	
-	protected long[] sectDatesOfLastEvent;
+	/**
+	 * Section dates of last event (DOLE). This can be accessed directly in subclasses but should never be modified
+	 */
+	protected long[] sectDOLE;
 
 	/**
 	 * Constructor that takes only a {@link FaultSystemSolution} and computes section participation rates directly from
@@ -29,12 +32,13 @@ public abstract class AbstractFSS_ProbabilityModel implements FSS_ProbabilityMod
 	 * Constructor that takes in precomputed section participation rates that may be different than those computed
 	 * by the passed in {@link FaultSystemSolution} (e.g., if some ruptures are skipped).
 	 * @param fltSysSol
-	 * @param longTermPartRateForSectArray
+	 * @param sectlongTermPartRates
 	 */
-	public AbstractFSS_ProbabilityModel(FaultSystemSolution fltSysSol, double[] longTermPartRateForSectArray) {
+	public AbstractFSS_ProbabilityModel(FaultSystemSolution fltSysSol, double[] sectlongTermPartRates) {
 		this.fltSysSol = fltSysSol;
-		this.longTermPartRateForSectArray = longTermPartRateForSectArray;
-		resetSectDatesOfLastEvent();
+		Preconditions.checkState(sectlongTermPartRates.length == fltSysSol.getRupSet().getNumRuptures());
+		this.sectlongTermPartRates = sectlongTermPartRates;
+		resetSectDOLE();
 	}
 
 	@Override
@@ -43,29 +47,31 @@ public abstract class AbstractFSS_ProbabilityModel implements FSS_ProbabilityMod
 	}
 
 	@Override
-	public long[] getSectDatesOfLastEvent() {
-		return Arrays.copyOf(sectDatesOfLastEvent, sectDatesOfLastEvent.length);
+	public long[] getSectDOLE() {
+		return Arrays.copyOf(sectDOLE, sectDOLE.length);
 	}
 
 	@Override
-	public long getSectDateOfLastEvent(int sectIndex) {
-		return sectDatesOfLastEvent[sectIndex];
+	public long getSectDOLE(int sectIndex) {
+		return sectDOLE[sectIndex];
 	}
 
 	@Override
-	public void setSectDatesOfLastEvent(long[] sectDatesOfLastEvent) {
+	public void setSectDOLE(long[] sectDatesOfLastEvent) {
 		int numSects = fltSysSol.getRupSet().getNumSections();
 		Preconditions.checkState(sectDatesOfLastEvent.length == numSects,
 				"Passed in sectDatesOfLastEvent is of size %s but we have %s sections.", sectDatesOfLastEvent.length, numSects);
-		this.sectDatesOfLastEvent = sectDatesOfLastEvent;
+		this.sectDOLE = sectDatesOfLastEvent;
+		sectDOLE_Changed();
 	}
 
 	@Override
-	public void setSectDateOfLastEvent(int sectIndex, long sectDateOfLastEvent) {
-		sectDatesOfLastEvent[sectIndex] = sectDateOfLastEvent;
+	public void setSectDOLE(int sectIndex, long sectDateOfLastEvent) {
+		sectDOLE[sectIndex] = sectDateOfLastEvent;
+		sectDOLE_Changed();
 	}
 	
-	static long[] getOriginalDatesOfLastEvent(FaultSystemRupSet rupSet) {
+	static long[] getOriginalDOLE(FaultSystemRupSet rupSet) {
 		long[] sectDatesOfLastEvent = new long[rupSet.getNumSections()];
 		for (int s=0; s<sectDatesOfLastEvent.length; s++)
 			sectDatesOfLastEvent[s] = rupSet.getFaultSectionData(s).getDateOfLastEvent();
@@ -73,8 +79,27 @@ public abstract class AbstractFSS_ProbabilityModel implements FSS_ProbabilityMod
 	}
 
 	@Override
-	public void resetSectDatesOfLastEvent() {
-		this.sectDatesOfLastEvent = getOriginalDatesOfLastEvent(fltSysSol.getRupSet());
+	public void resetSectDOLE() {
+		this.sectDOLE = getOriginalDOLE(fltSysSol.getRupSet());
+		sectDOLE_Changed();
+	}
+
+	@Override
+	public double[] getSectLongTermPartRates() {
+		return Arrays.copyOf(sectlongTermPartRates, sectlongTermPartRates.length);
+	}
+
+	@Override
+	public double getSectLongTermPartRate(int sectIndex) {
+		return sectlongTermPartRates[sectIndex];
+	}
+
+	/**
+	 * Called whenever the section date-of-last-event (DOLE) is changed. Does nothing but can be overridden to clear
+	 * out any cached data in subclasses.
+	 */
+	protected void sectDOLE_Changed() {
+		
 	}
 	
 	@Override

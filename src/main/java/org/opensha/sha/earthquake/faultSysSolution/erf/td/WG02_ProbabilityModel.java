@@ -2,7 +2,7 @@ package org.opensha.sha.earthquake.faultSysSolution.erf.td;
 
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 
-public class WG02_ProbabilityModel extends AbstractFSS_ProbabilityModel {
+public class WG02_ProbabilityModel extends AbstractProbDistProbabilityModel {
 
 	public WG02_ProbabilityModel(FaultSystemSolution fltSysSol, double[] longTermPartRateForSectArray) {
 		super(fltSysSol, longTermPartRateForSectArray);

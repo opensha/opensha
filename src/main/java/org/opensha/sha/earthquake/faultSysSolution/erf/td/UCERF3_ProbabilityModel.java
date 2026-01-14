@@ -132,7 +132,7 @@ public class UCERF3_ProbabilityModel extends AbstractFSS_ProbabilityModel implem
 		
 		// can access dates of last event by section
 		for (int sectIndex : fltSysSol.getRupSet().getSectionsIndicesForRup(ruptureIndex)) {
-			long sectDateLast = sectDatesOfLastEvent[sectIndex];
+			long sectDateLast = sectDOLE[sectIndex];
 			if (sectDateLast > Long.MIN_VALUE && sectDateLast < forecastStartTimeMillis) {
 				// we have a valid DOLE
 			}

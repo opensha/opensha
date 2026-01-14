@@ -166,7 +166,7 @@ public class TimeDepFaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 		
 		if (D) {
 			int numSectWith = 0;
-			for (long dole : probModel.getSectDatesOfLastEvent())
+			for (long dole : probModel.getSectDOLE())
 				if (dole > Long.MIN_VALUE)
 					numSectWith++;
 			System.out.println(numSectWith+" sections had date of last");

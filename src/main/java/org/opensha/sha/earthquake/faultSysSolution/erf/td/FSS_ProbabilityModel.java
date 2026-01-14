@@ -44,11 +44,11 @@ public interface FSS_ProbabilityModel extends ParameterizedModel {
 	 * {@link FaultSystemSolution}, e.g., during simulations.
 	 * <p>
 	 * This returns a copy of the array and individual updates will not be propagated to this model; you access
-	 * values without array-copy overhead in the subclasses or via {@link #getSectDateOfLastEvent(int)}.  
+	 * values without array-copy overhead in the subclasses or via {@link #getSectDOLE(int)}.  
 	 * 
 	 * @return Copy of the array of date of last event for each fault section
 	 */
-	public long[] getSectDatesOfLastEvent();
+	public long[] getSectDOLE();
 	
 	/**
 	 * Returns an array of date of last event for each fault section, which may differ from the original values in the
@@ -57,31 +57,45 @@ public interface FSS_ProbabilityModel extends ParameterizedModel {
 	 * @param sectIndex fault section index
 	 * @return date of last event for the given fault section, or Long.MIN_VALUE if unknown
 	 */
-	public long getSectDateOfLastEvent(int sectIndex);
+	public long getSectDOLE(int sectIndex);
 	
 	/**
 	 * Sets the date of last event for each fault section in this calculator. The original {@link FaultSection} and
 	 * {@link FaultSystemSolution} are not updated to reflect this change. Any deviations from the original values
-	 * can be overridden with {@link #resetSectDatesOfLastEvent()}.
+	 * can be overridden with {@link #resetSectDOLE()}.
 	 * 
 	 * @param sectDatesOfLastEvent
 	 */
-	public void setSectDatesOfLastEvent(long[] sectDatesOfLastEvent);
+	public void setSectDOLE(long[] sectDatesOfLastEvent);
 	
 	/**
 	 * Sets the date of last event for the given fault section. The original {@link FaultSection} and
 	 * {@link FaultSystemSolution} are not updated to reflect this change. Any deviations from the original values
-	 * can be overridden with {@link #resetSectDatesOfLastEvent()}.
+	 * can be overridden with {@link #resetSectDOLE()}.
 	 * 
-	 * @param sectDatesOfLastEvent
+	 * @param sectDOLE
 	 */
-	public void setSectDateOfLastEvent(int sectIndex, long sectDateOfLastEvent);
+	public void setSectDOLE(int sectIndex, long sectDateOfLastEvent);
 	
 	/**
 	 * Resets all dates of last event to the original values from the {@link FaultSection}'s within the
 	 * {@link FaultSystemSolution}
 	 */
-	public void resetSectDatesOfLastEvent();
+	public void resetSectDOLE();
+	
+	/**
+	 * Returns the long-term (time-independent) participation rate for all sections
+	 * 
+	 * @return section participation rates
+	 */
+	public double[] getSectLongTermPartRates();
+	
+	/**
+	 * Returns the long-term (time-independent) participation rate for the given section
+	 * @param sectIndex
+	 * @return section participation rate
+	 */
+	public double getSectLongTermPartRate(int sectIndex);
 	
 	/**
 	 * This returns any adjustable parameters for this model, or null if there are none.
@@ -190,31 +204,31 @@ public interface FSS_ProbabilityModel extends ParameterizedModel {
 		}
 
 		@Override
-		public long[] getSectDatesOfLastEvent() {
-			return refModel.getSectDatesOfLastEvent();
+		public long[] getSectDOLE() {
+			return refModel.getSectDOLE();
 		}
 
 		@Override
-		public long getSectDateOfLastEvent(int sectIndex) {
-			return refModel.getSectDateOfLastEvent(sectIndex);
+		public long getSectDOLE(int sectIndex) {
+			return refModel.getSectDOLE(sectIndex);
 		}
 
 		@Override
-		public void setSectDatesOfLastEvent(long[] sectDatesOfLastEvent) {
+		public void setSectDOLE(long[] sectDatesOfLastEvent) {
 			for (int i=0; i<probModels.size(); i++)
-				probModels.getValue(i).setSectDatesOfLastEvent(sectDatesOfLastEvent);
+				probModels.getValue(i).setSectDOLE(sectDatesOfLastEvent);
 		}
 
 		@Override
-		public void setSectDateOfLastEvent(int sectIndex, long sectDateOfLastEvent) {
+		public void setSectDOLE(int sectIndex, long sectDateOfLastEvent) {
 			for (int i=0; i<probModels.size(); i++)
-				probModels.getValue(i).setSectDateOfLastEvent(sectIndex, sectDateOfLastEvent);
+				probModels.getValue(i).setSectDOLE(sectIndex, sectDateOfLastEvent);
 		}
 
 		@Override
-		public void resetSectDatesOfLastEvent() {
+		public void resetSectDOLE() {
 			for (int i=0; i<probModels.size(); i++)
-				probModels.getValue(i).resetSectDatesOfLastEvent();
+				probModels.getValue(i).resetSectDOLE();
 		}
 		
 		@Override
@@ -225,6 +239,16 @@ public interface FSS_ProbabilityModel extends ParameterizedModel {
 		@Override
 		public String toString() {
 			return getMetadataString();
+		}
+
+		@Override
+		public double[] getSectLongTermPartRates() {
+			return refModel.getSectLongTermPartRates();
+		}
+
+		@Override
+		public double getSectLongTermPartRate(int sectIndex) {
+			return refModel.getSectLongTermPartRate(sectIndex);
 		}
 		
 	}
