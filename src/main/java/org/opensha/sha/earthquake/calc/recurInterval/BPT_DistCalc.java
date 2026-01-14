@@ -174,8 +174,8 @@ public final class BPT_DistCalc extends EqkProbDistCalc implements ParameterChan
 		if (normDuration < TEST_MIN_NORM_DURATION) {
 //			System.out.println("bad");
 			double condProbForMinNormDur = getCondProb(timeSinceLast, MIN_NORM_DURATION*mean);
-			// return  condProbForMinNormDur*normDuration/MIN_NORM_DURATION;
-			return condProbForMinNormDur*duration/(MIN_NORM_DURATION*mean);
+//			return condProbForMinNormDur*duration/(MIN_NORM_DURATION*mean);
+			return condProbForMinNormDur*normDuration/MIN_NORM_DURATION;
 		}
 		
 //		System.out.println("good");
@@ -211,12 +211,9 @@ public final class BPT_DistCalc extends EqkProbDistCalc implements ParameterChan
 			// interpolated result would be negative (because x1 > 10*mean) or explode (divide by tiny number)
 			return condProbAtInfTime;
 		
-		double result = Interpolate.findY(
-				safeTimeSinceLast-duration,						// x1
-				condProbAtSafeTime,								// y1
-				10d*mean,										// x2
-				condProbAtInfTime,								// y2
-				timeSinceLast-(safeTimeSinceLast-duration));	// x
+		double x = timeSinceLast;
+		
+		double result = Interpolate.findY(x1, y1, x2, y2, x);
 //		if (result<0)
 //			System.out.println("found it: "+result+"\t"+timeSinceLast+"\t"+duration);
 		return result;
