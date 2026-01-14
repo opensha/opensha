@@ -382,7 +382,7 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	}
 	
 	@Override
-	protected int getXIndexBefore(double x) {
+	public int getXIndexBefore(double x) {
 		return (int)Math.floor((x-minX)/delta);
 	}
 
@@ -578,6 +578,107 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 		double y = this.getY(index);
 		if(y!=point.getY()) return -1;
 		return index;
+	}
+	
+	public final class QuickInterpolator {
+		private final EvenlyDiscretizedFunc f;
+
+		private final boolean logX;
+		private final boolean logY;
+
+		private final int n;
+		private final double minX;
+		private final double maxX;
+		private final double tol;
+
+		// For linear-x indexing
+		private final double x0;
+		private final double dx;
+
+		// Precomputed y and slopes for the interpolation domain (either y or ln(y))
+		private final double[] yDom;		// length n
+		private final double[] slopeDom;	// length n-1, dyDom/dxDom where dxDom is either dx or ln(x[i+1])-ln(x[i])
+
+		public QuickInterpolator(EvenlyDiscretizedFunc f, boolean logX, boolean logY) {
+			if (f == null)
+				throw new NullPointerException("f is null");
+			this.f = f;
+			this.logX = logX;
+			this.logY = logY;
+
+			this.n = f.size();
+			if (n < 2)
+				throw new IllegalArgumentException("Need at least 2 points (size=" + n + ")");
+
+			this.minX = f.getX(0);
+			this.maxX = f.getX(n - 1);
+			this.tol = f.getTolerance();
+
+			this.x0 = minX;
+			this.dx = f.getDelta(); // for linear x case only
+
+			this.yDom = new double[n];
+			for (int i = 0; i < n; i++) {
+				double y = f.getY(i);
+				yDom[i] = logY ? Math.log(y) : y;
+			}
+
+			this.slopeDom = new double[n - 1];
+			if (logX) {
+				for (int i = 0; i < n - 1; i++) {
+					double xL = f.getX(i);
+					double xR = f.getX(i + 1);
+					double dxDom = Math.log(xR) - Math.log(xL);
+					slopeDom[i] = (yDom[i + 1] - yDom[i]) / dxDom;
+				}
+			} else {
+				// evenly discretized, constant dx
+				double invDx = 1d / dx;
+				for (int i = 0; i < n - 1; i++)
+					slopeDom[i] = (yDom[i + 1] - yDom[i]) * invDx;
+			}
+		}
+
+		/**
+		 * Interpolates y at x. Applies tolerance-based range validation and snaps to
+		 * endpoints when barely outside within tolerance.
+		 */
+		public double interp(double x) {
+			// Validation / endpoint snapping (exact logic requested)
+			if (x > maxX + tol || x < minX - tol)
+				throw new InvalidRangeException("x Value (" + x + ") must be within the range: "
+						+ f.getX(0) + " and " + f.getX(n - 1));
+			if (x >= maxX)
+				return f.getY(n - 1);
+			if (x <= minX)
+				return f.getY(0);
+
+			// Bin lookup
+			int i = f.getXIndexBefore(x); // largest index with x_i <= x; should be in [0, n-2] here
+
+			// Compute interpolated value in chosen domain
+			double yInterpDom;
+			if (logX) {
+				double xL = f.getX(i);
+				double t = (Math.log(x) - Math.log(xL)); // delta in ln(x)
+				yInterpDom = yDom[i] + slopeDom[i] * t;
+			} else {
+				double xL = x0 + i * dx;
+				double t = (x - xL);
+				yInterpDom = yDom[i] + slopeDom[i] * t;
+			}
+
+			// Map back to output domain
+			return logY ? Math.exp(yInterpDom) : yInterpDom;
+		}
+
+		public boolean isLogX() {
+			return logX;
+		}
+
+		public boolean isLogY() {
+			return logY;
+		}
 	}
 
 //	public static void main(String args[]) {

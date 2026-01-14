@@ -57,6 +57,14 @@ public interface DiscretizedFunc extends XY_DataSet {
 	/** returns the y-value given an x-value - within tolerance */
 	public double getY(double x);
 	
+	/**
+	 * Returns the largest x index that is at or before the given X value.
+	 * <p>
+	 * Return value is undefined if x < minX or x > maxX, error checking should be done externally.
+	 * @param x
+	 * @return
+	 */
+	public int getXIndexBefore(double x);
 
 	/* ***************/
 	/* INTERPOLATION */
@@ -106,6 +114,13 @@ public interface DiscretizedFunc extends XY_DataSet {
 	 */
 	public double getInterpolatedY_inLogXDomain(double x);
 
+    /**
+     * Given the input x value, finds the two sequential
+     * x values with the closest x values, then calculates an
+     * interpolated y value for this x value, fitted to the curve.
+     */
+    public double getInterpolatedY(double x, boolean logX, boolean logY);
+
 	/**
 	 * Given the input y value, finds the two sequential
 	 * x values with the closest y values, then calculates an
@@ -120,6 +135,33 @@ public interface DiscretizedFunc extends XY_DataSet {
 	 * x value in the log space.
 	 */
 	public double getFirstInterpolatedX_inLogXLogYDomain(double y);
+	
+	/**
+	 * Builds a quick interpolator for repeated access taking advantage of precomputed slopes. This has memory and
+	 * initialization overhead and should only be used if you need to interpolate many times.
+	 * <p>
+	 * Note that this will reflect the function at the time this method is called and its behavior is undefined if the
+	 * underlying function is modified in any way.
+	 * @return
+	 */
+	public default QuickDiscretizedFuncInterpolator getQuickInterpolator() {
+		return getQuickInterpolator(false, false);
+	}
+	
+	/**
+	 * Builds a quick interpolator for repeated access taking advantage of precomputed slopes. This has memory and
+	 * initialization overhead and should only be used if you need to interpolate many times.
+	 * <p>
+	 * Note that this will reflect the function at the time this method is called and its behavior is undefined if the
+	 * underlying function is modified in any way.
+	 * 
+	 * @param logX if true, interpolation is done in the log-X domain
+	 * @param logY if true, interpolation is done in the log-Y domain
+	 * @return
+	 */
+	public default QuickDiscretizedFuncInterpolator getQuickInterpolator(boolean logX, boolean logY) {
+		return QuickDiscretizedFuncInterpolator.get(this, logX, logY);
+	}
 	
 	
 	/* ***************************/

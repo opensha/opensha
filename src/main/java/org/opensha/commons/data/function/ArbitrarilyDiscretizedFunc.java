@@ -273,11 +273,13 @@ implements Serializable {
 	}
 
 	@Override
-	int getXIndexBefore(double x) {
+	public int getXIndexBefore(double x) {
 		int ind = points.binarySearch(new Point2D.Double(x, 0));
 		if (ind < 0)
+			// not an exact match
 			return -ind-2;
-		return ind-1;
+		// exact match
+		return ind;
 	}
 
 	private double extrapolate(double x1, double x2, double y1, double y2,
