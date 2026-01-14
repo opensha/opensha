@@ -13,6 +13,10 @@ public class TimeDepUtils {
 	public final static double MILLISEC_PER_YEAR = 1000*60*60*24*365.25;
 	public final static long MILLISEC_PER_DAY = 1000*60*60*24;
 	
+	// use these to convert milliseconds to days or years (faster to multiply than divide)
+	public final static double MILLISEC_TO_YEARS = 1d/MILLISEC_PER_YEAR;
+	public final static double MILLISEC_TO_DAYS = 1d/(double)MILLISEC_PER_DAY;
+	
 	/*
 	 * Helper methods
 	 */
@@ -49,6 +53,19 @@ public class TimeDepUtils {
 	 */
 	public static double rateToPoissonProb(double annualRate, double durationYears) {
 		return 1.0-Math.exp(-annualRate*durationYears);
+	}
+	
+	/**
+	 * This computes the non-poisson probability for the given annual rate, just rate*duration but ensuring
+	 * that it doesn't exceed 1. This was coppied from the original FaultSystemSolution implementation
+	 * 
+	 * TODO: Ned, make sure this is correct
+	 * @param annualRate
+	 * @param durationYears
+	 * @return
+	 */
+	public static double rateToNonPoissonProb(double annualRate, double durationYears) {
+		return Math.min(1d, annualRate*durationYears);
 	}
 	
 	/**

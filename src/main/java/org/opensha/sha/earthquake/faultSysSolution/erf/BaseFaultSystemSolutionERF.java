@@ -24,6 +24,7 @@ import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.aftershocks.MagnitudeDependentAftershockFilter;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.erf.td.TimeDepUtils;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ProxyFaultSectionInstances;
@@ -409,7 +410,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		
 	}
 	
-	protected boolean isRuptureIncluded(int fltSystRupIndex) {
+	public boolean isRuptureIncluded(int fltSystRupIndex) {
 		// mod sect min mags
 		if (modSectMinMagsOptional == null) {
 			ModSectMinMags minMags = faultSysSolution.getRupSet().getModule(ModSectMinMags.class);
@@ -790,10 +791,9 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 			} else {
 				double prob;
 				if (isPoisson)
-					prob = 1d-Math.exp(-annualRate*duration);
+					prob = TimeDepUtils.rateToPoissonProb(annualRate, duration);
 				else
-					// cannot exceed 1
-					prob = Math.min(1d, annualRate*duration);
+					prob = TimeDepUtils.rateToNonPoissonProb(annualRate, duration);
 				src = new FaultRuptureSource(meanMag, 
 						rupSet.getSurfaceForRupture(fltSystRupIndex, faultGridSpacing, aseisReducesArea), 
 						rake, prob, isPoisson);
