@@ -93,7 +93,8 @@ public class DiscretizedFuncInterpolatorBenchmark {
 	
 	public static void main(String[] args) {
 		DiscretizedFunc arbFunc = new ArbitrarilyDiscretizedFunc();
-		int funSize = 10000;
+//		int funSize = 10000;
+		int funSize = 100;
 		for (int i=0; i<funSize; i++)
 			arbFunc.set(Math.random()*100d, Math.random());
 		EvenlyDiscretizedFunc evenFunc = new EvenlyDiscretizedFunc(0d, funSize, 1d);
@@ -105,10 +106,10 @@ public class DiscretizedFuncInterpolatorBenchmark {
 		int warmupIters = 30;
 //		int measureIters = 60;
 //		int trials = 7;
-//		int measureIters = 100;
-//		int trials = 20;
-		int measureIters = 200;
-		int trials = 50;
+		int measureIters = 100;
+		int trials = 20;
+//		int measureIters = 200;
+//		int trials = 50;
 		
 		boolean[] logXs = {false, true};
 		boolean[] logYs = {false, true};
@@ -140,10 +141,11 @@ public class DiscretizedFuncInterpolatorBenchmark {
 					else
 						System.out.println("Linear:");
 					Basic basic = new Basic(func, logX, logY);
-					DiscretizedFuncInterpolator precomputed = getOptimized(func, logX, logY);
+					DiscretizedFuncInterpolator optimized = getOptimized(func, logX, logY);
+//					DiscretizedFuncInterpolator optimized = new Closest(func);
 					BenchmarkResult basicBenchmark = benchmark(basic, xs, warmupIters, measureIters, trials);
 					System.out.println("\tBasic:\t"+basicBenchmark);
-					BenchmarkResult optimizedBenchmark = benchmark(precomputed, xs, warmupIters, measureIters, trials);
+					BenchmarkResult optimizedBenchmark = benchmark(optimized, xs, warmupIters, measureIters, trials);
 					double speedup = optimizedBenchmark.rate/basicBenchmark.rate;
 					System.out.println("\tOptimized:\t"+optimizedBenchmark+";\tspeedup="+(float)speedup+"x");
 				}

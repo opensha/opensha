@@ -6,6 +6,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.opensha.commons.exceptions.InvalidRangeException;
 
+import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 
 /**
@@ -67,6 +68,45 @@ public interface DiscretizedFuncInterpolator {
 		@Override
 		public double findY(double x) {
 			return f.getInterpolatedY(x, logX, logY);
+		}
+	}
+	
+	/**
+	 * Interpolator instance that doesn't actually interpolate, instead just grabs the y value at the closest X
+	 */
+	public static class Closest implements DiscretizedFuncInterpolator {
+		
+		private final DiscretizedFunc f;
+		private final double minXCheck, maxXCheck;
+
+		public Closest(DiscretizedFunc f) {
+			this.f = f;
+			// ensure that we have at least some tiny tolerance for our bounds checks
+			double tol = Math.max(f.getTolerance(), 1e-14);
+			if (f instanceof EvenlyDiscretizedFunc) {
+				EvenlyDiscretizedFunc ef = (EvenlyDiscretizedFunc)f;
+				minXCheck = ef.getMinX() - 0.5*ef.getDelta() - tol;
+				maxXCheck = ef.getMaxX() + 0.5*ef.getDelta() + tol;
+			} else {
+				minXCheck = f.getMinX() - tol;
+				maxXCheck = f.getMaxX() + tol;
+			}
+		}
+
+		@Override
+		public boolean isLogX() {
+			return false;
+		}
+
+		@Override
+		public boolean isLogY() {
+			return false;
+		}
+
+		@Override
+		public double findY(double x) {
+			Preconditions.checkState(x >= minXCheck && x <= maxXCheck);
+			return f.getY(f.getClosestXIndex(x));
 		}
 	}
 	

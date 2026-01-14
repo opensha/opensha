@@ -65,6 +65,14 @@ public interface DiscretizedFunc extends XY_DataSet {
 	 * @return
 	 */
 	public int getXIndexBefore(double x);
+	
+	/**
+	 * Returns the index of the closest point to this x value. If x < {@link #getMinX()} this will return 0, and if
+	 * x > {@link #getMaxX()} this will return size-1.
+	 * @param x
+	 * @return
+	 */
+	public int getClosestXIndex( double x);
 
 	/* ***************/
 	/* INTERPOLATION */

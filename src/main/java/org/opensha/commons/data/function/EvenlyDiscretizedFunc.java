@@ -112,6 +112,19 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	public EvenlyDiscretizedFunc(double min, double max, int num) {
 		this.set(min, max, num);
 	}
+	
+	/**
+	 * The other three input options to fully quantify the domain
+	 * of this list, i.e. the x-axis.
+	 *
+	 * @param min   - Starting x value
+	 * @param num   - number of points in list
+	 * @param max - Ending x value
+	 * @param points - array of y values
+	 */
+	protected EvenlyDiscretizedFunc(double min, double max, int num, double[] points) {
+		this.set(min, max, num);
+	}
 
 	/**
 	 * Three input options to fully quantify the domain
@@ -122,8 +135,23 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	 * @param num   - number of points in list
 	 * @param max - Ending x value
 	 */
-
 	public void set(double min, double max, int num) {
+		set(min, max, num, new double[num]);
+	}
+	
+
+
+	/**
+	 * Three input options to fully quantify the domain
+	 * of this list, i.e. the x-axis. This function clears the list of points
+	 * previously in this function
+	 *
+	 * @param min   - Starting x value
+	 * @param num   - number of points in list
+	 * @param max - Ending x value
+	 * @param points - array of y values
+	 */
+	protected void set(double min, double max, int num, double[] points) {
 		if (num <= 0)
 			throw new IllegalArgumentException("num points must be > 0");
 
@@ -144,8 +172,9 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 		this.minX = min;
 		this.maxX = max;
 		this.num = num;
-
-		points = new double[num];
+		Preconditions.checkState(points.length == num,
+				"Passed in points array is of size %s but num=%s", points.length, num);
+		this.points = points;
 	}
 
 	/** Sets all y values to NaN */

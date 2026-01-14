@@ -113,4 +113,9 @@ public class UnmodifiableDiscrFunc extends AbstractDiscretizedFunc {
 		return func.getXIndexBefore(x);
 	}
 
+	@Override
+	public int getClosestXIndex(double x) {
+		return func.getClosestXIndex(x);
+	}
+
 }
