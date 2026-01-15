@@ -228,6 +228,15 @@ public class WG02_ProbabilityModel extends AbstractProbDistProbabilityModel impl
 	}
 	
 	/**
+	 * Sets the aperiodicity model to one of the enum values
+	 * @param modelChoice
+	 */
+	public void setAperiodicityModelChoice(AperiodicityModels modelChoice) {
+		Preconditions.checkNotNull(modelChoice, "Passed in aperiodicity model cannot be null");
+		aperiodicityParam.setEnumValue(modelChoice);
+	}
+	
+	/**
 	 * Sets a custom aperiodicity model to something not controlled by the built-in model enum.
 	 * 
 	 * @param model
