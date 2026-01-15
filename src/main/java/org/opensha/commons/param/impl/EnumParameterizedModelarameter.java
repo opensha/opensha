@@ -31,6 +31,8 @@ import org.opensha.commons.param.event.ParameterChangeFailEvent;
 import org.opensha.commons.param.event.ParameterChangeFailListener;
 import org.opensha.commons.param.event.ParameterChangeListener;
 
+import com.google.common.base.Preconditions;
+
 /**
  * Parameter and nested editor for a special class of models where the model choice is specified by an Enum that
  * provides model instances, and those model instances may have adjustable parameters.
@@ -60,6 +62,18 @@ public class EnumParameterizedModelarameter<E extends Enum<E>, T extends Paramet
 	
 	private static final String CUSTOM_VALUE_LABEL_DEFAULT = "External Custom Value";
 	
+	/**
+	 * Constructor specifying the enum and it's choices and a function to instantiate models for enum choices.
+	 * <p>
+	 * If allowCustomValues is true, arbitrary external {@link #setValue(Object)} calls are allowed and will cause the
+	 * enum parameter to disappear from the editor (until {@link #setEnumValue(Enum)} is called).
+	 * 
+	 * @param name parameter name
+	 * @param choices allowed enum choices
+	 * @param defaultValue default (initial) enum value, cannot be null
+	 * @param allowCustomValues if custom externally-set values should be allowed
+	 * @param instanceBuilder function to instantiate a model for a given enum value
+	 */
 	public EnumParameterizedModelarameter(String name, EnumSet<E> choices, E defaultValue, boolean allowCustomValues,
 			Function<E, T> instanceBuilder) {
 		this(name, choices, defaultValue, allowCustomValues, CUSTOM_VALUE_LABEL_DEFAULT, instanceBuilder);
@@ -73,14 +87,15 @@ public class EnumParameterizedModelarameter<E extends Enum<E>, T extends Paramet
 	 * 
 	 * @param name parameter name
 	 * @param choices allowed enum choices
-	 * @param defaultValue default (initial) enum value
-	 * @param nullOption string for null enum selection
+	 * @param defaultValue default (initial) enum value, cannot be null
+	 * @param nullOption string to be shown if a custom value is set externally
 	 * @param allowCustomValues if custom externally-set values should be allowed
 	 * @param instanceBuilder function to instantiate a model for a given enum value
 	 */
 	public EnumParameterizedModelarameter(String name, EnumSet<E> choices, E defaultValue,
 			boolean allowCustomValues, String customValueLabel, Function<E, T> instanceBuilder) {
 		super(name, null, null, null);
+		Preconditions.checkNotNull(defaultValue, "%s: default enum value cannot be null", name);
 		this.setConstraint(new CustomValueCheckConstraint());
 		this.allowCustomValues = allowCustomValues;
 		this.instanceBuilder = instanceBuilder;
@@ -194,6 +209,8 @@ public class EnumParameterizedModelarameter<E extends Enum<E>, T extends Paramet
 	}
 	
 	public void setEnumValue(E enumValue) {
+		Preconditions.checkNotNull(enumValue,
+				"%s: cannot set enum value to null, which is reserved for external custom values", getName());
 		// this will trigger a setValue(getCurrentInstance()) via EnumParamListener 
 		enumParam.setValue(enumValue);
 	}
