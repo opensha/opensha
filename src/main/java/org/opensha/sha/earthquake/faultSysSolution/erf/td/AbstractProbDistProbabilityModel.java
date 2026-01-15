@@ -61,6 +61,7 @@ abstract class AbstractProbDistProbabilityModel extends AbstractFSS_ProbabilityM
 	public void setProbDistsDiscretization(double maxNormalizedTime, int numDiscretizations, boolean interpolate) {
 		this.maxNormalizedTime = maxNormalizedTime;
 		this.numDiscretizations = numDiscretizations;
+		this.interpolate = interpolate;
 		clearProbDistsCache();
 	}
 	
