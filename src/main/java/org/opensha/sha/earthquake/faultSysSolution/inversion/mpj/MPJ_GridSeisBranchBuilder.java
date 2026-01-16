@@ -1055,23 +1055,23 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			
 			synchronized (outputs) {
 				double griddedWeight = gridSeisBranch.getOrigBranchWeight();
+				double faultWeight = origBranch.getBranchWeight();
 				if (write) {
 					// full average
 					if (outputs.accumulator == null)
 						outputs.accumulator = gridProv.averagingAccumulator();
 					outputs.accumulator.process(gridProv, griddedWeight);
-					// branch-specific average
+					// global accumulator for this individual gridded seismicity branch
 					String gridPrefix = gridSeisBranch.buildFileName();
-					AveragingAccumulator<GridSourceProvider> branchAccumulator = gridSeisAveragers.get(baPrefix, gridPrefix);
+					AveragingAccumulator<GridSourceProvider> gridBranchAccumulator = gridSeisAveragers.get(baPrefix, gridPrefix);
 					
-					if (branchAccumulator == null) {
-						branchAccumulator = gridProv.averagingAccumulator();
-						gridSeisAveragers.put(baPrefix, gridPrefix, branchAccumulator);
+					if (gridBranchAccumulator == null) {
+						gridBranchAccumulator = gridProv.averagingAccumulator();
+						gridSeisAveragers.put(baPrefix, gridPrefix, gridBranchAccumulator);
 					}
-					branchAccumulator.process(gridProv, griddedWeight);
+					gridBranchAccumulator.process(gridProv, faultWeight);
 				}
 				
-				double faultWeight = origBranch.getBranchWeight();
 				
 				outputs.mfdBuilder.process(sol, gridProv, combinedBranch, faultWeight * griddedWeight);
 				gridProv = null;
