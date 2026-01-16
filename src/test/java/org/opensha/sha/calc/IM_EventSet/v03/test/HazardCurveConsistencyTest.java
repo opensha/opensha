@@ -4,6 +4,7 @@ import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.ListIterator;
 
 import static org.junit.Assert.*;
@@ -15,7 +16,6 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
-import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.param.Parameter;
@@ -24,6 +24,7 @@ import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetCalc_v3_0_API;
 import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetOutputWriter;
 import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.HAZ01Writer;
+import org.opensha.sha.calc.params.filters.*;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.rupForecastImpl.Frankel96.Frankel96_AdjustableEqkRupForecast;
 import org.opensha.sha.gui.infoTools.IMT_Info;
@@ -61,7 +62,11 @@ public class HazardCurveConsistencyTest implements IM_EventSetCalc_v3_0_API {
 	String imt = "SA 1.0";
 //    String imt = "PGA";
 
-	public HazardCurveConsistencyTest() {
+    private final SourceFilterManager sourceFilters;
+
+    public HazardCurveConsistencyTest() {
+        sourceFilters = SourceFiltersParam.getDefault();
+
 		outputDir = getTempDir();
 		erf = new Frankel96_AdjustableEqkRupForecast();
 		erf.getAdjustableParameterList()
@@ -230,7 +235,12 @@ public class HazardCurveConsistencyTest implements IM_EventSetCalc_v3_0_API {
 		return sites;
 	}
 
-	public ArrayList<ParameterList> getSitesData() {
+    @Override
+    public List<SourceFilter> getSourceFilters() {
+        return sourceFilters.getEnabledFilters();
+    }
+
+    public ArrayList<ParameterList> getSitesData() {
 		return sitesData;
 	}
 

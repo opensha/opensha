@@ -2,13 +2,14 @@ package org.opensha.sha.calc.IM_EventSet.v03.gui;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.List;
 
 import org.opensha.commons.data.Site;
-import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetCalc_v3_0;
 import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetCalc_v3_0_API;
+import org.opensha.sha.calc.params.filters.*;
 
 public class GUICalcAPI_Impl implements IM_EventSetCalc_v3_0_API {
 	
@@ -16,17 +17,20 @@ public class GUICalcAPI_Impl implements IM_EventSetCalc_v3_0_API {
 	private ArrayList<ParameterList> userSitesData;
 	private ArrayList<ParameterList> sitesData;
 	private File outputDir;
-	private OrderedSiteDataProviderList providers;
-	
-	public GUICalcAPI_Impl(ArrayList<Location> locs, ArrayList<ParameterList> userSitesData,
-			File outputDir, OrderedSiteDataProviderList providers) {
+
+    private final SourceFilterManager sourceFilters;
+
+	public GUICalcAPI_Impl(ArrayList<Location> locs,
+                           ArrayList<ParameterList> userSitesData,
+                           File outputDir,
+                           SourceFilterManager sourceFilters) {
 		sites = new ArrayList<Site>();
 		for (Location loc : locs) {
 			sites.add(new Site(loc));
 		}
 		this.userSitesData = userSitesData;
 		this.outputDir = outputDir;
-		this.providers = providers;
+        this.sourceFilters = sourceFilters;
 	}
 
 	public int getNumSites() {
@@ -56,4 +60,7 @@ public class GUICalcAPI_Impl implements IM_EventSetCalc_v3_0_API {
 		return userSitesData.get(i);
 	}
 
+    public List<SourceFilter> getSourceFilters() {
+        return sourceFilters.getEnabledFilters();
+    }
 }

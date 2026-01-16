@@ -7,12 +7,11 @@ import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.StringTokenizer;
 import java.util.logging.Level;
 
-import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.impl.WillsMap2000;
-import org.opensha.commons.data.siteData.impl.WillsMap2006;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
@@ -22,11 +21,11 @@ import org.opensha.commons.param.WarningParameter;
 import org.opensha.commons.param.event.ParameterChangeWarningEvent;
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
 import org.opensha.commons.param.impl.StringParameter;
-import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.HAZ01Writer;
 import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.OriginalModWriter;
+import org.opensha.sha.calc.params.filters.*;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.param.AleatoryMagAreaStdDevParam;
 import org.opensha.sha.earthquake.param.BackgroundRupParam;
@@ -86,7 +85,9 @@ implements ParameterChangeWarningListener {
 	
 	private ArrayList<ParameterList> userDataVals;
 
-	/**
+    private final SourceFilterManager sourceFilters;
+
+    /**
 	 *  ArrayList that maps picklist attenRel string names to the real fully qualified
 	 *  class names
 	 */
@@ -150,6 +151,9 @@ implements ParameterChangeWarningListener {
 		inputFileName = inpFile;
 		dirName = outDir ;
 		outputDir = new File(dirName);
+
+        // source filters have fixed-cutoff distance of 200km by default
+        sourceFilters = SourceFiltersParam.getDefault();
 	}
 
 	public void parseFile() throws FileNotFoundException,IOException{
@@ -598,7 +602,12 @@ implements ParameterChangeWarningListener {
 		return outputDir;
 	}
 
-	public Location getSiteLocation(int i) {
+    @Override
+    public List<SourceFilter> getSourceFilters() {
+        return sourceFilters.getEnabledFilters();
+    }
+
+    public Location getSiteLocation(int i) {
 		return locList.get(i);
 	}
 
