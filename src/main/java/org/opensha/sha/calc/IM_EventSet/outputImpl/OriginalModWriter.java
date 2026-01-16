@@ -13,6 +13,7 @@ import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.param.Parameter;
 import org.opensha.sha.calc.IM_EventSet.IMEventSetCalcAPI;
 import org.opensha.sha.calc.IM_EventSet.IM_EventSetOutputWriter;
+import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
@@ -102,13 +103,15 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 		
 		for (int sourceID=0; sourceID<numSources; sourceID++) {
 			ProbEqkSource source = erf.getSource(sourceID);
-			if (!shouldIncludeSource(source))
-				continue;
 			for (int rupID=0; rupID<source.getNumRuptures(); rupID++) {
 				ProbEqkRupture rup = source.getRupture(rupID);
 				attenRel.setEqkRupture(rup);
 				String line = sourceID + " " + rupID;
 				for (Site site : sites) {
+                    if (HazardCurveCalculator.canSkipSource(calc.getSourceFilters(), source, site))
+                        continue;
+                    if (HazardCurveCalculator.canSkipRupture(calc.getSourceFilters(), rup, site))
+                        continue;
 					attenRel.setSite(site);
 					double mean = attenRel.getMean();
                     if (stdDevParam != null) {
@@ -159,13 +162,15 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 		
 		for (int sourceID=0; sourceID<numSources; sourceID++) {
 			ProbEqkSource source = erf.getSource(sourceID);
-			if (!shouldIncludeSource(source))
-				continue;
 			for (int rupID=0; rupID<source.getNumRuptures(); rupID++) {
 				ProbEqkRupture rup = source.getRupture(rupID);
 				String line = sourceID + " " + rupID;
 				String lineJB = line;
 				for (Site site : sites) {
+                    if (HazardCurveCalculator.canSkipSource(calc.getSourceFilters(), source, site))
+                        continue;
+                    if (HazardCurveCalculator.canSkipRupture(calc.getSourceFilters(), rup, site))
+                        continue;
 					double rupDist = rup.getRuptureSurface().getDistanceRup(site.getLocation());
 					double distJB = rup.getRuptureSurface().getDistanceJB(site.getLocation());
 					line += " " + distFormat.format(rupDist);
@@ -197,11 +202,9 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 		int numSources = erf.getNumSources();
 		
 		double duration = ((TimeSpan)erf.getTimeSpan()).getDuration();
-		
+
 		for (int sourceID=0; sourceID<numSources; sourceID++) {
 			ProbEqkSource source = erf.getSource(sourceID);
-			if (!shouldIncludeSource(source))
-				continue;
 			for (int rupID=0; rupID<source.getNumRuptures(); rupID++) {
 				ProbEqkRupture rup = source.getRupture(rupID);
 				double rate = rup.getMeanAnnualRate(duration);

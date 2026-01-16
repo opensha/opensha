@@ -2,13 +2,14 @@ package org.opensha.sha.calc.IM_EventSet.gui;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.List;
 
 import org.opensha.commons.data.Site;
-import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.calc.IM_EventSet.AbstractIMEventSetCalc;
 import org.opensha.sha.calc.IM_EventSet.IMEventSetCalcAPI;
+import org.opensha.sha.calc.params.filters.*;
 
 /**
  * Implementation of the IM Event Set Calculator API for use in the GUI application.
@@ -20,17 +21,20 @@ public class IMEventSetCalcGUIImpl implements IMEventSetCalcAPI {
 	private ArrayList<ParameterList> userSitesData;
 	private ArrayList<ParameterList> sitesData;
 	private File outputDir;
-	private OrderedSiteDataProviderList providers;
-	
-	public IMEventSetCalcGUIImpl(ArrayList<Location> locs, ArrayList<ParameterList> userSitesData,
-                                 File outputDir, OrderedSiteDataProviderList providers) {
+
+    private final SourceFilterManager sourceFilters;
+
+	public IMEventSetCalcGUIImpl(ArrayList<Location> locs,
+                           ArrayList<ParameterList> userSitesData,
+                           File outputDir,
+                           SourceFilterManager sourceFilters) {
 		sites = new ArrayList<Site>();
 		for (Location loc : locs) {
 			sites.add(new Site(loc));
 		}
 		this.userSitesData = userSitesData;
 		this.outputDir = outputDir;
-		this.providers = providers;
+        this.sourceFilters = sourceFilters;
 	}
 
 	public int getNumSites() {
@@ -60,4 +64,7 @@ public class IMEventSetCalcGUIImpl implements IMEventSetCalcAPI {
 		return userSitesData.get(i);
 	}
 
+    public List<SourceFilter> getSourceFilters() {
+        return sourceFilters.getEnabledFilters();
+    }
 }

@@ -12,6 +12,7 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.param.Parameter;
+import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.IM_EventSet.IMEventSetCalcAPI;
 import org.opensha.sha.calc.IM_EventSet.IM_EventSetOutputWriter;
 import org.opensha.sha.earthquake.ERF;
@@ -157,11 +158,13 @@ public class HAZ01Writer extends IM_EventSetOutputWriter {
 			for (int sourceID=0; sourceID<numSources; sourceID++) {
 				logger.log(Level.FINEST, "Writing portion for Source: " + sourceID);
 				ProbEqkSource source = erf.getSource(sourceID);
-				if (!shouldIncludeSource(source))
-					continue;
+                if (HazardCurveCalculator.canSkipSource(calc.getSourceFilters(), source, site))
+                    continue;
 				for (int rupID=0; rupID<source.getNumRuptures(); rupID++) {
 					lineID++;
 					ProbEqkRupture rup = source.getRupture(rupID);
+                    if (HazardCurveCalculator.canSkipRupture(calc.getSourceFilters(), rup, site))
+                        continue;
 					attenRel.setEqkRupture(rup);
 					
 					double rupDist = rup.getRuptureSurface().getDistanceRup(site.getLocation());
@@ -212,8 +215,6 @@ public class HAZ01Writer extends IM_EventSetOutputWriter {
 			logger.log(Level.FINEST, "Writing portion for Source: " + sourceID);
 			String sourceName = source.getName();
 			sourceName = sourceName.replaceAll(",", "");
-			if (!shouldIncludeSource(source))
-				continue;
 			for (int rupID=0; rupID<source.getNumRuptures(); rupID++) {
 				lineID++;
 				ProbEqkRupture rup = source.getRupture(rupID);

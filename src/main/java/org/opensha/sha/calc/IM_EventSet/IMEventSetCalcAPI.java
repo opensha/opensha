@@ -2,11 +2,12 @@ package org.opensha.sha.calc.IM_EventSet;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.List;
 
 import org.opensha.commons.data.Site;
-import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.ParameterList;
+import org.opensha.sha.calc.params.filters.SourceFilter;
 
 /**
  * Core interface defining the data input contract for the IM Event Set Calculator system.
@@ -45,7 +46,7 @@ public interface IMEventSetCalcAPI {
      *
      * @return
      */
-    public int getNumSites();
+    int getNumSites();
 
     /**
      * Returns the Location of the ith site.
@@ -53,7 +54,7 @@ public interface IMEventSetCalcAPI {
      * @param i
      * @return
      */
-    public Location getSiteLocation(int i);
+    Location getSiteLocation(int i);
 
     /**
      * Returns the user specified (in the input file) site data for the site
@@ -62,14 +63,14 @@ public interface IMEventSetCalcAPI {
      * @param i ith site user created
      * @return list of parameters holding site data
      */
-    public ParameterList getUserSiteData(int i);
+    ParameterList getUserSiteData(int i);
 
     /**
      * Returns the output directory for all results
      *
      * @return
      */
-    public abstract File getOutputDir();
+    File getOutputDir();
 
     /**
      * This retrieves the site data parameter list for each site.
@@ -77,8 +78,9 @@ public interface IMEventSetCalcAPI {
      *
      * @return
      */
-    public ArrayList<ParameterList> getSitesData();
+    ArrayList<ParameterList> getSitesData();
 
-    public ArrayList<Site> getSites();
+    ArrayList<Site> getSites();
 
+    List<SourceFilter> getSourceFilters();
 }

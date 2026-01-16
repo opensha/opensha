@@ -27,8 +27,6 @@ public abstract class AbstractIMEventSetCalc implements IMEventSetCalcAPI {
         assert logger != null;
         logger.setLevel(level);
 	}
-	
-	public static final float MIN_SOURCE_DIST = 200;
 
 	/**
 	 * This should ONLY be accessed through the getter method as it may

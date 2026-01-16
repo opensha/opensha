@@ -10,12 +10,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.opensha.commons.data.Site;
-import org.opensha.commons.geo.Location;
-import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.earthquake.ERF;
-import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PeriodParam;
 
@@ -33,9 +30,6 @@ public abstract class IM_EventSetOutputWriter {
 	
 	protected IMEventSetCalcAPI calc;
 
-	private float sourceCutOffDistance = 0;
-	private Site siteForSourceCutOff = null;
-	
 	public static final DecimalFormat meanSigmaFormat = new DecimalFormat("0.####");
 	public static final DecimalFormat distFormat = new DecimalFormat("0.###");
 	public static final DecimalFormat rateFormat = new DecimalFormat("####0E0");
@@ -258,78 +252,6 @@ public abstract class IM_EventSetOutputWriter {
 //            System.out.println(siteData);
 //		}
 		return sites;
-	}
-	
-	private float getSourceCutOffDistance() {
-		if (sourceCutOffDistance == 0) {
-			createSiteList();
-		}
-		return sourceCutOffDistance;
-	}
-	
-	private Site getSiteForSourceCutOff() {
-		if (siteForSourceCutOff == null) {
-			createSiteList();
-		}
-		return siteForSourceCutOff;
-	}
-	
-	/**
-	 * This method finds the location at the middle of the region encompassing all of
-	 * the sites and gets a cutoff distance such that all ruptures within 200 km of any
-	 * site are included in the output.
-	 */
-	protected void createSiteList() {
-		logger.log(Level.FINE, "Calculating source cutoff site and distance");
-		//gets the min lat, lon and max lat, lon from given set of locations.
-		double minLon = Double.MAX_VALUE;
-		double maxLon = Double.NEGATIVE_INFINITY;
-		double minLat = Double.MAX_VALUE;
-		double maxLat = Double.NEGATIVE_INFINITY;
-		int numSites = calc.getNumSites();
-		for (int i = 0; i < numSites; ++i) {
-
-			Location loc = calc.getSiteLocation(i);
-			double lon = loc.getLongitude();
-			double lat = loc.getLatitude();
-			if (lon > maxLon)
-				maxLon = lon;
-			if (lon < minLon)
-				minLon = lon;
-			if (lat > maxLat)
-				maxLat = lat;
-			if (lat < minLat)
-				minLat = lat;
-		}
-		double middleLon = (minLon + maxLon) / 2;
-		double middleLat = (minLat + maxLat) / 2;
-
-		//getting the source-site cutoff distance
-		sourceCutOffDistance = (float) LocationUtils.horzDistance(
-				new Location(middleLat, middleLon),
-				new Location(minLat, minLon)) + 
-				AbstractIMEventSetCalc.MIN_SOURCE_DIST;
-		siteForSourceCutOff = new Site(new Location(middleLat, middleLon));
-
-		return;
-	}
-	
-	/**
-	 * This method checks if the source is within 200 KM of any site
-	 * 
-	 * @param source
-	 * @return
-	 */
-	public boolean shouldIncludeSource(ProbEqkSource source) {
-		float sourceCutOffDistance = getSourceCutOffDistance();
-		Site siteForSourceCutOff = getSiteForSourceCutOff();
-		
-		double sourceDistFromSite = source.getMinDistance(siteForSourceCutOff);
-		if (sourceDistFromSite > sourceCutOffDistance) {
-			logger.log(Level.FINEST, "Source outside of cutoff distance, skipping");
-			return false;
-		}
-		return true;
 	}
 
 	@Override

@@ -443,25 +443,21 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 	public static boolean canSkipSource(Collection<SourceFilter> filters, ProbEqkSource source, Site site) {
 		if (filters == null || filters.isEmpty())
 			return false;
-		if (!filters.isEmpty()) {
-			// source-site distance
-			double distance = source.getMinDistance(site);
-			
-			for (SourceFilter filter : filters)
-				if (filter.canSkipSource(source, site, distance))
-					return true;
-		}
+        // source-site distance
+        double distance = source.getMinDistance(site);
+
+        for (SourceFilter filter : filters)
+            if (filter.canSkipSource(source, site, distance))
+                return true;
 		return false;
 	}
 	
 	public static boolean canSkipRupture(Collection<SourceFilter> filters, EqkRupture rupture, Site site) {
 		if (filters == null || filters.isEmpty())
 			return false;
-		if (!filters.isEmpty()) {
-			for (SourceFilter filter : filters)
-				if (filter.canSkipRupture(rupture, site))
-					return true;
-		}
+        for (SourceFilter filter : filters)
+            if (filter.canSkipRupture(rupture, site))
+                return true;
 		return false;
 	}
 
@@ -513,7 +509,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 		//parameter changes.
 		((AttenuationRelationship)imr).resetParameterEventListeners();
 
-		// declare some varibles used in the calculation
+		// declare some variables used in the calculation
 		int k;
 
 		// get the number of points
