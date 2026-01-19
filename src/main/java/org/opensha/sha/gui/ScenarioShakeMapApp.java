@@ -297,6 +297,7 @@ AttenuationRelationshipSiteParamsRegionAPI,CalculationSettingsControlPanelAPI,Ru
 				version = ApplicationVersion.loadBuildVersion();
 			} catch (IOException e) {
 				e.printStackTrace();
+				version = new ApplicationVersion(-1, -1, -1);
 			}
 		}
 		return version;
@@ -364,7 +365,7 @@ AttenuationRelationshipSiteParamsRegionAPI,CalculationSettingsControlPanelAPI,Ru
 		this.setLocation((dim.width - getSize().width) / 2, (dim.height - getSize().height) / 2);
 		//EXIT_ON_CLOSE == 3
 		this.setDefaultCloseOperation(3);
-        this.setTitle(APP_NAME + " (" + getAppVersion() + ")");
+		this.setTitle("ScenarioShakeMap Application ("+getAppVersion().getDisplayString()+" )");
 
 		//adding the Menu to the application
 		/*helpMenu.setText("Help");

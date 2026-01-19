@@ -8,7 +8,7 @@ public class GMT_InterpolationSettings implements Serializable {
 	/**
 	 * 
 	 */
-	private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 2L;
 
 	/**
 	 * The discretization that the interpolation should be performed at. It will then be resampled
@@ -40,6 +40,8 @@ public class GMT_InterpolationSettings implements Serializable {
 	private double searchRadius;
 	
 	private boolean saveInterpSurface = false;
+	
+	private boolean interpolateOnly = false;
 	
 	public static final String INTERP_XYZ_FILE_NAME = "map_data_interpolated.txt";
 	
@@ -124,6 +126,21 @@ public class GMT_InterpolationSettings implements Serializable {
 
 	public void setSaveInterpSurface(boolean saveInterpSurface) {
 		this.saveInterpSurface = saveInterpSurface;
+	}
+	
+	public boolean isInterpolateOnly() {
+		return interpolateOnly;
+	}
+	
+	/**
+	 * Enables/disables interpolation-only mode, wherein all plots will be skipped and only the interpolated
+	 * surface will be generated. This implies {@link #isSaveInterpSurface()}.
+	 * 
+	 * @param interpolateOnly
+	 * @return
+	 */
+	public void setInterpolateOnly(boolean interpolateOnly) {
+		this.interpolateOnly = interpolateOnly;
 	}
 
 }

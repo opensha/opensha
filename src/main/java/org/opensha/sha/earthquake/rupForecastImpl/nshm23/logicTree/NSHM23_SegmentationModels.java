@@ -282,6 +282,13 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 		this.wasatchProb = wasatchProb;
 	}
 	
+	public Shaw07JumpDistProb getShawModel() {
+		if (Double.isFinite(shawR0))
+			return shawShift > 0d ?
+					Shaw07JumpDistProb.forHorzOffset(1d, shawR0, shawShift) : new Shaw07JumpDistProb(1d, shawR0);
+		return null;
+	}
+	
 	public abstract JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch);
 	
 	private static JumpProbabilityCalc buildModel(FaultSystemRupSet rupSet, double shawR0, double shawShift,

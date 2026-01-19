@@ -22,7 +22,9 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.math3.util.Precision;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.CSVWriter;
+import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.json.Feature;
@@ -38,6 +40,7 @@ import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_SiteLogicTreeH
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
+import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_Config;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
@@ -46,6 +49,15 @@ public class LogicTreeSimplifiedMapCurveWriter {
 	
 	private static final int MAX_SITES_IN_MEMORY_DEFAULT = 1000;
 	private static final int MAX_ASYNC_READS = 10;
+	static final double[] FRACTILES = {0.025, 0.16, 0.84, 0.975};
+	static final String[] PERCENTILE_HEADERS;
+	static {
+		String[] headers = new String[FRACTILES.length];
+		DecimalFormat df = new DecimalFormat("0.#");
+		for (int i=0; i<headers.length; i++)
+			headers[i] = "p"+df.format(FRACTILES[i]*100d);
+		PERCENTILE_HEADERS = headers;
+	}
 	
 	public static Options createOptions() {
 		Options ops = new Options();
@@ -57,11 +69,22 @@ public class LogicTreeSimplifiedMapCurveWriter {
 				+ "lower values require more passes through the data. Default is "+MAX_SITES_IN_MEMORY_DEFAULT);
 		ops.addOption(null, "max-zip-threads", true,
 				"Maximum parallel zip threads (>=1, more use more memory). Default is min(8, cpus-4).");
+		ops.addOption(null, "nshmp-imls", false,
+				"Flag to store data at NSHMP-lib IMLs (period-dependent)");
 		
 		return ops;
 	}
 
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) {
+		try {
+			run(args);
+		} catch (Throwable e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
+	}
+
+	public static void run(String[] args) throws IOException {
 		CommandLine cmd = FaultSysTools.parseOptions(createOptions(), args, LogicTreeSimplifiedMapCurveWriter.class);
 		args = cmd.getArgs();
 		if (args.length < 5 || args.length > 6) {
@@ -84,6 +107,8 @@ public class LogicTreeSimplifiedMapCurveWriter {
 			fullOutputFile = new File(args[4]);
 			summaryOutputFile = new File(args[5]);
 		}
+		
+		boolean nshmpIMLs = cmd.hasOption("nshmp-imls");
 		
 		LogicTree<?> tree = LogicTree.read(logicTreeFile);
 		
@@ -134,22 +159,7 @@ public class LogicTreeSimplifiedMapCurveWriter {
 			sitesCSV.addLine(i+"", (float)loc.lat+"", (float)loc.lon+"");
 		}
 		
-		CSVFile<String> logicTreeCSV = new CSVFile<>(true);
-		List<String> branchHeader = new ArrayList<>();
-		branchHeader.add("Branch Index");
-		branchHeader.add("Branch Weight");
-		for (LogicTreeLevel<?> level : tree.getLevels())
-			branchHeader.add(level.getShortName());
-		logicTreeCSV.addLine(branchHeader);
-		for (int i=0; i<treeSize; i++) {
-			List<String> line = new ArrayList<>(branchHeader.size());
-			line.add(i+"");
-			line.add(branchWeights.get(i)+"");
-			LogicTreeBranch<?> branch = tree.getBranch(i);
-			for (LogicTreeNode node : branch)
-				line.add(node.getShortName());
-			logicTreeCSV.addLine(line);
-		}
+		CSVFile<String> logicTreeCSV = buildLogicTreeCSV(tree, branchWeights);
 		
 		for (ArchiveOutput output : outputs) {
 			if (output == null)
@@ -258,6 +268,8 @@ public class LogicTreeSimplifiedMapCurveWriter {
 				perUnits = "g";
 			}
 			
+			final double[] nshmpXVals = nshmpIMLs ? NSHMP_Config.imlsFor(periods[p]) : null;
+			
 			for (int b=0; b<siteLoadBatches.size(); b++) {
 				System.out.println("\tProcessing site batch "+b+"/"+siteLoadBatches.size()+", period "+p+"/"+periods.length);
 				int[] siteIndexes = siteLoadBatches.get(b);
@@ -293,6 +305,8 @@ public class LogicTreeSimplifiedMapCurveWriter {
 					final File loadCurvesFile = curvesFile;
 					final int branchIndex = i;
 					
+					boolean firstXValWarn = b == 0 && i == 0;
+					
 					curveLoadFutures.addLast(CompletableFuture.runAsync(new Runnable() {
 						
 						@Override
@@ -304,8 +318,31 @@ public class LogicTreeSimplifiedMapCurveWriter {
 								throw ExceptionUtils.asRuntimeException(e);
 							}
 							DiscretizedFunc[] branchCurves = SolHazardMapCalc.loadCurvesCSV(csv, gridReg);
-							for (int s=0; s<siteIndexes.length; s++)
-								siteCurves[s][branchIndex] = branchCurves[siteIndexes[s]];
+							for (int s=0; s<siteIndexes.length; s++) {
+								DiscretizedFunc curve = branchCurves[siteIndexes[s]];
+								if (nshmpIMLs) {
+									double[] interpYVals = new double[nshmpXVals.length];
+									double curveMinX = curve.getMinX();
+									double curveMaxX = curve.getMaxX();
+									for (int j=0; j<nshmpXVals.length; j++) {
+										double x = nshmpXVals[j];
+										if (x < curveMinX) {
+											if (firstXValWarn)
+												System.err.println("WARNING: Input curve minX="+(float)curveMinX
+														+" > nshmpMinX="+(float)x+", extrapolating using y from input minX");
+											interpYVals[j] = curve.getY(0);
+										} else if (x > curveMaxX) {
+											if (firstXValWarn)
+												System.err.println("WARNING: Input curve maxX="+(float)curveMaxX
+														+" < nshmpMaxX="+(float)x+", extrapolating using y=0");
+											interpYVals[j] = 0d;
+										} else
+											interpYVals[j] = curve.getInterpolatedY_inLogXDomain(x);
+									}
+									curve = new LightFixedXFunc(nshmpXVals, interpYVals);
+								}
+								siteCurves[s][branchIndex] = curve;
+							}
 						}
 					}));
 				}
@@ -413,15 +450,7 @@ public class LogicTreeSimplifiedMapCurveWriter {
 								curveDists[x] = new ValueDistribution(vals, branchWeights);
 							}
 							
-							CSVFile<String> csv = new CSVFile<>(true);
-							csv.addLine(perLabel+" ("+perUnits+")", "Mean", "Median", "Min", "p2.5", "p16", "p84", "p97.5", "Max");
-							for (int i=0; i<finalXVals.size(); i++) {
-								ValueDistribution dist = curveDists[i];
-								csv.addLine((float)finalXVals.getX(i)+"", dist.mean+"", dist.getInterpolatedFractile(0.5f)+"",
-										dist.min+"", dist.getInterpolatedFractile(0.025)+"",
-										dist.getInterpolatedFractile(0.16)+"", dist.getInterpolatedFractile(0.84)+"",
-										dist.getInterpolatedFractile(0.975)+"", dist.max+"");
-							}
+							CSVFile<String> csv = buildCurveDistCSV(curveDists, perLabel+" ("+perUnits+")", finalXVals);
 							
 							try {
 								summaryOutput.putNextEntry(sitePrefix+".csv");
@@ -455,6 +484,55 @@ public class LogicTreeSimplifiedMapCurveWriter {
 		overallWatch.stop();
 		System.out.println("Took "+timeStr(overallWatch));
 		System.exit(0);
+	}
+	
+	static CSVFile<String> buildCurveDistCSV(ValueDistribution[] dists, String periodHeader, DiscretizedFunc xVals) {
+		Preconditions.checkState(xVals.size() == dists.length);
+		CSVFile<String> csv = new CSVFile<>(true);
+		List<String> header = new ArrayList<>(5+PERCENTILE_HEADERS.length);
+		header.add(periodHeader);
+		header.add("Mean");
+		header.add("Median");
+		header.add("Min");
+		for (String pHeader : PERCENTILE_HEADERS)
+			header.add(pHeader);
+		header.add("Max");
+		csv.addLine(header);
+		for (int i=0; i<xVals.size(); i++) {
+			ValueDistribution dist = dists[i];
+			List<String> line = new ArrayList<>(header.size());
+			line.add((float)xVals.getX(i)+"");
+			line.add(dist.mean+"");
+			line.add(dist.getInterpolatedFractile(0.5f)+"");
+			line.add(dist.min+"");
+			for (double fractile : FRACTILES)
+				line.add(dist.getInterpolatedFractile(fractile)+"");
+			line.add(dist.max+"");
+			csv.addLine(line);
+		}
+		
+		return csv;
+	}
+
+	static CSVFile<String> buildLogicTreeCSV(LogicTree<?> tree, List<Double> branchWeights) {
+		CSVFile<String> logicTreeCSV = new CSVFile<>(true);
+		List<String> branchHeader = new ArrayList<>();
+		branchHeader.add("Branch Index");
+		branchHeader.add("Branch Weight");
+		for (LogicTreeLevel<?> level : tree.getLevels())
+			branchHeader.add(level.getShortName());
+		logicTreeCSV.addLine(branchHeader);
+		int treeSize = tree.size();
+		for (int i=0; i<treeSize; i++) {
+			List<String> line = new ArrayList<>(branchHeader.size());
+			line.add(i+"");
+			line.add(branchWeights.get(i)+"");
+			LogicTreeBranch<?> branch = tree.getBranch(i);
+			for (LogicTreeNode node : branch)
+				line.add(node.getShortName());
+			logicTreeCSV.addLine(line);
+		}
+		return logicTreeCSV;
 	}
 	
 	private static GriddedRegion loadGridReg(File regFile) throws IOException {

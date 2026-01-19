@@ -131,6 +131,17 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		getArchive().write(output);
 	}
 	
+	/**
+	 * Writes this solution to the give {@link ArchiveOutput} This is an alias to <code>getArchive().write(ModuleArchiveOutput)</code>.
+	 * See {@link #getArchive()}.
+	 * @param output
+	 * @param copyUnknownSourceFiles
+	 * @throws IOException
+	 */
+	public void write(ArchiveOutput output, boolean copyUnknownSourceFiles) throws IOException {
+		getArchive().write(output, copyUnknownSourceFiles);
+	}
+	
 	public static boolean isSolution(ZipFile zip) {
 		return zip.getEntry("solution/"+RATES_FILE_NAME) != null || zip.getEntry("rates.bin") != null;
 	}

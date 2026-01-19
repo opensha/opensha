@@ -75,6 +75,71 @@ public final class GeoJSONFaultSection implements FaultSection {
 	public static final String PROXY = "Proxy";
 	// use MultiLineString instead
 	@Deprecated private static final String LOWER_TRACE = "LowerTrace";
+	
+	public static class Builder {
+		private final Feature feature;
+		private final FeatureProperties props;
+		
+		public Builder(int faultID, String faultName, FaultTrace trace) {
+			this(faultID, faultName, new Geometry.LineString(trace));
+		}
+		
+		public Builder(int faultID, String faultName, Geometry geometry) {
+			this(faultID, faultName, geometry, null);
+		}
+		
+		public Builder(int faultID, String faultName, Geometry geometry, FeatureProperties props) {
+			if (props == null)
+				props = new FeatureProperties();
+			props.set(FAULT_ID, faultID);
+			props.set(FAULT_NAME, faultName);
+			this.props = props;
+			this.feature = new Feature(geometry, props);
+		}
+		
+		public Builder rake(double rake) {
+			props.set(RAKE, rake);
+			return this;
+		}
+		
+		public Builder dip(double dip) {
+			props.set(DIP, dip);
+			return this;
+		}
+		
+		public Builder upperDepth(double upperDepth) {
+			props.set(UPPER_DEPTH, upperDepth);
+			return this;
+		}
+		
+		public Builder lowerDepth(double lowerDepth) {
+			props.set(LOW_DEPTH, lowerDepth);
+			return this;
+		}
+		
+		public Builder dipDir(float dipDir) {
+			props.set(DIP_DIR, dipDir);
+			return this;
+		}
+		
+		public Builder slipRate(double slipRate) {
+			props.set(SLIP_RATE, slipRate);
+			return this;
+		}
+		
+		public Builder slipRateStdDev(double slipRateStdDev) {
+			props.set(SLIP_STD_DEV, slipRateStdDev);
+			return this;
+		}
+		
+		public Feature getFeature() {
+			return feature;
+		}
+		
+		public GeoJSONFaultSection build() {
+			return fromFeature(feature);
+		}
+	}
 
 	private GeoJSONFaultSection(Feature feature) {
 		Preconditions.checkNotNull(feature, "feature cannot be null");
