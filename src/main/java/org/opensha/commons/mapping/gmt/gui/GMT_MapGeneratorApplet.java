@@ -57,6 +57,7 @@ public class GMT_MapGeneratorApplet extends JPanel{
 				version = ApplicationVersion.loadBuildVersion();
 			} catch (IOException e) {
 				e.printStackTrace();
+				version = new ApplicationVersion(-1, -1, -1);
 			}
 		}
 		return version;
@@ -180,7 +181,7 @@ public class GMT_MapGeneratorApplet extends JPanel{
 		GMT_MapGeneratorApplet applet = new GMT_MapGeneratorApplet();
 		JFrame frame = new JFrame();
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setTitle(APP_NAME + " (" + getAppVersion() + ")");
+		frame.setTitle("GMT Map Generator ("+getAppVersion().getDisplayString()+")");
 		frame.getContentPane().add(applet, BorderLayout.CENTER);
 		applet.init();
 		frame.setIconImages(IconFetcher.fetchIcons(APP_SHORT_NAME));

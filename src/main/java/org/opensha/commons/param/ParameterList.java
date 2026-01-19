@@ -1,7 +1,13 @@
 package org.opensha.commons.param;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Hashtable;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Set;
+import java.util.HashSet;
 
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -73,6 +79,9 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 
 	/** Notify all listeners when a modification to the given paramList */
 	private transient ArrayList<ChangeListener> changeListeners;
+
+	private transient boolean changeEventsPaused = false;
+	protected transient List<Parameter<?>> pausedParamsState = new ArrayList<Parameter<?>>();
 
 	/* **********************/
 	/** @todo  Constructors */
@@ -412,7 +421,12 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	}
 
 	/** Removes all parameters from the list, making it empty, ready for new parameters.  */
-	public void clear() { params.clear(); }
+	public void clear() {
+		boolean wasEmpty = params.isEmpty();
+		params.clear();
+		if (!wasEmpty)
+			fireChangeEvent(new ChangeEvent(this));
+	}
 
 	/** Returns the number of parameters in the list. */
 	public int size() { return params.size(); }
@@ -653,7 +667,55 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 		return !failure;
 	}
 	
-	
+	/**
+	 * Pauses all {@link ChangeEvent}s until {@link #resumeChangeEvents()} is called; useful if you want to
+	 * rebuild or bulk-modify a parameter list without events being thrown for each intermediate step.
+	 *
+	 * The state of the parameter list is stored when this method is called, and will be checked to see if a
+	 * {@link ChangeEvent} should be thrown when {@link #resumeChangeEvents()} is thrown.
+	 */
+	public void pauseChangeEvents() {
+		if (D) System.out.println("ParameterList.pauseChangeEvents()");
+		this.changeEventsPaused = true;
+		this.pausedParamsState = new ArrayList<>(params);
+	}
+
+	/**
+	 * Resumes firing of {@link ChangeEvent} after they were paused via {@link #pauseChangeEvents()}.
+	 * @param fireEvent if true, a {@link ChangeEvent} will be fired to all registered listeners after un-pausing
+	 */
+	public void resumeChangeEvents() {
+		if (D) System.out.println("ParameterList.resumeChangeEvents()");
+		this.changeEventsPaused = false;
+		List<Parameter<?>> pausedParamsState = this.pausedParamsState;
+		boolean fireEvent = pausedParamsState == null || pausedParamsState.size() != params.size();
+		if (!fireEvent) {
+			// we have a prior state and it's the same size; see if they're really the same
+			if (D) System.out.println("ParameterList.resumeChangeEvents(): "
+					+ "checking state against prior state when paused to determine if we should fire a ChangeEvent");
+			try {
+				for (int i=0; i<params.size(); i++) {
+					if (params.get(i) != pausedParamsState.get(i)) {
+						// they differ
+						fireEvent = true;
+						break;
+					}
+				}
+			} catch (Exception e) {
+				System.err.println("WANRING: error encountered checking prior ParameterList state, "
+						+ "will default to firing a ChangeEvent: "+e.getMessage());
+				fireEvent = true;
+			}
+
+		}
+		if (fireEvent) {
+			if (D) System.out.println("ParameterList.resumeChangeEvents(): firing ChangeEvent");
+			fireChangeEvent(new ChangeEvent(this));
+		} else if (D) {
+			System.out.println("ParameterList.resumeChangeEvents(): skipping ChangeEvent");
+		}
+	}
+
 	/**
 	 * Add a listener to notify about ParameterList events. Listeners will be notified
 	 * when the contents of the parameter list are changed (e.g., parameters added or
@@ -685,6 +747,10 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	 */
 	private void fireChangeEvent(ChangeEvent event) {
 		if (D) System.out.println("ParameterList.fireChangeEvent()");
+		if (changeEventsPaused) {
+			if (D) System.out.println("ParameterList.fireChangeEvent(): skipping because changeEventsPaused=true");
+			return;
+		}
 		ChangeListener[] listeners;
 		synchronized (this) {
 			if (changeListeners == null) return;

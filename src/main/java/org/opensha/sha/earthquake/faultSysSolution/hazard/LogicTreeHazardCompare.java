@@ -858,7 +858,7 @@ public class LogicTreeHazardCompare {
 		return checkRemap(xyz);
 	}
 	
-	private GriddedGeoDataSet loadPrecomputedMeanMap(String key, ReturnPeriods rp, double period) throws IOException {
+	GriddedGeoDataSet loadPrecomputedMeanMap(String key, ReturnPeriods rp, double period) throws IOException {
 		String entryName = key+"_"+MPJ_LogicTreeHazardCalc.mapPrefix(period, rp)+".txt";
 		ZipEntry entry = zip.getEntry(entryName);
 		if (entry == null)
@@ -925,7 +925,7 @@ public class LogicTreeHazardCompare {
 		return avg;
 	}
 	
-	private GriddedGeoDataSet buildMin(GriddedGeoDataSet[] maps, List<Double> weights) {
+	GriddedGeoDataSet buildMin(GriddedGeoDataSet[] maps, List<Double> weights) {
 		Preconditions.checkState(maps.length == weights.size());
 		GriddedGeoDataSet min = new GriddedGeoDataSet(maps[0].getRegion(), false);
 		
@@ -940,7 +940,7 @@ public class LogicTreeHazardCompare {
 		return min;
 	}
 	
-	private GriddedGeoDataSet buildMax(GriddedGeoDataSet[] maps, List<Double> weights) {
+	GriddedGeoDataSet buildMax(GriddedGeoDataSet[] maps, List<Double> weights) {
 		Preconditions.checkState(maps.length == weights.size());
 		GriddedGeoDataSet max = new GriddedGeoDataSet(maps[0].getRegion(), false);
 		
@@ -1000,7 +1000,7 @@ public class LogicTreeHazardCompare {
 		return diff;
 	}
 	
-	private LightFixedXFunc[] buildNormCDFs(GriddedGeoDataSet[] maps, List<Double> weights) {
+	LightFixedXFunc[] buildNormCDFs(GriddedGeoDataSet[] maps, List<Double> weights) {
 		return buildNormCDFs(List.of(maps), weights);
 	}
 	
@@ -1251,7 +1251,7 @@ public class LogicTreeHazardCompare {
 //		return ret;
 //	}
 	
-	private GriddedGeoDataSet calcMapAtPercentile(LightFixedXFunc[] ncdfs, GriddedRegion gridReg,
+	GriddedGeoDataSet calcMapAtPercentile(LightFixedXFunc[] ncdfs, GriddedRegion gridReg,
 			double percentile) {
 		Preconditions.checkState(gridReg.getNodeCount() == ncdfs.length, "grid reg has %s, but have %s ncdfs",
 				gridReg.getNodeCount(), ncdfs.length);

@@ -265,12 +265,11 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 	}
 	
 	@Override
-	protected void createParamList() {
-		super.createParamList();
-		
+	protected void postCreateParamListHook() {
 		if (upperDepthTolParam == null)
 			// called during super constructor, wait until next time
 			return;
+		super.postCreateParamListHook();
 		
 		adjustableParams.addParameter(0, presetsParam);
 		

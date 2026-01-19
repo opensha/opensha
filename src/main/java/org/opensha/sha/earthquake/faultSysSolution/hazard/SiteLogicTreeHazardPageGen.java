@@ -863,9 +863,16 @@ public class SiteLogicTreeHazardPageGen {
 		return curves;
 	}
 	
-	private static ValueDistribution[] loadCurvesAndDists(CSVFile<String> curvesCSV,
+	static ValueDistribution[] loadCurvesAndDists(CSVFile<String> curvesCSV,
 			List<? extends LogicTreeLevel<? extends LogicTreeNode>> levels,
 			List<DiscretizedFunc> curves, List<LogicTreeBranch<?>> branches, List<Double> weights, boolean buildDists) {
+		return loadCurvesAndDists(curvesCSV, levels, curves, branches, weights, buildDists, null);
+	}
+	
+	static ValueDistribution[] loadCurvesAndDists(CSVFile<String> curvesCSV,
+			List<? extends LogicTreeLevel<? extends LogicTreeNode>> levels,
+			List<DiscretizedFunc> curves, List<LogicTreeBranch<?>> branches, List<Double> weights, boolean buildDists,
+			double[] outXVals) {
 		List<LogicTreeLevel<? extends LogicTreeNode>> levelsCopy;
 		int startCol;
 		if (levels == null) {
@@ -875,7 +882,7 @@ public class SiteLogicTreeHazardPageGen {
 			for (int i=0; i<header.size(); i++) {
 				try {
 					Double.parseDouble(header.get(i));
-					// valud number, this is it
+					// valid number, this is it
 					startCol = i;
 					break;
 				} catch (NumberFormatException e) {}
@@ -885,30 +892,47 @@ public class SiteLogicTreeHazardPageGen {
 			levelsCopy = new ArrayList<>(levels);
 			startCol = 3+levels.size();
 		}
-		double[] xVals = new double[curvesCSV.getNumCols()-startCol];
+		double[] inXVals = new double[curvesCSV.getNumCols()-startCol];
 //		ArbDiscrEmpiricalDistFunc[] dists = new ArbDiscrEmpiricalDistFunc[xVals.length];
 		List<List<Double>> distValues = null;
 		if (buildDists)
 			distValues = new ArrayList<>();
-		for (int i=0; i<xVals.length; i++) {
-			xVals[i] = curvesCSV.getDouble(0, startCol+i);
-//			dists[i] = new ArbDiscrEmpiricalDistFunc();
-			if (buildDists)
-				distValues.add(new ArrayList<>(curvesCSV.getNumRows()-1));
+		for (int i=0; i<inXVals.length; i++) {
+			inXVals[i] = curvesCSV.getDouble(0, startCol+i);
 		}
+		if (outXVals == null)
+			outXVals = inXVals;
+		if (buildDists)
+			for (int i=0; i<outXVals.length; i++)
+				distValues.add(new ArrayList<>(curvesCSV.getNumRows()-1));
 		Preconditions.checkState(curves.isEmpty());
 		Preconditions.checkState(weights.isEmpty());
 		
 		for (int row=1; row<curvesCSV.getNumRows(); row++) {
 			double weight = curvesCSV.getDouble(row, 2);
-			double[] yVals = new double[xVals.length];
-			for (int i=0; i<yVals.length; i++) {
+			double[] yVals = new double[inXVals.length];
+			for (int i=0; i<yVals.length; i++)
 				yVals[i] = curvesCSV.getDouble(row, startCol+i);
-//				dists[i].set(yVals[i], weight);
-				if (buildDists)
-					distValues.get(i).add(yVals[i]);
+			LightFixedXFunc curve = new LightFixedXFunc(inXVals, yVals);
+			if (outXVals != inXVals) {
+				// interpolate
+				double[] interpYVals = new double[outXVals.length];
+				double curveMinX = curve.getMinX();
+				double curveMaxX = curve.getMaxX();
+				for (int j=0; j<outXVals.length; j++) {
+					double x = outXVals[j];
+					if (x < curveMinX) {
+						interpYVals[j] = curve.getY(0);
+					} else if (x > curveMaxX) {
+						interpYVals[j] = 0d;
+					} else
+						interpYVals[j] = curve.getInterpolatedY_inLogXDomain(x);
+				}
+				curve = new LightFixedXFunc(outXVals, interpYVals);
 			}
-			LightFixedXFunc curve = new LightFixedXFunc(xVals, yVals);
+			if (buildDists)
+				for (int i=0; i<curve.size(); i++)
+					distValues.get(i).add(curve.getY(i));
 			curves.add(curve);
 			weights.add(weight);
 			if (branches != null) {
@@ -933,7 +957,7 @@ public class SiteLogicTreeHazardPageGen {
 		
 		if (!buildDists)
 			return null;
-		ValueDistribution[] dists = new ValueDistribution[xVals.length];
+		ValueDistribution[] dists = new ValueDistribution[outXVals.length];
 		for (int i=0; i<dists.length; i++)
 			// this will initialize them more efficiently
 //			dists[i] = new ArbDiscrEmpiricalDistFunc(distPoints.get(i));
@@ -963,14 +987,12 @@ public class SiteLogicTreeHazardPageGen {
 		
 		meanCurve.setName("Mean");
 		funcs.add(meanCurve);
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, color.darker().darker()));
 		if (compMeanCurve == null) {
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK));
 		} else {
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, color.darker()));
-			
 			compMeanCurve.setName("Comparison Mean");
 			funcs.add(compMeanCurve);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, compColor.darker()));
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, compColor.darker().darker()));
 		}
 		
 		medianCurve.setName("Median");
@@ -1598,10 +1620,7 @@ public class SiteLogicTreeHazardPageGen {
 		}
 		
 		funcs.add(vertLine(mean, 0d, maxY, (primaryName != null && !primaryName.isBlank() ? primaryName+" " : "")+"Mean"));
-		if (compMean == null)
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK));
-		else
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, color.darker()));
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 5f, color.darker().darker()));
 		
 		
 		if (dist != null && dist.size > 1) {

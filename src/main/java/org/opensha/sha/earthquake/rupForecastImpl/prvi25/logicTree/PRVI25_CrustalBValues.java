@@ -16,7 +16,8 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraS
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
-@Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
+//@Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME) // if rate balancing enabled
+@DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME) // if rate balancing disabled
 public enum PRVI25_CrustalBValues implements SectionSupraSeisBValues.Constant {
 	
 	B_0p0(0d,		0.25),

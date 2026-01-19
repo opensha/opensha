@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.UnaryOperator;
 
+import javax.swing.event.ChangeEvent;
+
 import org.apache.commons.lang3.StringUtils;
 import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -186,45 +188,61 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	/**
 	 * Put parameters in theParameterList
 	 */
-	protected void createParamList() {
-//		System.out.println("createParamList()");
-		if (adjustableParams == null) {
-			adjustableParams = new ParameterList();
-		} else {
-			adjustableParams.clear();
-		}
-		if(includeFileParam)
-			adjustableParams.addParameter(fileParam);
-		adjustableParams.addParameter(bgIncludeParam);
-		if (!bgIncludeParam.getValue().equals(IncludeBackgroundOption.EXCLUDE)) {
-			adjustableParams.addParameter(bgRupTypeParam);
-			adjustableParams.addParameter(bgSettingsParam);
-		}
-		adjustableParams.addParameter(faultGridSpacingParam);
-		adjustableParams.addParameter(aseisParam);
-		if (faultSysSolution != null) {
-			if (faultSysSolution.hasAvailableModule(RupMFDsModule.class)) {
-				adjustableParams.addParameter(useRupMFDsParam);
-				useRupMFDs = useRupMFDsParam.getValue();
+	protected final void createParamList() {
+		try {
+			// we want to pause change events so that they're only fired once at the end (and then, only if needed
+			if (adjustableParams == null) {
+				adjustableParams = new ParameterList();
+				adjustableParams.pauseChangeEvents();
 			} else {
-				// parameter not showing, disable it here without setting the value in the parameter; if we change solutions
-				// and the new solution has it, we will revert to the parameter value.
-				useRupMFDs = false;
+				adjustableParams.pauseChangeEvents();
+				adjustableParams.clear();
 			}
-			if (faultSysSolution.getRupSet().hasAvailableModule(ProxyFaultSectionInstances.class)) {
-				adjustableParams.addParameter(useProxyRupturesParam);
-				useProxyRuptures = useProxyRupturesParam.getValue();
+			if(includeFileParam)
+				adjustableParams.addParameter(fileParam);
+			adjustableParams.addParameter(bgIncludeParam);
+			if (!bgIncludeParam.getValue().equals(IncludeBackgroundOption.EXCLUDE)) {
+				adjustableParams.addParameter(bgRupTypeParam);
+				adjustableParams.addParameter(bgSettingsParam);
+			}
+			adjustableParams.addParameter(faultGridSpacingParam);
+			adjustableParams.addParameter(aseisParam);
+			if (faultSysSolution != null) {
+				if (faultSysSolution.hasAvailableModule(RupMFDsModule.class)) {
+					adjustableParams.addParameter(useRupMFDsParam);
+					useRupMFDs = useRupMFDsParam.getValue();
+				} else {
+					// parameter not showing, disable it here without setting the value in the parameter; if we change solutions
+					// and the new solution has it, we will revert to the parameter value.
+					useRupMFDs = false;
+				}
+				if (faultSysSolution.getRupSet().hasAvailableModule(ProxyFaultSectionInstances.class)) {
+					adjustableParams.addParameter(useProxyRupturesParam);
+					useProxyRuptures = useProxyRupturesParam.getValue();
+				} else {
+					// parameter not showing, disable it here without setting the value in the parameter; if we change solutions
+					// and the new solution has it, we will revert to the parameter value.
+					useProxyRuptures = false;
+				}
 			} else {
-				// parameter not showing, disable it here without setting the value in the parameter; if we change solutions
-				// and the new solution has it, we will revert to the parameter value.
+				// parameters not showing, disable them here without setting the value in the parameter; if we change solutions
+				// and the new solution has them, we will revert to the parameter value.
+				useRupMFDs = false;
 				useProxyRuptures = false;
 			}
-		} else {
-			// parameters not showing, disable them here without setting the value in the parameter; if we change solutions
-			// and the new solution has them, we will revert to the parameter value.
-			useRupMFDs = false;
-			useProxyRuptures = false;
+			postCreateParamListHook();
+		} finally {
+			adjustableParams.resumeChangeEvents();
 		}
+		
+	}
+	
+	/**
+	 * Called at the end of {@link #createParamList()} but before {@link ChangeEvent}'s are resumed, for subclasses
+	 * to add or modify the contents of the parameter list as needed.
+	 */
+	protected void postCreateParamListHook() {
+		
 	}
 	
 	/**
