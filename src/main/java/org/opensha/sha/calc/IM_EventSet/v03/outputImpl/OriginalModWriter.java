@@ -11,7 +11,6 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.param.Parameter;
-import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetCalc_v3_0_API;
 import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetOutputWriter;
 import org.opensha.sha.earthquake.ERF;
@@ -19,6 +18,7 @@ import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.OtherParams.StdDevTypeParam;
+import org.opensha.sha.util.SourceUtil;
 
 public class OriginalModWriter extends IM_EventSetOutputWriter {
 	public static final String NAME = "OpenSHA Format Writer";
@@ -106,8 +106,8 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 				String line = sourceID + " " + rupID;
 				for (Site site : sites) {
                     double mean = -1, total = -1, inter = -1;
-                    if (!HazardCurveCalculator.canSkipSource(calc.getSourceFilters(), source, site) &&
-                        !HazardCurveCalculator.canSkipRupture(calc.getSourceFilters(), rup, site)) {
+                    if (!SourceUtil.canSkipSource(calc.getSourceFilters(), source, site) &&
+                        !SourceUtil.canSkipRupture(calc.getSourceFilters(), rup, site)) {
                         attenRel.setSite(site);
                         mean = attenRel.getMean();
                         if (stdDevParam != null) {
@@ -164,8 +164,8 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 				String lineJB = line;
 				for (Site site : sites) {
                     double rupDist = -1, distJB = -1;
-                    if (!HazardCurveCalculator.canSkipSource(calc.getSourceFilters(), source, site) &&
-                        !HazardCurveCalculator.canSkipRupture(calc.getSourceFilters(), rup, site)) {
+                    if (!SourceUtil.canSkipSource(calc.getSourceFilters(), source, site) &&
+                        !SourceUtil.canSkipRupture(calc.getSourceFilters(), rup, site)) {
                         rupDist = rup.getRuptureSurface().getDistanceRup(site.getLocation());
                         distJB = rup.getRuptureSurface().getDistanceJB(site.getLocation());
                     }
