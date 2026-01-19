@@ -21,6 +21,7 @@ import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.OtherParams.StdDevTypeParam;
 import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
+import org.opensha.sha.util.SourceUtil;
 
 /**
  * Writes the HAZ01 format files for the IM Event Set Calculator.
@@ -158,12 +159,12 @@ public class HAZ01Writer extends IM_EventSetOutputWriter {
 			for (int sourceID=0; sourceID<numSources; sourceID++) {
 				logger.log(Level.FINEST, "Writing portion for Source: " + sourceID);
 				ProbEqkSource source = erf.getSource(sourceID);
-                if (HazardCurveCalculator.canSkipSource(calc.getSourceFilters(), source, site))
+                if (SourceUtil.canSkipSource(calc.getSourceFilters(), source, site))
                     continue;
 				for (int rupID=0; rupID<source.getNumRuptures(); rupID++) {
 					lineID++;
 					ProbEqkRupture rup = source.getRupture(rupID);
-                    if (HazardCurveCalculator.canSkipRupture(calc.getSourceFilters(), rup, site))
+                    if (SourceUtil.canSkipRupture(calc.getSourceFilters(), rup, site))
                         continue;
 					attenRel.setEqkRupture(rup);
 					

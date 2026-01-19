@@ -19,6 +19,7 @@ import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.OtherParams.StdDevTypeParam;
+import org.opensha.sha.util.SourceUtil;
 
 /**
  * Writes the original format files for the IM Event Set Calculator.
@@ -109,8 +110,8 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 				String line = sourceID + " " + rupID;
 				for (Site site : sites) {
                     double mean = -1, total = -1, inter = -1;
-                    if (!HazardCurveCalculator.canSkipSource(calc.getSourceFilters(), source, site) &&
-                        !HazardCurveCalculator.canSkipRupture(calc.getSourceFilters(), rup, site)) {
+                    if (!SourceUtil.canSkipSource(calc.getSourceFilters(), source, site) &&
+                        !SourceUtil.canSkipRupture(calc.getSourceFilters(), rup, site)) {
                         attenRel.setSite(site);
                         mean = attenRel.getMean();
                         if (stdDevParam != null) {
@@ -167,8 +168,8 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 				String lineJB = line;
 				for (Site site : sites) {
                     double rupDist = -1, distJB = -1;
-                    if (!HazardCurveCalculator.canSkipSource(calc.getSourceFilters(), source, site) &&
-                        !HazardCurveCalculator.canSkipRupture(calc.getSourceFilters(), rup, site)) {
+                    if (!SourceUtil.canSkipSource(calc.getSourceFilters(), source, site) &&
+                        !SourceUtil.canSkipRupture(calc.getSourceFilters(), rup, site)) {
                         rupDist = rup.getRuptureSurface().getDistanceRup(site.getLocation());
                         distJB = rup.getRuptureSurface().getDistanceJB(site.getLocation());
                     }

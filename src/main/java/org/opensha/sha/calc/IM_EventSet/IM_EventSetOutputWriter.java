@@ -10,6 +10,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.opensha.commons.data.Site;
+import org.opensha.commons.data.siteData.SiteData;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.earthquake.ERF;
@@ -46,6 +48,7 @@ public abstract class IM_EventSetOutputWriter {
 		ArrayList<ERF> erfs = new ArrayList<ERF>();
 		erfs.add(erf);
         writeErfImrMetaFile(erfs, attenRels);
+        writeSiteMetaFile();
 		writeFiles(erfs, attenRels, imts);
 	}
 	
@@ -78,6 +81,26 @@ public abstract class IM_EventSetOutputWriter {
         for (ERF erf : erfs) {
             fw.write("\nEqk Rup Forecast = " + erf.getName()+"; ");
             fw.write(erf.getAdjustableParameterList().getParameterListMetadataString());
+        }
+        fw.close();
+    }
+
+    /**
+     * Writes out the site information including site data parameters.
+     */
+    private void writeSiteMetaFile() throws IOException {
+        logger.log(Level.INFO, "Writing site metadata file");
+        String fname = "site_metadata.txt";
+        File outputDir = calc.getOutputDir();
+        FileWriter fw = new FileWriter(outputDir.getAbsolutePath() + File.separator + fname);
+
+        ArrayList<ParameterList> siteData = calc.getSitesData();
+        ArrayList<Site> sites = calc.getSites();
+        for (int i = 0; i < calc.getNumSites(); i++) {
+            Location loc = sites.get(i).getLocation();
+            String coordinates = String.format("%s,%s", loc.getLatitude(), loc.getLongitude());
+            fw.write("Site = " + coordinates + "; ");
+            fw.write(siteData.get(i).getParameterListMetadataString()+"\n");
         }
         fw.close();
     }
