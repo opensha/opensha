@@ -31,6 +31,7 @@ public class SiteDataCombinedApp extends JFrame {
 				version = ApplicationVersion.loadBuildVersion();
 			} catch (IOException e) {
 				e.printStackTrace();
+				version = new ApplicationVersion(-1, -1, -1);
 			}
 		}
 		return version;
@@ -57,7 +58,7 @@ public class SiteDataCombinedApp extends JFrame {
 		setContentPane(pane);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		pack();
-		setTitle(APP_NAME+" ("+getAppVersion()+")");
+		setTitle(APP_NAME+" ("+getAppVersion().getDisplayString()+")");
 		setLocationRelativeTo(null);
 		setVisible(true);
 	}

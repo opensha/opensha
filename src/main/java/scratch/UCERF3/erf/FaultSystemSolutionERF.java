@@ -196,9 +196,7 @@ public class FaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 	/**
 	 * Put parameters in theParameterList
 	 */
-	protected void createParamList() {
-		super.createParamList();
-		
+	protected void postCreateParamListHook() {
 		adjustableParams.addParameter(applyAftershockFilterParam);
 		adjustableParams.addParameter(aleatoryMagAreaStdDevParam);
 		adjustableParams.addParameter(probModelParam);

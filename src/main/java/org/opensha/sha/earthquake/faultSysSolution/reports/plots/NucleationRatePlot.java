@@ -20,6 +20,7 @@ import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
+import org.opensha.commons.util.MarkdownUtils.TableTextAlignment;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -150,6 +151,7 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 		
 		CPT nuclCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(-6, -1);
 		nuclCPT.setNanColor(Color.WHITE);
+		nuclCPT.setLog10(true);
 		CPT ratioCPT = null;
 		
 		GridSourceProvider compGridProv = null;
@@ -171,7 +173,7 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 			}
 		}
 		
-		table = MarkdownUtils.tableBuilder();
+		table = MarkdownUtils.tableBuilder(TableTextAlignment.CENTER);
 		
 		if (compGridProv != null) {
 			CPT belowCPT = new CPT(0.5d, 1d,
@@ -193,31 +195,35 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 			GriddedGeoDataSet gridXYZ = calcGriddedNucleationRates(gridProv, myMinMag);
 			GriddedGeoDataSet faultXYZ = calcFaultNucleationRates(gridReg, sol, faultAssoc, solNuclMFDs, myMinMag);
 			GriddedGeoDataSet xyz = sum(gridXYZ, faultXYZ);
-			GriddedGeoDataSet logXYZ = maskZeroesAsNan(xyz);
-			logXYZ.log10();
 			
 			String myLabel = magLabels.get(m);
 			String markdownLabel = myLabel.replaceAll("≥", "&ge;");
 			String magPrefix = magPrefixes.get(m);
 			
 			table.initNewLine();
-			table.addColumn(MarkdownUtils.boldCentered(markdownLabel+", Total"));
-			if (compGridProv != null) {
-				table.addColumn(MarkdownUtils.boldCentered("Primary / Comparison Ratio"));
-			} else {
-				table.addColumn(MarkdownUtils.boldCentered(markdownLabel+", Gridded Only"));
-				table.addColumn(MarkdownUtils.boldCentered(markdownLabel+", Fault Only"));
-			}
+			table.addColumn("__"+markdownLabel+", Total__");
+			table.addColumn("__"+markdownLabel+", Gridded Only__");
+			table.addColumn("__"+markdownLabel+", Fault Only__");
 			table.finalizeLine();
 			
 			String mainPrefix = "sol_nucl_"+magPrefix;
-			mapMaker.plotXYZData(logXYZ, nuclCPT, "Log10 "+myLabel+" Nucleation Rate (events/yr)");
+			mapMaker.plotXYZData(maskZeroesAsNan(xyz), nuclCPT, myLabel+" Nucleation Rate (events/yr)");
 			mapMaker.plot(resourcesDir, mainPrefix, " ");
 
 			table.initNewLine();
 			table.addColumn("![Map]("+relPathToResources+"/"+mainPrefix+".png)");
 			
+			mapMaker.plotXYZData(maskZeroesAsNan(gridXYZ), nuclCPT, myLabel+" Gridded Nucleation Rate (events/yr)");
+			mapMaker.plot(resourcesDir, mainPrefix+"_gridded", " ");
+			table.addColumn("![Map]("+relPathToResources+"/"+mainPrefix+"_gridded.png)");
+			mapMaker.plotXYZData(maskZeroesAsNan(faultXYZ), nuclCPT, myLabel+" Fault Nucleation Rate (events/yr)");
+			mapMaker.plot(resourcesDir, mainPrefix+"_fault", " ");
+			table.addColumn("![Map]("+relPathToResources+"/"+mainPrefix+"_fault.png)");
+			
+			table.finalizeLine();
+			
 			if (ratioCPT != null) {
+				table.initNewLine().addColumn("").addColumn("__Primary / Comparison Ratios__").addColumn("").finalizeLine();
 				GriddedGeoDataSet compGridXYZ = calcGriddedNucleationRates(compGridProv, myMinMag);
 				GriddedGeoDataSet compFaultXYZ = calcFaultNucleationRates(gridReg, meta.comparison.sol,
 						compFaultAssoc, compSolNuclMFDs, myMinMag);
@@ -237,28 +243,42 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 				
 				String compPrefix = "sol_nucl_compare_"+magPrefix;
 				mapMaker.plotXYZData(ratioXYZ, ratioCPT, myLabel+" Primary/Comparison Nucleation Ratio");
-//				mapMaker.plotSectScalars(plotRates, cpt, "Log10 "+myLabel+" Nucleation Rate (events/yr)");
 				mapMaker.plot(resourcesDir, compPrefix, " ");
 				table.addColumn("![Map]("+relPathToResources+"/"+compPrefix+".png)");
-				table.finalizeLine().initNewLine();
-				table.addColumn(MarkdownUtils.boldCentered(markdownLabel+", Gridded Only"));
-				table.addColumn(MarkdownUtils.boldCentered(markdownLabel+", Fault Only"));
-				table.finalizeLine().initNewLine();
+				
+				ratioXYZ = new GriddedGeoDataSet(gridReg, false);
+				for (int i=0; i<xyz.size(); i++) {
+					double v1 = gridXYZ.get(i);
+					double v2 = compGridXYZ.get(i);
+					if (v1 == 0d && v2 == 0d)
+						ratioXYZ.set(i, Double.NaN);
+					else if (v2 == 0d)
+						ratioXYZ.set(i, Double.POSITIVE_INFINITY);
+					else
+						ratioXYZ.set(i, v1/v2);
+				}
+				
+				mapMaker.plotXYZData(ratioXYZ, ratioCPT, myLabel+" Primary/Comparison Gridded Nucleation Ratio");
+				mapMaker.plot(resourcesDir, compPrefix+"_gridded", " ");
+				table.addColumn("![Map]("+relPathToResources+"/"+compPrefix+"_gridded.png)");
+				
+				ratioXYZ = new GriddedGeoDataSet(gridReg, false);
+				for (int i=0; i<xyz.size(); i++) {
+					double v1 = faultXYZ.get(i);
+					double v2 = compFaultXYZ.get(i);
+					if (v1 == 0d && v2 == 0d)
+						ratioXYZ.set(i, Double.NaN);
+					else if (v2 == 0d)
+						ratioXYZ.set(i, Double.POSITIVE_INFINITY);
+					else
+						ratioXYZ.set(i, v1/v2);
+				}
+				
+				mapMaker.plotXYZData(ratioXYZ, ratioCPT, myLabel+" Primary/Comparison Fault Nucleation Ratio");
+				mapMaker.plot(resourcesDir, compPrefix+"_fault", " ");
+				table.addColumn("![Map]("+relPathToResources+"/"+compPrefix+"_fault.png)");
+				table.finalizeLine();
 			}
-			
-			gridXYZ = maskZeroesAsNan(gridXYZ);
-			gridXYZ.log10();
-			faultXYZ = maskZeroesAsNan(faultXYZ);
-			faultXYZ.log10();
-			
-			mapMaker.plotXYZData(gridXYZ, nuclCPT, "Log10 "+myLabel+" Gridded Nucleation Rate (events/yr)");
-			mapMaker.plot(resourcesDir, mainPrefix+"_gridded", " ");
-			table.addColumn("![Map]("+relPathToResources+"/"+mainPrefix+"_gridded.png)");
-			mapMaker.plotXYZData(faultXYZ, nuclCPT, "Log10 "+myLabel+" Fault Nucleation Rate (events/yr)");
-			mapMaker.plot(resourcesDir, mainPrefix+"_fault", " ");
-			table.addColumn("![Map]("+relPathToResources+"/"+mainPrefix+"_fault.png)");
-			
-			table.finalizeLine();
 		}
 		
 		lines.addAll(table.build());
@@ -283,49 +303,43 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 			
 			CPT moCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(logMinMo, logMaxMo);
 			moCPT.setNanColor(Color.WHITE);
+			moCPT.setLog10(true);
 			
 			GriddedGeoDataSet faultGriddedRatioXYZ = new GriddedGeoDataSet(gridReg, false);
 			for (int i=0; i<xyz.size(); i++)
 				faultGriddedRatioXYZ.set(i, faultXYZ.get(i)/gridXYZ.get(i));
-			faultGriddedRatioXYZ.log10();
 			
 			CPT moRatioCPT = GMT_CPT_Files.DIVERGING_BLUE_RED_UNIFORM.instance().rescale(-1d, 1d);
+			moRatioCPT.setLog10(true);
 			
-			GriddedGeoDataSet logXYZ = maskZeroesAsNan(xyz);
-			logXYZ.log10();
-			gridXYZ = maskZeroesAsNan(gridXYZ);
-			gridXYZ.log10();
-			faultXYZ = maskZeroesAsNan(faultXYZ);
-			faultXYZ.log10();
-			
-			table = MarkdownUtils.tableBuilder();
+			table = MarkdownUtils.tableBuilder(TableTextAlignment.CENTER);
 			
 			table.initNewLine();
-			table.addColumn(MarkdownUtils.boldCentered("Total Moment Rate"));
-			table.addColumn(MarkdownUtils.boldCentered("Fault/Gridded Moment Rate Ratio"));
+			table.addColumn("__Total Moment Rate__");
+			table.addColumn("__Fault/Gridded Moment Rate Ratio__");
 			table.finalizeLine();
 			
 			String prefix = "sol_nucl_moment";
 			
 			table.initNewLine();
-			mapMaker.plotXYZData(logXYZ, moCPT, "Log10 Total Moment Rate (N-m/yr)");
+			mapMaker.plotXYZData(xyz, moCPT, "Total Moment Rate (N-m/yr)");
 			mapMaker.plot(resourcesDir, prefix, " ");
 			table.addColumn("![Map]("+relPathToResources+"/"+prefix+".png)");
-			mapMaker.plotXYZData(faultGriddedRatioXYZ, moRatioCPT, "Log10 Fault/Gridded Moment Rate Ratio");
+			mapMaker.plotXYZData(faultGriddedRatioXYZ, moRatioCPT, "Fault/Gridded Moment Rate Ratio");
 			mapMaker.plot(resourcesDir, prefix+"_fault_gridded_ratio", " ");
 			table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_fault_gridded_ratio.png)");
 			table.finalizeLine();
 			
 			table.initNewLine();
-			table.addColumn(MarkdownUtils.boldCentered("Fault Moment Rate"));
-			table.addColumn(MarkdownUtils.boldCentered("Gridded Moment Rate"));
+			table.addColumn("__Fault Moment Rate__");
+			table.addColumn("__Gridded Moment Rate__");
 			table.finalizeLine();
 			
 			table.initNewLine();
-			mapMaker.plotXYZData(faultXYZ, moCPT, "Log10 Fault Moment Rate (N-m/yr)");
+			mapMaker.plotXYZData(maskZeroesAsNan(faultXYZ), moCPT, "Fault Moment Rate (N-m/yr)");
 			mapMaker.plot(resourcesDir, prefix+"_fault", " ");
 			table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_fault.png)");
-			mapMaker.plotXYZData(gridXYZ, moCPT, "Log10 Gridded Moment Rate (N-m/yr)");
+			mapMaker.plotXYZData(maskZeroesAsNan(gridXYZ), moCPT, "Gridded Moment Rate (N-m/yr)");
 			mapMaker.plot(resourcesDir, prefix+"_gridded", " ");
 			table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_gridded.png)");
 			table.finalizeLine();

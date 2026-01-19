@@ -24,7 +24,8 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
-import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionBuilder;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 
@@ -34,6 +35,10 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
+@DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
+@DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
+//@Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME) // if rate balancing enabled
+@DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME) // if rate balancing disabled
 public class PRVI25_CrustalRandomlySampledDeformationModels implements RandomlySampledNode, RupSetDeformationModel {
 	
 	private String name;
