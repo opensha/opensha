@@ -48,9 +48,10 @@ public class EnumParameterizedModelarameter<E extends Enum<E>, T extends Paramet
 	private static final boolean D = true;
 	private static final boolean EDITOR_D = false;
 
-	private EnumParameter<E> enumParam;
-	private Function<E, T> instanceBuilder;
-	private List<T> instances;
+	private final EnumParameter<E> enumParam;
+	private final Function<E, T> instanceBuilder;
+	private final E[] enumValues;
+	private final List<T> instances;
 	private Editor editor;
 	
 	// listeners
@@ -99,8 +100,9 @@ public class EnumParameterizedModelarameter<E extends Enum<E>, T extends Paramet
 		this.setConstraint(new CustomValueCheckConstraint());
 		this.allowCustomValues = allowCustomValues;
 		this.instanceBuilder = instanceBuilder;
-		enumParam = new EnumParameter<E>(name, choices, defaultValue, allowCustomValues ? customValueLabel : null);
-		this.instances = new ArrayList<>(enumParam.getEnumClass().getEnumConstants().length);
+		this.enumParam = new EnumParameter<E>(name, choices, defaultValue, allowCustomValues ? customValueLabel : null);
+		this.enumValues = enumParam.getEnumClass().getEnumConstants();
+		this.instances = new ArrayList<>(enumValues.length);
 		// propagate parameter change events
 		instanceParamListener = new InstanceParamListener();
 		enumParamListener = new EnumParamListener();
@@ -110,13 +112,21 @@ public class EnumParameterizedModelarameter<E extends Enum<E>, T extends Paramet
 		setValueInternal(getCurrentInstance());
 	}
 	
+	private E detectEnumChoice(T value) {
+		if (value == null)
+			return null;
+		for (int i=0; i<instances.size(); i++) {
+			T existingValue = instances.get(i);
+			if (existingValue == value)
+				return enumValues[i];
+		}
+		return null;
+	}
+	
 	private boolean isCustomValue() {
 		if (value == null)
 			return false;
-		for (T existingValue : instances)
-			if (value == existingValue)
-				return false;
-		return true;
+		return detectEnumChoice(value) == null;
 	}
 	
 	private class CustomValueCheckConstraint extends AbstractParameterConstraint<T> {
@@ -178,9 +188,7 @@ public class EnumParameterizedModelarameter<E extends Enum<E>, T extends Paramet
 	@Override
 	public void setValue(T value) throws ConstraintException, ParameterException {
 		super.setValue(value);
-		if (isCustomValue()) {
-			enumParam.setValue(null);
-		}
+		enumParam.setValue(detectEnumChoice(value));
 	}
 	
 	/**
