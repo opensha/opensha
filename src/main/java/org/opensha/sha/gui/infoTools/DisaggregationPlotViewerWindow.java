@@ -194,6 +194,14 @@ public class DisaggregationPlotViewerWindow extends JFrame implements HyperlinkL
 				infoTabPane.addTab("Consolidated Source List Data", consolidatedSourceListDataScrollPane);
 				consolidatedSourceListDataScrollPane.getViewport().add(consolidatedSourceListDataPane, null);
 //				consolidatedSourceListDataPane.setForeground(Color.blue);
+
+                String contributeExceedMsg = "The consolidated source list gives the total contribution across all ruptures "
+                        + "that include a specific source (fault). Because a single source can be involved in multiple "
+                        + "ruptures, including multi-fault ruptures, it may be counted more than once, resulting in a "
+                        + "total percent contribution of all consolidated sources greater than 100%.\n\n";
+                consolidatedSourceDataText = contributeExceedMsg.concat(consolidatedSourceDataText);
+
+
 				consolidatedSourceListDataPane.setText(consolidatedSourceDataText);
 				consolidatedSourceListDataPane.setEditable(false);
 			}
