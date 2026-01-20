@@ -2,7 +2,10 @@ package org.opensha.sha.earthquake.faultSysSolution.erf.td;
 
 import java.util.Calendar;
 import java.util.GregorianCalendar;
+import java.util.List;
 import java.util.TimeZone;
+
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 
 public class TimeDepUtils {
 	
@@ -76,6 +79,54 @@ public class TimeDepUtils {
 	 */
 	public static double riToPoissonProb(double recurIntevalYears, double durationYears) {
 		return 1.0-Math.exp(-durationYears/recurIntevalYears);
+	}
+	
+	/**
+	 * TODO: Ned fill in
+	 * 
+	 * @param fltSysRupSet
+	 * @param sectlongTermPartRates
+	 * @param aveRI if true, averaging is done on recurrence intervals, else in rate sapce 
+	 * @return
+	 */
+	public static double[] computeAveCondRecurIntervalForFltSysRups(FaultSystemRupSet fltSysRupSet,
+			double[] sectlongTermPartRates, boolean aveRI) {
+		double[] sectAreas = fltSysRupSet.getAreaForAllSections();
+		return computeAveCondRecurIntervalForFltSysRups(fltSysRupSet, sectlongTermPartRates,  sectAreas, aveRI);
+	}
+	
+	/**
+	 * TODO: Ned fill in
+	 * 
+	 * @param fltSysRupSet
+	 * @param sectlongTermPartRates
+	 * @param sectAreas
+	 * @param aveRI if true, averaging is done on recurrence intervals, else in rate sapce 
+	 * @return
+	 */
+	public static double[] computeAveCondRecurIntervalForFltSysRups(FaultSystemRupSet fltSysRupSet,
+			double[] sectlongTermPartRates, double[] sectAreas, boolean aveRI) {
+		double[] aveCondRecurIntervalForFltSysRups = new double[fltSysRupSet.getNumRuptures()];
+		for (int r=0;r<aveCondRecurIntervalForFltSysRups.length; r++) {
+			List<Integer> rupSections = fltSysRupSet.getSectionsIndicesForRup(r);
+			double ave=0, totArea=0;
+			for (int sectID : rupSections) {
+				double area = sectAreas[sectID];
+				totArea += area;
+//				if(1.0/sectlongTermPartRates[sectID] > maxRI)
+//					maxRI = 1.0/sectlongTermPartRates[sectID];
+				// ave RIs or rates depending on which is set
+				if (aveRI)
+					ave += area/sectlongTermPartRates[sectID];  // this one averages RIs; wt averaged by area
+				else
+					ave += sectlongTermPartRates[sectID]*area;  // this one averages rates; wt averaged by area
+			}
+			if (aveRI)
+				aveCondRecurIntervalForFltSysRups[r] = ave/totArea;	// this one averages RIs
+			else
+				aveCondRecurIntervalForFltSysRups[r] = 1d/(ave/totArea); // this one averages rates
+		}
+		return aveCondRecurIntervalForFltSysRups;
 	}
 
 }

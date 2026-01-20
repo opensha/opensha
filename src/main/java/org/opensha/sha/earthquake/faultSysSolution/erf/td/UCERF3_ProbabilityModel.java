@@ -281,36 +281,12 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 			return aveCondRecurIntervalForFltSysRups;
 		synchronized (this) {
 			if (cachedAveRupCondRecurIntervals == null)
-				cachedAveRupCondRecurIntervals = computeAveCondRecurIntervalForFltSysRups();
+				cachedAveRupCondRecurIntervals = TimeDepUtils.computeAveCondRecurIntervalForFltSysRups(
+						fltSysRupSet, aveCondRecurIntervalForFltSysRups, aveCondRecurIntervalForFltSysRups,
+						averagingTypeParam.getValue().isAveRI());
 		}
 		return cachedAveRupCondRecurIntervals;
 	}
-	
-	private double[] computeAveCondRecurIntervalForFltSysRups() {
-		boolean aveRI = averagingTypeParam.getValue().isAveRI();
-		double[] aveCondRecurIntervalForFltSysRups = new double[fltSysRupSet.getNumRuptures()];
-		for (int r=0;r<aveCondRecurIntervalForFltSysRups.length; r++) {
-			List<Integer> rupSections = fltSysRupSet.getSectionsIndicesForRup(r);
-			double ave=0, totArea=0;
-			for (int sectID : rupSections) {
-				double area = sectAreas[sectID];
-				totArea += area;
-//				if(1.0/sectlongTermPartRates[sectID] > maxRI)
-//					maxRI = 1.0/sectlongTermPartRates[sectID];
-				// ave RIs or rates depending on which is set
-				if (aveRI)
-					ave += area/sectlongTermPartRates[sectID];  // this one averages RIs; wt averaged by area
-				else
-					ave += sectlongTermPartRates[sectID]*area;  // this one averages rates; wt averaged by area
-			}
-			if (aveRI)
-				aveCondRecurIntervalForFltSysRups[r] = ave/totArea;	// this one averages RIs
-			else
-				aveCondRecurIntervalForFltSysRups[r] = 1d/(ave/totArea); // this one averages rates
-		}
-		return aveCondRecurIntervalForFltSysRups;
-	}
-	
 
 	/**
 	 * This is made fast by using a reference calculator (with a reference RI=1 year & aperiodicity), rather than
