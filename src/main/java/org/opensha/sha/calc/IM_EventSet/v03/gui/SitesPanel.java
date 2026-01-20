@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import javax.swing.BoxLayout;
@@ -173,8 +174,9 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 	private void removeSite(int[] indices) {
 		Arrays.sort(indices);
 		for (int i=indices.length-1; i>=0; i--) {
-			locs.remove(i);
-			siteDataParams.remove(i);
+            int idx = indices[i];
+			locs.remove(idx);
+			siteDataParams.remove(idx);
 		}
 		rebuildSiteList();
 	}
