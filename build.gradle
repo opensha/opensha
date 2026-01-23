@@ -74,7 +74,7 @@ dependencies {
 	api "ghsc:nshmp-gmm:1.7.15" // when you update this, also update nshmp-haz in dev to match
 
     api 'com.google.guava:guava:31.1-jre'
-    api 'com.google.code.gson:gson:2.8.9'
+    api 'com.google.code.gson:gson:2.13.2'
     api 'org.jfree:jfreechart:1.5.3'
     api 'org.jfree:org.jfree.chart3d:2.1.0'
     api 'org.dom4j:dom4j:2.1.1'
