@@ -16,17 +16,18 @@ abstract class AbstractProbDistProbabilityModel extends AbstractFSS_ProbabilityM
 	
 	// defaults for EqkProbDistCalc instantiation for regular calculations
 	// discretization = maxNormalizedTime / (numDiscretizations-1)
-	// these defaults imply discretization = 0.0005
-	// that is the same discretization as UCERF3, except max time is 10 instead of 9
-	// TODO: find actual optimal settings
+	// these defaults imply discretization = 0.00005, which is a factor of 10 finer
+	// than that used in UCERF3. This, and the change of INTERPOLATE_DEFAULT to true,
+	// led WUS gains to change by up to 4.8% in test calculations by Ned.
 	protected static final double MAX_NORMALIZED_TIME_DEFAULT = 10;
 	protected static final int NUM_DISCETIZATIONS_DEFAULT = 200001;
 	protected static final boolean INTERPOLATE_DEFAULT = true;
 	
 	// defaults for normalized CDFs used for integration, e.g., for mix of sections with and without DOLE
 	// discretization = maxNormalizedTime / (numDiscretizations-1)
-	// these defaults imply discretization = 0.01
-	// TODO: find actual optimal settings
+	// these defaults imply discretization = 0.01, the same used in UCERF3
+	// Increasing discretization by a factor of 10 led to less than 0.8% differences
+	// in WUS tests by Ned.
 	protected static final double MAX_INTEGRATION_NORMALIZED_TIME_DEFAULT = 5;
 	protected static final int NUM_INTEGRATION_DISCETIZATIONS_DEFAULT = 501;
 	

@@ -582,6 +582,28 @@ public class ProbabilityModelsCalc {
 						sumCondProbGain += (condProbTemp/expNum)*relProbForTimeSinceLast;
 						totWeight += relProbForTimeSinceLast;
 					
+// MORE DEBUGGING						
+//if(fltSysRupIndex==513447) {
+//	if(normTimeSinceYears==0.11) {
+//		EqkProbDistCalc refProbDistCalc = getCachedRefProbDistCalc(aperiodicity);
+//		EvenlyDiscretizedFunc cdf = refProbDistCalc.getCDF();
+//		System.out.println("Calc:\t"+cdf.getMinX()+"\t"+cdf.getDelta()+"\t"+cdf.size()+"\t"+refProbDistCalc.getMean()+"\t"+refProbDistCalc.getAperiodicity());
+//		System.exit(0);
+//	}
+//	System.out.println(
+//			normTimeSinceYears+"\t"+
+//			relProbForTimeSinceLast+"\t"+
+//			aveNormTS+"\t"+
+//			condProbTemp+"\t"+
+//			expNum+"\t"+
+//			aperiodicity+"\t"+
+//			condRecurIntWhereUnknown+"\t"+
+//			histOpenInterval
+//			);
+//	System.exit(0);
+//}
+						
+						
 //// this was most recently used to figure out why probs were changing by 0.4% when date of last differed
 //// only	by one hour (due to time zone change; and with interpolate=false); the time zone problem has been
 //// fixed but that level of error can still exist if interpolate=false.	
@@ -651,6 +673,12 @@ public class ProbabilityModelsCalc {
 			if(totWeight>0) {
 				probGain = sumCondProbGain/totWeight;
 				condProb = probGain*expNum;
+
+// MORE DEBUGGING		
+//if(fltSysRupIndex==513447) {
+//	System.out.println("GOT HERE2:\t"+aperiodicity+"\t"+durationYears+"\t"+aveCondRecurInterval+"\t"+probGain+"\t"+sumCondProbGain+"\t"+totWeight);
+//}
+
 				Preconditions.checkState(probGain >= 0d, "Bad probGain=%s where some (but not all) sections have date of last.\n"
 						+ "\tsumCondProbGain=%s\ttotWeight=%s\n"
 						+ "\tdurationYears=%s\texpNum=%s\tfractAreaWith=%s",
@@ -702,6 +730,12 @@ public class ProbabilityModelsCalc {
 		u3_ProbGainForRupInfoString += fractAreaWithDateOfLast+",";
 		u3_ProbGainForRupInfoString += aperiodicity+",";// magDepAperiodicity.getAperForRupMag(rupMag)+",";
 		u3_ProbGainForRupInfoString += numSubsectForRup;
+		
+// MORE DEBUGGING		
+//if(fltSysRupIndex==513447) {
+//	System.out.println(u3_ProbGainForRupInfoString);
+//	System.exit(0);
+//}
 
 //		u3_ProgGainForRupInfoString += allSectionsHadDateOfLast+",";
 //		u3_ProgGainForRupInfoString += noSectionsHadDateOfLast;

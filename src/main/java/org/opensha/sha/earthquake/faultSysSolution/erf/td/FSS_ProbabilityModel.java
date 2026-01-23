@@ -262,6 +262,19 @@ public interface FSS_ProbabilityModel extends ParameterizedModel {
 			return refModel.getNumSectsWithDOLE();
 		}
 		
+		/**
+		 * Set to UCERF3 PDF/CDF discretizations and interpolation
+		 */
+		public void setUCERF3_Discretization() {
+			for (int i=0; i<probModels.size(); i++) {
+				if(probModels.getValue(i) instanceof AbstractProbDistProbabilityModel) {
+					((AbstractProbDistProbabilityModel)probModels.getValue(i)).setProbDistsDiscretization(9, 18001, false);
+					((AbstractProbDistProbabilityModel)probModels.getValue(i)).setIntegrationNormCDFsDiscretization(5d, 501);
+				}
+			
+			}
+		}
+		
 	}
 	
 }

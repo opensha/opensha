@@ -39,6 +39,8 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 	 */
 	private final double[] sectAreas;
 	
+	public String u3_ProbGainForRupInfoString;
+	
 	/*
 	 * Cached data that needs to be maintained and cleared if settings change
 	 */
@@ -210,6 +212,28 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 						double condProbTemp = computeCondProbFast(normProbDistCalc, 1.0, aveNormTS, durationYears/aveCondRecurInterval, aperiodicity);
 						sumCondProbGain += (condProbTemp/expNum)*relProbForTimeSinceLast;
 						totWeight += relProbForTimeSinceLast;
+				
+// DEBUGGING
+//if(fltSysRupIndex==513447) {
+//	if(normTimeSinceYears==0.11) {
+//		EvenlyDiscretizedFunc cdf = normProbDistCalc.getCDF();
+//		System.out.println("Calc:\t"+cdf.getMinX()+"\t"+cdf.getDelta()+"\t"+cdf.size()+"\t"+normProbDistCalc.getMean()+"\t"+normProbDistCalc.getAperiodicity());
+//		System.exit(0);
+//	}
+//
+//	System.out.println(
+//		normTimeSinceYears+"\t"+
+//		relProbForTimeSinceLast+"\t"+
+//		aveNormTS+"\t"+
+//		condProbTemp+"\t"+
+//		expNum+"\t"+
+//		aperiodicity+"\t"+
+//		condRecurIntWhereUnknown+"\t"+
+//		histOpenInterval
+//	);
+//	System.exit(0);
+//}
+
 					}
 				}
 			} else {	// average date of last event
@@ -231,6 +255,12 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 			if(totWeight>0) {
 				probGain = sumCondProbGain/totWeight;
 				condProb = probGain*expNum;
+
+// DEBUGGING				
+//if(fltSysRupIndex==513447) {
+//	System.out.println("NEW HERE2:\t"+aperiodicity+"\t"+durationYears+"\t"+aveCondRecurInterval+"\t"+probGain+"\t"+sumCondProbGain+"\t"+totWeight);
+//}
+
 				Preconditions.checkState(probGain >= 0d, "Bad probGain=%s where some (but not all) sections have date of last.\n"
 						+ "\tsumCondProbGain=%s\ttotWeight=%s\n"
 						+ "\tdurationYears=%s\texpNum=%s\tfractAreaWith=%s",
@@ -260,6 +290,28 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 			}
 		}
 		
+		// csv file line
+		u3_ProbGainForRupInfoString = new String();
+		u3_ProbGainForRupInfoString += fltSysRupIndex+",";
+		u3_ProbGainForRupInfoString += probGain+",";
+		u3_ProbGainForRupInfoString += condProb+",";
+		u3_ProbGainForRupInfoString += fltSysRupSet.getMagForRup(fltSysRupIndex)+",";
+		u3_ProbGainForRupInfoString += aveCondRecurInterval+",";
+		u3_ProbGainForRupInfoString += condRecurIntWhereUnknown+",";
+		u3_ProbGainForRupInfoString += aveTimeSinceLastWhereKnownYears+",";
+		u3_ProbGainForRupInfoString += aveNormTimeSinceLastEventWhereKnown+",";
+		u3_ProbGainForRupInfoString += totRupArea+",";
+		u3_ProbGainForRupInfoString += totRupAreaWithDateOfLast+",";
+		u3_ProbGainForRupInfoString += fractAreaWithDateOfLast+",";
+		u3_ProbGainForRupInfoString += aperiodicity+",";// magDepAperiodicity.getAperForRupMag(rupMag)+",";
+		u3_ProbGainForRupInfoString += rupSubSects.size();
+		
+// DEBUGGING
+//if(fltSysRupIndex==513447) {
+//			System.out.println(u3_ProbGainForRupInfoString);
+//			System.exit(0);
+//}
+
 		if(Double.isNaN(probGain))
 			throw new RuntimeException("probGain=NaN for fltSysRupIndex="+fltSysRupIndex);
 		
@@ -282,7 +334,7 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 		synchronized (this) {
 			if (cachedAveRupCondRecurIntervals == null)
 				cachedAveRupCondRecurIntervals = TimeDepUtils.computeAveCondRecurIntervalForFltSysRups(
-						fltSysRupSet, aveCondRecurIntervalForFltSysRups, aveCondRecurIntervalForFltSysRups,
+						fltSysRupSet, sectlongTermPartRates, sectAreas,
 						averagingTypeParam.getValue().isAveRI());
 		}
 		return cachedAveRupCondRecurIntervals;

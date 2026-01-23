@@ -27,7 +27,7 @@ public interface HistoricalOpenInterval extends ParameterizedModel {
 	 * @return open interval in years for this rupture and forecast start time
 	 */
 	public default double getRuptureOpenInterval(int ruptureIndex, long forecastStartTimeMillis) {
-		return getOpenIntervalYears(getRuptureOpenIntervalStartTime(ruptureIndex), forecastStartTimeMillis);
+		return Math.round(getOpenIntervalYears(getRuptureOpenIntervalStartTime(ruptureIndex), forecastStartTimeMillis));
 	}
 	
 	/**

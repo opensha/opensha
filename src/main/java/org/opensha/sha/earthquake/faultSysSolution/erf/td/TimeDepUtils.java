@@ -82,7 +82,10 @@ public class TimeDepUtils {
 	}
 	
 	/**
-	 * TODO: Ned fill in
+	 * This computes the average conditional recurrence interval for each rupture (conditioned on that
+	 * rupture being the only one that occurs).  This averages recurrence intervals if aveRI=true, or
+	 * averages section rates if aveRI=false, both weighted by section area. This method computes the
+	 * section areas from the fltSysRupSet (creep reduced).
 	 * 
 	 * @param fltSysRupSet
 	 * @param sectlongTermPartRates
@@ -96,7 +99,9 @@ public class TimeDepUtils {
 	}
 	
 	/**
-	 * TODO: Ned fill in
+	 * This computes the average conditional recurrence interval for each rupture (conditioned on that
+	 * rupture being the only one that occurs).  This averages recurrence intervals if aveRI=true, or
+	 * averages section rates if aveRI=false, both weighted by section area.
 	 * 
 	 * @param fltSysRupSet
 	 * @param sectlongTermPartRates
