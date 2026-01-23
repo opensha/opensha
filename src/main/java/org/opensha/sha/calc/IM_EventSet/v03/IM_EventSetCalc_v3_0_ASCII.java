@@ -7,27 +7,25 @@ import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.StringTokenizer;
 import java.util.logging.Level;
 
-import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
-import org.opensha.commons.data.siteData.SiteData;
-import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.data.siteData.impl.WillsMap2000;
-import org.opensha.commons.data.siteData.impl.WillsMap2006;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.param.Parameter;
+import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.WarningParameter;
 import org.opensha.commons.param.event.ParameterChangeWarningEvent;
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
 import org.opensha.commons.param.impl.StringParameter;
-import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.HAZ01Writer;
 import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.OriginalModWriter;
+import org.opensha.sha.calc.params.filters.*;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.param.AleatoryMagAreaStdDevParam;
 import org.opensha.sha.earthquake.param.BackgroundRupParam;
@@ -44,31 +42,13 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.MeanUCERF2
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
-import org.opensha.sha.imr.attenRelImpl.AS_1997_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.AS_2008_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.Abrahamson_2000_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.BA_2006_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.BA_2008_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.BC_2004_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.BJF_1997_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.BS_2003_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.CB_2003_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.CB_2006_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.CB_2008_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.CS_2005_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.CY_2006_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.CY_2008_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.Campbell_1997_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.Field_2000_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.GouletEtAl_2006_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.SEA_1999_AttenRel;
-import org.opensha.sha.imr.attenRelImpl.SadighEtAl_1997_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.ShakeMap_2003_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.USGS_Combined_2004_AttenRel;
-import org.opensha.sha.util.SiteTranslator;
 
 import com.google.common.base.Preconditions;
 
+import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
+import org.opensha.sha.imr.param.SiteParams.Vs30_TypeParam;
 import scratch.UCERF3.erf.mean.MeanUCERF3;
 import scratch.UCERF3.erf.mean.MeanUCERF3.Presets;
 
@@ -103,11 +83,11 @@ implements ParameterChangeWarningListener {
 	
 	private File outputDir;
 	
-	private OrderedSiteDataProviderList providers;
-	
-	private ArrayList<ArrayList<SiteDataValue<?>>> userDataVals;
+	private ArrayList<ParameterList> userDataVals;
 
-	/**
+    private final SourceFilterManager sourceFilters;
+
+    /**
 	 *  ArrayList that maps picklist attenRel string names to the real fully qualified
 	 *  class names
 	 */
@@ -171,20 +151,9 @@ implements ParameterChangeWarningListener {
 		inputFileName = inpFile;
 		dirName = outDir ;
 		outputDir = new File(dirName);
-		
-//		providers = OrderedSiteDataProviderList.createCompatibilityProviders(false);
-		ArrayList<SiteData<?>> p = new ArrayList<>();
-		try {
-			p.add(new WillsMap2006());
-		} catch (IOException e) {
-			throw ExceptionUtils.asRuntimeException(e);
-		}
-		providers = new OrderedSiteDataProviderList(p);
-		// disable non-Vs30 providers
-		for (int i=0; i<providers.size(); i++) {
-			if (!providers.getProvider(i).getDataType().equals(SiteData.TYPE_VS30))
-				providers.setEnabled(i, false);
-		}
+
+        // source filters have fixed-cutoff distance of 200km by default
+        sourceFilters = SourceFiltersParam.getDefault();
 	}
 
 	public void parseFile() throws FileNotFoundException,IOException{
@@ -253,11 +222,11 @@ implements ParameterChangeWarningListener {
 	 * Gets the list of locations with their Wills Site Class values
 	 * @param line String
 	 */
-	private void setSite(String line){
+	private void setSite(String line) {
 		if(locList == null)
 			locList = new LocationList();
 		if (userDataVals == null)
-			userDataVals = new ArrayList<ArrayList<SiteDataValue<?>>>();
+			userDataVals = new ArrayList<ParameterList>();
 		StringTokenizer st = new StringTokenizer(line);
 		int tokens = st.countTokens();
 		if(tokens > 3 || tokens < 2){
@@ -267,56 +236,32 @@ implements ParameterChangeWarningListener {
 		double lon = Double.parseDouble(st.nextToken().trim());
 		Location loc = new Location(lat,lon);
 		locList.add(loc);
-		ArrayList<SiteDataValue<?>> dataVals = new ArrayList<SiteDataValue<?>>();
+		ParameterList dataVals = new ParameterList();
 		String dataVal = null;
 		if (tokens == 3) {
 			dataVal = st.nextToken().trim();
 		}
-		if (WillsMap2000.wills_vs30_map.keySet().contains(dataVal)) {
+		if (WillsMap2000.wills_vs30_map.containsKey(dataVal)) {
 			// this is a wills class
-			dataVals.add(new SiteDataValue<String>(SiteData.TYPE_WILLS_CLASS,
-					SiteData.TYPE_FLAG_MEASURED, dataVal));
+            dataVals.addParameter(new StringParameter(ShakeMap_2003_AttenRel.WILLS_SITE_NAME, dataVal));
 		} else if (dataVal != null) {
 			// Vs30 value
 			try {
-				double vs30 = Double.parseDouble(dataVal);
-				dataVals.add(new SiteDataValue<Double>(SiteData.TYPE_VS30,
-						SiteData.TYPE_FLAG_MEASURED, vs30));
+                Vs30_Param vs30 = new Vs30_Param();
+                vs30.setValue(Double.parseDouble(dataVal));
+                dataVals.addParameter(vs30);
+                Vs30_TypeParam vs30Type = new Vs30_TypeParam();
+                vs30Type.setValue(Vs30_TypeParam.VS30_TYPE_MEASURED);
+                dataVals.addParameter(vs30Type);
 			} catch (NumberFormatException e) {
-//				e.printStackTrace();
 				System.err.println("*** WARNING: Site Wills/Vs30 value unknown: " + dataVal);
 			}
 		}
 		userDataVals.add(dataVals);
 	}
 	
-//	/**
-//	 * Sets the IMT from the string specification
-//	 * 
-//	 * @param imtLine
-//	 * @param attenRel
-//	 */
-//	public static String getIMTForLine(String imtLine) {
-//		StringTokenizer st = new StringTokenizer(imtLine);
-//		int numTokens = st.countTokens();
-//		String imt = st.nextToken().trim();
-//		if (numTokens == 2) {
-//			// this is SA
-//			double period = Double.parseDouble(st.nextToken().trim());
-//			int per10int = (int)(period * 10d + 0.5);
-//			String per10str = per10int + "";
-//			if (per10str.length() < 2)
-//				per10str = "0" + per10str;
-////			ParameterAPI imtParam = (ParameterAPI)attenRel.getIntensityMeasure();
-////			imtParam.getIndependentParameter(PeriodParam.NAME).setValue(period);
-//			imt += per10str;
-//		}
-//		System.out.println(imtLine + " => " + imt);
-//		return imt;
-//	}
-
 	/**
-	 * Gets the suported IMTs as String
+	 * Gets the supported IMTs as String
 	 * @param line String
 	 */
 	private void setIMT(String line){
@@ -657,15 +602,16 @@ implements ParameterChangeWarningListener {
 		return outputDir;
 	}
 
-	public OrderedSiteDataProviderList getSiteDataProviders() {
-		return providers;
-	}
+    @Override
+    public List<SourceFilter> getSourceFilters() {
+        return sourceFilters.getEnabledFilters();
+    }
 
-	public Location getSiteLocation(int i) {
+    public Location getSiteLocation(int i) {
 		return locList.get(i);
 	}
 
-	public ArrayList<SiteDataValue<?>> getUserSiteDataValues(int i) {
+	public ParameterList getUserSiteData(int i) {
 		return userDataVals.get(i);
 	}
 }

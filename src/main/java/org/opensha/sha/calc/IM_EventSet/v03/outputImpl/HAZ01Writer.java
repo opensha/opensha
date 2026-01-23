@@ -19,8 +19,8 @@ import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.OtherParams.StdDevTypeParam;
-import org.opensha.sha.imr.param.PropagationEffectParams.DistanceRupParameter;
 import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
+import org.opensha.sha.util.SourceUtil;
 
 public class HAZ01Writer extends IM_EventSetOutputWriter {
 	
@@ -37,7 +37,6 @@ public class HAZ01Writer extends IM_EventSetOutputWriter {
 	public void writeFiles(ArrayList<ERF> erfs,
 			ArrayList<ScalarIMR> attenRels, ArrayList<String> imts) throws IOException {
 		logger.log(Level.INFO, "Writing HAZ01 files");
-		// TODO Auto-generated method stub
 		String fileA = this.calc.getOutputDir().getAbsolutePath() + File.separator + HAZ01A_FILE_NAME;
 		String fileB = this.calc.getOutputDir().getAbsolutePath() + File.separator + HAZ01B_FILE_NAME;
 		logger.log(Level.FINE, "Opening HAZ01A file for writing: " + fileA);
@@ -118,11 +117,17 @@ public class HAZ01Writer extends IM_EventSetOutputWriter {
 		ArrayList<Parameter> defaultSiteParams = getDefaultSiteParams(attenRel);
 		
 		ArrayList<Site> sites = getInitializedSites(attenRel);
-		
-		StdDevTypeParam stdDevParam = (StdDevTypeParam)attenRel.getParameter(StdDevTypeParam.NAME);
-		boolean hasInterIntra = stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_INTER) &&
-									stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_INTRA);
-		
+
+        StdDevTypeParam stdDevParam = null;
+        boolean hasInterIntra = false;
+        try {
+            stdDevParam = (StdDevTypeParam) attenRel.getParameter(StdDevTypeParam.NAME);
+            hasInterIntra = stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_INTER) &&
+                    stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_INTRA);
+        } catch (ParameterException e) {
+            logger.log(Level.INFO, "IMR " + attenRel.getShortName() + " missing Std Dev Type parameter.");
+        }
+
 		if (!hasInterIntra)
 			logger.log(Level.WARNING, "Selected IMR, " + attenRel.getShortName() + ", doesn't allow " +
 					"inter event Std Dev...all values will be set to -1");
@@ -150,18 +155,26 @@ public class HAZ01Writer extends IM_EventSetOutputWriter {
 			for (int sourceID=0; sourceID<numSources; sourceID++) {
 				logger.log(Level.FINEST, "Writing portion for Source: " + sourceID);
 				ProbEqkSource source = erf.getSource(sourceID);
-				if (!shouldIncludeSource(source))
-					continue;
+                if (SourceUtil.canSkipSource(calc.getSourceFilters(), source, site))
+                    continue;
 				for (int rupID=0; rupID<source.getNumRuptures(); rupID++) {
 					lineID++;
 					ProbEqkRupture rup = source.getRupture(rupID);
+                    if (SourceUtil.canSkipRupture(calc.getSourceFilters(), rup, site))
+                        continue;
 					attenRel.setEqkRupture(rup);
 					
 					double rupDist = rup.getRuptureSurface().getDistanceRup(site.getLocation());
 					
 					double mean = attenRel.getMean();
-					stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL);
-					double total = attenRel.getStdDev();
+                    if (stdDevParam != null) {
+                        if (stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_TOTAL)) {
+                            stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL);
+                        } else if (stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_TOTAL_MAG_DEP)) {
+                            stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL_MAG_DEP);
+                        }
+                    }
+                    double total = attenRel.getStdDev();
 					double inter = -1;
 					if (hasInterIntra) {
 						stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_INTER);
@@ -199,8 +212,6 @@ public class HAZ01Writer extends IM_EventSetOutputWriter {
 			logger.log(Level.FINEST, "Writing portion for Source: " + sourceID);
 			String sourceName = source.getName();
 			sourceName = sourceName.replaceAll(",", "");
-			if (!shouldIncludeSource(source))
-				continue;
 			for (int rupID=0; rupID<source.getNumRuptures(); rupID++) {
 				lineID++;
 				ProbEqkRupture rup = source.getRupture(rupID);

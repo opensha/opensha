@@ -5,6 +5,7 @@ import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
+import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -17,15 +18,23 @@ import javax.swing.event.ListSelectionListener;
 
 public abstract class NamesListPanel extends JPanel implements ListSelectionListener, ActionListener {
 	
-	protected JList namesList;
+	protected JList<String> namesList;
 	
 	protected JButton addButton = new JButton("Add");
 	protected JButton removeButton = new JButton("Remove");
 	
-	public NamesListPanel(JPanel lowerPanel, String label) {
+	/**
+	 * A vertical column with a list of names that can be added or removed.
+	 * This class is meant to be extended, the child class will implement the adder.
+	 * By default, the list of values will be the first in the column, unless
+	 * an upperPanel is provided.
+	 * @param upperPanel: Optional first panel
+	 * @param label: Name for set of values
+	 */
+	public NamesListPanel(JPanel upperPanel, String label) {
 		super(new BorderLayout());
 		
-		namesList = new JList();
+		namesList = new JList<>();
 		namesList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		namesList.setSelectedIndex(0);
 		namesList.addListSelectionListener(this);
@@ -33,9 +42,9 @@ public abstract class NamesListPanel extends JPanel implements ListSelectionList
 		JScrollPane listScroller = new JScrollPane(namesList);
 		listScroller.setPreferredSize(new Dimension(250, 150));
 		
-		JPanel northPanel = new JPanel(new BorderLayout());
-		northPanel.add(new JLabel(label), BorderLayout.NORTH);
-		northPanel.add(listScroller, BorderLayout.CENTER);
+		JPanel listPanel = new JPanel(new BorderLayout());
+		listPanel.add(new JLabel(label), BorderLayout.NORTH);
+		listPanel.add(listScroller, BorderLayout.CENTER);
 		
 		JPanel buttonPanel = new JPanel();
 		buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.X_AXIS));
@@ -45,14 +54,34 @@ public abstract class NamesListPanel extends JPanel implements ListSelectionList
 		addButton.addActionListener(this);
 		removeButton.addActionListener(this);
 		
-		northPanel.add(buttonPanel, BorderLayout.SOUTH);
+		listPanel.add(buttonPanel, BorderLayout.SOUTH);
 		
-		this.add(northPanel, BorderLayout.NORTH);
+		if (upperPanel != null) {
+			upperPanel.setBorder(
+					BorderFactory.createEmptyBorder(0, 0, 10, 0));
+			this.add(upperPanel, BorderLayout.NORTH);
+			this.validate();
+			this.add(listPanel, BorderLayout.CENTER);
+		} else {
+			this.add(listPanel, BorderLayout.NORTH);
+		}
 		
-		if (lowerPanel != null)
-			setLowerPanel(lowerPanel);
 	}
 	
+	/**
+	 * Default constructor with no upperPanel provided
+	 * @param label
+	 */
+	public NamesListPanel(String label) {
+		this(/*upperPanel=*/null, label);
+	}
+	
+	/**
+	 * Use to set the Center panel. If an upperPanel was provided previously,
+	 * this would overwrite the listPanel (which is now at center).
+	 * Only use if no upperPanel was specified.
+	 * @param lowerPanel
+	 */
 	public void setLowerPanel(JPanel lowerPanel) {
 		this.add(lowerPanel, BorderLayout.CENTER);
 		this.validate();

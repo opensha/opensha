@@ -297,7 +297,7 @@ public class OrderedSiteDataGUIBean extends JPanel implements ActionListener, Li
 	}
 	
 	private void showHelp() {
-		String help = "This is used to set syte type information for a site or gridded region." +
+		String help = "This is used to set site type information for a site or gridded region." +
 				"The list shows all of the available sources of site data, " +
 				"in order of priority. When setting site parameters for the " +
 				"given Attenuation Relationship, the highest priority applicable " +
