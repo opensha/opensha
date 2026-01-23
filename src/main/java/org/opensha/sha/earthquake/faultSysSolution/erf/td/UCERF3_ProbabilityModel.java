@@ -39,12 +39,13 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 	 */
 	private final double[] sectAreas;
 	
-	public String u3_ProbGainForRupInfoString;
-	
 	/*
 	 * Cached data that needs to be maintained and cleared if settings change
 	 */
 	private double[] cachedAveRupCondRecurIntervals;
+	
+	private boolean saveDebugInfo = false;
+	private volatile String debugString = null;
 	
 	public UCERF3_ProbabilityModel(FaultSystemSolution sol,
 			AperiodicityModels aperiodicityModel, RenewalModels renewalModel,
@@ -290,28 +291,31 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 			}
 		}
 		
-		// csv file line
-		u3_ProbGainForRupInfoString = new String();
-		u3_ProbGainForRupInfoString += fltSysRupIndex+",";
-		u3_ProbGainForRupInfoString += probGain+",";
-		u3_ProbGainForRupInfoString += condProb+",";
-		u3_ProbGainForRupInfoString += fltSysRupSet.getMagForRup(fltSysRupIndex)+",";
-		u3_ProbGainForRupInfoString += aveCondRecurInterval+",";
-		u3_ProbGainForRupInfoString += condRecurIntWhereUnknown+",";
-		u3_ProbGainForRupInfoString += aveTimeSinceLastWhereKnownYears+",";
-		u3_ProbGainForRupInfoString += aveNormTimeSinceLastEventWhereKnown+",";
-		u3_ProbGainForRupInfoString += totRupArea+",";
-		u3_ProbGainForRupInfoString += totRupAreaWithDateOfLast+",";
-		u3_ProbGainForRupInfoString += fractAreaWithDateOfLast+",";
-		u3_ProbGainForRupInfoString += aperiodicity+",";// magDepAperiodicity.getAperForRupMag(rupMag)+",";
-		u3_ProbGainForRupInfoString += rupSubSects.size();
+		if (saveDebugInfo) {
+			// csv file line
+			String str = new String();
+			str += fltSysRupIndex+",";
+			str += probGain+",";
+			str += condProb+",";
+			str += fltSysRupSet.getMagForRup(fltSysRupIndex)+",";
+			str += aveCondRecurInterval+",";
+			str += condRecurIntWhereUnknown+",";
+			str += aveTimeSinceLastWhereKnownYears+",";
+			str += aveNormTimeSinceLastEventWhereKnown+",";
+			str += totRupArea+",";
+			str += totRupAreaWithDateOfLast+",";
+			str += fractAreaWithDateOfLast+",";
+			str += aperiodicity+",";// magDepAperiodicity.getAperForRupMag(rupMag)+",";
+			str += rupSubSects.size();
+			this.debugString = str;
+			
+			// DEBUGGING
+			//if(fltSysRupIndex==513447) {
+//						System.out.println(str);
+//						System.exit(0);
+			//}
+		}
 		
-// DEBUGGING
-//if(fltSysRupIndex==513447) {
-//			System.out.println(u3_ProbGainForRupInfoString);
-//			System.exit(0);
-//}
-
 		if(Double.isNaN(probGain))
 			throw new RuntimeException("probGain=NaN for fltSysRupIndex="+fltSysRupIndex);
 		
@@ -547,6 +551,31 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 	 */
 	public void setAveragingTypeChoice(BPTAveragingTypeOptions modelChoice) {
 		this.averagingTypeParam.setValue(modelChoice);
+	}
+	
+	/**
+	 * Enables storage of debug information for the most recent call to {@link #getProbabilityGain(int, long, double)},
+	 * which can be accessed via {@link #getDebugString()}.
+	 * 
+	 * @param saveDebugInfo
+	 */
+	public void setSaveDebugInfo(boolean saveDebugInfo) {
+		this.saveDebugInfo = saveDebugInfo;
+	}
+	
+	/**
+	 * Gets the most recent debug string; must first call {@link #setSaveDebugInfo(boolean)} to enable debugging.
+	 * <p>
+	 * This could eventually be turned into a class with all of the variables instead of a string representation
+	 * if we end up wanting to use this.
+	 * 
+	 * @return debug string for most recent call to {@link #getProbabilityGain(int, long, double)}
+	 * @throws IllegalStateException if debugging is disabled
+	 * @see {@link UCERF3_ProbabilityModel#setSaveDebugInfo(boolean)}
+	 */
+	public String getDebugString() {
+		Preconditions.checkState(saveDebugInfo);
+		return debugString;
 	}
 
 }
