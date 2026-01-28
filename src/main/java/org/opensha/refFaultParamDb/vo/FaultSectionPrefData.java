@@ -5,6 +5,7 @@ package org.opensha.refFaultParamDb.vo;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
 
 import org.dom4j.Attribute;
@@ -389,7 +390,7 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 	 * @param maxSubSectionLen
 	 * @return
 	 */
-	public ArrayList<FaultSectionPrefData> getSubSectionsList(double maxSubSectionLen) {
+	public List<FaultSectionPrefData> getSubSectionsList(double maxSubSectionLen) {
 		return getSubSectionsList(maxSubSectionLen, 1000*sectionId);
 	}
 	
@@ -401,7 +402,7 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 	 * @param startId - the index of the first subsection
 	 * @return
 	 */
-	public ArrayList<FaultSectionPrefData> getSubSectionsList(double maxSubSectionLen, int startId) {
+	public List<FaultSectionPrefData> getSubSectionsList(double maxSubSectionLen, int startId) {
 		return getSubSectionsList(maxSubSectionLen, startId, 1);
 	}
 	
@@ -414,8 +415,8 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 	 * @param minSubSections minimum number of sub sections to generate
 	 * @return
 	 */
-	public ArrayList<FaultSectionPrefData> getSubSectionsList(double maxSubSectionLen, int startId, int minSubSections) {
-		ArrayList<FaultTrace> equalLengthSubsTrace =
+	public List<FaultSectionPrefData> getSubSectionsList(double maxSubSectionLen, int startId, int minSubSections) {
+		List<FaultTrace> equalLengthSubsTrace =
 			FaultUtils.getEqualLengthSubsectionTraces(this.faultTrace, maxSubSectionLen, minSubSections);
 		ArrayList<FaultSectionPrefData> subSectionList = new ArrayList<FaultSectionPrefData>();
 		for(int i=0; i<equalLengthSubsTrace.size(); ++i) {
@@ -707,5 +708,19 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 	@Override
 	public boolean isProxyFault() {
 		return proxyFault;
+	}
+	
+	private static final String STANDARD_SUBSECTION_PREFIX = ", Subsection ";
+
+	@Override
+	public int getSubSectionIndex() {
+		if (parentSectionId >= 0 && sectionName != null && sectionName.contains(STANDARD_SUBSECTION_PREFIX)) {
+			// this is a subsection that was created before we added the subsection index field
+			try {
+				String suffix = sectionName.substring(sectionName.indexOf(STANDARD_SUBSECTION_PREFIX)+STANDARD_SUBSECTION_PREFIX.length()).trim();
+				return Integer.parseInt(suffix);
+			} catch (NumberFormatException e) {}
+		}
+		return -1;
 	}
 }

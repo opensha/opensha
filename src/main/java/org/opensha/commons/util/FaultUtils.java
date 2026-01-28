@@ -136,7 +136,7 @@ public final class FaultUtils {
 	 * @param faultTrace 
 	 * @param maxSubSectionLen Maximum length of each subsection
 	 */
-	public static ArrayList<FaultTrace> getEqualLengthSubsectionTraces(FaultTrace faultTrace, double maxSubSectionLen) {
+	public static List<FaultTrace> getEqualLengthSubsectionTraces(FaultTrace faultTrace, double maxSubSectionLen) {
 		return getEqualLengthSubsectionTraces(faultTrace, maxSubSectionLen, 1);
 	}
 
@@ -145,29 +145,35 @@ public final class FaultUtils {
 	 * 
 	 * @param faultTrace 
 	 * @param maxSubSectionLen Maximum length of each subsection
-	 * @param minSubSections minimum number of sub sections to generate
+	 * @param minSubSections minimum number of sub section traces to generate
 	 */
-	public static ArrayList<FaultTrace> getEqualLengthSubsectionTraces(
+	public static List<FaultTrace> getEqualLengthSubsectionTraces(
 			FaultTrace faultTrace, double maxSubSectionLen, int minSubSections) {
-		int numSubSections;
-
+		int numSubSections = getNumSubSects(faultTrace.getTraceLength(), maxSubSectionLen, minSubSections);
+		
+		return getEqualLengthSubsectionTraces(faultTrace, numSubSections);
+	}
+	
+	private static int getNumSubSects(double traceLength, double maxSubSectionLen, int minSubSections) {
 		// find the number of sub sections
-		double numSubSec= faultTrace.getTraceLength()/maxSubSectionLen;
-		if(Math.floor(numSubSec)!=numSubSec) numSubSections=(int)Math.floor(numSubSec)+1;
-		else numSubSections=(int)numSubSec;
+		double numSubSec= traceLength/maxSubSectionLen;
+		int numSubSections;
+		if(Math.floor(numSubSec)!=numSubSec)
+			numSubSections = (int)Math.floor(numSubSec)+1;
+		else
+			numSubSections = (int)numSubSec;
 		if (numSubSections < minSubSections)
 			numSubSections = minSubSections;
-		return getEqualLengthSubsectionTraces(faultTrace, numSubSections);
+		return numSubSections;
 	}
 	
 	/**
 	 * This subdivides the given fault trace into the specified number of equal-length sub-traces.
 	 * 
 	 * @param faultTrace 
-	 * @param maxSubSectionLen Maximum length of each subsection
-	 * @param minSubSections minimum number of sub sections to generate
+	 * @param numSubSections number of sub section traces to generate
 	 */
-	public static ArrayList<FaultTrace> getEqualLengthSubsectionTraces(
+	public static List<FaultTrace> getEqualLengthSubsectionTraces(
 			FaultTrace faultTrace, int numSubSections) {
 		// find the length of each sub section
 		double subSecLength = faultTrace.getTraceLength()/numSubSections;
@@ -206,6 +212,294 @@ public final class FaultUtils {
 			}
 		}
 		return subSectionTraceList;
+	}
+
+	/**
+	 * This subdivides the given fault trace into sub-traces that have the length as given (or less).
+	 * 
+	 * @param upperTrace upper fault trace
+	 * @param lowerTrace lower fault trace
+	 * @param maxSubSectionLen Maximum length of each subsection
+	 * @param minSubSections minimum number of sub section traces to generate
+	 * @return list of upper-lower trace pairs for each subsection
+	 */
+	public static List<FaultTrace[]> getEqualLengthSubsectionTraces(
+			FaultTrace upperTrace, FaultTrace lowerTrace, double maxSubSectionLen, int minSubSections) {
+		int numSubSections = getNumSubSects(0.5*(upperTrace.getTraceLength() + lowerTrace.getTraceLength()),
+				maxSubSectionLen, minSubSections);
+
+		return getEqualLengthSubsectionTraces(upperTrace, lowerTrace, numSubSections);
+	}
+	
+	/**
+	 * This subdivides the given fault trace into the specified number of equal-length sub-traces.
+	 * 
+	 * @param upperTrace upper fault trace
+	 * @param lowerTrace lower fault trace
+	 * @param numSubSects number of sub section traces to generate
+	 * @return list of upper-lower trace pairs for each subsection
+	 */
+	public static List<FaultTrace[]> getEqualLengthSubsectionTraces(
+			FaultTrace upperTrace, FaultTrace lowerTrace, int numSubSects) {
+		final boolean D = false;
+		// we have a lower trace, which is more complex.
+		// we could just split the upper and lower traces into equal length pieces and connect them, but those can
+		// be skewed if one trace has more (and uneven) curvature than the other
+
+		// instead, we'll try to build less skewed sections by subsectioning a trace down the middle of the fault
+		// and then projecting up/down to the top/bottom
+
+		// build a trace at the middle
+		int numResample = Integer.max(100, (int)Math.max(upperTrace.getTraceLength(), lowerTrace.getTraceLength()));
+		FaultTrace upperResampled = resampleTrace(upperTrace, numResample);
+		FaultTrace lowerResampled = resampleTrace(lowerTrace, numResample);
+		Preconditions.checkState(upperResampled.size() == lowerResampled.size());
+		// this won't necessarily be evenly spaced, but that's fine (we'll build equal length traces next)
+		FaultTrace middleTrace = new FaultTrace(null);
+		double maxHorzDist = 0d;
+		for (int i=0; i<upperResampled.size(); i++) {
+			Location upperLoc = upperResampled.get(i);
+			Location lowerLoc = lowerResampled.get(i);
+			// vector from upper to lower
+			LocationVector vector = LocationUtils.vector(upperLoc, lowerLoc);
+			maxHorzDist = Math.max(maxHorzDist, vector.getHorzDistance());
+			// scale by 0.5 to get a middle loc
+			vector.setHorzDistance(0.5*vector.getHorzDistance());
+			vector.setVertDistance(0.5*vector.getVertDistance());
+			middleTrace.add(LocationUtils.location(upperLoc, vector));
+		}
+
+		// resample the middle trace to get subsections
+		List<FaultTrace> equalLengthMiddleTraces = getEqualLengthSubsectionTraces(
+				middleTrace, numSubSects);
+		// project the middle trace to the upper and lower traces; do that by finding the index on the resampled
+		// traces that is closest to a right angle from middle trace strike direction
+		int[][] closestUpperIndexes = new int[numSubSects][2];
+		int[][] closestLowerIndexes = new int[numSubSects][2];
+		for (int i=0; i<numSubSects; i++) {
+			FaultTrace middle = equalLengthMiddleTraces.get(i);
+			double strike = middle.getAveStrike();
+			double leftOfStrikeRad = Math.toRadians(strike-90d);
+			double rightOfStrikeRad = Math.toRadians(strike+90d);
+			Location[] firstLine = {
+					LocationUtils.location(middle.first(), leftOfStrikeRad, maxHorzDist),
+					LocationUtils.location(middle.first(), rightOfStrikeRad, maxHorzDist)
+			};
+			Location[] lastLine = {
+					LocationUtils.location(middle.last(), leftOfStrikeRad, maxHorzDist),
+					LocationUtils.location(middle.last(), rightOfStrikeRad, maxHorzDist)
+			};
+			double upperFirstDist = Double.POSITIVE_INFINITY;
+			double upperLastDist = Double.POSITIVE_INFINITY;
+			double lowerFirstDist = Double.POSITIVE_INFINITY;
+			double lowerLastDist = Double.POSITIVE_INFINITY;
+			// this could be sped up, we shouldn't need to search the whole trace every time
+			for (int j=0; j<upperResampled.size(); j++) {
+				double distUpFirst = LocationUtils.distanceToLineSegmentFast(firstLine[0], firstLine[1], upperResampled.get(j));
+				if (distUpFirst < upperFirstDist) {
+					upperFirstDist = distUpFirst;
+					closestUpperIndexes[i][0] = j;
+				}
+				double distUpLast = LocationUtils.distanceToLineSegmentFast(lastLine[0], lastLine[1], upperResampled.get(j));
+				if (distUpLast < upperLastDist) {
+					upperLastDist = distUpLast;
+					closestUpperIndexes[i][1] = j;
+				}
+				double distLowFirst = LocationUtils.distanceToLineSegmentFast(firstLine[0], firstLine[1], lowerResampled.get(j));
+				if (distLowFirst < lowerFirstDist) {
+					lowerFirstDist = distLowFirst;
+					closestLowerIndexes[i][0] = j;
+				}
+				double distLowLast = LocationUtils.distanceToLineSegmentFast(lastLine[0], lastLine[1], lowerResampled.get(j));
+				if (distLowLast < lowerLastDist) {
+					lowerLastDist = distLowLast;
+					closestLowerIndexes[i][1] = j;
+				}
+			}
+			if (D) {
+				System.out.println("Raw mappings for subsection "+i);
+				System.out.println("\t"+closestUpperIndexes[i][0]+" "+closestUpperIndexes[i][1]);
+				System.out.println("\t"+(float)upperFirstDist+" "+(float)upperLastDist);
+				System.out.println("\t"+closestLowerIndexes[i][0]+" "+closestLowerIndexes[i][1]);
+				System.out.println("\t"+(float)lowerFirstDist+" "+(float)lowerLastDist);
+			}
+		}
+		// now process to fix two cases:
+		// * any overlaps with the neighbors
+		// * ensure that we include the overall first or last point on the traces
+		for (int i=0; i<numSubSects; i++) {
+			int[] myUpper = closestUpperIndexes[i];
+			int[] myLower = closestLowerIndexes[i];
+			if (i == 0) {
+				// force it to start at the first point
+				myUpper[0] = 0;
+				myLower[0] = 0;
+			} else {
+				// average with the previous
+				int[] prevUpper = closestUpperIndexes[i-1];
+				if (myUpper[0] != prevUpper[1]) {
+					double tieBreaker = myUpper[1]-myUpper[0] > prevUpper[1]-prevUpper[0] ? 0.1 : -0.1;
+					int avg = (int)(0.5*(myUpper[0] + prevUpper[1])+tieBreaker);
+					if (D) {
+						double raw = (myUpper[0] + prevUpper[1])+tieBreaker;
+						System.out.println("Averaging start of upper["+i+"]="+myUpper[0]
+								+" with end of previous upper["+(i-1)+"]="+prevUpper[1]
+										+": ("+myUpper[0]+" + "+prevUpper[1]+")+"+tieBreaker+" = "+raw+" = "+avg);
+					}
+					myUpper[0] = avg;
+					prevUpper[1] = avg;
+				}
+				int[] prevLower = closestLowerIndexes[i-1];
+				if (myLower[0] != prevLower[1]) {
+					double tieBreaker = myLower[1]-myLower[0] > prevLower[1]-prevLower[0] ? 0.1 : -0.1;
+					int avg = (int)(0.5*(myLower[0] + prevLower[1])+tieBreaker);
+					if (D) {
+						double raw = (myLower[0] + prevLower[1])+tieBreaker;
+						System.out.println("Averaging start of lower["+i+"]="+myLower[0]
+								+" with end of previous lower["+(i-1)+"]="+prevLower[1]
+										+": ("+myLower[0]+" + "+prevLower[1]+")+"+tieBreaker+" = "+raw+" = "+avg);
+					}
+					myLower[0] = avg;
+					prevLower[1] = avg;
+				}
+			}
+
+			if (i == numSubSects-1) {
+				// force it to end at the last point
+				myUpper[1] = upperResampled.size()-1;
+				myLower[1] = upperResampled.size()-1;
+			}
+		}
+		// now check to make sure that none are weird (last same as or before first)
+		boolean fail = false;
+		for (int i=0; i<numSubSects; i++) {
+			int[] myUpper = closestUpperIndexes[i];
+			int[] myLower = closestLowerIndexes[i];
+			if (myUpper[0] >= myUpper[1] || myLower[0] >= myLower[1]) {
+				System.out.println("Fail for subsection "+i+"/"+numSubSects+" with middle-trace strike="+(float)equalLengthMiddleTraces.get(i).getAveStrike());
+				System.out.println("\tupper: "+myUpper[0]+"->"+myUpper[1]);
+				System.out.println("\tlower: "+myLower[0]+"->"+myLower[1]);
+				fail = true;
+				break;
+			}
+		}
+		
+		List<FaultTrace> upperTraces;
+		List<FaultTrace> lowerTraces;
+		if (fail) {
+			// fallback to the possibly skewed subsections just using the resampled upper and lower trace
+			System.err.println("WARNING: failed to build unskewed subsections for  "+upperTrace.getName()
+					+", reverting to splitting upper and lower trace evenly");
+			upperTraces = getEqualLengthSubsectionTraces(upperTrace, numSubSects);
+			lowerTraces = getEqualLengthSubsectionTraces(lowerTrace, numSubSects);
+			Preconditions.checkState(upperTraces.size() == lowerTraces.size());
+		} else {
+			// build our nicer subsections
+			upperTraces = new ArrayList<>(numSubSects);
+			lowerTraces = new ArrayList<>(numSubSects);
+
+			int upperSearchStartIndex = 0;
+			int lowerSearchStartIndex = 0;
+			for (int i=0; i<numSubSects; i++) {
+				FaultTrace upperSubTrace = new FaultTrace(null);
+				FaultTrace lowerSubTrace = new FaultTrace(null);
+				int[] myUpper = closestUpperIndexes[i];
+				int[] myLower = closestLowerIndexes[i];
+				Location upperFirst = upperResampled.get(myUpper[0]);
+				Location upperLast = upperResampled.get(myUpper[1]);
+				Location lowerFirst = lowerResampled.get(myLower[0]);
+				Location lowerLast = lowerResampled.get(myLower[1]);
+				upperSubTrace.add(upperFirst);
+				lowerSubTrace.add(lowerFirst);
+
+				// add any intermediate locations
+				upperSearchStartIndex = addIntermediateTracePoints(upperTrace, upperSubTrace, upperFirst, upperLast, upperSearchStartIndex);
+				lowerSearchStartIndex = addIntermediateTracePoints(lowerTrace, lowerSubTrace, lowerFirst, lowerLast, lowerSearchStartIndex);
+
+				upperSubTrace.add(upperLast);
+				lowerSubTrace.add(lowerLast);
+				//							int upperBeforeStartIndex = -1;
+				//							int upperAfterEndIndex = -1;
+				//							int lowerBeforeStartIndex = -1;
+				//							int lowerAfterEndIndex = -1;
+				//							for (int j=0; j<2; j++) {
+				//								int targetUpperSampledIndex = closestUpperIndexes[i][j];
+				//								int targetLowerSampledIndex = closestUpperIndexes[i][j];
+				//								
+				//								if (i == 0 && j == 0) {
+				//									// simple, just start at the beginning
+				//									upperSubTrace.add(trace.first());
+				//									lowerSubTrace.add(lowerTrace.first());
+				//								} else if (i == numSubSects-1 && j == 2) {
+				//									// need to search for the index before
+				//								}
+				//								
+				//								
+				//							}
+				//							
+				//							int upperBeforeIndex = -1;
+				//							for (int j=upperSearchStartIndex; j<trace.size(); j++)
+				//							int lowerBeforeIndex = -1;
+
+				upperTraces.add(upperSubTrace);
+				lowerTraces.add(lowerSubTrace);
+			}
+		}
+		
+		List<FaultTrace[]> ret = new ArrayList<>(numSubSects);
+		for (int i=0; i<numSubSects; i++)
+			ret.add(new FaultTrace[] {upperTraces.get(i), lowerTraces.get(i)});
+		return ret;
+	}
+	
+	private static int addIntermediateTracePoints(FaultTrace rawTrace, FaultTrace subSectTrace,
+			Location subsectionStart, Location subsectionEnd, int searchStartIndex) {
+//		System.out.println("Adding intermediate points with start:\t"+subsectionStart);
+		// find the segment for the start index
+		double minDist = Double.POSITIVE_INFINITY;
+		int closestSegToStart = -1;
+		for (int i=searchStartIndex; i<rawTrace.size()-1; i++) {
+			Location loc1 = rawTrace.get(i);
+			Location loc2 = rawTrace.get(i+1);
+			double distToSeg = LocationUtils.distanceToLineSegmentFast(loc1, loc2, subsectionStart);
+			if (distToSeg < minDist) {
+				closestSegToStart = i;
+				minDist = distToSeg;
+			} else if (minDist < 1d && distToSeg > 10d) {
+				// we've already found it and gone past, stop searching
+				break;
+			}
+		}
+//		System.out.println("\tClosest segment to start: "+closestSegToStart+" (minDist="+(float)minDist+")");
+		
+		// find the segment for the start index
+		minDist = Double.POSITIVE_INFINITY;
+		int closestSegToEnd = -1;
+		for (int i=closestSegToStart; i<rawTrace.size()-1; i++) {
+			Location loc1 = rawTrace.get(i);
+			Location loc2 = rawTrace.get(i+1);
+			double distToSeg = LocationUtils.distanceToLineSegmentFast(loc1, loc2, subsectionEnd);
+			if (distToSeg < minDist) {
+				closestSegToEnd = i;
+				minDist = distToSeg;
+			} else if (minDist < 1d && distToSeg > 10d) {
+				// we've already found it and gone past, stop searching
+				break;
+			}
+		}
+//		System.out.println("\tClosest segment to end: "+closestSegToEnd+" (minDist="+(float)minDist+")");
+		
+		// we've now identified the segments on which the start and end section lie
+		if (closestSegToStart < closestSegToEnd) {
+			// there's at least one point between the two
+			for (int i=closestSegToStart+1; i<=closestSegToEnd; i++) {
+//				System.out.println("\tAdding intermediate: "+i+". "+rawTrace.get(i));
+				subSectTrace.add(rawTrace.get(i));
+			}
+		}
+//		System.out.println("Done adding intermediate points with end:\t"+subsectionEnd);
+		
+		return closestSegToEnd;
 	}
 
 
@@ -465,17 +759,16 @@ public final class FaultUtils {
 	}
 	
 	/**
-	 * Absolute difference between two angles dealing with any -180/180 or 0/360 cut issues. Note that this
-	 * expects angles in degrees, and will return angles from 0 to 360 degrees.
-	 * @param angle1
-	 * @param angle2
-	 * @return
+	 * Returns the smallest absolute difference between two angles in degrees.
+	 * Angles may be any real values (not restricted to 0-360), wraparound is handled internally.
+	 * 
+	 * @return absolute difference between the 2 given angles in decimal degrees in the range [0, 180]
 	 */
 	public static double getAbsAngleDiff(double angle1, double angle2) {
-		double angleDiff = Math.abs(angle1 - angle2);
-		while (angleDiff > 270)
-			angleDiff -= 360;
-		return Math.abs(angleDiff);
+		double diff = Math.abs(angle1 - angle2) % 360.0;
+		if (diff > 180.0)
+			diff = 360.0 - diff;
+		return diff;
 	}
 
 	/* <b>x</b>-axis unit normal vector [1,0,0]*/ 

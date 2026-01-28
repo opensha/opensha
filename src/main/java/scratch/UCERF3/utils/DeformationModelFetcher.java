@@ -560,7 +560,7 @@ public class DeformationModelFetcher {
 			FaultSectionPrefData faultSectionPrefData = deformationModelPrefDB.getFaultSectionPrefData(ucerf2_DefModelId, faultSectionIds.get(i));
 			faultSectPrefDataList.add(faultSectionPrefData);
 			double maxSectLength = faultSectionPrefData.getOrigDownDipWidth()*maxSubSectionLength;
-			ArrayList<FaultSectionPrefData> subSectData = faultSectionPrefData.getSubSectionsList(maxSectLength, subSectIndex);
+			List<FaultSectionPrefData> subSectData = faultSectionPrefData.getSubSectionsList(maxSectLength, subSectIndex);
 			subSectIndex += subSectData.size();
 			subSectionPrefDataList.addAll(subSectData);
 		}

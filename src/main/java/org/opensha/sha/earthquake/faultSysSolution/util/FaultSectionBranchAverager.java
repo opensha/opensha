@@ -341,6 +341,21 @@ public class FaultSectionBranchAverager {
 		public boolean isProxyFault() {
 			return refSect.isProxyFault();
 		}
+
+		@Override
+		public int getSubSectionIndex() {
+			return refSect.getSubSectionIndex();
+		}
+
+		@Override
+		public int getSubSectionIndexAlong() {
+			return refSect.getSubSectionIndexAlong();
+		}
+
+		@Override
+		public int getSubSectionIndexDownDip() {
+			return refSect.getSubSectionIndexDownDip();
+		}
 		
 	}
 
