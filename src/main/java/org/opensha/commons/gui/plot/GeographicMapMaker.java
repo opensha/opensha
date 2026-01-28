@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.IntFunction;
 
 import org.jfree.chart.annotations.XYAnnotation;
 import org.jfree.chart.title.PaintScaleLegend;
@@ -100,6 +102,7 @@ public class GeographicMapMaker {
 	protected boolean plotAllSectPolys = false;
 	protected boolean plotProxySectPolys = true;
 	protected boolean plotSectPolysOnTop = false;
+	protected boolean plotSectsOnTop = false;
 	
 	/*
 	 * General plot items
@@ -502,6 +505,10 @@ public class GeographicMapMaker {
 		this.fillSurfaces = fillSurfaces;
 	}
 
+	public void setPlotSectsOnTop(boolean plotSectsOnTop) {
+		this.plotSectsOnTop = plotSectsOnTop;
+	}
+
 	public void setPlotTracesForFilledSurfaces(boolean plotTracesForFilledSurfaces) {
 		this.plotTracesForFilledSurfaces = plotTracesForFilledSurfaces;
 	}
@@ -548,6 +555,22 @@ public class GeographicMapMaker {
 	
 	public void plotSectScalars(double[] scalars, CPT cpt, String label) {
 		plotSectScalars(Doubles.asList(scalars), cpt, label);
+	}
+	
+	public void plotSectScalarsByIndex(IntFunction<Double> function, CPT cpt, String label) {
+		checkHasSections();
+		List<Double> scalars = new ArrayList<>(sects.size());
+		for (FaultSection sect : sects)
+			scalars.add(function.apply(sect.getSectionId()));
+		plotSectScalars(scalars, cpt, label);
+	}
+	
+	public void plotSectScalars(Function<FaultSection, Double> function, CPT cpt, String label) {
+		checkHasSections();
+		List<Double> scalars = new ArrayList<>(sects.size());
+		for (FaultSection sect : sects)
+			scalars.add(function.apply(sect));
+		plotSectScalars(scalars, cpt, label);
 	}
 	
 	public void plotSectScalars(double[] scalars, double[] sortables, CPT cpt, String label) {
@@ -1137,12 +1160,15 @@ public class GeographicMapMaker {
 		}
 		
 		protected void plotBeforeSects() {
-			// do nothing (can be overridden)
+			if (!plotRegionsAboveFaults)
+				plotRegionOutlines();
 		}
 		
 		protected void plotSects() {
 			if (sects == null || sects.isEmpty())
 				return;
+			int startIndex = funcs.size();
+			
 			Range xRange = getXRange();
 			Range yRange = getYRange();
 			Region plotRegion = new Region(new Location(yRange.getLowerBound(), xRange.getLowerBound()), 
@@ -1213,7 +1239,7 @@ public class GeographicMapMaker {
 						outline.set(loc.getLongitude(), loc.getLatitude());
 					
 					boolean reused = false;
-					if (prevOutline != null && funcs.get(0) == prevOutline) {
+					if (prevOutline != null && funcs.get(startIndex) == prevOutline) {
 						int matchIndex = -1;
 						Point2D myFirst = outline.get(0);
 						for (int i=0; i<prevOutline.size(); i++) {
@@ -1233,15 +1259,15 @@ public class GeographicMapMaker {
 								merged.set(outline.get(i));
 							for (int i=matchIndex+1; i<prevOutline.size(); i++)
 								merged.set(prevOutline.get(i));
-							funcs.set(0, merged);
+							funcs.set(startIndex, merged);
 							prevOutline = merged;
 						}
 					}
 					
 					if (!reused) {
-						funcs.add(0, outline);
+						funcs.add(startIndex, outline);
 						prevOutline = outline;
-						chars.add(0, sectOutlineChar);
+						chars.add(startIndex, sectOutlineChar);
 						if (doTraces && sectTraceChar == null && s == 0)
 							outline.setName("Fault Sections");
 					}
@@ -1306,6 +1332,16 @@ public class GeographicMapMaker {
 					sectOrder = ComparablePairing.getSortedData(comps, sectOrder);
 //					System.out.println("Sorted sect order: "+sectOrder);
 				}
+				int fillIndex = -1;
+				if (fillSurfaces && sectSortables == null) {
+					if (plotSectsOnTop)
+						// probably wanted these on top as well
+						// plot all fills now, traces will still go above
+						fillIndex = startIndex;
+					else
+						// plot all fills at the true bottom
+						fillIndex = 0;
+				}
 				for (int s : sectOrder) {
 					FaultSection sect = sects.get(s);
 					float scalar = sectScalars.get(s).floatValue();
@@ -1323,9 +1359,8 @@ public class GeographicMapMaker {
 						PlotCurveCharacterstics fillChar = new PlotCurveCharacterstics(PlotLineType.POLYGON_SOLID, 0.5f, color);
 
 						if (sectSortables == null) {
-							// put fills on bottom
-							funcs.add(0, outline);
-							chars.add(0, fillChar);
+							funcs.add(fillIndex, outline);
+							chars.add(fillIndex, fillChar);
 						} else {
 							// assume already sorted as desired
 							funcs.add(outline);
@@ -1421,8 +1456,8 @@ public class GeographicMapMaker {
 
 						if (comps == null) {
 							// put fills on bottom
-							funcs.add(0, outline);
-							chars.add(0, fillChar);
+							funcs.add(startIndex, outline);
+							chars.add(startIndex, fillChar);
 						} else {
 							// assume already sorted as desired
 							funcs.add(outline);
@@ -1551,7 +1586,8 @@ public class GeographicMapMaker {
 		}
 		
 		protected void plotAfterSects() {
-			// do nothing (can be overridden)
+			if (plotRegionsAboveFaults)
+				plotRegionOutlines();
 		}
 		
 		protected void plotJumps() {
@@ -1926,15 +1962,11 @@ public class GeographicMapMaker {
 			
 			plotPoliticalBoundaries();
 			
-			if (!plotRegionsAboveFaults)
-				plotRegionOutlines();
-			
-			plotBeforeSects();
-			plotSects();
-			plotAfterSects();
-			
-			if (plotRegionsAboveFaults)
-				plotRegionOutlines();
+			if (!plotSectsOnTop) {
+				plotBeforeSects();
+				plotSects();
+				plotAfterSects();
+			}
 			
 			plotJumps();
 			
@@ -1943,6 +1975,12 @@ public class GeographicMapMaker {
 			plotArrows();
 			
 			plotScatters();
+			
+			if (plotSectsOnTop) {
+				plotBeforeSects();
+				plotSects();
+				plotAfterSects();
+			}
 			
 			plotLast();
 			
