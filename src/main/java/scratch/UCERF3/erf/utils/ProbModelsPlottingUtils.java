@@ -311,6 +311,45 @@ public class ProbModelsPlottingUtils {
 	}
 	
 	
+	public static String writeNormalizedDistHazardRatePlotWithFits(ArrayList<Double> normRI_List, 
+			File outputDir, String plotTitle, String fileNamePrefix) {
+		
+		// get the normalized RI dist
+		double delta=0.1;
+		HistogramFunction dist = getNormRI_Distribution(normRI_List, delta);
+		
+		ArrayList<EvenlyDiscretizedFunc> funcList = getHazardRateForHistAndRenewalModelFits(dist);
+
+		ArrayList<PlotCurveCharacterstics> plotChars = new ArrayList<PlotCurveCharacterstics>();
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 2f, Color.RED));
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.BLACK));
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.BLUE));
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.GREEN));
+		if(funcList.size()==5) {
+			plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.GRAY));
+		}
+		
+		String xAxisLabel = "RI (yrs)";
+		String yAxisLabel = "Hazard Rate";
+		Range xAxisRange = new Range(0, 5);
+		Range yAxisRange = new Range(0, 5);
+		boolean logX = false;
+		boolean logY = false;
+		double widthInches = 7; // inches
+		double heightInches = 6; // inches
+		
+		ArrayList<XY_DataSet> funcs = new ArrayList<XY_DataSet>();
+		funcs.addAll(funcList);
+		
+		boolean popupWindow = false;
+		writeAndOrPlotFuncs(funcs,plotChars,plotTitle,xAxisLabel,yAxisLabel,xAxisRange,yAxisRange,
+				logX,logY,widthInches,heightInches, new File(outputDir,fileNamePrefix), popupWindow);
+
+		return "";
+	}
+
+	
+	
 	public static void writeNormalizedDistPlotWithFits(ArrayList<EvenlyDiscretizedFunc> funcList, 
 			File outputDir, String plotTitle, String fileNamePrefix) {
 		
@@ -536,6 +575,52 @@ public class ProbModelsPlottingUtils {
 
 		return funcList;
 	}
+	
+	
+	public static ArrayList<EvenlyDiscretizedFunc> getHazardRateForHistAndRenewalModelFits(EvenlyDiscretizedFunc dist) {
+
+		// duplicate histogram
+		HistogramFunction hist = new HistogramFunction(dist.getMinX(),dist.size(),dist.getDelta());
+		for(int i=0;i<dist.size();i++) {
+			hist.set(i,dist.getY(i)); 
+		}
+		
+		hist.normalizeToPDF();
+		EvenlyDiscretizedFunc hazRate = hist.getHazardRateFunction();
+		String newName = dist.getName()+" Hazard Rate Function";
+		hazRate.setName(newName);
+		
+		// now make the function list for the plot
+		ArrayList<EvenlyDiscretizedFunc> funcList = new ArrayList<EvenlyDiscretizedFunc>();
+		funcList.add(hazRate);
+		
+		// add best-fit BPT function
+		BPT_DistCalc bpt_calc = new BPT_DistCalc();
+		bpt_calc.fitToThisFunction(dist, 0.5, 1.5, 101, 0.1, 1.5, 141);
+		EvenlyDiscretizedFunc fitBPT_func = bpt_calc.getHazFunc();
+		fitBPT_func.setName("Best Fit BPT Dist");
+		fitBPT_func.setInfo("mean,aper\n"+(float)bpt_calc.getMean()+","+(float)bpt_calc.getAperiodicity());
+		funcList.add(fitBPT_func);
+		
+		// add best-fit Lognormal dist function
+		LognormalDistCalc logNorm_calc = new LognormalDistCalc();
+		logNorm_calc.fitToThisFunction(dist, 0.5, 1.5, 101, 0.1, 1.5, 141);
+		EvenlyDiscretizedFunc fitLogNorm_func = logNorm_calc.getHazFunc();
+		fitLogNorm_func.setName("Best Fit Lognormal Dist");
+		fitLogNorm_func.setInfo("mean,aper\n"+(float)logNorm_calc.getMean()+","+(float)logNorm_calc.getAperiodicity()+")");
+		funcList.add(fitLogNorm_func);
+		
+		// add best-fit Weibull dist function
+		WeibullDistCalc weibull_calc = new WeibullDistCalc();
+		weibull_calc.fitToThisFunction(dist, 0.5, 1.5, 101, 0.1, 1.5, 141);
+		EvenlyDiscretizedFunc fitWeibull_func = weibull_calc.getHazFunc();
+		fitWeibull_func.setName("Best Fit Weibull Dist");
+		fitWeibull_func.setInfo("mean,aper\n"+(float)weibull_calc.getMean()+","+(float)weibull_calc.getAperiodicity()+")");
+		funcList.add(fitWeibull_func);
+
+		return funcList;
+	}
+
 
 	
 	public static void writeSimExpRateVsTime(TreeMap<Long, Integer> nthRupAtEpochMap, ArrayList<Double> totExpRateAtEventTimeList,
@@ -613,6 +698,8 @@ public class ProbModelsPlottingUtils {
 				if(maxVal<imposedRateArray[i])
 					maxVal=imposedRateArray[i];
 		}
+		if(minVal<1e-12)
+			minVal = 1e-12;
 		obsVsImposedRupRates.setName("plotTitle");
 		XY_DataSet perfectAgreementFunc = new DefaultXY_DataSet();
 		perfectAgreementFunc.set(minVal,minVal);

@@ -40,9 +40,9 @@ public enum AperiodicityModels {
 			// TODO. this is an example stub
 			// these could, e.g., be magnitude-dependent
 			EnumMap<TectonicRegionType, AperiodicityModel> models = new EnumMap<>(TectonicRegionType.class);
-			models.put(TectonicRegionType.ACTIVE_SHALLOW, new AperiodicityModel.SingleValued(0.4, false));
-			models.put(TectonicRegionType.STABLE_SHALLOW, new AperiodicityModel.SingleValued(0.4, false));
-			models.put(TectonicRegionType.SUBDUCTION_INTERFACE, new AperiodicityModel.SingleValued(0.3, false));
+			models.put(TectonicRegionType.ACTIVE_SHALLOW, UCERF3_MIDDLE.instance(fltSysSolution));
+			models.put(TectonicRegionType.STABLE_SHALLOW, models.get(TectonicRegionType.ACTIVE_SHALLOW)); // same instance
+			models.put(TectonicRegionType.SUBDUCTION_INTERFACE, new AperiodicityModel.SingleValued(0.55, false));
 			// used if a rupture of an unexpected or unknown TRT is passed in
 			AperiodicityModel fallback = models.get(TectonicRegionType.ACTIVE_SHALLOW);
 			// they could also have shared adjustable params

@@ -6,6 +6,8 @@ package org.opensha.commons.data.function;
 import java.util.Collections;
 import java.util.List;
 
+import org.opensha.sha.earthquake.calc.recurInterval.BPT_DistCalc;
+
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
@@ -45,9 +47,19 @@ public class HistogramFunction extends EvenlyDiscretizedFunc {
 	public void normalizeBySumOfY_Vals() {
 		scale(1.0/calcSumOfY_Vals());
 	}
+
+	/**
+	 * This normalized the function so that the integrated area is 1.0,
+	 * which means normalize by SumOfY_Vals*delta
+	 */
+	public void normalizeToPDF() {
+		scale(1.0/(calcSumOfY_Vals()*delta));
+	}
 	
 	/**
-	 * This returns the cumulative distribution function (total number less than and equal to each x-axis value)
+	 * This returns the cumulative distribution function (total number less 
+	 * than and equal to each x-axis value).  This does not normalize to a 
+	 * CDF (a Y value of 1.0 at max X)
 	 * @return
 	 */
 	public HistogramFunction getCumulativeDistFunction() {
@@ -61,9 +73,10 @@ public class HistogramFunction extends EvenlyDiscretizedFunc {
 	}
 	
 	/**
-	 * This returns the cumulative distribution function (total number less than and equal to each x-axis value),
-	 * where the bins are offset on the x-axis by a half width to be more accurate (this has one more point than
-	 * what's returned by getCumulativeDistFunction())
+	 * This returns the cumulative distribution function (total number less than and 
+	 * equal to each x-axis value), where the bins are offset on the x-axis by a half 
+	 * width to be more accurate (this has one more point than what's returned by 
+	 * getCumulativeDistFunction()). This does not normalize to a CDF (a Y value of 1.0 at max X)
 	 * @return
 	 */
 	public HistogramFunction getCumulativeDistFunctionWithHalfBinOffset() {
@@ -75,6 +88,28 @@ public class HistogramFunction extends EvenlyDiscretizedFunc {
 			cumHist.set(i,sum);
 		}
 		return cumHist;
+	}
+	
+	/**
+	 * This computes the hazard rate function assuming this histogram
+	 * is a probability density function, or PDF (the area under the curve is 1.0
+	 * if the x-axis maximum is large enough).  Use the normalizeToPDF()
+	 * method if you need to impose or ensure this.  The PDF status of this
+	 * Histogram is not verified in this method.
+	 * @return
+	 */
+	public EvenlyDiscretizedFunc getHazardRateFunction() {
+		HistogramFunction cdf = getCumulativeDistFunctionWithHalfBinOffset();
+//		HistogramFunction cdf = getCumulativeDistFunction();
+//		cdf.scale(1.0/cdf.getMaxY());
+		cdf.scale(delta);
+//		EvenlyDiscretizedFunc pdf = this.deepClone();
+//		pdf.scale(1.0/(calcSumOfY_Vals()*delta)); // normalize to PDF
+		EvenlyDiscretizedFunc hazardRate = this.deepClone();
+		for(int i=0;i<hazardRate.size();i++)
+//			hazardRate.set(i,pdf.getY(i)/(1.0-cdf.getY(i)));
+			hazardRate.set(i,getY(i)/(1.0-cdf.getInterpolatedY(getX(i))));
+		return hazardRate;
 	}
 	
 	/**
@@ -249,7 +284,29 @@ public class HistogramFunction extends EvenlyDiscretizedFunc {
 //		System.out.println("mean="+hist.computeMean());
 //		System.out.println("std="+hist.computeStdDev());
 //		System.out.println("cov="+hist.computeCOV());
-		getEncompassingHistogram(-4.2350366975140596E-4, 0d, 5.0E-6);
+//		getEncompassingHistogram(-4.2350366975140596E-4, 0d, 5.0E-6);
+		
+		// This verifies the getHazardRateFunction() method against that in 
+		// EqkProbDistCalc, but note that normalizing the hist to PDF changes
+		// the match if the maximum x-axis value is not high enough.
+		BPT_DistCalc bpt = new BPT_DistCalc();
+		double mean=2;
+		double aperiodicity=0.5;
+		double deltaX=0.01;
+		int numPoints=500;
+		bpt.setAll(mean, aperiodicity, deltaX, numPoints);
+		EvenlyDiscretizedFunc hazRateBPT = bpt.getHazFunc();
+		EvenlyDiscretizedFunc pdf = bpt.getPDF().deepClone();
+//		pdf.scale(3.3);
+		HistogramFunction hist = new HistogramFunction(pdf.getMinX(), numPoints, deltaX);
+		for(int i=0;i<pdf.size();i++) {
+			hist.set(i,pdf.getY(i));
+		}
+		EvenlyDiscretizedFunc hazRateHist = hist.getHazardRateFunction();
+		for(int i=0;i<pdf.size();i++) {
+			System.out.println((float)hazRateHist.getX(i)+"\t"+(float)(hazRateHist.getX(i)/hazRateBPT.getX(i))+"\t"+(float)(hazRateHist.getY(i)/hazRateBPT.getY(i))+"\t"+hazRateHist.getY(i)+"\t"+hazRateBPT.getY(i));
+		}
+		
 	}
 
 }

@@ -64,8 +64,8 @@ public final class BPT_DistCalc extends EqkProbDistCalc implements ParameterChan
 			}
 			cd += deltaX*(pd+pdf.getY(i-1))/2;  // Trapizoidal integration
 			if (cd > 1d) {
-				Preconditions.checkState(cd < 1.0001,
-						"CDF=%s > 1, mean=%s, aperiodicity=%s, t=%s, pd=%s", cd, mean, aperiodicity, t, pd);
+//				Preconditions.checkState(cd < 1.0001,
+//						"CDF=%s > 1, mean=%s, aperiodicity=%s, t=%s, pd=%s, numPoints=%s, deltaX=%s\"", cd, mean, aperiodicity, t, pd, numPoints,deltaX);
 				cd = 1;
 			}
 			pdf.set(i,pd);

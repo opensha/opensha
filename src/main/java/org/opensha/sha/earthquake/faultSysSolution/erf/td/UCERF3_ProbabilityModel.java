@@ -177,6 +177,8 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 		double condProb;
 		double condRecurIntWhereUnknown = Double.NaN;
 		
+// boolean probCase=false;			
+		
 		if (allSectionsHadDateOfLast) {
 			condProb = computeCondProbFast(normProbDistCalc, aveCondRecurInterval, aveTimeSinceLastWhereKnownYears, durationYears, aperiodicity);
 			probGain = condProb/expNum;	
@@ -270,6 +272,7 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 				// deal with case where there was no viable time since last (model implies it definitely should have
 				// occurred in hist open interval); use exactly historic open interval
 				if (totWeight<=0) throw new RuntimeException("Finally got here - note how this happened");
+//probCase = true;
 				if (aveNormTimeSinceLast) {
 					double normTimeSinceYearsUnknown = histOpenInterval/condRecurIntWhereUnknown;
 					double aveNormTS = (normTimeSinceYearsUnknown*areaWithOutDateOfLast + aveNormTimeSinceLastEventWhereKnown*totRupAreaWithDateOfLast)/totRupArea;
@@ -308,8 +311,10 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 			str += aperiodicity+",";// magDepAperiodicity.getAperForRupMag(rupMag)+",";
 			str += rupSubSects.size();
 			this.debugString = str;
-			
-			// DEBUGGING
+
+//if(probCase) System.out.println("ProbCase:\t"+debugString);
+
+// DEBUGGING
 			//if(fltSysRupIndex==513447) {
 //						System.out.println(str);
 //						System.exit(0);
