@@ -88,7 +88,7 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 	
 	/**
 	 * Constructor for a more complicated cluster that has multiple end points (from where jumps can occur),
-	 * but starts at the first section. USeful for faults with multiple subsections down dip. 
+	 * but starts at the first section. Useful for faults with multiple subsections down dip. 
 	 * 
 	 * @param subSects
 	 * @param endSects
