@@ -187,6 +187,8 @@ public class DownDipSubsectionBuilder {
 		return GeoJSONFaultSection.fromFeature(subsectFeature);
 	}
 	
+	private static double DEPTH_REVERSAL_TOL = 0.5d; // km
+	
 	public static List<FaultTrace> interpolateDepthTraces(List<FaultTrace> depthTraces, int minNumDownDip,
 			double targetDownDipWidth, boolean targetIsMax, Range<Double> depthRange) {
 		Preconditions.checkState(depthTraces.size() > 1, "Must supply at least 2 depth traces for interpolation");
@@ -198,6 +200,7 @@ public class DownDipSubsectionBuilder {
 		else
 			namePrefix += ", ";
 		
+		boolean topFullyPreserved = true;
 		if (depthRange != null) {
 			// make sure we have data in the given range
 			// also see if we can skip any depth traces; only need the ones immediately bracketing the valid depth range
@@ -229,6 +232,14 @@ public class DownDipSubsectionBuilder {
 			Preconditions.checkState(numFullyBelow < depthTraces.size(),
 					"All %s depth traces are fully below the allowable depth range: %s", numFullyBelow, depthRange);
 			
+			// if top trace is fully below the upper depth limit, it will will be preserved
+			for (Location loc : depthTraces.get(0)) {
+				if (loc.depth < minDepth) {
+					topFullyPreserved = false;
+					break;
+				}
+			}
+			
 			if (numFullyAbove > 1)
 				// have multiple above it, can trim
 				// keep the last one that is fully above
@@ -259,6 +270,7 @@ public class DownDipSubsectionBuilder {
 			Preconditions.checkState(resampled.size() == numSamplesAlong);
 			resampledTraces.add(resampled);
 		}
+		
 		double maxBoundedDDW = 0d;
 		DiscretizedFunc[] depthWidthFuncs = new DiscretizedFunc[numSamplesAlong];
 		double[] boundedMinDepths = new double[numSamplesAlong];
@@ -273,10 +285,12 @@ public class DownDipSubsectionBuilder {
 				Location loc = trace.get(i);
 				if (d == 0) {
 					depthWidthFuncs[i].set(loc.depth, 0d);
+				} else if (prevLoc.depth >= loc.depth) {
+					Preconditions.checkState(Precision.equals(prevLoc.depth, loc.depth, DEPTH_REVERSAL_TOL),
+							"Depths must monotonically increase (within tol=%s); resampled trace %s[%s]=%s, previous=%s",
+							(float)DEPTH_REVERSAL_TOL, d, i, (float)loc.depth, (float)prevLoc.depth);
+					// skip this point
 				} else {
-					Preconditions.checkState(loc.depth > prevLoc.depth,
-							"Depths must monotonically increase; resampled trace %s[%s]=%s, previous=%s",
-							d, i, loc.depth, prevLoc.depth);
 					// this distance can be exaggerated due to skewness
 					double dist0 = LocationUtils.linearDistanceFast(prevLoc, loc);
 					// find the smallest nearby distance
@@ -348,25 +362,29 @@ public class DownDipSubsectionBuilder {
 		for (int i=0; i<numInterpTraces; i++)
 			interpTraces.add(new FaultTrace(null, numSamplesAlong));
 		
+		double[][] targetDepths = new double[numInterpTraces][numSamplesAlong];
+		
 		for (int i=0; i<numSamplesAlong; i++) {
 			double myMinDepth = boundedMinDepths[i];
 			double myMaxDepth = boundedMaxDepths[i];
 			double ddwStart = depthWidthFuncs[i].getInterpolatedY(myMinDepth);
 			double ddwEach = boundedDDWs[i]/(double)numRows;
-			double[] interpDepths = new double[numRows+1];
 			for (int d=0; d<numInterpTraces; d++) {
 				double ddw = ddwStart + ddwEach*d;
 				if (Precision.equals(ddw, 0d, 1e-10))
-					interpDepths[d] = depthWidthFuncs[i].getMinX();
+					targetDepths[d][i] = depthWidthFuncs[i].getMinX();
 				else if (Precision.equals(ddw, depthWidthFuncs[i].getMaxY(), 1e-10))
-					interpDepths[d] = depthWidthFuncs[i].getMaxX();
+					targetDepths[d][i] = depthWidthFuncs[i].getMaxX();
 				else
-					interpDepths[d] = depthWidthFuncs[i].getFirstInterpolatedX(ddw);
+					targetDepths[d][i] = depthWidthFuncs[i].getFirstInterpolatedX(ddw);
 			}
 			
+		}
+		
+		for (int i=0; i<numSamplesAlong; i++) {
 			// now interpolate those locations
 			for (int d=0; d<numInterpTraces; d++) {
-				double targetDepth = interpDepths[d];
+				double targetDepth = targetDepths[d][i];
 				Location lastLocAbove = null;
 				Location firstLocBelow = null;
 				for (FaultTrace trace : resampledTraces) {
@@ -379,9 +397,10 @@ public class DownDipSubsectionBuilder {
 						break;
 					}
 				}
-				Preconditions.checkNotNull(lastLocAbove);
-				Preconditions.checkNotNull(firstLocBelow, "No location found at Z=%s for sample %s with range [%s, %s]",
-						targetDepth, i, myMinDepth, myMaxDepth);
+				Preconditions.checkNotNull(lastLocAbove, "No location found at Z<=%s for sample %s depth %s with range [%s, %s]; topLoc=%s; \n%s",
+						targetDepth, i, d, boundedMinDepths[i], boundedMaxDepths[i], resampledTraces.get(0).get(i), depthWidthFuncs[i]);
+				Preconditions.checkNotNull(firstLocBelow, "No location found at Z>=%s for sample %s depth %s with range [%s, %s];topLoc=%s; \n%s",
+						targetDepth, i, d, boundedMinDepths[i], boundedMaxDepths[i], resampledTraces.get(0).get(i), depthWidthFuncs[i]);
 				if (lastLocAbove == firstLocBelow) {
 					Preconditions.checkState(targetDepth == lastLocAbove.depth);
 					interpTraces.get(d).add(lastLocAbove);
@@ -395,6 +414,12 @@ public class DownDipSubsectionBuilder {
 					interpTraces.get(d).add(loc);
 				}
 			}
+		}
+		
+		if (topFullyPreserved) {
+			// replace the top trace with the original
+			System.out.println("Top trace is fully retained, keeping at original resolution");
+			interpTraces.set(0, depthTraces.get(0));
 		}
 		
 		DecimalFormat oDF = new DecimalFormat("0.#");
