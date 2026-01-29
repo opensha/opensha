@@ -1117,4 +1117,9 @@ public final class GeoJSONFaultSection implements FaultSection {
 	public boolean equals(Object obj) {
 		return FaultSection.equals(this, obj);
 	}
+	
+	@Override
+	public String toString() {
+		return "GeoJSONFaultSection[id="+id+", name="+name+"]";
+	}
 }
