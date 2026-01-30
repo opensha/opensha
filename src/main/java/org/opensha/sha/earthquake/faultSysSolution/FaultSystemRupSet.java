@@ -1779,13 +1779,83 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		int numRups = sectionForRups.size();
 		double[] rupLengths = new double[numRups];
 		for (int r=0; r<numRups; r++) {
+			SectLengthAccumulator simpleAccumulator = new SimpleSectLengthAccumulator();
+			SectLengthAccumulator ddAccumulator = null;
 			for (int s : sectionForRups.get(r)) {
 				FaultSection sect = faultSectionData.get(s);
-				double length = sect.getTraceLength()*1e3;	// km --> m
-				rupLengths[r] += length;
+				int rowDD = sect.getSubSectionIndexDownDip();
+				if (rowDD > 0 || (rowDD == 0 && sect.getParentSectionId() >= 0)) {
+					// this section (or might have) down-dip subsections
+					if (ddAccumulator == null)
+						ddAccumulator = new DownDipSectLengthAccumulator();
+					ddAccumulator.processSection(sect);
+				} else {
+					// not a DD section
+					simpleAccumulator.processSection(sect);
+				}
 			}
+			rupLengths[r] += simpleAccumulator.getLength()*1e3; // km --> m
+			if (ddAccumulator != null)
+				rupLengths[r] += ddAccumulator.getLength()*1e3; // km --> m
 		}
 		return rupLengths;
+	}
+	
+	private static interface SectLengthAccumulator {
+		
+		public void processSection(FaultSection sect);
+		
+		public double getLength();
+	}
+	
+	private static class SimpleSectLengthAccumulator implements SectLengthAccumulator {
+		private double lengthSum = 0d;
+
+		@Override
+		public void processSection(FaultSection sect) {
+			lengthSum += sect.getTraceLength();
+		}
+
+		@Override
+		public double getLength() {
+			return lengthSum;
+		}
+		
+	}
+	
+	private static class DownDipSectLengthAccumulator implements SectLengthAccumulator {
+		private static final int INITIAL_NUM_DD = 5;
+		
+		private Map<Integer, double[]> parentSectRowLengths = new HashMap<>();
+
+		@Override
+		public void processSection(FaultSection sect) {
+			int parentID = sect.getParentSectionId();
+			Preconditions.checkState(parentID >= 0, "Must have a parent section ID for down-dip sections: %s", sect);
+			int row = sect.getSubSectionIndexDownDip();
+			Preconditions.checkState(row >= 0, "Not a down-dip section? %s", sect);
+			double length = sect.getTraceLength();
+			double[] sectLengths = parentSectRowLengths.get(parentID);
+			if (sectLengths == null) {
+				sectLengths = new double[Integer.max(INITIAL_NUM_DD, row+1)];
+				parentSectRowLengths.put(parentID, sectLengths);
+			}
+			if (row >= sectLengths.length) {
+				// need to grow it
+				sectLengths = Arrays.copyOf(sectLengths, row+3);
+				parentSectRowLengths.put(parentID, sectLengths);
+			}
+			sectLengths[row] += length;
+		}
+
+		@Override
+		public double getLength() {
+			double sum = 0d;
+			for (double[] parentLengths : parentSectRowLengths.values())
+				sum += StatUtils.max(parentLengths);
+			return sum;
+		}
+		
 	}
 	
 	public static class Builder {
