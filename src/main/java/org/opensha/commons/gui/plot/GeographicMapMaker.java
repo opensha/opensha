@@ -2171,6 +2171,26 @@ public class GeographicMapMaker {
 		plot(outputDir, prefix, spec, width, null);
 	}
 	
+	public double getAxisTick() {
+		return getAxisTick(getXRange(), getYRange());
+	}
+	
+	private double getAxisTick(Range xRange, Range yRange) {
+		double maxSpan = Math.max(xRange.getLength(), yRange.getLength());
+		double tick;
+		if (maxSpan > 20)
+			tick = 5d;
+		else if (maxSpan > 8)
+			tick = 2d;
+		else if (maxSpan > 3)
+			tick = 1d;
+		else if (maxSpan > 1)
+			tick = 0.5d;
+		else
+			tick = 0.2;
+		return tick;
+	}
+	
 	public void plot(File outputDir, String prefix, PlotSpec spec, int width, Consumer<? super HeadlessGraphPanel> customizer)
 			throws IOException {
 		HeadlessGraphPanel gp = new HeadlessGraphPanel(PLOT_PREFS_DEFAULT);
@@ -2180,18 +2200,7 @@ public class GeographicMapMaker {
 		
 		gp.drawGraphPanel(spec, false, false, xRange, yRange);
 		if (axisTicks) {
-			double maxSpan = Math.max(xRange.getLength(), yRange.getLength());
-			double tick;
-			if (maxSpan > 20)
-				tick = 5d;
-			else if (maxSpan > 8)
-				tick = 2d;
-			else if (maxSpan > 3)
-				tick = 1d;
-			else if (maxSpan > 1)
-				tick = 0.5d;
-			else
-				tick = 0.2;
+			double tick = getAxisTick(xRange, yRange);
 			PlotUtils.setXTick(gp, tick);
 			PlotUtils.setYTick(gp, tick);
 		} else {
