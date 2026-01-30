@@ -307,13 +307,22 @@ public class GeographicMapMaker {
 	
 	public void setFaultSections(List<? extends FaultSection> sects) {
 		clearFaultSections();
-		this.sects = sects;
-		this.sectIndexMap = new HashMap<>();
-		
-		for (int s=0; s<sects.size(); s++)
-			sectIndexMap.put(sects.get(s), s);
-		
-		Preconditions.checkState(sectIndexMap.size() == sects.size(), "Duplicate section ID?");
+		if (sects != null) {
+			this.sects = sects;
+			this.sectIndexMap = new HashMap<>();
+			
+			boolean hasDD = false;
+			for (int s=0; s<sects.size(); s++) {
+				FaultSection sect = sects.get(s);
+				sectIndexMap.put(sect, s);
+				hasDD |= sect.getSubSectionIndexDownDip() > 0;
+			}
+			
+			if (hasDD)
+				fillSurfaces = true;
+			
+			Preconditions.checkState(sectIndexMap.size() == sects.size(), "Duplicate section ID?");
+		}
 	}
 	
 	/**
