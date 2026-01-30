@@ -29,6 +29,7 @@ import org.opensha.commons.util.XMLUtils;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityFilterPlot.RupSetPlausibilityResult;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.downDip.RectangularDownDipGrowingStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration.Builder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
@@ -434,6 +435,112 @@ public class RuptureSets {
 
 		public void setAdaptiveSectFract(float adaptiveSectFract) {
 			this.adaptiveSectFract = adaptiveSectFract;
+		}
+		
+	}
+	
+	public static class RectangularDownDipSubductionRupSetConfig extends RupSetConfig {
+		
+		private List<? extends FaultSection> subSects;
+		private RupSetScalingRelationship scale;
+		private RuptureGrowingStrategy growingStrategy;
+		
+		@Expose	private int minSectsPerParent = 1;
+		@Expose	private float neighborThreshold = 0.5f;
+		@Expose	private boolean requireFullWidthAfterJumps = false;
+		// maximum individual jump distance
+		@Expose	private double maxJumpDist = 5d;
+
+		public RectangularDownDipSubductionRupSetConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
+			init(subSects, scale);
+		}
+		
+		public void setMinSectsPerParent(int minSectsPerParent) {
+			this.minSectsPerParent = minSectsPerParent;
+		}
+
+		@Override
+		protected void init(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
+			this.subSects = subSects;
+			this.scale = scale;
+		}
+
+		@Override
+		public List<? extends FaultSection> getSubSects() {
+			return subSects;
+		}
+
+		public float getNeighborThreshold() {
+			return neighborThreshold;
+		}
+
+		public void setNeighborThreshold(float neighborThreshold) {
+			this.neighborThreshold = neighborThreshold;
+			growingStrategy = null;
+		}
+
+		public boolean isRequireFullWidthAfterJumps() {
+			return requireFullWidthAfterJumps;
+		}
+
+		public void setRequireFullWidthAfterJumps(boolean requireFullWidthAfterJumps) {
+			this.requireFullWidthAfterJumps = requireFullWidthAfterJumps;
+			growingStrategy = null;
+		}
+
+		@Override
+		public String getRupSetFileName() {
+			List<String> elements = new ArrayList<>();
+			elements.add("neighborF"+(float)neighborThreshold);
+			if (requireFullWidthAfterJumps)
+				elements.add("fullWAfterJump");
+//			if (jumpAzimuthChange > 0f)
+//				elements.add("jumpAz"+(int)jumpAzimuthChange);
+			if (minSectsPerParent > 0)
+				elements.add(minSectsPerParent+"sectsPerParent");
+//			if (adaptiveSectFract > 0f)
+//				elements.add("fractGrow"+adaptiveSectFract);
+			if (maxJumpDist > 0)
+				elements.add("jump"+(float)maxJumpDist);
+			return "rectDD_"+Joiner.on("_").join(elements)+".zip";
+		}
+
+		public int getMinSectsPerParent() {
+			return minSectsPerParent;
+		}
+
+		@Override
+		public PlausibilityConfiguration getPlausibilityConfig() {
+			SectionDistanceAzimuthCalculator distAzCalc = getDistAzCalc();
+			if (distAzCalc.getNumCachedDistances() == 0)
+				// increase discretization for subduction sources
+				distAzCalc.setDiscretization(5d);
+			ClusterConnectionStrategy connStrat = new DistCutoffClosestSectClusterConnectionStrategy(
+					getSubSects(), distAzCalc, maxJumpDist);
+			Builder builder = PlausibilityConfiguration.builder(connStrat, subSects);
+			if (minSectsPerParent > 1)
+				builder.minSectsPerParent(minSectsPerParent, true, true);
+//			AzimuthCalc azCalc = new JumpAzimuthChangeFilter.SimpleAzimuthCalc(distAzCalc);
+//			if (jumpAzimuthChange > 0f)
+//				builder.jumpAzChange(azCalc, jumpAzimuthChange);
+			return builder.build();
+		}
+
+		@Override
+		public RuptureGrowingStrategy getGrowingStrategy() {
+			if (growingStrategy == null)
+				growingStrategy = new RectangularDownDipGrowingStrategy(neighborThreshold, requireFullWidthAfterJumps);
+			return growingStrategy;
+		}
+
+		@Override
+		public RupSetScalingRelationship getScalingRelationship() {
+			return scale;
+		}
+
+		@Override
+		public void setMaxJumpDist(double maxJumpDist) {
+			this.maxJumpDist = maxJumpDist;
 		}
 		
 	}
