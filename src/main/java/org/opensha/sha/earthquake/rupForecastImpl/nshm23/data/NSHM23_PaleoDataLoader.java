@@ -237,7 +237,7 @@ public class NSHM23_PaleoDataLoader {
 		// filter to just wasatch sections
 		List<FaultSection> wasatchSubSects = new ArrayList<>();
 		for (FaultSection sect : subSects)
-			if (sect.getParentSectionName().toLowerCase().contains("wasatch"))
+			if (sect.getParentSectionName() != null && sect.getParentSectionName().toLowerCase().contains("wasatch"))
 				wasatchSubSects.add(sect);
 		
 		for (int row=2; row<csv.getNumRows(); row++) {
