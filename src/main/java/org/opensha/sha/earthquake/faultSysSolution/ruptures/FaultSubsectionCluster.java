@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -75,21 +76,24 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 	 */
 	public final Range<Integer> indexDownDipRange;
 	/**
-	 * Subsections ordered into rows and columns according to {@link FaultSection#getSubSectionIndexDownDip()} and
-	 * {@link FaultSection#getSubSectionIndexAlong()}, or null if {@link #indexAlongRange} or {@link #indexDownDipRange}
-	 * are null. Note that these lists only reflect the subsections present, and their size and section positions may
-	 * differ from each section's reported indexes (see below).
+	 * Organized view of the subsections in this cluster according to their internal indexing order (which can differ
+	 * from their order in {@link #subSects}). The outer list contains an entry for each row down-dip (in order of
+	 * increasing {@link FaultSection#getSubSectionIndexDownDip()})), and each inner list contains the subsections in
+	 * that row (in order of increasing {@link FaultSection#getSubSectionIndexAlong()}).
 	 * <p>
-	 * Subsections are organized into rows first, then columns within each row. Lists are trimmed to the subsections
-	 * that are present, so the first row will contain all subsections in the uppermost row
-	 * (smallest {@link FaultSection#getSubSectionIndexDownDip()}), even if that index is >0. Within each row,
-	 * subsections are given in order according to {@link FaultSection#getSubSectionIndexAlong()} and missing
-	 * subsections are skipped.
+	 * The list will contain a single row if the passed in subsections don't contain down dip indexes (i.e., all 
+	 * {@link FaultSection#getSubSectionIndexDownDip()} < 0 and thus {@link #indexDownDipRange} is null), or each such
+	 * index is identical.
+	 * <p> If down-dip indexes are supplied, this list will contain <code>numRows = 1 + maxIndexDD - minIndexDD</code>
+	 * rows. The top (at index 0) and bottom (last index) rows will contain the subsections with the smallest and
+	 * largest encountered {@link FaultSection#getSubSectionIndexDownDip()}, respectively. Intermediate row lists can be
+	 * empty if a down-dip index is skipped.
 	 * <p>
-	 * No values in this list will ever be null, but rows can be empty if they are skipped. The number of rows will
-	 * always be: numRows = 1 + maxIndexDD - minIndexDD.
+	 * Within each row, subsections will be sorted according to {@link FaultSection#getSubSectionIndexAlong()}, reverting
+	 * to {@link FaultSection#getSubSectionIndex()} and finally {@link FaultSection#getSectionId()} if those indexes
+	 * are not supplied.
 	 */
-	public final ImmutableList<ImmutableList<FaultSection>> rowColOrganized;
+	public final ImmutableList<ImmutableList<FaultSection>> organized;
 	
 	/*
 	 * Internal private fields
@@ -129,6 +133,18 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 	 */
 	public FaultSubsectionCluster(List<? extends FaultSection> subSects, FaultSection startSect,
 			Collection<FaultSection> endSects) {
+		this(subSects, startSect, endSects, null);
+	}
+	
+	/**
+	 * Constructor for a more complicated cluster that has multiple end points (from where jumps can occur),
+	 * but starts at the first section. Useful for faults with multiple subsections down dip. 
+	 * 
+	 * @param subSects
+	 * @param endSects
+	 */
+	public FaultSubsectionCluster(List<? extends FaultSection> subSects, FaultSection startSect,
+			Collection<FaultSection> endSects, ImmutableList<ImmutableList<FaultSection>> organized) {
 		Preconditions.checkArgument(!subSects.isEmpty(), "Must supply at least 1 subsection");
 		this.subSects = ImmutableList.copyOf(subSects);
 		this.startSect = startSect;
@@ -171,49 +187,76 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 			indexAlongRange = null;
 		}
 		
-		if (indexDownDipRange != null && indexAlongRange != null) {
+		if (organized != null) {
+			// passed in from an internal operation
+			this.organized = organized;
+		} else if (indexDownDipRange != null) {
+			// we have down-dip indexes
 			int numRows = 1 + maxRow - minRow;
-			int numCols = 1 + maxCol - minCol;
-			FaultSection[][] rowColArray = new FaultSection[numRows][numCols];
-			for (FaultSection subSect : subSects) {
-				int row = subSect.getSubSectionIndexDownDip();
-				int col = subSect.getSubSectionIndexAlong();
-				Preconditions.checkState(row >= 0, "Bad row index=%s for down-dip cluster: %s", row, subSect);
-				Preconditions.checkState(col >= 0, "Bad col index=%s for down-dip cluster: %s", col, subSect);
-				int rowIndex = row-minRow;
-				int colIndex = col-minCol;
-				Preconditions.checkState(rowColArray[rowIndex][colIndex] == null,
-						"Duplicate section found at row=%s, col=%s: %s", row, col, subSect);
-				rowColArray[rowIndex][colIndex] = subSect;
-			}
 			ImmutableList.Builder<ImmutableList<FaultSection>> rowColBuilder = ImmutableList.builderWithExpectedSize(numRows);
-			for (int row=0; row<numRows; row++) {
-				int numNonZero = 0;
-				for (FaultSection sect : rowColArray[row])
-					if (sect != null)
-						numNonZero++;
-				if (numNonZero == 0) {
-					rowColBuilder.add(ImmutableList.of());
-				} else {
-					ImmutableList.Builder<FaultSection> rowBuilder = ImmutableList.builderWithExpectedSize(numNonZero);
+			
+			if (indexAlongRange != null) {
+				// we have indexes along, clean
+				int numCols = 1 + maxCol - minCol;
+				FaultSection[][] rowColArray = new FaultSection[numRows][numCols];
+				for (FaultSection subSect : subSects) {
+					int row = subSect.getSubSectionIndexDownDip();
+					int col = subSect.getSubSectionIndexAlong();
+					Preconditions.checkState(row >= 0, "Bad row index=%s for down-dip cluster: %s", row, subSect);
+					Preconditions.checkState(col >= 0, "Bad col index=%s for down-dip cluster: %s", col, subSect);
+					int rowIndex = row-minRow;
+					int colIndex = col-minCol;
+					Preconditions.checkState(rowColArray[rowIndex][colIndex] == null,
+							"Duplicate section found at row=%s, col=%s: %s", row, col, subSect);
+					rowColArray[rowIndex][colIndex] = subSect;
+				}
+				for (int row=0; row<numRows; row++) {
+					int numNonZero = 0;
 					for (FaultSection sect : rowColArray[row])
 						if (sect != null)
-							rowBuilder.add(sect);
-					rowColBuilder.add(rowBuilder.build());
+							numNonZero++;
+					if (numNonZero == 0) {
+						rowColBuilder.add(ImmutableList.of());
+					} else {
+						ImmutableList.Builder<FaultSection> rowBuilder = ImmutableList.builderWithExpectedSize(numNonZero);
+						for (FaultSection sect : rowColArray[row])
+							if (sect != null)
+								rowBuilder.add(sect);
+						rowColBuilder.add(rowBuilder.build());
+					}
+				}
+			} else {
+				// we're inferring indexes along, dirtier
+				List<List<FaultSection>> rowColLists = new ArrayList<>(numRows);
+				for (int i=0; i<numRows; i++)
+					rowColLists.add(null);
+				for (FaultSection subSect : subSects) {
+					int row = subSect.getSubSectionIndexDownDip();
+					Preconditions.checkState(row >= 0, "Bad row index=%s for down-dip cluster: %s", row, subSect);
+					int rowIndex = row-minRow;
+					rowColLists.get(rowIndex).add(subSect);
+				}
+				for (List<FaultSection> rowSects : rowColLists) {
+					if (rowSects.isEmpty())
+						rowColBuilder.add(ImmutableList.of());
+					else
+						rowColBuilder.add(ImmutableList.sortedCopyOf(indexAlongComparator, rowSects));
 				}
 			}
-			this.rowColOrganized = rowColBuilder.build();
+			this.organized = rowColBuilder.build();
 		} else {
-			this.rowColOrganized = null;
+			// no down-dip indexes
+			this.organized = ImmutableList.of(ImmutableList.sortedCopyOf(indexAlongComparator, subSects));
 		}
+		
 		if (endSects == null) {
-			if (rowColOrganized == null || subSects.size() == 1) {
+			if (organized.size() == 1 || subSects.size() == 1) {
 				// default behavior: last section
 				this.endSects = ImmutableSet.of(subSects.get(subSects.size()-1));
 			} else {
 				// default behavior: first and last columns in each row
 				ImmutableSet.Builder<FaultSection> endSectsBuilder = ImmutableSet.builder();
-				for (List<FaultSection> row : rowColOrganized) {
+				for (List<FaultSection> row : organized) {
 					if (!row.isEmpty()) {
 						FaultSection first = row.get(0);
 						FaultSection last = row.get(row.size()-1);
@@ -231,6 +274,16 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 			this.endSects = endBuilder.build();
 		}
 	}
+	
+	private static final Comparator<FaultSection> indexAlongComparator = (s1, s2) -> {
+		int cmp = Integer.compare(s1.getSubSectionIndexAlong(), s2.getSubSectionIndexAlong());
+		if (cmp != 0)
+			return cmp;
+		cmp = Integer.compare(s1.getSubSectionIndex(), s2.getSubSectionIndex());
+		if (cmp != 0)
+			return cmp;
+		return Integer.compare(s1.getSectionId(), s2.getSectionId());
+	};
 	
 	public void addConnection(Jump jump) {
 		Preconditions.checkState(jump.fromCluster == this);
@@ -334,7 +387,7 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 		Collections.reverse(sects);
 		if (newStartSect == null)
 			newStartSect = sects.get(0);
-		FaultSubsectionCluster reversed = new FaultSubsectionCluster(sects, newStartSect, null);
+		FaultSubsectionCluster reversed = new FaultSubsectionCluster(sects, newStartSect, null, organized);
 		for (Jump jump : possibleJumps)
 			reversed.addConnection(new Jump(jump.fromSection, reversed,
 					jump.toSection, jump.toCluster, jump.distance));
