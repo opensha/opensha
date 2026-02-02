@@ -17,6 +17,7 @@ import org.opensha.sha.faultSurface.FaultSection;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Range;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
@@ -28,6 +29,9 @@ import com.google.gson.stream.JsonWriter;
  */
 public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster> {
 
+	/*
+	 * Public final fields
+	 */
 	/**
 	 * Parent fault section ID
 	 */
@@ -56,11 +60,41 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 	 * cluster
 	 */
 	public final ImmutableSet<FaultSection> endSects;
-	
 	/**
 	 * Set of section IDs contained in this cluster
 	 */
 	public final UniqueRupture unique;
+	/**
+	 * Range of {@link FaultSection#getSubSectionIndexAlong()} indexes included in this cluster, or null if all
+	 * are <0
+	 */
+	public final Range<Integer> indexAlongRange;
+	/**
+	 * Range of {@link FaultSection#getSubSectionIndexDownDip()} indexes included in this cluster, or null if all
+	 * are <0
+	 */
+	public final Range<Integer> indexDownDipRange;
+	/**
+	 * Subsections ordered into rows and columns according to {@link FaultSection#getSubSectionIndexDownDip()} and
+	 * {@link FaultSection#getSubSectionIndexAlong()}, or null if {@link #indexAlongRange} or {@link #indexDownDipRange}
+	 * are null. Note that these lists only reflect the subsections present, and their size and section positions may
+	 * differ from each section's reported indexes (see below).
+	 * <p>
+	 * Subsections are organized into rows first, then columns within each row. Lists are trimmed to the subsections
+	 * that are present, so the first row will contain all subsections in the uppermost row
+	 * (smallest {@link FaultSection#getSubSectionIndexDownDip()}), even if that index is >0. Within each row,
+	 * subsections are given in order according to {@link FaultSection#getSubSectionIndexAlong()} and missing
+	 * subsections are skipped.
+	 * <p>
+	 * No values in this list will ever be null, but rows can be empty if they are skipped. The number of rows will
+	 * always be: numRows = 1 + maxIndexDD - minIndexDD.
+	 */
+	public final ImmutableList<ImmutableList<FaultSection>> rowColOrganized;
+	
+	/*
+	 * Internal private fields
+	 */
+	
 	/**
 	 * Internal (mutable) list of allowed jumps. Set via constructor, or via addConnection(Jump) method
 	 */
@@ -98,18 +132,18 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 		Preconditions.checkArgument(!subSects.isEmpty(), "Must supply at least 1 subsection");
 		this.subSects = ImmutableList.copyOf(subSects);
 		this.startSect = startSect;
-		if (endSects == null) {
-			// default behaviour: last section
-			this.endSects = ImmutableSet.of(subSects.get(subSects.size()-1));
-		} else {
-			ImmutableSet.Builder<FaultSection> endBuilder = ImmutableSet.builderWithExpectedSize(endSects.size());
-			endBuilder.addAll(endSects);
-			this.endSects = endBuilder.build();
-		}
 		unique = UniqueRupture.forSects(subSects);
 		int parentSectionID = -1;
 		String parentSectionName = null;
+		int minRow = Integer.MAX_VALUE;
+		int maxRow = -1;
+		int minCol = Integer.MAX_VALUE;
+		int maxCol = -1;
 		for (FaultSection subSect : subSects) {
+			minRow = Integer.min(minRow, subSect.getSubSectionIndexDownDip());
+			maxRow = Integer.max(maxRow, subSect.getSubSectionIndexDownDip());
+			minCol = Integer.min(minCol, subSect.getSubSectionIndexAlong());
+			maxCol = Integer.max(maxCol, subSect.getSubSectionIndexAlong());
 			Preconditions.checkNotNull(subSect);
 			if (parentSectionID < 0) {
 				parentSectionID = subSect.getParentSectionId();
@@ -122,6 +156,80 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 		this.parentSectionID = parentSectionID;
 		this.parentSectionName = parentSectionName;
 		this.possibleJumps = new ArrayList<>();
+		if (maxRow >= 0) {
+			Preconditions.checkState(minRow >= 0,
+					"Some sections have indexes down dip (max=%s) but others have negative values, min=%s", maxRow, minRow);
+			indexDownDipRange = Range.closed(minRow, maxRow);
+		} else {
+			indexDownDipRange = null;
+		}
+		if (maxCol >= 0) {
+			Preconditions.checkState(maxCol >= 0,
+					"Some sections have indexes along strike (max=%s) but others have negative values, min=%s", maxCol, minCol);
+			indexAlongRange = Range.closed(minCol, maxCol);
+		} else {
+			indexAlongRange = null;
+		}
+		
+		if (indexDownDipRange != null && indexAlongRange != null) {
+			int numRows = 1 + maxRow - minRow;
+			int numCols = 1 + maxCol - minCol;
+			FaultSection[][] rowColArray = new FaultSection[numRows][numCols];
+			for (FaultSection subSect : subSects) {
+				int row = subSect.getSubSectionIndexDownDip();
+				int col = subSect.getSubSectionIndexAlong();
+				Preconditions.checkState(row >= 0, "Bad row index=%s for down-dip cluster: %s", row, subSect);
+				Preconditions.checkState(col >= 0, "Bad col index=%s for down-dip cluster: %s", col, subSect);
+				int rowIndex = row-minRow;
+				int colIndex = col-minCol;
+				Preconditions.checkState(rowColArray[rowIndex][colIndex] == null,
+						"Duplicate section found at row=%s, col=%s: %s", row, col, subSect);
+				rowColArray[rowIndex][colIndex] = subSect;
+			}
+			ImmutableList.Builder<ImmutableList<FaultSection>> rowColBuilder = ImmutableList.builderWithExpectedSize(numRows);
+			for (int row=0; row<numRows; row++) {
+				int numNonZero = 0;
+				for (FaultSection sect : rowColArray[row])
+					if (sect != null)
+						numNonZero++;
+				if (numNonZero == 0) {
+					rowColBuilder.add(ImmutableList.of());
+				} else {
+					ImmutableList.Builder<FaultSection> rowBuilder = ImmutableList.builderWithExpectedSize(numNonZero);
+					for (FaultSection sect : rowColArray[row])
+						if (sect != null)
+							rowBuilder.add(sect);
+					rowColBuilder.add(rowBuilder.build());
+				}
+			}
+			this.rowColOrganized = rowColBuilder.build();
+		} else {
+			this.rowColOrganized = null;
+		}
+		if (endSects == null) {
+			if (rowColOrganized == null || subSects.size() == 1) {
+				// default behavior: last section
+				this.endSects = ImmutableSet.of(subSects.get(subSects.size()-1));
+			} else {
+				// default behavior: first and last columns in each row
+				ImmutableSet.Builder<FaultSection> endSectsBuilder = ImmutableSet.builder();
+				for (List<FaultSection> row : rowColOrganized) {
+					if (!row.isEmpty()) {
+						FaultSection first = row.get(0);
+						FaultSection last = row.get(row.size()-1);
+						if (first != startSect)
+							endSectsBuilder.add(first);
+						if (first != last && last != startSect)
+							endSectsBuilder.add(last);
+					}
+				}
+				this.endSects = endSectsBuilder.build();
+			}
+		} else {
+			ImmutableSet.Builder<FaultSection> endBuilder = ImmutableSet.builderWithExpectedSize(endSects.size());
+			endBuilder.addAll(endSects);
+			this.endSects = endBuilder.build();
+		}
 	}
 	
 	public void addConnection(Jump jump) {

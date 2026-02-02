@@ -25,6 +25,7 @@ import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Range;
 
 public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy {
 	
@@ -56,11 +57,11 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 
 	@Override
 	public List<FaultSubsectionCluster> getVariations(FaultSubsectionCluster fullCluster, FaultSection firstSection) {
-		List<List<FaultSection>> rowColOrganized = getRowColOrganized(fullCluster.subSects);
-		int numRows = rowColOrganized.size();
+		Preconditions.checkNotNull(fullCluster.rowColOrganized, "Cluster doesn't contain down-dip sections: %s", fullCluster);
+		
 		NeighborOverlaps neighborsDD = cachedNeighborsDD.get(fullCluster);
 		if (neighborsDD == null) {
-			neighborsDD = new NeighborOverlaps(fullCluster, rowColOrganized, true);
+			neighborsDD = new NeighborOverlaps(fullCluster, true);
 			cachedNeighborsDD.putIfAbsent(fullCluster, neighborsDD);
 		}
 		
@@ -69,18 +70,20 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 		HashSet<UniqueRupture> uniques = new HashSet<>();
 		
 		// start with single-section rupture
-		FaultSubsectionCluster current = buildCluster(fullCluster, List.of(firstSection), firstSection);
+		FaultSubsectionCluster current = buildCluster(fullCluster, Set.of(firstSection), firstSection);
 		variations.add(current);
 		uniques.add(current.unique);
 		
 		if (debug) System.out.println("Building variations from "+firstSection+" on cluster "+fullCluster);
 		if (debug) System.out.println("\tBuilding sub-seismogenic first");
 		
+		int numRows = fullCluster.indexDownDipRange.upperEndpoint()+1;
+		
 		// build out sub-seismogenic
 		while (true) {
 			// first grow it in each direction
-			IntSummaryStatistics curRowStats = current.subSects.stream().mapToInt(s->s.getSubSectionIndexDownDip()).summaryStatistics();
-			if (curRowStats.getMin() == 0 && curRowStats.getMax() == numRows-1) {
+			Range<Integer> curRowRange = current.indexDownDipRange;
+			if (curRowRange.lowerEndpoint() == 0 && curRowRange.upperEndpoint() == numRows-1) {
 				if (debug) System.out.println("\tReached full seismogenic width");
 				// reached the full seismogenic thickness
 				break;
@@ -91,7 +94,7 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 			
 			FaultSubsectionCluster unilateral = null;
 			for (EnumSet<GrowthDirection> directions : SUB_SEIS_DIRECTIONS) {
-				FaultSubsectionCluster expanded = expandRupture(fullCluster, current, rowColOrganized, neighborsDD, directions);
+				FaultSubsectionCluster expanded = expandRupture(fullCluster, current, neighborsDD, directions);
 				if (expanded != null) {
 					if (debug) System.out.println("\t\tEpanded "+directions+" to: "+expanded);
 					if (!uniques.contains(expanded.unique)) {
@@ -105,7 +108,7 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 				}
 			}
 			Preconditions.checkNotNull(unilateral,
-					"Couldn't expand rupture in any direction; current=%s, rowStats=%s", current, curRowStats);
+					"Couldn't expand rupture in any direction; current=%s, rowStats=%s", current, curRowRange);
 			current = unilateral;
 			if (current.subSects.size() == fullCluster.subSects.size()) {
 				// reached the full fault rupture, stop
@@ -120,7 +123,7 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 		for (EnumSet<GrowthDirection> directions : SUPRA_SEIS_DIRECTIONS) {
 			current = firstFullRupture;
 			while (true) {
-				current = expandRupture(fullCluster, current, rowColOrganized, neighborsDD, directions);
+				current = expandRupture(fullCluster, current, neighborsDD, directions);
 				if (current != null) {
 					if (!uniques.contains(current.unique)) {
 						variations.add(current);
@@ -143,10 +146,9 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 		Preconditions.checkNotNull(currentRupture);
 		
 		if (requireFullWidthAfterJumps) {
-			List<List<FaultSection>> rowColOrganized = getRowColOrganized(fullCluster.subSects);
-			NeighborOverlaps neighborsDD = new NeighborOverlaps(fullCluster, rowColOrganized, true);
+			NeighborOverlaps neighborsDD = new NeighborOverlaps(fullCluster, true);
 			
-			List<FaultSection> firstSects = new ArrayList<>(rowColOrganized.size());
+			HashSet<FaultSection> firstSects = new HashSet<>(fullCluster.rowColOrganized.size());
 			firstSects.add(firstSection);
 			for (FaultSection neighbor : neighborsDD.getNeighbors(firstSection, neighborThreshold))
 				firstSects.add(neighbor);
@@ -161,7 +163,7 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 			for (EnumSet<GrowthDirection> directions : SUPRA_SEIS_DIRECTIONS) {
 				FaultSubsectionCluster current = firstVariation;
 				while (true) {
-					current = expandRupture(fullCluster, current, rowColOrganized, neighborsDD, directions);
+					current = expandRupture(fullCluster, current, neighborsDD, directions);
 					if (current != null) {
 						if (!uniques.contains(current.unique)) {
 							variations.add(current);
@@ -208,9 +210,10 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 			UNILATERAL);
 	
 	private FaultSubsectionCluster expandRupture(FaultSubsectionCluster fullCluster,
-			FaultSubsectionCluster current, List<List<FaultSection>> rowColOrganized,
-			NeighborOverlaps neighborsDD, Set<GrowthDirection> directions) {
-		int numRows = rowColOrganized.size();
+			FaultSubsectionCluster current, NeighborOverlaps neighborsDD, Set<GrowthDirection> directions) {
+		Preconditions.checkState(fullCluster.indexDownDipRange.lowerEndpoint() == 0,
+				"Full cluster doesn't start at row=0: %s %s", fullCluster, fullCluster.indexDownDipRange);
+		int numRows = fullCluster.rowColOrganized.size();
 		int minRow = Integer.MAX_VALUE;
 		int maxRow = 0;
 		for (FaultSection sect : current.subSects) {
@@ -225,13 +228,13 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 		if (directions.contains(GrowthDirection.UP)) {
 			if (minRow > 0)
 				nextVariationSects.addAll(growVertically(
-						rowColOrganized, neighborsDD, nextVariationSects, minRow-1));
+						fullCluster, neighborsDD, nextVariationSects, minRow-1));
 		}
 		
 		if (directions.contains(GrowthDirection.DOWN)) {
 			if (minRow < numRows-1)
 				nextVariationSects.addAll(growVertically(
-						rowColOrganized, neighborsDD, nextVariationSects, maxRow+1));
+						fullCluster, neighborsDD, nextVariationSects, maxRow+1));
 		}
 		
 		// find the the furthest section on that middle row and grow from there
@@ -253,13 +256,13 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 		if (directions.contains(GrowthDirection.FORWARD)) {
 			// will handle end of row gracefully and return empty set
 			nextVariationSects.addAll(growHorizontally(
-					rowColOrganized, neighborsDD, nextVariationSects, forwardSectsPerRow, true));
+					fullCluster, neighborsDD, nextVariationSects, forwardSectsPerRow, true));
 		}
 		
 		if (directions.contains(GrowthDirection.BACKWARD)) {
 			// will handle end of row gracefully and return empty set
 			nextVariationSects.addAll(growHorizontally(
-					rowColOrganized, neighborsDD, nextVariationSects, backwardSectsPerRow, false));
+					fullCluster, neighborsDD, nextVariationSects, backwardSectsPerRow, false));
 		}
 		
 		if (nextVariationSects.size() == current.subSects.size())
@@ -269,7 +272,7 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 		return buildCluster(fullCluster, nextVariationSects, current.startSect);
 	}
 	
-	private Set<FaultSection> growHorizontally(List<List<FaultSection>> rowColOrganized,
+	private Set<FaultSection> growHorizontally(FaultSubsectionCluster fullCluster,
 			NeighborOverlaps neighborsDD, Set<FaultSection> currentSects, FaultSection[] currentEdge,
 			boolean forward) {
 		int maxCurrentRow = 0;
@@ -290,10 +293,10 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 
 		for (int midRowIndex : midRowIndexes) {
 			Preconditions.checkState(currentEdge[midRowIndex] != null);
-			if (forward && currentEdge[midRowIndex].getSubSectionIndexAlong() < rowColOrganized.get(midRowIndex).size()-1)
-				growToSects.add(rowColOrganized.get(midRowIndex).get(currentEdge[midRowIndex].getSubSectionIndexAlong()+1));
+			if (forward && currentEdge[midRowIndex].getSubSectionIndexAlong() < fullCluster.rowColOrganized.get(midRowIndex).size()-1)
+				growToSects.add(fullCluster.rowColOrganized.get(midRowIndex).get(currentEdge[midRowIndex].getSubSectionIndexAlong()+1));
 			else if (!forward && currentEdge[midRowIndex].getSubSectionIndexAlong() > 0)
-				growToSects.add(rowColOrganized.get(midRowIndex).get(currentEdge[midRowIndex].getSubSectionIndexAlong()-1));
+				growToSects.add(fullCluster.rowColOrganized.get(midRowIndex).get(currentEdge[midRowIndex].getSubSectionIndexAlong()-1));
 		}
 		
 		if (growToSects.isEmpty()) {
@@ -301,7 +304,7 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 						// just grow all rows with room left, each one column
 			for (FaultSection furthest : currentEdge) {
 				if (furthest != null) {
-					List<FaultSection> furthestRow = rowColOrganized.get(furthest.getSubSectionIndexDownDip());
+					List<FaultSection> furthestRow = fullCluster.rowColOrganized.get(furthest.getSubSectionIndexDownDip());
 					int col = furthest.getSubSectionIndexAlong();
 					if (forward && col < furthestRow.size()-1)
 						growToSects.add(furthestRow.get(col+1));
@@ -349,7 +352,7 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 		for (int row=0; row<currentEdge.length; row++) {
 			if (newMinCols[row] >= 0) {
 				for (int col=newMinCols[row]; col<=newMaxCols[row]; col++) {
-					FaultSection neighbor = rowColOrganized.get(row).get(col);
+					FaultSection neighbor = fullCluster.rowColOrganized.get(row).get(col);
 					if (!currentSects.contains(neighbor))
 						addition.add(neighbor);
 				}
@@ -359,7 +362,7 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 		return addition;
 	}
 	
-	private Set<FaultSection> growVertically(List<List<FaultSection>> rowColOrganized,
+	private Set<FaultSection> growVertically(FaultSubsectionCluster fullCluster,
 			NeighborOverlaps neighborsDD, Set<FaultSection> currentSects, int toRowIndex) {
 		
 		int maxCurrentRow = 0;
@@ -374,9 +377,9 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 		List<FaultSection> middleRowSects = new ArrayList<>();
 		for (int midRowIndex : midRowIndexes) {
 			Preconditions.checkState(toRowIndex != midRowIndex);
-			if (currentSects.size() > rowColOrganized.get(midRowIndex).size()*2) {
-				// search the row and find the ones int he rupture
-				for (FaultSection sect : rowColOrganized.get(midRowIndex))
+			if (currentSects.size() > fullCluster.rowColOrganized.get(midRowIndex).size()*2) {
+				// search the row and find the ones in the rupture
+				for (FaultSection sect : fullCluster.rowColOrganized.get(midRowIndex))
 					if (currentSects.contains(sect))
 						middleRowSects.add(sect);
 			} else {
@@ -406,7 +409,7 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 		
 		// do it by min/max valid index to make sure we donn't leave any holes
 		HashSet<FaultSection> additions = new HashSet<>();
-		List<FaultSection> toRow = rowColOrganized.get(toRowIndex);
+		List<FaultSection> toRow = fullCluster.rowColOrganized.get(toRowIndex);
 		for (int i=minAddedCol; i<=maxAddedCol; i++)
 			additions.add(toRow.get(i));
 		
@@ -430,35 +433,58 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 	}
 	
 	private static FaultSubsectionCluster buildCluster(FaultSubsectionCluster fullCluster,
-			Collection<FaultSection> subSects, FaultSection startSect) {
-		Preconditions.checkState(!subSects.isEmpty(), "No subsections?");
-		List<List<FaultSection>> organized = getRowColOrganized(subSects);
-		int lastRow = organized.size()-1;
-		// trim to non-null/empty
-		trimToNonNull(organized);
+			Set<FaultSection> includedSubSects, FaultSection startSect) {
+		Preconditions.checkState(!includedSubSects.isEmpty(), "No subsections?");
+//		List<List<FaultSection>> organized = getRowColOrganized(subSects);
+//		int lastRow = organized.size()-1;
+//		// trim to non-null/empty
+//		trimToNonNull(organized);
+		
+		int overallMaxRow = fullCluster.rowColOrganized.size()-1;
+		
+		int myMinRow = Integer.MAX_VALUE;
+		int myMaxRow = 0;
+		int myMinCol = Integer.MAX_VALUE;
+		int myMaxCol = 0;
+		for (FaultSection sect : includedSubSects) {
+			int row = sect.getSubSectionIndexDownDip();
+			int col = sect.getSubSectionIndexAlong();
+			myMinRow = Integer.min(myMinRow, row);
+			myMaxRow = Integer.max(myMaxRow, row);
+			myMinCol = Integer.min(myMinCol, col);
+			myMaxCol = Integer.max(myMaxCol, col);
+		}
 		
 		// top to bottom for now
-		List<FaultSection> orderedSects = new ArrayList<>(subSects.size());
+		List<FaultSection> orderedSects = new ArrayList<>(includedSubSects.size());
 		List<FaultSection> endSects = new ArrayList<>();
 		
-		for (int i=0; i<organized.size(); i++) {
-			List<FaultSection> rowSects = organized.get(i);
-			for (int j=0; j<rowSects.size(); j++) {
-				FaultSection sect = rowSects.get(j);
-				orderedSects.add(sect);
-				if (sect == startSect) {
-					if (organized.size() == 1)
-						// start is an end if it's the only one
-						endSects.add(sect);
-				} else {
-					// it's an edge if on either end
-					boolean edge = j == 0 || j == rowSects.size()-1;
-					
-					// also an edge on top/bottom if not fully expanded in that direction
-					edge |= (i == 0 && sect.getSubSectionIndexDownDip() > 0);
-					edge |= i == organized.size()-1 && sect.getSubSectionIndexDownDip() < lastRow;
-					if (edge)
-						endSects.add(sect);
+		List<FaultSection> includedRowSects = new ArrayList<>(Integer.min(fullCluster.indexAlongRange.upperEndpoint()+1, includedSubSects.size()));
+		for (int row=myMinRow; row<=myMaxRow; row++) {
+			List<FaultSection> rowSects = fullCluster.rowColOrganized.get(row);
+			includedRowSects.clear();
+			for (int col=myMinCol; col<=myMaxCol && col<rowSects.size(); col++) {
+				FaultSection sect = rowSects.get(col);
+				if (includedSubSects.contains(sect))
+					includedRowSects.add(sect);
+			}
+			if (!includedRowSects.isEmpty()) {
+				for (int i=0; i<includedRowSects.size(); i++) {
+					FaultSection sect = includedRowSects.get(i);
+					orderedSects.add(sect);
+					if (sect == startSect) {
+						if (includedSubSects.size() == 1)
+							// start is an end if it's the only one
+							endSects.add(sect);
+					} else {
+						// it's an edge if it's the first or last included section on this row
+						boolean edge = i == 0 || i == includedRowSects.size()-1;
+						
+						// also an edge on top/bottom if not fully expanded in that direction
+						edge |= (row == myMinRow || row == myMaxRow) && (row > 0 && row < overallMaxRow);
+						if (edge)
+							endSects.add(sect);
+					}
 				}
 			}
 		}
@@ -474,44 +500,44 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 		return variation;
 	}
 	
-	public static List<List<FaultSection>> getRowColOrganized(Collection<? extends FaultSection> subSects) {
-		List<List<FaultSection>> rowColOrganized = new ArrayList<>();
-		for (FaultSection sect : subSects) {
-			int row = sect.getSubSectionIndexDownDip();
-			int col = sect.getSubSectionIndexAlong();
-			Preconditions.checkState(row >= 0, "Section %s has bad index down-dip: %s", sect, row);
-			Preconditions.checkState(col >= 0, "Section %s has bad index down-dip: %s", sect, col);
-			while (rowColOrganized.size() <= row)
-				rowColOrganized.add(new ArrayList<>());
-			
-			List<FaultSection> rowSects = rowColOrganized.get(row);
-			while (rowSects.size() <= col)
-				rowSects.add(null);
-			Preconditions.checkState(rowSects.get(col) == null, "Duplicate section at (%s, %s)", row, col);
-			rowSects.set(col, sect);
-		}
-		return rowColOrganized;
-	}
-	
-	public static List<List<FaultSection>> getTrimmedRowColOrganized(Collection<? extends FaultSection> subSects) {
-		List<List<FaultSection>> rowColOrganized = getRowColOrganized(subSects);
-		trimToNonNull(rowColOrganized);
-		return rowColOrganized;
-	}
-	
-	private static void trimToNonNull(List<List<FaultSection>> rowColOrganized) {
-		for (int row=rowColOrganized.size(); --row>=0;) {
-			List<FaultSection> rowSects = rowColOrganized.get(row);
-			if (rowSects.isEmpty()) {
-				rowColOrganized.remove(row);
-			} else {
-				for (int col=rowSects.size(); --col>=0;)
-					if (rowSects.get(col) == null)
-						rowSects.remove(col);
-			}
-		}
-		Preconditions.checkState(!rowColOrganized.isEmpty());
-	}
+//	public static List<List<FaultSection>> getRowColOrganized(Collection<? extends FaultSection> subSects) {
+//		List<List<FaultSection>> rowColOrganized = new ArrayList<>();
+//		for (FaultSection sect : subSects) {
+//			int row = sect.getSubSectionIndexDownDip();
+//			int col = sect.getSubSectionIndexAlong();
+//			Preconditions.checkState(row >= 0, "Section %s has bad index down-dip: %s", sect, row);
+//			Preconditions.checkState(col >= 0, "Section %s has bad index down-dip: %s", sect, col);
+//			while (rowColOrganized.size() <= row)
+//				rowColOrganized.add(new ArrayList<>());
+//			
+//			List<FaultSection> rowSects = rowColOrganized.get(row);
+//			while (rowSects.size() <= col)
+//				rowSects.add(null);
+//			Preconditions.checkState(rowSects.get(col) == null, "Duplicate section at (%s, %s)", row, col);
+//			rowSects.set(col, sect);
+//		}
+//		return rowColOrganized;
+//	}
+//	
+//	public static List<List<FaultSection>> getTrimmedRowColOrganized(Collection<? extends FaultSection> subSects) {
+//		List<List<FaultSection>> rowColOrganized = getRowColOrganized(subSects);
+//		trimToNonNull(rowColOrganized);
+//		return rowColOrganized;
+//	}
+//	
+//	private static void trimToNonNull(List<List<FaultSection>> rowColOrganized) {
+//		for (int row=rowColOrganized.size(); --row>=0;) {
+//			List<FaultSection> rowSects = rowColOrganized.get(row);
+//			if (rowSects.isEmpty()) {
+//				rowColOrganized.remove(row);
+//			} else {
+//				for (int col=rowSects.size(); --col>=0;)
+//					if (rowSects.get(col) == null)
+//						rowSects.remove(col);
+//			}
+//		}
+//		Preconditions.checkState(!rowColOrganized.isEmpty());
+//	}
 	
 	private static boolean adjacent(int index1, int index2) {
 		return index1 == index2+1 || index1 == index2-1;
@@ -531,10 +557,6 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 		private final boolean downDipOnly;
 		
 		public NeighborOverlaps(FaultSubsectionCluster cluster, boolean downDipOnly) {
-			this(cluster, getRowColOrganized(cluster.subSects), downDipOnly);
-		}
-		
-		public NeighborOverlaps(FaultSubsectionCluster cluster, List<List<FaultSection>> rowColOrganized, boolean downDipOnly) {
 			this.cluster = cluster;
 			this.downDipOnly = downDipOnly;
 			ImmutableList<FaultSection> subSects = cluster.subSects;
@@ -546,7 +568,7 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 				for (int j=0; j<overlaps.length; j++)
 					overlaps[i][j] = Double.NaN;
 			
-			int rows = rowColOrganized.size();
+			int rows = cluster.rowColOrganized.size();
 			
 			for (FaultSection sect : subSects) {
 				int index = sect.getSubSectionIndex();
@@ -562,7 +584,7 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 				int row = sect.getSubSectionIndexDownDip();
 				int col = sect.getSubSectionIndexAlong();
 				
-				List<FaultSection> rowSects = rowColOrganized.get(row);
+				List<FaultSection> rowSects = cluster.rowColOrganized.get(row);
 				
 				// add them in a clockwise direction starting with the immediate neighbor before on the same row
 				
@@ -588,7 +610,7 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 						testRows = List.of(row+1);
 					}
 					for (int testRow : testRows) {
-						List<FaultSection> below = rowColOrganized.get(testRow);
+						List<FaultSection> below = cluster.rowColOrganized.get(testRow);
 						// false means in reverse, so to the left to stay clockwise
 						neighbors.addAll(getNeighborsFrom(sect, below, false));
 					}
@@ -616,7 +638,7 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 						testRows = List.of(row-1);
 					}
 					for (int testRow : testRows) {
-						List<FaultSection> above = rowColOrganized.get(testRow);
+						List<FaultSection> above = cluster.rowColOrganized.get(testRow);
 						// true means in reverse, so to the right to stay clockwise
 						neighbors.addAll(getNeighborsFrom(sect, above, true));
 					}
