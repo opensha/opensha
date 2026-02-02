@@ -97,6 +97,7 @@ public class GeographicMapMaker {
 	protected List<LocationList> sectPerimeters;
 	protected boolean plotAseisReducedSurfaces = false;
 	protected boolean fillSurfaces = false;
+	protected boolean fillVertialSurfaces = false;
 	protected boolean plotTracesForFilledSurfaces = true;
 	protected boolean plotOutlinesForFilledSurfaces = true;
 	protected boolean plotAllSectPolys = false;
@@ -512,6 +513,15 @@ public class GeographicMapMaker {
 
 	public void setFillSurfaces(boolean fillSurfaces) {
 		this.fillSurfaces = fillSurfaces;
+	}
+
+	public void setFillVerticalSurfaces(boolean fillVertialSurfaces) {
+		this.fillVertialSurfaces = fillVertialSurfaces;
+		
+		if (fillVertialSurfaces) {
+			this.sectUpperEdges = null;
+			this.sectPerimeters = null;
+		}
 	}
 
 	public void setPlotSectsOnTop(boolean plotSectsOnTop) {
@@ -935,7 +945,7 @@ public class GeographicMapMaker {
 					List<LocationList> upperEdges = new ArrayList<>();
 					List<LocationList> perimeters = new ArrayList<>();
 					for (FaultSection sect : sects) {
-						if (sect.getAveDip() == 90d) {
+						if (!fillVertialSurfaces && sect.getAveDip() == 90d) {
 							// vertical, don't bother with perimeter
 							upperEdges.add(sect.getFaultTrace());
 							perimeters.add(null);
@@ -1009,7 +1019,9 @@ public class GeographicMapMaker {
 		}
 	}
 	
-	protected Feature surfFeature(FaultSection sect, PlotCurveCharacterstics pChar) {
+	public static final double GEOJSON_DEFAULT_SURF_OPACITY = 0.05d;
+	
+	protected Feature surfFeature(FaultSection sect, PlotCurveCharacterstics pChar, double opacity) {
 		Polygon poly = new Polygon(getPerimeter(sect));
 		FeatureProperties props = new FeatureProperties();
 		props.set("name", sect.getSectionName());
@@ -1020,7 +1032,7 @@ public class GeographicMapMaker {
 			props.set(FeatureProperties.STROKE_WIDTH_PROP, pChar.getLineWidth());
 			props.set(FeatureProperties.STROKE_COLOR_PROP, pChar.getColor());
 		}
-		props.set(FeatureProperties.FILL_OPACITY_PROP, 0.05d);
+		props.set(FeatureProperties.FILL_OPACITY_PROP, opacity);
 		return new Feature(sect.getSectionName(), poly, props);
 	}
 	
@@ -1177,6 +1189,7 @@ public class GeographicMapMaker {
 			if (sects == null || sects.isEmpty())
 				return;
 			int startIndex = funcs.size();
+			int startGeoIndex = features == null ? -1 : features.size();
 			
 			Range xRange = getXRange();
 			Range yRange = getYRange();
@@ -1235,14 +1248,14 @@ public class GeographicMapMaker {
 				if (!doTraces && (!skipNaNs || sectNaNChar != null))
 					// plot the trace anyway if it's NaN
 					doTraces = isNaN;
-				if (sectsAreColored && fillSurfaces && plotTracesForFilledSurfaces && sect.getAveDip() != 90d) {
+				if (sectsAreColored && fillSurfaces && plotTracesForFilledSurfaces && (fillVertialSurfaces || sect.getAveDip() != 90d)) {
 					// plot the trace if we're filling the surface
 					// if we're not doing custom sorting, do it here as the fills will be put on bottom
 					// if we're doing custom sorting, we'll add them in on top later instead
 					doTraces = !isNaN && sectSortables == null && sectColorComparables == null && sectCharsComparables == null;
 				}
 				
-				if (sectOutlineChar != null && (sect.getAveDip() != 90d)) {
+				if (sectOutlineChar != null && (fillVertialSurfaces || sect.getAveDip() != 90d)) {
 					XY_DataSet outline = new DefaultXY_DataSet();
 					for (Location loc : getPerimeter(sect))
 						outline.set(loc.getLongitude(), loc.getLatitude());
@@ -1280,8 +1293,8 @@ public class GeographicMapMaker {
 						if (doTraces && sectTraceChar == null && s == 0)
 							outline.setName("Fault Sections");
 					}
-					if (writeGeoJSON) {
-						Feature feature = surfFeature(sect, sectOutlineChar);
+					if (writeGeoJSON && !fillSurfaces) {
+						Feature feature = surfFeature(sect, sectOutlineChar, GEOJSON_DEFAULT_SURF_OPACITY);
 						outlineFeatures.put(sect.getSectionId(), feature);
 						features.add(0, feature);
 					}
@@ -1342,14 +1355,18 @@ public class GeographicMapMaker {
 //					System.out.println("Sorted sect order: "+sectOrder);
 				}
 				int fillIndex = -1;
+				int fillGeoIndex = -1;
 				if (fillSurfaces && sectSortables == null) {
-					if (plotSectsOnTop)
+					if (plotSectsOnTop) {
 						// probably wanted these on top as well
 						// plot all fills now, traces will still go above
 						fillIndex = startIndex;
-					else
+						fillGeoIndex = startGeoIndex;
+					} else {
 						// plot all fills at the true bottom
 						fillIndex = 0;
+						fillGeoIndex = 0;
+					}
 				}
 				for (int s : sectOrder) {
 					FaultSection sect = sects.get(s);
@@ -1360,7 +1377,7 @@ public class GeographicMapMaker {
 					if (Double.isNaN(scalar) && sectNaNChar != null)
 						color = sectNaNChar.getColor();
 
-					if (fillSurfaces && sect.getAveDip() != 90d) {
+					if (fillSurfaces && (fillVertialSurfaces || sect.getAveDip() != 90d)) {
 						XY_DataSet outline = new DefaultXY_DataSet();
 						for (Location loc : getPerimeter(sect))
 							outline.set(loc.getLongitude(), loc.getLatitude());
@@ -1384,6 +1401,13 @@ public class GeographicMapMaker {
 								funcs.add(traces.get(s));
 								chars.add(sectTraceChar);
 							}
+						}
+						
+						if (writeGeoJSON) {
+							double opacity = (double)color.getAlpha()/255d;
+							Feature feature = surfFeature(sect, fillChar, opacity);
+							outlineFeatures.put(sect.getSectionId(), feature);
+							features.add(0, feature);
 						}
 					} else {
 						XY_DataSet trace = new DefaultXY_DataSet();
@@ -1455,7 +1479,7 @@ public class GeographicMapMaker {
 					if (!plotSects.contains(sect))
 						continue;
 
-					if (fillSurfaces && sect.getAveDip() != 90d) {
+					if (fillSurfaces && (fillVertialSurfaces || sect.getAveDip() != 90d)) {
 						XY_DataSet outline = new DefaultXY_DataSet();
 						LocationList perimeter = getPerimeter(sect);
 						for (Location loc : perimeter)
