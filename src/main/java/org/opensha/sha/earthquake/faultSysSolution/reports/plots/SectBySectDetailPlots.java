@@ -244,8 +244,8 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		GeographicMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region) {
 
 			@Override
-			protected Feature surfFeature(FaultSection sect, PlotCurveCharacterstics pChar) {
-				return featureLink(super.surfFeature(sect, pChar), sect);
+			protected Feature surfFeature(FaultSection sect, PlotCurveCharacterstics pChar, double opacity) {
+				return featureLink(super.surfFeature(sect, pChar, opacity), sect);
 			}
 
 			@Override
