@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.*;
 
@@ -54,7 +55,7 @@ public class SiteImporterPanel extends JPanel implements ActionListener {
 	
 	private boolean lonFirst = true;
 
-	private final ArrayList<String> siteDataTypes = new ArrayList<>();
+	private final ArrayList<String> siteDataTypes = new ArrayList<>(List.of(SiteFileLoader.allSiteDataTypes));
 
 	private ArrayList<Location> locs;
     private ArrayList<ParameterList> userParams;
@@ -76,7 +77,7 @@ public class SiteImporterPanel extends JPanel implements ActionListener {
         this.providers = providers;
         this.defaultSiteDataParams = defaultSiteDataParams;
 
-        typeChooser = new JComboBox<>(SiteFileLoader.allSiteDataTypes);
+        typeChooser = new JComboBox<>();
 
         chooser = new JFileChooser(cwd);
 		
@@ -85,7 +86,7 @@ public class SiteImporterPanel extends JPanel implements ActionListener {
 		reverseButton.addActionListener(this);
 		addButton.addActionListener(this);
 		removeButton.addActionListener(this);
-		removeButton.setEnabled(false);
+		addButton.setEnabled(false);
 
 		JPanel buttonPanel = new JPanel(new BorderLayout());
 		buttonPanel.add(reverseButton, BorderLayout.WEST);
