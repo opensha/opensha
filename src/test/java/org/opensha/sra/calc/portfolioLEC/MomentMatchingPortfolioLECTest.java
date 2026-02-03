@@ -109,9 +109,10 @@ public class MomentMatchingPortfolioLECTest {
 		Site site2 = new Site(new Location(34.1, -117.9));
 		Vulnerability vuln2 = accessor.getVuln("C1H-h-COM10-DF");
 		
-		ListIterator<Parameter<?>> it = imr.getSiteParamsIterator();
-		while (it.hasNext()) {
-			Parameter<?> param = it.next();
+//		ListIterator<Parameter<?>> it = imr.getSiteParamsIterator();
+//		while (it.hasNext()) {
+//			Parameter<?> param = it.next();
+		for (Parameter<?> param : imr.getSiteParams()) {
 			site1.addParameter((Parameter)param.clone());
 			site2.addParameter((Parameter)param.clone());
 		}

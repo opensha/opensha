@@ -50,10 +50,11 @@ public class HardCodedGCIMTest {
 	private static void overrideSiteParams(ScalarIMR imri,
 			Site site) {
 			//loop over all of the site parameters of imri
-			ListIterator<Parameter<?>> imriParamIt = imri.getSiteParamsIterator();
+//			ListIterator<Parameter<?>> imriParamIt = imri.getSiteParamsIterator();
 			ListIterator<Parameter<?>> siteParamIt = site.getParametersIterator();
-			while (imriParamIt.hasNext()) {
-				Parameter<?> siteParamImri = imriParamIt.next();
+//			while (imriParamIt.hasNext()) {
+//				Parameter<?> siteParamImri = imriParamIt.next();
+			for (Parameter<?> siteParamImri : imri.getSiteParams()) {
 //				site.addParameter((ParameterAPI)siteParam.clone());
 				//for each imri site parameter, see if it is imrj, and if it is then set it to that and
 				//make it non-ediatable
@@ -92,9 +93,10 @@ public class HardCodedGCIMTest {
 		setSAPeriodInIMR(imr, period_IMj);
 		
 		Site site = new Site(new Location(34, -118));
-		ListIterator<Parameter<?>> paramIt = imr.getSiteParamsIterator();
-		while (paramIt.hasNext()) {
-			Parameter<?> siteParam = paramIt.next();
+//		ListIterator<Parameter<?>> paramIt = imr.getSiteParamsIterator();
+//		while (paramIt.hasNext()) {
+//			Parameter<?> siteParam = paramIt.next();
+		for (Parameter<?> siteParam : imr.getSiteParams()) {
 			site.addParameter((Parameter)siteParam.clone());
 		}
 		IMT_Info imtInfo = new IMT_Info();

@@ -114,9 +114,8 @@ public class GeneralIMR_ParameterTests {
 		this.shortName = ref.getShortName();
 	}
 
-	private static void addAllForIt(ParameterList list, Iterator<Parameter<?>> it) {
-		while (it.hasNext()) {
-			Parameter<?> param = it.next();
+	private static void addToList(ParameterList list, Iterable<Parameter<?>> it) {
+		for (Parameter<?> param : it) {
 			if (!list.containsParameter(param))
 				list.addParameter(param);
 		}
@@ -130,17 +129,17 @@ public class GeneralIMR_ParameterTests {
 		} catch (Exception e) {}
 
 		try {
-			addAllForIt(list, imr.getSiteParamsIterator());
+			addToList(list, imr.getSiteParams());
 		} catch (Exception e) {}
 		try {
-			addAllForIt(list, imr.getEqkRuptureParamsIterator());
+			addToList(list, imr.getEqkRuptureParams());
 		} catch (Exception e) {}
 		try {
-			addAllForIt(list, imr.getPropagationEffectParamsIterator());
+			addToList(list, imr.getPropagationEffectParams());
 		} catch (Exception e) {}
 		//		addAllForIt(list, imr.getSupportedIntensityMeasuresIterator());
 		try {
-			addAllForIt(list, imr.getOtherParamsIterator());
+			addToList(list, imr.getOtherParams());
 		} catch (Exception e) {}
 
 		return list;
@@ -209,7 +208,7 @@ public class GeneralIMR_ParameterTests {
 		ScalarIMR imr = ref.instance(null);
 		imr.setParamDefaults();
 		
-		Parameter<?> im = imr.getSupportedIntensityMeasuresIterator().next();
+		Parameter<?> im = imr.getSupportedIntensityMeasures().getByIndex(0);
 		
 		Site site = createSite(imr, new Location(34, -118));
 		

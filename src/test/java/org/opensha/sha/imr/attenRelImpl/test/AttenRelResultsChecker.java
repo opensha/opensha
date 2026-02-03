@@ -96,33 +96,25 @@ public class AttenRelResultsChecker {
 		//initially the parameterList is empty but when te constructr is called
 		//we add the parameters to te paramList
 		//adding the ExceedProb Params to the ParamList
-		ListIterator it =imr.getExceedProbIndependentParamsIterator();
-		while(it.hasNext()){
-			Parameter param = (Parameter)it.next();
+		for (Parameter<?> param : imr.getExceedProbIndependentParams()) {
 			if ( !( list.containsParameter( param.getName() ) ) )
 				list.addParameter( param );
 		}
 
 		//adding the IML@ Exceed Prob params to the ParamList
-		it =imr.getIML_AtExceedProbIndependentParamsIterator();
-		while(it.hasNext()){
-			Parameter param = (Parameter)it.next();
+		for (Parameter<?> param : imr.getIML_AtExceedProbIndependentParams()) {
 			if ( !( list.containsParameter( param.getName() ) ) )
 				list.addParameter( param );
 		}
 
 		//adding the mean Independent params to the ParamList
-		it =imr.getMeanIndependentParamsIterator();
-		while(it.hasNext()){
-			Parameter param = (Parameter)it.next();
+		for (Parameter<?> param : imr.getMeanIndependentParams()) {
 			if ( !( list.containsParameter( param.getName() ) ) )
 				list.addParameter( param );
 		}
 
 		//adding the Std. Dev Independent params to the ParamList
-		it =imr.getStdDevIndependentParamsIterator();
-		while(it.hasNext()){
-			Parameter param = (Parameter)it.next();
+		for (Parameter<?> param : imr.getStdDevIndependentParams()) {
 			if ( !( list.containsParameter( param.getName() ) ) )
 				list.addParameter( param );
 		}
@@ -197,10 +189,11 @@ public class AttenRelResultsChecker {
 					imr.setIntensityMeasure(st);
 					intensityMeasureName = st;
 
-					ListIterator supportedIntensityMeasureIterator =imr.getSupportedIntensityMeasuresIterator();
+//					ListIterator supportedIntensityMeasureIterator =imr.getSupportedIntensityMeasuresIterator();
 					//Adding the independent Parameters to the param List
-					while ( supportedIntensityMeasureIterator.hasNext() ) {
-						Parameter param = ( Parameter ) supportedIntensityMeasureIterator.next();
+//					while ( supportedIntensityMeasureIterator.hasNext() ) {
+//						Parameter param = ( Parameter ) supportedIntensityMeasureIterator.next();
+					for (Parameter<?> param : imr.getSupportedIntensityMeasures()) {
 						//System.out.println("Intensity Measure Param Name:"+param.getName());
 						if(param.getName().equalsIgnoreCase(intensityMeasureName)){
 							//adding the intensity measure parameter

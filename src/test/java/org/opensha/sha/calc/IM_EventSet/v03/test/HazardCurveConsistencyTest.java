@@ -72,11 +72,12 @@ public class HazardCurveConsistencyTest implements IM_EventSetCalc_v3_0_API {
 		IM_EventSetOutputWriter.setIMTFromString(imt, imr);
 		site = new Site(new Location(34d, -118d), "Los Angeles");
 
-		ListIterator<Parameter<?>> it = imr.getSiteParamsIterator();
-		while (it.hasNext()) {
-			Parameter<?> param = it.next();
-			site.addParameter(param);
-		}
+//		ListIterator<Parameter<?>> it = imr.getSiteParamsIterator();
+//		while (it.hasNext()) {
+//			Parameter<?> param = it.next();
+//			site.addParameter(param);
+//		}
+		site.addParameterList(imr.getSiteParams());
 		sites = new ArrayList<Site>();
 		sites.add(site);
 		sitesData = new ArrayList<ArrayList<SiteDataValue<?>>>();

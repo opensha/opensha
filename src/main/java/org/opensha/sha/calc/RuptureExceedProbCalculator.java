@@ -12,6 +12,7 @@ import org.opensha.sha.faultSurface.PointSurface.DistanceCorrectable;
 import org.opensha.sha.faultSurface.PointSurface.SiteSpecificDistanceCorrected;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
+import org.opensha.sha.imr.ErgodicIMR;
 import org.opensha.sha.imr.ScalarIMR;
 
 import com.google.common.base.Preconditions;
@@ -26,7 +27,7 @@ public interface RuptureExceedProbCalculator {
 	
 	static void calcExceedanceProbabilities(ScalarIMR gmm, EqkRupture eqkRupture, DiscretizedFunc exceedProbs) {
 		RuptureSurface surf = eqkRupture.getRuptureSurface();
-		if (surf instanceof DistanceCorrectable) {
+		if (gmm instanceof ErgodicIMR &&  surf instanceof DistanceCorrectable) {
 			// point surface with distance corrections
 			Location siteLoc = gmm.getSite().getLocation();
 			WeightedList<SurfaceDistances> surfs = ((PointSurface.DistanceCorrectable)surf).getCorrectedDistances(siteLoc);
@@ -42,13 +43,13 @@ public interface RuptureExceedProbCalculator {
 			for (int s=0; s<surfs.size(); s++) {
 				WeightedValue<SurfaceDistances> dists = surfs.get(s);
 				
-				if (s == 0) {
+				if (s == 0 || !(gmm instanceof ErgodicIMR)) {
 					// first time, need to set the full rupture
 					SiteSpecificDistanceCorrected corrSurf = new SiteSpecificDistanceCorrected((PointSurface)surf, siteLoc, dists.value);
 					gmm.setEqkRupture(new EqkRupture(eqkRupture.getMag(), eqkRupture.getAveRake(), corrSurf, eqkRupture.getHypocenterLocation()));
 				} else {
 					// subsequent time(s), only need to set the distances
-					gmm.setPropagationEffectParams(dists.value);
+					((ErgodicIMR)gmm).setPropagationEffectParams(dists.value);
 				}
 				
 				gmm.getExceedProbabilities(working);

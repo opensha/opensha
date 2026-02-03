@@ -23,6 +23,7 @@ import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RectangularSurface;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenRelRef;
+import org.opensha.sha.imr.ErgodicIMR;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.PropagationEffectParams.DistanceJBParameter;
 import org.opensha.sha.imr.param.PropagationEffectParams.DistanceRupParameter;
@@ -254,10 +255,12 @@ public class ProductionIMRsBasicConsitencyTest {
 		imr.setSite(site);
 		double colocatedValue = param.getValue();
 		// now test using surface distances directly
-		SurfaceDistances colocatedDists = finiteRup.getRuptureSurface().getDistances(colocatedLoc);
-		imr.setPropagationEffectParams(colocatedDists);
-		double colocatedTestValue = param.getValue();
-		assertEquals(prefix+" value should match colocated value after setPropagationEffectParams(colocatedDists)", colocatedValue, colocatedTestValue, 1e-6);
+		if (imr instanceof ErgodicIMR) {
+			SurfaceDistances colocatedDists = finiteRup.getRuptureSurface().getDistances(colocatedLoc);
+			((ErgodicIMR)imr).setPropagationEffectParams(colocatedDists);
+			double colocatedTestValue = param.getValue();
+			assertEquals(prefix+" value should match colocated value after setPropagationEffectParams(colocatedDists)", colocatedValue, colocatedTestValue, 1e-6);
+		}
 	}
 	
 	

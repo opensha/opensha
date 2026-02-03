@@ -293,9 +293,10 @@ extends HttpServlet implements ParameterChangeWarningListener {
 						getName(), this);
 
 			// set other params
-			ListIterator lt = imr.getOtherParamsIterator();
-			while (lt.hasNext()) {
-				Parameter tempParam = (Parameter) lt.next();
+//			ListIterator lt = imr.getOtherParamsIterator();
+//			while (lt.hasNext()) {
+//				Parameter tempParam = (Parameter) lt.next();
+			for (Parameter<?> tempParam : imr.getOtherParams()) {
 				imr_temp.getParameter(tempParam.getName()).setValue(tempParam.getValue());
 			}
 			// set IM

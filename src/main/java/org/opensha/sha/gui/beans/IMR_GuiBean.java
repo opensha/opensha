@@ -137,10 +137,11 @@ ParameterChangeWarningListener, ParameterChangeFailListener {
 			if(isFirstTimeLaunched)
 				imr.setParamDefaults();
 			supportedIMRNames.add(imr.getName());
-			Iterator it1 = imr.getSiteParamsIterator();
-			// add change fail listener to the site parameters for this IMR
-			while(it1.hasNext()) {
-				Parameter param = (Parameter)it1.next();
+//			Iterator it1 = imr.getSiteParamsIterator();
+//			// add change fail listener to the site parameters for this IMR
+//			while(it1.hasNext()) {
+//				Parameter param = (Parameter)it1.next();
+			for (Parameter<?> param : imr.getSiteParams()) {
 				param.addParameterChangeFailListener(this);
 			}
 		}
@@ -180,9 +181,10 @@ ParameterChangeWarningListener, ParameterChangeFailListener {
 		 * associated with the IMR, which are : SIGMA_TRUNC_TYPE_NAME, SIGMA_TRUNC_LEVEL_NAME,
 		 * STD_DEV_TYPE_NAME and any other param assoctade with the IMR.
 		 */
-		ListIterator lt = imr.getOtherParamsIterator();
-		while(lt.hasNext()){
-			Parameter tempParam=(Parameter)lt.next();
+//		ListIterator lt = imr.getOtherParamsIterator();
+//		while(lt.hasNext()){
+//			Parameter tempParam=(Parameter)lt.next();
+		for (Parameter<?> tempParam : imr.getOtherParams()) {
 			//adding the parameter to the parameterList.
 			tempParam.addParameterChangeListener(this);
 			parameterList.addParameter(tempParam);
@@ -272,10 +274,11 @@ ParameterChangeWarningListener, ParameterChangeFailListener {
 				ScalarIMR imr = (ScalarIMR )it.next();
 				imr.setParamDefaults();
 				supportedIMRNames.add(imr.getName());
-				Iterator it1 = imr.getSiteParamsIterator();
-				// add change fail listener to the site parameters for this IMR
-				while(it1.hasNext()) {
-					Parameter param = (Parameter)it1.next();
+//				Iterator it1 = imr.getSiteParamsIterator();
+//				// add change fail listener to the site parameters for this IMR
+//				while(it1.hasNext()) {
+//					Parameter param = (Parameter)it1.next();
+				for (Parameter<?> param : imr.getSiteParams()) {
 					param.addParameterChangeFailListener(this);
 				}
 			}
@@ -315,9 +318,10 @@ ParameterChangeWarningListener, ParameterChangeFailListener {
 		 * associated with the IMR, which are : SIGMA_TRUNC_TYPE_NAME, SIGMA_TRUNC_LEVEL_NAME,
 		 * STD_DEV_TYPE_NAME and any other param assoctade with the IMR.
 		 */
-		ListIterator lt = imr.getOtherParamsIterator();
-		while(lt.hasNext()){
-			Parameter tempParam=(Parameter)lt.next();
+//		ListIterator lt = imr.getOtherParamsIterator();
+//		while(lt.hasNext()){
+//			Parameter tempParam=(Parameter)lt.next();
+		for (Parameter<?> tempParam : imr.getOtherParams()) {
 			//adding the parameter to the parameterList.
 			tempParam.addParameterChangeListener(this);
 			parameterList.addParameter(tempParam);
@@ -421,10 +425,11 @@ ParameterChangeWarningListener, ParameterChangeFailListener {
 
 		//check if this parameter exists in the site param list of this IMR
 		// if it does not then set its value using ignore warning
-		Iterator it = this.getSelectedIMR_Instance().getSiteParamsIterator();
+//		Iterator it = this.getSelectedIMR_Instance().getSiteParamsIterator();
 		boolean found = false;
-		while(it.hasNext() && !found)
-			if(param.getName().equalsIgnoreCase(((Parameter)it.next()).getName()))
+//		while(it.hasNext() && !found)
+		for (Parameter<?> tempParam : this.getSelectedIMR_Instance().getSiteParams())
+			if(param.getName().equalsIgnoreCase(tempParam.getName()))
 				found = true;
 		if(!found) {
 			param.setValueIgnoreWarning(e.getNewValue());
@@ -527,11 +532,12 @@ ParameterChangeWarningListener, ParameterChangeFailListener {
 
 		// only show messages for visible site parameters
 		ScalarIMR imr = getSelectedIMR_Instance();
-		ListIterator it = imr.getSiteParamsIterator();
+//		ListIterator it = imr.getSiteParamsIterator();
 		boolean found = false;
 		// see whether this parameter exists in site param list for this IMR
-		while(it.hasNext() && !found)
-			if(((Parameter)it.next()).getName().equalsIgnoreCase(name))
+//		while(it.hasNext() && !found)
+		for (Parameter<?> tempParam : imr.getSiteParams())
+			if(tempParam.getName().equalsIgnoreCase(name))
 				found = true;
 
 		// if this parameter for which failure was issued does not exist in

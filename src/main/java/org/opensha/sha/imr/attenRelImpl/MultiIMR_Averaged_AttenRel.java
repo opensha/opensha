@@ -31,6 +31,7 @@ import org.opensha.commons.util.ClassUtils;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
+import org.opensha.sha.imr.ErgodicIMR;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.DampingParam;
 import org.opensha.sha.imr.param.IntensityMeasureParams.IA_Param;
@@ -59,17 +60,17 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	
 	private static final boolean D = false;
 	
-	private List<? extends ScalarIMR> imrs;
-	private WeightedList<ScalarIMR> weights;
+	private List<? extends ErgodicIMR> imrs;
+	private WeightedList<ErgodicIMR> weights;
 	
 	public static final String IMR_WEIGHTS_PARAM_NAME = "IMR Weights";
-	private WeightedListParameter<ScalarIMR> weightsParam;
+	private WeightedListParameter<ErgodicIMR> weightsParam;
 	
-	public MultiIMR_Averaged_AttenRel(List<? extends ScalarIMR> imrs) {
+	public MultiIMR_Averaged_AttenRel(List<? extends ErgodicIMR> imrs) {
 		this(imrs, null);
 	}
 	
-	public MultiIMR_Averaged_AttenRel(List<? extends ScalarIMR> imrs,
+	public MultiIMR_Averaged_AttenRel(List<? extends ErgodicIMR> imrs,
 			ArrayList<Double> weights) {
 		
 		if (imrs == null)
@@ -97,7 +98,7 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	 * 
 	 * @return unmodifiable view of the IMRs list
 	 */
-	public List<? extends ScalarIMR> getIMRs() {
+	public List<? extends ErgodicIMR> getIMRs() {
 		return Collections.unmodifiableList(imrs);
 	}
 	
@@ -114,8 +115,8 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	
 	public void setWeights(List<Double> newWeights) {
 		if (weights == null) {
-			weights = new WeightedList<ScalarIMR>();
-			for (ScalarIMR imr : imrs)
+			weights = new WeightedList<ErgodicIMR>();
+			for (ErgodicIMR imr : imrs)
 				weights.add(imr, 1.0d);
 		}
 		if (newWeights == null) {
@@ -150,9 +151,10 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 		HashMap<String, ArrayList<ScalarIMR>> paramNameIMRMap =
 			new HashMap<String, ArrayList<ScalarIMR>>();
 		for (ScalarIMR imr : imrs) {
-			ListIterator<Parameter<?>> siteParamsIt = imr.getSiteParamsIterator();
-			while (siteParamsIt.hasNext()) {
-				Parameter<?> siteParam = siteParamsIt.next();
+//			ListIterator<Parameter<?>> siteParamsIt = imr.getSiteParamsIterator();
+//			while (siteParamsIt.hasNext()) {
+//				Parameter<?> siteParam = siteParamsIt.next();
+			for (Parameter<?> siteParam : imr.getSiteParams()) {
 				String name = siteParam.getName();
 				if (!paramNameIMRMap.containsKey(name))
 					paramNameIMRMap.put(name, new ArrayList<ScalarIMR>());
@@ -205,19 +207,16 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	 * @param it
 	 * @return
 	 */
-	private static ParameterList removeNonCommonParams(ParameterList params, ListIterator<Parameter<?>> it) {
+	private static ParameterList removeNonCommonParams(ParameterList params, ParameterList paramsToAdd) {
 		if (params == null) {
 			params = new ParameterList();
-			while (it.hasNext())
-				params.addParameter(it.next());
+			params.addParameterList(paramsToAdd);
 			return params;
 		}
 		
 		ParameterList paramsToKeep = new ParameterList();
-		while (it.hasNext()) {
-			Parameter<?> param = it.next();
+		for (Parameter<?> param : paramsToAdd)
 			paramsToKeep.addParameter(param);
-		}
 		ParameterList paramsToRemove = new ParameterList();
 		
 		for (Parameter<?> param : params) {
@@ -235,7 +234,7 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	protected void initSupportedIntensityMeasureParams() {
 		ParameterList imrTempList = null;
 		for (ScalarIMR imr : imrs) {
-			imrTempList = removeNonCommonParams(imrTempList, imr.getSupportedIntensityMeasuresIterator());
+			imrTempList = removeNonCommonParams(imrTempList, imr.getSupportedIntensityMeasures());
 		}
 		
 		saPeriodParam = null;
@@ -432,7 +431,7 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 		// link up default params
 //		linkParams(otherParams);
 		
-		weightsParam = new WeightedListParameter<ScalarIMR>(IMR_WEIGHTS_PARAM_NAME, null);
+		weightsParam = new WeightedListParameter<ErgodicIMR>(IMR_WEIGHTS_PARAM_NAME, null);
 		weightsParam.setValue(weights);
 		otherParams.addParameter(weightsParam);
 		
@@ -631,7 +630,7 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 
 	@Override
 	public void setPropagationEffectParams(SurfaceDistances distances) {
-		for (ScalarIMR imr : imrs)
+		for (ErgodicIMR imr : imrs)
 			imr.setPropagationEffectParams(distances);
 	}
 

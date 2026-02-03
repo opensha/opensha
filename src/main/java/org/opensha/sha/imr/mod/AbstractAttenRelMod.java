@@ -9,9 +9,12 @@ import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
+import org.opensha.sha.imr.ErgodicIMR;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.OtherParams.SigmaTruncLevelParam;
 import org.opensha.sha.imr.param.OtherParams.SigmaTruncTypeParam;
+
+import com.google.common.base.Preconditions;
 
 /**
  * Base class for Attenuation Relationship Modifiers.
@@ -60,7 +63,8 @@ public abstract class AbstractAttenRelMod implements ShortNamed {
 	 * @param distances
 	 */
 	public void setIMRPropEffect(ScalarIMR imr, SurfaceDistances distances) {
-		imr.setPropagationEffectParams(distances);
+		Preconditions.checkState(imr instanceof ErgodicIMR, "Must be an ErgodicIMR: %s", imr);
+		((ErgodicIMR)imr).setPropagationEffectParams(distances);
 	}
 	
 	/**

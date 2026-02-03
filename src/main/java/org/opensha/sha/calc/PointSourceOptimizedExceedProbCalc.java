@@ -11,6 +11,7 @@ import org.opensha.commons.util.interp.DistanceInterpolator.QuickInterpolator;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.imr.ErgodicIMR;
 import org.opensha.sha.imr.ScalarIMR;
 
 /**
@@ -58,7 +59,7 @@ public class PointSourceOptimizedExceedProbCalc extends AbstractPointSourceOptim
 	@Override
 	public void getExceedProbabilities(ScalarIMR gmm, EqkRupture eqkRupture, DiscretizedFunc exceedProbs) {
 		RuptureSurface surf = eqkRupture.getRuptureSurface();
-		if (surf instanceof PointSurface && !(surf instanceof PointSurface.SiteSpecificDistanceCorrected)) {
+		if (gmm instanceof ErgodicIMR && surf instanceof PointSurface && !(surf instanceof PointSurface.SiteSpecificDistanceCorrected)) {
 			PointSurface pointSurf = (PointSurface)surf;
 			Location sourceLoc = pointSurf.getLocation();
 			Location origSiteLoc = gmm.getSite().getLocation();

@@ -67,10 +67,11 @@ public class IMR_ChooserPanel extends NamesListPanel implements IMR_GuiBeanAPI, 
 	}
 	
 	private void updateSiteParams(ScalarIMR imr) {
-		ListIterator<Parameter<?>> it = imr.getSiteParamsIterator();
+//		ListIterator<Parameter<?>> it = imr.getSiteParamsIterator();
 		ParameterList list = new ParameterList();
-		while (it.hasNext()) {
-			Parameter<?> param = it.next();
+//		while (it.hasNext()) {
+//			Parameter<?> param = it.next();
+		for (Parameter<?> param : imr.getSiteParams()) {
 //			System.out.println("adding: " + param.getName());
 			list.addParameter(param);
 		}
@@ -157,9 +158,10 @@ public class IMR_ChooserPanel extends NamesListPanel implements IMR_GuiBeanAPI, 
 		for (int i=0; i<imrs.size(); i++) {
 			ScalarIMR imr = imrs.get(i);
 			ScalarIMR myIMR = imrGuiBean.getIMR_Instance(imr.getName());
-			ListIterator<Parameter<?>> paramIt = myIMR.getOtherParamsIterator();
-			while (paramIt.hasNext()) {
-				Parameter param = paramIt.next();
+//			ListIterator<Parameter<?>> paramIt = myIMR.getOtherParamsIterator();
+//			while (paramIt.hasNext()) {
+//				Parameter param = paramIt.next();
+			for (Parameter param : myIMR.getOtherParams()) {
 				param.setValue(imr.getParameter(param.getName()).getValue());
 			}
 			names[i] = imr.getName();

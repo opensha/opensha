@@ -970,9 +970,10 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 		imr.setIntensityMeasure("PGA");
 
 		Site site = new Site();
-		ListIterator<Parameter<?>> it = imr.getSiteParamsIterator();
-		while(it.hasNext())
-			site.addParameter(it.next());
+//		ListIterator<Parameter<?>> it = imr.getSiteParamsIterator();
+//		while(it.hasNext())
+		for (Parameter<?> param : imr.getSiteParams())
+			site.addParameter(param);
 		site.setLocation(new Location(34,-118));
 
 		AbstractERF eqkRupForecast = new Frankel96_EqkRupForecast();

@@ -13,6 +13,7 @@ import org.opensha.nshmp2.util.FaultCode;
 import org.opensha.nshmp2.util.Period;
 import org.opensha.nshmp2.util.Utils;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.imr.ErgodicIMR;
 import org.opensha.sha.imr.PropagationEffect;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
@@ -118,14 +119,14 @@ public class NSHMP08_CEUS_Grid extends NSHMP08_CEUS implements GridIMR {
 	 */
 	@SuppressWarnings("unchecked")
 	private static synchronized CurveTable initTable(FaultCode code,
-			Period period, Map<ScalarIMR, Double> imrMap) {
+			Period period, Map<ErgodicIMR, Double> imrMap) {
 		CurveTable table = tables.get(code).get(period);
 		if (table != null) { // TODO should be logged INFO
 			System.out.println("Cached CEUS table [" + code + ", " + period + "]");
 			return table;
 		}
 
-		for (ScalarIMR imr : imrMap.keySet()) {
+		for (ErgodicIMR imr : imrMap.keySet()) {
 			imr.setIntensityMeasure((period == GM0P00) ? PGA_Param.NAME
 				: SA_Param.NAME);
 			imr.getParameter(PeriodParam.NAME).setValue(period.getValue());

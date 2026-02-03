@@ -456,10 +456,10 @@ implements ParameterChangeWarningListener {
 	private void setSiteParamsInIMR(ScalarIMR imr,
 			String willsClass) {
 
-		Iterator it = imr.getSiteParamsIterator(); // get site params for this IMR
-		while (it.hasNext()) {
-			Parameter tempParam = (Parameter) it.next();
-			
+//		Iterator it = imr.getSiteParamsIterator(); // get site params for this IMR
+//		while (it.hasNext()) {
+//			Parameter tempParam = (Parameter) it.next();
+		for (Parameter<?> tempParam : imr.getSiteParams()) {
 			// we currently can't set Depth to Vs=1.0 km/sec, so skip
 			if (tempParam.getName().equals(DepthTo1pt0kmPerSecParam.NAME))
 				continue;

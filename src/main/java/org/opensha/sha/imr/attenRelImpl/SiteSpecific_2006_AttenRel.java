@@ -31,6 +31,7 @@ import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
+import org.opensha.sha.imr.ErgodicIMR;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PeriodParam;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
@@ -213,7 +214,7 @@ public class SiteSpecific_2006_AttenRel extends AttenuationRelationship implemen
 	"given Rock AttenuationRelationships ";
 
 	//Rock AttenuationRealtiobnships instances
-	private ScalarIMR attenRel;
+	private ErgodicIMR attenRel;
 
 	private SiteTranslator vs30Trans = new SiteTranslator();
 
@@ -486,11 +487,11 @@ public class SiteSpecific_2006_AttenRel extends AttenuationRelationship implemen
 	 * This method will return the instance of selected IMR
 	 * @return : Selected IMR instance
 	 */
-	public ScalarIMR getSelectedIMR_Instance(String selectedIMR) {
-		ScalarIMR imr = null;
+	public ErgodicIMR getSelectedIMR_Instance(String selectedIMR) {
+		ErgodicIMR imr = null;
 		int size = this.attenRelObjects.size();
 		for(int i=0; i<size ; ++i) {
-			imr = (ScalarIMR)attenRelObjects.get(i);
+			imr = (ErgodicIMR)attenRelObjects.get(i);
 			if(imr.getName().equalsIgnoreCase(selectedIMR))
 				break;
 		}
@@ -712,7 +713,7 @@ public class SiteSpecific_2006_AttenRel extends AttenuationRelationship implemen
 
 		// params that the mean depends upon
 		meanIndependentParams.clear();
-		ListIterator it = attenRel.getMeanIndependentParamsIterator();
+//		ListIterator it = attenRel.getMeanIndependentParamsIterator();
 		ArrayList siteParamNames = new ArrayList();
 		ListIterator siteTypeParamIterator = this.siteParams.getParametersIterator();
 
@@ -721,8 +722,9 @@ public class SiteSpecific_2006_AttenRel extends AttenuationRelationship implemen
 			siteParamNames.add(siteParam.getName());
 		}
 		int numSiteParams = siteParamNames.size();
-		while (it.hasNext()) {
-			AbstractParameter param = (AbstractParameter) it.next();
+//		while (it.hasNext()) {
+//			AbstractParameter param = (AbstractParameter) it.next();
+		for (Parameter<?> param : attenRel.getMeanIndependentParams()) {
 			if (!(param.getName().equals(ComponentParam.NAME)))  {
 				boolean isSiteTypeParam = false;
 				for(int i=0;i<numSiteParams;++i){
@@ -740,9 +742,10 @@ public class SiteSpecific_2006_AttenRel extends AttenuationRelationship implemen
 
 		// params that the stdDev depends upon
 		stdDevIndependentParams.clear();
-		it = attenRel.getStdDevIndependentParamsIterator();
-		while (it.hasNext()) {
-			AbstractParameter param = (AbstractParameter) it.next();
+//		it = attenRel.getStdDevIndependentParamsIterator();
+//		while (it.hasNext()) {
+//			AbstractParameter param = (AbstractParameter) it.next();
+		for (Parameter<?> param : getStdDevIndependentParams()) {
 			if (!(param.getName().equals(ComponentParam.NAME)))  {
 				boolean isSiteTypeParam = false;
 				for(int i=0;i<numSiteParams;++i){
@@ -760,9 +763,10 @@ public class SiteSpecific_2006_AttenRel extends AttenuationRelationship implemen
 
 		// params that the exceed. prob. depends upon
 		exceedProbIndependentParams.clear();
-		it = attenRel.getExceedProbIndependentParamsIterator();
-		while (it.hasNext()) {
-			AbstractParameter param = (AbstractParameter) it.next();
+//		it = attenRel.getExceedProbIndependentParamsIterator();
+//		while (it.hasNext()) {
+//			AbstractParameter param = (AbstractParameter) it.next();
+		for (Parameter<?> param : getExceedProbIndependentParams()) {
 			if (!(param.getName().equals(ComponentParam.NAME)))  {
 				boolean isSiteTypeParam = false;
 				for(int i=0;i<numSiteParams;++i){
@@ -878,12 +882,8 @@ public class SiteSpecific_2006_AttenRel extends AttenuationRelationship implemen
 	 *  list. Makes the parameters noneditable.
 	 */
 	protected void initEqkRuptureParams() {
-
 		eqkRuptureParams.clear();
-		ListIterator it = attenRel.getEqkRuptureParamsIterator();
-		while (it.hasNext()) {
-			eqkRuptureParams.addParameter( (AbstractParameter) it.next());
-		}
+		eqkRuptureParams.addParameterList(attenRel.getEqkRuptureParams());
 	}
 
 	/**
@@ -892,11 +892,7 @@ public class SiteSpecific_2006_AttenRel extends AttenuationRelationship implemen
 	 */
 	protected void initPropagationEffectParams() {
 		propagationEffectParams.clear();
-		ListIterator it = attenRel.getPropagationEffectParamsIterator();
-		while (it.hasNext()) {
-			propagationEffectParams.addParameter( (AbstractParameter) it.next());
-		}
-
+		eqkRuptureParams.addParameterList(attenRel.getPropagationEffectParams());
 	}
 
 	/**
@@ -905,11 +901,11 @@ public class SiteSpecific_2006_AttenRel extends AttenuationRelationship implemen
 	 *  them to the supportedIMParams list. Makes the parameters noneditable.
 	 */
 	protected void initSupportedIntensityMeasureParams() {
-
 		supportedIMParams.clear();
-		Iterator it = attenRel.getSupportedIntensityMeasuresIterator();
-		while (it.hasNext()) {
-			Parameter imParam = (Parameter)it.next();
+//		Iterator it = attenRel.getSupportedIntensityMeasuresIterator();
+//		while (it.hasNext()) {
+//			Parameter imParam = (Parameter)it.next();
+		for (Parameter<?> imParam : attenRel.getSupportedIntensityMeasures()) {
 			if(imParam.getName().equals(SA_Param.NAME))
 				supportedIMParams.addParameter( imParam);
 		}
@@ -943,10 +939,11 @@ public class SiteSpecific_2006_AttenRel extends AttenuationRelationship implemen
 		siteEffectCorrectionParam.addParameterChangeListener(this);
 		otherParams.addParameter(siteEffectCorrectionParam);
 		otherParams.addParameter(componentParam);
-		Iterator it = attenRel.getOtherParamsIterator();
-		AbstractParameter param;
-		while (it.hasNext()) {
-			param = (AbstractParameter) it.next();
+//		Iterator it = attenRel.getOtherParamsIterator();
+//		AbstractParameter param;
+//		while (it.hasNext()) {
+//			param = (AbstractParameter) it.next();
+		for (Parameter<?> param : attenRel.getOtherParams()) {
 			if (!ComponentParam.NAME.equals(param.getName())) {
 				otherParams.addParameter(param);
 			}

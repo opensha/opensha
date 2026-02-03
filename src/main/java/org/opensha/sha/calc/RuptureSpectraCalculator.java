@@ -13,6 +13,7 @@ import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.PointSurface.DistanceCorrectable;
 import org.opensha.sha.faultSurface.PointSurface.SiteSpecificDistanceCorrected;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
+import org.opensha.sha.imr.ErgodicIMR;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PeriodParam;
 
@@ -44,13 +45,13 @@ public interface RuptureSpectraCalculator {
 			for (int s=0; s<surfs.size(); s++) {
 				WeightedValue<SurfaceDistances> dists = surfs.get(s);
 				
-				if (s == 0) {
+				if (s == 0 || !(gmm instanceof ErgodicIMR)) {
 					// first time, need to set the full rupture
 					SiteSpecificDistanceCorrected corrSurf = new SiteSpecificDistanceCorrected((PointSurface)surf, siteLoc, dists.value);
 					gmm.setEqkRupture(new EqkRupture(eqkRupture.getMag(), eqkRupture.getAveRake(), corrSurf, eqkRupture.getHypocenterLocation()));
 				} else {
 					// subsequent time(s), only need to set the distances
-					gmm.setPropagationEffectParams(dists.value);
+					((ErgodicIMR)gmm).setPropagationEffectParams(dists.value);
 				}
 				
 				DiscretizedFunc rupSpectrum = gmm.getSA_ExceedProbSpectrum(iml);
@@ -107,13 +108,13 @@ public interface RuptureSpectraCalculator {
 			for (int s=0; s<surfs.size(); s++) {
 				WeightedValue<SurfaceDistances> dists = surfs.get(s);
 				
-				if (s == 0) {
+				if (s == 0 || !(gmm instanceof ErgodicIMR)) {
 					// first time, need to set the full rupture
 					SiteSpecificDistanceCorrected corrSurf = new SiteSpecificDistanceCorrected((PointSurface)surf, siteLoc, dists.value);
 					gmm.setEqkRupture(new EqkRupture(eqkRupture.getMag(), eqkRupture.getAveRake(), corrSurf, eqkRupture.getHypocenterLocation()));
 				} else {
 					// subsequent time(s), only need to set the distances
-					gmm.setPropagationEffectParams(dists.value);
+					((ErgodicIMR)gmm).setPropagationEffectParams(dists.value);
 				}
 				
 				for (int p=0; p<periods.size(); p++) {

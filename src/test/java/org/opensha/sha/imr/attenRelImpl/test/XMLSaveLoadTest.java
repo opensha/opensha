@@ -45,9 +45,10 @@ public class XMLSaveLoadTest {
 						AbstractIMR.fromXMLMetadata(imrElem, null);
 			imrElem.detach();
 			
-			Iterator<Parameter<?>> it = imr.getOtherParamsIterator();
-			while (it.hasNext()) {
-				Parameter<?> origParam = it.next();
+//			Iterator<Parameter<?>> it = imr.getOtherParamsIterator();
+//			while (it.hasNext()) {
+//				Parameter<?> origParam = it.next();
+			for (Parameter<?> origParam : imr.getOtherParams()) {
 				Object origVal = origParam.getValue();
 				Parameter<?> newParam = fromXML.getParameter(origParam.getName());
 				Object newVal = newParam.getValue();

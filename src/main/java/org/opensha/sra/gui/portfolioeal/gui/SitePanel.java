@@ -43,7 +43,7 @@ public class SitePanel {
 		siteBean.getParameterListEditor().setParameterVisible(Site_GuiBean.LATITUDE, false);
 		siteBean.getParameterListEditor().setParameterVisible(Site_GuiBean.LONGITUDE, false);
 		
-		siteBean.addSiteParams(imr.getSiteParamsIterator());
+		siteBean.addSiteParams(imr.getSiteParams());
 //		siteBean.getParameterListEditor().getParameterEditor("Latitude").setEnabled(false);
 //		siteBean.getParameterListEditor().getParameterEditor("Longitude").setEnabled(false);
 //		siteBean.getParameterListEditor().getParameterEditor("Vs30").setEnabled(false);

@@ -14,9 +14,9 @@ import org.opensha.sha.util.TectonicRegionType;
 
 
 /**
- * <b>Title:</b> ScalarIntensityMeasureRelationshipAPI<br>
+ * <b>Title:</b> ScalarIMR<br>
  * <b>Description:</b> ScalarIntensityMeasureRelationshipAPI extends IntensityMeasureParameterAPI
- * for the case where the intensity-measure type is a scalar value (DoubleParameter).   
+ * for the case where the intensity-measure type is a scalar value (DoubleParameter).
  *
  * @author     Edward H. Field
  * @created    February 21, 2002
@@ -158,16 +158,6 @@ public interface ScalarIMR extends IntensityMeasureRelationship {
 	public double getEpsilon(double iml);
 
 	/**
-	 *  Returns an iterator over all the Parameters that the Mean calculation depends upon.
-	 *  (not including the intensity-measure related parameters and their internal,
-	 *  independent parameters).
-	 *
-	 * @return    The Independent Params Iterator
-	 */
-	@Deprecated
-	public ListIterator getMeanIndependentParamsIterator();
-
-	/**
 	 *  Returns a list of all the Parameters that the Mean calculation depends upon.
 	 *  (not including the intensity-measure related parameters and their internal,
 	 *  independent parameters).
@@ -175,16 +165,6 @@ public interface ScalarIMR extends IntensityMeasureRelationship {
 	 * @return    The Independent Params list
 	 */
 	public ParameterList getMeanIndependentParams();
-
-	/**
-	 *  Returns an iterator over all the Parameters that the StdDev calculation depends upon
-	 *  (not including the intensity-measure related parameters and their internal,
-	 *  independent parameters).
-	 *
-	 * @return    The Independent Parameters Iterator
-	 */
-	@Deprecated
-	public ListIterator getStdDevIndependentParamsIterator();
 
 	/**
 	 *  Returns a list of all the Parameters that the StdDev calculation depends upon
@@ -196,16 +176,6 @@ public interface ScalarIMR extends IntensityMeasureRelationship {
 	public ParameterList getStdDevIndependentParams();
 
 	/**
-	 *  Returns an iterator over all the Parameters that the exceedProb calculation
-	 *  depends upon (not including the intensity-measure related parameters and
-	 *  their internal, independent parameters).
-	 *
-	 * @return    The Independent Params Iterator
-	 */
-	@Deprecated
-	public ListIterator getExceedProbIndependentParamsIterator();
-
-	/**
 	 *  Returns a list of all the Parameters that the exceedProb calculation
 	 *  depends upon (not including the intensity-measure related parameters and
 	 *  their internal, independent parameters).
@@ -213,16 +183,6 @@ public interface ScalarIMR extends IntensityMeasureRelationship {
 	 * @return    The Independent Params list
 	 */
 	public ParameterList getExceedProbIndependentParams();
-
-	/**
-	 *  Returns an iterator over all the Parameters that the IML-at-exceed-
-	 *  probability calculation depends upon. (not including the intensity-measure
-	 *  related paramters and their internal, independent parameters).
-	 *
-	 * @return    The Independent Params Iterator
-	 */
-	@Deprecated
-	public ListIterator getIML_AtExceedProbIndependentParamsIterator();
 
 	/**
 	 *  Returns a list of all the Parameters that the IML-at-exceed-
@@ -243,15 +203,6 @@ public interface ScalarIMR extends IntensityMeasureRelationship {
 	 * setPropagationEffectsParams().
 	 */
 	public void setSiteLocation(Location loc);
-
-	/**
-	 * This method sets the propagation effect parameters for the given distances.
-	 * 
-	 * This is helpful because it allows to override distances for a point source distance correction without
-	 * also resetting the earthquake rupture object.
-	 * @param distances
-	 */
-	public void setPropagationEffectParams(SurfaceDistances distances);
 
 	/**
 	 * Allows to reset the change listeners on the parameters

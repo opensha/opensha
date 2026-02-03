@@ -223,9 +223,10 @@ public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener
 	  private void setSiteParamsInIMR(ScalarIMR imr,
 	                                  int vs30) {
 
-	    Iterator it = imr.getSiteParamsIterator(); // get site params for this IMR
-	    while (it.hasNext()) {
-	      Parameter tempParam = (Parameter) it.next();
+//	    Iterator it = imr.getSiteParamsIterator(); // get site params for this IMR
+//	    while (it.hasNext()) {
+//	      Parameter tempParam = (Parameter) it.next();
+		for (Parameter<?> tempParam : imr.getSiteParams()) {
 	      //adding the site Params from the CVM, if site is out the range of CVM then it
 	      //sets the site with whatever site Parameter Value user has choosen in the application
 	      SiteDataValue<Double> val = new SiteDataValue<Double>(SiteData.TYPE_VS30,
@@ -259,9 +260,10 @@ public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener
 				else
 					fwTest = new FileWriter(this.CY2006_TEST_FILE);
 				Site site = new Site();
-				Iterator it = attenRel.getSiteParamsIterator(); // get site params for this IMR
-			    while (it.hasNext()) {
-			      Parameter tempParam = (Parameter) it.next();
+//				Iterator it = attenRel.getSiteParamsIterator(); // get site params for this IMR
+//			    while (it.hasNext()) {
+//			      Parameter tempParam = (Parameter) it.next();
+				for (Parameter<?> tempParam : attenRel.getSiteParams()) {
 			      site.addParameter(tempParam);
 			    }
 				for(int j=0;j<imtSupported.size();++j){

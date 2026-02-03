@@ -116,10 +116,11 @@ public class Site_GuiBean extends JPanel implements ParameterChangeListener,
 	 * @param it
 	 *            : Iterator over the site params in the IMR
 	 */
-	public void addSiteParams(Iterator it) {
-		AbstractParameter tempParam;
-		while (it.hasNext()) {
-			tempParam = (AbstractParameter) it.next();
+	public void addSiteParams(Iterable<Parameter<?>> siteParams) {
+//		AbstractParameter tempParam;
+//		while (it.hasNext()) {
+//			tempParam = (AbstractParameter) it.next();
+		for (Parameter<?> tempParam : siteParams) {
 			if (!parameterList.containsParameter(tempParam)) { // if this does
 																// not exist
 																// already
@@ -151,10 +152,11 @@ public class Site_GuiBean extends JPanel implements ParameterChangeListener,
 	 * @param it
 	 *            : Iterator over the site params in the IMR
 	 */
-	public void addSiteParamsClone(Iterator it) {
-		AbstractParameter tempParam;
-		while (it.hasNext()) {
-			tempParam = (AbstractParameter) it.next();
+	public void addSiteParamsClone(Iterable<Parameter<?>> siteParams) {
+		for (Parameter<?> tempParam : siteParams) {
+//		AbstractParameter tempParam;
+//		while (it.hasNext()) {
+//			tempParam = (AbstractParameter) it.next();
 			if (!parameterList.containsParameter(tempParam)) { // if this does
 																// not exist
 																// already
@@ -184,7 +186,7 @@ public class Site_GuiBean extends JPanel implements ParameterChangeListener,
 	 * 
 	 * @param it
 	 */
-	public void replaceSiteParams(Iterator it) {
+	public void replaceSiteParams(Iterable<Parameter<?>> siteParams) {
 
 		// make the new site object
 		site = new Site(new Location(((Double) latitude.getValue())
@@ -200,7 +202,7 @@ public class Site_GuiBean extends JPanel implements ParameterChangeListener,
 			}
 		}
 		// now add all the new params
-		addSiteParams(it);
+		addSiteParams(siteParams);
 
 	}
 
@@ -209,8 +211,7 @@ public class Site_GuiBean extends JPanel implements ParameterChangeListener,
 	 */
 	public void setSite(Site site) {
 		this.site = site;
-		Iterator it = site.getParametersIterator();
-		replaceSiteParams(it);
+		replaceSiteParams(site);
 	}
 
 	/**

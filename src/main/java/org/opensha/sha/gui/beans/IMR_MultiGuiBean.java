@@ -735,8 +735,8 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 	 * 
 	 * @return
 	 */
-	public Iterator<Parameter<?>> getMultiIMRSiteParamIterator() {
-		return getMultiIMRSiteParamIterator(imrMap);
+	public Iterable<Parameter<?>> getMultiIMRSiteParams() {
+		return getMultiIMRSiteParams(imrMap);
 	}
 
 	/**
@@ -745,17 +745,17 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 	 * @param imrMap
 	 * @return
 	 */
-	public static Iterator<Parameter<?>> getMultiIMRSiteParamIterator(
+	public static Iterable<Parameter<?>> getMultiIMRSiteParams(
 			HashMap<TectonicRegionType, ScalarIMR> imrMap) {
-		ArrayList<Parameter<?>> params = new ArrayList<Parameter<?>>();
+		// array list instead of parameter list because the latter avoids duplicate names and I'm not sure
+		// if that is appropriate here or not
+		ArrayList<Parameter<?>> params = new ArrayList<>();
 		for (TectonicRegionType trt : imrMap.keySet()) {
 			ScalarIMR imr = imrMap.get(trt);
-			ListIterator<Parameter<?>> siteParams = imr.getSiteParamsIterator();
-			while (siteParams.hasNext()) {
-				params.add(siteParams.next());
-			}
+			for (Parameter<?> param : imr.getSiteParams())
+				params.add(param);
 		}
-		return params.iterator();
+		return params;
 	}
 	
 	public boolean isIMREnabled(String imrName) {

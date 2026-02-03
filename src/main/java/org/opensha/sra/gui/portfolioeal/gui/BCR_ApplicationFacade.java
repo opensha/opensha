@@ -47,7 +47,7 @@ public class BCR_ApplicationFacade extends BCR_Application {
 	 */
 	public void updateSiteParams() {
 		ScalarIMR imr = imrGuiBean.getSelectedIMR_Instance();
-		siteGuiBean.replaceSiteParams(imr.getSiteParamsIterator());
+		siteGuiBean.replaceSiteParams(imr.getSiteParams());
 		siteGuiBean.validate();
 	    siteGuiBean.repaint();
 	}
@@ -85,7 +85,7 @@ public class BCR_ApplicationFacade extends BCR_Application {
 
 	  if ( name.equalsIgnoreCase(imrGuiBean.IMR_PARAM_NAME)) {
 		  ScalarIMR imr = imrGuiBean.getSelectedIMR_Instance();
-	      siteGuiBean.replaceSiteParams(imr.getSiteParamsIterator());
+	      siteGuiBean.replaceSiteParams(imr.getSiteParams());
 	      siteGuiBean.validate();
 	      siteGuiBean.repaint();
 	  }

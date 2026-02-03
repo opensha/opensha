@@ -1870,7 +1870,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 */
 	protected void initSiteGuiBean() {
 		siteGuiBean = new Site_GuiBean();
-		siteGuiBean.addSiteParams(imrGuiBean.getMultiIMRSiteParamIterator());
+		siteGuiBean.addSiteParams(imrGuiBean.getMultiIMRSiteParams());
 	}
 
 	/**
@@ -2626,7 +2626,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 * 
 	 */
 	public void updateSiteParams() {
-		siteGuiBean.replaceSiteParams(imrGuiBean.getMultiIMRSiteParamIterator());
+		siteGuiBean.replaceSiteParams(imrGuiBean.getMultiIMRSiteParams());
 		siteGuiBean.validate();
 		siteGuiBean.repaint();
 	}

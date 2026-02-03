@@ -559,7 +559,7 @@ IMCorrRelChangeListener{
 	 */
 	protected void initSiteGuiBean() {
 		siteGuiBean = new GcimSite_GuiBean(this, parentSite, gcimSite);
-		siteGuiBean.addSiteParams(imrGuiBean.getMultiIMRSiteParamIterator());
+		siteGuiBean.addSiteParams(imrGuiBean.getMultiIMRSiteParams());
 	}
 
 	/**
@@ -631,7 +631,7 @@ IMCorrRelChangeListener{
 	 * 
 	 */
 	public void updateSiteParams() {
-		siteGuiBean.replaceSiteParams(imrGuiBean.getMultiIMRSiteParamIterator());
+		siteGuiBean.replaceSiteParams(imrGuiBean.getMultiIMRSiteParams());
 		siteGuiBean.validate();
 		siteGuiBean.repaint();
 	}

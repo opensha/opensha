@@ -268,10 +268,11 @@ implements java.io.Serializable {
 	public boolean setAllSiteParams(ScalarIMR imr, Collection<SiteDataValue<?>> datas) {
 		boolean setSomething = false;
 		
-		ListIterator<Parameter<?>> it = imr.getSiteParamsIterator();
+//		ListIterator<Parameter<?>> it = imr.getSiteParamsIterator();
 		
-		while (it.hasNext()) {
-			Parameter param = it.next();
+//		while (it.hasNext()) {
+//			Parameter param = it.next();
+		for (Parameter<?> param : imr.getSiteParams()) {
 			if (this.setParameterValue(param, datas))
 				setSomething = true;
 		}

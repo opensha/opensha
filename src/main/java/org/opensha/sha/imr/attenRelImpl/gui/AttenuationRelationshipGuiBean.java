@@ -973,8 +973,8 @@ ParameterChangeListener, ParameterChangeFailListener
 			throw new ParameterException( S + "Applet is null, unable to continue." );
 
 		// Get required iterators to build constraints
-		ListIterator supportedIntensityMeasureIterator = attenRel.getSupportedIntensityMeasuresIterator();
-		ListIterator meanIndependentParamsIterator = attenRel.getMeanIndependentParamsIterator();
+//		ListIterator supportedIntensityMeasureIterator = attenRel.getSupportedIntensityMeasuresIterator();
+//		ListIterator meanIndependentParamsIterator = attenRel.getMeanIndependentParamsIterator();
 
 		// Make a Y-Axis picklist Parameter. Y-Axis possible choices
 		// Selected is the Y_AXIS_V1
@@ -991,8 +991,9 @@ ParameterChangeListener, ParameterChangeFailListener
 		Parameter imParam = null;
 		String name = "";
 		StringConstraint imConstraint = new StringConstraint();
-		while ( supportedIntensityMeasureIterator.hasNext() ) {
-			Parameter param = ( Parameter ) supportedIntensityMeasureIterator.next();
+//		while ( supportedIntensityMeasureIterator.hasNext() ) {
+//			Parameter param = ( Parameter ) supportedIntensityMeasureIterator.next();
+		for (Parameter<?> param : attenRel.getSupportedIntensityMeasures()) {
 			name = param.getName();
 			if ( first ) {
 				first = false;
@@ -1009,8 +1010,9 @@ ParameterChangeListener, ParameterChangeFailListener
 		first = true;
 		String val = null;
 		name = null;
-		while ( meanIndependentParamsIterator.hasNext() ) {
-			Parameter param = ( Parameter ) meanIndependentParamsIterator.next();
+//		while ( meanIndependentParamsIterator.hasNext() ) {
+//			Parameter param = ( Parameter ) meanIndependentParamsIterator.next();
+		for (Parameter<?> param : attenRel.getMeanIndependentParams()) {
 			// Fix so that all data types can be supported on x-axis
 			if ( !( param instanceof StringParameter ) ) {
 				name = param.getName();

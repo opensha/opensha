@@ -86,9 +86,10 @@ public class SiteDataTypeParameterNameMap extends NtoNMap<String, String> {
 	 * @return
 	 */
 	public boolean isTypeApplicable(String type, ScalarIMR attenRel) {
-		ListIterator<Parameter<?>> it = attenRel.getSiteParamsIterator();
-		while (it.hasNext()) {
-			Parameter param = it.next();
+//		ListIterator<Parameter<?>> it = attenRel.getSiteParamsIterator();
+//		while (it.hasNext()) {
+//			Parameter param = it.next();
+		for (Parameter<?> param : attenRel.getSiteParams()) {
 			if (isValidMapping(type, param.getName()))
 				return true;
 		}

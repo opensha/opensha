@@ -122,10 +122,11 @@ public class GcimSite_GuiBean extends JPanel implements ParameterChangeListener,
 	 * @param it
 	 *            : Iterator over the site params in the IMR
 	 */
-	public void addSiteParams(Iterator it) {
-		AbstractParameter tempParam;
-		while (it.hasNext()) {
-			tempParam = (AbstractParameter) it.next();
+	public void addSiteParams(Iterable<Parameter<?> >it) {
+//		AbstractParameter tempParam;
+//		while (it.hasNext()) {
+//			tempParam = (AbstractParameter) it.next();
+		for (Parameter<?> tempParam : it) {
 			if (!parameterList.containsParameter(tempParam)) { // if this does not exist already
 				tempParam.addParameterChangeListener(this);
 				parameterList.addParameter(tempParam);
@@ -237,15 +238,16 @@ public class GcimSite_GuiBean extends JPanel implements ParameterChangeListener,
 	 * 
 	 * @param it
 	 */
-	public void replaceSiteParams(Iterator it) {
+	public void replaceSiteParams(Iterable<Parameter<?>> it) {
 
-		Iterator<String> siteIt = parameterList.getParameterNamesIterator();
-		while (siteIt.hasNext()) { // remove all the parameters except latitdue
+//		Iterator<String> siteIt = parameterList.getParameterNamesIterator();
+//		while (siteIt.hasNext()) { // remove all the parameters except latitdue
 									// and longitude
-			String paramName = siteIt.next();
-			if (!paramName.equalsIgnoreCase(LATITUDE)
-					&& !paramName.equalsIgnoreCase(LONGITUDE)) {
-				parameterList.removeParameter(paramName);
+//			String paramName = siteIt.next();
+		for (Parameter<?> param : parameterList) {
+			if (!param.getName().equalsIgnoreCase(LATITUDE)
+					&& !param.getName().equalsIgnoreCase(LONGITUDE)) {
+				parameterList.removeParameter(param);
 			}
 		}
 		// now add all the new params

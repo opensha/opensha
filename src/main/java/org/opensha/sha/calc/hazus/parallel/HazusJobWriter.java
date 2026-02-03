@@ -366,9 +366,10 @@ public class HazusJobWriter {
 			new ArrayList<Map<TectonicRegionType,ScalarIMR>>();
 		imrMaps.add(imrMap);
 		
-		Iterator<Parameter<?>> imrSiteParamsIt = imr.getSiteParamsIterator();
-		while (imrSiteParamsIt.hasNext()) {
-			Parameter<?> param =imrSiteParamsIt.next();
+//		Iterator<Parameter<?>> imrSiteParamsIt = imr.getSiteParamsIterator();
+//		while (imrSiteParamsIt.hasNext()) {
+//			Parameter<?> param =imrSiteParamsIt.next();
+		for (Parameter<?> param : imr.getSiteParams()) {
 			String paramName = param.getName();
 			if (nullBasin && (paramName.equals(DepthTo2pt5kmPerSecParam.NAME)
 								|| paramName.equals(DepthTo1pt0kmPerSecParam.NAME))) {
@@ -417,9 +418,10 @@ public class HazusJobWriter {
 							.getParameter(AbstractSiteData.PARAM_MIN_BASIN_DEPTH_DOUBLE_NAME);
 					} catch (ParameterException e) {}
 					if (minBasinParam != null) {
-						ListIterator<Parameter<?>> siteParamsIt = imr.getSiteParamsIterator();
-						while (siteParamsIt.hasNext()) {
-							Parameter<?> param = siteParamsIt.next();
+//						ListIterator<Parameter<?>> siteParamsIt = imr.getSiteParamsIterator();
+//						while (siteParamsIt.hasNext()) {
+//							Parameter<?> param = siteParamsIt.next();
+						for (Parameter<?> param : imr.getSiteParams()) {
 							if (param.getName().equals(DepthTo2pt5kmPerSecParam.NAME)
 									&& prov.getDataType().equals(SiteData.TYPE_DEPTH_TO_2_5)) {
 								minBasinParam.setValue((Double)param.getValue());
@@ -468,10 +470,11 @@ public class HazusJobWriter {
 		for (int i=0; i<locs.size(); i++) {
 			Location loc = locs.get(i);
 			Site site = new Site(loc);
-			ListIterator<Parameter<?>> it = imr.getSiteParamsIterator();
+//			ListIterator<Parameter<?>> it = imr.getSiteParamsIterator();
 			ArrayList<SiteDataValue<?>> datas = siteData[i];
-			while (it.hasNext()) {
-				Parameter<?> siteParam = it.next();
+//			while (it.hasNext()) {
+//				Parameter<?> siteParam = it.next();
+			for (Parameter<?> siteParam : imr.getSiteParams()) {
 				Parameter clonedParam = (Parameter) siteParam.clone();
 				String paramName = siteParam.getName();
 //				if (nullBasin &&

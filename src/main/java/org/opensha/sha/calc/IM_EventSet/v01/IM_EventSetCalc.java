@@ -379,9 +379,10 @@ public class IM_EventSetCalc
   private void setSiteParamsInIMR(ScalarIMR imr,
                                   String willsClass) {
 
-    Iterator it = imr.getSiteParamsIterator(); // get site params for this IMR
-    while (it.hasNext()) {
-      Parameter tempParam = (Parameter) it.next();
+//    Iterator it = imr.getSiteParamsIterator(); // get site params for this IMR
+//    while (it.hasNext()) {
+//      Parameter tempParam = (Parameter) it.next();
+	  for (Parameter<?> tempParam : imr.getSiteParams()) {
       //adding the site Params from the CVM, if site is out the range of CVM then it
       //sets the site with whatever site Parameter Value user has choosen in the application
       boolean flag = siteTranslator.setParameterValue(tempParam, willsClass,

@@ -578,7 +578,7 @@ IMR_GuiBeanAPI{
 		// if IMR selection changed, update the site parameter list and supported IMT
 		if ( name1.equalsIgnoreCase(imrGuiBean.IMR_PARAM_NAME)) {
 			ScalarIMR imr = imrGuiBean.getSelectedIMR_Instance();
-			siteGuiBean.replaceSiteParams(imr.getSiteParamsIterator());
+			siteGuiBean.replaceSiteParams(imr.getSiteParams());
 			siteGuiBean.validate();
 			siteGuiBean.repaint();
 		}
@@ -598,7 +598,7 @@ IMR_GuiBeanAPI{
 
 			imrGuiBean.setIMRParamListAndEditor(currentIMT, newIMT, currentPeriod, newPeriod);
 			ScalarIMR imr = imrGuiBean.getSelectedIMR_Instance();
-			siteGuiBean.replaceSiteParams(imr.getSiteParamsIterator());
+			siteGuiBean.replaceSiteParams(imr.getSiteParams());
 			siteGuiBean.validate();
 			siteGuiBean.repaint();
 		}
@@ -843,7 +843,7 @@ IMR_GuiBeanAPI{
 		ScalarIMR imr = imrGuiBean.getSelectedIMR_Instance();
 		// create the IMT Gui Bean object
 		siteGuiBean = new Site_GuiBean();
-		siteGuiBean.addSiteParams(imr.getSiteParamsIterator());
+		siteGuiBean.addSiteParams(imr.getSiteParams());
 		siteLocPanel.setLayout(gridBagLayout8);
 		siteLocPanel.add(siteGuiBean, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
 				GridBagConstraints.CENTER,
@@ -1127,7 +1127,7 @@ IMR_GuiBeanAPI{
 	public void updateSiteParams() {
 		//get the selected IMR
 		ScalarIMR imr = imrGuiBean.getSelectedIMR_Instance();
-		siteGuiBean.replaceSiteParams(imr.getSiteParamsIterator());
+		siteGuiBean.replaceSiteParams(imr.getSiteParams());
 		siteGuiBean.validate();
 		siteGuiBean.repaint();
 	}
