@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.StringTokenizer;
 import java.util.logging.Level;
 
@@ -105,11 +106,12 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 		for (int sourceID=0; sourceID<numSources; sourceID++) {
 			ProbEqkSource source = erf.getSource(sourceID);
 			for (int rupID=0; rupID<source.getNumRuptures(); rupID++) {
+                boolean shouldWriteRup = false; // Don't write if all NaN vals for all sites
 				ProbEqkRupture rup = source.getRupture(rupID);
 				attenRel.setEqkRupture(rup);
 				String line = sourceID + " " + rupID;
 				for (Site site : sites) {
-                    double mean = -1, total = -1, inter = -1;
+                    double mean = Double.NaN, total = Double.NaN, inter = Double.NaN;
                     if (!SourceUtil.canSkipSource(calc.getSourceFilters(), source, site) &&
                         !SourceUtil.canSkipRupture(calc.getSourceFilters(), rup, site)) {
                         attenRel.setSite(site);
@@ -127,10 +129,16 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
                             inter = attenRel.getStdDev();
                         }
                     }
+
+                    // Track if the line contains at least one site with valid values
+                    boolean hasNumber = Arrays.stream(new double[]{mean, total, inter})
+                            .anyMatch((i) -> !Double.isNaN(i));
+                    if (hasNumber) shouldWriteRup = true;
+
 					line += " " + meanSigmaFormat.format(mean) + " " + meanSigmaFormat.format(total)
 									+ " " + meanSigmaFormat.format(inter);
 				}
-				fw.write(line + "\n");
+				if (shouldWriteRup) fw.write(line + "\n");
 			}
 		}
 		fw.close();
@@ -141,7 +149,7 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 	
 	/**
 	 * This writes the rupture distance files following the format of the original IM Event Set Calculator.
-	 * The file 'rup_dist_info.txt' is equivelant to the old files, and 'rup_dist_jb_info.txt' is similar
+	 * The file 'rup_dist_info.txt' is equivalent to the old files, and 'rup_dist_jb_info.txt' is similar
 	 * but with JB distances (at Erdem's request).
 	 * 
 	 * @param erf
@@ -163,21 +171,28 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 		for (int sourceID=0; sourceID<numSources; sourceID++) {
 			ProbEqkSource source = erf.getSource(sourceID);
 			for (int rupID=0; rupID<source.getNumRuptures(); rupID++) {
+                boolean shouldWriteRup = false;
+                boolean shouldWriteRupJB = false;
 				ProbEqkRupture rup = source.getRupture(rupID);
 				String line = sourceID + " " + rupID;
 				String lineJB = line;
 				for (Site site : sites) {
-                    double rupDist = -1, distJB = -1;
+                    double rupDist = Double.NaN, distJB = Double.NaN;
                     if (!SourceUtil.canSkipSource(calc.getSourceFilters(), source, site) &&
                         !SourceUtil.canSkipRupture(calc.getSourceFilters(), rup, site)) {
                         rupDist = rup.getRuptureSurface().getDistanceRup(site.getLocation());
                         distJB = rup.getRuptureSurface().getDistanceJB(site.getLocation());
                     }
+
+                    // Track if the line contains at least one site with valid values
+                    if (!Double.isNaN(rupDist)) shouldWriteRup = true;
+                    if (!Double.isNaN(distJB)) shouldWriteRupJB = true;
+
 					line += " " + distFormat.format(rupDist);
 					lineJB += " " + distFormat.format(distJB);
 				}
-				fw.write(line + "\n");
-				fw_jb.write(lineJB + "\n");
+				if (shouldWriteRup) fw.write(line + "\n");
+				if (shouldWriteRupJB) fw_jb.write(lineJB + "\n");
 			}
 		}
 		fw.close();

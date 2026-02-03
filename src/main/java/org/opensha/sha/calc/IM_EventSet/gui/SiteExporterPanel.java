@@ -5,13 +5,15 @@ import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.calc.IM_EventSet.SiteFileLoader;
 import org.opensha.sha.calc.IM_EventSet.SiteFileWriter;
 
-import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
+
+import javax.swing.*;
 
 /**
  * Panel for exporting sites in bulk from a file
@@ -37,7 +39,7 @@ public class SiteExporterPanel extends JPanel implements ActionListener {
 
     private boolean lonFirst = true;
 
-    private final ArrayList<String> siteDataTypes = new ArrayList<>();
+    private final ArrayList<String> siteDataTypes = new ArrayList<>(List.of(SiteFileLoader.allSiteDataTypes));
 
     protected ArrayList<Location> locs;
     protected ArrayList<ParameterList> siteDataParams;
@@ -53,7 +55,7 @@ public class SiteExporterPanel extends JPanel implements ActionListener {
         this.locs = locs;
         this.siteDataParams = siteDataParams;
 
-        typeChooser = new JComboBox<>(SiteFileLoader.allSiteDataTypes);
+        typeChooser = new JComboBox<>();
 
         chooser = new JFileChooser(cwd);
 
@@ -62,7 +64,7 @@ public class SiteExporterPanel extends JPanel implements ActionListener {
         reverseButton.addActionListener(this);
         addButton.addActionListener(this);
         removeButton.addActionListener(this);
-        removeButton.setEnabled(false);
+        addButton.setEnabled(false);
 
         JPanel buttonPanel = new JPanel(new BorderLayout());
         buttonPanel.add(reverseButton, BorderLayout.WEST);
@@ -83,6 +85,8 @@ public class SiteExporterPanel extends JPanel implements ActionListener {
         this.add(new JSeparator(JSeparator.HORIZONTAL));
 
         JPanel browsePanel = new JPanel(new BorderLayout());
+        JLabel chooserLabel = new JLabel("Output File: ");
+        browsePanel.add(chooserLabel, BorderLayout.WEST);
         browsePanel.add(fileField, BorderLayout.CENTER);
         browsePanel.add(browseButton, BorderLayout.EAST);
         fileField.setColumns(40);

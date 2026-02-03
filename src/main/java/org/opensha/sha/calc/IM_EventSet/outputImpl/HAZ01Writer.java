@@ -134,7 +134,7 @@ public class HAZ01Writer extends IM_EventSetOutputWriter {
 
 		if (!hasInterIntra)
 			logger.log(Level.WARNING, "Selected IMR, " + attenRel.getShortName() + ", doesn't allow " +
-					"inter event Std Dev...all values will be set to -1");
+					"inter event Std Dev...all values will be set to NaN");
 		
 		int numSources = erf.getNumSources();
 		
@@ -147,14 +147,14 @@ public class HAZ01Writer extends IM_EventSetOutputWriter {
 			
 			HAZ01ASegment haz01a = new HAZ01ASegment(erfName, siteID, gmpe, getHAZ01IMTString(attenRel.getIntensityMeasure()));
 			
-			float vs30 = -1;
+			float vs30 = Float.NaN;
 			try {
 				attenRel.getParameter(Vs30_Param.NAME);
 				// we got here, the IMR has vs30
 				vs30 = (float)(double)((Double)site.getParameter(Vs30_Param.NAME).getValue());
 			} catch (ParameterException e) {
 				logger.log(Level.WARNING, "Selected IMR, " + attenRel.getShortName() + ", " +
-						"doesn't have Vs30...all values will be set to -1");
+						"doesn't have Vs30...all values will be set to NaN");
 			}
 			for (int sourceID=0; sourceID<numSources; sourceID++) {
 				logger.log(Level.FINEST, "Writing portion for Source: " + sourceID);
@@ -179,7 +179,7 @@ public class HAZ01Writer extends IM_EventSetOutputWriter {
                         }
                     }
                     double total = attenRel.getStdDev();
-					double inter = -1;
+					double inter = Double.NaN;
 					if (hasInterIntra) {
 						stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_INTER);
 						inter = attenRel.getStdDev();
