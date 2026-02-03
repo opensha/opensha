@@ -165,7 +165,7 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 		addButton.setEnabled(false);
         // Get names of IMTs we would need to remove
         List<String> removedIMTs = imtChooser.getIMTsRemoveFor(getSelectedIMRs());
-        int confirmation = 0;
+        int confirmation = JOptionPane.YES_OPTION;
         if (!removedIMTs.isEmpty()) {
            // If there are IMTs that need to be removed from adding this IMR, prompt the user to confirm.
             confirmation = JOptionPane.showConfirmDialog(null,
@@ -177,7 +177,7 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
                     JOptionPane.YES_NO_OPTION);
         }
         // Proceed with IMR selection
-        if (confirmation == JOptionPane.OK_OPTION) {
+        if (confirmation == JOptionPane.YES_OPTION) {
             // Update IMTs accordingly
             updateIMTs();
             // Generate site data parameters from selected IMRs

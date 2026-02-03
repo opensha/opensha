@@ -407,9 +407,10 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
      */
     private ParameterList updateSiteDataParams(List<ScalarIMR> imrs, ParameterList params) {
         ParameterList oldParams = (ParameterList)params.clone();
-        ParameterList newParams = ParameterList.union(imrs.stream()
+        ParameterList newParams = (ParameterList)ParameterList.union(imrs.stream()
                 .map(IntensityMeasureRelationship::getSiteParams)
-                .toArray(ParameterList[]::new));
+                .toArray(ParameterList[]::new))
+                .clone();
         // Copy any existing parameter values from the old list
         for (Parameter<?> oldParam : oldParams) {
             if (newParams.containsParameter(oldParam)) {
@@ -438,17 +439,13 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
     public void updateSiteDataParams(List<ScalarIMR> imrs) {
         // Update default site params for creating new sites and note which types are now invalid.
         List<String> invalidatedSiteDataTypes = getSiteDataTypes();
-        System.out.println(invalidatedSiteDataTypes);
+
         defaultSiteDataParams = updateSiteDataParams(imrs, defaultSiteDataParams);
         List<String> newSiteDataTypes = getSiteDataTypes();
         invalidatedSiteDataTypes.removeAll(newSiteDataTypes);
 
         // Update existing sites with the updated parameter types
-        ArrayList<ParameterList> newSiteDataParams = new ArrayList<>();
-        for (ParameterList params : siteDataParams) {
-            newSiteDataParams.add(updateSiteDataParams(imrs, params));
-        }
-        siteDataParams = newSiteDataParams;
+        siteDataParams.replaceAll(p -> updateSiteDataParams(imrs, p));
 
         // Notify user that previously selected site data types were invalidated
         if (!invalidatedSiteDataTypes.isEmpty()) {
@@ -470,8 +467,8 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 
     /**
      * Gets the list of site data parameters.
-     * Each parameter list represents all of the site data and its values for each site.
-     * @return
+     * Each parameter list represents all the site data and its values for each site.
+     * @return the list of site data parameters
      */
     public ArrayList<ParameterList> getSiteDataParams() {
         return siteDataParams;
