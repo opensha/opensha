@@ -85,6 +85,8 @@ public class SiteExporterPanel extends JPanel implements ActionListener {
         this.add(new JSeparator(JSeparator.HORIZONTAL));
 
         JPanel browsePanel = new JPanel(new BorderLayout());
+        JLabel chooserLabel = new JLabel("Output File: ");
+        browsePanel.add(chooserLabel, BorderLayout.WEST);
         browsePanel.add(fileField, BorderLayout.CENTER);
         browsePanel.add(browseButton, BorderLayout.EAST);
         fileField.setColumns(40);

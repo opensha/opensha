@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import javax.swing.BoxLayout;
@@ -43,7 +42,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 	protected JButton addSiteButton = new JButton("Add Site");
 	protected JButton removeSiteButton = new JButton("Remove Site(s)");
 	protected JButton editSiteButton = new JButton("Edit Site");
-    protected JButton importSitesButton = new JButton("Import Sites From File");
+    protected JButton importSitesButton = new JButton("Import Sites");
     protected JButton exportSitesButton = new JButton("Export Sites");
 
     // List of locations for each site
