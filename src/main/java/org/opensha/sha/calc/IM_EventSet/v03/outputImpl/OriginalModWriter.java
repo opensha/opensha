@@ -5,6 +5,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.StringTokenizer;
 import java.util.logging.Level;
 
@@ -95,6 +96,19 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 		
 		FileWriter fw = new FileWriter(outputDir.getAbsolutePath() + File.separator + fname);
 
+        // Headers
+        List<String> header = new ArrayList<>();
+        header.add("SourceId");
+        header.add("RuptureId");
+        for (int i = 0; i < sites.size(); i++) {
+            int siteIndex = i + 1;
+            header.add("Mean(" + siteIndex + ")");
+            header.add("Total-Std-Dev.(" + siteIndex + ")");
+            header.add("Inter-Event-Std-Dev.(" + siteIndex + ")");
+        }
+        header.add("\n");
+        fw.write(String.join(" ", header));
+
 		erf.updateForecast();
 		
 		int numSources = erf.getNumSources();
@@ -159,8 +173,20 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 		FileWriter fw_jb = new FileWriter(outputDir.getAbsolutePath() + File.separator + fname_jb);
 		
 		ArrayList<Site> sites = calc.getSites();
-		
-		erf.updateForecast();
+
+        // Headers
+        List<String> header = new ArrayList<>();
+        header.add("SourceId");
+        header.add("RuptureId");
+        for (int i = 0; i < sites.size(); i++) {
+            int siteIndex = i + 1;
+            header.add("RupDist(" + siteIndex + ")");
+        }
+        header.add("\n");
+        fw.write(String.join(" ", header));
+        fw_jb.write(String.join(" ", header));
+
+        erf.updateForecast();
 		
 		int numSources = erf.getNumSources();
 		
@@ -207,8 +233,11 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 		FileWriter fw = new FileWriter(outputDir.getAbsolutePath() + File.separator + fname);
 		
 		ArrayList<Site> sites = calc.getSites();
-		
-		erf.updateForecast();
+
+        // Headers
+        fw.write("SourceId RuptureId annualizedRate Mag Src-Name\n");
+
+        erf.updateForecast();
 		
 		int numSources = erf.getNumSources();
 		
