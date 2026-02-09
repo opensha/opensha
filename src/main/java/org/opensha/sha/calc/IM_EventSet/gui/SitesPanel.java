@@ -25,6 +25,7 @@ import javax.swing.event.ListSelectionListener;
 
 import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
 import org.opensha.commons.data.siteData.SiteData;
+import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.data.siteData.gui.beans.OrderedSiteDataGUIBean;
 import org.opensha.commons.data.siteData.impl.WillsMap2000;
 import org.opensha.commons.exceptions.InvalidRangeException;
@@ -33,6 +34,7 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.imr.IntensityMeasureRelationship;
 import org.opensha.sha.imr.ScalarIMR;
+import org.opensha.sha.util.SiteTranslator;
 
 /**
  * Panel to display and edit a list of multiple sites and their associated site data.
@@ -40,20 +42,21 @@ import org.opensha.sha.imr.ScalarIMR;
  * Add or edit a site via the AddSitePanel.
  */
 public class SitesPanel extends JPanel implements ListSelectionListener, ActionListener {
-	
-	protected JList sitesList;
-	protected JList siteDataList;
-	
-	protected JButton addSiteButton = new JButton("Add Site");
-	protected JButton removeSiteButton = new JButton("Remove Site(s)");
-	protected JButton editSiteButton = new JButton("Edit Site");
-    protected JButton importSitesButton = new JButton("Import Sites");
-    protected JButton exportSitesButton = new JButton("Export Sites");
+
+	private final JList sitesList;
+	private final JList siteDataList;
+
+	private final JButton addSiteButton = new JButton("Add Site");
+	private final JButton removeSiteButton = new JButton("Remove Site(s)");
+	private final JButton editSiteButton = new JButton("Edit Site");
+    private final JButton importSitesButton = new JButton("Import Sites");
+    private final JButton exportSitesButton = new JButton("Export Sites");
+    private final JButton setFromWebButton = new JButton("Fetch Site Data");
 
     // List of locations for each site
-	private ArrayList<Location> locs;
+	private final ArrayList<Location> locs;
     // List of all site data parameters for each site
-    private ArrayList<ParameterList> siteDataParams;
+    private final ArrayList<ParameterList> siteDataParams;
     // Default site data parameters to use for new sites
     private ParameterList defaultSiteDataParams;
     // Set sites with selected site data providers
@@ -72,7 +75,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
         siteDataParams = new ArrayList<>();
         defaultSiteDataParams = new ParameterList();
 
-		sitesList = new JList();
+		sitesList = new JList<>();
 		sitesList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 		sitesList.setSelectedIndex(0);
 		sitesList.addListSelectionListener(this);
@@ -92,6 +95,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
         rightButtonPanel.add(editSiteButton, BorderLayout.EAST);
         rightButtonPanel.add(importSitesButton, BorderLayout.EAST);
         rightButtonPanel.add(exportSitesButton, BorderLayout.EAST);
+        rightButtonPanel.add(setFromWebButton, BorderLayout.EAST);
 		leftButtonPanel.add(addSiteButton);
 		leftButtonPanel.add(removeSiteButton);
 		buttonPanel.add(leftButtonPanel, BorderLayout.WEST);
@@ -102,7 +106,9 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 		editSiteButton.addActionListener(this);
         importSitesButton.addActionListener(this);
         exportSitesButton.addActionListener(this);
-		
+        setFromWebButton.addActionListener(this);
+        setFromWebButton.setToolTipText("Set site data parameters from web services for all sites");
+
 		northPanel.add(buttonPanel, BorderLayout.SOUTH);
 		
 		siteDataList = new JList();
@@ -344,8 +350,10 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
                 exp.exportFile();
             } catch (IOException e1) {
                 e1.printStackTrace();
-                JOptionPane.showMessageDialog(this, "I/O error reading file!",
-                        "I/O error reading file!", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this,
+                        "Please provide a full path to a new or existing file to write to.\n"+
+                        "You can manually enter the path or click the \"Browse\" button.",
+                        "Failed to write file", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -381,7 +389,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
         } else if (e.getSource().equals(editSiteButton)) {
             // edit the selected site
             int siteIndex = sitesList.getSelectedIndex();
-            ParameterList params = siteDataParams.get(siteIndex);
+            ParameterList params = (ParameterList) siteDataParams.get(siteIndex).clone();
             AddSitePanel siteAdd = new AddSitePanel(params, providers, locs.get(siteIndex));
             int selection = promptNewSite(siteAdd, /*exception=*/locs.get(siteIndex));
             if (selection == JOptionPane.OK_OPTION) {
@@ -400,6 +408,19 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
             importSites();
         } else if (e.getSource().equals(exportSitesButton)) {
             exportSites();
+        } else if (e.getSource().equals(setFromWebButton)) {
+            // Set parameters for all sites
+            for (int i = 0; i < locs.size(); i++) {
+                Location loc = locs.get(i);
+                ParameterList params = siteDataParams.get(i);
+                SiteTranslator siteTrans = new SiteTranslator();
+                // Fetch all data values from providers that provide at least one new data type
+                ArrayList<SiteDataValue<?>> provData = providers.getBestAvailableData(loc);
+                for (Parameter<?> param : params) {
+                    siteTrans.setParameterValue(param, provData);
+                }
+            }
+            rebuildSiteDataList();
         }
 	}
 

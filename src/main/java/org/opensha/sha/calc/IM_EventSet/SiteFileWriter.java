@@ -96,8 +96,10 @@ public class SiteFileWriter {
                     }
                 }
                 if (line.size() != (siteDataTypes.size()+2)) {
-                    throw new RuntimeException("Site data values written mismatch requested types");
+                    // There are missing site data values, write "null" for those values
+                    line.add("null ".repeat(siteDataTypes.size()+2-line.size()).stripTrailing());
                 }
+                assert(line.size() == siteDataTypes.size()+2);
 
                 fileWriter.write(line.stream().map(String::valueOf).collect(Collectors.joining(SEP)));
                 fileWriter.write("\n");

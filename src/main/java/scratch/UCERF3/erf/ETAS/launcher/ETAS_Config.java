@@ -228,7 +228,7 @@ public class ETAS_Config {
 		return new File(path);
 	}
 	
-	private static class FileTypeAdapter extends TypeAdapter<File> {
+	public static class FileTypeAdapter extends TypeAdapter<File> {
 		
 		private Map<String, String> env;
 		private boolean resolvePaths;
