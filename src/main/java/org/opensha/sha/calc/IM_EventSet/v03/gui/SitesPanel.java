@@ -376,7 +376,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
         } else if (e.getSource().equals(editSiteButton)) {
             // edit the selected site
             int siteIndex = sitesList.getSelectedIndex();
-            ParameterList params = siteDataParams.get(siteIndex);
+            ParameterList params = (ParameterList) siteDataParams.get(siteIndex).clone();
             AddSitePanel siteAdd = new AddSitePanel(params, providers, locs.get(siteIndex));
             int selection = promptNewSite(siteAdd, /*exception=*/locs.get(siteIndex));
             if (selection == JOptionPane.OK_OPTION) {
