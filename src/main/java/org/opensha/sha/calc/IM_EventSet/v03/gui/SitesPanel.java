@@ -339,8 +339,10 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
                 exp.exportFile();
             } catch (IOException e1) {
                 e1.printStackTrace();
-                JOptionPane.showMessageDialog(this, "I/O error reading file!",
-                        "I/O error reading file!", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this,
+                        "Please provide a full path to a new or existing file to write to.\n"+
+                        "You can manually enter the path or click the \"Browse\" button.",
+                        "Failed to write file", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
