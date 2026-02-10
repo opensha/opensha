@@ -135,6 +135,14 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 
 	}
 	
+	public void setPointSourceOptimizationsEnabled(boolean optimize) {
+		pointSourceOptimizations.setValue(optimize);
+	}
+	
+	public boolean isPointSourceOptimizationsEnabled() {
+		return pointSourceOptimizations.getValue();
+	}
+	
 	public SourceFilterManager getSourceFilterManager() {
 		return sourceFilters;
 	}
