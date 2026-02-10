@@ -50,7 +50,17 @@ public class DefaultXY_DataSet extends AbstractXY_DataSet {
 	 */
 	public DefaultXY_DataSet(List<Double> x, List<Double> y) {
 		this(Doubles.toArray(x), Doubles.toArray(y));
-	}	
+	}
+
+	/**
+	 * Initializes a new data set with the supplied x and y data interspered as x1, y1, x2, y2, ..., xN, yN
+	 */
+	public DefaultXY_DataSet(double... xyValues) {
+		init();
+		checkArgument(xyValues.length % 2 == 0, "Passed in array must have even length");
+		for (int i=0; i<xyValues.length; i+=2)
+			set(xyValues[i], xyValues[i+1]);
+	}
 
 	/**
 	 * Initializes a new data set with the supplied arrays of x and
