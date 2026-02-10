@@ -190,7 +190,7 @@ public class UCERF3_GriddedSeisOnlyERF_ETAS extends AbstractNthRupERF {
 		
 				
 		if(bgRupTypeChanged) {	// this will change the number of ruptures
-			setAllNthRupRelatedArrays();
+			sourceRupIndexesChanged();
 		}
 		
 		// reset change flags (that haven't already been done so)
