@@ -80,6 +80,8 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 	
 	private Color backgroundColor;
 
+    private Dimension chooserBoxSize = null;
+
 	/**
 	 * Initializes the GUI with the given list of IMRs
 	 * 
@@ -429,7 +431,12 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 			resetRenderer();
 			
 			this.addActionListener(new ComboListener(this));
-			this.setMaximumSize(new Dimension(15, 150));
+//            Dimension imrBoxSize = new Dimension(220, 25);
+            if (chooserBoxSize != null) {
+                this.setPreferredSize(chooserBoxSize);
+                this.setMinimumSize(chooserBoxSize);
+                this.setMaximumSize(chooserBoxSize);
+            }
 		}
 		
 		public void resetRenderer() {
@@ -883,6 +890,10 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 	public void setMaxChooserChars(int maxChooserChars) {
 		this.maxChooserChars = maxChooserChars;
 	}
+
+    public void setChooserBoxSize(Dimension size) {
+        this.chooserBoxSize = size;
+    }
 
     /**
      * Demonstration of how to use IMR_MultiGuiBean
