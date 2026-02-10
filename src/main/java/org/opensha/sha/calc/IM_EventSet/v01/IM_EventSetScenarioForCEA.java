@@ -52,7 +52,7 @@ public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener
 	private ArrayList stationIds;
 	private LocationList locList;
 	private ArrayList imtSupported;
-	private final static String EVENT_SET_FILE_CEA = "org/opensha/sha/calc/IM_EventSetCalc_v01/eventSetFileCEA.txt";
+	private final static String EVENT_SET_FILE_CEA = "org/opensha/sha/calc/IM_EventSetCalc/v01/eventSetFileCEA.txt";
 	private final static String CB2006_TEST_FILE = "CB_2006_TestFile.txt";
 	private final static String BA2006_TEST_FILE = "BA_2006_TestFile.txt";
 	private final static String CY2006_TEST_FILE = "CY_2006_TestFile.txt";
@@ -215,10 +215,7 @@ public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener
 	  /**
 	   * set the site params in IMR according to basin Depth and vs 30
 	   * @param imr
-	   * @param lon
-	   * @param lat
-	   * @param willsClass
-	   * @param basinDepth
+       * @param vs30
 	   */
 	  private void setSiteParamsInIMR(ScalarIMR imr,
 	                                  int vs30) {
@@ -321,7 +318,7 @@ public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener
    *  Function that must be implemented by all Listeners for
    *  ParameterChangeWarnEvents.
    *
-   * @param  event  The Event which triggered this function call
+   * @param  e  The Event which triggered this function call
    */
   public void parameterChangeWarning(ParameterChangeWarningEvent e) {
 

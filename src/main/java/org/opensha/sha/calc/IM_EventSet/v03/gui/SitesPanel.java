@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -22,36 +23,54 @@ import javax.swing.ListSelectionModel;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
+import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
 import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.SiteDataValue;
+import org.opensha.commons.data.siteData.gui.beans.OrderedSiteDataGUIBean;
+import org.opensha.commons.data.siteData.impl.WillsMap2000;
 import org.opensha.commons.exceptions.InvalidRangeException;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.param.Parameter;
+import org.opensha.commons.param.ParameterList;
+import org.opensha.sha.imr.IntensityMeasureRelationship;
+import org.opensha.sha.imr.ScalarIMR;
+import org.opensha.sha.util.SiteTranslator;
 
 public class SitesPanel extends JPanel implements ListSelectionListener, ActionListener {
-	
-	protected JList sitesList;
-	protected JList siteDataList;
-	
-	protected JButton addSiteButton = new JButton("Add Site");
-	protected JButton removeSiteButton = new JButton("Remove Site(s)");
-	protected JButton importSitesButton = new JButton("Import Sites From File");
-	
-	protected JButton addDataButton = new JButton("Add Site Data Value");
-	protected JButton removeDataButton = new JButton("Remove Site Data Value(s)");
-	
-	private ArrayList<Location> locs;
-	private ArrayList<ArrayList<SiteDataValue<?>>> dataLists;
-	
-	private SiteImporterPanel imp;
-	
-	public SitesPanel() {
-		super();
-		this.setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-		
-		locs = new ArrayList<Location>();
-		dataLists = new ArrayList<ArrayList<SiteDataValue<?>>>();
 
-		sitesList = new JList();
+	private final JList sitesList;
+	private final JList siteDataList;
+
+	private final JButton addSiteButton = new JButton("Add Site");
+	private final JButton removeSiteButton = new JButton("Remove Site(s)");
+	private final JButton editSiteButton = new JButton("Edit Site");
+    private final JButton importSitesButton = new JButton("Import Sites");
+    private final JButton exportSitesButton = new JButton("Export Sites");
+    private final JButton setFromWebButton = new JButton("Fetch Site Data");
+
+    // List of locations for each site
+	private final ArrayList<Location> locs;
+    // List of all site data parameters for each site
+    private final ArrayList<ParameterList> siteDataParams;
+    // Default site data parameters to use for new sites
+    private ParameterList defaultSiteDataParams;
+    // Set sites with selected site data providers
+    private final OrderedSiteDataGUIBean siteDataGUIBean;
+
+    private SiteImporterPanel imp;
+    private SiteExporterPanel exp;
+
+	public SitesPanel(OrderedSiteDataGUIBean siteDataGUIBean) {
+		super();
+        this.setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+
+        this.siteDataGUIBean = siteDataGUIBean;
+
+		locs = new ArrayList<Location>();
+        siteDataParams = new ArrayList<>();
+        defaultSiteDataParams = new ParameterList();
+
+		sitesList = new JList<>();
 		sitesList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 		sitesList.setSelectedIndex(0);
 		sitesList.addListSelectionListener(this);
@@ -65,16 +84,26 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 		
 		JPanel buttonPanel = new JPanel(new BorderLayout());
 		JPanel leftButtonPanel = new JPanel();
+        JPanel rightButtonPanel = new JPanel();
 		leftButtonPanel.setLayout(new BoxLayout(leftButtonPanel, BoxLayout.X_AXIS));
+        rightButtonPanel.setLayout(new BoxLayout(rightButtonPanel, BoxLayout.X_AXIS));
+        rightButtonPanel.add(editSiteButton, BorderLayout.EAST);
+        rightButtonPanel.add(importSitesButton, BorderLayout.EAST);
+        rightButtonPanel.add(exportSitesButton, BorderLayout.EAST);
+        rightButtonPanel.add(setFromWebButton, BorderLayout.EAST);
 		leftButtonPanel.add(addSiteButton);
 		leftButtonPanel.add(removeSiteButton);
 		buttonPanel.add(leftButtonPanel, BorderLayout.WEST);
-		buttonPanel.add(importSitesButton, BorderLayout.EAST);
+        buttonPanel.add(rightButtonPanel, BorderLayout.EAST);
 		removeSiteButton.setEnabled(false);
 		addSiteButton.addActionListener(this);
 		removeSiteButton.addActionListener(this);
-		importSitesButton.addActionListener(this);
-		
+		editSiteButton.addActionListener(this);
+        importSitesButton.addActionListener(this);
+        exportSitesButton.addActionListener(this);
+        setFromWebButton.addActionListener(this);
+        setFromWebButton.setToolTipText("Set site data parameters from web services for all sites");
+
 		northPanel.add(buttonPanel, BorderLayout.SOUTH);
 		
 		siteDataList = new JList();
@@ -91,12 +120,7 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 		
 		JPanel dataButtonPanel = new JPanel();
 		dataButtonPanel.setLayout(new BoxLayout(dataButtonPanel, BoxLayout.X_AXIS));
-		dataButtonPanel.add(addDataButton);
-		dataButtonPanel.add(removeDataButton);
-		removeDataButton.setEnabled(false);
-		addDataButton.addActionListener(this);
-		removeDataButton.addActionListener(this);
-		
+
 		southPanel.add(dataButtonPanel, BorderLayout.SOUTH);
 		
 		rebuildSiteList();
@@ -105,71 +129,65 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 		this.add(southPanel);
 	}
 
+    /**
+     * Execute on any value in the SitesPanel being changed
+     * @param e the event that characterizes the change.
+     */
 	public void valueChanged(ListSelectionEvent e) {
 		if (e.getSource().equals(sitesList)) {
 			// value changed in the sites list
 			rebuildSiteDataList();
-		} else {
-			// value changed in the site data list
-			checkEnableRemoveSiteData();
 		}
 	}
-	
+
 	private void checkEnableRemoveSite() {
 		removeSiteButton.setEnabled(!sitesList.isSelectionEmpty());
 	}
-	
-	private void checkEnableRemoveSiteData() {
-		boolean enable = !siteDataList.isSelectionEmpty() && !sitesList.isSelectionEmpty()
-							&& getSingleSelectedIndex() >= 0;
-		removeDataButton.setEnabled(enable);
-	}
-	
-	protected void addSite(Location loc, ArrayList<SiteDataValue<?>> data) {
-		this.locs.add(loc);
-		if (data == null) {
-			data = new ArrayList<SiteDataValue<?>>();
-		}
-		this.dataLists.add(data);
-		this.rebuildSiteList();
-	}
-	
-	private void addSiteDataValue(int i, SiteDataValue<?> val) {
-		this.dataLists.get(i).add(val);
+
+    private void checkEnableEditSite() {
+        editSiteButton.setEnabled(!sitesList.isSelectionEmpty());
+    }
+
+    private void checkEnableExportSite() {
+        exportSitesButton.setEnabled(!locs.isEmpty());
+    }
+
+    private void replaceSite(int index, Location loc, ParameterList params) {
+        locs.set(index, loc);
+        siteDataParams.set(index, params);
+        rebuildSiteList();
+    }
+
+	protected void addSite(Location loc, ParameterList params) {
+		locs.add(loc);
+        siteDataParams.add(params);
+		rebuildSiteList();
 	}
 	
 	public void clear() {
 		locs.clear();
-		dataLists.clear();
-		this.rebuildSiteList();
+		siteDataParams.clear();
+		rebuildSiteList();
 	}
 	
 	private void removeSite(int i) {
 		locs.remove(i);
-		dataLists.remove(i);
-		this.rebuildSiteList();
+		siteDataParams.remove(i);
+		rebuildSiteList();
 	}
 	
-	private void removeSite(int indices[]) {
+	private void removeSite(int[] indices) {
 		Arrays.sort(indices);
 		for (int i=indices.length-1; i>=0; i--) {
-			locs.remove(i);
-			dataLists.remove(i);
+            int idx = indices[i];
+			locs.remove(idx);
+			siteDataParams.remove(idx);
 		}
-		this.rebuildSiteList();
-	}
-	
-	private void removeSiteData(int i, int indices[]) {
-		ArrayList<SiteDataValue<?>> dataVals = dataLists.get(i);
-		Arrays.sort(indices);
-		for (int j=indices.length-1; j>=0; j--) {
-			dataVals.remove(j);
-		}
-		this.rebuildSiteDataList();
+		rebuildSiteList();
 	}
 	
 	private void rebuildSiteList() {
-		Object data[] = new String[locs.size()];
+		Object[] data = new String[locs.size()];
 		for (int i=0; i<locs.size(); i++) {
 			Location loc = locs.get(i);
 			data[i] = (i+1) + ". " + loc.getLatitude() + ", " + loc.getLongitude();
@@ -177,6 +195,8 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 //		System.out.println("rebuilding with length " + data.length);
 		sitesList.setListData(data);
 		checkEnableRemoveSite();
+        checkEnableEditSite();
+        checkEnableExportSite();
 		rebuildSiteDataList();
 		this.validate();
 	}
@@ -188,144 +208,310 @@ public class SitesPanel extends JPanel implements ListSelectionListener, ActionL
 		return selection[0];
 	}
 	
-	private void rebuildSiteDataList() {
+	public void rebuildSiteDataList() {
 		if (sitesList.isSelectionEmpty()) {
-			Object data[] = new String[1];
+			Object[] data = new String[1];
 			data[0] = "(no site(s) selected)";
 			siteDataList.setListData(data);
 			return;
 		}
 		int index = getSingleSelectedIndex();
 		if (index < 0) {
-			Object data[] = new String[1];
+			Object[] data = new String[1];
 			data[0] = "(multiple selected)";
 			siteDataList.setListData(data);
 			return;
 		}
-		ArrayList<SiteDataValue<?>> vals = dataLists.get(index);
-		Object data[] = new String[vals.size()];
-		for (int i=0; i<vals.size(); i++) {
-			SiteDataValue<?> val = vals.get(i);
-			data[i] = getDataListString(i, val);
-		}
+        ParameterList params = siteDataParams.get(index);
+		Object[] data = new String[params.size()];
+        int i = 0;
+        for (Parameter<?> param : params) {
+           data[i] = getDataListString(i++, param);
+        }
 		siteDataList.setListData(data);
 		checkEnableRemoveSite();
-		checkEnableRemoveSiteData();
+        checkEnableEditSite();
+        checkEnableExportSite();
 	}
 	
-	public static String getDataListString(int index, SiteDataValue<?> val) {
-		return (index+1) + ". " + val.getDataType() + ": " + val.getValue();
-	}
-	
-	private void importSites() {
-		if (imp == null)
-			imp = new SiteImporterPanel();
-		
-		int selection = JOptionPane.showConfirmDialog(this, imp, "Import Sites",
-				JOptionPane.OK_CANCEL_OPTION);
-		if (selection == JOptionPane.OK_OPTION) {
-			File file = imp.getSelectedFile();
-			if (file.exists()) {
-				try {
-					imp.importFile(file);
-					this.locs.addAll(imp.getLocs());
-					this.dataLists.addAll(imp.getValsList());
-					this.rebuildSiteList();
-				} catch (IOException e1) {
-					e1.printStackTrace();
-					JOptionPane.showMessageDialog(this, "I/O error reading file!",
-							"I/O error reading file!", JOptionPane.ERROR_MESSAGE);
-				} catch (ParseException e1) {
-					e1.printStackTrace();
-					JOptionPane.showMessageDialog(this, e1.getMessage(),
-							"Error Parsing File", JOptionPane.ERROR_MESSAGE);
-				} catch (NumberFormatException e1) {
-					e1.printStackTrace();
-					JOptionPane.showMessageDialog(this, e1.getMessage(),
-							"Error Parsing Number", JOptionPane.ERROR_MESSAGE);
-				} catch (InvalidRangeException e1) {
-					e1.printStackTrace();
-					JOptionPane.showMessageDialog(this, e1.getMessage(),
-							"Invalid location", JOptionPane.ERROR_MESSAGE);
-				}
-			} else {
-				JOptionPane.showMessageDialog(this, "File '" + file.getPath() + "' doesn't exist!",
-						"File Not Found", JOptionPane.ERROR_MESSAGE);
-			}
-		}
+	public static String getDataListString(int index, Parameter<?> param) {
+        return (index+1) + ". " + param.getName() + ": " + param.getValue();
 	}
 
+    /**
+     * Prompts the user with a confirmation dialog to add or edit a site
+     * using the provided <code>AddSitePanel</code>.
+     * <p>
+     * This method reprompts the user with the same panel while preserving
+     * selections made by the user in the previous dialog. This is required
+     * to prevent duplicate locations.
+     * An exception for the duplicate location check includes the provided
+     * <code>exception</code> parameter. This is required to enable editing
+     * the same site.
+     * </p>
+     * @param siteAdd preserved <code>AddSitePanel</code> with user selections for a new site
+     * @param exception location to exclude from duplicate location check
+     * @return user selection decision (<code>OK</code> or <code>CANCEL</code>)
+     */
+    private int promptNewSite(AddSitePanel siteAdd, Location exception) {
+        int selection = JOptionPane.showConfirmDialog(this, siteAdd, "Add Site",
+                JOptionPane.OK_CANCEL_OPTION);
+        if (selection == JOptionPane.OK_OPTION) {
+            Location loc = siteAdd.getSiteLocation();
+            // Locations are considered duplicates if they have the same latitude and longitude.
+            // We do not consider depth in this check.
+            boolean allowDuplicateSite =
+                    (exception != null && exception.getLongitude() == loc.getLongitude() && exception.getLatitude() == loc.getLatitude());
+            if (!allowDuplicateSite && locs.contains(loc)) {
+                JOptionPane.showMessageDialog(this, "Site with coordinates (" + loc.getLatitude() + ", " + loc.getLongitude() + ") already exists", "Cannot add site",
+                        JOptionPane.ERROR_MESSAGE);
+                return promptNewSite(siteAdd, exception);
+            }
+        }
+        return selection;
+    }
+
+    private int promptNewSite(AddSitePanel siteAdd) {
+        return promptNewSite(siteAdd, null);
+    }
+
+    /**
+     * Logic for importing sites from a file
+     */
+    private void importSites() {
+        if (imp == null)
+            imp = new SiteImporterPanel(defaultSiteDataParams, siteDataGUIBean.getProviderList());
+        else
+            imp.setDefaultSiteDataParams(defaultSiteDataParams);
+
+        int selection = JOptionPane.showConfirmDialog(this, imp, "Import Sites",
+                JOptionPane.OK_CANCEL_OPTION);
+        if (selection == JOptionPane.OK_OPTION) {
+            File file = imp.getSelectedFile();
+            if (file.exists()) {
+                try {
+                    imp.importFile(file);
+                    ArrayList<Location> importedLocs = imp.getLocs();
+                    ArrayList<ParameterList> importedVals = imp.getSiteData();
+                    for (int i = 0; i < importedLocs.size(); i++) {
+                       Location impLoc = importedLocs.get(i);
+                       ParameterList impVals = importedVals.get(i);
+                        // Check for existing sites to overwrite values
+                        if (locs.contains(impLoc)) {
+                            this.replaceSite(locs.indexOf(impLoc), impLoc, impVals);
+                        } else {
+                            locs.add(impLoc);
+                            siteDataParams.add(impVals);
+                        }
+
+                    }
+                    this.rebuildSiteList();
+                } catch (IOException e1) {
+                    e1.printStackTrace();
+                    JOptionPane.showMessageDialog(this, "I/O error reading file!",
+                            "I/O error reading file!", JOptionPane.ERROR_MESSAGE);
+                } catch (ParseException e1) {
+                    e1.printStackTrace();
+                    JOptionPane.showMessageDialog(this, e1.getMessage(),
+                            "Error Parsing File", JOptionPane.ERROR_MESSAGE);
+                } catch (NumberFormatException e1) {
+                    e1.printStackTrace();
+                    JOptionPane.showMessageDialog(this, e1.getMessage(),
+                            "Error Parsing Number", JOptionPane.ERROR_MESSAGE);
+                } catch (InvalidRangeException e1) {
+                    e1.printStackTrace();
+                    JOptionPane.showMessageDialog(this, e1.getMessage(),
+                            "Invalid location", JOptionPane.ERROR_MESSAGE);
+                }
+            } else {
+                JOptionPane.showMessageDialog(this, "File '" + file.getPath() + "' doesn't exist!",
+                        "File Not Found", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    /**
+     * Logic for exporting sites to a file
+     */
+    private void exportSites() {
+        if (exp == null)
+            exp = new SiteExporterPanel(locs, siteDataParams);
+        else
+            exp.updateSiteData(locs, siteDataParams);
+        int selection = JOptionPane.showConfirmDialog(this, exp, "Export Sites",
+                JOptionPane.OK_CANCEL_OPTION);
+        if (selection == JOptionPane.OK_OPTION) {
+            try {
+                exp.exportFile();
+            } catch (IOException e1) {
+                e1.printStackTrace();
+                JOptionPane.showMessageDialog(this,
+                        "Please provide a full path to a new or existing file to write to.\n"+
+                        "You can manually enter the path or click the \"Browse\" button.",
+                        "Failed to write file", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    /**
+     * Execute when a button is pressed in the SitesPanel
+     * @param e the event to be processed
+     */
 	public void actionPerformed(ActionEvent e) {
+        OrderedSiteDataProviderList providers = siteDataGUIBean.getProviderList();
 		if (e.getSource().equals(addSiteButton)) {
+            // Don't allow user to add sites if IMRs aren't selected
+            if (defaultSiteDataParams.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Must have at least 1 IMR selected to add sites", "Cannot add site",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
 			// adding a site
-			AddSitePanel siteAdd = new AddSitePanel();
-			int selection = JOptionPane.showConfirmDialog(this, siteAdd, "Add Site",
-					JOptionPane.OK_CANCEL_OPTION);
+            // Unique set of site data params per new site added
+            ParameterList params = (ParameterList)defaultSiteDataParams.clone();
+			AddSitePanel siteAdd = new AddSitePanel(params, providers);
+            int selection = promptNewSite(siteAdd);
 			if (selection == JOptionPane.OK_OPTION) {
 				Location loc = siteAdd.getSiteLocation();
-				ArrayList<SiteDataValue<?>> vals = siteAdd.getDataVals();
-				System.out.println("Adding site: " + loc + " (" + vals.size() + " vals)");
-				this.addSite(loc, vals);
+				System.out.println("Adding site: " + loc + " (" + params.size() + " vals)");
+                addSite(loc, params);
 				rebuildSiteDataList();
 			}
 		} else if (e.getSource().equals(removeSiteButton)) {
-			// removing a site
-			int indices[] = sitesList.getSelectedIndices();
-			removeSite(indices);
-		} else if (e.getSource().equals(addDataButton)) {
-			// adding a site data val
-			AddSiteDataPanel dataAdd = new AddSiteDataPanel();
-			int selection = JOptionPane.showConfirmDialog(this, dataAdd, "Add Site Data Value",
-					JOptionPane.OK_CANCEL_OPTION);
-			if (selection == JOptionPane.OK_OPTION) {
-				try {
-					SiteDataValue<?> val = dataAdd.getValue();
-					int index = getSingleSelectedIndex();
-					this.addSiteDataValue(index, val);
-					rebuildSiteDataList();
-				} catch (Exception e1) {
-					JOptionPane.showMessageDialog(this, "Error adding value:\n" + e1.getMessage(),
-							"Error!", JOptionPane.ERROR_MESSAGE);
-				}
-			}
-			rebuildSiteDataList();
-		} else if (e.getSource().equals(removeDataButton)) {
-			// removing a site data val
-			int i = getSingleSelectedIndex();
-			if (i >= 0)
-				removeSiteData(i, siteDataList.getSelectedIndices());
-			checkEnableRemoveSiteData();
-		} else if (e.getSource().equals(importSitesButton)) {
-			importSites();
-		}
+            // removing a site
+            int[] indices = sitesList.getSelectedIndices();
+            removeSite(indices);
+        } else if (e.getSource().equals(editSiteButton)) {
+            // edit the selected site
+            int siteIndex = sitesList.getSelectedIndex();
+            ParameterList params = (ParameterList) siteDataParams.get(siteIndex).clone();
+            AddSitePanel siteAdd = new AddSitePanel(params, providers, locs.get(siteIndex));
+            int selection = promptNewSite(siteAdd, /*exception=*/locs.get(siteIndex));
+            if (selection == JOptionPane.OK_OPTION) {
+                Location loc = siteAdd.getSiteLocation();
+                System.out.println("Editing site: " + loc + " (" + params.size() + " vals)");
+                this.replaceSite(siteIndex, loc, params);
+                rebuildSiteDataList();
+            }
+        } else if (e.getSource().equals(importSitesButton)) {
+            // Don't allow user to add sites if IMRs aren't selected
+            if (defaultSiteDataParams.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Must have at least 1 IMR selected to import sites", "Cannot import sites",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            importSites();
+        } else if (e.getSource().equals(exportSitesButton)) {
+            exportSites();
+        } else if (e.getSource().equals(setFromWebButton)) {
+            // Set parameters for all sites
+            for (int i = 0; i < locs.size(); i++) {
+                Location loc = locs.get(i);
+                ParameterList params = siteDataParams.get(i);
+                SiteTranslator siteTrans = new SiteTranslator();
+                // Fetch all data values from providers that provide at least one new data type
+                ArrayList<SiteDataValue<?>> provData = providers.getBestAvailableData(loc);
+                for (Parameter<?> param : params) {
+                    siteTrans.setParameterValue(param, provData);
+                }
+            }
+            rebuildSiteDataList();
+        }
 	}
 
-	
+    /**
+     * Dynamically builds the site data parameters from the selected IMRs.
+     * @param imrs
+     * @param params
+     * @return the newly updated list
+     */
+    private ParameterList updateSiteDataParams(List<ScalarIMR> imrs, ParameterList params) {
+        ParameterList oldParams = (ParameterList)params.clone();
+        ParameterList newParams = (ParameterList)ParameterList.union(imrs.stream()
+                .map(IntensityMeasureRelationship::getSiteParams)
+                .toArray(ParameterList[]::new))
+                .clone();
+        // Copy any existing parameter values from the old list
+        for (Parameter<?> oldParam : oldParams) {
+            if (newParams.containsParameter(oldParam)) {
+                newParams.setValue(oldParam.getName(), oldParam.getValue());
+            }
+        }
+        return newParams;
+    }
+
+    /**
+     * List of supported types is needed to find which types become unsupported in updateSiteDataParams.
+     * @return a list of the names of all supported site data types
+     */
+    private List<String> getSiteDataTypes() {
+        ArrayList<String> supportedTypes = new ArrayList<>();
+        for (Parameter<?> param : defaultSiteDataParams) {
+            supportedTypes.add(param.getName());
+        }
+        return supportedTypes;
+    }
+
+    /**
+     * Dynamically builds the site data parameters from the selected IMRs.
+     * Should be invoked by the IMR_ChooserPanel.
+     */
+    public void updateSiteDataParams(List<ScalarIMR> imrs) {
+        // Update default site params for creating new sites and note which types are now invalid.
+        List<String> invalidatedSiteDataTypes = getSiteDataTypes();
+
+        defaultSiteDataParams = updateSiteDataParams(imrs, defaultSiteDataParams);
+        List<String> newSiteDataTypes = getSiteDataTypes();
+        invalidatedSiteDataTypes.removeAll(newSiteDataTypes);
+
+        // Update existing sites with the updated parameter types
+        siteDataParams.replaceAll(p -> updateSiteDataParams(imrs, p));
+
+        // Notify user that previously selected site data types were invalidated
+        if (!invalidatedSiteDataTypes.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "The following site data parameters were previously set and have been removed across all sites added so far.\n"
+                        + "Removed Site Data Types: " + String.join(",", invalidatedSiteDataTypes) + "\n"
+                        + "Site data parameters are generated from the selected IMRs. To avoid this in the future, select all desired IMRs before adding sites.",
+                    "Site Data Parameter Removal",
+                    JOptionPane.INFORMATION_MESSAGE);
+        }
+
+       // Update GUI
+        rebuildSiteDataList();
+    }
+
+    public ArrayList<Location> getLocs() {
+        return locs;
+    }
+
+    /**
+     * Gets the list of site data parameters.
+     * Each parameter list represents all the site data and its values for each site.
+     * @return the list of site data parameters
+     */
+    public ArrayList<ParameterList> getSiteDataParams() {
+        return siteDataParams;
+    }
+
 	/**
 	 * tester main method
 	 * @param args
 	 */
-	public static void main(String args[]) {
+	public static void main(String[] args) {
 		JFrame frame = new JFrame();
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setSize(400, 600);
-		
-		SitesPanel sites = new SitesPanel();
-		
+
+        // Creating a SitesPanel requires a site data gui bean to monitor for provider changes
+        // To mock this we'll create a new gui bean with only one provider (WillsMap2000).
+        ArrayList<SiteData<?>> params = new ArrayList<>();
+        params.add(new WillsMap2000());
+        OrderedSiteDataProviderList providers = new OrderedSiteDataProviderList(params);
+		SitesPanel sites = new SitesPanel(new OrderedSiteDataGUIBean(providers));
 		sites.addSite(new Location(34, -118), null);
-		ArrayList<SiteDataValue<?>> vals = new ArrayList<SiteDataValue<?>>();
-		vals.add(new SiteDataValue<Double>(SiteData.TYPE_VS30, SiteData.TYPE_FLAG_INFERRED, 760.0));
-		sites.addSite(new Location(34, -118.1), vals);
-		
+
 		frame.setContentPane(sites);
 		frame.setVisible(true);
-	}
-
-	public ArrayList<Location> getLocs() {
-		return locs;
-	}
-
-	public ArrayList<ArrayList<SiteDataValue<?>>> getDataLists() {
-		return dataLists;
 	}
 }

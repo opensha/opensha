@@ -1,126 +1,206 @@
 package org.opensha.sha.calc.IM_EventSet.v03.gui;
 
-import java.awt.BorderLayout;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.concurrent.ExecutionException;
 
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JTabbedPane;
+import javax.swing.*;
 
-import org.dom4j.Document;
-import org.dom4j.Element;
-import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
-import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.data.siteData.gui.beans.OrderedSiteDataGUIBean;
-import org.opensha.commons.data.siteData.impl.WillsMap2006;
 import org.opensha.commons.geo.Location;
-import org.opensha.commons.param.Parameter;
+import org.opensha.commons.gui.ControlPanel;
+import org.opensha.commons.gui.DisclaimerDialog;
+import org.opensha.commons.param.ParameterList;
+import org.opensha.commons.util.ApplicationVersion;
+import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.ServerPrefUtils;
-import org.opensha.commons.util.XMLUtils;
-import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetCalculation;
+import org.opensha.commons.util.bugReports.BugReport;
+import org.opensha.commons.util.bugReports.BugReportDialog;
+import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetOutputWriter;
 import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.HAZ01Writer;
 import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.OriginalModWriter;
+import org.opensha.sha.calc.params.filters.*;
 import org.opensha.sha.earthquake.ERF_Ref;
 import org.opensha.sha.earthquake.ERF;
-import org.opensha.sha.earthquake.BaseERF;
+import org.opensha.sha.gui.HazardCurveApplication;
 import org.opensha.sha.gui.beans.ERF_GuiBean;
+import org.opensha.sha.gui.controls.CalculationSettingsControlPanel;
+import org.opensha.sha.gui.controls.CalculationSettingsControlPanelAPI;
+import org.opensha.sha.gui.infoTools.IndeterminateProgressBar;
 import org.opensha.sha.imr.ScalarIMR;
 
-public class IM_EventSetGUI extends JFrame implements ActionListener {
+public class IM_EventSetGUI extends JFrame implements ActionListener, CalculationSettingsControlPanelAPI {
 	
-	private static File cwd = new File(System.getProperty("user.dir"));
+	private static final long serialVersionUID = 1L;
+
+    private static ApplicationVersion version;
+
+    public static final String APP_NAME = "IM Event Set Calculator";
+    public static final String APP_SHORT_NAME = "IM_EventSetCalc";
+
+	private static final File cwd = new File(System.getProperty("user.dir"));
 	
 	private SitesPanel sitesPanel = null;
 	private ERF_GuiBean erfGuiBean = null;
 	private IMR_ChooserPanel imrChooser = null;
 	private IMT_ChooserPanel imtChooser = null;
 	private OrderedSiteDataGUIBean dataBean = null;
-	
-	private JTabbedPane tabbedPane;
-	
-	private JPanel imPanel = new JPanel();
-	private JPanel siteERFPanel = new JPanel();
-	
-	private JButton calcButton = new JButton("Start Calculation");
-	private JButton saveButton = new JButton("Save Calculation Settings");
-	private JButton loadButton = new JButton("Load Calculation Settings");
-	
-	private JFileChooser openChooser;
-	private JFileChooser saveChooser;
+
+    private JButton computeButton;
+    private JButton calcSettingsButton;
+    private ControlPanel calcSettingsControlPanel;
 	private JFileChooser outputChooser;
+	private JComboBox<?> outputWriterChooser;
+
+    private SourceFilterManager sourceFilters;
+    private final ParameterList adjustableParams = new ParameterList();
 	
-	private JComboBox outputWriterChooser;
-	
-//	private JProgressBar bar = new JProgressBar();
-	
+	private final IndeterminateProgressBar bar = new IndeterminateProgressBar("Calculating...");
+	private Timer doneTimer = null; // show when calculation is done
+
 	public IM_EventSetGUI() {
-		sitesPanel = new SitesPanel();
-		erfGuiBean = createERF_GUI_Bean();
-		imtChooser = new IMT_ChooserPanel();
-		imrChooser = new IMR_ChooserPanel(imtChooser);
-		
-		OrderedSiteDataProviderList providers = OrderedSiteDataProviderList.createSiteDataProviderDefaults();
-		for (int i=0; i<providers.size(); i++) {
-			if (!providers.getProvider(i).getName().equals(WillsMap2006.NAME))
-				providers.setEnabled(i, false);
-		}
-		
-		dataBean = new OrderedSiteDataGUIBean(providers);
-		
-		imPanel.setLayout(new BoxLayout(imPanel, BoxLayout.X_AXIS));
-		imPanel.add(imrChooser);
-		imPanel.add(imtChooser);
-		
-		siteERFPanel.setLayout(new BoxLayout(siteERFPanel, BoxLayout.X_AXIS));
-		siteERFPanel.add(sitesPanel);
-		siteERFPanel.add(erfGuiBean);
-		
-		tabbedPane = new JTabbedPane();
-		
-		tabbedPane.addTab("Sites/ERF", siteERFPanel);
-		tabbedPane.addTab("IMRs/IMTs", imPanel);
-		tabbedPane.addTab("Site Data Providers", dataBean);
-		
-		JPanel mainPanel = new JPanel(new BorderLayout());
-		
-		String writers[] = new String[2];
-		writers[0] = OriginalModWriter.NAME;
-		writers[1] = HAZ01Writer.NAME;
-		outputWriterChooser = new JComboBox(writers);
-		JPanel outputWriterChooserPanel = new JPanel();
-		outputWriterChooserPanel.add(outputWriterChooser);
-		
-		JPanel bottomPanel = new JPanel();
-		bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.X_AXIS));
-		bottomPanel.add(outputWriterChooserPanel);
-		bottomPanel.add(calcButton);
-		bottomPanel.add(saveButton);
-		bottomPanel.add(loadButton);
-//		bottomPanel.add(bar);
-		calcButton.addActionListener(this);
-		saveButton.addActionListener(this);
-		loadButton.addActionListener(this);
-		
-		mainPanel.add(tabbedPane, BorderLayout.CENTER);
-		mainPanel.add(bottomPanel, BorderLayout.SOUTH);
-		
-		this.setTitle("IM Event Set Calculator v3.0");
-		
-		this.setContentPane(mainPanel);
-	}
-	
+        try {
+            erfGuiBean = createERF_GUI_Bean();
+            imtChooser = new IMT_ChooserPanel();
+
+            // Initialize params for control panel.
+            sourceFilters = SourceFiltersParam.getDefault();
+            SourceFiltersParam sourceFilterParam = new SourceFiltersParam(sourceFilters);
+            adjustableParams.addParameter(sourceFilterParam);
+
+            // dataBean needs to be passed to SitesPanel to set sites with selected site data providers
+            OrderedSiteDataProviderList providers = OrderedSiteDataProviderList.createSiteDataProviderDefaults();
+            dataBean = new OrderedSiteDataGUIBean(providers);
+
+            sitesPanel = new SitesPanel(dataBean);
+
+            imrChooser = new IMR_ChooserPanel(imtChooser, sitesPanel);
+
+            calcSettingsControlPanel = new CalculationSettingsControlPanel(this, this);
+
+            // ======== app tabs ========
+            JPanel imPanel = new JPanel();
+            imPanel.setLayout(new BoxLayout(imPanel, BoxLayout.X_AXIS));
+            imPanel.add(imrChooser);
+            imPanel.add(imtChooser);
+
+            JPanel siteERFPanel = new JPanel();
+            siteERFPanel.setLayout(new BoxLayout(siteERFPanel, BoxLayout.X_AXIS));
+            siteERFPanel.add(sitesPanel);
+            siteERFPanel.add(erfGuiBean);
+
+            JTabbedPane tabbedPane = new JTabbedPane();
+            tabbedPane.addTab("IMRs/IMTs", imPanel);
+            tabbedPane.addTab("Sites/ERF", siteERFPanel);
+            tabbedPane.addTab("Site Data Providers", dataBean);
+
+            // ======== button panel ========
+            JPanel buttonPanel = new JPanel(new GridBagLayout()) {
+                private static final long serialVersionUID = 1L;
+
+                @Override
+                public void paintComponent(Graphics g) {
+                    super.paintComponent(g);
+                    g.setColor(Color.gray);
+                    g.drawLine(0, 0, getWidth(), 0);
+                }
+            };
+            buttonPanel.setBorder(BorderFactory.createEmptyBorder(12, 24, 12, 40));
+            buttonPanel.setBackground(HazardCurveApplication.getBottomBarColor()); // we should move this out somewhere else
+
+            JLabel shaLogo = new JLabel(new ImageIcon(
+                    FileUtils.loadImage("logos/opensha_64.png")));
+
+            String[] writers = new String[2];
+            writers[0] = OriginalModWriter.NAME;
+            writers[1] = HAZ01Writer.NAME;
+            outputWriterChooser = new JComboBox<>(writers);
+
+            calcSettingsButton = new JButton(CalculationSettingsControlPanel.NAME);
+            calcSettingsButton.addActionListener(this);
+            JPanel calcSettingsButtonWrapper = new JPanel(new BorderLayout());
+            calcSettingsButtonWrapper.setOpaque(false);
+            calcSettingsButtonWrapper.setBorder(BorderFactory.createEmptyBorder(-4, 0, 2, 0));
+            calcSettingsButtonWrapper.add(calcSettingsButton, BorderLayout.CENTER);
+
+            computeButton = new JButton("Compute");
+            computeButton.addActionListener(this);
+            JPanel computeButtonWrapper = new JPanel(new BorderLayout());
+            computeButtonWrapper.setOpaque(false);
+            computeButtonWrapper.setBorder(BorderFactory.createEmptyBorder(-4, 0, 2, 0));
+            computeButtonWrapper.add(computeButton, BorderLayout.CENTER);
+
+            // Create a panel to hold the combo box and button together
+            JPanel controlsPanel = new JPanel();
+            controlsPanel.setLayout(new BoxLayout(controlsPanel, BoxLayout.X_AXIS));
+            controlsPanel.setOpaque(false);
+            controlsPanel.add(outputWriterChooser);
+            controlsPanel.add(Box.createHorizontalStrut(18));
+            controlsPanel.add(calcSettingsButtonWrapper);
+            controlsPanel.add(computeButtonWrapper);
+
+            // Set the progress bar to match the width of the controls above
+            Dimension controlsPanelSize = controlsPanel.getPreferredSize();
+            bar.setPreferredSize(new Dimension(controlsPanelSize.width, bar.getPreferredSize().height));
+            bar.setMaximumSize(new Dimension(controlsPanelSize.width, bar.getPreferredSize().height));
+
+            // Create a panel to stack controls and progress bar vertically
+            JPanel rightPanel = new JPanel();
+            rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS));
+            rightPanel.setOpaque(false);
+            rightPanel.add(controlsPanel);
+            rightPanel.add(Box.createVerticalStrut(5));
+            rightPanel.add(bar);
+
+            GridBagConstraints gbc = new GridBagConstraints();
+
+            // Logo on the left
+            gbc.gridx = 0;
+            gbc.gridy = 0;
+            gbc.weightx = 0.0;
+            gbc.weighty = 1.0;
+            gbc.anchor = GridBagConstraints.LINE_START;
+            gbc.fill = GridBagConstraints.NONE;
+            gbc.insets = new Insets(0, 0, 0, 0);
+            buttonPanel.add(shaLogo, gbc);
+
+            // Spacer in the middle to push right panel to the right
+            gbc.gridx = 1;
+            gbc.weightx = 1.0;
+            gbc.fill = GridBagConstraints.HORIZONTAL;
+            buttonPanel.add(Box.createHorizontalGlue(), gbc);
+
+            // Right panel (controls + progress bar) on the right
+            gbc.gridx = 2;
+            gbc.weightx = 0.0;
+            gbc.anchor = GridBagConstraints.LINE_END;
+            gbc.fill = GridBagConstraints.NONE;
+            buttonPanel.add(rightPanel, gbc);
+
+            // ======== main panel ========
+            JPanel mainPanel = new JPanel(new BorderLayout());
+            mainPanel.add(tabbedPane, BorderLayout.CENTER);
+            mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+            setTitle(APP_NAME + " (" + getAppVersion() + ")");
+            setContentPane(mainPanel);
+            pack();
+        } catch (Exception e) {
+            e.printStackTrace();
+            BugReport bug = new BugReport(e, "Error occurred during app initialization.", APP_SHORT_NAME, getAppVersion(), this);
+            BugReportDialog bugDialog = new BugReportDialog(this, bug, true);
+            bugDialog.setVisible(true);
+
+        }
+    }
+
 	private ERF_GuiBean createERF_GUI_Bean() {
 		try {
 			return new ERF_GuiBean(ERF_Ref.get(false, ServerPrefUtils.SERVER_PREFS));
@@ -128,33 +208,11 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 			throw new RuntimeException(e);
 		}
 	}
-	
-	public IM_EventSetCalculation getEventSetCalc() {
-		ERF erf = null;
-		try {
-			erf = (ERF) this.erfGuiBean.getSelectedERF_Instance();
-		} catch (InvocationTargetException e) {
-			throw new RuntimeException(e);
-		}
-		ArrayList<ERF> erfs = new ArrayList<ERF>();
-		erfs.add(erf);
-		
-		ArrayList<ScalarIMR> imrs = imrChooser.getSelectedIMRs();
-		
-		ArrayList<String> imts = imtChooser.getIMTStrings();
-		ArrayList<Location> locs = sitesPanel.getLocs();
-		ArrayList<ArrayList<SiteDataValue<?>>> vals = sitesPanel.getDataLists();
-		
-		OrderedSiteDataProviderList providers = this.dataBean.getProviderList().clone();
-		providers.removeDisabledProviders();
-		
-		return new IM_EventSetCalculation(locs, vals, erfs, imrs, imts, providers);
-	}
-	
-	private boolean isReadyForCalc(ArrayList<Location> locs, ArrayList<ArrayList<SiteDataValue<?>>> dataLists,
+
+    private boolean isReadyForCalc(ArrayList<Location> locs, ArrayList<ParameterList> dataLists,
 			ERF erf, ArrayList<ScalarIMR> imrs, ArrayList<String> imts) {
 		
-		if (locs.size() < 1) {
+		if (locs.isEmpty()) {
 			JOptionPane.showMessageDialog(this, "You must add at least 1 site!", "No Sites Selected!",
 					JOptionPane.ERROR_MESSAGE);
 			return false;
@@ -169,12 +227,12 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 					JOptionPane.ERROR_MESSAGE);
 			return false;
 		}
-		if (imrs.size() < 1) {
+		if (imrs.isEmpty()) {
 			JOptionPane.showMessageDialog(this, "You must add at least 1 IMR!", "No IMRs Selected!",
 					JOptionPane.ERROR_MESSAGE);
 			return false;
 		}
-		if (imts.size() < 1) {
+		if (imts.isEmpty()) {
 			JOptionPane.showMessageDialog(this, "You must add at least 1 IMT!", "No IMTs Selected!",
 					JOptionPane.ERROR_MESSAGE);
 			return false;
@@ -183,157 +241,209 @@ public class IM_EventSetGUI extends JFrame implements ActionListener {
 	}
 	
 	public void actionPerformed(ActionEvent e) {
-		if (e.getSource().equals(calcButton)) {
-			// make sure we're ready to calculate first
-			ArrayList<Location> locs = null;
-			ArrayList<ArrayList<SiteDataValue<?>>> dataLists = null;
-			ERF erf = null;
-			ArrayList<ScalarIMR> imrs = null;
-			ArrayList<String> imts = null;
-			try {
-				locs = sitesPanel.getLocs();
-				dataLists = sitesPanel.getDataLists();
-				erf = (ERF)erfGuiBean.getSelectedERF();
-				imrs = imrChooser.getSelectedIMRs();
-				imts = imtChooser.getIMTStrings();
-				
-				if (!isReadyForCalc(locs, dataLists, erf, imrs, imts))
-					return;
-			} catch (Exception e2) {
-				e2.printStackTrace();
-				JOptionPane.showMessageDialog(this, e2.getMessage(), "Exception Preparing Calculation",
-						JOptionPane.ERROR_MESSAGE);
-			}
-			
-			if (outputChooser == null) {
-				outputChooser = new JFileChooser(cwd);
-				outputChooser.setDialogTitle("Select Output Directory");
-				outputChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-			}
-			int returnVal = outputChooser.showOpenDialog(this);;
-			if (returnVal == JFileChooser.APPROVE_OPTION) {
-				File outputDir = outputChooser.getSelectedFile();
-				GUICalcAPI_Impl calc = new GUICalcAPI_Impl(locs, dataLists,
-						outputDir, dataBean.getProviderList());
-				IM_EventSetOutputWriter writer;
-				String writerName = (String) outputWriterChooser.getSelectedItem();
-				if (writerName.equals(OriginalModWriter.NAME))
-					writer = new OriginalModWriter(calc);
-				else if (writerName.equals(HAZ01Writer.NAME))
-					writer = new HAZ01Writer(calc);
-				else
-					throw new RuntimeException("Unknown writer: " + writerName);
-				try {
-//					bar.setIndeterminate(true);
-//					bar.setString("Calculating...");
-//					bar.setStringPainted(true);
-					this.calcButton.setEnabled(false);
-					this.validate();
-					writer.writeFiles(erf, imrs, imts);
-				} catch (Exception e1) {
-//					bar.setIndeterminate(false);
-//					bar.setStringPainted(false);
-					this.calcButton.setEnabled(true);
-					throw new RuntimeException(e1);
-				}
-				this.calcButton.setEnabled(true);
-//				bar.setIndeterminate(false);
-//				bar.setStringPainted(false);
-			}
-		} else if (e.getSource().equals(saveButton)) {
-			if (saveChooser == null)
-				saveChooser = new JFileChooser(cwd);
-			int returnVal = saveChooser.showSaveDialog(this);
-			if (returnVal == JFileChooser.APPROVE_OPTION) {
-				IM_EventSetCalculation calc = getEventSetCalc();
-				File file = saveChooser.getSelectedFile();
-				Document doc = XMLUtils.createDocumentWithRoot();
-				Element root = doc.getRootElement();
-				calc.toXMLMetadata(root);
-				try {
-					XMLUtils.writeDocumentToFile(file, doc);
-				} catch (IOException e1) {
-					e1.printStackTrace();
-				}
-			}
-		} else if (e.getSource().equals(loadButton)) {
-			if (openChooser == null)
-				openChooser = new JFileChooser(cwd);
-			int returnVal = openChooser.showOpenDialog(this);
-			if (returnVal == JFileChooser.APPROVE_OPTION) {
-				File file = openChooser.getSelectedFile();
-				Document doc = null;
-				try {
-					doc = XMLUtils.loadDocument(file.getAbsolutePath());
-				} catch (Exception e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-					JOptionPane.showMessageDialog(this, "Error loading XML file:\n" + e1.getMessage(),
-							"Error loading XML!", JOptionPane.ERROR_MESSAGE);
-					return;
-				}
-				try {
-					Element eventSetEl = doc.getRootElement().element(IM_EventSetCalculation.XML_METADATA_NAME);
-					IM_EventSetCalculation calc = IM_EventSetCalculation.fromXMLMetadata(eventSetEl);
-					
-					// sites
-					this.sitesPanel.clear();
-					ArrayList<Location> sites = calc.getSites();
-					ArrayList<ArrayList<SiteDataValue<?>>> sitesData = calc.getSitesData();
-					for (int i=0; i<calc.getSites().size(); i++) {
-						this.sitesPanel.addSite(sites.get(i), sitesData.get(i));
-					}
-					
-					// erf
-					ArrayList<ERF> erfs = calc.getErfs();
-					if (erfs.size() > 0) {
-						ERF erf = erfs.get(0);
-						this.erfGuiBean.getParameter(ERF_GuiBean.ERF_PARAM_NAME).setValue(erf.getName());
-						BaseERF myERF = erfGuiBean.getSelectedERF_Instance();
-						for (Parameter myParam : myERF.getAdjustableParameterList()) {
-							for (Parameter xmlParam : erf.getAdjustableParameterList()) {
-								if (myParam.getName().equals(xmlParam.getName())) {
-									myParam.setValue(xmlParam.getValue());
-								}
-							}
-						}
-						TimeSpan timeSpan = erf.getTimeSpan();
-						myERF.setTimeSpan(timeSpan);
-						erfGuiBean.getERFParameterListEditor().refreshParamEditor();
-						erfGuiBean.getSelectedERFTimespanGuiBean().setTimeSpan(timeSpan);
-					}
-					
-					// imrs
-					ArrayList<ScalarIMR> imrs = calc.getIMRs();
-					imrChooser.setForIMRS(imrs);
-					
-					// imts
-					imtChooser.setIMRs(imrChooser.getSelectedIMRs());
-					imtChooser.setIMTs(calc.getIMTs());
-					
-					// site data providers
-					OrderedSiteDataProviderList provs = calc.getProviders();
-					OrderedSiteDataProviderList defaultProvs = dataBean.getProviderList();
-					defaultProvs.mergeWith(provs);
-					if (provs != null)
-						dataBean.setProviderList(defaultProvs);
-				} catch (Exception e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-			}
-		}
-	}
+		IM_EventSetGUI instance = this; // Need to get instance inside SwingWorker
+		if (e.getSource().equals(computeButton)) {
 
-	/**
-	 * @param args
-	 */
+            // Spawn thread for precalculation logic to determine if ready
+            SwingWorker<Boolean, Integer> precalcWorker = new SwingWorker<>() {
+                ArrayList<Location> locs = null;
+                ArrayList<ParameterList> dataLists = null;
+                ERF erf = null;
+                ArrayList<ScalarIMR> imrs = null;
+                ArrayList<String> imts = null;
+                Exception precalcException;
+
+                @Override
+                protected Boolean doInBackground() {
+                    try {
+                        // Ensure no active timers from prior calculations
+                        if (doneTimer != null && doneTimer.isRunning()) {
+                            doneTimer.stop();
+                            doneTimer = null;
+                        }
+                        // Get data for calculation
+                        locs = sitesPanel.getLocs();
+                        dataLists = sitesPanel.getSiteDataParams();
+                        erf = (ERF) erfGuiBean.getSelectedERF();
+                        imrs = imrChooser.getSelectedIMRs();
+                        imts = imtChooser.getIMTStrings();
+
+                        return isReadyForCalc(locs, dataLists, erf, imrs, imts);
+                    } catch (Exception e) {
+                        precalcException = e;
+                        return false;
+                    }
+                }
+
+                @Override
+                protected void done() {
+                    // If precalcWorker was successful, begin main calculation
+                    boolean readyForCalc = false;
+                    try {
+                        readyForCalc = get();
+                    } catch (InterruptedException | ExecutionException e) {
+                        precalcException = e;
+                    }
+                    if (!readyForCalc) {
+                        if (precalcException != null) {
+                            precalcException.printStackTrace();
+                            JOptionPane.showMessageDialog(
+                                    instance, precalcException.getMessage(), "Exception Preparing Calculation",
+                                    JOptionPane.ERROR_MESSAGE);
+                        }
+                        return;
+                    }
+                    // Ask user for output directory on Event Dispatch Thread
+                    SwingUtilities.invokeLater(() -> {
+                        if (outputChooser == null) {
+                            outputChooser = new JFileChooser(cwd);
+                            outputChooser.setDialogTitle("Select Output Directory");
+                            outputChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+                        }
+                        int returnVal = outputChooser.showOpenDialog(instance);
+
+                        if (returnVal == JFileChooser.APPROVE_OPTION) {
+                            File outputDir = outputChooser.getSelectedFile();
+                            GUICalcAPI_Impl calc = new GUICalcAPI_Impl(
+                                    locs, dataLists, outputDir, sourceFilters);
+                            IM_EventSetOutputWriter writer;
+                            String writerName = (String) outputWriterChooser.getSelectedItem();
+                            if (writerName == null) {
+                                throw new RuntimeException("No output writer selected");
+                            }
+                            if (writerName.equals(OriginalModWriter.NAME)) {
+                                writer = new OriginalModWriter(calc);
+                            } else if (writerName.equals(HAZ01Writer.NAME)) {
+                                writer = new HAZ01Writer(calc);
+                            } else {
+                                throw new RuntimeException("Unknown writer: " + writerName);
+                            }
+
+                            // Spawn thread for calculation. Returns true if ran successfully.
+                            SwingWorker<Boolean, Integer> calcWorker = new SwingWorker<>() {
+                                Exception calcException;
+
+                                @Override
+                                protected Boolean doInBackground() {
+                                    instance.validate();
+                                    try {
+                                        writer.writeFiles(erf, imrs, imts);
+                                        return true;
+                                    } catch (IOException e) {
+                                        calcException = e;
+                                    }
+                                    return false;
+                                }
+
+                                @Override
+                                protected void done() {
+                                    boolean calcSuccess = false;
+                                    try {
+                                        calcSuccess = get();
+                                    } catch (InterruptedException | ExecutionException e) {
+                                        calcException = e;
+                                    }
+                                    if (!calcSuccess) {
+                                        bar.toggle();
+                                        computeButton.setEnabled(true);
+                                        if (calcException != null)
+                                            calcException.printStackTrace();
+                                        throw new RuntimeException(calcException);
+                                    }
+                                    computeButton.setEnabled(true);
+                                    // Stop progress bar after calculation over
+                                    bar.toggle();
+
+                                    bar.setString("Done!");
+                                    bar.setStringPainted(true);
+                                    sitesPanel.rebuildSiteDataList();
+                                    doneTimer = new Timer(1200, e -> {
+                                        bar.setStringPainted(false);
+                                        bar.setString("Calculating...");
+                                    });
+                                    doneTimer.start();
+                                }
+                            };
+
+                            // Show progress bar on bottom panel
+                            bar.toggle();
+                            computeButton.setEnabled(false);
+
+                            calcWorker.execute();
+                            // Give EDT a moment to update before kicking off background work
+//							SwingUtilities.invokeLater(() -> calcWorker.execute());
+                        }
+                    });
+
+                }
+            };
+            precalcWorker.execute();
+        } else if (e.getSource().equals(calcSettingsButton)) {
+            calcSettingsControlPanel.showControlPanel();
+        }
+    }
+
+    // Main method
 	public static void main(String[] args) {
-		IM_EventSetGUI gui = new IM_EventSetGUI();
-		gui.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		gui.setSize(900, 700);
-		
-		gui.setVisible(true);
+        new DisclaimerDialog(APP_NAME, APP_SHORT_NAME, getAppVersion());
+        DefaultExceptionHandler exp = new DefaultExceptionHandler(
+                APP_SHORT_NAME, getAppVersion(), null, null);
+        Thread.setDefaultUncaughtExceptionHandler(exp);
+        launch(exp);
 	}
 
+    public static IM_EventSetGUI launch(DefaultExceptionHandler handler) {
+        IM_EventSetGUI applet = new IM_EventSetGUI();
+        if (handler != null) {
+            handler.setApp(applet);
+            handler.setParent(applet);
+        }
+        applet.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        applet.setSize(900, 700);
+
+        applet.setVisible(true);
+        return applet;
+    }
+
+    // static initializer for setting look & feel
+    static {
+        try {
+            System.setProperty("apple.laf.useScreenMenuBar", "true");
+        } catch (Exception e1) {
+            System.err.println("WARNING: could not set property 'apple.laf.useScreenMenuBar'");
+        }
+//		String osName = System.getProperty("os.name");
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception e) {
+        }
+    }
+
+    /**
+     * Returns the Application version
+     * @return ApplicationVersion
+     */
+    public static ApplicationVersion getAppVersion(){
+        if (version == null) {
+            try {
+                version = ApplicationVersion.loadBuildVersion();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return version;
+    }
+
+    @Override
+    public ParameterList getCalcAdjustableParams() {
+        return adjustableParams;
+    }
+
+    @Override
+    public String getCalcParamMetadataString() {
+        ParameterList params = getCalcAdjustableParams();
+        if (params == null)
+            return "";
+        return params.getParameterListMetadataString();
+    }
 }

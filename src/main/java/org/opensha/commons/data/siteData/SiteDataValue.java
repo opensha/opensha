@@ -3,6 +3,10 @@ package org.opensha.commons.data.siteData;
 import org.dom4j.Attribute;
 import org.opensha.commons.metadata.XMLSaveable;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+
 /**
  * This represents a single site data value, along with metadata describing it's
  * type and source. It is returned by the SiteDataAPI.getAnnotatedValue method. 
@@ -54,6 +58,22 @@ public class SiteDataValue<Element> implements XMLSaveable {
 			str += ", Source: " + sourceName;
 		return str;
 	}
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(dataType, dataMeasurementType, value, sourceName);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;                                // same object
+        if (o == null || getClass() != o.getClass()) return false; // null or different class
+        SiteDataValue<?> that = (SiteDataValue<?>)o;               // explicit cast
+        return Objects.equals(dataType, that.dataType) &&
+                Objects.equals(dataMeasurementType, that.dataMeasurementType) &&
+                Objects.equals(value, that.value) &&
+                Objects.equals(sourceName, that.sourceName);
+    }
 
 	public org.dom4j.Element toXMLMetadata(org.dom4j.Element root) {
 		org.dom4j.Element elem = root.addElement(XML_METADATA_NAME);
