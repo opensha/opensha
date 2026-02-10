@@ -1155,6 +1155,11 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 					continue;
 				Preconditions.checkState(rup.properties.tectonicRegionType == trt);
 				boolean forcePointSurf = rup.properties.magnitude < gridSourceSettings.pointSourceMagnitudeCutoff;
+				// true means the lazy initializer will build the surface on demand and cache it
+				// setting this to false means the surface will be built on demand each time
+				// lazy initialization will speed things up but can cause memory issues with high finite surface counts
+				boolean lazyInit = forcePointSurf || gridSourceSettings.finiteRuptureSettings == null
+						|| gridSourceSettings.finiteRuptureSettings.numSurfaces <= 10;
 				double rate = rup.rate;
 				if (aftershockFilter != null)
 					rate = aftershockFilter.getFilteredRate(rup.properties.magnitude, rup.rate);
@@ -1166,7 +1171,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 						gridSourceSettings.finiteRuptureSettings);
 				for (int i=0; i<rupSurfSuppliers.size(); i++) {
 					RuptureSurfaceSupplier<? extends RuptureSurface> supplier = rupSurfSuppliers.getValue(i);
-					if (!(supplier instanceof LazyRuptureSurfaceSupplier<?>))
+					if (lazyInit && !(supplier instanceof LazyRuptureSurfaceSupplier<?>))
 						// make it lazy init
 						supplier = new LazyRuptureSurfaceSupplier<>(supplier);
 					double weight = rupSurfSuppliers.getWeight(i);
