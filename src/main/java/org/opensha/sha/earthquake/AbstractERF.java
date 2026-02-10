@@ -46,12 +46,6 @@ public abstract class AbstractERF implements
 
 	/** Flag indiacting whether any parameter has changed. */
 	protected boolean parameterChangeFlag = true;
-	
-	/** fields for nth rupture info */
-	protected int totNumRups=-1;
-	protected ArrayList<int[]> nthRupIndicesForSource;	// this gives the nth indices for a given source
-	protected int[] srcIndexForNthRup;
-	protected int[] rupIndexForNthRup;
 
 
 	/**

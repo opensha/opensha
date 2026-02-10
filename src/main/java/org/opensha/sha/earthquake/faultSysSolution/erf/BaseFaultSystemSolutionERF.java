@@ -119,7 +119,6 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	protected int numOtherSources=0; 					// the non fault system sources
 	protected int[] fltSysRupIndexForSource;  			// used to keep only inv rups with non-zero rates
 	protected int[] srcIndexForFltSysRup;				// this stores the src index for the fault system source (-1 if there is no mapping)
-	protected int[] fltSysRupIndexForNthRup;			// the fault system rupture index for the nth rup
 	protected double[] longTermRateOfFltSysRupInERF;	// this holds the long-term rate of FSS rups as used by this ERF
 	
 	// these help keep track of what's changed
@@ -352,9 +351,9 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 			makeAllFaultSystemSources();	// overrides all fault-based source objects; created even if not fault sources aren't wanted
 		}
 		
-		// update the following ERF rup-related fields: totNumRups, totNumRupsFromFaultSystem, nthRupIndicesForSource, srcIndexForNthRup[], rupIndexForNthRup[], fltSysRupIndexForNthRup[]
+		// clear the upstream nth rupture data (will be lazily initialized if/when needed)
 		if(numOtherRupsChanged || numFaultRupsChanged) {
-			setAllNthRupRelatedArrays();
+			sourceRupIndexesChanged();
 		}
 
 		// reset change flags (that haven't already been done so)
@@ -374,7 +373,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 			System.out.println("Done updating forecast (took "+runTime+" seconds)");
 			System.out.println("numFaultSystemSources="+numNonZeroFaultSystemSources);
 			System.out.println("totNumRupsFromFaultSystem="+totNumRupsFromFaultSystem);
-			System.out.println("totNumRups="+totNumRups);
+//			System.out.println("totNumRups="+totNumRups);
 			System.out.println("numOtherSources="+this.numOtherSources);
 			System.out.println("getNumSources()="+this.getNumSources());
 		}
@@ -870,72 +869,17 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	public void timeSpanChange(EventObject event) {
 		timeSpanChangeFlag = true;
 	}
-	
-	/**
-	 * This sets the following: totNumRups, nthRupIndicesForSource, srcIndexForNthRup[], 
-	 * rupIndexForNthRup[], fltSysRupIndexForNthRup[], and totNumRupsFromFaultSystem.  
-	 * The latter two are how this differs from the parent method.
-	 * 
-	 */
-	@Override
-	protected void setAllNthRupRelatedArrays() {
-		
-		if(D) System.out.println("Running setAllNthRupRelatedArrays()");
-		
-		totNumRups=0;
-		totNumRupsFromFaultSystem=0;
-		nthRupIndicesForSource = new ArrayList<int[]>();
 
-		// make temp array lists to avoid making each source twice
-		int numSources = getNumSources();
-		ArrayList<Integer> tempSrcIndexForNthRup = new ArrayList<Integer>(numSources);
-		ArrayList<Integer> tempRupIndexForNthRup = new ArrayList<Integer>(numSources);
-		ArrayList<Integer> tempFltSysRupIndexForNthRup = new ArrayList<Integer>(numSources);
-		int n=0;
-		
-		for(int s=0; s<numSources; s++) {	// this includes gridded sources
-			int numRups = getSource(s).getNumRuptures();
-			totNumRups += numRups;
-			if(s<numNonZeroFaultSystemSources) {
-				totNumRupsFromFaultSystem += numRups;
-			}
-			int[] nthRupsForSrc = new int[numRups];
-			for(int r=0; r<numRups; r++) {
-				tempSrcIndexForNthRup.add(s);
-				tempRupIndexForNthRup.add(r);
-				if(s<numNonZeroFaultSystemSources)
-					tempFltSysRupIndexForNthRup.add(fltSysRupIndexForSource[s]);
-				nthRupsForSrc[r]=n;
-				n++;
-			}
-			nthRupIndicesForSource.add(nthRupsForSrc);
-		}
-		// now make final int[] arrays
-		srcIndexForNthRup = new int[tempSrcIndexForNthRup.size()];
-		rupIndexForNthRup = new int[tempRupIndexForNthRup.size()];
-		fltSysRupIndexForNthRup = new int[tempFltSysRupIndexForNthRup.size()];
-		for(n=0; n<totNumRups;n++)
-		{
-			srcIndexForNthRup[n]=tempSrcIndexForNthRup.get(n);
-			rupIndexForNthRup[n]=tempRupIndexForNthRup.get(n);
-			if(n<tempFltSysRupIndexForNthRup.size())
-				fltSysRupIndexForNthRup[n] = tempFltSysRupIndexForNthRup.get(n);
-		}
-				
-		if (D) {
-			System.out.println("   getNumSources() = "+getNumSources());
-			System.out.println("   totNumRupsFromFaultSystem = "+totNumRupsFromFaultSystem);
-			System.out.println("   totNumRups = "+totNumRups);
-		}
-	}
-	
 	/**
 	 * This returns the fault system rupture index for the Nth rupture
 	 * @param nthRup
 	 * @return
 	 */
 	public int getFltSysRupIndexForNthRup(int nthRup) {
-		return fltSysRupIndexForNthRup[nthRup];
+		int srcIndex = getSrcIndexForFltSysRup(nthRup);
+		if (srcIndex >= numNonZeroFaultSystemSources)
+			return -1;
+		return fltSysRupIndexForSource[srcIndex];
 	}
 
 	/**
