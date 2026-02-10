@@ -226,6 +226,32 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 		return locs;
 	}
 	
+	private static class NoGapsIndexTracker implements DataSubsamplingIndexTracker {
+		
+		private int numNodes;
+
+		public NoGapsIndexTracker(int numNodes) {
+			this.numNodes = numNodes;
+			
+		}
+
+		@Override
+		public void set(int index, int origDataIndex, int subsampleIndex) {
+			throw new IllegalStateException();
+		}
+
+		@Override
+		public int getOriginalDataIndex(int rupIndex) {
+			return rupIndex / numNodes;
+		}
+
+		@Override
+		public int getSubsampleIndex(int rupIndex) {
+			return rupIndex % numNodes;
+		}
+		
+	}
+	
 	private static class LocSamplingWrapper implements PoissonPointSourceData {
 		
 		private PoissonPointSourceData data;
@@ -251,9 +277,11 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 			
 			if (applyToFinite) {
 				long numRuptures = data.getNumRuptures() * numNodes;
-				indexes = PointSource.getDataCorrIndexTracker(numRuptures, data.getNumRuptures(), numNodes);
-				for (int r=0; r<numRuptures; r++)
-					indexes.set(r, r / numNodes, r % numNodes);
+				Preconditions.checkState(numRuptures < Integer.MAX_VALUE);
+				indexes = new NoGapsIndexTracker(numNodes);
+//				indexes = PointSource.getDataCorrIndexTracker(numRuptures, data.getNumRuptures(), numNodes);
+//				for (int r=0; r<numRuptures; r++)
+//					indexes.set(r, r / numNodes, r % numNodes);
 				this.numRuptures = (int)numRuptures;
 			} else {
 				// only apply to point surface ruptures
@@ -266,17 +294,22 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 						sampledNumRuptures += numNodes;
 				}
 				
-				indexes = PointSource.getDataCorrIndexTracker(sampledNumRuptures, dataNumRuptures, numNodes);
-				int rupIndex = 0;
-				for (int dataIndex=0; dataIndex<dataNumRuptures; dataIndex++) {
-					if (data.isFinite(dataIndex)) {
-						indexes.set(rupIndex++, dataIndex, -1); // not sampled
-					} else {
-						for (int n=0; n<numNodes; n++)
-							indexes.set(rupIndex++, dataIndex, n);
+				if (sampledNumRuptures == data.getNumRuptures() * numNodes) {
+					// simple case, no gaps
+					indexes = new NoGapsIndexTracker(numNodes);
+				} else {
+					indexes = PointSource.getDataCorrIndexTracker(sampledNumRuptures, dataNumRuptures, numNodes);
+					int rupIndex = 0;
+					for (int dataIndex=0; dataIndex<dataNumRuptures; dataIndex++) {
+						if (data.isFinite(dataIndex)) {
+							indexes.set(rupIndex++, dataIndex, -1); // not sampled
+						} else {
+							for (int n=0; n<numNodes; n++)
+								indexes.set(rupIndex++, dataIndex, n);
+						}
 					}
+					Preconditions.checkState(rupIndex == sampledNumRuptures);
 				}
-				Preconditions.checkState(rupIndex == sampledNumRuptures);
 				this.numRuptures = (int)sampledNumRuptures;
 			}
 		}
