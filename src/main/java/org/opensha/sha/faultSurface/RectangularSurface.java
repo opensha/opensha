@@ -331,6 +331,16 @@ public class RectangularSurface implements CacheEnabledSurface {
 		return endLoc;
 	}
 
+	public Location getFirstLocOnLowerEdge() {
+		LocationVector dir = new LocationVector(dipDir, horzWidth, zBot-zTop);
+		return LocationUtils.location(startLoc, dir);
+	}
+
+	public Location getLastLocOnLowerEdge() {
+		LocationVector dir = new LocationVector(dipDir, horzWidth, zBot-zTop);
+		return LocationUtils.location(endLoc, dir);
+	}
+
 	@Override
 	public double getFractionOfSurfaceInRegion(Region region) {
 		// TODO could be more efficient in rect space
