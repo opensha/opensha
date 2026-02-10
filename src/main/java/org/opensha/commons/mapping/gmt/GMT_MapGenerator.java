@@ -86,10 +86,10 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 
 	protected String SCALE_LABEL; // what's used to label the color scale
 
-	/*				opensha.usc.edu paths				*/
+	/*				opensha.scec.org paths				*/
 //	public static final String OPENSHA_GMT_PATH="/usr/local/GMT4.2.1/bin/";
 	public static final String OPENSHA_GMT_PATH="/usr/bin/gmt "; // needs the space after
-	public static final String OPENSHA_GS_PATH="/usr/bin/gs";
+    public static final String OPENSHA_GS_PATH="/usr/bin/gs";
 	public static final String OPENSHA_PS2PDF_PATH = "/usr/bin/ps2pdf";
 	public static final String OPENSHA_CONVERT_PATH="/usr/bin/convert";
 	public static final String OPENSHA_GMT_DATA_PATH =
@@ -575,15 +575,16 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 		
 		return this.makeMapUsingServlet(map, metadata, dirName);
 	}
-	
-	/**
-	 * This generates GMT map for the given XYZ dataset and for the current parameter setting,
-	 * using the GMT Servlet on the SCEC server (the map is made on the SCEC server).
-	 *
-	 * @param xyzDataSet
-	 * @param scaleLabel - a string for the label (with no spaces!)
-	 * @return - the name of the jpg file
-	 */
+
+    /**
+     * Make a GMT map using the GMT servlet on the SCEC server.
+     * @param map
+     * @param metadata
+     * @param dirName
+     * @return
+     * @throws GMT_MapException
+     * @throws RuntimeException
+     */
 	public String makeMapUsingServlet(GMT_Map map, String metadata, String dirName)
 	throws GMT_MapException,RuntimeException{
 
@@ -1956,7 +1957,6 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 	 * If log-plot has been chosen, this replaces the z-values in the xyzDataSet
 	 * with the log (base 10) values.  Zero values are converted to 10e-16.
 	 * This also wraps the SCALE_LABEL in "log(*)".
-	 * @param xyzVals
 	 */
 	private void checkForLogPlot(){
 		//checks to see if the user wants Log Plot, if so then convert the zValues to the Log Space

@@ -60,7 +60,6 @@ ParameterChangeListener {
 
 	/**
 	 * Class constructor accepts the GMT parameters list
-	 * @param api : Instance of the application using this Gui Bean.
 	 */
 	public GMT_MapGuiBean() {
 
@@ -180,7 +179,7 @@ ParameterChangeListener {
 	 * this function generates and displays a GMT map for an XYZ dataset using
 	 * the settings in the GMT_SettingsControlPanel.
 	 * @param xyzVals : Object for the XYZ values
-	 * @param metadata : Associated Metadata for the values.
+	 * @param metadataAsHTML : Associated Metadata for the values.
 	 */
 	public void makeMap(GeoDataSet xyzVals, String metadataAsHTML) {
 

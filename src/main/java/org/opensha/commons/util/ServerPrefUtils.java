@@ -26,21 +26,20 @@ public class ServerPrefUtils {
 	 * Update this when distributing a new OpenSHA release.
 	 * This same backend may be in use for more than one OpenSHA version.
 	 */
-	private static final String PROD_VERSION = "25.4";
-	
+	private static final String PROD_VERSION = "26.1";
+
 	/**
 	 * Hostname for all production services
 	 */
 	static final String OPENSHA_SERVER_PRODUCTION_HOST = "data.opensha.org";
-	
+
 	/**
 	 * Hostname for all development services
 	 */
-	static final String OPENSHA_SERVER_DEV_HOST = "data.opensha.org";
-	
-//	static final String OPENSHA_TOMCAT_WEBAPPS_DIR = "/usr/local/tomcat/default/webapps";
-	static final String OPENSHA_TOMCAT_WEBAPPS_DIR = "/var/lib/tomcat/webapps/";
-	
+    static final String OPENSHA_SERVER_DEV_HOST = "data.opensha.org";
+
+    static final String OPENSHA_TOMCAT_WEBAPPS_DIR = "/var/lib/tomcat/webapps/";
+
 	/**
 	 * Directories for storing data and temporary files
 	 */
@@ -76,9 +75,10 @@ public class ServerPrefUtils {
 		} catch (Exception e) {
 			hostName = null;
 		}
-		// TODO: switch to SSL. USC's firewall currently doesn't allow 8443 traffic, so we can't yet
-		String PROD_URL = "http://"+OPENSHA_SERVER_PRODUCTION_HOST+":8080/OpenSHA_"+PROD_VERSION+"/";
-		String DEV_URL = "http://"+OPENSHA_SERVER_DEV_HOST+":8080/OpenSHA_master/";
+//		String PROD_URL = "http://"+OPENSHA_SERVER_PRODUCTION_HOST+":8080/OpenSHA_"+PROD_VERSION+"/";
+//		String DEV_URL = "http://"+OPENSHA_SERVER_DEV_HOST+":8080/OpenSHA_master/";
+        String PROD_URL = "https://"+OPENSHA_SERVER_PRODUCTION_HOST+"/tomcat/OpenSHA_"+PROD_VERSION+"/";
+        String DEV_URL = "https://"+OPENSHA_SERVER_DEV_HOST+"/tomcat/OpenSHA_master/";
 		if (hostName != null && !hostName.isEmpty()) {
 			if (hostName.equalsIgnoreCase(OPENSHA_SERVER_PRODUCTION_HOST))
 				PROD_URL = "http://localhost:8080/OpenSHA_"+PROD_VERSION+"/";
