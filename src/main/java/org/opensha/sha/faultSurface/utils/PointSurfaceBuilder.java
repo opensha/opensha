@@ -833,7 +833,7 @@ public class PointSurfaceBuilder {
 		}
 		l0 = new Location(l0.lat, l0.lon, zTop);
 		l1 = new Location(l1.lat, l1.lon, zTop);
-		FaultTrace trace = new FaultTrace(null);
+		FaultTrace trace = new FaultTrace(null, 2);
 		trace.add(l0);
 		trace.add(l1);
 		return trace;
