@@ -1,15 +1,12 @@
 package org.opensha.sha.calc.IM_EventSet.v03;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.opensha.commons.data.Site;
-import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
-import org.opensha.commons.data.siteData.SiteData;
-import org.opensha.commons.data.siteData.SiteDataValue;
+import org.opensha.commons.param.ParameterList;
 
 public abstract class IM_EventSetCalc_v3_0 implements IM_EventSetCalc_v3_0_API {
 	
@@ -23,10 +20,9 @@ public abstract class IM_EventSetCalc_v3_0 implements IM_EventSetCalc_v3_0_API {
 			parent.setLevel(level);
 			parent = parent.getParent();
 		}
-		logger.setLevel(level);
+        assert logger != null;
+        logger.setLevel(level);
 	}
-	
-	public static final float MIN_SOURCE_DIST = 200;
 
 	/**
 	 * This should ONLY be accessed through the getter method as it may
@@ -34,7 +30,7 @@ public abstract class IM_EventSetCalc_v3_0 implements IM_EventSetCalc_v3_0_API {
 	 */
 	private ArrayList<Site> sites = null;
 
-	private ArrayList<ArrayList<SiteDataValue<?>>> sitesData = null;
+	private ArrayList<ParameterList> sitesData = null;
 
 	public IM_EventSetCalc_v3_0() {
 
@@ -51,50 +47,24 @@ public abstract class IM_EventSetCalc_v3_0 implements IM_EventSetCalc_v3_0_API {
 		}
 		return sites;
 	}
-	
-	public static ArrayList<ArrayList<SiteDataValue<?>>> getSitesData(IM_EventSetCalc_v3_0_API calc) {
-		ArrayList<ArrayList<SiteDataValue<?>>> sitesData = new ArrayList<ArrayList<SiteDataValue<?>>>();
+
+	public static ArrayList<ParameterList> getSitesData(IM_EventSetCalc_v3_0_API calc) {
+		ArrayList<ParameterList> sitesData = new ArrayList<ParameterList>();
 		ArrayList<Site> sites = calc.getSites();
-		OrderedSiteDataProviderList providers = calc.getSiteDataProviders();
 		for (int i=0; i<sites.size(); i++) {
-			Site site = sites.get(i);
-			ArrayList<SiteDataValue<?>> dataVals = calc.getUserSiteDataValues(i);
-			HashSet<String> userTypes = new HashSet<>();
-			if (dataVals == null) {
+			ParameterList userSiteData = calc.getUserSiteData(i);
+			if (userSiteData == null) {
 				logger.log(Level.FINE, "No user site data for site "+i);
-				dataVals = new ArrayList<SiteDataValue<?>>();
-			} else {
-				for (SiteDataValue<?> dataVal : dataVals) {
-					userTypes.add(dataVal.getDataType());;
-					logger.log(Level.FINE, "User data value for site "+i+": "+dataVal);
-				}
+                continue;
 			}
-			if (providers != null) {
-				boolean hasNewType = false;
-				for (SiteData<?> provider : providers) {
-					if (!userTypes.contains(provider.getDataType())) {
-						hasNewType = true;
-						break;
-					}
-				}
-				if (hasNewType) {
-					// only fetch site data if it's actually needed
-					ArrayList<SiteDataValue<?>> provData = providers.getAllAvailableData(site.getLocation());
-					if (provData != null) {
-						for (SiteDataValue<?> dataVal : provData)
-							logger.log(Level.FINE, "Provider data value for site "+i+": "+dataVal);
-						dataVals.addAll(provData);
-					}
-				}
-			}
-			sitesData.add(dataVals);
+			sitesData.add(userSiteData);
 		}
 		return sitesData;
 	}
 
-	public final ArrayList<ArrayList<SiteDataValue<?>>> getSitesData() {
+	public final ArrayList<ParameterList> getSitesData() {
 		if (sitesData == null) {
-			logger.log(Level.FINE, "Generating site data providers lists");
+			logger.log(Level.FINE, "Generating site data lists");
 			sitesData = getSitesData(this);
 		}
 

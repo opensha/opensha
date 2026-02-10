@@ -1,5 +1,7 @@
 package org.opensha.sha.calc.IM_EventSet.v03;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -8,26 +10,20 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.opensha.commons.data.Site;
-import org.opensha.commons.data.siteData.SiteDataValue;
+import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.geo.Location;
-import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.param.Parameter;
+import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.earthquake.ERF;
-import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PeriodParam;
-import org.opensha.sha.util.SiteTranslator;
 
 public abstract class IM_EventSetOutputWriter {
 	
 	protected static Logger logger = IM_EventSetCalc_v3_0.logger;
 	
 	protected IM_EventSetCalc_v3_0_API calc;
-	private static SiteTranslator siteTrans = new SiteTranslator();
-	
-	private float sourceCutOffDistance = 0;
-	private Site siteForSourceCutOff = null;
-	
+
 	public static final DecimalFormat meanSigmaFormat = new DecimalFormat("0.####");
 	public static final DecimalFormat distFormat = new DecimalFormat("0.###");
 	public static final DecimalFormat rateFormat = new DecimalFormat("####0E0");
@@ -43,6 +39,8 @@ public abstract class IM_EventSetOutputWriter {
 			ArrayList<String> imts) throws IOException {
 		ArrayList<ERF> erfs = new ArrayList<ERF>();
 		erfs.add(erf);
+        writeErfImrMetaFile(erfs, attenRels);
+        writeSiteMetaFile();
 		writeFiles(erfs, attenRels, imts);
 	}
 	
@@ -56,6 +54,48 @@ public abstract class IM_EventSetOutputWriter {
 	}
 	
 	public abstract String getName();
+
+    /**
+     * Writes out ERF and IMR inputs to a metadata file with output files.
+     */
+    private void writeErfImrMetaFile(ArrayList<ERF> erfs, ArrayList<ScalarIMR> attenRels) throws IOException {
+        logger.log(Level.INFO, "Writing ERF/IMR metadata file");
+        String fname = "erf_imr_metadata.txt";
+        File outputDir = calc.getOutputDir();
+        FileWriter fw = new FileWriter(outputDir.getAbsolutePath() + File.separator + fname);
+
+        fw.write("IMR Param List:\n---------------");
+        for (ScalarIMR attenRel : attenRels) {
+            fw.write("\nIMR = " + attenRel.getName()+"; ");
+            fw.write(attenRel.getOtherParams().getVisibleParams().getParameterListMetadataString());
+        }
+        fw.write("\n\nForecast Param List:\n---------------");
+        for (ERF erf : erfs) {
+            fw.write("\nEqk Rup Forecast = " + erf.getName()+"; ");
+            fw.write(erf.getAdjustableParameterList().getParameterListMetadataString());
+        }
+        fw.close();
+    }
+
+    /**
+     * Writes out the site information including site data parameters.
+     */
+    private void writeSiteMetaFile() throws IOException {
+        logger.log(Level.INFO, "Writing site metadata file");
+        String fname = "site_metadata.txt";
+        File outputDir = calc.getOutputDir();
+        FileWriter fw = new FileWriter(outputDir.getAbsolutePath() + File.separator + fname);
+
+        ArrayList<ParameterList> siteData = calc.getSitesData();
+        ArrayList<Site> sites = calc.getSites();
+        for (int i = 0; i < calc.getNumSites(); i++) {
+            Location loc = sites.get(i).getLocation();
+            String coordinates = String.format("%s,%s", loc.getLatitude(), loc.getLongitude());
+            fw.write("Site = " + coordinates + "; ");
+            fw.write(siteData.get(i).getParameterListMetadataString()+"\n");
+        }
+        fw.close();
+    }
 
     /**
      * HAZ01 IMT period strings only have precision up to 0.1 seconds.
@@ -185,7 +225,7 @@ public abstract class IM_EventSetOutputWriter {
 		logger.log(Level.FINE, "Retrieving and setting Site related params for IMR");
 		// get the list of sites
 		ArrayList<Site> sites = this.calc.getSites();
-		ArrayList<ArrayList<SiteDataValue<?>>> sitesData = this.calc.getSitesData();
+		ArrayList<ParameterList> sitesData = this.calc.getSitesData();
 
 		// we need to make sure that the site has parameters for this atten rel
 		ListIterator<Parameter<?>> siteParamsIt = attenRel.getSiteParamsIterator();
@@ -193,7 +233,7 @@ public abstract class IM_EventSetOutputWriter {
 			Parameter attenParam = siteParamsIt.next();
 			for (int i=0; i<sites.size(); i++) {
 				Site site = sites.get(i);
-				ArrayList<SiteDataValue<?>> siteData = sitesData.get(i);
+				ParameterList siteData = sitesData.get(i);
 				Parameter siteParam;
 				if (site.containsParameter(attenParam.getName())) {
 					siteParam = site.getParameter(attenParam.getName());
@@ -202,7 +242,14 @@ public abstract class IM_EventSetOutputWriter {
 					site.addParameter(siteParam);
 				}
 				// now try to set this parameter from the site data
-				boolean success = siteTrans.setParameterValue(siteParam, siteData);
+                boolean success = false;
+                for (Parameter<?> siteDatum : siteData) {
+                    if (siteDatum.getName().equals(siteParam.getName())) {
+                        siteParam.setValue(siteDatum.getValue());
+                        success = true;
+                        break;
+                    }
+                }
 				if (success) {
 					logger.log(Level.FINE, "Set site "+i+" param '"+siteParam.getName()
 							+"' from data. New value: "+siteParam.getValue());
@@ -216,87 +263,14 @@ public abstract class IM_EventSetOutputWriter {
 		}
 //		for (int i=0; i<sites.size(); i++) {
 //			Site site = sites.get(i);
-//			ArrayList<SiteDataValue<?>> siteData = sitesData.get(i);
-//			printSiteParams(site, siteData);
+//			ParameterList siteData = sitesData.get(i);
+//            System.out.println(siteData);
 //		}
 		return sites;
-	}
-	
-	private float getSourceCutOffDistance() {
-		if (sourceCutOffDistance == 0) {
-			createSiteList();
-		}
-		return sourceCutOffDistance;
-	}
-	
-	private Site getSiteForSourceCutOff() {
-		if (siteForSourceCutOff == null) {
-			createSiteList();
-		}
-		return siteForSourceCutOff;
-	}
-	
-	/**
-	 * This method finds the location at the middle of the region encompassing all of
-	 * the sites and gets a cutoff distance such that all ruptures within 200 km of any
-	 * site are included in the output.
-	 */
-	protected void createSiteList() {
-		logger.log(Level.FINE, "Calculating source cutoff site and distance");
-		//gets the min lat, lon and max lat, lon from given set of locations.
-		double minLon = Double.MAX_VALUE;
-		double maxLon = Double.NEGATIVE_INFINITY;
-		double minLat = Double.MAX_VALUE;
-		double maxLat = Double.NEGATIVE_INFINITY;
-		int numSites = calc.getNumSites();
-		for (int i = 0; i < numSites; ++i) {
-
-			Location loc = calc.getSiteLocation(i);
-			double lon = loc.getLongitude();
-			double lat = loc.getLatitude();
-			if (lon > maxLon)
-				maxLon = lon;
-			if (lon < minLon)
-				minLon = lon;
-			if (lat > maxLat)
-				maxLat = lat;
-			if (lat < minLat)
-				minLat = lat;
-		}
-		double middleLon = (minLon + maxLon) / 2;
-		double middleLat = (minLat + maxLat) / 2;
-
-		//getting the source-site cuttoff distance
-		sourceCutOffDistance = (float) LocationUtils.horzDistance(
-				new Location(middleLat, middleLon),
-				new Location(minLat, minLon)) + 
-				IM_EventSetCalc_v3_0.MIN_SOURCE_DIST;
-		siteForSourceCutOff = new Site(new Location(middleLat, middleLon));
-
-		return;
-	}
-	
-	/**
-	 * This method checks if the source is within 200 KM of any site
-	 * 
-	 * @param source
-	 * @return
-	 */
-	public boolean shouldIncludeSource(ProbEqkSource source) {
-		float sourceCutOffDistance = getSourceCutOffDistance();
-		Site siteForSourceCutOff = getSiteForSourceCutOff();
-		
-		double sourceDistFromSite = source.getMinDistance(siteForSourceCutOff);
-		if (sourceDistFromSite > sourceCutOffDistance) {
-			logger.log(Level.FINEST, "Source outside of cutoff distance, skipping");
-			return false;
-		}
-		return true;
 	}
 
 	@Override
 	public String toString() {
-		// TODO Auto-generated method stub
 		return getName();
 	}
 

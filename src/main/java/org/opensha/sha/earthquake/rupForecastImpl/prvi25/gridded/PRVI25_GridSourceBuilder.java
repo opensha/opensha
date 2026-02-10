@@ -9,6 +9,7 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -75,6 +76,7 @@ import org.opensha.sha.magdist.SummedMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 import com.google.common.primitives.Ints;
 
 import scratch.UCERF3.erf.ETAS.SeisDepthDistribution;
@@ -1339,9 +1341,10 @@ public class PRVI25_GridSourceBuilder {
 //				+ "2024_12_12-prvi25_subduction_branches/results_PRVI_SUB_FM_SMALL_branch_averaged.zip"));
 //		branch.setValue(PRVI25_SubductionFaultModels.PRVI_SUB_FM_SMALL);
 		
+		
 //		GridSourceList slabModel = buildSlabGridSourceList(branch);
-////		PRVI25_SeismicityRegions seisReg = PRVI25_SeismicityRegions.CAR_INTRASLAB;
-////		GridSourceList slabModel = buildSlabGridSourceList(branch, seisReg);
+//		PRVI25_SeismicityRegions seisReg = PRVI25_SeismicityRegions.CAR_INTRASLAB;
+//		GridSourceList slabModel = buildSlabGridSourceList(branch, seisReg);
 //		double rateM5 = 0d;
 //		for (int gridIndex=0; gridIndex<slabModel.getNumLocations(); gridIndex++)
 //			for (GriddedRupture rup : slabModel.getRuptures(TectonicRegionType.SUBDUCTION_SLAB, gridIndex))
@@ -1349,10 +1352,54 @@ public class PRVI25_GridSourceBuilder {
 //					rateM5 += rup.rate;
 //		System.out.println("rate M>5: "+(float)rateM5);
 		
-		GridSourceList combSources = buildCombinedSubductionGridSourceList(sol, branch);
-		sol.setGridSourceProvider(combSources);
-		sol.write(new File("/tmp/prvi_comb_grid_source_test.zip"));
-		FaultSystemSolution.load(new File("/tmp/prvi_comb_grid_source_test.zip")).getGridSourceProvider();
+		INTERFACE_USE_SECT_PROPERTIES = true;
+		GridSourceList mueInterface = buildInterfaceGridSourceList(sol, branch, PRVI25_SeismicityRegions.MUE_INTERFACE);
+		sol.setGridSourceProvider(mueInterface);
+//		sol.write(new File("/tmp/prvi_mue_interface_grid.zip"));
+//		sol.write(new File("/tmp/prvi_mue_interface_grid_sect_props.zip"));
+		
+		// quick surface hack
+		GridSourceList surfaceList = new GridSourceList.DynamicallyBuilt(mueInterface.getTectonicRegionTypes(),
+				mueInterface.getGriddedRegion(), mueInterface.getRefMFD()) {
+			
+			@Override
+			public int getNumSources() {
+				return mueInterface.getNumSources();
+			}
+			
+			@Override
+			public int getLocationIndexForSource(int sourceIndex) {
+				return mueInterface.getLocationIndexForSource(sourceIndex);
+			}
+			
+			@Override
+			public TectonicRegionType tectonicRegionTypeForSourceIndex(int sourceIndex) {
+				return mueInterface.tectonicRegionTypeForSourceIndex(sourceIndex);
+			}
+			
+			@Override
+			public Set<Integer> getAssociatedGridIndexes(int sectionIndex) {
+				return mueInterface.getAssociatedGridIndexes(sectionIndex);
+			}
+			
+			@Override
+			protected List<GriddedRupture> buildRuptures(TectonicRegionType tectonicRegionType, int gridIndex) {
+				ImmutableList<GriddedRupture> origRups = mueInterface.getRuptures(tectonicRegionType, gridIndex);
+				List<GriddedRupture> surfaceRups = new ArrayList<>(origRups.size());
+				GriddedRuptureProperties surfaceProps = new GriddedRuptureProperties(7d, 90d, 90, 0d, null, 0d, 0d, 0d, 0d, 0d, tectonicRegionType);
+				for (GriddedRupture rup : origRups)
+					surfaceRups.add(new GriddedRupture(gridIndex, rup.location, surfaceProps, rup.rate));
+				return surfaceRups;
+			}
+		};
+		sol.setGridSourceProvider(surfaceList);
+//		sol.write(new File("/tmp/prvi_mue_interface_grid.zip"));
+		sol.write(new File("/tmp/prvi_mue_interface_grid_at_surf.zip"));
+		
+//		GridSourceList combSources = buildCombinedSubductionGridSourceList(sol, branch);
+//		sol.setGridSourceProvider(combSources);
+//		sol.write(new File("/tmp/prvi_comb_grid_source_test.zip"));
+//		FaultSystemSolution.load(new File("/tmp/prvi_comb_grid_source_test.zip")).getGridSourceProvider();
 		
 //		RATE_BALANCE_INTERFACE_GRIDDED = false;
 //		PRVI25_SeismicityRegions seisReg = PRVI25_SeismicityRegions.CAR_INTERFACE;

@@ -4,6 +4,7 @@ import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.ListIterator;
 
 import static org.junit.Assert.*;
@@ -15,14 +16,15 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
-import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.param.Parameter;
+import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetCalc_v3_0_API;
 import org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetOutputWriter;
 import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.HAZ01Writer;
+import org.opensha.sha.calc.params.filters.*;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.rupForecastImpl.Frankel96.Frankel96_AdjustableEqkRupForecast;
 import org.opensha.sha.gui.infoTools.IMT_Info;
@@ -54,13 +56,17 @@ public class HazardCurveConsistencyTest implements IM_EventSetCalc_v3_0_API {
 	ScalarIMR imr;
 	Site site;
 	ArrayList<Site> sites;
-	ArrayList<ArrayList<SiteDataValue<?>>> sitesData;
+	ArrayList<ParameterList> sitesData;
 	HeadlessGraphPanel gp;
 	
 	String imt = "SA 1.0";
 //    String imt = "PGA";
 
-	public HazardCurveConsistencyTest() {
+    private final SourceFilterManager sourceFilters;
+
+    public HazardCurveConsistencyTest() {
+        sourceFilters = SourceFiltersParam.getDefault();
+
 		outputDir = getTempDir();
 		erf = new Frankel96_AdjustableEqkRupForecast();
 		erf.getAdjustableParameterList()
@@ -79,8 +85,8 @@ public class HazardCurveConsistencyTest implements IM_EventSetCalc_v3_0_API {
 		}
 		sites = new ArrayList<Site>();
 		sites.add(site);
-		sitesData = new ArrayList<ArrayList<SiteDataValue<?>>>();
-		sitesData.add(new ArrayList<SiteDataValue<?>>());
+		sitesData = new ArrayList<ParameterList>();
+		sitesData.add(new ParameterList());
 		
 		gp = new HeadlessGraphPanel();
 	}
@@ -229,11 +235,16 @@ public class HazardCurveConsistencyTest implements IM_EventSetCalc_v3_0_API {
 		return sites;
 	}
 
-	public ArrayList<ArrayList<SiteDataValue<?>>> getSitesData() {
+    @Override
+    public List<SourceFilter> getSourceFilters() {
+        return sourceFilters.getEnabledFilters();
+    }
+
+    public ArrayList<ParameterList> getSitesData() {
 		return sitesData;
 	}
 
-	public ArrayList<SiteDataValue<?>> getUserSiteDataValues(int i) {
+	public ParameterList getUserSiteData(int i) {
 		return sitesData.get(i);
 	}
 
