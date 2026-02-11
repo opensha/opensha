@@ -250,13 +250,13 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 		}
 		
 		if (endSects == null) {
-			if (organized.size() == 1 || subSects.size() == 1) {
+			if (this.organized.size() == 1 || subSects.size() == 1) {
 				// default behavior: last section
 				this.endSects = ImmutableSet.of(subSects.get(subSects.size()-1));
 			} else {
 				// default behavior: first and last columns in each row
 				ImmutableSet.Builder<FaultSection> endSectsBuilder = ImmutableSet.builder();
-				for (List<FaultSection> row : organized) {
+				for (List<FaultSection> row : this.organized) {
 					if (!row.isEmpty()) {
 						FaultSection first = row.get(0);
 						FaultSection last = row.get(row.size()-1);

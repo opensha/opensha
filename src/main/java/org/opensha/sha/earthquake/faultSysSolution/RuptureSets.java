@@ -70,6 +70,7 @@ import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.Aggreg
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
+import org.w3c.dom.css.Rect;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -446,8 +447,8 @@ public class RuptureSets {
 		private RuptureGrowingStrategy growingStrategy;
 		
 		@Expose	private int minSectsPerParent = 1;
-		@Expose	private float neighborThreshold = 0.5f;
-		@Expose	private boolean requireFullWidthAfterJumps = false;
+		@Expose	private float neighborThreshold = RectangularDownDipGrowingStrategy.NEIGHBOR_THRESHOLD_DEFAULT;
+		@Expose	private boolean requireFullWidthAfterJumps = RectangularDownDipGrowingStrategy.REQUIRE_FULL_WIDTH_AFTER_JUMPS_DEFAULT;
 		// maximum individual jump distance
 		@Expose	private double maxJumpDist = 5d;
 

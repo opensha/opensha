@@ -33,9 +33,12 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 	private boolean requireFullWidthAfterJumps;
 	
 	private ConcurrentMap<FaultSubsectionCluster, NeighborOverlaps> cachedNeighborsDD;
+	
+	public static final float NEIGHBOR_THRESHOLD_DEFAULT = 0.4f;
+	public static final boolean REQUIRE_FULL_WIDTH_AFTER_JUMPS_DEFAULT = false;
 
 	public RectangularDownDipGrowingStrategy() {
-		this(0.5f, false);
+		this(NEIGHBOR_THRESHOLD_DEFAULT, REQUIRE_FULL_WIDTH_AFTER_JUMPS_DEFAULT);
 	}
 
 	public RectangularDownDipGrowingStrategy(float neighborThreshold, boolean requireFullWidthAfterJumps) {
@@ -720,6 +723,7 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 				LocationList fromEdge;
 				LocationList toEdge;
 				double fromStrike;
+				double toStrike;
 				if (reverse) {
 					// from 2 to 1
 					if (row2 > row1) {
@@ -734,6 +738,7 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 						throw new IllegalStateException("Sections must be in different rows: "+row1+", "+row2);
 					}
 					fromStrike = strike2;
+					toStrike = strike1;
 				} else {
 					// from 1 to 2
 					if (row2 > row1) {
@@ -748,33 +753,22 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 						throw new IllegalStateException("Sections must be in different rows: "+row1+", "+row2);
 					}
 					fromStrike = strike1;
+					toStrike = strike2;
 				}
 				
-				// line coordinates perpendicular to the fault such that a location overlaps if it is right of the line
-				// from s1->s2 and left of the line from e1->e2
-				Location s1, s2;
-				Location e1, e2;
+				double overlap = calculateOverlap(fromEdge, fromStrike, toEdge);
 				
-				// use purpendicular to average strike
-				Location start = fromEdge.first();
-				Location end = fromEdge.last();
-				// azimuth perpendicular and to the left of the strike
-				double leftAz = Math.toRadians(fromStrike) - HALF_PI;
-
-				s1 = start;
-				s2 = LocationUtils.location(start, leftAz, 10d);
-
-				e1 = end;
-				e2 = LocationUtils.location(end, leftAz, 10d);
+				if (overlap > 0d) {
+					// we just did "what fraction of them is in line with me
+					// but if they are longer than me, that could always be a small fraction
+					// calculate "what fraction of me is in line with them" as well
+					
+					// still use the strike of the "from" section in order to maintain the same direction vectors
+					double reverseOverlap = calculateOverlap(toEdge, fromStrike, fromEdge);
+					overlap = Math.max(overlap, reverseOverlap);
+//					overlap = 0.5*(overlap + reverseOverlap);
+				}
 				
-				int numInside = 0;
-				for (Location loc : toEdge)
-					// if right of line s1->s2 and left of line e1->e2
-					if (LocationUtils.distanceToLineFast(s1, s2, loc) >= 0d
-							&& LocationUtils.distanceToLineFast(e1, e2, loc) <= 0d)
-						numInside++;
-				
-				double overlap = (double)numInside/(double)toEdge.size();
 				if (reverse)
 					overlaps[index2][index1] = overlap;
 				else
@@ -783,6 +777,33 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 			
 			
 			return overlaps[index1][index2];
+		}
+		
+		private static double calculateOverlap(LocationList fromEdge, double fromStrike, LocationList toEdge) {
+			// line coordinates perpendicular to the fault such that a location overlaps if it is right of the line
+			// from s1->s2 and left of the line from e1->e2
+			Location s1, s2;
+			Location e1, e2;
+			
+			// use purpendicular to average strike
+			Location start = fromEdge.first();
+			Location end = fromEdge.last();
+			// azimuth perpendicular and to the left of the strike
+			double leftAz = Math.toRadians(fromStrike) - HALF_PI;
+
+			s1 = start;
+			s2 = LocationUtils.location(start, leftAz, 10d);
+
+			e1 = end;
+			e2 = LocationUtils.location(end, leftAz, 10d);
+			
+			int numInside = 0;
+			for (Location loc : toEdge)
+				// if right of line s1->s2 and left of line e1->e2
+				if (LocationUtils.distanceToLineFast(s1, s2, loc) >= 0d
+						&& LocationUtils.distanceToLineFast(e1, e2, loc) <= 0d)
+					numInside++;
+			return (double)numInside/(double)toEdge.size();
 		}
 	}
 
