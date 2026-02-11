@@ -78,8 +78,8 @@ public enum ERF_Ref {
 	WGCEP_02_LIST(WG02_ERF_Epistemic_List.class, WG02_ERF_Epistemic_List.NAME, PRODUCTION, true),
 	
 	/** WGCEP 2002 Fortran Wrapped ERF */
-	WGCEP_02_WRAPPED_LIST(WG02_FortranWrappedERF_EpistemicList.class,
-			WG02_FortranWrappedERF_EpistemicList.NAME, PRODUCTION, true),
+	//WGCEP_02_WRAPPED_LIST(WG02_FortranWrappedERF_EpistemicList.class,
+	//		WG02_FortranWrappedERF_EpistemicList.NAME, PRODUCTION, true),
 	
 	/** WGCEP UCERF 1 */
 	WGCEP_UCERF_1(WGCEP_UCERF1_EqkRupForecast.class, WGCEP_UCERF1_EqkRupForecast.NAME, PRODUCTION, false),
