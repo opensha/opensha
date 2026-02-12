@@ -24,6 +24,7 @@ import org.opensha.sha.calc.params.filters.MagDependentDistCutoffFilter;
 import org.opensha.sha.calc.params.filters.MinMagFilter;
 import org.opensha.sha.calc.params.filters.SourceFilter;
 import org.opensha.sha.calc.params.filters.SourceFilterManager;
+import org.opensha.sha.calc.params.filters.SourceFilterUtils;
 import org.opensha.sha.calc.params.filters.SourceFilters;
 import org.opensha.sha.calc.params.filters.SourceFiltersParam;
 import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter;
@@ -37,7 +38,6 @@ import org.opensha.sha.earthquake.rupForecastImpl.Frankel96.Frankel96_EqkRupFore
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.BJF_1997_AttenRel;
-import org.opensha.sha.util.SourceUtil;
 import org.opensha.sha.util.TRTUtils;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -325,7 +325,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 			}
 
 			// apply any filters
-			if (SourceUtil.canSkipSource(filters, source, site)) {
+			if (SourceFilterUtils.canSkipSource(filters, source, site)) {
 				currRuptures += source.getNumRuptures();  //update progress bar for skipped ruptures
 				continue;
 			}
@@ -353,7 +353,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 						continue;
 					
 					// apply any filters
-					if (SourceUtil.canSkipRupture(filters, rupture, site)) {
+					if (SourceFilterUtils.canSkipRupture(filters, rupture, site)) {
 						continue;
 					}
 					
@@ -528,7 +528,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 			EqkRupture rupture = eqkRupList.get(n);
 			
 			// apply any filters
-			if (SourceUtil.canSkipRupture(filters, rupture, site))
+			if (SourceFilterUtils.canSkipRupture(filters, rupture, site))
 				continue;
 
 			// set the EqkRup in the IMR
@@ -620,7 +620,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 			EqkRupture rupture = eqkRupList.get(n);
 			
 			// apply any filters
-			if (SourceUtil.canSkipRupture(filters, rupture, site))
+			if (SourceFilterUtils.canSkipRupture(filters, rupture, site))
 				continue;
 
 			/*
@@ -710,7 +710,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 			EqkRupture rupture = eqkRupList.get(n);
 			
 			// apply any filters
-			if (SourceUtil.canSkipRupture(filters, rupture, site))
+			if (SourceFilterUtils.canSkipRupture(filters, rupture, site))
 				continue;
 
 			/*
@@ -790,7 +790,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 			EqkRupture rupture = eqkRupList.get(n);
 			
 			// apply any filters
-			if (SourceUtil.canSkipRupture(filters, rupture, site))
+			if (SourceFilterUtils.canSkipRupture(filters, rupture, site))
 				continue;
 
 
@@ -834,7 +834,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 		
 		List<SourceFilter> filters = getSourceFilters();
 
-		if (SourceUtil.canSkipRupture(filters, rupture, site)) {
+		if (SourceFilterUtils.canSkipRupture(filters, rupture, site)) {
 			hazFunction.scale(0.0);
 			return hazFunction;
 		}

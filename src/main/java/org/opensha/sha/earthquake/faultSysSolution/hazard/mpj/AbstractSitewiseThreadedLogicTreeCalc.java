@@ -26,6 +26,7 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.params.filters.SourceFilter;
 import org.opensha.sha.calc.params.filters.SourceFilterManager;
+import org.opensha.sha.calc.params.filters.SourceFilterUtils;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.DistCachedERFWrapper;
 import org.opensha.sha.earthquake.ProbEqkRupture;
@@ -45,7 +46,6 @@ import org.opensha.sha.imr.logicTree.ScalarIMR_ParamsLogicTreeNode;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGV_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
-import org.opensha.sha.util.SourceUtil;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -303,7 +303,7 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 			cache.setSite(site);
 			
 			for (ProbEqkSource source : erf) {
-				if (SourceUtil.canSkipSource(filters, source, site))
+				if (SourceFilterUtils.canSkipSource(filters, source, site))
 					continue;
 				
 				for (ProbEqkRupture rup : source)

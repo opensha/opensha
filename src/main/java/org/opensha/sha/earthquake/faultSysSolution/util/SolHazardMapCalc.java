@@ -58,6 +58,7 @@ import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
 import org.opensha.sha.calc.params.filters.SourceFilter;
 import org.opensha.sha.calc.params.filters.SourceFilterManager;
+import org.opensha.sha.calc.params.filters.SourceFilterUtils;
 import org.opensha.sha.calc.params.filters.SourceFilters;
 import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter;
 import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
@@ -88,7 +89,6 @@ import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.ScalarIMR;
-import org.opensha.sha.util.SourceUtil;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -547,7 +547,7 @@ public class SolHazardMapCalc {
 		
 		for (int sourceID=0; !hasSourceWithin && sourceID<numFaultSysSources; sourceID++) {
 			ProbEqkSource source = erf.getSource(sourceID);
-			if (!SourceUtil.canSkipSource(fitlers, source, site)) {
+			if (!SourceFilterUtils.canSkipSource(fitlers, source, site)) {
 				hasSourceWithin = true;
 				break;
 			}

@@ -9,6 +9,7 @@ import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.calc.params.filters.SourceFilter;
 import org.opensha.sha.calc.params.filters.SourceFilterManager;
+import org.opensha.sha.calc.params.filters.SourceFilterUtils;
 import org.opensha.sha.calc.params.filters.SourceFiltersParam;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EqkRupture;
@@ -19,7 +20,6 @@ import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PeriodParam;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
-import org.opensha.sha.util.SourceUtil;
 
 /**
  * <p>Title: SpectrumCalculator</p>
@@ -203,7 +203,7 @@ implements SpectrumCalculatorAPI {
 			// compute the source's distance from the site and skip if it's too far away
 			distance = source.getMinDistance(site);
 			// apply any filters
-			if (SourceUtil.canSkipSource(filters, source, site)) {
+			if (SourceFilterUtils.canSkipSource(filters, source, site)) {
 				currRuptures += source.getNumRuptures();  //update progress bar for skipped ruptures
 				continue;
 			}
@@ -234,7 +234,7 @@ implements SpectrumCalculatorAPI {
 					continue;
 				
 				// apply any filters
-				if (SourceUtil.canSkipRupture(filters, rupture, site)) {
+				if (SourceFilterUtils.canSkipRupture(filters, rupture, site)) {
 					continue;
 				}
 
@@ -437,7 +437,7 @@ implements SpectrumCalculatorAPI {
 			// compute the source's distance from the site and skip if it's too far away
 			distance = source.getMinDistance(site);
 			// apply any filters
-			if (SourceUtil.canSkipSource(filters, source, site)) {
+			if (SourceFilterUtils.canSkipSource(filters, source, site)) {
 				currRuptures += source.getNumRuptures();  //update progress bar for skipped ruptures
 				continue;
 			}
@@ -463,7 +463,7 @@ implements SpectrumCalculatorAPI {
 					continue;
 				
 				// apply any filters
-				if (SourceUtil.canSkipRupture(filters, rupture, site)) {
+				if (SourceFilterUtils.canSkipRupture(filters, rupture, site)) {
 					continue;
 				}
 
