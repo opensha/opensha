@@ -20,7 +20,7 @@ import org.opensha.commons.gui.ControlPanel;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.params.IncludeMagDistFilterParam;
-import org.opensha.sha.calc.params.MaxDistanceParam;
+import org.opensha.sha.calc.sourceFilters.params.MaxDistanceParam;
 import org.opensha.sha.earthquake.rupForecastImpl.FloatingPoissonFaultERF;
 import org.opensha.sha.earthquake.rupForecastImpl.PEER_TestCases.PEER_AreaForecast;
 import org.opensha.sha.earthquake.rupForecastImpl.PEER_TestCases.PEER_LogicTreeERF_List;
