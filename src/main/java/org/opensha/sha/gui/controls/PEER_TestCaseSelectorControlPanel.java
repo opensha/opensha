@@ -19,7 +19,6 @@ import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.gui.ControlPanel;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.calc.HazardCurveCalculator;
-import org.opensha.sha.calc.params.IncludeMagDistFilterParam;
 import org.opensha.sha.calc.sourceFilters.params.MaxDistanceParam;
 import org.opensha.sha.earthquake.rupForecastImpl.FloatingPoissonFaultERF;
 import org.opensha.sha.earthquake.rupForecastImpl.PEER_TestCases.PEER_AreaForecast;
@@ -293,7 +292,6 @@ public class PEER_TestCaseSelectorControlPanel extends ControlPanel {
 
 		// set the distance in control panel
 		application.getCalcAdjustableParams().getParameter(MaxDistanceParam.NAME).setValue(MAX_DISTANCE);
-		application.getCalcAdjustableParams().getParameter(IncludeMagDistFilterParam.NAME).setValue(false);
 
 		//if set-1 PEER test case is selected
 		if(selectedSet.equalsIgnoreCase(PEER_TESTS_SET_ONE))
