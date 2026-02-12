@@ -341,12 +341,14 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 		if (aveCondRecurIntervalForFltSysRups != null)
 			return aveCondRecurIntervalForFltSysRups;
 		synchronized (this) {
-			if (cachedAveRupCondRecurIntervals == null)
+			if (cachedAveRupCondRecurIntervals == null) {
 				cachedAveRupCondRecurIntervals = TimeDepUtils.computeAveCondRecurIntervalForFltSysRups(
 						fltSysRupSet, sectlongTermPartRates, sectAreas,
 						averagingTypeParam.getValue().isAveRI());
+				aveCondRecurIntervalForFltSysRups = cachedAveRupCondRecurIntervals;
+			}
 		}
-		return cachedAveRupCondRecurIntervals;
+		return aveCondRecurIntervalForFltSysRups;
 	}
 
 	/**
@@ -581,6 +583,13 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 	public String getDebugString() {
 		Preconditions.checkState(saveDebugInfo);
 		return debugString;
+	}
+
+	@Override
+	protected void sectDOLE_Changed() {
+		// called whenever DOLE changes; if we cache anything based on DOLE, we can intercept changes here
+		// currently unneeded
+		super.sectDOLE_Changed();
 	}
 
 }

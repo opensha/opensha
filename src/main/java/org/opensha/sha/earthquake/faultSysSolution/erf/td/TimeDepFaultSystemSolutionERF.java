@@ -8,6 +8,7 @@ import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.impl.EnumParameterizedModelarameter;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 
@@ -224,6 +225,24 @@ public class TimeDepFaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 		// return probModel != ProbabilityModelOptions.U3_BPT && probModel != ProbabilityModelOptions.U3_PREF_BLEND;
 		
 		return isPoisson();
+	}
+	
+	/**
+	 * Resets all dates of last event in the probability model to the values stored in the {@link FaultSection}'s
+	 * within the {@link FaultSystemSolution}, and ensures that probabilities will be updated next time
+	 * {@link #updateForecast()} is called.
+	 * <p>
+	 * Call this whenever you have externally-updated the DOLE data in the {@link FaultSection} list within the current
+	 * {@link FaultSystemSolution}.
+	 * <p>
+	 * Implementation note: this also takes care of updating any currently instantiated probability models, including
+	 * ones previously set but not currently used.
+	 */
+	public void resetSectDOLE() {
+		for (FSS_ProbabilityModel probModel : probModelParam.getInstanceList())
+			if (probModel != null)
+				probModel.resetSectDOLE();
+		probModelChanged = true;
 	}
 
 }

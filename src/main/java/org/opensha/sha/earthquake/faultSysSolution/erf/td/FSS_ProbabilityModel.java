@@ -78,7 +78,7 @@ public interface FSS_ProbabilityModel extends ParameterizedModel {
 	public void setSectDOLE(int sectIndex, long sectDateOfLastEvent);
 	
 	/**
-	 * Resets all dates of last event to the original values from the {@link FaultSection}'s within the
+	 * Resets all dates of last event to the values stored in the {@link FaultSection}'s within the
 	 * {@link FaultSystemSolution}
 	 */
 	public void resetSectDOLE();
