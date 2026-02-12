@@ -29,6 +29,7 @@ import org.opensha.sha.calc.IM_EventSet.IM_EventSetOutputWriter;
 import org.opensha.sha.calc.IM_EventSet.outputImpl.HAZ01Writer;
 import org.opensha.sha.calc.IM_EventSet.outputImpl.OriginalModWriter;
 import org.opensha.sha.calc.sourceFilters.*;
+import org.opensha.sha.calc.sourceFilters.params.SourceFiltersParam;
 import org.opensha.sha.earthquake.ERF_Ref;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.gui.HazardCurveApplication;

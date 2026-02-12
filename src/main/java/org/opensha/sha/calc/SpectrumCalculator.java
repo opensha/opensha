@@ -10,7 +10,7 @@ import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.calc.sourceFilters.SourceFilter;
 import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
 import org.opensha.sha.calc.sourceFilters.SourceFilterUtils;
-import org.opensha.sha.calc.sourceFilters.SourceFiltersParam;
+import org.opensha.sha.calc.sourceFilters.params.SourceFiltersParam;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;

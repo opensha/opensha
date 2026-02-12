@@ -25,6 +25,7 @@ import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.sha.calc.IM_EventSet.outputImpl.HAZ01Writer;
 import org.opensha.sha.calc.IM_EventSet.outputImpl.OriginalModWriter;
 import org.opensha.sha.calc.sourceFilters.*;
+import org.opensha.sha.calc.sourceFilters.params.SourceFiltersParam;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.param.AleatoryMagAreaStdDevParam;
 import org.opensha.sha.earthquake.param.BackgroundRupParam;
