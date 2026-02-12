@@ -2,6 +2,10 @@ package org.opensha.sha.calc.params;
 
 import org.opensha.commons.param.impl.BooleanParameter;
 
+/**
+ * Deprecated: replaced by SourceFilters
+ */
+@Deprecated
 public class IncludeMagDistFilterParam extends BooleanParameter {
 	
 	/**

@@ -9,7 +9,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.calc.IM_EventSet.AbstractIMEventSetCalc;
 import org.opensha.sha.calc.IM_EventSet.IMEventSetCalcAPI;
-import org.opensha.sha.calc.params.filters.*;
+import org.opensha.sha.calc.sourceFilters.*;
 
 /**
  * Implementation of the IM Event Set Calculator API for use in the GUI application.

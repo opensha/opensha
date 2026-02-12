@@ -1,4 +1,4 @@
-package org.opensha.sha.calc.params.filters;
+package org.opensha.sha.calc.sourceFilters;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -20,7 +20,7 @@ import javax.swing.JPanel;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.editor.AbstractParameterEditor;
 import org.opensha.commons.param.editor.impl.NumericTextField;
-import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
+import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;

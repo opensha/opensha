@@ -6,7 +6,7 @@ import java.util.function.UnaryOperator;
 
 import org.opensha.commons.data.Site;
 import org.opensha.sha.calc.disaggregation.DisaggregationSourceRuptureInfo;
-import org.opensha.sha.calc.params.filters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilter;
 
 /**
  * This is the base interface for an Earthquake Rupture Forecast</b> <br>

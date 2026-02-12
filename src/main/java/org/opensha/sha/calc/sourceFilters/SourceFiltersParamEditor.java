@@ -1,4 +1,4 @@
-package org.opensha.sha.calc.params.filters;
+package org.opensha.sha.calc.sourceFilters;
 
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;

@@ -15,7 +15,7 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.IM_EventSet.IMEventSetCalcAPI;
 import org.opensha.sha.calc.IM_EventSet.IM_EventSetOutputWriter;
-import org.opensha.sha.calc.params.filters.SourceFilterUtils;
+import org.opensha.sha.calc.sourceFilters.SourceFilterUtils;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;

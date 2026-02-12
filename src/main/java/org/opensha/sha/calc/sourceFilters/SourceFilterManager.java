@@ -1,4 +1,4 @@
-package org.opensha.sha.calc.params.filters;
+package org.opensha.sha.calc.sourceFilters;
 
 import java.util.ArrayList;
 import java.util.List;

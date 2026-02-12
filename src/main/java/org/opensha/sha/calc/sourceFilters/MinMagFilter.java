@@ -1,4 +1,4 @@
-package org.opensha.sha.calc.params.filters;
+package org.opensha.sha.calc.sourceFilters;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.param.ParameterList;

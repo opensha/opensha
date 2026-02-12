@@ -1,4 +1,4 @@
-package org.opensha.sha.calc.params.filters;
+package org.opensha.sha.calc.sourceFilters;
 
 import org.dom4j.Element;
 import org.opensha.commons.param.AbstractParameter;
