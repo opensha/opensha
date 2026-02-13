@@ -297,8 +297,9 @@ public class PEER_TestCaseSelectorControlPanel extends ControlPanel {
 		ParameterList siteParams = siteGuiBean.getParameterListEditor().getParameterList();
 
 		// set the distance in control panel
-		SourceFilterManager filterManager = (SourceFilterManager)application.getCalcAdjustableParams()
-				.getParameter(SourceFiltersParam.NAME).getValue();
+		SourceFiltersParam filtersParam = (SourceFiltersParam) application.getCalcAdjustableParams()
+				.getParameter(SourceFiltersParam.NAME);
+		SourceFilterManager filterManager = filtersParam.getValue();
 		filterManager.setEnabled(SourceFilters.FIXED_DIST_CUTOFF, true);
 		FixedDistanceCutoffFilter distFilter = filterManager.getFilterInstance(FixedDistanceCutoffFilter.class);
 		distFilter.setMaxDistance(MAX_DISTANCE);
@@ -306,6 +307,8 @@ public class PEER_TestCaseSelectorControlPanel extends ControlPanel {
 		for (SourceFilter filter : filterManager.getEnabledFilters())
 			if (filter != distFilter)
 				filterManager.setEnabled(filter, false);
+		// refresh the filters GUI
+		filtersParam.getEditor().refreshParamEditor();
 //		System.out.println("Updated filters: "+filterManager);
 
 		//if set-1 PEER test case is selected
