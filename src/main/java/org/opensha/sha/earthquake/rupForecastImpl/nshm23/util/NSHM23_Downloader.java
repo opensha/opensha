@@ -13,7 +13,7 @@ import org.scec.getfile.GetFile;
  * GetFile wrapper for downloading NSHM 2023 ERFs.
  */
 public class NSHM23_Downloader extends GetFile {
-	private static final String DOWNLOAD_URL = "https://g-c662a6.a78b8.36fe.data.globus.org/getfile/nshm23/nshm23.json";
+	private static final String DOWNLOAD_URL = "https://g-3a9041.a78b8.36fe.data.globus.org/getfile/nshm23/nshm23.json";
 	
 	/**
 	 * Create a GetFile instance for downloading NSHM23 models.

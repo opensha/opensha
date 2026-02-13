@@ -4,7 +4,10 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.Iterator;
+import java.util.List;
 import java.util.ListIterator;
+import java.util.Set;
+import java.util.HashSet;
 
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -76,6 +79,9 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 
 	/** Notify all listeners when a modification to the given paramList */
 	private transient ArrayList<ChangeListener> changeListeners;
+
+	private transient boolean changeEventsPaused = false;
+	protected transient List<Parameter<?>> pausedParamsState = new ArrayList<Parameter<?>>();
 
 	/* **********************/
 	/** @todo  Constructors */
@@ -215,7 +221,7 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	 * Parameter<String> instead of a raw typed Parameter instance.
 	 * 
 	 * @param type
-	 * @param name
+	 * @param index
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
@@ -256,7 +262,7 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	 * Returns a Parameter at the given index, cast to the given type.
 	 * 
 	 * @param type
-	 * @param name
+	 * @param index
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
@@ -421,7 +427,12 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	}
 
 	/** Removes all parameters from the list, making it empty, ready for new parameters.  */
-	public void clear() { params.clear(); }
+	public void clear() {
+		boolean wasEmpty = params.isEmpty();
+		params.clear();
+		if (!wasEmpty)
+			fireChangeEvent(new ChangeEvent(this));
+	}
 
 	/** Returns the number of parameters in the list. */
 	public int size() { return params.size(); }
@@ -662,7 +673,55 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 		return !failure;
 	}
 	
-	
+	/**
+	 * Pauses all {@link ChangeEvent}s until {@link #resumeChangeEvents()} is called; useful if you want to
+	 * rebuild or bulk-modify a parameter list without events being thrown for each intermediate step.
+	 *
+	 * The state of the parameter list is stored when this method is called, and will be checked to see if a
+	 * {@link ChangeEvent} should be thrown when {@link #resumeChangeEvents()} is thrown.
+	 */
+	public void pauseChangeEvents() {
+		if (D) System.out.println("ParameterList.pauseChangeEvents()");
+		this.changeEventsPaused = true;
+		this.pausedParamsState = new ArrayList<>(params);
+	}
+
+	/**
+	 * Resumes firing of {@link ChangeEvent} after they were paused via {@link #pauseChangeEvents()}.
+	 * @param fireEvent if true, a {@link ChangeEvent} will be fired to all registered listeners after un-pausing
+	 */
+	public void resumeChangeEvents() {
+		if (D) System.out.println("ParameterList.resumeChangeEvents()");
+		this.changeEventsPaused = false;
+		List<Parameter<?>> pausedParamsState = this.pausedParamsState;
+		boolean fireEvent = pausedParamsState == null || pausedParamsState.size() != params.size();
+		if (!fireEvent) {
+			// we have a prior state and it's the same size; see if they're really the same
+			if (D) System.out.println("ParameterList.resumeChangeEvents(): "
+					+ "checking state against prior state when paused to determine if we should fire a ChangeEvent");
+			try {
+				for (int i=0; i<params.size(); i++) {
+					if (params.get(i) != pausedParamsState.get(i)) {
+						// they differ
+						fireEvent = true;
+						break;
+					}
+				}
+			} catch (Exception e) {
+				System.err.println("WANRING: error encountered checking prior ParameterList state, "
+						+ "will default to firing a ChangeEvent: "+e.getMessage());
+				fireEvent = true;
+			}
+
+		}
+		if (fireEvent) {
+			if (D) System.out.println("ParameterList.resumeChangeEvents(): firing ChangeEvent");
+			fireChangeEvent(new ChangeEvent(this));
+		} else if (D) {
+			System.out.println("ParameterList.resumeChangeEvents(): skipping ChangeEvent");
+		}
+	}
+
 	/**
 	 * Add a listener to notify about ParameterList events. Listeners will be notified
 	 * when the contents of the parameter list are changed (e.g., parameters added or
@@ -694,6 +753,10 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	 */
 	private void fireChangeEvent(ChangeEvent event) {
 		if (D) System.out.println("ParameterList.fireChangeEvent()");
+		if (changeEventsPaused) {
+			if (D) System.out.println("ParameterList.fireChangeEvent(): skipping because changeEventsPaused=true");
+			return;
+		}
 		ChangeListener[] listeners;
 		synchronized (this) {
 			if (changeListeners == null) return;
@@ -705,4 +768,76 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 		}
 	}
 
+    /**
+     * Build a new ParameterList with the intersection of ParameterLists.
+     * Contains only parameters found in all lists.
+     * For a deep copy, invoke ParameterList.clone on intersection output
+     * @param lists ParameterLists to build intersection
+     * @return new shallow-copy ParameterList
+     * @throws ParameterException Could throw exception from getParameter
+     */
+    public static ParameterList intersection(ParameterList... lists) throws ParameterException {
+        if (lists == null || lists.length == 0) return new ParameterList();
+
+        // Step 1: Start with the names from the first list
+        Set<String> commonNames = new HashSet<>();
+        ListIterator<String> it = lists[0].getParameterNamesIterator();
+        while (it.hasNext()) commonNames.add(it.next());
+
+        // Step 2: Intersect with the rest of the lists
+        for (int i = 1; i < lists.length; i++) {
+            Set<String> currentNames = new HashSet<>();
+            it = lists[i].getParameterNamesIterator();
+            while (it.hasNext()) currentNames.add(it.next());
+            commonNames.retainAll(currentNames); // keep only names present in both
+        }
+
+        // Step 3: Construct new ParameterList with only common parameters
+        ParameterList result = new ParameterList();
+        for (String name : commonNames) {
+            Parameter<?> param = lists[0].getParameter(name);
+            result.addParameter((Parameter<?>) param);
+        }
+
+        return result;
+    }
+
+    /**
+     * Build a new ParameterList with the union of provided parameters
+     * Contains parameters found in at least one of the lists
+     * For a deep copy, invoke ParameterList.clone on union output
+     * @param lists ParameterList to build union
+     * @return new shallow-copy ParameterList
+     * @throws ParameterException Could throw exception from getParameter
+     */
+    public static ParameterList union(ParameterList... lists) throws ParameterException {
+        ParameterList result = new ParameterList();
+        if (lists == null || lists.length == 0) return result;
+
+        for (ParameterList list : lists) {
+            for (Parameter<?> param : list) {
+                // Add only if not already present
+                if (!result.containsParameter(param.getName())) {
+                    result.addParameter((Parameter<?>) param);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Gets a new ParameterList with only the parameters in this ParameterList that are visible.
+     * For a deep copy, invoke ParameterList.clone on output
+     * @return new shallow-copy ParameterList
+     */
+    public ParameterList getVisibleParams() {
+        ParameterList visible = new ParameterList();
+        for (Parameter<?> param : this) {
+            if (param.isEditorBuilt() && param.getEditor().isVisible()) {
+                visible.addParameter(param);
+            }
+        }
+        return visible;
+    }
 }

@@ -8,12 +8,12 @@ import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.param.ParameterList;
-import org.opensha.sha.calc.params.MaxDistanceParam;
 import org.opensha.sha.calc.params.PointSourceOptimizationsParam;
-import org.opensha.sha.calc.params.filters.SourceFilter;
-import org.opensha.sha.calc.params.filters.SourceFilterManager;
-import org.opensha.sha.calc.params.filters.SourceFilters;
-import org.opensha.sha.calc.params.filters.SourceFiltersParam;
+import org.opensha.sha.calc.sourceFilters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
+import org.opensha.sha.calc.sourceFilters.SourceFilters;
+import org.opensha.sha.calc.sourceFilters.SourceFilterUtils;
+import org.opensha.sha.calc.sourceFilters.params.SourceFiltersParam;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;
@@ -209,7 +209,7 @@ implements SpectrumCalculatorAPI {
 			// compute the source's distance from the site and skip if it's too far away
 			distance = source.getMinDistance(site);
 			// apply any filters
-			if (HazardCurveCalculator.canSkipSource(filters, source, site)) {
+			if (SourceFilterUtils.canSkipSource(filters, source, site)) {
 				currProgress++;
 				continue;
 			}
@@ -242,7 +242,7 @@ implements SpectrumCalculatorAPI {
 					continue;
 				
 				// apply any filters
-				if (HazardCurveCalculator.canSkipRupture(filters, rupture, site)) {
+				if (SourceFilterUtils.canSkipRupture(filters, rupture, site)) {
 					continue;
 				}
 				
@@ -407,7 +407,7 @@ implements SpectrumCalculatorAPI {
 			ProbEqkSource source = eqkRupForecast.getSource(sourceIndex);
 			
 			// apply any filters
-			if (HazardCurveCalculator.canSkipSource(filters, source, site)) {
+			if (SourceFilterUtils.canSkipSource(filters, source, site)) {
 				currProgress++;
 				continue;
 			}
@@ -436,7 +436,7 @@ implements SpectrumCalculatorAPI {
 					continue;
 				
 				// apply any filters
-				if (HazardCurveCalculator.canSkipRupture(filters, rupture, site)) {
+				if (SourceFilterUtils.canSkipRupture(filters, rupture, site)) {
 					continue;
 				}
 

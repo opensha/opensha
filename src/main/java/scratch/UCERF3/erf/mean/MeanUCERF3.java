@@ -65,7 +65,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 	
 	public static final String NAME = "Mean UCERF3";
 	
-	private static final String DOWNLOAD_URL = "https://g-c662a6.a78b8.36fe.data.globus.org/getfile/ucerf3/ucerf3.json";
+	private static final String DOWNLOAD_URL = "https://g-3a9041.a78b8.36fe.data.globus.org/getfile/ucerf3/ucerf3.json";
 	// static final String DOWNLOAD_URL = "https://"+ServerPrefUtils.SERVER_PREFS.getHostName()+"/ftp/ucerf3_erf_modular/";
 	
 	static final String RAKE_BASIS_FILE_NAME = "rake_basis.zip";
@@ -265,12 +265,11 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 	}
 	
 	@Override
-	protected void createParamList() {
-		super.createParamList();
-		
+	protected void postCreateParamListHook() {
 		if (upperDepthTolParam == null)
 			// called during super constructor, wait until next time
 			return;
+		super.postCreateParamListHook();
 		
 		adjustableParams.addParameter(0, presetsParam);
 		

@@ -52,7 +52,7 @@ import org.opensha.commons.util.bugReports.BugReportDialog;
 import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.HazardCurveCalculatorAPI;
-import org.opensha.sha.calc.params.MaxDistanceParam;
+import org.opensha.sha.calc.sourceFilters.params.MaxDistanceParam;
 import org.opensha.sha.earthquake.BaseERF;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ERF_Ref;

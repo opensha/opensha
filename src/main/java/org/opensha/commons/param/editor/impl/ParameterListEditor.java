@@ -18,7 +18,7 @@ import org.opensha.commons.param.editor.ParameterEditor;
  * <b>Description:</b> The main Parameter Editor Panel that takes in a
  * ParameterList, and using the ParameterEditorFactory to build all individual
  * Parameter Editors for each editor in the Parameter List. The list is
- * presented in a Scroll Pane so all parameters are accessable, no matter the
+ * presented in a Scroll Pane so all parameters are accessible, no matter the
  * size of the containing application. <p>
  *
  * What is real special about this class is that it only knows about ParameterEditor

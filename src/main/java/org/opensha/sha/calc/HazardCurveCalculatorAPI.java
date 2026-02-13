@@ -9,7 +9,7 @@ import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
-import org.opensha.sha.calc.params.filters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilter;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.imr.ScalarIMR;

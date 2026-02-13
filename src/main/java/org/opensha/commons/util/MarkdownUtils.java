@@ -308,6 +308,15 @@ public class MarkdownUtils {
 		return new TableBuilder();
 	}
 	
+	/**
+	 * Creates a new TableBuilder instance for generating Markdown tables with the given global text alignment
+	 * @param align
+	 * @return
+	 */
+	public static TableBuilder tableBuilder(TableTextAlignment align) {
+		return new TableBuilder().textAlign(align);
+	}
+	
 	public static TableBuilder tableFromCSV(CSVFile<String> csv, boolean boldFirstColumn) {
 		TableBuilder table = tableBuilder();
 		for (int row=0; row<csv.getNumRows(); row++) {

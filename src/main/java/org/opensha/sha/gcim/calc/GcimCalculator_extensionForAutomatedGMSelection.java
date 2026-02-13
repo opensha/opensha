@@ -14,7 +14,7 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.calc.AbstractCalculator;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculator;
-import org.opensha.sha.calc.params.filters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilter;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;

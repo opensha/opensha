@@ -16,7 +16,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -583,7 +582,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 
 		// frame setup
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setTitle("Hazard Curve Application (" + getAppVersion() + " )");
+		setTitle("Hazard Curve Application (" + getAppVersion().getDisplayString() + " )");
 		setSize(1000, 720);
 		contentSplitPane.setDividerLocation(500);
 		Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
@@ -664,6 +663,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 				version = ApplicationVersion.loadBuildVersion();
 			} catch (IOException e) {
 				e.printStackTrace();
+				version = new ApplicationVersion(-1, -1, -1);
 			}
 		}
 		return version;
@@ -675,7 +675,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 		DefaultExceptionHandler exp = new DefaultExceptionHandler(
 				APP_SHORT_NAME, getAppVersion(), null, null);
 		Thread.setDefaultUncaughtExceptionHandler(exp);
-		launch(exp);
+        launch(exp);
 	}
 	
 	public static HazardCurveApplication launch(DefaultExceptionHandler handler) {
@@ -722,8 +722,6 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 
 	/**
 	 * this function is called when Add Graph button is clicked
-	 * 
-	 * @param e
 	 */
 	void addButton_actionPerformed() {
 		if (this.runAllPeerTestsCP != null) {
@@ -1648,7 +1646,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 * 
 	 * @param site
 	 *            : Selected site
-	 * @param imr
+	 * @param imrMap
 	 *            : selected IMR
 	 * @param eqkRupForecast
 	 *            : List of Eqk Rup forecasts
@@ -1761,8 +1759,6 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 
 	/**
 	 * This function is to whether to plot ERF_GuiBean or ERF_RupSelectorGuiBean
-	 * 
-	 * @param e
 	 */
 	protected void probDeterSelectionChange() {
 
@@ -1847,7 +1843,8 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 
 		imrGuiBean = new IMR_MultiGuiBean(imrs);
 		imrGuiBean.addIMRChangeListener(this);
-		imrGuiBean.setMaxChooserChars(30);
+		// imrGuiBean.setMaxChooserChars(30);
+        imrGuiBean.setChooserBoxSize(new Dimension(220, 25));
 		imrGuiBean.rebuildGUI();
 	}
 
@@ -2011,7 +2008,6 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 
 	/**
 	 *
-	 * @throws RemoteException 
 	 * @return the Adjustable parameters for the ScenarioShakeMap calculator
 	 */
 	public ParameterList getCalcAdjustableParams(){
@@ -2052,9 +2048,8 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	}
 	
 	protected void showControlPanel(String controlName) {
+        if (controlName.trim().equalsIgnoreCase("Select")) return;
 		ControlPanel control = (ControlPanel)ListUtils.getObjectByName(controlPanels, controlName);
-		System.out.println("controlName: " + controlName);
-		System.out.println("control:" + control);
 		if (control == null)
 			throw new NullPointerException("Control Panel '" + controlName + "' not found!");
 		showControlPanel(control);
@@ -2127,7 +2122,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 * set x values in log space for Hazard Function to be passed to IMR if the
 	 * selected IMT are SA , PGA , PGV or FaultDispl It accepts 1 parameters
 	 * 
-	 * @param originalFunc
+	 * @param arb
 	 *            : this is the function with X values set
 	 */
 	protected LightFixedXFunc initX_Values() {
@@ -2154,7 +2149,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 * Hazard Function after completion of the Hazard Calculations if the
 	 * selected IMT are SA , PGA or PGV It accepts 1 parameters
 	 * 
-	 * @param hazFunction
+	 * @param hazFunc
 	 *            : this is the function with X values set
 	 */
 	protected DiscretizedFunc toggleHazFuncLogValues(
@@ -2266,7 +2261,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 		
 		StringBuilder str = new java.lang.StringBuilder();
 
-		str.append("<br>" + "Cacluation Type = ").append(calcType)
+		str.append("<br>" + "Calculation Type = ").append(calcType)
 		.append("<br><br>" + "IMR Param List:" + "<br>" + "---------------" + "<br>").append(imrMetadata)
 		.append("<br><br>")
 		.append("Site Param List: ")
@@ -2538,9 +2533,9 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 * Sets the application with the curve type chosen by the Cybershake
 	 * application
 	 * 
-	 * @param isDeterministic
-	 *            boolean :If deterministic calculation then make the applicaton
-	 *            to plot deterministic curves.
+	 * @param calcType
+	 *            If deterministic calculation then make the application
+	 *            plot deterministic curves.
 	 */
 	public void setCurveType(String calcType) {
 		if (calcType.equals(PROBABILISTIC))
@@ -2657,7 +2652,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 * This function allows showing the GCIM results
 	 * @param imjName 
 	 * 			  The name of the IMT for which the GCIM results are conditioned on
-	 * @param imlBasedDisaggr
+	 * @param imlBasedGcim
 	 *            boolean Disaggregation is done based on chosen IML
 	 * @param imlVal
 	 *            double iml value for the disaggregation

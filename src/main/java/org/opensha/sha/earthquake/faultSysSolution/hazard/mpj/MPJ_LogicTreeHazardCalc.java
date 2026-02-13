@@ -43,7 +43,7 @@ import org.opensha.commons.util.io.archive.ArchiveInput;
 import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ModuleArchive;
 import org.opensha.commons.util.modules.OpenSHA_Module;
-import org.opensha.sha.calc.params.filters.SourceFilterManager;
+import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.LogicTreeCurveAverager;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;

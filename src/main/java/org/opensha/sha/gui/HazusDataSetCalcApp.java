@@ -33,7 +33,7 @@ import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.sha.calc.HazusMapCalculator;
-import org.opensha.sha.calc.params.MaxDistanceParam;
+import org.opensha.sha.calc.sourceFilters.params.MaxDistanceParam;
 import org.opensha.sha.earthquake.ERF_Ref;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.gui.beans.ERF_GuiBean;

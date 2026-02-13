@@ -85,6 +85,13 @@ public class ApplicationVersion implements Comparable<ApplicationVersion> {
 		return major + "." + minor + "." + build;
 	}
 	
+	public String getDisplayString() {
+		String ret = toString();
+		if (ServerPrefUtils.SERVER_PREFS.getBuildType() != DevStatus.PRODUCTION)
+			ret += " ("+ServerPrefUtils.SERVER_PREFS.getBuildType()+")";
+		return ret;
+	}
+	
 	public static ApplicationVersion fromString(String str) {
 		String[] split = str.split("\\.");
 		if (split.length < 2 || split.length > 3)

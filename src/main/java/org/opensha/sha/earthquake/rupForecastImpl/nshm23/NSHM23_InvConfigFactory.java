@@ -1089,7 +1089,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	}
 	
 	@Override
-	public GridSourceProvider buildGridSourceProvider(FaultSystemSolution sol, LogicTreeBranch<?> branch) throws IOException {
+	public GridSourceList buildGridSourceProvider(FaultSystemSolution sol, LogicTreeBranch<?> branch) throws IOException {
 		NSHM23_AbstractGridSourceProvider prov = buildGridSourceProv(sol, branch);
 		
 		double minMag = 2.55d;
@@ -1237,7 +1237,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	
 	private static EnumMap<TectonicRegionType, Region> trtRegions = null;
 	
-	private static synchronized EnumMap<TectonicRegionType, Region> getTRT_Regions() throws IOException {
+	public static synchronized EnumMap<TectonicRegionType, Region> getTRT_Regions() throws IOException {
 		if (trtRegions == null) {
 			trtRegions = new EnumMap<>(TectonicRegionType.class);
 			trtRegions.put(TectonicRegionType.ACTIVE_SHALLOW, NSHM23_RegionLoader.GridSystemRegions.WUS_ACTIVE.load());

@@ -31,7 +31,7 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.modules.ModuleArchive;
 import org.opensha.commons.util.modules.OpenSHA_Module;
-import org.opensha.sha.calc.params.filters.SourceFilterManager;
+import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;

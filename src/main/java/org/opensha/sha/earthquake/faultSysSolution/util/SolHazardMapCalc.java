@@ -57,12 +57,13 @@ import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.PointSourceOptimizedExceedProbCalc;
 import org.opensha.sha.calc.RuptureExceedProbCalculator;
-import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
-import org.opensha.sha.calc.params.filters.SourceFilter;
-import org.opensha.sha.calc.params.filters.SourceFilterManager;
-import org.opensha.sha.calc.params.filters.SourceFilters;
-import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter;
-import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
+import org.opensha.sha.calc.sourceFilters.FixedDistanceCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
+import org.opensha.sha.calc.sourceFilters.SourceFilterUtils;
+import org.opensha.sha.calc.sourceFilters.SourceFilters;
+import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.DistCachedERFWrapper;
 import org.opensha.sha.earthquake.ProbEqkSource;
@@ -567,7 +568,7 @@ public class SolHazardMapCalc {
 		
 		for (int sourceID=0; !hasSourceWithin && sourceID<numFaultSysSources; sourceID++) {
 			ProbEqkSource source = erf.getSource(sourceID);
-			if (!HazardCurveCalculator.canSkipSource(fitlers, source, site)) {
+			if (!SourceFilterUtils.canSkipSource(fitlers, source, site)) {
 				hasSourceWithin = true;
 				break;
 			}

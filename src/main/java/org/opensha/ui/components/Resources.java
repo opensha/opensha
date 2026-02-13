@@ -26,7 +26,7 @@ public class Resources {
 
 	/**
 	 * Returns the <code>URL</code> of the OpenSHA license/disclaimer file.
-	 * @return the license/disclaier <code>URL</code>
+	 * @return the license/disclaimer <code>URL</code>
 	 */
 	public static URL getLicense() {
 		return license;
@@ -41,7 +41,6 @@ public class Resources {
 			"logos/opensha_64.png"));
 	}
 	
-	// TODO clean
 	public static void main(String[] args) {
 		JFrame f = new JFrame();
 		JLabel l = new JLabel(getLogo64());

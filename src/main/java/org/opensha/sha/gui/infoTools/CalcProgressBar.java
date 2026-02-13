@@ -3,6 +3,7 @@ package org.opensha.sha.gui.infoTools;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Font;
+import java.awt.Graphics;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -13,6 +14,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
+import javax.swing.Timer;
 import javax.swing.UIManager;
 
 import org.apache.commons.lang3.StringUtils;
@@ -33,11 +35,12 @@ import org.apache.commons.lang3.StringUtils;
 
 public class CalcProgressBar extends JDialog {
 
+	private static final long serialVersionUID = -8635759695925774449L;
 	private static final int DIALOG_WIDTH = 320;
 	private static final int B = 20; // border width
 	private static Font font;
 	private static Font boldFont;
-
+	
 	private JProgressBar progress;
 	private JLabel info;
 	private JLabel alert;
