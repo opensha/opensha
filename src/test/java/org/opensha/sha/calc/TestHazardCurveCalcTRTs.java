@@ -18,9 +18,9 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
-import org.opensha.sha.calc.params.MaxDistanceParam;
 import org.opensha.sha.calc.params.NonSupportedTRT_OptionsParam;
 import org.opensha.sha.calc.params.SetTRTinIMR_FromSourceParam;
+import org.opensha.sha.calc.sourceFilters.params.MaxDistanceParam;
 import org.opensha.sha.earthquake.ERFSubset;
 import org.opensha.sha.earthquake.rupForecastImpl.Frankel96.Frankel96_AdjustableEqkRupForecast;
 import org.opensha.sha.gui.infoTools.IMT_Info;
@@ -91,8 +91,7 @@ public class TestHazardCurveCalcTRTs implements ParameterChangeListener {
 		allIMR = new FakeTRTBasedIMR(trts, TectonicRegionType.ACTIVE_SHALLOW);
 		
 		calc = new HazardCurveCalculator();
-		maxDistanceParam = (MaxDistanceParam) calc.getAdjustableParams().getParameter(MaxDistanceParam.NAME);
-		maxDistanceParam.setValue(MaxDistanceParam.MAX);
+		calc.setMaxSourceDistance(MaxDistanceParam.MAX);
 		setTRTinIMR_FromSourceParam = (SetTRTinIMR_FromSourceParam)
 					calc.getAdjustableParams().getParameter(SetTRTinIMR_FromSourceParam.NAME);
 		nonSupportedTRT_OptionsParam = (NonSupportedTRT_OptionsParam)

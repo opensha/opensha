@@ -28,17 +28,17 @@ import org.opensha.sha.calc.AbstractCalculator;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.params.NonSupportedTRT_OptionsParam;
 import org.opensha.sha.calc.params.SetTRTinIMR_FromSourceParam;
-import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
-import org.opensha.sha.calc.params.filters.MagDependentDistCutoffFilter;
-import org.opensha.sha.calc.params.filters.SourceFilter;
-import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.FixedDistanceCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.MagDependentDistCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilterUtils;
+import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.PropagationEffectParams.DistanceRupParameter;
-import org.opensha.sha.util.SourceUtil;
 import org.opensha.sha.util.TRTUtils;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -361,7 +361,7 @@ implements DisaggregationCalculatorAPI {
 				rupProbEpsilons[i] = new double[numRuptures][2];
 
 			// check the distance of the source
-			if (SourceUtil.canSkipSource(sourceFilters, source, site)) {
+			if (SourceFilterUtils.canSkipSource(sourceFilters, source, site)) {
 				currRuptures += numRuptures;
 				continue;
 			}
@@ -401,7 +401,7 @@ implements DisaggregationCalculatorAPI {
 				double qkProb = rupture.getProbability();
 				
 			     // apply magThreshold if we're to use the mag-dist cutoff filter
-				if (SourceUtil.canSkipRupture(sourceFilters, rupture, site)) {
+				if (SourceFilterUtils.canSkipRupture(sourceFilters, rupture, site)) {
 		        	numRupRejected+=1;
 		        	continue;
 		        }

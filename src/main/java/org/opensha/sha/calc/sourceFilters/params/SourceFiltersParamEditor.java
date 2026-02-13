@@ -1,4 +1,4 @@
-package org.opensha.sha.calc.params.filters;
+package org.opensha.sha.calc.sourceFilters.params;
 
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
@@ -17,6 +17,8 @@ import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.editor.AbstractParameterEditor;
 import org.opensha.commons.param.editor.ParameterEditor;
 import org.opensha.commons.param.editor.impl.ParameterListEditor;
+import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
+import org.opensha.sha.calc.sourceFilters.SourceFilters;
 
 public class SourceFiltersParamEditor extends AbstractParameterEditor<SourceFilterManager> implements ActionListener {
 	

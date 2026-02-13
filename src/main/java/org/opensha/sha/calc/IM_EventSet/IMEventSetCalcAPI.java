@@ -7,7 +7,7 @@ import java.util.List;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.ParameterList;
-import org.opensha.sha.calc.params.filters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilter;
 
 /**
  * Core interface defining the data input contract for the IM Event Set Calculator system.

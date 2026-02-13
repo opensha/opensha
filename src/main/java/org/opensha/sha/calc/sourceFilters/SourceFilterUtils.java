@@ -1,7 +1,6 @@
-package org.opensha.sha.util;
+package org.opensha.sha.calc.sourceFilters;
 
 import org.opensha.commons.data.Site;
-import org.opensha.sha.calc.params.filters.SourceFilter;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 
@@ -11,7 +10,7 @@ import java.util.Collection;
  * Utility class for methods relating to sources, ruptures, sites.
  * Filtering, skipping, or otherwise aggregating sets of data for calculations.
  */
-public class SourceUtil {
+public class SourceFilterUtils {
     public static boolean canSkipSource(Collection<SourceFilter> filters, ProbEqkSource source, Site site) {
         if (filters == null || filters.isEmpty())
             return false;

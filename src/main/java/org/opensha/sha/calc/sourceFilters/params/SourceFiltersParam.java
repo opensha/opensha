@@ -1,7 +1,9 @@
-package org.opensha.sha.calc.params.filters;
+package org.opensha.sha.calc.sourceFilters.params;
 
 import org.dom4j.Element;
 import org.opensha.commons.param.AbstractParameter;
+import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
+import org.opensha.sha.calc.sourceFilters.SourceFilters;
 
 public class SourceFiltersParam extends AbstractParameter<SourceFilterManager> {
 	

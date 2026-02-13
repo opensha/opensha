@@ -15,13 +15,13 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.IM_EventSet.IMEventSetCalcAPI;
 import org.opensha.sha.calc.IM_EventSet.IM_EventSetOutputWriter;
+import org.opensha.sha.calc.sourceFilters.SourceFilterUtils;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.OtherParams.StdDevTypeParam;
 import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
-import org.opensha.sha.util.SourceUtil;
 
 /**
  * Writes the HAZ01 format files for the IM Event Set Calculator.
@@ -159,12 +159,12 @@ public class HAZ01Writer extends IM_EventSetOutputWriter {
 			for (int sourceID=0; sourceID<numSources; sourceID++) {
 				logger.log(Level.FINEST, "Writing portion for Source: " + sourceID);
 				ProbEqkSource source = erf.getSource(sourceID);
-                if (SourceUtil.canSkipSource(calc.getSourceFilters(), source, site))
+                if (SourceFilterUtils.canSkipSource(calc.getSourceFilters(), source, site))
                     continue;
 				for (int rupID=0; rupID<source.getNumRuptures(); rupID++) {
 					lineID++;
 					ProbEqkRupture rup = source.getRupture(rupID);
-                    if (SourceUtil.canSkipRupture(calc.getSourceFilters(), rup, site))
+                    if (SourceFilterUtils.canSkipRupture(calc.getSourceFilters(), rup, site))
                         continue;
 					attenRel.setEqkRupture(rup);
 					

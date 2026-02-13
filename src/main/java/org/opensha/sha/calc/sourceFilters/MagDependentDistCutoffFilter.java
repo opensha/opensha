@@ -1,11 +1,11 @@
-package org.opensha.sha.calc.params.filters;
+package org.opensha.sha.calc.sourceFilters;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
-import org.opensha.sha.calc.params.MagDistCutoffParam;
+import org.opensha.sha.calc.sourceFilters.params.MagDistCutoffParam;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.EqkSource;
 

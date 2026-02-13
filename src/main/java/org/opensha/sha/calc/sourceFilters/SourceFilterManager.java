@@ -1,6 +1,7 @@
-package org.opensha.sha.calc.params.filters;
+package org.opensha.sha.calc.sourceFilters;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import com.google.common.base.Preconditions;
@@ -33,7 +34,7 @@ public class SourceFilterManager {
 			}
 			enabledFilterList = ret;
 		}
-		return enabledFilterList;
+		return Collections.unmodifiableList(enabledFilterList);
 	}
 	
 	public void setEnabled(SourceFilters filter, boolean enabled) {
@@ -41,6 +42,17 @@ public class SourceFilterManager {
 		filterEnableds[filter.ordinal()] = enabled;
 		if (enabled && filterInstances[filter.ordinal()] == null)
 			filterInstances[filter.ordinal()] = filter.initFilter();
+	}
+	
+	public void setEnabled(SourceFilter filter, boolean enabled) {
+		for (int i=0; i<filterInstances.length; i++) {
+			SourceFilter oFilter = filterInstances[i];
+			if (oFilter == filter) {
+				setEnabled(filters[i], enabled);
+				return;
+			}
+		}
+		throw new IllegalArgumentException("Supplied filter does not exist internally: "+filter);
 	}
 	
 	public boolean isEnabled(SourceFilters filter) {

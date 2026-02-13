@@ -37,7 +37,7 @@ import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.ExecutorUtils;
 import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.FileUtils;
-import org.opensha.sha.calc.params.filters.SourceFilterManager;
+import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;

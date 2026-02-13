@@ -1,4 +1,4 @@
-package org.opensha.sha.calc.params;
+package org.opensha.sha.calc.sourceFilters.params;
 
 import org.opensha.commons.exceptions.ConstraintException;
 import org.opensha.commons.param.impl.DoubleParameter;

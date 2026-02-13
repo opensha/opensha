@@ -1,9 +1,10 @@
-package org.opensha.sha.calc.params.filters;
+package org.opensha.sha.calc.sourceFilters.params;
 
 import org.dom4j.Element;
 import org.opensha.commons.param.AbstractParameter;
 import org.opensha.commons.param.editor.ParameterEditor;
-import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
+import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
 import org.opensha.sha.util.TectonicRegionType;
 
 public class TectonicRegionDistCutoffParam extends AbstractParameter<TectonicRegionDistanceCutoffs> {
