@@ -40,7 +40,7 @@ public class SiteFileLoader {
     /**
      * Loads the site data coordinates and optional site data params from files
      * into memory.
-     * Uses a default delimiter of space.
+     * Uses a default delimiter of a comma.
      * The characters in the delim argument are the delimiters for separating tokens.
      * @param lonFirst true if longitude is before latitude
      * @param measurementType Inferred or Measured
