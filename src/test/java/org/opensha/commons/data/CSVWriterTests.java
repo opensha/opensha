@@ -1,14 +1,20 @@
 package org.opensha.commons.data;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class CSVWriterTests {
+
+    @Rule
+    public TemporaryFolder tempFolder = new TemporaryFolder();
 
     @Test
     public void testWrite() throws IOException {
@@ -56,11 +62,12 @@ public class CSVWriterTests {
     }
 
     /**
-     * Original OutputStream is not closed if CSVWriter is closed
+     * Original OutputStream is closed if CSVWriter is closed
      */
     @Test
     public void testClose() throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        File outFile = tempFolder.newFile("testClose.csv");
+        FileOutputStream out = new FileOutputStream(outFile);
 
         CSVWriter writer1 = new CSVWriter(out, false);
         writer1.write(Arrays.asList("a", "b", "c"));
@@ -72,17 +79,24 @@ public class CSVWriterTests {
             fail("Expected IOException");
         } catch (IOException e) {
             /* expected */
-            assertEquals("a,b,c\n1,2\n", out.toString());
+            assertEquals("a,b,c\n1,2\n", Files.readString(outFile.toPath()));
         } catch (Exception e) {
             fail("Unexpected exception: " + e.getMessage());
         }
-        assertEquals("a,b,c\n1,2\n", out.toString());
-        // Can continue to use the same OutputStream with a different writer
+        assertEquals("a,b,c\n1,2\n", Files.readString(outFile.toPath()));
+        // Cannot continue to use the same OutputStream with a different writer
         CSVWriter writer2 = new CSVWriter(out, false);
-        writer2.write(Arrays.asList("d", "e", "f"));
-        writer2.close();
-        assertEquals("a,b,c\n1,2\nd,e,f\n", out.toString());
-        // Cannot close multiple times
+        try {
+            writer2.write(Arrays.asList("d", "e", "f"));
+            writer2.close();
+            fail("Expected IOException");
+        } catch (IOException e) {
+            /* expected */
+        } catch (Exception e) {
+            fail("Unexpected exception: " + e.getMessage());
+        }
+        assertEquals("a,b,c\n1,2\n", Files.readString(outFile.toPath()));
+        // Cannot close a writer multiple times
         try {
             writer2.close();
             fail("Expected IOException");
