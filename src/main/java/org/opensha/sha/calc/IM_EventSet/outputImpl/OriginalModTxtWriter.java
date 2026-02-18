@@ -128,6 +128,7 @@ public class OriginalModTxtWriter extends IM_EventSetOutputWriter {
                     double mean = Double.NaN, total = Double.NaN, inter = Double.NaN;
                     if (!SourceFilterUtils.canSkipSource(calc.getSourceFilters(), source, site) &&
                         !SourceFilterUtils.canSkipRupture(calc.getSourceFilters(), rup, site)) {
+                        shouldWriteRup = true;
                         attenRel.setSite(site);
                         mean = attenRel.getMean();
                         if (stdDevParam != null) {
@@ -143,11 +144,6 @@ public class OriginalModTxtWriter extends IM_EventSetOutputWriter {
                             inter = attenRel.getStdDev();
                         }
                     }
-
-                    // Track if the line contains at least one site with valid values
-                    boolean hasNumber = Arrays.stream(new double[]{mean, total, inter})
-                            .anyMatch((i) -> !Double.isNaN(i));
-                    if (hasNumber) shouldWriteRup = true;
 
 					line += " " + meanSigmaFormat.format(mean) + " " + meanSigmaFormat.format(total)
 									+ " " + meanSigmaFormat.format(inter);
