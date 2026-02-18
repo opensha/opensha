@@ -1,7 +1,6 @@
 package org.opensha.sha.faultSurface.utils.ptSrcCorr;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -13,14 +12,12 @@ import java.util.function.Supplier;
 import org.apache.commons.math3.util.Precision;
 import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.WeightedValue;
-import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.util.interp.DistanceInterpolator;
 import org.opensha.commons.util.interp.DistanceInterpolator.QuickInterpolator;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances.Precomputed;
-import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -278,7 +275,7 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 		return ret;
 	}
 	
-	static class PrecomputedComparableDistances extends SurfaceDistances.Precomputed implements Comparable<PrecomputedComparableDistances> {
+	public static class PrecomputedComparableDistances extends SurfaceDistances.Precomputed implements Comparable<PrecomputedComparableDistances> {
 		
 		private final double comparable;
 
@@ -458,12 +455,9 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 	}
 	
 	private static class CachedFractileDistanceFuncs {
-		private final RuptureKey rupKey;
-		
 		private FractileDistances[] dists;
 		
-		public CachedFractileDistanceFuncs(RuptureKey rupKey, int numBins) {
-			this.rupKey = rupKey;
+		public CachedFractileDistanceFuncs(int numBins) {
 			this.dists = new FractileDistances[numBins];
 		}
 		
@@ -481,7 +475,7 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 		CachedFractileDistanceFuncs cachedFuncs = valueFuncs.get(rupKey);
 		
 		if (cachedFuncs == null) {
-			valueFuncs.putIfAbsent(rupKey, new CachedFractileDistanceFuncs(rupKey, interp.size()));
+			valueFuncs.putIfAbsent(rupKey, new CachedFractileDistanceFuncs(interp.size()));
 			cachedFuncs = valueFuncs.get(rupKey);
 			Preconditions.checkNotNull(cachedFuncs);
 		}
@@ -582,7 +576,7 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 	
 	private static boolean D = false;
 	private static boolean D_ALL_AZ = false;
-	private static boolean FIRST_D = true; // TODO: disable when ready
+	private static boolean FIRST_D = false;
 	
 	static class DistCalcSupplier implements Supplier<PrecomputedComparableDistances[]> {
 
@@ -602,8 +596,6 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 
 		@Override
 		public PrecomputedComparableDistances[] get() {
-			double dipRad = Math.toRadians(rupture.dip);
-			
 			// left side of the fault
 			double x0 = -fractDownDip*rupture.rupHorzWidth;
 			// right side of the fault
@@ -624,7 +616,7 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 				}
 			}
 			
-			boolean doHW = rupture.dip < 90d;
+			boolean doHW = rupture.dip < 89.999d;
 			LineSegment3D dipLineAtY0 = null;
 			if (doHW)
 				dipLineAtY0 = new LineSegment3D(x0, 0d, rupture.zTop, x1, 0d, rupture.zBot);
