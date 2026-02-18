@@ -117,7 +117,7 @@ public class OriginalModCsvWriter extends IM_EventSetOutputWriter {
             for (int sourceID = 0; sourceID < numSources; sourceID++) {
                 ProbEqkSource source = erf.getSource(sourceID);
                 for (int rupID = 0; rupID < source.getNumRuptures(); rupID++) {
-                    boolean shouldWriteRup = false; // Don't write if all NaN vals for all sitesProbEqkRupture rup = source.getRupture(rupID);
+                    boolean shouldWriteRup = false; // Don't write if all NaN vals for all sites
                     ProbEqkRupture rup = source.getRupture(rupID);
                     attenRel.setEqkRupture(rup);
                     List<String> row = new ArrayList<>();
@@ -128,6 +128,7 @@ public class OriginalModCsvWriter extends IM_EventSetOutputWriter {
                         double mean = Double.NaN, total = Double.NaN, inter = Double.NaN;
                         if (!SourceFilterUtils.canSkipSource(calc.getSourceFilters(), source, site) &&
                             !SourceFilterUtils.canSkipRupture(calc.getSourceFilters(), rup, site)) {
+                            shouldWriteRup = true;
                             attenRel.setSite(site);
                             mean = attenRel.getMean();
                             if (stdDevParam != null) {
@@ -144,9 +145,8 @@ public class OriginalModCsvWriter extends IM_EventSetOutputWriter {
                         row.add(meanSigmaFormat.format(inter));
 
                         // Track if the line contains at least one site with valid values
-                        boolean hasNumber = Arrays.stream(new double[]{mean, total, inter})
-                                .anyMatch((i) -> !Double.isNaN(i));
-                        if (hasNumber) shouldWriteRup = true;
+                        //if (!Double.isNaN(mean) || !Double.isNaN(total) || !Double.isNaN(inter))
+                        //    shouldWriteRup = true;
                     }
                     if (shouldWriteRup) csvWriter.write(row);
                 }
