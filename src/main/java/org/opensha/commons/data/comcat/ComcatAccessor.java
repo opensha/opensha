@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.TreeMap;
 import java.util.Arrays;
 import java.time.format.DateTimeFormatter;
 import java.time.ZoneOffset;
@@ -208,6 +209,10 @@ public class ComcatAccessor {
 	// Parameter name for the event code.
 
 	public static final String PARAM_NAME_CODE = "code";
+
+	// Parameter name for the magnitude type.
+
+	public static final String PARAM_NAME_MAGTYPE = "magtype";
 
 	// Maximum depth allowed in Comcat searches, in kilometers.
 
@@ -1192,6 +1197,8 @@ public class ComcatAccessor {
 			rup.addParameter(new StringParameter(PARAM_NAME_NETWORK, event.getNet()));
 			// adds the event code, which is needed for reporting to PDL
 			rup.addParameter(new StringParameter(PARAM_NAME_CODE, event.getCode()));
+			// adds the magnitude type, which is needed forOAF
+			rup.addParameter(new StringParameter(PARAM_NAME_MAGTYPE, event.getMagType()));
 		}
 		
 		return rup;
@@ -1504,9 +1511,10 @@ public class ComcatAccessor {
 	 * Returns a Map whose keys are the the names of parameters (PARAM_NAME_XXXXX as
 	 * defined above), and whose values are the strings returned by Comcat.
 	 * Any non-string parameters are converted to strings.
+	 * Note: Changed HashMap to TreeMap to have predictable ordering of parameters.
 	 */
 	public static Map<String, String> extendedInfoToMap (ObsEqkRupture rup, int option) {
-		HashMap<String, String> eimap = new HashMap<String, String>();
+		TreeMap<String, String> eimap = new TreeMap<String, String>();
 
 		// Loop over parameters containing extended info
 
