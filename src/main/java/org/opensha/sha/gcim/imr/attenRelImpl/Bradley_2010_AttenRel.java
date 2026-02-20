@@ -153,7 +153,7 @@ public class Bradley_2010_AttenRel extends AttenuationRelationship implements
 	private double depthTo1pt0kmPerSec;  // defined this way to support null values
 	protected double lnYref;
 	protected boolean lnYref_is_not_fresh;
-	private String tecRegType;
+	private TectonicRegionType tecRegType;
 
 	
 	protected final static double MAG_WARN_MIN = 4.0;
@@ -177,10 +177,6 @@ public class Bradley_2010_AttenRel extends AttenuationRelationship implements
 	public final static String FLT_TYPE_STRIKE_SLIP = "Strike-Slip";
 	public final static String FLT_TYPE_REVERSE = "Reverse";
 	public final static String FLT_TYPE_NORMAL = "Normal";
-	
-	//Tectonic regions
-	public final static String FLT_TEC_ENV_CRUSTAL = TectonicRegionType.ACTIVE_SHALLOW.toString();
-	public final static String FLT_TEC_ENV_VOLCANIC = TectonicRegionType.VOLCANIC.toString();
 
 	/**
 	 * Constructs a new instance of this attenuation relationship.
@@ -274,7 +270,7 @@ public class Bradley_2010_AttenRel extends AttenuationRelationship implements
 		}
 		
 		//Get the rupture distance through the TVZ
-		if (tecRegType.equals(FLT_TEC_ENV_VOLCANIC)) {
+		if (tecRegType.equals(TectonicRegionType.VOLCANIC)) {
 	    	rTvz = rRup; //Presently conservatively assumed consistent with NSHM impl
 		} else {
 			rTvz = 0;
@@ -378,7 +374,7 @@ public class Bradley_2010_AttenRel extends AttenuationRelationship implements
 		hangingWallFlagParam.setValueAsDefault();
 
 		componentParam.setValueAsDefault();
-		tecRegType = tectonicRegionTypeParam.getValue().toString();
+		tecRegType = tectonicRegionTypeParam.getValue();
 		stdDevTypeParam.setValueAsDefault();
 
 		saParam.setValueAsDefault();
@@ -787,7 +783,7 @@ public class Bradley_2010_AttenRel extends AttenuationRelationship implements
 			}
 		}
 		else if (pName.equals(TectonicRegionTypeParam.NAME)) {
-			tecRegType = tectonicRegionTypeParam.getValue().toString();
+			tecRegType = tectonicRegionTypeParam.getValue();
 	    }
 		else if (pName.equals(RupTopDepthParam.NAME)) {
 			depthTop = ( (Double) val).doubleValue();

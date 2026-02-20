@@ -178,7 +178,7 @@ public class PointPoissonSourceERF extends AbstractERF{
     		   .duration(timeSpan.getDuration())
     		   .forMFDAndFocalMech(magDistParam.getValue(),
     				   new FocalMechanism(Double.NaN, dipParam.getValue(), rakeParam.getValue()),
-    				   trtParam.getValueAsTRT())
+    				   trtParam.getValue())
     		   .distCorr(distCorrParam.getValue().get(), Double.NEGATIVE_INFINITY)
     		   .build();
        parameterChangeFlag = false;

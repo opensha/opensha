@@ -36,8 +36,6 @@ public class Baker07_ImCorrRel extends ImCorrelationRelationship {
     public final static String NAME = "Baker (2007)";
     public final static String SHORT_NAME = "Baker2007";
     private static final long serialVersionUID = 1234567890987654353L;
-    
-    public final static String TRT_ACTIVE_SHALLOW = TectonicRegionType.ACTIVE_SHALLOW.toString();
 
     private double t_min = 0.05, t_max = 5; //min and max periods
     
@@ -123,10 +121,7 @@ public class Baker07_ImCorrRel extends ImCorrelationRelationship {
         super.initOtherParams();
         
     	// tectonic region
-    	StringConstraint trtConstraint = new StringConstraint();
-    	trtConstraint.addString(TRT_ACTIVE_SHALLOW);
-    	//trtConstraint.setNonEditable();
-		tectonicRegionTypeParam = new TectonicRegionTypeParam(trtConstraint,TRT_ACTIVE_SHALLOW); // Constraint and default value
+		tectonicRegionTypeParam = new TectonicRegionTypeParam(TectonicRegionType.ACTIVE_SHALLOW); // Constraint and default value
 		tectonicRegionTypeParam.setValueAsDefault();
 		// add these to the list
 		otherParams.replaceParameter(tectonicRegionTypeParam.NAME, tectonicRegionTypeParam);

@@ -984,11 +984,9 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 		Type type = getType();
 		if (type != null) {
 			// tectonic region type
-			String typeStr = trtForType(type).toString();
-			StringConstraint options = new StringConstraint();
-			options.addString(typeStr);
-			tectonicRegionTypeParam.setConstraint(options);
-		    tectonicRegionTypeParam.setDefaultValue(typeStr);
+			TectonicRegionType trt = trtForType(type);
+			tectonicRegionTypeParam.setOptions(EnumSet.of(trt));
+		    tectonicRegionTypeParam.setDefaultValue(trt);
 		    tectonicRegionTypeParam.setValueAsDefault();
 		}
 	}

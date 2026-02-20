@@ -2,6 +2,7 @@ package org.opensha.sha.calc;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumSet;
 
 import org.opensha.sha.imr.attenRelImpl.BJF_1997_AttenRel;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
@@ -10,10 +11,10 @@ import org.opensha.sha.util.TectonicRegionType;
 
 public class FakeTRTBasedIMR extends BJF_1997_AttenRel {
 
-	private Collection<TectonicRegionType> tectonicRegionTypes;
+	private EnumSet<TectonicRegionType> tectonicRegionTypes;
 	private TectonicRegionType defaultTRT;
 	
-	public FakeTRTBasedIMR(Collection<TectonicRegionType> tectonicRegionTypes, TectonicRegionType defaultTRT) {
+	public FakeTRTBasedIMR(EnumSet<TectonicRegionType> tectonicRegionTypes, TectonicRegionType defaultTRT) {
 		super(null);
 		this.tectonicRegionTypes = tectonicRegionTypes;
 		this.defaultTRT = defaultTRT;
@@ -23,8 +24,7 @@ public class FakeTRTBasedIMR extends BJF_1997_AttenRel {
 	
 	public FakeTRTBasedIMR(TectonicRegionType trt) {
 		super(null);
-		tectonicRegionTypes = new ArrayList<TectonicRegionType>();
-		tectonicRegionTypes.add(trt);
+		tectonicRegionTypes = EnumSet.of(trt);
 		defaultTRT = trt;
 		setParamDefaults();
 		setIntensityMeasure(SA_Param.NAME);

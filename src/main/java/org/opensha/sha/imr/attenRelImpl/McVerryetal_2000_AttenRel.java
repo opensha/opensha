@@ -3,6 +3,7 @@ package org.opensha.sha.imr.attenRelImpl;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.EnumSet;
 import java.util.HashMap;
 
 import org.opensha.commons.data.Named;
@@ -155,7 +156,7 @@ public class McVerryetal_2000_AttenRel extends AttenuationRelationship implement
   private String stdDevType, fltType;
   private Component component;
   private boolean parameterChange;
-  private String tecRegType;
+  private TectonicRegionType tecRegType;
   
   protected final static Double MAG_WARN_MIN = Double.valueOf(5.0);
   protected final static Double MAG_WARN_MAX = Double.valueOf(8.5);
@@ -176,11 +177,6 @@ public class McVerryetal_2000_AttenRel extends AttenuationRelationship implement
   public final static String SITE_TYPE_C = "C-Shallow-Soil";
   public final static String SITE_TYPE_D = "D-Soft-or-Deep-Soil";
   public final static String SITE_TYPE_DEFAULT = SITE_TYPE_A;
-
-  public final static String FLT_TEC_ENV_CRUSTAL = TectonicRegionType.ACTIVE_SHALLOW.toString();
-  public final static String FLT_TEC_ENV_INTERFACE = TectonicRegionType.SUBDUCTION_INTERFACE.toString();
-  public final static String FLT_TEC_ENV_SLAB = TectonicRegionType.SUBDUCTION_SLAB.toString();
-  public final static String FLT_TEC_ENV_VOLCANIC = TectonicRegionType.VOLCANIC.toString();
   
   // style of faulting options
   public final static String FLT_TYPE_STRIKE_SLIP = "Strike-Slip";
@@ -235,7 +231,8 @@ public class McVerryetal_2000_AttenRel extends AttenuationRelationship implement
 		  setFaultTypeFromRake(eqkRupture.getAveRake());
 		  setPropagationEffectParams();
 
-		  if (tecRegType.equals(FLT_TEC_ENV_INTERFACE) || tecRegType.equals(FLT_TEC_ENV_INTERFACE)) {
+		  // TODO 2026 note: this is redundent, but has always been set up this way; I assume one of these was meant to be a different regime?
+		  if (tecRegType.equals(TectonicRegionType.SUBDUCTION_INTERFACE) || tecRegType.equals(TectonicRegionType.SUBDUCTION_INTERFACE)) {
 			  //Determine the focal depth
 			  // this is problematic, see ticket #438
 			  RuptureSurface surf = this.eqkRupture.getRuptureSurface();
@@ -393,7 +390,7 @@ public class McVerryetal_2000_AttenRel extends AttenuationRelationship implement
     mag = ( (Double) magParam.getValue()).doubleValue();
     fltType = (String) fltTypeParam.getValue();
     Hc = ( (Double) focalDepthParam.getValue()).doubleValue();
-    tecRegType = tectonicRegionTypeParam.getValue().toString();
+    tecRegType = tectonicRegionTypeParam.getValue();
     stdDevType = (String) stdDevTypeParam.getValue();
     component = componentParam.getValue();
   }
@@ -549,12 +546,10 @@ public class McVerryetal_2000_AttenRel extends AttenuationRelationship implement
 	    stdDevTypeParam = new StdDevTypeParam(stdDevTypeConstraint);
 	    
 	 // Seismotectonic region
-	    StringConstraint tectTypeConstraint = new StringConstraint();
-	    tectTypeConstraint.addString(FLT_TEC_ENV_CRUSTAL);
-	    tectTypeConstraint.addString(FLT_TEC_ENV_SLAB);
-	    tectTypeConstraint.addString(FLT_TEC_ENV_INTERFACE);
-	    //tectTypeConstraint.setNonEditable();
-		tectonicRegionTypeParam = new TectonicRegionTypeParam(tectTypeConstraint,FLT_TEC_ENV_INTERFACE); // Constraint and default value
+		tectonicRegionTypeParam = new TectonicRegionTypeParam(
+				// TODO 2026 note: various methods seem to support volcanic, but that isn't included, not sure why
+				EnumSet.of(TectonicRegionType.ACTIVE_SHALLOW, TectonicRegionType.SUBDUCTION_SLAB, TectonicRegionType.SUBDUCTION_INTERFACE),
+				TectonicRegionType.SUBDUCTION_INTERFACE); // Constraint and default value
 		
 
 	    // add these to the list
@@ -590,11 +585,11 @@ public class McVerryetal_2000_AttenRel extends AttenuationRelationship implement
     double lnSA_AB,lnSA_CD;
     double rVol=0.0; 
     
-    if (tecRegType.equals(FLT_TEC_ENV_VOLCANIC)) 
+    if (tecRegType.equals(TectonicRegionType.VOLCANIC)) 
     	rVol = rRup; //Presently conservatively assumed consistent with NSHM impl 
     
     //allocate dummy fault variables
-    if (tecRegType.equals(FLT_TEC_ENV_CRUSTAL) || tecRegType.equals(FLT_TEC_ENV_VOLCANIC)) {
+    if (tecRegType.equals(TectonicRegionType.ACTIVE_SHALLOW) || tecRegType.equals(TectonicRegionType.VOLCANIC)) {
     	if(fltType.equals(FLT_TYPE_NORMAL)) 
     		CN=-1.0;
        else if(fltType.equals(FLT_TYPE_REVERSE)) 
@@ -606,9 +601,9 @@ public class McVerryetal_2000_AttenRel extends AttenuationRelationship implement
        }
        else throw new RuntimeException("The fault type is not supported");
     }
-    else if (tecRegType.equals(FLT_TEC_ENV_INTERFACE)) 
+    else if (tecRegType.equals(TectonicRegionType.SUBDUCTION_INTERFACE)) 
     	SI=1.0;
-    else if (tecRegType.equals(FLT_TEC_ENV_SLAB)) 
+    else if (tecRegType.equals(TectonicRegionType.SUBDUCTION_SLAB)) 
     	DS=1.0;
     else throw new RuntimeException("The tectonic region type is not supported");
     
@@ -621,7 +616,7 @@ public class McVerryetal_2000_AttenRel extends AttenuationRelationship implement
     //Key attenuation code
     if(component == Component.AVE_HORZ) {
     	//Crustal/Volcanic attenuation relation
-    	if (tecRegType.equals(FLT_TEC_ENV_CRUSTAL) || tecRegType.equals(FLT_TEC_ENV_VOLCANIC)) {
+    	if (tecRegType.equals(TectonicRegionType.ACTIVE_SHALLOW) || tecRegType.equals(TectonicRegionType.VOLCANIC)) {
     		lnSA_AB=C1_gm[iper]+C4AS_gm*(mag-6.)+C3AS_gm[iper]*Math.pow(8.5-mag,2)+C5_gm[iper]*rRup+(C8_gm[iper]+C6AS_gm*(mag-6.))*Math.log(Math.sqrt(Math.pow(rRup,2.)+Math.pow(C10AS_gm[iper],2.)))+C46_gm[iper]*rVol+C32_gm*CN+C33AS_gm[iper]*CR;
     	} else {
     		//Subduction attenuation relation
@@ -631,7 +626,7 @@ public class McVerryetal_2000_AttenRel extends AttenuationRelationship implement
         lnSA_CD=lnSA_AB+C29_gm[iper]*deltaC+(C30AS_gm[iper]*Math.log(Math.exp(lnSA_AB)+0.03)+C43_gm[iper])*deltaD;
     }
     else {    //i.e. component.equals(COMPONENT_LARGERHORIZ)
-    	if (tecRegType.equals(FLT_TEC_ENV_CRUSTAL) || tecRegType.equals(FLT_TEC_ENV_VOLCANIC)) {
+    	if (tecRegType.equals(TectonicRegionType.ACTIVE_SHALLOW) || tecRegType.equals(TectonicRegionType.VOLCANIC)) {
     		//Crustal attenuation relation
     		lnSA_AB=C1_lh[iper]+C4AS_lh*(mag-6.)+C3AS_lh[iper]*Math.pow(8.5-mag,2)+C5_lh[iper]*rRup+(C8_lh[iper]+C6AS_lh*(mag-6.))*Math.log(Math.sqrt(Math.pow(rRup,2.)+Math.pow(C10AS_lh[iper],2.)))+C46_lh[iper]*rVol+C32_lh*CN+C33AS_lh[iper]*CR;
     	} else {
@@ -735,7 +730,7 @@ public class McVerryetal_2000_AttenRel extends AttenuationRelationship implement
 		  Hc = (Double)focalDepthParam.getValue();
 	  }
 	  else if (pName.equals(TectonicRegionTypeParam.NAME)) {
-			tecRegType = tectonicRegionTypeParam.getValue().toString();
+			tecRegType = tectonicRegionTypeParam.getValue();
 	  }
 	  else if (pName.equals(ComponentParam.NAME)) {
 		  component = (Component)val;

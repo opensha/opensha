@@ -30,6 +30,7 @@ import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream;
 import org.apache.commons.io.output.ByteArrayOutputStream;
+import org.apache.commons.io.output.CloseShieldOutputStream;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.opensha.commons.data.Named;
 import org.opensha.commons.util.ExecutorUtils;
@@ -301,7 +302,7 @@ public interface ArchiveOutput extends Closeable, Named {
 
 		@Override
 		public OutputStream getOutputStream() throws IOException {
-			return zout;
+			return CloseShieldOutputStream.wrap(zout);
 		}
 
 		@Override
@@ -356,7 +357,7 @@ public interface ArchiveOutput extends Closeable, Named {
 
 		@Override
 		public OutputStream getOutputStream() throws IOException {
-			return zout;
+			return CloseShieldOutputStream.wrap(zout);
 		}
 
 		@Override
@@ -621,7 +622,7 @@ public interface ArchiveOutput extends Closeable, Named {
 			currentOutput = new InMemoryZipOutput(true, zippingBuffer);
 			currentOutput.putNextEntry(currentEntry);
 			currentOutputStream = new WriteShieldAfterCloseOutputStream(currentOutput.getOutputStream());
-			return currentOutputStream;
+			return CloseShieldOutputStream.wrap(currentOutputStream);
 		}
 
 		@Override
@@ -928,7 +929,7 @@ public interface ArchiveOutput extends Closeable, Named {
 		public synchronized OutputStream getOutputStream() throws IOException {
 			if (D) System.out.println("getOutputStream()");
 			Preconditions.checkNotNull(currentZipper);
-			return currentZipper.getOutputStream();
+			return CloseShieldOutputStream.wrap(currentZipper.getOutputStream());
 		}
 
 		@Override
@@ -976,7 +977,7 @@ public interface ArchiveOutput extends Closeable, Named {
 			Preconditions.checkNotNull(currentEntry, "Must putNextEntry before calling getOutputStream");
 			Preconditions.checkState(currentOutput == null, "Can't call getOutputStream multiple times, must closeEntry and putNextEntry");
 			currentOutput = new ByteArrayOutputStream(1024*1024*5); // 5 MB
-			return currentOutput;
+			return CloseShieldOutputStream.wrap(currentOutput);
 		}
 
 		@Override

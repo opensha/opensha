@@ -856,19 +856,10 @@ extends AbstractIMR implements ScalarIMR, ErgodicIMR {
 	 * @param tectRegionName
 	 * @return
 	 */
-	public boolean isTectonicRegionSupported(String tectRegionName) {
+	public boolean isTectonicRegionSupported(TectonicRegionType trt) {
 		if (tectonicRegionTypeParam == null)
 			return false;
-		return tectonicRegionTypeParam.isAllowed(tectRegionName);
-	}
-	
-	/**
-	 * Tells whether the given tectonic region is supported
-	 * @param tectRegion
-	 * @return
-	 */
-	public boolean isTectonicRegionSupported(TectonicRegionType tectRegion) {
-		return isTectonicRegionSupported(tectRegion.toString());
+		return tectonicRegionTypeParam.isAllowed(trt);
 	}
 
 }

@@ -50,7 +50,7 @@ public class Verify_ZhaoEtAl_2006 {
 		String fle;
 		String outDir, outFle;
 		double dst;
-		String tecRegStr;
+		TectonicRegionType tecReg;
 		double dep;
 		String soilStr;
 		String focMechStr;
@@ -117,8 +117,8 @@ public class Verify_ZhaoEtAl_2006 {
 		soilStr = ZhaoEtAl_2006_AttenRel.SITE_TYPE_ROCK;
 		imr.getParameter(imr.SITE_TYPE_NAME).setValue(soilStr);
 		// Tectonic region
-		tecRegStr = TectonicRegionType.ACTIVE_SHALLOW.toString();
-		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecRegStr);
+		tecReg = TectonicRegionType.ACTIVE_SHALLOW;
+		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecReg);
 		// Focal mechanism
 		focMechStr = ZhaoEtAl_2006_AttenRel.FLT_FOC_MECH_REVERSE;
 		imr.getParameter(FaultTypeParam.NAME).setValue(focMechStr);
@@ -133,7 +133,7 @@ public class Verify_ZhaoEtAl_2006 {
 		// Message
 		System.out.printf(" ---------------------------------------------------------------\n");
 		System.out.printf(" Checking spectral accelerations for m=%.1f rRup=%.1f[km] depth=%.1f[km]\n",mag,dst,dep);
-		System.out.printf(" Tectonic region: %s\n",tecRegStr.trim());
+		System.out.printf(" Tectonic region: %s\n",tecReg.toString().trim());
 		System.out.printf(" Soil conditions: %s\n",soilStr.trim());
 		System.out.printf(" Focal mechanism: %s\n",focMechStr);
 		// Checking ...
@@ -152,8 +152,8 @@ public class Verify_ZhaoEtAl_2006 {
 		soilStr = ZhaoEtAl_2006_AttenRel.SITE_TYPE_ROCK;
 		imr.getParameter(imr.SITE_TYPE_NAME).setValue(soilStr);
 		// Tectonic region
-		tecRegStr = TectonicRegionType.ACTIVE_SHALLOW.toString();
-		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecRegStr);
+		tecReg = TectonicRegionType.ACTIVE_SHALLOW;
+		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecReg);
 		// Focal mechanism
 		focMechStr = ZhaoEtAl_2006_AttenRel.FLT_FOC_MECH_NORMAL;
 		imr.getParameter(FaultTypeParam.NAME).setValue(focMechStr);
@@ -168,7 +168,7 @@ public class Verify_ZhaoEtAl_2006 {
 		// Message
 		System.out.printf(" ---------------------------------------------------------------\n");
 		System.out.printf(" Checking spectral accelerations for m=%.1f rRup=%.1f[km] depth=%.1f[km]\n",mag,dst,dep);
-		System.out.printf(" Tectonic region: %s\n",tecRegStr.trim());
+		System.out.printf(" Tectonic region: %s\n",tecReg.toString().trim());
 		System.out.printf(" Soil conditions: %s\n",soilStr.trim());
 		System.out.printf(" Focal mechanism: %s\n",focMechStr);
 		// Checking ...
@@ -192,8 +192,8 @@ public class Verify_ZhaoEtAl_2006 {
 		soilStr = ZhaoEtAl_2006_AttenRel.SITE_TYPE_ROCK;
 		imr.getParameter(ZhaoEtAl_2006_AttenRel.SITE_TYPE_NAME).setValue(soilStr);
 		// Set tectonic region
-		tecRegStr = TectonicRegionType.SUBDUCTION_INTERFACE.toString();
-		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecRegStr);
+		tecReg = TectonicRegionType.SUBDUCTION_INTERFACE;
+		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecReg);
 		// Magnitude
 		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(mag));
 		// Distance 
@@ -205,7 +205,7 @@ public class Verify_ZhaoEtAl_2006 {
 		// Message 
 		System.out.printf(" ---------------------------------------------------------------\n");
 		System.out.printf(" Checking spectral accelerations for m=%.1f rRup=%.1f[km] depth=%.1f[km]\n",mag,dst,dep);
-		System.out.printf(" Tectonic region: %s\n",tecRegStr);
+		System.out.printf(" Tectonic region: %s\n",tecReg);
 		System.out.printf(" Soil conditions: %s\n",soilStr);
 		// Checking ...
 		CheckGMPE(imr,ReadTable(dir+fle),outFle);	
@@ -223,8 +223,8 @@ public class Verify_ZhaoEtAl_2006 {
 		soilStr = ZhaoEtAl_2006_AttenRel.SITE_TYPE_HARD_SOIL;
 		imr.getParameter(imr.SITE_TYPE_NAME).setValue(soilStr);
 		// Tectonic region
-		tecRegStr = TectonicRegionType.SUBDUCTION_INTERFACE.toString();
-		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecRegStr);
+		tecReg = TectonicRegionType.SUBDUCTION_INTERFACE;
+		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecReg);
 		// Magnitude
 		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(mag));
 		// Distance 
@@ -236,7 +236,7 @@ public class Verify_ZhaoEtAl_2006 {
 		// Message
 		System.out.printf(" ---------------------------------------------------------------\n");
 		System.out.printf(" Checking spectral accelerations for m=%.1f rRup=%.1f[km] depth=%.1f[km]\n",mag,dst,dep);
-		System.out.printf(" Tectonic region: %s\n",tecRegStr);
+		System.out.printf(" Tectonic region: %s\n",tecReg);
 		System.out.printf(" Soil conditions: %s\n",soilStr);
 		// Checking ...
 		CheckGMPE(imr,ReadTable(dir+fle),outFle);	
@@ -254,8 +254,8 @@ public class Verify_ZhaoEtAl_2006 {
 		soilStr = ZhaoEtAl_2006_AttenRel.SITE_TYPE_MEDIUM_SOIL;
 		imr.getParameter(imr.SITE_TYPE_NAME).setValue(soilStr);
 		// Tectonic region
-		tecRegStr = TectonicRegionType.SUBDUCTION_INTERFACE.toString();
-		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecRegStr);
+		tecReg = TectonicRegionType.SUBDUCTION_INTERFACE;
+		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecReg);
 		// Magnitude
 		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(mag));
 		// Distance 
@@ -267,7 +267,7 @@ public class Verify_ZhaoEtAl_2006 {
 		// Message
 		System.out.printf(" ---------------------------------------------------------------\n");
 		System.out.printf(" Checking spectral accelerations for m=%.1f rRup=%.1f[km] depth=%.1f[km]\n",mag,dst,dep);
-		System.out.printf(" Tectonic region: %s\n",tecRegStr);
+		System.out.printf(" Tectonic region: %s\n",tecReg);
 		System.out.printf(" Soil conditions: %s\n",soilStr);
 		// Checking ...
 		CheckGMPE(imr,ReadTable(dir+fle),outFle);	
@@ -285,8 +285,8 @@ public class Verify_ZhaoEtAl_2006 {
 		soilStr = ZhaoEtAl_2006_AttenRel.SITE_TYPE_SOFT_SOIL;
 		imr.getParameter(imr.SITE_TYPE_NAME).setValue(soilStr);
 		// Tectonic region
-		tecRegStr = TectonicRegionType.SUBDUCTION_INTERFACE.toString();
-		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecRegStr);
+		tecReg = TectonicRegionType.SUBDUCTION_INTERFACE;
+		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecReg);
 		// Magnitude
 		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(mag));
 		// Distance 
@@ -298,7 +298,7 @@ public class Verify_ZhaoEtAl_2006 {
 		// Message
 		System.out.printf(" ---------------------------------------------------------------\n");
 		System.out.printf(" Checking spectral accelerations for m=%.1f rRup=%.1f[km] depth=%.1f[km]\n",mag,dst,dep);
-		System.out.printf(" Tectonic region: %s\n",tecRegStr);
+		System.out.printf(" Tectonic region: %s\n",tecReg);
 		System.out.printf(" Soil conditions: %s\n",soilStr.trim());
 		// Checking ...
 		CheckGMPE(imr,ReadTable(dir+fle),outFle);	
@@ -316,8 +316,8 @@ public class Verify_ZhaoEtAl_2006 {
 		soilStr = ZhaoEtAl_2006_AttenRel.SITE_TYPE_ROCK;
 		imr.getParameter(imr.SITE_TYPE_NAME).setValue(soilStr);
 		// Tectonic region
-		tecRegStr = TectonicRegionType.SUBDUCTION_SLAB.toString();
-		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecRegStr);
+		tecReg = TectonicRegionType.SUBDUCTION_SLAB;
+		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecReg);
 		// Magnitude
 		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(mag));
 		// Distance 
@@ -329,7 +329,7 @@ public class Verify_ZhaoEtAl_2006 {
 		// Message
 		System.out.printf(" ---------------------------------------------------------------\n");
 		System.out.printf(" Checking spectral accelerations for m=%.1f rRup=%.1f[km] depth=%.1f[km]\n",mag,dst,dep);
-		System.out.printf(" Tectonic region: %s\n",tecRegStr);
+		System.out.printf(" Tectonic region: %s\n",tecReg);
 		System.out.printf(" Soil conditions: %s\n",soilStr.trim());
 		// Checking ...
 		CheckGMPE(imr,ReadTable(dir+fle),outFle);	
@@ -383,8 +383,8 @@ public class Verify_ZhaoEtAl_2006 {
 		soilStr = ZhaoEtAl_2006_AttenRel.SITE_TYPE_ROCK;
 		imr.getParameter(imr.SITE_TYPE_NAME).setValue(soilStr);
 		// Tectonic region
-		tecRegStr = TectonicRegionType.SUBDUCTION_INTERFACE.toString();
-		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecRegStr);
+		tecReg = TectonicRegionType.SUBDUCTION_INTERFACE;
+		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecReg);
 		// Magnitude
 		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(mag));
 		// Distance 
@@ -396,7 +396,7 @@ public class Verify_ZhaoEtAl_2006 {
 		// Message
 		System.out.printf(" ---------------------------------------------------------------\n");
 		System.out.printf(" Checking spectral accelerations for m=%.1f rRup=%.1f[km] depth=%.1f[km]\n",mag,dst,dep);
-		System.out.printf(" Tectonic region: %s\n",tecRegStr);
+		System.out.printf(" Tectonic region: %s\n",tecReg);
 		System.out.printf(" Soil conditions: %s\n",soilStr.trim());
 		// Checking ...
 		CheckGMPE(imr,ReadTable(dir+fle),outFle);	
@@ -419,8 +419,8 @@ public class Verify_ZhaoEtAl_2006 {
 		soilStr = ZhaoEtAl_2006_AttenRel.SITE_TYPE_ROCK;
 		imr.getParameter(imr.SITE_TYPE_NAME).setValue(soilStr);
 		// Tectonic region
-		tecRegStr = TectonicRegionType.SUBDUCTION_SLAB.toString();
-		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecRegStr);
+		tecReg = TectonicRegionType.SUBDUCTION_SLAB;
+		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecReg);
 		// Magnitude
 		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(mag));
 		// Distance 
@@ -432,7 +432,7 @@ public class Verify_ZhaoEtAl_2006 {
 		// Message
 		System.out.printf(" ---------------------------------------------------------------\n");
 		System.out.printf(" Checking spectral accelerations for m=%.1f rRup=%.1f[km] depth=%.1f[km]\n",mag,dst,dep);
-		System.out.printf(" Tectonic region: %s\n",tecRegStr);
+		System.out.printf(" Tectonic region: %s\n",tecReg);
 		System.out.printf(" Soil conditions: %s\n",soilStr.trim());
 		// Checking ...
 		CheckGMPE(imr,ReadTable(dir+fle),outFle);	
@@ -449,8 +449,8 @@ public class Verify_ZhaoEtAl_2006 {
 			// 
 			((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(mag));
 			imr.getParameter(FaultTypeParam.NAME).setValue(ZhaoEtAl_2006_AttenRel.FLT_FOC_MECH_REVERSE);
-			tecRegStr = TectonicRegionType.SUBDUCTION_INTERFACE.toString();
-			imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecRegStr);
+			tecReg = TectonicRegionType.SUBDUCTION_INTERFACE;
+			imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecReg);
 			// 
 			//			System.out.printf("\nSpectrum - m:%5.2f - dst: %6.2f - Hard Rock - Interface event \n",mag,dst);
 			//			imr.getParameter(imr.SITE_TYPE_NAME).setValue(ZhaoEtAl_2006_AttenRel.SITE_TYPE_HARD_ROCK);
@@ -462,7 +462,7 @@ public class Verify_ZhaoEtAl_2006 {
 			imr.getParameter(imr.SITE_TYPE_NAME).setValue(ZhaoEtAl_2006_AttenRel.SITE_TYPE_ROCK);
 			outFle = outDir+ String.format("spectrum_Rock_m%.1f_r%.0f_dep%.1f_interface_rock.txt",mag,dst,dep);
 			System.out.printf("  Output file: %s \n",outFle);
-			ComputeSpectrum(imr,dst,tecRegStr,outFle);
+			ComputeSpectrum(imr,dst,tecReg,outFle);
 			//			// Compute spectrum 
 			//			System.out.printf("\nSpectrum - m:%5.2f - dst: %6.2f - Hard soil - Interface event \n",mag,dst);
 			//			imr.getParameter(imr.SITE_TYPE_NAME).setValue(ZhaoEtAl_2006_AttenRel.SITE_TYPE_HARD_SOIL);
@@ -579,7 +579,7 @@ public class Verify_ZhaoEtAl_2006 {
 	 * @throws IOException  
 	 */
 	public static void ComputeSpectrum(ScalarIMR imr, double dst,
-			String tecEnvStr, String fleNme) throws IOException {
+			TectonicRegionType tecEnv, String fleNme) throws IOException {
 		ArrayList<Double> per = getPeriods(imr);
 		BufferedWriter outFle = new BufferedWriter(new FileWriter(fleNme));
 
@@ -591,7 +591,7 @@ public class Verify_ZhaoEtAl_2006 {
 				imr.setIntensityMeasure(SA_Param.NAME);
 				imr.getParameter(PeriodParam.NAME).setValue(tmp);
 			}
-			imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecEnvStr);
+			imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecEnv);
 			if (D) System.out.println("ccc:"+imr.getParameter(TectonicRegionTypeParam.NAME).getValue());
 			double gm = imr.getMean();
 			if (D) System.out.println("ccc:"+imr.getParameter(TectonicRegionTypeParam.NAME).getValue());

@@ -194,11 +194,7 @@ public class NSHMP08_SUB_Slab extends AttenuationRelationship implements
 		otherParams.addParameter(componentParam);
 
 		// TRT, uneditable and no connection to TRT in child imrs
-		StringConstraint trtConst = new StringConstraint();
-		String trtDefault = SUBDUCTION_SLAB.toString();
-		trtConst.addString(trtDefault);
-		tectonicRegionTypeParam = new TectonicRegionTypeParam(trtConst,
-			trtDefault);
+		tectonicRegionTypeParam = new TectonicRegionTypeParam(SUBDUCTION_SLAB);
 		otherParams.replaceParameter(
 			TectonicRegionTypeParam.NAME,
 			tectonicRegionTypeParam);
