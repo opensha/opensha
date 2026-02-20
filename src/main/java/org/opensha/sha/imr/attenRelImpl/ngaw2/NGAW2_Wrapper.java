@@ -3,6 +3,7 @@ package org.opensha.sha.imr.attenRelImpl.ngaw2;
 import static java.lang.Math.sin;
 import static org.opensha.commons.geo.GeoTools.TO_RAD;
 
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 
@@ -314,10 +315,8 @@ public class NGAW2_Wrapper extends AttenuationRelationship implements ParameterC
 		componentParam.setValueAsDefault();
 		otherParams.addParameter(componentParam);
 		
-		StringConstraint options = new StringConstraint();
-		options.addString(gmpe.get_TRT().toString());
-		tectonicRegionTypeParam.setConstraint(options);
-	    tectonicRegionTypeParam.setDefaultValue(gmpe.get_TRT().toString());
+		tectonicRegionTypeParam.setOptions(EnumSet.of(gmpe.get_TRT()));
+	    tectonicRegionTypeParam.setDefaultValue(gmpe.get_TRT());
 	    tectonicRegionTypeParam.setValueAsDefault();
 	}
 
