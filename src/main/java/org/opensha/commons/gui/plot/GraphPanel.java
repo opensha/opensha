@@ -189,8 +189,7 @@ public class GraphPanel extends JSplitPane {
 	 */
 	public GraphPanel(PlotPreferences plotPrefs) {
 		super(JSplitPane.VERTICAL_SPLIT, true);
-		this.plotPrefs = plotPrefs;
-		this.backgroundColor = plotPrefs.getBackgroundColor();
+		setPlotPrefs(plotPrefs);
 		setResizeWeight(1);
 		setBorder(null);
 
@@ -376,6 +375,7 @@ public class GraphPanel extends JSplitPane {
 		// getting the tick label font size
 		int tickFontSize = plotPrefs.getTickLabelFontSize();
 		int legendFontSize = plotPrefs.getLegendFontSize();
+		double sizeScalar = plotPrefs.getSizeScalar();
 
 		// create the standard ticks so that smaller values too can plotted on the chart
 		TickUnits units = MyTickUnits.createStandardTickUnits();
@@ -656,7 +656,6 @@ public class GraphPanel extends JSplitPane {
 			if (plotChars == null) {
 				plotChars = new ArrayList<>();
 				plotSpec.setChars(plotChars);
-				;
 			}
 
 			int charIndex = 0;
@@ -783,7 +782,7 @@ public class GraphPanel extends JSplitPane {
 					// to be send to JFreechart for plotting.
 //					drawCurvesUsingPlottingFeatures(subPlot, lineType, lineWidth, symbol, symbolWidth, color, dataIndex);
 
-					XYItemRenderer renderer = PlotLineType.buildRenderer(lineType, symbol, lineWidth, symbolWidth);
+					XYItemRenderer renderer = PlotLineType.buildRenderer(lineType, symbol, lineWidth, symbolWidth, sizeScalar);
 
 					subPlot.setRenderer(datasetIndex, renderer);
 //					xyItemRenderer.setPaint(color);
@@ -1795,6 +1794,12 @@ public class GraphPanel extends JSplitPane {
 
 	public PlotPreferences getPlotPrefs() {
 		return plotPrefs;
+	}
+	
+	public void setPlotPrefs(PlotPreferences plotPrefs) {
+		Preconditions.checkNotNull(plotPrefs, "Plot preferences cannot be null");
+		this.plotPrefs = plotPrefs;
+		this.backgroundColor = plotPrefs.getBackgroundColor();
 	}
 
 	public void setGriddedFuncAxesTicks(boolean histogramAxesTicks) {

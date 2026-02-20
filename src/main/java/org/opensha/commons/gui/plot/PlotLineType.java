@@ -59,21 +59,25 @@ public enum PlotLineType {
 	}
 	
 	public Stroke buildStroke(float lineWidth) {
+		return buildStroke(lineWidth, 1f);
+	}
+	
+	public Stroke buildStroke(float lineWidth, float scalar) {
 		Preconditions.checkArgument(lineWidth>0, "Line width must be >0");
 		if (this == SOLID)
 			return new BasicStroke(lineWidth);
 		else if (this == DOTTED)
 			return new BasicStroke(lineWidth, BasicStroke.CAP_BUTT,
-					BasicStroke.JOIN_BEVEL,0,new float[] {Float.min(6, Float.max(lineWidth*0.7f, 1))},0);
+					BasicStroke.JOIN_BEVEL,0,new float[] {Float.min(6, Float.max(lineWidth*0.7f, 1))*scalar},0);
 		else if (this == DASHED)
 			return new BasicStroke(lineWidth, BasicStroke.CAP_BUTT,
-					BasicStroke.JOIN_BEVEL,0,new float[] {9},0);
+					BasicStroke.JOIN_BEVEL,0,new float[] {9*scalar},0);
 		else if (this == SHORT_DASHED)
 			return new BasicStroke(lineWidth, BasicStroke.CAP_BUTT,
-					BasicStroke.JOIN_BEVEL,0,new float[] {4},0);
+					BasicStroke.JOIN_BEVEL,0,new float[] {4*scalar},0);
 		else if (this == DOTTED_AND_DASHED)
 			return new BasicStroke(lineWidth, BasicStroke.CAP_BUTT,
-					BasicStroke.JOIN_BEVEL,0,new float[] {5,3,2,3},0);
+					BasicStroke.JOIN_BEVEL,0,new float[] {5*scalar,3*scalar,2*scalar,3*scalar},0);
 		else
 			throw new IllegalStateException("Stroke not applicable for lineType: "+this);
 	}
@@ -130,6 +134,25 @@ public enum PlotLineType {
 	 */
 	public static XYItemRenderer buildRenderer(PlotLineType plt, PlotSymbol sym, float lineWidth, float symWidth)
 	throws IllegalStateException {
+		return buildRenderer(plt, sym, lineWidth, symWidth, 1d);
+	}
+	
+	/**
+	 * Builds a render for the given <code>PlotLineType</code> and/or <code>PlotSymbol</code>.
+	 * 
+	 * @param plt plot line type, or null for none
+	 * @param sym plot symbol type, or null for none
+	 * @param lineWidth width of the line, if not null
+	 * @param symWidth width of the symbols, if not null
+	 * @throws IllegalStateException when both plt and sym are null
+	 * @return
+	 */
+	public static XYItemRenderer buildRenderer(PlotLineType plt, PlotSymbol sym, float lineWidth, float symWidth, double scalar)
+	throws IllegalStateException {
+		if (scalar != 1d) {
+			lineWidth = (float)(lineWidth*scalar);
+			symWidth = (float)(symWidth*scalar);
+		}
 		checkValidConfiguration(plt, sym);
 		XYItemRenderer renderer = null;
 		// will usually use this
@@ -158,7 +181,7 @@ public enum PlotLineType {
 				renderer = new CustomXYAreaRenderer();
 			} else {
 				renderer = lineShpRend;
-				Stroke stroke = plt.buildStroke(lineWidth);
+				Stroke stroke = plt.buildStroke(lineWidth, (float)scalar);
 //				renderer.setStroke(stroke);
 //				renderer.setDefaultStroke(stroke);
 				renderer.setSeriesStroke(0, stroke);

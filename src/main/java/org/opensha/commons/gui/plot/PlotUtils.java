@@ -70,6 +70,10 @@ public class PlotUtils {
 		return new HeadlessGraphPanel(getDefaultFigurePrefs());
 	}
 	
+	public static HeadlessGraphPanel initHeadless(FigureSizeUtils sizer) {
+		return new HeadlessGraphPanel(sizer.getFigurePrefs());
+	}
+	
 	public static void setAxisVisible(GraphPanel gp, boolean xVisible, boolean yVisible) {
 		gp.getXAxis().setTickLabelsVisible(xVisible);
 		gp.getYAxis().setTickLabelsVisible(yVisible);
