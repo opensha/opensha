@@ -249,13 +249,6 @@ public interface ScalarIMR extends IntensityMeasureRelationship {
 
 	/**
 	 * Tells whether the given tectonic region is supported
-	 * @param tectRegionName
-	 * @return
-	 */
-	public boolean isTectonicRegionSupported(String tectRegionName);
-
-	/**
-	 * Tells whether the given tectonic region is supported
 	 * @param tectRegion
 	 * @return
 	 */

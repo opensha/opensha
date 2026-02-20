@@ -194,7 +194,7 @@ public class FaultSysHazardCalcSettings {
 					// TRT specific
 					TectonicRegionTypeParam trtParam = (TectonicRegionTypeParam)gmpeRef.get().getParameter(TectonicRegionTypeParam.NAME);
 					Preconditions.checkState(trtParam != null, "Multiple GMPEs supplied, but GMPE "+gmpeRef.getShortName()+" doesn't have a TRT");
-					TectonicRegionType trt = trtParam.getValueAsTRT();
+					TectonicRegionType trt = trtParam.getValue();
 					ret.put(trt, gmpeRef);
 				} else {
 					// single, just use ACTIVE_SHALLOW (will be used for all)
