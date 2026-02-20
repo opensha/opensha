@@ -168,9 +168,9 @@ public class TestHazardCurveCalcTRTs implements ParameterChangeListener {
 //					System.out.println("event2: new=" + event2.getNewValue() + " old=" + event2.getOldValue());
 //					System.out.println("event1: new=" + event1.getNewValue() + " old=" + event1.getOldValue());
 					assertNotNull(event2.getNewValue());
-					assertTrue("2nd event should have set back to orig", event2.getNewValue().equals(origTRT.toString()));
+					assertTrue("2nd event should have set back to orig", event2.getNewValue().equals(origTRT));
 					assertNotNull(event1.getNewValue());
-					assertTrue("1st event should have set to erf's TRT", event1.getNewValue().equals(erfTRT.toString()));
+					assertTrue("1st event should have set to erf's TRT", event1.getNewValue().equals(erfTRT));
 				}
 				assertTrue("TRT changed but wasn't changed back!", trtParam.getValue() == origTRT);
 			}
@@ -210,10 +210,10 @@ public class TestHazardCurveCalcTRTs implements ParameterChangeListener {
 		ParameterChangeEvent event1 = eventStack.pop(); // the 1st change, setting as default
 		assertNotNull(event2.getNewValue());
 		assertTrue("2nd event should have set back to orig",
-				event2.getNewValue().equals(TectonicRegionType.SUBDUCTION_SLAB.toString()));
+				event2.getNewValue().equals(TectonicRegionType.SUBDUCTION_SLAB));
 		assertNotNull(event1.getNewValue());
 		assertTrue("1st event should have set to erf's TRT",
-				event1.getNewValue().equals(TectonicRegionType.SUBDUCTION_INTERFACE.toString()));
+				event1.getNewValue().equals(TectonicRegionType.SUBDUCTION_INTERFACE));
 		assertTrue("TRT should still be default", trtParam.getValue() == TectonicRegionType.SUBDUCTION_SLAB);
 		
 		assertEquals("event stack should be empty", 0, eventStack.size());
