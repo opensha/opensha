@@ -2,6 +2,7 @@ package org.opensha.sha.imr.attenRelImpl;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.EnumSet;
 import java.util.HashMap;
 
 import org.opensha.commons.data.Named;
@@ -196,7 +197,7 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 	private String siteType; 
 	private String focMechType;
 	private String stdDevType;
-	private String tecRegType;
+	private TectonicRegionType tecRegType;
 
 	// Site class Definitions - 
 	private StringParameter siteTypeParam = null;
@@ -214,12 +215,6 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 	// Hard rock description: Vs30 =200m/s calculated from site period (T=0.6sec) and equivalent of NEHRP Class A
 	public final static String SITE_TYPE_SOFT_SOIL = "Soft Soil";
 	public final static String SITE_TYPE_DEFAULT = SITE_TYPE_ROCK;//SITE_TYPE_HARD_ROCK;
-
-	// Style of faulting options
-	// Only crustal events with reverse fault mechanism 
-	public final static String FLT_TEC_ENV_CRUSTAL = TectonicRegionType.ACTIVE_SHALLOW.toString();
-	public final static String FLT_TEC_ENV_INTERFACE = TectonicRegionType.SUBDUCTION_INTERFACE.toString();
-	public final static String FLT_TEC_ENV_SLAB = TectonicRegionType.SUBDUCTION_SLAB.toString();
 
 	public final static String FLT_FOC_MECH_REVERSE = "Reverse";
 	public final static String FLT_FOC_MECH_NORMAL = "Normal";
@@ -390,7 +385,7 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 		mag = ((Double) magParam.getValue()).doubleValue();
 		rRup = ((Double) distanceRupParam.getValue()).doubleValue();
 		focMechType = fltTypeParam.getValue().toString();
-		tecRegType = tectonicRegionTypeParam.getValue().toString();
+		tecRegType = tectonicRegionTypeParam.getValue();
 		siteType = siteTypeParam.getValue().toString();
 	}
 
@@ -481,18 +476,15 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 		stdDevTypeParam = new StdDevTypeParam(stdDevTypeConstraint);
 		
 	    // The Component Parameter
-	    StringConstraint constraint = new StringConstraint();
 	    // GEM1 GMPE contract: table 1 says Geometric mean
 	    // first is default, the rest are all options (including default)
 	    componentParam = new ComponentParam(Component.AVE_HORZ, Component.AVE_HORZ);
 		
 		// Seismotectonic region
-		constraint = new StringConstraint();
-		constraint.addString(FLT_TEC_ENV_CRUSTAL);
-		constraint.addString(FLT_TEC_ENV_SLAB);
-		constraint.addString(FLT_TEC_ENV_INTERFACE);
 		//constraint.setNonEditable();
-		tectonicRegionTypeParam = new TectonicRegionTypeParam(constraint,FLT_TEC_ENV_INTERFACE); // Constraint and default value
+		tectonicRegionTypeParam = new TectonicRegionTypeParam(
+				EnumSet.of(TectonicRegionType.ACTIVE_SHALLOW, TectonicRegionType.SUBDUCTION_SLAB, TectonicRegionType.SUBDUCTION_INTERFACE),
+				TectonicRegionType.SUBDUCTION_INTERFACE); // Constraint and default value
 		
 		// add these to the list
 		otherParams.addParameter(stdDevTypeParam);
@@ -639,7 +631,7 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 		
 		// Setting the flags in order to account for tectonic region and focal mechanism
 		if (D) System.out.println("getMean: "+tecRegType);
-		if (focMechType.equals(FLT_FOC_MECH_REVERSE) && tecRegType.equals(FLT_TEC_ENV_CRUSTAL)){
+		if (focMechType.equals(FLT_FOC_MECH_REVERSE) && tecRegType.equals(TectonicRegionType.ACTIVE_SHALLOW)){
 			flag_Fr = 1.0;
 			// 
 			mc  = 6.3;
@@ -647,7 +639,7 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 			qFa = Qc[iper];
 			wFa = Wc[iper];
 			if (D) System.out.println("Crustal - reverse");
-		} else if (tecRegType.equals(FLT_TEC_ENV_CRUSTAL)){
+		} else if (tecRegType.equals(TectonicRegionType.ACTIVE_SHALLOW)){
 			flag_sc = 1.0;
 			// 
 			mc  = 6.3;
@@ -655,7 +647,7 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 			qFa = Qc[iper];
 			wFa = Wc[iper];
 			if (D) System.out.println("Crustal - other");
-		} else if (tecRegType.equals(FLT_TEC_ENV_INTERFACE)){
+		} else if (tecRegType.equals(TectonicRegionType.SUBDUCTION_INTERFACE)){
 			flag_Si = 1.0;
 			// 
 			mc  = 6.3;
@@ -663,7 +655,7 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 			qFa = Qi[iper];
 			wFa = Wi[iper];
 			if (D) System.out.println("Interface - all");
-		} else if (tecRegType.equals(FLT_TEC_ENV_SLAB)){
+		} else if (tecRegType.equals(TectonicRegionType.SUBDUCTION_SLAB)){
 			flag_Ss  = 1.0;
 			flag_Ssl = 1.0;
 			//
@@ -780,9 +772,9 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 	 * @param f_meas
 	 * @return
 	 */
-	public double getStdDev(int iper, String stdDevType, String tecRegType) {
+	public double getStdDev(int iper, String stdDevType, TectonicRegionType tecRegType) {
 
-		if (tecRegType.equals(FLT_TEC_ENV_CRUSTAL)){
+		if (tecRegType.equals(TectonicRegionType.ACTIVE_SHALLOW)){
 			  if(stdDevType.equals(StdDevTypeParam.STD_DEV_TYPE_TOTAL))
 				  return Math.sqrt(Tau_c[iper]*Tau_c[iper]+sigma[iper]*sigma[iper]);
 			  else if (stdDevType.equals(StdDevTypeParam.STD_DEV_TYPE_NONE))
@@ -793,7 +785,7 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 				  return sigma[iper];
 			  else 
 				  return Double.NaN;
-		} else if (tecRegType.equals(FLT_TEC_ENV_INTERFACE)) {
+		} else if (tecRegType.equals(TectonicRegionType.SUBDUCTION_INTERFACE)) {
 			  if(stdDevType.equals(StdDevTypeParam.STD_DEV_TYPE_TOTAL))
 				  return Math.sqrt(Tau_i[iper]*Tau_i[iper]+sigma[iper]*sigma[iper]);
 			  else if (stdDevType.equals(StdDevTypeParam.STD_DEV_TYPE_NONE))
@@ -804,7 +796,7 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 				  return sigma[iper];
 			  else 
 				  return Double.NaN; 
-		} else if (tecRegType.equals(FLT_TEC_ENV_SLAB)) {
+		} else if (tecRegType.equals(TectonicRegionType.SUBDUCTION_SLAB)) {
 			  if(stdDevType.equals(StdDevTypeParam.STD_DEV_TYPE_TOTAL))
 				  return Math.sqrt(Tau_s[iper]*Tau_s[iper]+sigma[iper]*sigma[iper]);
 			  else if (stdDevType.equals(StdDevTypeParam.STD_DEV_TYPE_NONE))
@@ -844,7 +836,7 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 			focMechType = fltTypeParam.getValue().toString();
 		} 
 		else if (pName.equals(TectonicRegionTypeParam.NAME)) {
-			tecRegType = tectonicRegionTypeParam.getValue().toString();
+			tecRegType = tectonicRegionTypeParam.getValue();
 			if (D) System.out.println("tecRegType new value:"+tecRegType);
 		} 
 		else if (pName.equals(SITE_TYPE_NAME)) {

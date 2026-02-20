@@ -1,6 +1,8 @@
 package org.opensha.sha.gcim.imCorrRel.imCorrRelImpl;
 
 
+import java.util.EnumSet;
+
 import org.opensha.commons.param.constraint.impl.StringConstraint;
 import org.opensha.sha.gcim.imCorrRel.ImCorrelationRelationship;
 import org.opensha.sha.imr.param.IntensityMeasureParams.DampingParam;
@@ -34,9 +36,6 @@ public class GodaAtkinson09_ImCorrRel extends ImCorrelationRelationship {
     public final static String NAME = "Goda and Atkinson (2009)";
     public final static String SHORT_NAME = "GA2009";
     private static final long serialVersionUID = 1234567890987654353L;
-
-    public final static String TRT_SUBDUCTION_INTERFACE = TectonicRegionType.SUBDUCTION_INTERFACE.toString();
-    public final static String TRT_SUBDUCTION_SLAB = TectonicRegionType.SUBDUCTION_SLAB.toString();
     
     private double t_min = 0.1, t_max = 5; //min and max periods
     
@@ -105,11 +104,9 @@ public class GodaAtkinson09_ImCorrRel extends ImCorrelationRelationship {
         super.initOtherParams();
         
     	// tectonic region
-    	StringConstraint trtConstraint = new StringConstraint();
-    	trtConstraint.addString(TRT_SUBDUCTION_INTERFACE);
-    	trtConstraint.addString(TRT_SUBDUCTION_SLAB);
-    	//trtConstraint.setNonEditable();
-		tectonicRegionTypeParam = new TectonicRegionTypeParam(trtConstraint,TRT_SUBDUCTION_INTERFACE); // Constraint and default value
+		tectonicRegionTypeParam = new TectonicRegionTypeParam(
+				EnumSet.of(TectonicRegionType.SUBDUCTION_INTERFACE, TectonicRegionType.SUBDUCTION_SLAB),
+				TectonicRegionType.SUBDUCTION_INTERFACE); // Constraint and default value
 		tectonicRegionTypeParam.setValueAsDefault();
 		// add these to the list
 		otherParams.replaceParameter(tectonicRegionTypeParam.NAME, tectonicRegionTypeParam);
