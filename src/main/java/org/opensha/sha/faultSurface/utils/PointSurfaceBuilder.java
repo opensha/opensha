@@ -4,8 +4,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
+import java.util.SplittableRandom;
 import java.util.function.Supplier;
+import java.util.random.RandomGenerator;
 
 import org.opensha.commons.calc.magScalingRelations.MagAreaRelationship;
 import org.opensha.commons.calc.magScalingRelations.MagLengthRelationship;
@@ -59,7 +60,7 @@ public class PointSurfaceBuilder {
 	
 	// optional
 	private Region sampleFromCell = null;
-	private Random rand;
+	private RandomGenerator rand;
 	private double mag = Double.NaN; 
 	private double strike = Double.NaN;
 	private Range<Double> strikeRange = null;
@@ -153,7 +154,7 @@ public class PointSurfaceBuilder {
 	 * @param rand
 	 * @return
 	 */
-	public PointSurfaceBuilder random(Random rand) {
+	public PointSurfaceBuilder random(RandomGenerator rand) {
 		this.rand = rand;
 		return this;
 	}
@@ -165,7 +166,7 @@ public class PointSurfaceBuilder {
 	 * @return
 	 */
 	public PointSurfaceBuilder random(long seed) {
-		this.rand = new Random(seed);
+		this.rand = new SplittableRandom(seed);
 		return this;
 	}
 	
@@ -179,7 +180,7 @@ public class PointSurfaceBuilder {
 	public PointSurfaceBuilder randomGlobalSeed(long globalSeed) {
 		List<Long> seeds = getRandSeedElements();
 		seeds.add(globalSeed);
-		return random(new Random(uniqueSeedCombination(seeds)));
+		return random(new SplittableRandom(uniqueSeedCombination(seeds)));
 	}
 	
 	private List<Long> getRandSeedElements() {
@@ -213,16 +214,16 @@ public class PointSurfaceBuilder {
 		return seeds;
 	}
 	
-	private Random getRand() {
+	private RandomGenerator getRand() {
 		if (rand == null) {
 			if (useTrueRandom()) {
-				rand = new Random();
+				rand = new SplittableRandom();
 			} else {
 				List<Long> seeds = getRandSeedElements();
 				Long globalSeed = getGlobalSeed();
 				if (globalSeed != null)
 					seeds.add(globalSeed);
-				rand = new Random(uniqueSeedCombination(seeds));
+				rand = new SplittableRandom(uniqueSeedCombination(seeds));
 			}
 		}
 		return rand;
@@ -242,8 +243,50 @@ public class PointSurfaceBuilder {
 		long result = 1;
 		for (long element : seeds)
 			result = 31l * result + element;
-		return result;
+		return mix64(result);
 	}
+	
+	/**
+	 * Applies a 64-bit avalanche mixing function to the given value.
+	 * <p>
+	 * This method is based on the finalization step of the SplitMix64
+	 * generator (see Steele et al., 2014) and is commonly used as a
+	 * high-quality bit mixer. It is <em>not</em> a random number generator
+	 * itself, but a deterministic transformation that diffuses input bits
+	 * so that small changes in the input (even a single bit) produce large,
+	 * seemingly unrelated changes in the output.
+	 * </p>
+	 *
+	 * <p>
+	 * This is useful when constructing seeds from structured or correlated
+	 * inputs (e.g., spatial coordinates, hash combinations, rolling hashes),
+	 * where a simple linear combination may retain detectable structure.
+	 * Applying this mixer before seeding a PRNG (such as {@link java.util.Random}
+	 * or {@link java.util.SplittableRandom}) helps reduce inter-seed correlation
+	 * and improves statistical independence between streams.
+	 * </p>
+	 *
+	 * <p>
+	 * Properties:
+	 * <ul>
+	 *   <li>Deterministic and repeatable.</li>
+	 *   <li>Full 64-bit avalanche behavior.</li>
+	 *   <li>One-to-one mapping over 64-bit values (mod 2^64).</li>
+	 * </ul>
+	 * </p>
+	 *
+	 * @param z input value to mix
+	 * @return a mixed 64-bit value suitable for use as a high-quality PRNG seed
+	 */
+	private static long mix64(long z) {
+		z ^= (z >>> 33);
+		z *= 0xff51afd7ed558ccdL;
+		z ^= (z >>> 33);
+		z *= 0xc4ceb9fe1a85ec53L;
+		z ^= (z >>> 33);
+		return z;
+	}
+
 	
 	private Location getLoc() {
 		if (sampleFromCell != null) {
@@ -255,7 +298,7 @@ public class PointSurfaceBuilder {
 			double maxLon = sampleFromCell.getMaxLon();
 			double lonSpan = maxLon - minLon;
 			Preconditions.checkState(lonSpan > 0d);
-			Random rand = getRand();
+			RandomGenerator rand = getRand();
 			boolean rectangular = sampleFromCell.isRectangular();
 			int maxNumTries = 100;
 			int tries = 0;
@@ -851,7 +894,7 @@ public class PointSurfaceBuilder {
 		double upper = strikeRange.upperEndpoint();
 		double span = upper - lower;
 		Preconditions.checkState(span > 0d);
-		Random rand = getRand();
+		RandomGenerator rand = getRand();
 		for (int i=0; i<num; i++)
 			strikes[i] = lower + rand.nextDouble()*span;
 		return strikes;
