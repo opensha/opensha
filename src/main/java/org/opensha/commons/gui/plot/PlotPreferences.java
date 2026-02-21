@@ -26,6 +26,8 @@ public class PlotPreferences {
 	private Color insetLegendBackground = new Color(255, 255, 255, 180);
 	private Color insetLegendBorder = Color.BLACK;
 	
+	private double sizeScalar = 1d;
+	
 	private List<ChangeListener> listeners = Lists.newArrayList();
 	
 	/**
@@ -47,6 +49,8 @@ public class PlotPreferences {
 	}
 	
 	public int getAxisLabelFontSize() {
+		if (sizeScalar != 1d)
+			return (int)Math.round(axisLabelFontSize*sizeScalar);
 		return axisLabelFontSize;
 	}
 
@@ -56,6 +60,8 @@ public class PlotPreferences {
 	}
 
 	public int getTickLabelFontSize() {
+		if (sizeScalar != 1d)
+			return (int)Math.round(tickLabelFontSize*sizeScalar);
 		return tickLabelFontSize;
 	}
 
@@ -65,6 +71,8 @@ public class PlotPreferences {
 	}
 
 	public int getPlotLabelFontSize() {
+		if (sizeScalar != 1d)
+			return (int)Math.round(plotLabelFontSize*sizeScalar);
 		return plotLabelFontSize;
 	}
 
@@ -83,6 +91,8 @@ public class PlotPreferences {
 	}
 
 	public int getLegendFontSize() {
+		if (sizeScalar != 1d)
+			return (int)Math.round(legendFontSize*sizeScalar);
 		return legendFontSize;
 	}
 
@@ -127,6 +137,16 @@ public class PlotPreferences {
 		tickLabelFontSize = (int)(tickLabelFontSize*scalar + 0.5);
 		plotLabelFontSize = (int)(plotLabelFontSize*scalar + 0.5);
 		legendFontSize = (int)(legendFontSize*scalar + 0.5);
+		fireChangeEvent();
+	}
+	
+	public void setSizeScalar(double sizeScalar) {
+		this.sizeScalar = sizeScalar;
+		fireChangeEvent();
+	}
+	
+	public double getSizeScalar() {
+		return sizeScalar;
 	}
 	
 	public PlotPreferences clone() {

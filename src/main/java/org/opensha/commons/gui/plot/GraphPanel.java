@@ -7,6 +7,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.Paint;
+import java.awt.RenderingHints;
 import java.awt.Shape;
 import java.awt.Stroke;
 import java.awt.geom.Rectangle2D;
@@ -21,6 +22,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
+import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
@@ -189,8 +191,7 @@ public class GraphPanel extends JSplitPane {
 	 */
 	public GraphPanel(PlotPreferences plotPrefs) {
 		super(JSplitPane.VERTICAL_SPLIT, true);
-		this.plotPrefs = plotPrefs;
-		this.backgroundColor = plotPrefs.getBackgroundColor();
+		setPlotPrefs(plotPrefs);
 		setResizeWeight(1);
 		setBorder(null);
 
@@ -376,6 +377,7 @@ public class GraphPanel extends JSplitPane {
 		// getting the tick label font size
 		int tickFontSize = plotPrefs.getTickLabelFontSize();
 		int legendFontSize = plotPrefs.getLegendFontSize();
+		double sizeScalar = plotPrefs.getSizeScalar();
 
 		// create the standard ticks so that smaller values too can plotted on the chart
 		TickUnits units = MyTickUnits.createStandardTickUnits();
@@ -656,7 +658,6 @@ public class GraphPanel extends JSplitPane {
 			if (plotChars == null) {
 				plotChars = new ArrayList<>();
 				plotSpec.setChars(plotChars);
-				;
 			}
 
 			int charIndex = 0;
@@ -783,7 +784,7 @@ public class GraphPanel extends JSplitPane {
 					// to be send to JFreechart for plotting.
 //					drawCurvesUsingPlottingFeatures(subPlot, lineType, lineWidth, symbol, symbolWidth, color, dataIndex);
 
-					XYItemRenderer renderer = PlotLineType.buildRenderer(lineType, symbol, lineWidth, symbolWidth);
+					XYItemRenderer renderer = PlotLineType.buildRenderer(lineType, symbol, lineWidth, symbolWidth, sizeScalar);
 
 					subPlot.setRenderer(datasetIndex, renderer);
 //					xyItemRenderer.setPaint(color);
@@ -1367,6 +1368,33 @@ public class GraphPanel extends JSplitPane {
 	public void saveAsPNG(String fileName, int width, int height) throws IOException {
 		ChartUtils.saveChartAsPNG(new File(fileName), chartPanel.getChart(), width, height);
 	}
+	
+	public void saveAsScaledPNG(String fileName, int width, int height, int dpi) throws IOException {
+		saveAsScaledPNG(fileName, width, height, (double)dpi/72d);
+	}
+	
+	public void saveAsScaledPNG(String fileName, int width, int height, double scale) throws IOException {
+		int W = (int)Math.round(width * scale);
+		int H = (int)Math.round(height * scale);
+
+		BufferedImage hi = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g2 = hi.createGraphics();
+		try {
+			// quality hints
+			g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+			g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+			g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+			g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+
+			// scale everything uniformly
+			g2.scale(scale, scale);
+
+			chartPanel.getChart().draw(g2, new Rectangle2D.Double(0, 0, width, height));
+		} finally {
+			g2.dispose();
+		}
+		ImageIO.write(hi, "png", new File(fileName));
+	}
 
 	/**
 	 * Allows the user to save the chart contents and metadata as PDF. This allows
@@ -1375,239 +1403,24 @@ public class GraphPanel extends JSplitPane {
 	 * @throws IOException
 	 */
 	public void saveAsPDF(String fileName) throws IOException {
+		saveAsPDF(fileName, true);
+	}
+
+	/**
+	 * Allows the user to save the chart contents and metadata as PDF. This allows
+	 * to preserve the color coding of the metadata.
+	 * 
+	 * @throws IOException
+	 */
+	public void saveAsPDF(String fileName, boolean includeMetadata) throws IOException {
 		int width = chartPanel.getWidth();
 		int height = chartPanel.getHeight();
-		this.saveAsPDF(fileName, width, height);
+		this.saveAsPDF(fileName, width, height, includeMetadata, 1d);
 	}
 
 	public BufferedImage getBufferedImage(int width, int height) {
 		return chartPanel.getChart().createBufferedImage(width, height, null);
 	}
-
-//	private static class UTF8_FontMapper implements FontMapper {
-//
-//		/** Maps aliases to names.
-//	     */    
-//	    private HashMap aliases = new HashMap();
-//	    /** Maps names to BaseFont parameters.
-//	     */    
-//	    private HashMap mapper = new HashMap();
-//	    
-//	    private final String encoding = BaseFont.IDENTITY_H;
-//	    /**
-//	     * Returns a BaseFont which can be used to represent the given AWT Font
-//	     *
-//	     * @param	font		the font to be converted
-//	     * @return	a BaseFont which has similar properties to the provided Font
-//	     */
-//	    
-//	    public BaseFont awtToPdf(Font font) {
-//	        try {
-//	            BaseFontParameters p = getBaseFontParameters(font.getFontName());
-//	            if (p != null)
-//	                return BaseFont.createFont(p.fontName, p.encoding, p.embedded, p.cached, p.ttfAfm, p.pfb);
-//	            String fontKey = null;
-//	            String logicalName = font.getName();
-//
-//	            if (logicalName.equalsIgnoreCase("DialogInput") || logicalName.equalsIgnoreCase("Monospaced") || logicalName.equalsIgnoreCase("Courier")) {
-//
-//	                if (font.isItalic()) {
-//	                    if (font.isBold()) {
-//	                        fontKey = BaseFont.COURIER_BOLDOBLIQUE;
-//
-//	                    } else {
-//	                        fontKey = BaseFont.COURIER_OBLIQUE;
-//	                    }
-//
-//	                } else {
-//	                    if (font.isBold()) {
-//	                        fontKey = BaseFont.COURIER_BOLD;
-//
-//	                    } else {
-//	                        fontKey = BaseFont.COURIER;
-//	                    }
-//	                }
-//
-//	            } else if (logicalName.equalsIgnoreCase("Serif") || logicalName.equalsIgnoreCase("TimesRoman")) {
-//
-//	                if (font.isItalic()) {
-//	                    if (font.isBold()) {
-//	                        fontKey = BaseFont.TIMES_BOLDITALIC;
-//
-//	                    } else {
-//	                        fontKey = BaseFont.TIMES_ITALIC;
-//	                    }
-//
-//	                } else {
-//	                    if (font.isBold()) {
-//	                        fontKey = BaseFont.TIMES_BOLD;
-//
-//	                    } else {
-//	                        fontKey = BaseFont.TIMES_ROMAN;
-//	                    }
-//	                }
-//
-//	            } else {  // default, this catches Dialog and SansSerif
-//
-//	                if (font.isItalic()) {
-//	                    if (font.isBold()) {
-//	                        fontKey = BaseFont.HELVETICA_BOLDOBLIQUE;
-//
-//	                    } else {
-//	                        fontKey = BaseFont.HELVETICA_OBLIQUE;
-//	                    }
-//
-//	                } else {
-//	                    if (font.isBold()) {
-//	                        fontKey = BaseFont.HELVETICA_BOLD;
-//	                    } else {
-//	                        fontKey = BaseFont.HELVETICA;
-//	                    }
-//	                }
-//	            }
-//	            return BaseFont.createFont(fontKey, encoding, false);
-//	        }
-//	        catch (Exception e) {
-//	            throw new ExceptionConverter(e);
-//	        }
-//	    }
-//	    
-//	    /**
-//	     * Returns an AWT Font which can be used to represent the given BaseFont
-//	     *
-//	     * @param	font		the font to be converted
-//	     * @param	size		the desired point size of the resulting font
-//	     * @return	a Font which has similar properties to the provided BaseFont
-//	     */
-//	    
-//	    public Font pdfToAwt(BaseFont font, int size) {
-//	        String names[][] = font.getFullFontName();
-//	        if (names.length == 1)
-//	            return new Font(names[0][3], 0, size);
-//	        String name10 = null;
-//	        String name3x = null;
-//	        for (int k = 0; k < names.length; ++k) {
-//	            String name[] = names[k];
-//	            if (name[0].equals("1") && name[1].equals("0"))
-//	                name10 = name[3];
-//	            else if (name[2].equals("1033")) {
-//	                name3x = name[3];
-//	                break;
-//	            }
-//	        }
-//	        String finalName = name3x;
-//	        if (finalName == null)
-//	            finalName = name10;
-//	        if (finalName == null)
-//	            finalName = names[0][3];
-//	        return new Font(finalName, 0, size);
-//	    }
-//	    
-//	    /** Maps a name to a BaseFont parameter.
-//	     * @param awtName the name
-//	     * @param parameters the BaseFont parameter
-//	     */    
-//	    public void putName(String awtName, BaseFontParameters parameters) {
-//	        mapper.put(awtName, parameters);
-//	    }
-//	    
-//	    /** Maps an alias to a name.
-//	     * @param alias the alias
-//	     * @param awtName the name
-//	     */    
-//	    public void putAlias(String alias, String awtName) {
-//	        aliases.put(alias, awtName);
-//	    }
-//	    
-//	    /** Looks for a BaseFont parameter associated with a name.
-//	     * @param name the name
-//	     * @return the BaseFont parameter or <CODE>null</CODE> if not found.
-//	     */    
-//	    public BaseFontParameters getBaseFontParameters(String name) {
-//	        String alias = (String)aliases.get(name);
-//	        if (alias == null)
-//	            return (BaseFontParameters)mapper.get(name);
-//	        BaseFontParameters p = (BaseFontParameters)mapper.get(alias);
-//	        if (p == null)
-//	            return (BaseFontParameters)mapper.get(name);
-//	        else
-//	            return p;
-//	    }
-//	    
-//	    /**
-//	     * Inserts the names in this map.
-//	     * @param allNames the returned value of calling {@link BaseFont#getAllFontNames(String, String, byte[])}
-//	     * @param path the full path to the font
-//	     */    
-//	    public void insertNames(Object allNames[], String path) {
-//	        String names[][] = (String[][])allNames[2];
-//	        String main = null;
-//	        for (int k = 0; k < names.length; ++k) {
-//	            String name[] = names[k];
-//	            if (name[2].equals("1033")) {
-//	                main = name[3];
-//	                break;
-//	            }
-//	        }
-//	        if (main == null)
-//	            main = names[0][3];
-//	        BaseFontParameters p = new BaseFontParameters(path);
-//	        mapper.put(main, p);
-//	        for (int k = 0; k < names.length; ++k) {
-//	            aliases.put(names[k][3], main);
-//	        }
-//	        aliases.put(allNames[0], main);
-//	    }
-//	    
-//	    /** Inserts all the fonts recognized by iText in the
-//	     * <CODE>directory</CODE> into the map. The encoding
-//	     * will be <CODE>BaseFont.CP1252</CODE> but can be
-//	     * changed later.
-//	     * @param dir the directory to scan
-//	     * @return the number of files processed
-//	     */    
-//	    public int insertDirectory(String dir) {
-//	        File file = new File(dir);
-//	        if (!file.exists() || !file.isDirectory())
-//	            return 0;
-//	        File files[] = file.listFiles();
-//	        if (files == null)
-//	        	return 0;
-//	        int count = 0;
-//	        for (int k = 0; k < files.length; ++k) {
-//	            file = files[k];
-//	            String name = file.getPath().toLowerCase();
-//	            try {
-//	                if (name.endsWith(".ttf") || name.endsWith(".otf") || name.endsWith(".afm")) {
-//	                    Object allNames[] = BaseFont.getAllFontNames(file.getPath(), encoding, null);
-//	                    insertNames(allNames, file.getPath());
-//	                    ++count;
-//	                }
-//	                else if (name.endsWith(".ttc")) {
-//	                    String ttcs[] = BaseFont.enumerateTTCNames(file.getPath());
-//	                    for (int j = 0; j < ttcs.length; ++j) {
-//	                        String nt = file.getPath() + "," + j;
-//	                        Object allNames[] = BaseFont.getAllFontNames(nt, encoding, null);
-//	                        insertNames(allNames, nt);
-//	                    }
-//	                    ++count;
-//	                }
-//	            }
-//	            catch (Exception e) {
-//	            }
-//	        }
-//	        return count;
-//	    }
-//	    
-//	    public HashMap getMapper() {
-//	        return mapper;
-//	    }
-//	    
-//	    public HashMap getAliases() {
-//	        return aliases;
-//	    }
-//		
-//	}
 
 	/**
 	 * Allows the user to save the chart contents and metadata as PDF. This allows
@@ -1616,10 +1429,20 @@ public class GraphPanel extends JSplitPane {
 	 * @throws IOException
 	 */
 	public void saveAsPDF(String fileName, int width, int height) throws IOException {
-		int textLength = metadataText.getStyledDocument().getLength();
-		int totalLength = textLength + height;
+		saveAsPDF(fileName, width, height, false, 1d);
+	}
+
+	/**
+	 * Allows the user to save the chart contents and metadata as PDF. This allows
+	 * to preserve the color coding of the metadata.
+	 * 
+	 * @throws IOException
+	 */
+	public void saveAsPDF(String fileName, int width, int height, boolean includeMetadata, double scale) throws IOException {
+		float pdfW = (float)(width*scale);
+		float pdfH = (float)(height*scale);
 		// step 1
-		Document metadataDocument = new Document(new com.itextpdf.text.Rectangle(width, height));
+		Document metadataDocument = new Document(new com.itextpdf.text.Rectangle(pdfW, pdfH));
 		metadataDocument.addAuthor("OpenSHA");
 		metadataDocument.addCreationDate();
 //		HeaderFooter footer = new HeaderFooter(new Phrase("Powered by OpenSHA"), true);
@@ -1633,12 +1456,16 @@ public class GraphPanel extends JSplitPane {
 			metadataDocument.open();
 			// step 4
 			PdfContentByte cb = writer.getDirectContent();
-			PdfTemplate tp = cb.createTemplate(width, height);
+			PdfTemplate tp = cb.createTemplate(pdfW, pdfH);
 //			tp.creategraphics
 //			new 
 //			FontMapper fontMapper = new DefaultFontMapper();
 			FontMapper fontMapper = new PDF_UTF8_FontMapper();
-			Graphics2D g2d = new PdfGraphics2D(tp, width, height, fontMapper);
+			Graphics2D g2d = new PdfGraphics2D(tp, pdfW, pdfH, fontMapper);
+			
+			if (scale != 1d)
+				g2d.scale(scale, scale);
+			
 //			Graphics2D g2d = tp.createGraphics(width, height,
 //					new DefaultFontMapper());
 			Rectangle2D r2d = new Rectangle2D.Double(0, 0, width, height);
@@ -1646,23 +1473,27 @@ public class GraphPanel extends JSplitPane {
 			g2d.dispose();
 			cb.addTemplate(tp, 0, 0);
 			// starts the metadata from the new page.
-			metadataDocument.newPage();
-			int size = legendString.size();
-			for (int i = 0, legendColor = 0; i < size; ++i, ++legendColor) {
-				com.itextpdf.text.Paragraph para = new com.itextpdf.text.Paragraph();
-				// checks to see if the WeightFuncList exists in the list of functions
-				// then plot it in black else plot in the same as the legend
-				if (weightedfuncListIndexes != null && weightedfuncListIndexes.contains(i)) {
-					para.add(new Phrase((String) legendString.get(i),
-							FontFactory.getFont(PDF_UTF8_FontMapper.SANS, 10, Font.PLAIN, BaseColor.BLACK)));
-					--legendColor;
-				} else {
-					Color c = this.plottedChars.get(legendColor).getColor();
-					BaseColor bc = new BaseColor(c.getRed(), c.getGreen(), c.getBlue(), c.getAlpha());
-					para.add(new Phrase((String) legendString.get(i),
-							FontFactory.getFont(PDF_UTF8_FontMapper.SANS, 10, Font.PLAIN, bc)));
+			if (includeMetadata) {
+				int textLength = metadataText.getStyledDocument().getLength();
+				
+				metadataDocument.newPage();
+				int size = legendString.size();
+				for (int i = 0, legendColor = 0; i < size; ++i, ++legendColor) {
+					com.itextpdf.text.Paragraph para = new com.itextpdf.text.Paragraph();
+					// checks to see if the WeightFuncList exists in the list of functions
+					// then plot it in black else plot in the same as the legend
+					if (weightedfuncListIndexes != null && weightedfuncListIndexes.contains(i)) {
+						para.add(new Phrase((String) legendString.get(i),
+								FontFactory.getFont(PDF_UTF8_FontMapper.SANS, 10, Font.PLAIN, BaseColor.BLACK)));
+						--legendColor;
+					} else {
+						Color c = this.plottedChars.get(legendColor).getColor();
+						BaseColor bc = new BaseColor(c.getRed(), c.getGreen(), c.getBlue(), c.getAlpha());
+						para.add(new Phrase((String) legendString.get(i),
+								FontFactory.getFont(PDF_UTF8_FontMapper.SANS, 10, Font.PLAIN, bc)));
+					}
+					metadataDocument.add(para);
 				}
-				metadataDocument.add(para);
 			}
 		} catch (DocumentException de) {
 			de.printStackTrace();
@@ -1795,6 +1626,12 @@ public class GraphPanel extends JSplitPane {
 
 	public PlotPreferences getPlotPrefs() {
 		return plotPrefs;
+	}
+	
+	public void setPlotPrefs(PlotPreferences plotPrefs) {
+		Preconditions.checkNotNull(plotPrefs, "Plot preferences cannot be null");
+		this.plotPrefs = plotPrefs;
+		this.backgroundColor = plotPrefs.getBackgroundColor();
 	}
 
 	public void setGriddedFuncAxesTicks(boolean histogramAxesTicks) {

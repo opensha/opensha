@@ -2133,8 +2133,15 @@ public class GeographicMapMaker {
 		plot(outputDir, prefix, spec, width, null);
 	}
 	
-	public void plot(File outputDir, String prefix, PlotSpec spec, int width, Consumer<? super HeadlessGraphPanel> customizer)
-			throws IOException {
+	public void plot(File outputDir, String prefix, String title, double widthInches, int dpi) throws IOException {
+		plot(outputDir, prefix, buildPlot(title), widthInches, dpi);
+	}
+	
+	public void plot(File outputDir, String prefix, PlotSpec spec, double widthInches, int dpi) throws IOException {
+		plot(outputDir, prefix, spec, widthInches, dpi, null);
+	}
+	
+	private HeadlessGraphPanel buildGraphPanel(PlotSpec spec) {
 		HeadlessGraphPanel gp = new HeadlessGraphPanel(PLOT_PREFS_DEFAULT);
 		
 		Range xRange = getXRange();
@@ -2166,11 +2173,33 @@ public class GeographicMapMaker {
 			gp.getYAxis().setTickMarksVisible(false);
 			gp.getYAxis().setMinorTickMarksVisible(false);
 		}
+		return gp;
+	}
+	
+	public void plot(File outputDir, String prefix, PlotSpec spec, int width, Consumer<? super HeadlessGraphPanel> customizer)
+			throws IOException {
+		HeadlessGraphPanel gp = buildGraphPanel(spec);
 		
 		if (customizer != null)
 			customizer.accept(gp);
 		
 		PlotUtils.writePlots(outputDir, prefix, gp, width, true, true, writePDFs, false);
+		
+		if (writeGeoJSON && features != null && !features.isEmpty() && !(spec instanceof XYZPlotSpec)) {
+			FeatureCollection features = new FeatureCollection(this.features);
+			FeatureCollection.write(features, new File(outputDir, prefix+".geojson"));
+		}
+	}
+	
+	public void plot(File outputDir, String prefix, PlotSpec spec, double widthInches, int dpi,
+			Consumer<? super HeadlessGraphPanel> customizer)
+			throws IOException {
+		HeadlessGraphPanel gp = buildGraphPanel(spec);
+		
+		if (customizer != null)
+			customizer.accept(gp);
+		
+		PlotUtils.writeInchPlots(outputDir, prefix, gp, widthInches, true, dpi, true, writePDFs, false);
 		
 		if (writeGeoJSON && features != null && !features.isEmpty() && !(spec instanceof XYZPlotSpec)) {
 			FeatureCollection features = new FeatureCollection(this.features);

@@ -1000,7 +1000,7 @@ public class SolHazardMapCalc {
 			height = -1;
 		}
 		
-		PlotUtils.writePlots(outputDir, prefix, gp, width, height, true, true, PDFS, false);
+		PlotUtils.writePlots(outputDir, prefix, gp, width, height, true, true, 1d, PDFS, 1d, false);
 	}
 	
 	public static class MapPlot {

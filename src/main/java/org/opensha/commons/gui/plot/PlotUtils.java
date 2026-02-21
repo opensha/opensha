@@ -309,18 +309,65 @@ public class PlotUtils {
 //		return (int)(extraWidth + plotWidth+ 0.5);
 //	}
 	
+	/**
+	 * Assumed DPI of a standard computer monitor, used for PNG output of plots specified in inches
+	 */
+	public static final int DEFAULT_SCREEN_DPI = 110;
+	/**
+	 * Default usable page letter width after subtracting margins (using those for SSA journals)
+	 */
+	public static final double DEFAULT_USABLE_PAGE_WIDTH = 7.2d;
+	/**
+	 * Default usable page letter height after subtracting margins (using those for SSA journals)
+	 */
+	public static final double DEFAULT_USABLE_PAGE_HEIGHT = 9.4d;
+	
+	public static void writeInchPlots(File outputDir, String prefix, GraphPanel gp, double widthInches, boolean isLatLon,
+			boolean writePNG, boolean writePDF, boolean writeTXT) throws IOException {
+		writeInchPlots(outputDir, prefix, gp, widthInches, -1d, DEFAULT_SCREEN_DPI, isLatLon, writePNG, writePDF, writeTXT);
+	}
+	
+	public static void writeInchPlots(File outputDir, String prefix, GraphPanel gp, double widthInches, boolean isLatLon,
+			int dpi, boolean writePNG, boolean writePDF, boolean writeTXT) throws IOException {
+		writeInchPlots(outputDir, prefix, gp, widthInches, -1d, dpi, isLatLon, writePNG, writePDF, writeTXT);
+	}
+	
+	public static void writeInchPlots(File outputDir, String prefix, GraphPanel gp, double widthInches, double heightInches,
+			boolean writePNG, boolean writePDF, boolean writeTXT) throws IOException {
+		writeInchPlots(outputDir, prefix, gp, widthInches, heightInches, DEFAULT_SCREEN_DPI, false, writePNG, writePDF, writeTXT);
+	}
+	
+	public static void writeInchPlots(File outputDir, String prefix, GraphPanel gp, double widthInches, double heightInches,
+			int dpi, boolean writePNG, boolean writePDF, boolean writeTXT) throws IOException {
+		writeInchPlots(outputDir, prefix, gp, widthInches, heightInches, dpi, false, writePNG, writePDF, writeTXT);
+	}
+	
+	public static void writeInchPlots(File outputDir, String prefix, GraphPanel gp, double widthInches, double heightInches,
+			int dpi, boolean isLatLon, boolean writePNG, boolean writePDF, boolean writeTXT) throws IOException {
+		// do the actual plot at the typical screen DPI for the given width so that font and line sizes are as expected
+		int width = widthInches <= 0 ? (int)widthInches : (int)Math.round(widthInches * DEFAULT_SCREEN_DPI);
+		int height = heightInches <= 0 ?(int)heightInches : (int)Math.round(heightInches * DEFAULT_SCREEN_DPI);
+		// scale the PNG to the specified DPI
+		double pngScale = dpi == DEFAULT_SCREEN_DPI ? 1d : (double)dpi/(double)DEFAULT_SCREEN_DPI;
+		// and make the PDF have exactly the specified dimensions (it uses points with 72 points per inch)
+		double pdfScale = 72d/DEFAULT_SCREEN_DPI;
+//		System.out.println("Plotting "+widthInches+" in x "+heightInches+" in = "+width+" x "+height
+//				+" with pngScale="+pngScale+" and pdfScale="+pdfScale);
+		writePlots(outputDir, prefix, gp, width, height, isLatLon, writePNG, pngScale, writePDF, pdfScale, writeTXT);
+	}
+	
 	public static void writePlots(File outputDir, String prefix, GraphPanel gp, int width, int height,
 			boolean writePNG, boolean writePDF, boolean writeTXT) throws IOException {
-		writePlots(outputDir, prefix, gp, width, height, false, writePNG, writePDF, writeTXT);
+		writePlots(outputDir, prefix, gp, width, height, false, writePNG, 1d, writePDF, 1d, writeTXT);
 	}
 	
 	public static void writePlots(File outputDir, String prefix, GraphPanel gp, int width, boolean isLatLon,
 			boolean writePNG, boolean writePDF, boolean writeTXT) throws IOException {
-		writePlots(outputDir, prefix, gp, width, -1, isLatLon, writePNG, writePDF, writeTXT);
+		writePlots(outputDir, prefix, gp, width, -1, isLatLon, writePNG, 1d, writePDF, 1d, writeTXT);
 	}
 	
 	public static void writePlots(File outputDir, String prefix, GraphPanel gp, int width, int height,
-			boolean isLatLon, boolean writePNG, boolean writePDF, boolean writeTXT) throws IOException {
+			boolean isLatLon, boolean writePNG, double pngScale, boolean writePDF, double pdfScale, boolean writeTXT) throws IOException {
 		File file = new File(outputDir, prefix);
 		
 		Preconditions.checkArgument(width > 0 || height > 0, "must specify either width or height");
@@ -331,10 +378,14 @@ public class PlotUtils {
 		else
 			gp.getChartPanel().setSize(width, height);
 		
-		if (writePNG)
-			gp.saveAsPNG(file.getAbsolutePath()+".png");
+		if (writePNG) {
+			if (pngScale != 1d)
+				gp.saveAsScaledPNG(file.getAbsolutePath()+".png", width, height, pngScale);
+			else
+				gp.saveAsPNG(file.getAbsolutePath()+".png");
+		}
 		if (writePDF)
-			gp.saveAsPDF(file.getAbsolutePath()+".pdf");
+			gp.saveAsPDF(file.getAbsolutePath()+".pdf", width, height, false, pdfScale);
 		if (writeTXT)
 			gp.saveAsTXT(file.getAbsolutePath()+".txt");
 	}
