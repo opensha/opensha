@@ -24,7 +24,7 @@ import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionPolygonBuilder
 
 import com.google.common.base.Preconditions;
 
-public final class GeoJSONFaultSection implements FaultSection {
+public class GeoJSONFaultSection implements FaultSection {
 	
 	// required data
 	private int id;
