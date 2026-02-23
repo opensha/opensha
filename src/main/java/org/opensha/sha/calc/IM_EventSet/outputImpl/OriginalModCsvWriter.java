@@ -14,6 +14,7 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.param.Parameter;
+import org.opensha.refFaultParamDb.vo.Timespan;
 import org.opensha.sha.calc.IM_EventSet.IMEventSetCalcAPI;
 import org.opensha.sha.calc.IM_EventSet.IM_EventSetOutputWriter;
 import org.opensha.sha.earthquake.ERF;
@@ -252,7 +253,13 @@ public class OriginalModCsvWriter extends IM_EventSetOutputWriter {
 
             int numSources = erf.getNumSources();
 
-            double duration = ((TimeSpan)erf.getTimeSpan()).getDuration();
+            TimeSpan timespan = erf.getTimeSpan();
+            double duration;
+            if (timespan != null)
+                duration = timespan.getDuration();
+            else
+                duration = 1;
+//            double duration = ((TimeSpan)erf.getTimeSpan()).getDuration();
 
             for (int sourceID = 0; sourceID < numSources; sourceID++) {
                 ProbEqkSource source = erf.getSource(sourceID);
