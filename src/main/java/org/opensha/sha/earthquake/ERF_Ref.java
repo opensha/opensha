@@ -230,15 +230,16 @@ public enum ERF_Ref {
 	 * production quality (i.e. fully tested and documented), under development,
 	 * or experimental. The <code>Set</code> of references returned does not
 	 * include deprecated references.
-	 * @param includeListERFs if true, Epistemic List ERFs will be included, otherwise
-	 * they will be excluded
-     * @param withoutInteractiveParams if true, ERFs requiring interactive parameters will be excluded
+	 * @param includeListERFs if true, Epistemic List ERFs will be included,
+     *                           otherwise they will be excluded
+     * @param interactiveParams if true, ERFs requiring interactive parameters will be included,
+     *                          otherwise they will be excluded
 	 * @return reference <code>Set</code> of all non-deprecated
 	 *         <code>EqkRupForecastBaseAPI</code>s
 	 * @see DevStatus
 	 */
-    public static Set<ERF_Ref> get(boolean includeListERFs, boolean withoutInteractiveParams) {
-        return get(includeListERFs, withoutInteractiveParams, PRODUCTION, DEVELOPMENT, EXPERIMENTAL);
+    public static Set<ERF_Ref> get(boolean includeListERFs, boolean interactiveParams) {
+        return get(includeListERFs, interactiveParams, PRODUCTION, DEVELOPMENT, EXPERIMENTAL);
     }
 
 
@@ -247,14 +248,15 @@ public enum ERF_Ref {
      * <code>EqkRupForecastBaseAPI</code> implementations that are currently
      * production quality (i.e. fully tested and documented), under development,
      * or experimental. The <code>Set</code> of references returned does not
-     * include deprecated references. Does not filter on interactive params.
-     * @param includeListERFs if true, Epistemic List ERFs will be included, otherwise
-     * they will be excluded
+     * include deprecated references.
+     * ERFs requiring interactive parameters are included by default.
+     * @param includeListERFs if true, Epistemic List ERFs will be included,
+     *                        otherwise they will be excluded
      * @return reference <code>Set</code> of all non-deprecated
      *         <code>EqkRupForecastBaseAPI</code>s
      */
 	public static Set<ERF_Ref> get(boolean includeListERFs) {
-		return get(includeListERFs, false);
+		return get(includeListERFs, true);
 	}
 
 
@@ -264,16 +266,18 @@ public enum ERF_Ref {
 	 * in applications with the given ServerPrefs. Production applications only include
 	 * production IMRs, and development applications include everything but
 	 * deprecated IMRs.
-	 * @param includeListERFs if true, Epistemic List ERFs will be included, otherwise
-	 * they will be excluded
+	 * @param includeListERFs if true, Epistemic List ERFs will be included,
+     *                        otherwise they will be excluded
+     * @param interactiveParams if true, ERFs requiring interactive parameters will be included,
+     *                          otherwise they will be excluded
 	 * @param prefs <code>ServerPrefs</code> instance for which IMRs should be selected
 	 * @return
 	 */
-    public static Set<ERF_Ref> get(boolean includeListERFs, boolean withoutInteractiveParams, ServerPrefs prefs) {
+    public static Set<ERF_Ref> get(boolean includeListERFs, boolean interactiveParams, ServerPrefs prefs) {
         if (prefs == ServerPrefs.DEV_PREFS)
-            return get(includeListERFs, withoutInteractiveParams, PRODUCTION, DEVELOPMENT, EXPERIMENTAL);
+            return get(includeListERFs, interactiveParams, PRODUCTION, DEVELOPMENT, EXPERIMENTAL);
         else if (prefs == ServerPrefs.PRODUCTION_PREFS)
-            return get(includeListERFs, withoutInteractiveParams, PRODUCTION);
+            return get(includeListERFs, interactiveParams, PRODUCTION);
         else
             throw new IllegalArgumentException("Unknown ServerPrefs instance: "+prefs);
     }
@@ -283,24 +287,25 @@ public enum ERF_Ref {
      * <code>EqkRupForecastBaseAPI</code> implementations that should be included
      * in applications with the given ServerPrefs. Production applications only include
      * production IMRs, and development applications include everything but
-     * deprecated IMRs. Does not filter on interactive params.
+     * deprecated IMRs.
+     * ERFs requiring interactive parameters are included by default.
      * @param includeListERFs if true, Epistemic List ERFs will be included, otherwise
      * they will be excluded
      * @param prefs <code>ServerPrefs</code> instance for which IMRs should be selected
      * @return
      */
 	public static Set<ERF_Ref> get(boolean includeListERFs, ServerPrefs prefs) {
-            return get(includeListERFs, false, prefs);
+            return get(includeListERFs, true, prefs);
 	}
 
 	/**
 	 * Convenience method to return references to
 	 * <code>EqkRupForecastBaseAPI</code> implementations at the specified
 	 * levels of development.
-	 * @param includeListERFs if true, Epistemic List ERFs will be included, otherwise
-	 * they will be excluded
-     * @param withoutInteractiveParams if true, ERFs that require interactive params will be excluded
-     *                                 For where user-specified params may not be present (i.e. CLT)
+	 * @param includeListERFs if true, Epistemic List ERFs will be included,
+     *                           otherwise they will be excluded
+     * @param interactiveParams if true, ERFs requiring interactive parameters will be included,
+     *                          otherwise they will be excluded
 	 * @param stati the development level(s) of the
 	 *        <code>EqkRupForecastBaseAPI</code> references to be retrieved
 	 * @return a <code>Set</code> of <code>EqkRupForecastBaseAPI</code>
@@ -308,7 +313,7 @@ public enum ERF_Ref {
 	 * @see DevStatus
 	 */
 	public static Set<ERF_Ref> get(boolean includeListERFs,
-                                   boolean withoutInteractiveParams,
+                                   boolean interactiveParams,
                                    DevStatus... stati) {
 		EnumSet<ERF_Ref> erfSet = EnumSet.allOf(ERF_Ref.class);
 		for (ERF_Ref erf : erfSet) {
@@ -316,7 +321,7 @@ public enum ERF_Ref {
 				erfSet.remove(erf);
 			if (erf.isERFList() && !includeListERFs)
 				erfSet.remove(erf);
-            if (erf.needsInteractiveParams() && withoutInteractiveParams)
+            if (erf.needsInteractiveParams() && !interactiveParams)
                 erfSet.remove(erf);
 		}
 		return erfSet;
