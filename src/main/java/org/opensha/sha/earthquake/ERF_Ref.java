@@ -57,7 +57,7 @@ public enum ERF_Ref {
 	
 	/** Frankel/USGS 1996 Adjustable ERF */
 	FRANKEL_ADJUSTABLE_96(Frankel96_AdjustableEqkRupForecast.class,
-			Frankel96_AdjustableEqkRupForecast.NAME, PRODUCTION, false),
+			Frankel96_AdjustableEqkRupForecast.NAME, PRODUCTION),
 	
 	// should we include this?
 			//			erf_Classes.add(POINT_SRC_TO_LINE_ERF_CLASS_NAME);
@@ -65,95 +65,95 @@ public enum ERF_Ref {
 	
 	/** Frankel/USGS 1996 ERF */
 	FRANKEL_96(Frankel96_EqkRupForecast.class,
-			Frankel96_EqkRupForecast.NAME, PRODUCTION, false),
+			Frankel96_EqkRupForecast.NAME, PRODUCTION),
 
 	/** Frankel/USGS 2002 Adjustable ERF */
 	FRANKEL_02(Frankel02_AdjustableEqkRupForecast.class,
-			Frankel02_AdjustableEqkRupForecast.NAME, PRODUCTION, false),
+			Frankel02_AdjustableEqkRupForecast.NAME, PRODUCTION),
 	
 	/** WGCEP 2002 ERF */
-	WGCEP_02(WG02_EqkRupForecast.class, WG02_EqkRupForecast.NAME, PRODUCTION, false),
+	WGCEP_02(WG02_EqkRupForecast.class, WG02_EqkRupForecast.NAME, PRODUCTION),
 	
 	/** WGCEP 2002 ERF Epistemic List */
-	WGCEP_02_LIST(WG02_ERF_Epistemic_List.class, WG02_ERF_Epistemic_List.NAME, PRODUCTION, true),
+	WGCEP_02_LIST(WG02_ERF_Epistemic_List.class, WG02_ERF_Epistemic_List.NAME, PRODUCTION),
 	
 	/** WGCEP 2002 Fortran Wrapped ERF */
 	//WGCEP_02_WRAPPED_LIST(WG02_FortranWrappedERF_EpistemicList.class,
 	//		WG02_FortranWrappedERF_EpistemicList.NAME, PRODUCTION, true),
 	
 	/** WGCEP UCERF 1 */
-	WGCEP_UCERF_1(WGCEP_UCERF1_EqkRupForecast.class, WGCEP_UCERF1_EqkRupForecast.NAME, PRODUCTION, false),
+	WGCEP_UCERF_1(WGCEP_UCERF1_EqkRupForecast.class, WGCEP_UCERF1_EqkRupForecast.NAME, PRODUCTION),
 
 	/** PEER Area Forecast */
-	PEER_AREA(PEER_AreaForecast.class, PEER_AreaForecast.NAME, PRODUCTION, false),
+	PEER_AREA(PEER_AreaForecast.class, PEER_AreaForecast.NAME, PRODUCTION),
 
 	/** PEER Non Planar Fault Forecast */
-	PEER_NON_PLANAR_FAULT(PEER_NonPlanarFaultForecast.class, PEER_NonPlanarFaultForecast.NAME, PRODUCTION, false),
+	PEER_NON_PLANAR_FAULT(PEER_NonPlanarFaultForecast.class, PEER_NonPlanarFaultForecast.NAME, PRODUCTION),
 
 	/** PEER Multi Source Forecast */
-	PEER_MULTI_SOURCE(PEER_MultiSourceForecast.class, PEER_MultiSourceForecast.NAME, PRODUCTION, false),
+	PEER_MULTI_SOURCE(PEER_MultiSourceForecast.class, PEER_MultiSourceForecast.NAME, PRODUCTION),
 
 	/** PEER Logic Tree Forecast */
-	PEER_LOGIC_TREE(PEER_LogicTreeERF_List.class, PEER_LogicTreeERF_List.NAME, PRODUCTION, false),
+	PEER_LOGIC_TREE(PEER_LogicTreeERF_List.class, PEER_LogicTreeERF_List.NAME, PRODUCTION),
 
 	// include this?
 		//erf_Classes.add(STEP_FORECAST_CLASS_NAME);
 	
 	/** Floating Poisson Fault ERF */
-	POISSON_FLOATING_FAULT(FloatingPoissonFaultERF.class, FloatingPoissonFaultERF.NAME, PRODUCTION, false),
+	POISSON_FLOATING_FAULT(FloatingPoissonFaultERF.class, FloatingPoissonFaultERF.NAME, PRODUCTION),
 	
 	/** Poisson Fault ERF */
-	POISSON_FAULT(PoissonFaultERF.class, PoissonFaultERF.NAME, PRODUCTION, false),
+	POISSON_FAULT(PoissonFaultERF.class, PoissonFaultERF.NAME, PRODUCTION),
 	
 	/**  Point Source ERF */
-	POINT_SOURCE(PointSourceERF.class, PointSourceERF.NAME, PRODUCTION, false),
+	POINT_SOURCE(PointSourceERF.class, PointSourceERF.NAME, PRODUCTION),
 	
 	/**  Point Source Multi Vert ERF */
-	POINT_SOURCE_MULTI_VERT(Point2MultVertSS_FaultERF.class, Point2MultVertSS_FaultERF.NAME, PRODUCTION, false),
+	POINT_SOURCE_MULTI_VERT(Point2MultVertSS_FaultERF.class, Point2MultVertSS_FaultERF.NAME, PRODUCTION),
 
 	/**  Point Source Multi Vert ERF */
 	POINT_SOURCE_MULTI_VERT_LIST(Point2MultVertSS_FaultERF_List.class,
-			Point2MultVertSS_FaultERF_List.NAME, PRODUCTION, true),
+			Point2MultVertSS_FaultERF_List.NAME, PRODUCTION),
 
 	/** WGCEP UCERF 2 ERF */
-	UCERF_2(UCERF2.class, UCERF2.NAME, PRODUCTION, false),
+	UCERF_2(UCERF2.class, UCERF2.NAME, PRODUCTION),
 	
 	/** WGCEP UCERF 2 Time Independent Epistemic List */
 	UCERF_2_TIME_INDEP_LIST(UCERF2_TimeIndependentEpistemicList.class,
-			UCERF2_TimeIndependentEpistemicList.NAME, PRODUCTION, true),
+			UCERF2_TimeIndependentEpistemicList.NAME, PRODUCTION),
 	
 	/** WGCEP Mean UCERF 2 */
-	MEAN_UCERF_2(MeanUCERF2.class, MeanUCERF2.NAME, PRODUCTION, false),
+	MEAN_UCERF_2(MeanUCERF2.class, MeanUCERF2.NAME, PRODUCTION),
 	
-	/** WGCEP Mean UCERF 2 */
-	MEAN_UCERF_2_Mod(ModMeanUCERF2_FM2pt1.class, ModMeanUCERF2_FM2pt1.NAME, PRODUCTION, false),
+	/** WGCEP Mean2 */
+	MEAN_UCERF_2_Mod(ModMeanUCERF2_FM2pt1.class, ModMeanUCERF2_FM2pt1.NAME, PRODUCTION),
 	
 	/** Fault System Solution ERF */
 	INVERSION_SOLUTION_ERF(FaultSystemSolutionERF.class, FaultSystemSolutionERF.NAME,
-			PRODUCTION, false),
+			PRODUCTION),
 	
 	/** WGCEP Mean UCERF 3 */
-	MEAN_UCERF3(MeanUCERF3.class, MeanUCERF3.NAME, PRODUCTION, false),
+	MEAN_UCERF3(MeanUCERF3.class, MeanUCERF3.NAME, PRODUCTION),
 	
 	/** WGCEP Single Branch UCERF 3 */
-	UCERF3_COMPOUND(UCERF3_CompoundSol_ERF.class, UCERF3_CompoundSol_ERF.NAME, PRODUCTION, false),
+	UCERF3_COMPOUND(UCERF3_CompoundSol_ERF.class, UCERF3_CompoundSol_ERF.NAME, PRODUCTION),
 
 	/** Yucca Mountain ERF */
-	YUCCA_MOUNTAIN(YuccaMountainERF.class, YuccaMountainERF.NAME, PRODUCTION, false),
+	YUCCA_MOUNTAIN(YuccaMountainERF.class, YuccaMountainERF.NAME, PRODUCTION),
 	
 	/** Yucca Mountain ERF List */
-	YUCCA_MOUNTAIN_LIST(YuccaMountainERF_List.class, YuccaMountainERF_List.NAME, PRODUCTION, true),
+	YUCCA_MOUNTAIN_LIST(YuccaMountainERF_List.class, YuccaMountainERF_List.NAME, PRODUCTION),
 	
-	/** WGCEP UCERF3 Epistemic List */
-	UCERF3_EPISTEMIC(UCERF3EpistemicListERF.class, UCERF3EpistemicListERF.NAME, PRODUCTION, true),
+	/** WGCEP UCERF3List */
+	UCERF3_EPISTEMIC(UCERF3EpistemicListERF.class, UCERF3EpistemicListERF.NAME, PRODUCTION),
 	
 	/** National Seismic Hazard Model 2023 Western US ERF */
-	NSHM23_WUS_BRANCH_AVG(NSHM23_WUS_BranchAveragedERF.class, NSHM23_WUS_BranchAveragedERF.NAME, PRODUCTION, false),
+	NSHM23_WUS_BRANCH_AVG(NSHM23_WUS_BranchAveragedERF.class, NSHM23_WUS_BranchAveragedERF.NAME, PRODUCTION),
 
 	// DEVELOPMENT
 	
 	/** STEP Alaska Forecast */
-	STEP_ALASKA(STEP_AlaskanPipeForecast.class, STEP_AlaskanPipeForecast.NAME, DEVELOPMENT, false),
+	STEP_ALASKA(STEP_AlaskanPipeForecast.class, STEP_AlaskanPipeForecast.NAME, DEVELOPMENT),
 		
 	// EXPERIMENTAL
 	
@@ -170,12 +170,11 @@ public enum ERF_Ref {
 	private DevStatus status;
 	private boolean erfList;
 
-	private ERF_Ref(Class<? extends BaseERF> clazz,
-		String name, DevStatus status, boolean erfList) {
+	ERF_Ref(Class<? extends BaseERF> clazz,
+            String name, DevStatus status) {
 		this.clazz = clazz;
 		this.name = name;
 		this.status = status;
-		this.erfList = erfList;
 	}
 
 	@Override
@@ -196,7 +195,7 @@ public enum ERF_Ref {
 	 * @return true if this is an ERF Epistemic List, false otherwise
 	 */
 	public boolean isERFList() {
-		return erfList;
+        return EpistemicListERF.class.isAssignableFrom(clazz);
 	}
 
 	/**
