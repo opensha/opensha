@@ -18,19 +18,21 @@ import org.opensha.commons.gui.ControlPanel;
 import org.opensha.commons.gui.DisclaimerDialog;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.util.ApplicationVersion;
+import org.opensha.commons.util.DevStatus;
 import org.opensha.commons.util.FileUtils;
+import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.commons.util.bugReports.BugReport;
 import org.opensha.commons.util.bugReports.BugReportDialog;
 import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 import org.opensha.sha.calc.IM_EventSet.outputImpl.OriginalModCsvWriter;
 import org.opensha.sha.calc.IM_EventSet.outputImpl.OriginalModTxtWriter;
 import org.opensha.sha.calc.IM_EventSet.AbstractIMEventSetCalc;
-import org.opensha.sha.calc.IM_EventSet.IMEventSetERFUtils;
 import org.opensha.sha.calc.IM_EventSet.IM_EventSetOutputWriter;
 import org.opensha.sha.calc.IM_EventSet.outputImpl.HAZ01Writer;
 import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
 import org.opensha.sha.calc.sourceFilters.params.SourceFiltersParam;
 import org.opensha.sha.earthquake.ERF;
+import org.opensha.sha.earthquake.ERF_Ref;
 import org.opensha.sha.gui.HazardCurveApplication;
 import org.opensha.sha.gui.beans.ERF_GuiBean;
 import org.opensha.sha.gui.controls.CalculationSettingsControlPanel;
@@ -76,7 +78,7 @@ public class IMEventSetCalculatorGUI extends JFrame implements ActionListener, C
         try {
             AbstractIMEventSetCalc.initLogger(Level.WARNING);
 
-            erfGuiBean = IMEventSetERFUtils.createERF_GUI_Bean();
+            erfGuiBean = new ERF_GuiBean(ERF_Ref.get(false, true, ServerPrefUtils.SERVER_PREFS));
             imtChooser = new IMT_ChooserPanel();
 
             // Initialize params for control panel.
