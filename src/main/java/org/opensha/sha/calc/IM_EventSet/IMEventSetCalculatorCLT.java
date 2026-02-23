@@ -11,7 +11,6 @@ import java.util.logging.Level;
 import org.apache.commons.cli.*;
 import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.SiteDataValue;
-import org.opensha.commons.data.siteData.impl.WillsMap2000;
 import org.opensha.commons.exceptions.ConstraintException;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.geo.Location;
@@ -22,6 +21,7 @@ import org.opensha.commons.param.WarningParameter;
 import org.opensha.commons.param.event.ParameterChangeWarningEvent;
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
 import org.opensha.commons.param.impl.StringParameter;
+import org.opensha.commons.util.DevStatus;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.sha.calc.IM_EventSet.outputImpl.OriginalModCsvWriter;
@@ -46,7 +46,6 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.MeanUCERF2
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
-import org.opensha.sha.imr.attenRelImpl.ShakeMap_2003_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.USGS_Combined_2004_AttenRel;
 
 import com.google.common.base.Preconditions;
@@ -94,7 +93,7 @@ implements ParameterChangeWarningListener {
     private final SourceFilterManager sourceFilters;
 
     // All supported ERFs - call .instance() to get the BaseERF
-    private static final Set<ERF_Ref> erfRefs = IMEventSetERFUtils.getSupportedERFs();
+    private static final Set<ERF_Ref> erfRefs = ERF_Ref.get(false, false, ServerPrefUtils.SERVER_PREFS);
     // Map of ERF names to their references for quick lookup
     private static final Map<String, ERF_Ref> erfNameMap = new HashMap<>();
     private static final ArrayList<String> erfShortNames = new ArrayList<>();
@@ -193,7 +192,7 @@ implements ParameterChangeWarningListener {
         sourceFilters = SourceFiltersParam.getDefault();
 
         getERF(erfName);
-        toApplyBackGroud(bgSeismicity);
+        toApplyBackGround(bgSeismicity);
         setRupOffset(rupOffset);
         for (String attenRel : attenRelNames) {
             setIMR(attenRel);
@@ -460,7 +459,7 @@ implements ParameterChangeWarningListener {
 		this.forecast = forecast;
 	}
 
-	private void toApplyBackGroud(String toApply){
+	private void toApplyBackGround(String toApply){
 		try {
 			Parameter param = forecast.getAdjustableParameterList().getParameter(
 					Frankel02_AdjustableEqkRupForecast.BACK_SEIS_NAME);
