@@ -3,40 +3,58 @@ The IM Event Set Calculator CLT is a command-line application that gives the mea
 This application is run by typing the following on the command line:
 
 	java -jar -Xmx500M IMEventSetCalculatorCLT.jar  [-h] [--list-erfs] [--haz01] [-d] [-dd] [-ddd] [-q] [-e <name>]
-                                                     [-b <type>] [-r <km>] [-a <IMR1,IMR2,...> | -f <file>]
-                                                     [-m <IMT1,IMT2,...>] [-s <csv-file>] [-o <dir>]
+	                                                [-b <type>] [-r <km>] [-t <years>] [-a <IMR1,IMR2,...> | -f <file>]
+	                                                [-m <IMT1,IMT2,...>] [-s <csv-file>] [-o <dir>]
 
+     IM Event Set Calculator - Compute Mean and Sigma for Attenuation
+     Relationships and IMTs
 
-IM Event Set Calculator - Compute Mean and Sigma for Attenuation
-Relationships and IMTs
+      -h,--help                           Show this help and exit.
+         --list-erfs                      List available ERF short names and
+                                          long names
+         --haz01                          Use HAZ01 output file format instead
+                                          of default
+      -d                                  Set logging level to CONFIG (verbose)
+      -dd                                 Set logging level to FINE (very
+                                          verbose)
+      -ddd                                Set logging level to ALL (debug)
+      -q,--quiet                          Set logging level to OFF (quiet)
+      -e,--erf <name>                     Earthquake Rupture Forecast (ERF) -
+                                          short code or full name in quotes
+      -b,--background-seismicity <type>   Include | Exclude | Only-Background
+      -r,--rupture-offset <km>            Rupture offset for floating ruptures
+                                          (1-100 km; 5 km is generally best).
+      -t,--duration <years>               Duration in years. Defaults to 1 if
+                                          not provided.
+      -a,--atten-rels <IMR1,IMR2,...>     Comma-separated in quotation
+                                          attenuation relations
+      -f,--atten-rels-file <file>         Newlines-separated IMR list (mutually
+                                          exclusive with --atten-rels)
+      -m,--imts <IMT1,IMT2,...>           Comma-separated intensity-measure
+                                          types
+      -s,--sites <csv-file>               CSV of Lat, Lon, [Vs30/Wills] (column
+                                          optional)
+      -o,--output-dir <dir>               Where to write results (defaults to
+                                          current dir)
 
- -h,--help                           Show this help and exit.
-    --list-erfs                      List available ERF short names and
-                                     long names
-    --haz01                          Use HAZ01 output file format instead
-                                     of default
- -d                                  Set logging level to CONFIG (verbose)
- -dd                                 Set logging level to FINE (very
-                                     verbose)
- -ddd                                Set logging level to ALL (debug)
- -q,--quiet                          Set logging level to OFF (quiet)
- -e,--erf <name>                     Earthquake Rupture Forecast (ERF) -
-                                     short code or full name in quotes
- -b,--background-seismicity <type>   Include | Exclude | Only-Background
- -r,--rupture-offset <km>            Rupture offset for floating ruptures
-                                     (1-100 km; 5 km is generally best).
-                                     Not applicable to UCERF3, but a value
-                                     is still required.
- -a,--atten-rels <IMR1,IMR2,...>     Comma-separated in quotation
-                                     attenuation relations
- -f,--atten-rels-file <file>         Newlines-separated IMR list (mutually
-                                     exclusive with --atten-rels)
- -m,--imts <IMT1,IMT2,...>           Comma-separated intensity-measure
-                                     types
- -s,--sites <csv-file>               CSV of Lat, Lon, [Vs30/Wills] (column
-                                     optional)
- -o,--output-dir <dir>               Where to write results (defaults to
-                                     current dir)
+     Example:
+       imcalc -e "WGCEP (2007) UCERF2 - Single Branch" \
+              -b Exclude \
+              -a "Boore & Atkinson (2008)","Chiou & Youngs (2008)" \
+              -m "PGA,SA20,SA 1.0" \
+              -r 5 \
+              -s sites.csv \
+              -o results/
+
+     Note: Site data values are limited to Vs30, Z1.0, Z2.5 in CSV file.
+           Use IMEventSetCalculatorGUI for more refined control of Site
+     Parameters.
+
+Required parameters are:
+  * One of `atten-rels` or `atten-rels-file`
+  * `erf`
+  * `imts`
+  * `output-dir`
 
 
 If the --HAZ01 flag is specified, the output files will follow the HAZ01 as specified in "Data Interchange Formats for the Global Earthquake Model (GEM)", 4 May 2009.
@@ -103,13 +121,10 @@ Use `java -jar IMEventSetCalculatorCLT.jar --list-erfs` to see an updated list o
 All adjustable parameters for these ERFs are hard-wired in the code to default/official settings; only whether to include the background/grid sources and the offset for floating ruptures are set in the input file.
 Use the graphical application, IMEventSetCalculatorGUI.jar, for more refined control over the ERF parameters.
 
-The timespan duration is hard coded as 1 year, and this model will be treated as a time-independent model.
-The only exceptions are MeanUCERF3 and any ERFs that have constraints on modified timespan durations.
-You will see a warning message if an ERF is selected and the timespan duration could not be set to 1 year.
-
-The next choices are which AttenuationRelationships and IMTs to support (see ExampleInputFile.txt file for the many options). If user chooses an IMT that is not supported by one or more of the chosen AttenuationRelationships then the program will terminate with an error message.
+The next choices are which AttenuationRelationships and IMTs to support (see ExampleAttenRelsInputFileCLT.txt file for the many options). If user chooses an IMT that is not supported by one or more of the chosen AttenuationRelationships then the program will terminate with an error message.
 
 Lastly, the input file specifies a list of sites for which Mean and Sigma will to be computed.
+If a site file is not provided, defaults to a single site for Los Angeles (34.1,-118.1) with Vs30 760m/s.
 
 Earthquake Ruptures that are at a distance greater than ~200 km to each site are not listed in the output files (details below).
 
