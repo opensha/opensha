@@ -346,22 +346,7 @@ implements ParameterChangeWarningListener {
 		logger.log(Level.CONFIG, "Attempting to identify ERF from name: " + erfName);
 
         ERF_Ref erfRef = erfNameMap.get(erfName);
-        // TODO: Delete logic for hardcoded ERFs
-        // For backwards compatibility, these ERFs are hardcoded with special default parameters.
-//		if (erfName.equals(Frankel02_AdjustableEqkRupForecast.NAME)
-//                || erfName.equals(Frankel02_AdjustableEqkRupForecast.class.getSimpleName())) {
-//            createFrankel02Forecast();
-//        } else if (erfName.equals(WGCEP_UCERF1_EqkRupForecast.NAME)
-//                || erfName.equals(WGCEP_UCERF1_EqkRupForecast.class.getSimpleName())) {
-//            createUCERF1_Forecast();
-//        } else if (erfName.equals(MeanUCERF2.NAME)
-//                || erfName.equals(MeanUCERF2.class.getSimpleName())) {
-//            createMeanUCERF2_Forecast();
-//        } else if (erfName.startsWith("Mean UCERF3") || erfName.startsWith("UCERF3")) {
-//            createMeanUCERF3_Forecast(erfName);
-//        } else if (erfRef != null) {
         if (erfRef != null) {
-            // Non-hardcoded ERFs are created with default parameters.
             logger.log(Level.CONFIG, "Creating ERF dynamically with default parameters.");
             forecast = (ERF)erfRef.instance();
         } else {
@@ -378,90 +363,6 @@ implements ParameterChangeWarningListener {
                 logger.log(Level.WARNING, "ERF " + erfName + " does not allow duration=1.0, " +
                         "using default duration: " + forecast.getTimeSpan().getDuration());
         }
-	}
-
-	/**
-	 * Creating the instance of the Frankel02 forecast
-	 */
-	private void createFrankel02Forecast(){
-		logger.log(Level.CONFIG, "Creating Frankel02 ERF");
-		forecast = new Frankel02_AdjustableEqkRupForecast();
-	}
-
-	/**
-	 * Creating the instance of the UCERF1 Forecast
-	 */
-	private void createUCERF1_Forecast(){
-		logger.log(Level.CONFIG, "Creating UCERF1 ERF");
-		forecast = new WGCEP_UCERF1_EqkRupForecast();
-		forecast.getAdjustableParameterList().getParameter(
-				WGCEP_UCERF1_EqkRupForecast.TIME_DEPENDENT_PARAM_NAME).setValue(Boolean.valueOf(false));
-	}
-
-	/**
-	 * Creating the instance of the UCERF2 - Single Branch Forecast
-	 */
-	private void createMeanUCERF2_Forecast(){
-		logger.log(Level.CONFIG, "Creating UCERF2 ERF");
-		forecast = new MeanUCERF2();
-		forecast.getAdjustableParameterList().getParameter(
-				UCERF2.PROB_MODEL_PARAM_NAME).setValue(UCERF2.PROB_MODEL_POISSON);
-	}
-	
-	private void createMeanUCERF3_Forecast(String name) {
-		name = name.trim();
-		logger.log(Level.CONFIG, "Creating MeanUCERF3 ERF");
-		MeanUCERF3.show_progress = false;
-		MeanUCERF3 forecast = new MeanUCERF3();
-		Presets preset;
-		String args;
-		if (name.startsWith("Mean UCERF3 FM3.1")) {
-			preset = MeanUCERF3.Presets.FM3_1_BRANCH_AVG;
-			args = name.substring("Mean UCERF3 FM3.1".length());
-		} else if (name.startsWith("Mean UCERF3 FM3.2")) {
-			preset = MeanUCERF3.Presets.FM3_2_BRANCH_AVG;
-			args = name.substring("Mean UCERF3 FM3.2".length());
-		} else {
-			preset = MeanUCERF3.Presets.BOTH_FM_BRANCH_AVG;
-			Preconditions.checkState(name.length() == "Mean UCERF3".length(),
-					"Can't specify UCERF3-TD params for full model, must use individual Fault Model");
-			args = "";
-		}
-		
-		logger.log(Level.CONFIG, "MeanUCERF3 Preset: "+preset.name());
-		
-		forecast.setPreset(preset);
-		
-		if (!args.isEmpty()) {
-			logger.log(Level.CONFIG, "Time dependent args: "+args);
-			// time dependent
-			args = args.trim().replaceAll("\t", " ");
-			while (args.contains("  "))
-				args = args.replaceAll("  ", " ");
-			String[] split = args.split(" ");
-			Preconditions.checkState(split.length == 1 || split.length == 2,
-					"UCERF3-TD arguments: <start-year> [<duration>]");
-			int startYear = Integer.parseInt(split[0]);
-			double duration = 1d;
-			if (split.length == 2)
-				duration = Double.parseDouble(split[1]);
-			
-			logger.log(Level.CONFIG, "Start Year: "+startYear);
-			logger.log(Level.CONFIG, "Duration: "+duration);
-			
-//			erf.getParameter(IncludeBackgroundParam.NAME).setValue(IncludeBackgroundOption.INCLUDE);
-//			erf.setParameter(ApplyGardnerKnopoffAftershockFilterParam.NAME, false);
-			forecast.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.U3_PREF_BLEND);
-			forecast.setParameter(AleatoryMagAreaStdDevParam.NAME, 0.0);
-			forecast.setParameter(HistoricOpenIntervalParam.NAME, startYear-1875d);
-			forecast.getTimeSpan().setStartTime(startYear);
-			forecast.getTimeSpan().setDuration(duration);
-		} else {
-			forecast.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
-			forecast.getTimeSpan().setDuration(1d);
-		}
-		
-		this.forecast = forecast;
 	}
 
 	private void toApplyBackGround(String toApply){
