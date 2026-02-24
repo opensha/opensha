@@ -9,6 +9,7 @@ import java.util.*;
 import java.util.logging.Level;
 
 import org.apache.commons.cli.*;
+import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.exceptions.ConstraintException;
@@ -184,6 +185,7 @@ implements ParameterChangeWarningListener {
     public IMEventSetCalculatorCLT(String erfName,
                                    String bgSeismicity,
                                    double rupOffset,
+                                   double duration,
                                    ArrayList<String> attenRelNames,
                                    ArrayList<String> imtNames,
                                    String siteFile,
@@ -191,8 +193,8 @@ implements ParameterChangeWarningListener {
         // source filters have fixed-cutoff distance of 200km by default
         sourceFilters = SourceFiltersParam.getDefault();
 
-        getERF(erfName);
-        toApplyBackGround(bgSeismicity);
+        getERF(erfName, duration);
+        if (bgSeismicity != null) toApplyBackGround(bgSeismicity);
         setRupOffset(rupOffset);
         for (String attenRel : attenRelNames) {
             setIMR(attenRel);
@@ -203,6 +205,7 @@ implements ParameterChangeWarningListener {
         if (siteFile == null || siteFile.isEmpty()) {
             // If no sites file provided, default to 1 site in LA with Vs30 760m/s
             // "34.1 -118.1 760"
+            logger.log(Level.INFO, "No site file provided, defaulting to LA (34.1,-118.1) with Vs30 760m/s");
             locList = new LocationList(List.of(new Location(34.1,-118.1)));
             Vs30_Param vs30Param = new Vs30_Param();
             vs30Param.setValue(760);
@@ -336,42 +339,44 @@ implements ParameterChangeWarningListener {
      * Creates an ERF instance from the string parsed as an erfName.
      * ERFs are created with default parameters, with a few hardcoded exceptions.
      * @param line user input to parse into an erfName
+     * @param duration duration of the ERF in years
      */
-	private void getERF(String line){
+	private void getERF(String line, double duration) {
 		String erfName = line.trim();
 		logger.log(Level.CONFIG, "Attempting to identify ERF from name: " + erfName);
 
         ERF_Ref erfRef = erfNameMap.get(erfName);
+        // TODO: Delete logic for hardcoded ERFs
         // For backwards compatibility, these ERFs are hardcoded with special default parameters.
-		if (erfName.equals(Frankel02_AdjustableEqkRupForecast.NAME)
-                || erfName.equals(Frankel02_AdjustableEqkRupForecast.class.getSimpleName())) {
-            createFrankel02Forecast();
-        } else if (erfName.equals(WGCEP_UCERF1_EqkRupForecast.NAME)
-                || erfName.equals(WGCEP_UCERF1_EqkRupForecast.class.getSimpleName())) {
-            createUCERF1_Forecast();
-        } else if (erfName.equals(MeanUCERF2.NAME)
-                || erfName.equals(MeanUCERF2.class.getSimpleName())) {
-            createMeanUCERF2_Forecast();
-        } else if (erfName.startsWith("Mean UCERF3") || erfName.startsWith("UCERF3")) {
-            createMeanUCERF3_Forecast(erfName);
-        } else if (erfRef != null) {
+//		if (erfName.equals(Frankel02_AdjustableEqkRupForecast.NAME)
+//                || erfName.equals(Frankel02_AdjustableEqkRupForecast.class.getSimpleName())) {
+//            createFrankel02Forecast();
+//        } else if (erfName.equals(WGCEP_UCERF1_EqkRupForecast.NAME)
+//                || erfName.equals(WGCEP_UCERF1_EqkRupForecast.class.getSimpleName())) {
+//            createUCERF1_Forecast();
+//        } else if (erfName.equals(MeanUCERF2.NAME)
+//                || erfName.equals(MeanUCERF2.class.getSimpleName())) {
+//            createMeanUCERF2_Forecast();
+//        } else if (erfName.startsWith("Mean UCERF3") || erfName.startsWith("UCERF3")) {
+//            createMeanUCERF3_Forecast(erfName);
+//        } else if (erfRef != null) {
+        if (erfRef != null) {
             // Non-hardcoded ERFs are created with default parameters.
             logger.log(Level.CONFIG, "Creating ERF dynamically with default parameters.");
             forecast = (ERF)erfRef.instance();
         } else {
-            throw new RuntimeException ("Unsupported ERF");
+            throw new RuntimeException("Unsupported ERF");
         }
-        // Only set duration to 1.0 if the ERF allows it
-        if (!(forecast instanceof MeanUCERF3)) {
-            try {
-                // Check if the duration parameter allows 1.0
-                forecast.getTimeSpan().setDuration(1.0);
-                logger.log(Level.FINE, "Set duration to 1.0 for ERF: " + erfName);
-            } catch (ConstraintException e) {
-                // ERF has constraints that don't allow duration=1.0, use default duration
+        try {
+            forecast.getTimeSpan().setDuration(duration);
+            logger.log(Level.FINE, "Set duration to " + duration + " for ERF: " + erfName);
+        } catch (ConstraintException e) {
+            // ERF has constraints that don't allow specified duration, use default duration
+            if (forecast.getTimeSpan() == null)
+                logger.log(Level.WARNING, "ERF " + erfName + " does not have a TimeSpan.");
+            else
                 logger.log(Level.WARNING, "ERF " + erfName + " does not allow duration=1.0, " +
                         "using default duration: " + forecast.getTimeSpan().getDuration());
-            }
         }
 	}
 
@@ -590,7 +595,7 @@ implements ParameterChangeWarningListener {
                 "  imcalc -e \"WGCEP (2007) UCERF2 - Single Branch\" \\\n" +
                 "         -b Exclude \\\n" +
                 "         -a \"Boore & Atkinson (2008)\",\"Chiou & Youngs (2008)\" \\\n" +
-                "         -m \"PGA,SA200,SA 1.0\" \\\n" +
+                "         -m \"PGA,SA20,SA 1.0\" \\\n" +
                 "         -r 5 \\\n" +
                 "         -s sites.csv \\\n" +
                 "         -o results/\n\n" +
@@ -648,7 +653,6 @@ implements ParameterChangeWarningListener {
                 .desc("Set logging level to OFF (quiet)")
                 .build());
 
-        // New-style only options
         options.addOption(Option.builder("e")
                 .longOpt("erf")
                 .hasArg()
@@ -667,7 +671,14 @@ implements ParameterChangeWarningListener {
                 .longOpt("rupture-offset")
                 .hasArg()
                 .argName("km")
-                .desc("Rupture offset for floating ruptures (1-100 km; 5 km is generally best). Not applicable to UCERF3, but a value is still required.")
+                .desc("Rupture offset for floating ruptures (1-100 km; 5 km is generally best).")
+                .build());
+
+        options.addOption(Option.builder("t")
+                .longOpt("duration")
+                .hasArg()
+                .argName("years")
+                .desc("Duration in years. Defaults to 1 if not provided.")
                 .build());
 
         OptionGroup attenRelGroup = new OptionGroup();
@@ -736,7 +747,7 @@ implements ParameterChangeWarningListener {
             System.exit(2);
         }
         // Check for required options without mutual exclusivity
-        String[] requiredOptions = {"erf", "background-seismicity", "rupture-offset", "imts", "output-dir"};
+        String[] requiredOptions = {"erf", "imts", "output-dir"};
         for (String option : requiredOptions) {
             if (!cmd.hasOption(option)) {
                 System.err.println("Error: Required option --" + option + " is missing");
@@ -747,8 +758,10 @@ implements ParameterChangeWarningListener {
 
         String erfName = cmd.getOptionValue("erf");
         // bgSeis value is ignored if ERF doesn't support it
-        String bgSeis = cmd.getOptionValue("background-seismicity");
-        double rupOffset = Double.parseDouble(cmd.getOptionValue("rupture-offset"));
+        String bgSeis = cmd.hasOption("background-seismicity")
+                ? cmd.getOptionValue("background-seismicity") : null;
+        double rupOffset = cmd.hasOption("rupture-offset")
+                ? Double.parseDouble(cmd.getOptionValue("rupture-offset")) : Double.NaN;
         ArrayList<String> attenRels;
         if (hasAttenRels) {
             attenRels = parseQuotedString(cmd.getOptionValue("atten-rels"));
@@ -764,14 +777,13 @@ implements ParameterChangeWarningListener {
         }
         ArrayList<String> imts = new ArrayList<>(List.of(cmd.getOptionValue("imts").split(",")));
 
-        String sites = null;
-        if (cmd.hasOption("sites")) {
-            sites = cmd.getOptionValue("sites");
-        }
+        String sites = cmd.hasOption("sites") ? cmd.getOptionValue("sites") : null;
+        double duration = cmd.hasOption("duration")
+                ? Double.parseDouble(cmd.getOptionValue("duration")) : 1.0;
 
         String outputDirName = cmd.getOptionValue("output-dir");
 
-        return new IMEventSetCalculatorCLT(erfName, bgSeis, rupOffset,
+        return new IMEventSetCalculatorCLT(erfName, bgSeis, rupOffset, duration,
                 attenRels, imts, sites, outputDirName);
     }
 
