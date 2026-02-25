@@ -2352,7 +2352,7 @@ public class FaultSysSolutionERF_Calc {
 		Range xRange = new Range(xyz.getMinX()-0.5*xyz.getGridSpacingX(), xyz.getMaxX()+0.5*xyz.getGridSpacingX());
 		Range yRange = new Range(xyz.getMinY()-0.5*xyz.getGridSpacingY(), xyz.getMaxY()+0.5*xyz.getGridSpacingY());
 		
-		HeadlessGraphPanel gp = new PlotUtils().initHeadless();
+		HeadlessGraphPanel gp = new PlotUtils().initScreenHeadless();
 		gp.drawGraphPanel(spec, false, false, xRange, yRange);
 		
 		File file = new File(saveDir, prefix);

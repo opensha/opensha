@@ -2098,7 +2098,7 @@ public class SolSiteHazardCalc {
 			
 			@Override
 			public void run() {
-				HeadlessGraphPanel gp = PlotUtils.initHeadless();
+				HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 				
 				gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
 				
@@ -2153,7 +2153,7 @@ public class SolSiteHazardCalc {
 			
 			@Override
 			public void run() {
-				HeadlessGraphPanel gp = PlotUtils.initHeadless();
+				HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 				
 				gp.drawGraphPanel(spec, true, true, xRange, yRange);
 				
@@ -2256,7 +2256,7 @@ public class SolSiteHazardCalc {
 			
 			@Override
 			public void run() {
-				HeadlessGraphPanel gp = PlotUtils.initHeadless();
+				HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 				
 				gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
 				
@@ -2836,7 +2836,7 @@ public class SolSiteHazardCalc {
 					yRange = mapMaker.getYRange();
 				}
 				
-				HeadlessGraphPanel gp = new HeadlessGraphPanel(GeographicMapMaker.PLOT_PREFS_DEFAULT);
+				HeadlessGraphPanel gp = new HeadlessGraphPanel(GeographicMapMaker.PLOT_PREFS_SCREEN_DEFAULT);
 				
 				gp.drawGraphPanel(spec, false, false, xRange, yRange);
 				double maxSpan = Math.max(xRange.getLength(), yRange.getLength());

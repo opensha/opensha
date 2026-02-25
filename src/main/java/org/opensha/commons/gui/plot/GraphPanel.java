@@ -10,6 +10,7 @@ import java.awt.Paint;
 import java.awt.RenderingHints;
 import java.awt.Shape;
 import java.awt.Stroke;
+import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.awt.print.PrinterException;
@@ -17,6 +18,7 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -47,9 +49,13 @@ import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.axis.NumberTickUnit;
 import org.jfree.chart.axis.TickUnits;
 import org.jfree.chart.axis.ValueAxis;
+import org.jfree.chart.encoders.EncoderUtil;
+import org.jfree.chart.encoders.ImageFormat;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.CombinedRangeXYPlot;
 import org.jfree.chart.plot.DatasetRenderingOrder;
+import org.jfree.chart.plot.PlotRenderingInfo;
+import org.jfree.chart.plot.PlotState;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYItemRenderer;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
@@ -398,7 +404,8 @@ public class GraphPanel extends JSplitPane {
 				if (xLog) {
 					JFreeLogarithmicAxis logAxis = new JFreeLogarithmicAxis(spec.getXAxisLabel());
 					// this fixes the overlap issue with the bottom of the plot
-					logAxis.setVerticalAnchorShift(4);
+//					logAxis.setVerticalAnchorShift(4);
+					logAxis.setVerticalAnchorShift(plotPrefs.getTickLabelFontSize()*0.2f);
 					xAxis = logAxis;
 				} else
 					xAxis = new NumberAxis(spec.getXAxisLabel());
@@ -420,7 +427,6 @@ public class GraphPanel extends JSplitPane {
 				if (!(xAxis instanceof CustomOffsetNumberAxis))
 					xAxis.setStandardTickUnits(units);
 				xAxis.setTickMarksVisible(false);
-				xAxis.setTickLabelInsets(new RectangleInsets(3, 10, 3, 10));
 				// Axis label font
 				Font axisLabelFont = xAxis.getLabelFont();
 				xAxis.setLabelFont(new Font(axisLabelFont.getFontName(), axisLabelFont.getStyle(), axisFontSize));
@@ -525,6 +531,8 @@ public class GraphPanel extends JSplitPane {
 				// TODO make sure button panel gets updated
 			}
 
+			setupAxis(xAxis, true);
+			setupAxis(yAxis, false);
 			subXAxis.add(xAxis);
 			subYAxis.add(yAxis);
 
@@ -565,7 +573,7 @@ public class GraphPanel extends JSplitPane {
 				}
 
 			};
-			((CombinedRangeXYPlot) plot).setGap(30);
+			((CombinedRangeXYPlot) plot).setGap(plotPrefs.getSubplotGap());
 		} else {
 			plot = new CombinedDomainXYPlot(xAxis) {
 
@@ -578,7 +586,7 @@ public class GraphPanel extends JSplitPane {
 				}
 
 			};
-			((CombinedDomainXYPlot) plot).setGap(30);
+			((CombinedDomainXYPlot) plot).setGap(plotPrefs.getSubplotGap());
 		}
 
 		setupPlot(plot, tickFontSize);
@@ -645,7 +653,7 @@ public class GraphPanel extends JSplitPane {
 						cptSubtitles = new ArrayList<>();
 						cptLocation = xyzSpec.getCPTPosition();
 					}
-					cptSubtitles.add(getLegendForCPT(scale, xyzSpec.getZAxisLabel(), axisFontSize, tickFontSize,
+					cptSubtitles.add(getLegendForCPT(scale, xyzSpec.getZAxisLabel(), plotPrefs,
 							xyzSpec.getCPTTickUnit(), xyzSpec.getCPTPosition()));
 				}
 			}
@@ -784,7 +792,8 @@ public class GraphPanel extends JSplitPane {
 					// to be send to JFreechart for plotting.
 //					drawCurvesUsingPlottingFeatures(subPlot, lineType, lineWidth, symbol, symbolWidth, color, dataIndex);
 
-					XYItemRenderer renderer = PlotLineType.buildRenderer(lineType, symbol, lineWidth, symbolWidth, sizeScalar);
+					XYItemRenderer renderer = PlotLineType.buildRenderer(lineType, symbol, lineWidth, symbolWidth,
+							sizeScalar, plotPrefs.getLegendLineLength());
 
 					subPlot.setRenderer(datasetIndex, renderer);
 //					xyItemRenderer.setPaint(color);
@@ -853,6 +862,8 @@ public class GraphPanel extends JSplitPane {
 		// backs
 		// a panel fo curves,
 		JFreeChart chart = new JFreeChart(specs.get(0).getTitle(), newPlotLabelFont, plot, false);
+		if (chart.getTitle() != null)
+			chart.getTitle().setMaximumLinesToDisplay(plotPrefs.getTitleMaxLines());
 
 		chart.setBackgroundPaint(backgroundColor);
 
@@ -1067,20 +1078,27 @@ public class GraphPanel extends JSplitPane {
 		}
 	}
 
-	public static void setupPlot(XYPlot plot, int tickFontSize) {
+	private void setupPlot(XYPlot plot, int tickFontSize) {
 		// setting the plot properties
 		plot.setDomainCrosshairLockedOnData(false);
 		plot.setDomainCrosshairVisible(false);
 		plot.setRangeCrosshairLockedOnData(false);
 		plot.setRangeCrosshairVisible(false);
-		plot.setInsets(new RectangleInsets(10, 0, 0, tickFontSize + 15));
+		plot.setInsets(plotPrefs.getPlotPadding());
 
 		// TODO make this selectable?
 		plot.setDomainGridlineStroke(new BasicStroke(0.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0.0f));
 		plot.setDomainGridlinePaint(new Color(225, 225, 225));
 		plot.setRangeGridlineStroke(new BasicStroke(0.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0.0f));
 		plot.setRangeGridlinePaint(new Color(225, 225, 225));
-
+	}
+	
+	private void setupAxis(ValueAxis axis, boolean horizontal) {
+//		System.out.println("Axis: "+axis.getLabel());
+//		System.out.println("Axis label insets were: "+axis.getLabelInsets());
+//		System.out.println("Tick label insets were: "+axis.getTickLabelInsets());
+		axis.setLabelInsets(plotPrefs.getAxisLabelPadding());
+		axis.setTickLabelInsets(horizontal ? plotPrefs.getAxisTickLabelPaddingX() : plotPrefs.getAxisTickLabelPaddingY());
 	}
 
 	/**
@@ -1393,7 +1411,16 @@ public class GraphPanel extends JSplitPane {
 		} finally {
 			g2.dispose();
 		}
-		ImageIO.write(hi, "png", new File(fileName));
+//		ImageIO.write(hi, "png", new File(fileName));
+		// for some reason writing this way (rather than ImageIO) plays more nicely with viewers that have the file open,
+		// e.g., eog on Linux will fail to show the updated file (switching to a different image in the same dir)
+		// when using ImageIO
+		OutputStream out = new BufferedOutputStream(new FileOutputStream(fileName));
+		try {
+			EncoderUtil.writeBufferedImage(hi, ImageFormat.PNG, out);
+		} finally {
+			out.close();
+		}
 	}
 
 	/**
@@ -1638,20 +1665,20 @@ public class GraphPanel extends JSplitPane {
 		this.griddedFuncAxesTicks = histogramAxesTicks;
 	}
 
-	public static PaintScaleLegend getLegendForCPT(CPT cpt, String zAxisLabel, int axisFontSize, int tickFontSize,
+	public static PaintScaleLegend getLegendForCPT(CPT cpt, String zAxisLabel, PlotPreferences plotPrefs,
 			double tickUnit, RectangleEdge position) {
-		return getLegendForCPT(new PaintScaleWrapper(cpt), zAxisLabel, axisFontSize, tickFontSize, tickUnit, position);
+		return getLegendForCPT(new PaintScaleWrapper(cpt), zAxisLabel, plotPrefs, tickUnit, position);
 	}
 
-	private static PaintScaleLegend getLegendForCPT(PaintScaleWrapper scale, String zAxisLabel, int axisFontSize,
-			int tickFontSize, double tickUnit, RectangleEdge position) {
+	private static PaintScaleLegend getLegendForCPT(PaintScaleWrapper scale, String zAxisLabel, PlotPreferences plotPrefs,
+			double tickUnit, RectangleEdge position) {
 		CPT cpt = scale.getCPT();
 		ValueAxis fakeZAxis;
 		if (cpt.isLog10()) {
 			JFreeLogarithmicAxis logAxis = new JFreeLogarithmicAxis(zAxisLabel);
 			// this fixes the overlap issue with the bottom of the plot (not sure if needed
 			// here, used for regular plots)
-			logAxis.setVerticalAnchorShift(4);
+			logAxis.setVerticalAnchorShift(plotPrefs.getTickLabelFontSize()*0.1f);
 			logAxis.setLowerBound(scale.getLowerBound());
 			logAxis.setUpperBound(scale.getUpperBound());
 
@@ -1666,22 +1693,45 @@ public class GraphPanel extends JSplitPane {
 
 			fakeZAxis = linearAxis;
 		}
+		fakeZAxis.setMinorTickMarkOutsideLength((float)plotPrefs.getCptTickMinorLength());
+		fakeZAxis.setTickMarkOutsideLength((float)plotPrefs.getCptTickLength());
 		Font axisLabelFont = fakeZAxis.getLabelFont();
-		fakeZAxis.setLabelFont(new Font(axisLabelFont.getFontName(), axisLabelFont.getStyle(), axisFontSize));
+		fakeZAxis.setLabelFont(new Font(axisLabelFont.getFontName(), axisLabelFont.getStyle(), plotPrefs.getAxisLabelFontSize()));
 		Font axisTickFont = fakeZAxis.getTickLabelFont();
-		fakeZAxis.setTickLabelFont(new Font(axisTickFont.getFontName(), axisTickFont.getStyle(), tickFontSize));
+		fakeZAxis.setTickLabelFont(new Font(axisTickFont.getFontName(), axisTickFont.getStyle(), plotPrefs.getTickLabelFontSize()));
 		PaintScaleLegend legend = new PixelSpacePaintScaleLegend(scale, fakeZAxis, 1); // number here is width in pixels
 																						// for each span
-		legend.setSubdivisionCount(500);
+		legend.setStripWidth(plotPrefs.getCptStripWidth());
+		legend.setSubdivisionCount(500); // not actually used anymore by PaintScaleLegend
 		if (position != null)
 			legend.setPosition(position);
-		if (legend.getPosition() == RectangleEdge.BOTTOM || legend.getPosition() == RectangleEdge.TOP)
-			legend.setPadding(5d, 50d, 5d, 50d);
-		else if (legend.getPosition() == RectangleEdge.LEFT)
-			legend.setPadding(5d, 5d, 50d, 20d);
-		else
-			// right
-			legend.setPadding(5d, 20d, 50d, 5d);
+		RectangleInsets plotPad = plotPrefs.getPlotPadding();
+		double cptPad = plotPrefs.getCptPadding();
+		if (RectangleEdge.isTopOrBottom(position)) {
+			// use the plot's right padding as a guide and center it left/right
+			legend.setPadding(cptPad, plotPad.getRight(), cptPad, plotPad.getRight());
+		} else {
+			// vertical on one of the sides
+			
+			// assume there's a title and add the plot top padding
+			// also use that as the bottom padding (make it symmetrical vertically, won't match the actual plot)
+//			double topPad = plotPrefs.getPlotLabelFontSize() + plotPad.getTop();
+			
+			double topPad = plotPad.getTop();
+			RectangleInsets tickPad = plotPrefs.getAxisTickLabelPaddingX();
+			RectangleInsets axisPad = plotPrefs.getAxisLabelPadding();
+			double bottomPad = tickPad.getTop()+plotPrefs.getTickLabelFontSize()+tickPad.getBottom()
+				+ axisPad.getTop()+plotPrefs.getAxisLabelFontSize()+axisPad.getBottom()
+				+ plotPad.getBottom();
+			
+			double betweenPad = plotPrefs.getSubplotGap();
+			
+			if (position == RectangleEdge.LEFT)
+				legend.setPadding(topPad, cptPad, bottomPad, betweenPad);
+			else
+				// right
+				legend.setPadding(topPad, betweenPad, bottomPad, cptPad);
+		}
 		return legend;
 	}
 }

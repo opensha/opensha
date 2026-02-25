@@ -282,7 +282,7 @@ public class GriddedDiagnosticPlot extends AbstractSolutionPlot {
 					widthSpec.setLegendInset(RectangleAnchor.TOP_LEFT);
 					
 				
-				HeadlessGraphPanel gp = PlotUtils.initHeadless();
+				HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 				
 				gp.drawGraphPanel(List.of(depthSpec, widthSpec), false, false, List.of(xRange), List.of(depthRange, widthRange));
 				

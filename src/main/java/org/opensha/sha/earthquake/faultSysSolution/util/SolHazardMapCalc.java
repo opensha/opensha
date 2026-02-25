@@ -772,7 +772,7 @@ public class SolHazardMapCalc {
 		double lonSpan = lonRange.getLength();
 		double maxSpan = Math.max(latSpan, lonSpan);
 		checkInitExtraFuncs(maxSpan);
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 		
 		XYZPlotSpec spec = new XYZPlotSpec(xyz, cpt, title, "Longitude", "Latitude", zLabel);
 		spec.setCPTPosition(RectangleEdge.BOTTOM);
@@ -925,7 +925,7 @@ public class SolHazardMapCalc {
 		double lonSpan = lonRange.getLength();
 		double maxSpan = Math.max(latSpan, lonSpan);
 		checkInitExtraFuncs(maxSpan);
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 		
 		gp.getPlotPrefs().setPlotLabelFontSize(titleFontSize);
 		

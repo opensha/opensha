@@ -173,7 +173,7 @@ class LogFileBenchmark {
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, title, xValName, yValName);
 		
-		PlotPreferences plotPrefs = PlotPreferences.getDefault();
+		PlotPreferences plotPrefs = PlotPreferences.getDefaultAppPrefs();
 		plotPrefs.setTickLabelFontSize(18);
 		plotPrefs.setAxisLabelFontSize(20);
 		plotPrefs.setPlotLabelFontSize(21);

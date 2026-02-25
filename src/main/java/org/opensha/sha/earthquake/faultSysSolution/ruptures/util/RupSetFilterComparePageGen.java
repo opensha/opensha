@@ -720,7 +720,7 @@ public class RupSetFilterComparePageGen {
 			PlotSpec spec = new PlotSpec(funcs, chars, " ", "Minimum Magnitude", "% Failed");
 			spec.setLegendVisible(true);
 			
-			HeadlessGraphPanel gp = PlotUtils.initHeadless();
+			HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 			gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
 			
 			double maxY = 20d;
