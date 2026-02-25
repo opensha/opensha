@@ -208,8 +208,13 @@ public class HAZ01Writer extends IM_EventSetOutputWriter {
 		erf.updateForecast();
 
 		int numSources = erf.getNumSources();
-		
-		double duration = ((TimeSpan)erf.getTimeSpan()).getDuration();
+
+        TimeSpan timespan = erf.getTimeSpan();
+        double duration;
+        if (timespan != null)
+            duration = timespan.getDuration();
+        else
+            duration = 1;
 
 		for (int sourceID=0; sourceID<numSources; sourceID++) {
 			ProbEqkSource source = erf.getSource(sourceID);
