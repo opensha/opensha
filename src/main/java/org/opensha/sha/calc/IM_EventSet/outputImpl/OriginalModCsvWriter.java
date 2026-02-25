@@ -259,7 +259,6 @@ public class OriginalModCsvWriter extends IM_EventSetOutputWriter {
                 duration = timespan.getDuration();
             else
                 duration = 1;
-//            double duration = ((TimeSpan)erf.getTimeSpan()).getDuration();
 
             for (int sourceID = 0; sourceID < numSources; sourceID++) {
                 ProbEqkSource source = erf.getSource(sourceID);
