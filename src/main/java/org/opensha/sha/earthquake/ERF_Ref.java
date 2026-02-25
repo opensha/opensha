@@ -332,4 +332,22 @@ public enum ERF_Ref {
 		return erfSet;
 	}
 
+    /**
+     * Convenience method to return references to
+     * <code>EqkRupForecastBaseAPI</code> implementations at the specified
+     * levels of development.
+     * ERFs requiring interactive parameters are included by default.
+     * @param includeListERFs if true, Epistemic List ERFs will be included,
+     *                           otherwise they will be excluded
+     * @param stati the development level(s) of the
+     *        <code>EqkRupForecastBaseAPI</code> references to be retrieved
+     * @return a <code>Set</code> of <code>EqkRupForecastBaseAPI</code>
+     *         references
+     * @see DevStatus
+     */
+    public static Set<ERF_Ref> get(boolean includeListERFs,
+                                   DevStatus... stati) {
+        return get(includeListERFs, true, stati);
+    }
+
 }
