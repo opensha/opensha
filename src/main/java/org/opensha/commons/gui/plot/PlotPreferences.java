@@ -1,5 +1,6 @@
 package org.opensha.commons.gui.plot;
 
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.util.List;
 
@@ -55,9 +56,24 @@ public class PlotPreferences {
 	private double cptTickLength = 4d;
 	private double cptTickMinorLength = 2d;
 	
+	// OpenSHA has long used weird/inconsistent symbol sizes such that a symbol size of 1 is actually 3 points
+	// if you set this to false, symbol syzing will be the true bounding box width
+	private boolean trueSymbolSizing = false;
+	// 2026 note: this has long been OpenSHA default; it overshoots for large thickness, but often better than
+	// undershooting when separate lines meet at sharp angles.
+	private int solidLineCap = BasicStroke.CAP_SQUARE;
+	private int solidLineJoin = BasicStroke.JOIN_MITER;
+	private int dashedLineCap = BasicStroke.CAP_BUTT;
+	private int dashedLineJoin = BasicStroke.JOIN_BEVEL;
+	
 	private double sizeScalar = 1d;
 	
 	private List<ChangeListener> listeners = Lists.newArrayList();
+	
+	/*
+	 * Package private default instance for use in neighboring utils when plot prefs not passed in
+	 */
+	static final PlotPreferences DEFAULT = getDefaultAppPrefs();
 	
 	/**
 	 * Default OpenSHA app plot preferences.
@@ -111,7 +127,7 @@ public class PlotPreferences {
 		pref.tickLabelFontSize = 8;
 		pref.axisLabelFontSize = 10;
 		pref.plotLabelFontSize = 12;
-		pref.legendFontSize = 10;
+		pref.legendFontSize = 8;
 		pref.backgroundColor = Color.WHITE;
 		pref.subplotGap = 10;
 		
@@ -133,6 +149,7 @@ public class PlotPreferences {
 		pref.cptTickMinorLength = 1d;
 		pref.cptTickLength = 2d;
 		pref.legendLineLength = 10d;
+		pref.trueSymbolSizing = true;
 		return pref;
 	}
 	
@@ -350,6 +367,46 @@ public class PlotPreferences {
 		this.titleMaxLines = titleMaxLines;
 	}
 
+	public boolean isTrueSymbolSizing() {
+		return trueSymbolSizing;
+	}
+
+	public void setTrueSymbolSizing(boolean trueSymbolSizing) {
+		this.trueSymbolSizing = trueSymbolSizing;
+	}
+
+	public int getSolidLineCap() {
+		return solidLineCap;
+	}
+
+	public void setSolidLineCap(int solidLineCap) {
+		this.solidLineCap = solidLineCap;
+	}
+
+	public int getSolidLineJoin() {
+		return solidLineJoin;
+	}
+
+	public void setSolidLineJoin(int solidLineJoin) {
+		this.solidLineJoin = solidLineJoin;
+	}
+
+	public int getDashedLineCap() {
+		return dashedLineCap;
+	}
+
+	public void setDashedLineCap(int dashedLineCap) {
+		this.dashedLineCap = dashedLineCap;
+	}
+
+	public int getDashedLineJoin() {
+		return dashedLineJoin;
+	}
+
+	public void setDashedLineJoin(int dashedLineJoin) {
+		this.dashedLineJoin = dashedLineJoin;
+	}
+
 	public PlotPreferences clone() {
 		PlotPreferences ret = new PlotPreferences();
 		ret.axisLabelFontSize = axisLabelFontSize;
@@ -375,6 +432,11 @@ public class PlotPreferences {
 		ret.cptTickMinorLength = cptTickMinorLength;
 		ret.titleMaxLines = titleMaxLines;
 		ret.legendLineLength = legendLineLength;
+		ret.trueSymbolSizing = trueSymbolSizing;
+		ret.solidLineCap = solidLineCap;
+		ret.solidLineJoin = solidLineJoin;
+		ret.dashedLineCap = dashedLineCap;
+		ret.dashedLineJoin = dashedLineJoin;
 		// don't copy listeners
 		return ret;
 	}

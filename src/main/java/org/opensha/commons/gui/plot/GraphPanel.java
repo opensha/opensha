@@ -793,7 +793,7 @@ public class GraphPanel extends JSplitPane {
 //					drawCurvesUsingPlottingFeatures(subPlot, lineType, lineWidth, symbol, symbolWidth, color, dataIndex);
 
 					XYItemRenderer renderer = PlotLineType.buildRenderer(lineType, symbol, lineWidth, symbolWidth,
-							sizeScalar, plotPrefs.getLegendLineLength());
+							plotPrefs);
 
 					subPlot.setRenderer(datasetIndex, renderer);
 //					xyItemRenderer.setPaint(color);
@@ -876,6 +876,9 @@ public class GraphPanel extends JSplitPane {
 					return legendItemsFin;
 				}
 			});
+//			chartLegend.setPadding(plotPrefs.getLegendPadding());
+			chartLegend.setLegendItemGraphicPadding(plotPrefs.getLegendItemGraphicPadding());
+			chartLegend.setItemLabelPadding(plotPrefs.getLegendItemLabelPadding());
 			chartLegend.setPosition(legendLocation);
 			Font legendFont = chartLegend.getItemFont();
 			chartLegend.setItemFont(new Font(legendFont.getName(), legendFont.getStyle(), legendFontSize));

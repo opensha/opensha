@@ -61,29 +61,30 @@ public enum PlotLineType {
 	}
 	
 	public Stroke buildStroke(float lineWidth) {
-		return buildStroke(lineWidth, 1f);
+		return buildStroke(lineWidth, PlotPreferences.DEFAULT);
 	}
 	
-	public Stroke buildStroke(float lineWidth, float scalar) {
+	public Stroke buildStroke(float lineWidth, PlotPreferences prefs) {
 		Preconditions.checkArgument(lineWidth>0, "Line width must be >0");
+		float lenScalar = (float)prefs.getSizeScalar();
 		if (this == SOLID)
 			// 2026 note: this uses cap square; it overshoots for large thickness, but often better than undershooting
 			// when separate lines meet at sharp angles. It's been the OpenSHA default for ages
-			return new BasicStroke(lineWidth);
+			return new BasicStroke(lineWidth, prefs.getSolidLineCap(), prefs.getSolidLineJoin());
 			// we could use cap butt instead or maybe make this a user choice
 //			return new BasicStroke(lineWidth, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL);
 		else if (this == DOTTED)
-			return new BasicStroke(lineWidth, BasicStroke.CAP_BUTT,
-					BasicStroke.JOIN_BEVEL,0,new float[] {Float.min(6, Float.max(lineWidth*0.7f, 1))*scalar},0);
+			return new BasicStroke(lineWidth, prefs.getDashedLineCap(), prefs.getDashedLineJoin(),
+					0,new float[] {Float.min(6, Float.max(lineWidth*0.7f, 1))*lenScalar},0);
 		else if (this == DASHED)
-			return new BasicStroke(lineWidth, BasicStroke.CAP_BUTT,
-					BasicStroke.JOIN_BEVEL,0,new float[] {9*scalar},0);
+			return new BasicStroke(lineWidth, prefs.getDashedLineCap(), prefs.getDashedLineJoin(),
+					0,new float[] {9*lenScalar},0);
 		else if (this == SHORT_DASHED)
-			return new BasicStroke(lineWidth, BasicStroke.CAP_BUTT,
-					BasicStroke.JOIN_BEVEL,0,new float[] {4*scalar},0);
+			return new BasicStroke(lineWidth, prefs.getDashedLineCap(), prefs.getDashedLineJoin(),
+					0,new float[] {4*lenScalar},0);
 		else if (this == DOTTED_AND_DASHED)
-			return new BasicStroke(lineWidth, BasicStroke.CAP_BUTT,
-					BasicStroke.JOIN_BEVEL,0,new float[] {5*scalar,3*scalar,2*scalar,3*scalar},0);
+			return new BasicStroke(lineWidth, prefs.getDashedLineCap(), prefs.getDashedLineJoin(),
+					0,new float[] {5*lenScalar,3*lenScalar,2*lenScalar,3*lenScalar},0);
 		else
 			throw new IllegalStateException("Stroke not applicable for lineType: "+this);
 	}
@@ -140,7 +141,7 @@ public enum PlotLineType {
 	 */
 	public static XYItemRenderer buildRenderer(PlotLineType plt, PlotSymbol sym, float lineWidth, float symWidth)
 	throws IllegalStateException {
-		return buildRenderer(plt, sym, lineWidth, symWidth, 1d, 7d);
+		return buildRenderer(plt, sym, lineWidth, symWidth, PlotPreferences.DEFAULT);
 	}
 	
 	/**
@@ -154,8 +155,8 @@ public enum PlotLineType {
 	 * @return
 	 */
 	public static XYItemRenderer buildRenderer(PlotLineType plt, PlotSymbol sym, float lineWidth, float symWidth,
-			double scalar, double legendLength)
-	throws IllegalStateException {
+			PlotPreferences prefs) throws IllegalStateException {
+		double scalar = prefs.getSizeScalar();
 		if (scalar != 1d) {
 			lineWidth = (float)(lineWidth*scalar);
 			symWidth = (float)(symWidth*scalar);
@@ -187,14 +188,15 @@ public enum PlotLineType {
 //				renderer = new XYAreaRenderer(XYAreaRenderer.AREA);
 				renderer = new CustomXYAreaRenderer();
 			} else {
-				Stroke stroke = plt.buildStroke(lineWidth, (float)scalar);
+				Stroke stroke = plt.buildStroke(lineWidth, prefs);
 				if (plt == SOLID && stroke instanceof BasicStroke && ((BasicStroke)stroke).getEndCap() == BasicStroke.CAP_SQUARE) {
 					// fix for weird shorter lines with cap_square
 					lineShpRend = new LegendButtCapXYRenderer(plt != null, sym != null);
 					lineShpRend.setDrawSeriesLineAsPath(true);
 				}
 				renderer = lineShpRend;
-				lineShpRend.setLegendLine(new Line2D.Float(-(float)(0.5*legendLength), 0f, (float)(0.5*legendLength), 0f));
+				lineShpRend.setLegendLine(new Line2D.Float(-(float)(0.5*prefs.getLegendLineLength()), 0f,
+						(float)(0.5*prefs.getLegendLineLength()), 0f));
 //				renderer.setStroke(stroke);
 //				renderer.setDefaultStroke(stroke);
 				renderer.setSeriesStroke(0, stroke);
@@ -209,7 +211,7 @@ public enum PlotLineType {
 						"Renderer already exists but isn't correct type for plt="+plt+" and sym="+sym);
 			}
 			Preconditions.checkArgument(symWidth > 0, "symbol widht must be >0");
-			Shape shape = sym.buildShape(symWidth);
+			Shape shape = sym.buildShape(symWidth, prefs);
 			Preconditions.checkNotNull(shape, "Couldn't build shape for symbol: "+sym);
 //			renderer.setShape(shape);
 			renderer.setSeriesShape(0, shape);
@@ -217,7 +219,15 @@ public enum PlotLineType {
 				lineShpRend.setSeriesOutlineStroke(0, new BasicStroke((float)scalar));
 //			stdRend.setBaseShape(shape);
 //			lineShpRend.setShapesFilled(sym.isFilled());
-			lineShpRend.setSeriesShapesFilled(0, sym.isFilled());
+			if (sym.isFilled()) {
+				lineShpRend.setSeriesShapesFilled(0, true);
+				lineShpRend.setDrawOutlines(false);
+			} else {
+				lineShpRend.setSeriesShapesFilled(0, false);
+				lineShpRend.setDrawOutlines(true);
+				lineShpRend.setDefaultOutlineStroke(new BasicStroke(Float.min(1f, 0.1f*symWidth),
+						BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER));
+			}
 //			stdRend.setBaseShapesFilled(sym.isFilled());
 			
 		}
