@@ -58,6 +58,7 @@ import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.mean.MeanUCERF3;
 import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
+import scratch.UCERF3.utils.UCERF3_Downloader;
 
 public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChangeListener {
 	
@@ -78,7 +79,7 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 	private static final String COMPOUND_FILE_NAME = "full_logic_tree.zip";
 	
 	private static CompletableFuture<SolutionLogicTree> loadFetcher() throws ZipException, IOException {
-		File storeDir = MeanUCERF3.getStoreDir();
+		File storeDir = UCERF3_Downloader.getStoreDir();
 		// allow errors so that app doesn't crash if can't download
 		return MeanUCERF3.checkDownload(new File(storeDir, COMPOUND_FILE_NAME))
 			.thenApply(treeFile -> {
