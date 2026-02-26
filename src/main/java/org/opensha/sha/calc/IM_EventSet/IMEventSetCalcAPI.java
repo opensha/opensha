@@ -19,7 +19,7 @@ import org.opensha.sha.calc.sourceFilters.SourceFilter;
  * <li><b>Calculation Engine</b>: The AbstractIMEventSetCalc class uses this API to access
  * site data, locations, and output directories for the core hazard calculation logic</li>
  * <li><b>Output Writers</b>: IM_EventSetOutputWriter implementations like
- * HAZ01Writer and OriginalModWriter use this API to generate
+ * HAZ01Writer and OriginalModCsvWriter use this API to generate
  * formatted output files from the calculated results</li>
  * <li><b>Front-end Implementations</b>: Both CLT (IMEventSetCalculatorCLT) and GUI
  * (IMEventSetCalculatorGUI) provide data through this interface</li>

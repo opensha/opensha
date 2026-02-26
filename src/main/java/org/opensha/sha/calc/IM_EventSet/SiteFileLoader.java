@@ -35,6 +35,20 @@ public class SiteFileLoader {
             SiteData.TYPE_DEPTH_TO_2_5,
     };
     public static String COM = "#"; // Comment character
+    private final String delim;
+
+    /**
+     * Loads the site data coordinates and optional site data params from files
+     * into memory.
+     * Uses a default delimiter of a comma.
+     * The characters in the delim argument are the delimiters for separating tokens.
+     * @param lonFirst true if longitude is before latitude
+     * @param measurementType Inferred or Measured
+     * @param siteDataTypes list of types to try loading in order after site coordinates
+     */
+	public SiteFileLoader(boolean lonFirst, String measurementType, ArrayList<String> siteDataTypes) {
+        this(lonFirst, measurementType, siteDataTypes, ",");
+	}
 
     /**
      * Loads the site data coordinates and optional site data params from files
@@ -42,13 +56,18 @@ public class SiteFileLoader {
      * @param lonFirst true if longitude is before latitude
      * @param measurementType Inferred or Measured
      * @param siteDataTypes list of types to try loading in order after site coordinates
+     * @param delim delimiter used to separate data values in each line
      */
-	public SiteFileLoader(boolean lonFirst, String measurementType, ArrayList<String> siteDataTypes) {
-		this.lonFirst = lonFirst;
-		this.measurementType = measurementType;
-		this.siteDataTypes = siteDataTypes;
-	}
-	
+    public SiteFileLoader(boolean lonFirst,
+                          String measurementType,
+                          ArrayList<String> siteDataTypes,
+                          String delim) {
+        this.lonFirst = lonFirst;
+        this.measurementType = measurementType;
+        this.siteDataTypes = siteDataTypes;
+        this.delim = delim;
+    }
+
 	public void loadFile(File file) throws IOException, ParseException {
 		ArrayList<String> lines = FileUtils.loadFile(file.getAbsolutePath());
 
@@ -61,7 +80,7 @@ public class SiteFileLoader {
 			// skip comments
 			if (line.startsWith(COM))
 				continue;
-			StringTokenizer tok = new StringTokenizer(line);
+			StringTokenizer tok = new StringTokenizer(line, delim);
 			if (tok.countTokens() < 2)
 				throw new ParseException("Line " + (i+1) + " has less than 2 fields!", 0);
 			double lat, lon;

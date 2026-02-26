@@ -23,7 +23,7 @@ import org.opensha.sha.imr.param.IntensityMeasureParams.PeriodParam;
  * Provides common functionality for generating seismic hazard results in different formats.
  * <p>
  * Handles IMT string formatting, site parameter initialization, source filtering, and output coordination.
- * Concrete implementations HAZ01Writer and OriginalModWriter generate specific file formats.
+ * Concrete implementations generate specific file formats.
  * </p>
  */
 public abstract class IM_EventSetOutputWriter {

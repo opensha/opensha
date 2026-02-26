@@ -5,7 +5,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
@@ -19,19 +18,21 @@ import org.opensha.commons.gui.ControlPanel;
 import org.opensha.commons.gui.DisclaimerDialog;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.util.ApplicationVersion;
+import org.opensha.commons.util.DevStatus;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.commons.util.bugReports.BugReport;
 import org.opensha.commons.util.bugReports.BugReportDialog;
 import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
+import org.opensha.sha.calc.IM_EventSet.outputImpl.OriginalModCsvWriter;
+import org.opensha.sha.calc.IM_EventSet.outputImpl.OriginalModTxtWriter;
 import org.opensha.sha.calc.IM_EventSet.AbstractIMEventSetCalc;
 import org.opensha.sha.calc.IM_EventSet.IM_EventSetOutputWriter;
 import org.opensha.sha.calc.IM_EventSet.outputImpl.HAZ01Writer;
-import org.opensha.sha.calc.IM_EventSet.outputImpl.OriginalModWriter;
-import org.opensha.sha.calc.sourceFilters.*;
+import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
 import org.opensha.sha.calc.sourceFilters.params.SourceFiltersParam;
-import org.opensha.sha.earthquake.ERF_Ref;
 import org.opensha.sha.earthquake.ERF;
+import org.opensha.sha.earthquake.ERF_Ref;
 import org.opensha.sha.gui.HazardCurveApplication;
 import org.opensha.sha.gui.beans.ERF_GuiBean;
 import org.opensha.sha.gui.controls.CalculationSettingsControlPanel;
@@ -75,9 +76,9 @@ public class IMEventSetCalculatorGUI extends JFrame implements ActionListener, C
 
 	public IMEventSetCalculatorGUI() {
         try {
-            AbstractIMEventSetCalc.initLogger(Level.CONFIG);
+            AbstractIMEventSetCalc.initLogger(Level.WARNING);
 
-            erfGuiBean = createERF_GUI_Bean();
+            erfGuiBean = new ERF_GuiBean(ERF_Ref.get(false, true, ServerPrefUtils.SERVER_PREFS));
             imtChooser = new IMT_ChooserPanel();
 
             // Initialize params for control panel.
@@ -128,9 +129,10 @@ public class IMEventSetCalculatorGUI extends JFrame implements ActionListener, C
             JLabel shaLogo = new JLabel(new ImageIcon(
                     FileUtils.loadImage("logos/opensha_64.png")));
 
-            String[] writers = new String[2];
-            writers[0] = OriginalModWriter.NAME;
-            writers[1] = HAZ01Writer.NAME;
+            String[] writers = new String[3];
+            writers[0] = OriginalModCsvWriter.NAME;
+            writers[1] = OriginalModTxtWriter.NAME;
+            writers[2] = HAZ01Writer.NAME;
             outputWriterChooser = new JComboBox<>(writers);
 
             calcSettingsButton = new JButton(CalculationSettingsControlPanel.NAME);
@@ -210,14 +212,6 @@ public class IMEventSetCalculatorGUI extends JFrame implements ActionListener, C
 
         }
     }
-
-	private ERF_GuiBean createERF_GUI_Bean() {
-		try {
-			return new ERF_GuiBean(ERF_Ref.get(false, ServerPrefUtils.SERVER_PREFS));
-		} catch (InvocationTargetException e) {
-			throw new RuntimeException(e);
-		}
-	}
 
     private boolean isReadyForCalc(ArrayList<Location> locs, ArrayList<ParameterList> dataLists,
 			ERF erf, ArrayList<ScalarIMR> imrs, ArrayList<String> imts) {
@@ -321,8 +315,10 @@ public class IMEventSetCalculatorGUI extends JFrame implements ActionListener, C
                             if (writerName == null) {
                                 throw new RuntimeException("No output writer selected");
                             }
-                            if (writerName.equals(OriginalModWriter.NAME)) {
-                                writer = new OriginalModWriter(calc);
+                            if (writerName.equals(OriginalModCsvWriter.NAME)) {
+                                writer = new OriginalModCsvWriter(calc);
+                            } else if (writerName.equals(OriginalModTxtWriter.NAME)) {
+                                writer = new OriginalModTxtWriter(calc);
                             } else if (writerName.equals(HAZ01Writer.NAME)) {
                                 writer = new HAZ01Writer(calc);
                             } else {

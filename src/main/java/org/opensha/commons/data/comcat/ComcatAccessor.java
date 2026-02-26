@@ -532,6 +532,41 @@ public class ComcatAccessor {
 
 	
 	/**
+	 * Fetch all aftershocks of the given event. Returned list will not contain the mainshock
+	 * even if it matches the query.
+	 * @param mainshock = Mainshock.
+	 * @param minDays = Start of time interval, in days after the mainshock.
+	 * @param maxDays = End of time interval, in days after the mainshock.
+	 * @param minDepth = Minimum depth, in km.  Comcat requires a value from -100 to +1000.
+	 * @param maxDepth = Minimum depth, in km.  Comcat requires a value from -100 to +1000.
+	 * @param region = Region to search.  Events not in this region are filtered out.
+	 * @param wrapLon = Desired longitude range: false = -180 to 180; true = 0 to 360.
+	 * @param minMag = Minimum magnitude, or -10.0 for no minimum.
+	 * @param extendedInfo = True to return extended information, see eventToObsRup below.
+	 * @return
+	 * Note: The mainshock parameter must be a return value from fetchEvent() above.
+	 * Note: As a special case, if maxDays == minDays, then the end time is the current time.
+	 * Note: This function can retrieve a maximum of about 150,000 earthquakes.  Comcat will
+	 * time out if the query matches too many earthquakes, typically with HTTP status 504.
+	 */
+	public ObsEqkRupList fetchAftershocks(ObsEqkRupture mainshock, double minDays, double maxDays,
+			double minDepth, double maxDepth, ComcatRegion region, boolean wrapLon, double minMag, boolean extendedInfo) {
+
+		long eventTime = mainshock.getOriginTime();
+		long startTime = eventTime + (long)(minDays*day_millis);
+		long endTime = eventTime + (long)(maxDays*day_millis);
+
+		String exclude_id = mainshock.getEventId();
+
+		return fetchEventList (exclude_id, startTime, endTime,
+								minDepth, maxDepth, region, wrapLon, extendedInfo,
+								minMag, COMCAT_MAX_LIMIT, COMCAT_MAX_CALLS);
+	}
+
+
+
+	
+	/**
 	 * Fetch a list of events satisfying the given conditions.
 	 * @param exclude_id = An event id to exclude from the results, or null if none.
 	 * @param startTime = Start of time interval, in milliseconds after the epoch.
@@ -1197,7 +1232,7 @@ public class ComcatAccessor {
 			rup.addParameter(new StringParameter(PARAM_NAME_NETWORK, event.getNet()));
 			// adds the event code, which is needed for reporting to PDL
 			rup.addParameter(new StringParameter(PARAM_NAME_CODE, event.getCode()));
-			// adds the magnitude type, which is needed forOAF
+			// adds the magnitude type, which is needed for OAF
 			rup.addParameter(new StringParameter(PARAM_NAME_MAGTYPE, event.getMagType()));
 		}
 		
