@@ -16,7 +16,8 @@ import java.util.List;
 public class UCERF3_Downloader extends GetFile {
     private static final List<URI> ENDPOINTS = List.of(
             URI.create("https://g-3a9041.a78b8.36fe.data.globus.org/getfile/ucerf3/ucerf3.json"),  // CARC project2
-            URI.create("https://g-c662a6.a78b8.36fe.data.globus.org/getfile/ucerf3/ucerf3.json")   // CARC project
+            URI.create("https://data.opensha.org/getfile/ucerf3/ucerf3.json"),  // OpenSHA Server Alias
+            URI.create("https://opensha.scec.org/getfile/ucerf3/ucerf3.json")   // OpenSHA Server Hardcode
     );
 
     /**
