@@ -70,7 +70,7 @@ public class TRTUtils {
 			TectonicRegionType originalTRT) {
 		TectonicRegionTypeParam trtParam = (TectonicRegionTypeParam) imr.getParameter(TectonicRegionTypeParam.NAME);
 		
-		if(imr.isTectonicRegionSupported(trt.toString()))  {  // check whether it's supported
+		if(imr.isTectonicRegionSupported(trt))  {  // check whether it's supported
 			// simple case, just set it as given
 			trtParam.setValue(trt);					  
 		} else { // what to do if imr does not support that type
@@ -116,7 +116,7 @@ public class TRTUtils {
 			TectonicRegionTypeParam trtParam = (TectonicRegionTypeParam) imr.getParameter(TectonicRegionTypeParam.NAME);
 			if (trtParam.getValue() == null)
 				trtParam.setValueAsDefault();
-			TectonicRegionType trt = trtParam.getValueAsTRT();
+			TectonicRegionType trt = trtParam.getValue();
 			map.put(imr, trt);
 		}
 
