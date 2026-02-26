@@ -10,6 +10,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_Downloader;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.NSHM25_Downloader;
 import org.scec.getfile.GetFile;
 
 import com.google.gson.JsonObject;
@@ -56,9 +57,9 @@ public class UpdateAllERF {
                     for (String dat : getModels(
                             new File(System.getProperty("user.home"), ".opensha/"+erfName+"/"+erfName+".json"))) {
                         File model = new File(System.getProperty("user.home"), ".opensha/"+erfName+"/" + dat + ".zip");
-                        System.out.println("Checking if " + model.toString() + " exists...");
+                        System.out.println("Checking if " + model + " exists...");
                         if (!model.exists()) {
-                            System.out.println(model.toString() + " is missing!");
+                            System.out.println(model + " is missing!");
                             return false;
                         }
                     }
@@ -81,6 +82,7 @@ public class UpdateAllERF {
         List<CompletableFuture<Boolean>> futures = new ArrayList<>();
         futures.add(updateERF("ucerf3", new UCERF3_Downloader(showProgress)));
         futures.add(updateERF("nshm23", new NSHM23_Downloader(showProgress)));
+        futures.add(updateERF("nshm25", new NSHM25_Downloader(showProgress)));
 
         // Wait for all updates to complete
         CompletableFuture<Void> allUpdates = CompletableFuture.allOf(

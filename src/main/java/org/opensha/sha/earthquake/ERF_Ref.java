@@ -33,6 +33,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.MeanUCERF2
 import org.opensha.sha.earthquake.rupForecastImpl.YuccaMountain.YuccaMountainERF;
 import org.opensha.sha.earthquake.rupForecastImpl.YuccaMountain.YuccaMountainERF_List;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.erf.NSHM23_WUS_BranchAveragedERF;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.erf.NSHM25_PRVI_BranchAveragedERF;
 import org.opensha.sha.earthquake.rupForecastImpl.step.STEP_AlaskanPipeForecast;
 
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
@@ -148,8 +149,12 @@ public enum ERF_Ref {
 	NSHM23_WUS_BRANCH_AVG(NSHM23_WUS_BranchAveragedERF.class, NSHM23_WUS_BranchAveragedERF.NAME, PRODUCTION, false),
 
 	// DEVELOPMENT
-	
-	/** STEP Alaska Forecast */
+
+    /** National Seismic Hazard Model 2025 Puerto Rico and Virgin Islands ERF */
+    NHSM25_PRVI_BRANCH_AVG(NSHM25_PRVI_BranchAveragedERF.class, NSHM25_PRVI_BranchAveragedERF.NAME, DEVELOPMENT, false),
+
+
+    /** STEP Alaska Forecast */
 	STEP_ALASKA(STEP_AlaskanPipeForecast.class, STEP_AlaskanPipeForecast.NAME, DEVELOPMENT, false),
 		
 	// EXPERIMENTAL
