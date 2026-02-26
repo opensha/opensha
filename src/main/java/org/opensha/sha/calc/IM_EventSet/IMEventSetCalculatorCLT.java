@@ -5,12 +5,14 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.StringTokenizer;
+import java.util.*;
 import java.util.logging.Level;
 
-import org.opensha.commons.data.siteData.impl.WillsMap2000;
+import org.apache.commons.cli.*;
+import org.opensha.commons.data.TimeSpan;
+import org.opensha.commons.data.siteData.SiteData;
+import org.opensha.commons.data.siteData.SiteDataValue;
+import org.opensha.commons.exceptions.ConstraintException;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
@@ -20,13 +22,16 @@ import org.opensha.commons.param.WarningParameter;
 import org.opensha.commons.param.event.ParameterChangeWarningEvent;
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
 import org.opensha.commons.param.impl.StringParameter;
+import org.opensha.commons.util.DevStatus;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.ServerPrefUtils;
+import org.opensha.sha.calc.IM_EventSet.outputImpl.OriginalModCsvWriter;
 import org.opensha.sha.calc.IM_EventSet.outputImpl.HAZ01Writer;
-import org.opensha.sha.calc.IM_EventSet.outputImpl.OriginalModWriter;
-import org.opensha.sha.calc.sourceFilters.*;
+import org.opensha.sha.calc.sourceFilters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
 import org.opensha.sha.calc.sourceFilters.params.SourceFiltersParam;
 import org.opensha.sha.earthquake.ERF;
+import org.opensha.sha.earthquake.ERF_Ref;
 import org.opensha.sha.earthquake.param.AleatoryMagAreaStdDevParam;
 import org.opensha.sha.earthquake.param.BackgroundRupParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
@@ -42,13 +47,15 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.MeanUCERF2
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
-import org.opensha.sha.imr.attenRelImpl.ShakeMap_2003_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.USGS_Combined_2004_AttenRel;
 
 import com.google.common.base.Preconditions;
 
+import org.opensha.sha.imr.param.SiteParams.DepthTo1pt0kmPerSecParam;
+import org.opensha.sha.imr.param.SiteParams.DepthTo2pt5kmPerSecParam;
 import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
 import org.opensha.sha.imr.param.SiteParams.Vs30_TypeParam;
+import org.opensha.sha.util.SiteTranslator;
 import scratch.UCERF3.erf.mean.MeanUCERF3;
 import scratch.UCERF3.erf.mean.MeanUCERF3.Presets;
 
@@ -70,31 +77,48 @@ implements ParameterChangeWarningListener {
 
 	protected LocationList locList;
 
+    // Selected ERF
 	protected ERF forecast;
 
-	//supported Attenuations
+	// Supported Attenuations
 	protected ArrayList<ScalarIMR> chosenAttenuationsList;
 
-	//some static IMT names
+	// Static IMT names
 	protected ArrayList<String> supportedIMTs;
 
-	protected String inputFileName = "MeanSigmaCalc_InputFile.txt";
-	protected String dirName = "MeanSigma";
-	
+	protected String dirName = "MeanSigma"; // default output dir name
 	private File outputDir;
-	
+
 	private ArrayList<ParameterList> userDataVals;
 
     private final SourceFilterManager sourceFilters;
+
+    // All supported ERFs - call .instance() to get the BaseERF
+    private static final Set<ERF_Ref> erfRefs = ERF_Ref.get(false, false, ServerPrefUtils.SERVER_PREFS);
+    // Map of ERF names to their references for quick lookup
+    private static final Map<String, ERF_Ref> erfNameMap = new HashMap<>();
+    private static final ArrayList<String> erfShortNames = new ArrayList<>();
+    private static final ArrayList<String> erfLongNames = new ArrayList<>();
 
     /**
 	 *  ArrayList that maps picklist attenRel string names to the real fully qualified
 	 *  class names
 	 */
-	private static ArrayList<String> attenRelClasses = new ArrayList<String>();
-	private static ArrayList<String> imNames = new ArrayList<String>();
+	private static final ArrayList<String> attenRelClasses = new ArrayList<>();
+	private static final ArrayList<String> imNames = new ArrayList<>();
 
 	static {
+        // Initialize ERF name map
+        for (ERF_Ref ref : erfRefs) {
+            // Allow users to reference ERF by long or short names
+            String erfName = ref.toString();
+            String erfShortName = ref.getERFClass().getSimpleName();
+            erfNameMap.put(erfName, ref);
+            erfNameMap.put(erfShortName, ref);
+            erfShortNames.add(erfShortName);
+            erfLongNames.add(erfName);
+        }
+
 //		imNames.add(CY_2006_AttenRel.NAME);
 //		attenRelClasses.add(CY_2006_AttenRel.class.getName());
 //		imNames.add(CY_2008_AttenRel.NAME);
@@ -135,6 +159,7 @@ implements ParameterChangeWarningListener {
 //		attenRelClasses.add(ShakeMap_2003_AttenRel.class.getName());
 //		imNames.add(SEA_1999_AttenRel.NAME);
 //		attenRelClasses.add(SEA_1999_AttenRel.class.getName());
+
 		for (AttenRelRef ref : AttenRelRef.get(ServerPrefUtils.SERVER_PREFS)) {
 			try {
 				String name = ref.getName();
@@ -147,129 +172,104 @@ implements ParameterChangeWarningListener {
 		}
 	}
 
-	public IMEventSetCalculatorCLT(String inpFile, String outDir) {
-		inputFileName = inpFile;
-		dirName = outDir ;
-		outputDir = new File(dirName);
-
+    /**
+     * Constructor parses inputs and sets params
+     * @param erfName           String for short or long name of the ERF
+     * @param bgSeismicity
+     * @param rupOffset
+     * @param attenRelNames     All IMR names as list of strings
+     * @param imtNames          All IMT names as list of strings
+     * @param siteFile
+     * @param outDir
+     */
+    public IMEventSetCalculatorCLT(String erfName,
+                                   String bgSeismicity,
+                                   double rupOffset,
+                                   double duration,
+                                   ArrayList<String> attenRelNames,
+                                   ArrayList<String> imtNames,
+                                   String siteFile,
+                                   String outDir) {
         // source filters have fixed-cutoff distance of 200km by default
         sourceFilters = SourceFiltersParam.getDefault();
-	}
 
-	public void parseFile() throws IOException {
+        getERF(erfName, duration);
+        if (bgSeismicity != null) toApplyBackGround(bgSeismicity);
+        setRupOffset(rupOffset);
+        for (String attenRel : attenRelNames) {
+            setIMR(attenRel);
+        }
+        for (String imt : imtNames) {
+            setIMT(imt);
+        }
+        if (siteFile == null || siteFile.isEmpty()) {
+            // If no sites file provided, default to 1 site in LA with Vs30 760m/s
+            // "34.1 -118.1 760"
+            logger.log(Level.INFO, "No site file provided, defaulting to LA (34.1,-118.1) with Vs30 760m/s");
+            locList = new LocationList(List.of(new Location(34.1,-118.1)));
+            Vs30_Param vs30Param = new Vs30_Param();
+            vs30Param.setValue(760);
+            Vs30_TypeParam type = new Vs30_TypeParam();
+            type.setValue(SiteData.TYPE_FLAG_MEASURED);
+            ParameterList params = new ParameterList();
+            params.addParameter(vs30Param);
+            params.addParameter(type);
+            userDataVals = new ArrayList<>(List.of(params));
+        } else {
+            try {
+                parseSitesInputCSV(siteFile);
+            } catch (Exception ex) {
+                logger.log(Level.INFO, "Error parsing input file!", ex);
+                System.exit(1);
+            }
+        }
+        if (!(outDir == null || outDir.isEmpty())) {
+            dirName = outDir;
+            outputDir = new File(dirName);
+        }
+    }
 
-		ArrayList<String> fileLines = null;
-		
-		logger.log(Level.INFO, "Parsing input file: " + inputFileName);
+    /**
+     * Sites are collected directly from a CSV file
+     * @param siteFile
+     */
+    private void parseSitesInputCSV(String siteFile) throws IOException {
+        ArrayList<String> fileLines;
+        SiteFileLoader loader = new SiteFileLoader(/*lonFirst=*/false,
+                SiteData.TYPE_FLAG_MEASURED,
+                new ArrayList<>(List.of(SiteFileLoader.allSiteDataTypes)));
+        try {
+            loader.loadFile(new File(siteFile));
+        } catch (java.text.ParseException e) {
+            logger.log(Level.SEVERE, "Failed to parse the sites input file.");
+            throw new RuntimeException(e);
+        }
+        locList = new LocationList(loader.getLocs());
 
-		fileLines = FileUtils.loadFile(inputFileName);
-		
-		if (fileLines.size() == 0) {
-			throw new RuntimeException("Input file empty or doesn't exist! " + inputFileName);
-		}
+        ParameterList defaultParams = new ParameterList();
+        defaultParams.addParameter(new Vs30_Param());
+        defaultParams.addParameter(new Vs30_TypeParam());
+        defaultParams.addParameter(new DepthTo1pt0kmPerSecParam());
+        defaultParams.addParameter(new DepthTo2pt5kmPerSecParam());
 
-		int j = 0;
-		int numIMRdone=0;
-		int numIMRs=0;
-		int numIMTdone=0;
-		int numIMTs=0;
-		int numSitesDone= 0;
-		int numSites =0;
-		for(int i=0; i<fileLines.size(); ++i) {
-			String line = ((String)fileLines.get(i)).trim();
-			// if it is comment skip to next line
-			if(line.startsWith("#") || line.equals("")) continue;
-			if(j==0)getERF(line);
-			if(j==1){
-				toApplyBackGroud(line.trim());
-			}
-			if(j==2){
-				double rupOffset = Double.parseDouble(line.trim());
-				setRupOffset(rupOffset);
-			}
-			if(j==3)
-				numIMRs = Integer.parseInt(line.trim());
-			if(j==4){
-				setIMR(line.trim());
-				++numIMRdone;
-				if(numIMRdone == numIMRs)
-					++j;
-				continue;
-			}
-			if(j==5)
-				numIMTs = Integer.parseInt(line.trim());
-			if(j==6){
-				setIMT(line.trim());
-				++numIMTdone;
-				if (numIMTdone == numIMTs)
-					++j;
-				continue;
-			}
-			if(j==7)
-				numSites = Integer.parseInt(line.trim());
-			if(j==8){
-				setSite(line.trim());
-				++numSitesDone;
-				if (numSitesDone == numSites)
-					++j;
-				continue;
-			}
-			++j;
-		}
-	}
-
-	/**
-	 * Gets the list of locations with their Wills Site Class values
-	 * @param line String
-	 */
-	private void setSite(String line) {
-		if(locList == null)
-			locList = new LocationList();
-		if (userDataVals == null)
-			userDataVals = new ArrayList<ParameterList>();
-		StringTokenizer st = new StringTokenizer(line);
-		int tokens = st.countTokens();
-		if(tokens > 3 || tokens < 2){
-			throw new RuntimeException("Must Enter valid Lat Lon in each line in the file");
-		}
-		double lat = Double.parseDouble(st.nextToken().trim());
-		double lon = Double.parseDouble(st.nextToken().trim());
-		Location loc = new Location(lat,lon);
-		locList.add(loc);
-		ParameterList dataVals = new ParameterList();
-		String dataVal = null;
-		if (tokens == 3) {
-			dataVal = st.nextToken().trim();
-		}
-		if (WillsMap2000.wills_vs30_map.containsKey(dataVal)) {
-			// this is a wills class
-            dataVals.addParameter(new StringParameter(ShakeMap_2003_AttenRel.WILLS_SITE_NAME, dataVal));
-		} else if (dataVal != null) {
-			// Vs30 value
-			try {
-                Vs30_Param vs30 = new Vs30_Param();
-                vs30.setValue(Double.parseDouble(dataVal));
-                dataVals.addParameter(vs30);
-                Vs30_TypeParam vs30Type = new Vs30_TypeParam();
-                vs30Type.setValue(Vs30_TypeParam.VS30_TYPE_MEASURED);
-                dataVals.addParameter(vs30Type);
-			} catch (NumberFormatException e) {
-				System.err.println("*** WARNING: Site Wills/Vs30 value unknown: " + dataVal);
-			}
-		}
-		userDataVals.add(dataVals);
-	}
+        userDataVals = new ArrayList<>();
+        SiteTranslator siteTrans = new SiteTranslator();
+        for (ArrayList<SiteDataValue<?>> siteVals : loader.getValsList()) {
+            ParameterList params = (ParameterList) defaultParams.clone();
+            params.forEach(param -> siteTrans.setParameterValue(param, siteVals));
+            userDataVals.add(params);
+        }
+    }
 
 	/**
-	 * Gets the supported IMTs as String
+	 * Sets the supported IMTs as String
 	 * @param line String
 	 */
-	private void setIMT(String line){
+	private void setIMT(String line) {
 		if(supportedIMTs == null)
 			supportedIMTs = new ArrayList<String>();
 		this.supportedIMTs.add(line.trim());
 	}
-
 
 	/**
 	 * Creates the IMR instances and adds to the list of supported IMRs
@@ -279,12 +279,9 @@ implements ParameterChangeWarningListener {
 		if(chosenAttenuationsList == null)
 			chosenAttenuationsList = new ArrayList<ScalarIMR>();
 		String imrName = str.trim();
-		//System.out.println(imrName);
-		//System.out.println(imNames.get(1));
 		int index = imNames.indexOf(imrName);
 		createIMRClassInstance(attenRelClasses.get(index));
 	}
-
 
 	/**
 	 * Creates a class instance from a string of the full class name including packages.
@@ -338,107 +335,37 @@ implements ParameterChangeWarningListener {
 		}
 	}
 
-	private void getERF(String line){
+    /**
+     * Creates an ERF instance from the string parsed as an erfName.
+     * ERFs are created with default parameters, with a few hardcoded exceptions.
+     * @param line user input to parse into an erfName
+     * @param duration duration of the ERF in years
+     */
+	private void getERF(String line, double duration) {
 		String erfName = line.trim();
 		logger.log(Level.CONFIG, "Attempting to identify ERF from name: " + erfName);
-		if(erfName.equals(Frankel02_AdjustableEqkRupForecast.NAME))
-			createFrankel02Forecast();
-		else if (erfName.equals(WGCEP_UCERF1_EqkRupForecast.NAME))
-			createUCERF1_Forecast();
-		else if (erfName.equals(MeanUCERF2.NAME))
-			createMeanUCERF2_Forecast();
-		else if (erfName.startsWith("Mean UCERF3"))
-			createMeanUCERF3_Forecast(erfName);
-		else throw new RuntimeException ("Unsupported ERF");
-		if (!(forecast instanceof MeanUCERF3))
-			forecast.getTimeSpan().setDuration(1.0);
+
+        ERF_Ref erfRef = erfNameMap.get(erfName);
+        if (erfRef != null) {
+            logger.log(Level.CONFIG, "Creating ERF dynamically with default parameters.");
+            forecast = (ERF)erfRef.instance();
+        } else {
+            throw new RuntimeException("Unsupported ERF");
+        }
+        try {
+            forecast.getTimeSpan().setDuration(duration);
+            logger.log(Level.FINE, "Set duration to " + duration + " for ERF: " + erfName);
+        } catch (ConstraintException e) {
+            // ERF has constraints that don't allow specified duration, use default duration
+            if (forecast.getTimeSpan() == null)
+                logger.log(Level.WARNING, "ERF " + erfName + " does not have a TimeSpan.");
+            else
+                logger.log(Level.WARNING, "ERF " + erfName + " does not allow duration=1.0, " +
+                        "using default duration: " + forecast.getTimeSpan().getDuration());
+        }
 	}
 
-	/**
-	 * Creating the instance of the Frankel02 forecast
-	 */
-	private void createFrankel02Forecast(){
-		logger.log(Level.CONFIG, "Creating Frankel02 ERF");
-		forecast = new Frankel02_AdjustableEqkRupForecast();
-	}
-
-	/**
-	 * Creating the instance of the UCERF1 Forecast
-	 */
-	private void createUCERF1_Forecast(){
-		logger.log(Level.CONFIG, "Creating UCERF1 ERF");
-		forecast = new WGCEP_UCERF1_EqkRupForecast();
-		forecast.getAdjustableParameterList().getParameter(
-				WGCEP_UCERF1_EqkRupForecast.TIME_DEPENDENT_PARAM_NAME).setValue(Boolean.valueOf(false));
-	}
-
-	/**
-	 * Creating the instance of the UCERF2 - Single Branch Forecast
-	 */
-	private void createMeanUCERF2_Forecast(){
-		logger.log(Level.CONFIG, "Creating UCERF2 ERF");
-		forecast = new MeanUCERF2();
-		forecast.getAdjustableParameterList().getParameter(
-				UCERF2.PROB_MODEL_PARAM_NAME).setValue(UCERF2.PROB_MODEL_POISSON);
-	}
-	
-	private void createMeanUCERF3_Forecast(String name) {
-		name = name.trim();
-		logger.log(Level.CONFIG, "Creating MeanUCERF3 ERF");
-		MeanUCERF3.show_progress = false;
-		MeanUCERF3 forecast = new MeanUCERF3();
-		Presets preset;
-		String args;
-		if (name.startsWith("Mean UCERF3 FM3.1")) {
-			preset = MeanUCERF3.Presets.FM3_1_BRANCH_AVG;
-			args = name.substring("Mean UCERF3 FM3.1".length());
-		} else if (name.startsWith("Mean UCERF3 FM3.2")) {
-			preset = MeanUCERF3.Presets.FM3_2_BRANCH_AVG;
-			args = name.substring("Mean UCERF3 FM3.2".length());
-		} else {
-			preset = MeanUCERF3.Presets.BOTH_FM_BRANCH_AVG;
-			Preconditions.checkState(name.length() == "Mean UCERF3".length(),
-					"Can't specify UCERF3-TD params for full model, must use individual Fault Model");
-			args = "";
-		}
-		
-		logger.log(Level.CONFIG, "MeanUCERF3 Preset: "+preset.name());
-		
-		forecast.setPreset(preset);
-		
-		if (!args.isEmpty()) {
-			logger.log(Level.CONFIG, "Time dependent args: "+args);
-			// time dependent
-			args = args.trim().replaceAll("\t", " ");
-			while (args.contains("  "))
-				args = args.replaceAll("  ", " ");
-			String[] split = args.split(" ");
-			Preconditions.checkState(split.length == 1 || split.length == 2,
-					"UCERF3-TD arguments: <start-year> [<duration>]");
-			int startYear = Integer.parseInt(split[0]);
-			double duration = 1d;
-			if (split.length == 2)
-				duration = Double.parseDouble(split[1]);
-			
-			logger.log(Level.CONFIG, "Start Year: "+startYear);
-			logger.log(Level.CONFIG, "Duration: "+duration);
-			
-//			erf.getParameter(IncludeBackgroundParam.NAME).setValue(IncludeBackgroundOption.INCLUDE);
-//			erf.setParameter(ApplyGardnerKnopoffAftershockFilterParam.NAME, false);
-			forecast.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.U3_PREF_BLEND);
-			forecast.setParameter(AleatoryMagAreaStdDevParam.NAME, 0.0);
-			forecast.setParameter(HistoricOpenIntervalParam.NAME, startYear-1875d);
-			forecast.getTimeSpan().setStartTime(startYear);
-			forecast.getTimeSpan().setDuration(duration);
-		} else {
-			forecast.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
-			forecast.getTimeSpan().setDuration(1d);
-		}
-		
-		this.forecast = forecast;
-	}
-
-	private void toApplyBackGroud(String toApply){
+	private void toApplyBackGround(String toApply){
 		try {
 			Parameter param = forecast.getAdjustableParameterList().getParameter(
 					Frankel02_AdjustableEqkRupForecast.BACK_SEIS_NAME);
@@ -506,7 +433,7 @@ implements ParameterChangeWarningListener {
 		if (haz01) {
 			writer = new HAZ01Writer(this);
 		} else {
-			writer = new OriginalModWriter(this);
+			writer = new OriginalModCsvWriter(this);
 		}
 		writer.writeFiles(forecast, chosenAttenuationsList, supportedIMTs);
 	}
@@ -526,71 +453,306 @@ implements ParameterChangeWarningListener {
 		param.setValueIgnoreWarning(e.getNewValue());
 
 	}
-	
-	private static void printUsage() {
-		System.out.println("Usage :\n\t"+"java -jar <jarfileName> [--HAZ01] [--d] <inputFileName> <output directory name>\n\n");
-		System.out.println("jarfileName : Name of the executable jar file, by default it is IM_EventSetCalc.jar");
-		System.out.println("--HAZ01 : Optional parameter to specify using the HAZ01 output file format instead of the default");
-		System.out.println("inputFileName :Name of the input file"+
-		" For eg: see \"IM_EventSetCalc_InputFile.txt\". ");
-		System.out.println("output directory name : Name of the output directory where all the output files will be generated");
-		System.exit(2);
-	}
 
+    private static void listERFs() {
+        System.out.println("Available Earthquake Rupture Forecasts (ERFs):");
+        System.out.println("==============================================");
+        System.out.println();
+
+        // Find the maximum length of short names for proper alignment
+        int maxShortNameLength = 0;
+        for (String shortName : erfShortNames) {
+            if (shortName.length() > maxShortNameLength) {
+                maxShortNameLength = shortName.length();
+            }
+        }
+        // Ensure minimum width for alignment
+        maxShortNameLength = Math.max(maxShortNameLength, 10);
+
+        for (int i = 0; i < erfShortNames.size(); i++) {
+            String shortName = erfShortNames.get(i);
+            String longName = erfLongNames.get(i);
+            // Format the output with fixed width for short name
+            System.out.printf("%-" + maxShortNameLength + "s – %s%n", shortName, longName);
+        }
+
+        System.out.println();
+        System.out.println("Usage: imcalc -e \"FULL_NAME\" ... or imcalc -e ShortName ...");
+        System.out.println("Example: imcalc -e \"STEP Alaskan Pipeline ERF\" ...");
+        System.out.println("Example: imcalc -e STEP_AlaskanPipeForecast ...");
+    }
+
+    /**
+     * How to use the CLT. Use `--help` to see this.
+     * @param options
+     */
+    private static void printUsage(Options options) {
+        HelpFormatter formatter = new HelpFormatter();
+        formatter.setOptionComparator(null); // Preserve declaration order
+
+        String header = "\nIM Event Set Calculator - Compute Mean and Sigma for Attenuation Relationships and IMTs\n\n";
+
+        String footer = "\nExample:\n" +
+                "  imcalc -e \"WGCEP (2007) UCERF2 - Single Branch\" \\\n" +
+                "         -b Exclude \\\n" +
+                "         -a \"Boore & Atkinson (2008)\",\"Chiou & Youngs (2008)\" \\\n" +
+                "         -m \"PGA,SA20,SA 1.0\" \\\n" +
+                "         -r 5 \\\n" +
+                "         -s sites.csv \\\n" +
+                "         -o results/\n\n" +
+                "Note: Site data values are limited to Vs30, Z1.0, Z2.5 in CSV file.\n" +
+                "      Use IMEventSetCalculatorGUI for more refined control of Site Parameters.\n";
+
+        formatter.printHelp("imcalc ",
+                header, options, footer, true);
+    }
+
+    private static Level getLogLevel(CommandLine cmd) {
+        if (cmd.hasOption("ddd")) return Level.ALL;
+        if (cmd.hasOption("dd")) return Level.FINE;
+        if (cmd.hasOption("d")) return Level.CONFIG;
+        if (cmd.hasOption("q")) return Level.OFF;
+        return Level.WARNING; // default
+    }
+
+    /**
+     * Creates all options
+     * @return
+     */
+    private static Options createOptions() {
+        Options options = new Options();
+
+        options.addOption(Option.builder("h")
+                .longOpt("help")
+                .desc("Show this help and exit.")
+                .build());
+
+        options.addOption(Option.builder()
+                .longOpt("list-erfs")
+                .desc("List available ERF short names and long names")
+                .build());
+
+        options.addOption(Option.builder()
+                .longOpt("haz01")
+                .desc("Use HAZ01 output file format instead of default")
+                .build());
+
+        options.addOption(Option.builder("d")
+                .desc("Set logging level to CONFIG (verbose)")
+                .build());
+
+        options.addOption(Option.builder("dd")
+                .desc("Set logging level to FINE (very verbose)")
+                .build());
+
+        options.addOption(Option.builder("ddd")
+                .desc("Set logging level to ALL (debug)")
+                .build());
+
+        options.addOption(Option.builder("q")
+                .longOpt("quiet")
+                .desc("Set logging level to OFF (quiet)")
+                .build());
+
+        options.addOption(Option.builder("e")
+                .longOpt("erf")
+                .hasArg()
+                .argName("name")
+                .desc("Earthquake Rupture Forecast (ERF) - short code or full name in quotes")
+                .build());
+
+        options.addOption(Option.builder("b")
+                .longOpt("background-seismicity")
+                .hasArg()
+                .argName("type")
+                .desc("Include | Exclude | Only-Background")
+                .build());
+
+        options.addOption(Option.builder("r")
+                .longOpt("rupture-offset")
+                .hasArg()
+                .argName("km")
+                .desc("Rupture offset for floating ruptures (1-100 km; 5 km is generally best).")
+                .build());
+
+        options.addOption(Option.builder("t")
+                .longOpt("duration")
+                .hasArg()
+                .argName("years")
+                .desc("Duration in years. Defaults to 1 if not provided.")
+                .build());
+
+        OptionGroup attenRelGroup = new OptionGroup();
+        attenRelGroup.addOption(Option.builder("a")
+                .longOpt("atten-rels")
+                .hasArg()
+                .argName("IMR1,IMR2,...")
+                .desc("Comma-separated in quotation attenuation relations")
+                .build());
+        attenRelGroup.addOption(Option.builder("f")
+                .longOpt("atten-rels-file")
+                .hasArg()
+                .argName("file")
+                .desc("Newlines-separated IMR list (mutually exclusive with --atten-rels)")
+                .build());
+        options.addOptionGroup(attenRelGroup);
+
+        options.addOption(Option.builder("m")
+                .longOpt("imts")
+                .hasArg()
+                .argName("IMT1,IMT2,...")
+                .desc("Comma-separated intensity-measure types")
+                .build());
+
+        options.addOption(Option.builder("s")
+                .longOpt("sites")
+                .hasArg()
+                .argName("csv-file")
+                .desc("CSV of Lat, Lon, [Vs30/Wills] (column optional)")
+                .build());
+
+        options.addOption(Option.builder("o")
+                .longOpt("output-dir")
+                .hasArg()
+                .argName("dir")
+                .desc("Where to write results (defaults to current dir)")
+                .build());
+
+        return options;
+    }
+
+    /**
+     * Process input parameters
+     * @param cmd All arguments for parsing
+     * @return CLT instance
+     */
+    private static IMEventSetCalculatorCLT processInput(CommandLine cmd) {
+        Options options = createOptions();
+        // Handle help option
+        if (cmd.hasOption("help")) {
+            printUsage(options);
+            System.exit(0);
+        }
+        // Show ERF options
+        if (cmd.hasOption("list-erfs")) {
+            listERFs();
+            System.exit(0);
+        }
+
+        // Check required OptionGroup for attenuation relationships
+        boolean hasAttenRels = cmd.hasOption("atten-rels");
+        boolean hasAttenRelsFile = cmd.hasOption("atten-rels-file");
+        if (!(hasAttenRels || hasAttenRelsFile)) {
+            System.err.println("Error: At least one of --atten-rels or --atten-rels-file must be specified");
+            printUsage(options);
+            System.exit(2);
+        }
+        // Check for required options without mutual exclusivity
+        String[] requiredOptions = {"erf", "imts", "output-dir"};
+        for (String option : requiredOptions) {
+            if (!cmd.hasOption(option)) {
+                System.err.println("Error: Required option --" + option + " is missing");
+                printUsage(options);
+                System.exit(2);
+            }
+        }
+
+        String erfName = cmd.getOptionValue("erf");
+        // bgSeis value is ignored if ERF doesn't support it
+        String bgSeis = cmd.hasOption("background-seismicity")
+                ? cmd.getOptionValue("background-seismicity") : null;
+        double rupOffset = cmd.hasOption("rupture-offset")
+                ? Double.parseDouble(cmd.getOptionValue("rupture-offset")) : Double.NaN;
+        ArrayList<String> attenRels;
+        if (hasAttenRels) {
+            attenRels = parseQuotedString(cmd.getOptionValue("atten-rels"));
+            System.out.println(attenRels);
+        } else {
+            try {
+                attenRels = FileUtils.loadFile(cmd.getOptionValue("atten-rels-file"));
+                // Filter comments out of attenRels input TXT file
+                attenRels.removeIf(s -> s.startsWith("#"));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        ArrayList<String> imts = new ArrayList<>(List.of(cmd.getOptionValue("imts").split(",")));
+
+        String sites = cmd.hasOption("sites") ? cmd.getOptionValue("sites") : null;
+        double duration = cmd.hasOption("duration")
+                ? Double.parseDouble(cmd.getOptionValue("duration")) : 1.0;
+
+        String outputDirName = cmd.getOptionValue("output-dir");
+
+        return new IMEventSetCalculatorCLT(erfName, bgSeis, rupOffset, duration,
+                attenRels, imts, sites, outputDirName);
+    }
+
+    /**
+     * A string of values where each value in quotes is separated into a list
+     * @param csvString     "first","second, with a comma","third"
+     * @return              ["first", "second, with a comma", "third"]
+     */
+    private static ArrayList<String> parseQuotedString(String csvString) {
+        ArrayList<String> values = new ArrayList<>();
+        if (csvString == null || csvString.trim().isEmpty()) {
+            return values;
+        }
+
+        // Split by comma, but be careful with quoted strings
+        // This regex splits on commas that are NOT inside quotes
+        String[] parts = csvString.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
+
+        for (String part : parts) {
+            part = part.trim();
+            if (part.startsWith("\"") && part.endsWith("\"")) {
+                // Remove surrounding quotes
+                values.add(part.substring(1, part.length() - 1));
+            } else {
+                values.add(part);
+            }
+        }
+        return values;
+    }
+
+
+    /**
+     * Entry point to CLT.
+     * Processes command line input and invokes the calculator.
+     * Exits with 0 on success, 1 on failure, and 2 on invalid input.
+     * @param args
+     */
 	public static void main(String[] args) {
-		boolean haz01 = false;
-		
-		ArrayList<String> parsedArgs = new ArrayList<String>();
-		
-		Level level = Level.WARNING;
-		
-		for (String arg : args) {
-			if (arg.trim().toLowerCase().equals("--haz01"))
-				haz01 = true;
-			else if (arg.trim().toLowerCase().equals("--d"))
-				level = Level.CONFIG;
-			else if (arg.trim().toLowerCase().equals("--dd"))
-				level = Level.FINE;
-			else if (arg.trim().toLowerCase().equals("--ddd"))
-				level = Level.ALL;
-			else if (arg.trim().toLowerCase().equals("--q"))
-				level = Level.OFF;
-			else
-				parsedArgs.add(arg);
-		}
-		
-		initLogger(level);
+        // First, parse with full options to detect mode
+        Options options = createOptions();
+        CommandLineParser parser = new DefaultParser();
+        CommandLine cmd = null;
 
-		IMEventSetCalculatorCLT calc = null;
-		if (parsedArgs.size() == 2) {
-			calc = new IMEventSetCalculatorCLT(parsedArgs.get(0),parsedArgs.get(1));
-//		} else if (args.length == 3) {
-//			if (args[0].trim().toLowerCase().equals("--haz01"))
-//				haz01 = true;
-//			else {
-//				System.out.println("Unknown option: " + args[0]);
-//				printUsage();
-//			}
-//			calc = new IMEventSetCalculatorCLT(args[1],args[2]);
-		} else {
-			printUsage();
-		}
-		//IM_EventSetCalc calc = new IM_EventSetCalc("org/opensha/sha/calc/IM_EventSetCalc_v02/ExampleInputFile.txt","org/opensha/sha/calc/IM_EventSetCalc_v02/test");
-		try {
-			calc.parseFile();
-		} catch (Exception ex) {
-			logger.log(Level.INFO, "Error parsing input file!", ex);
-//			ex.printStackTrace();
-			System.exit(1);
-		}
+        try {
+            cmd = parser.parse(options, args, true); // Stop at non-option
+        } catch (ParseException e) {
+            System.err.println("Error parsing command line: " + e.getMessage());
+            printUsage(options);
+            System.exit(2);
+        }
 
-		try {
-			calc.getMeanSigma(haz01);
-		} catch (IOException e) {
-			e.printStackTrace();
-			System.exit(1);
-		}
-		System.exit(0);
+        Level level = getLogLevel(cmd);
+        initLogger(level);
+
+        // Output mode
+        boolean haz01 = cmd.hasOption("haz01");
+
+        IMEventSetCalculatorCLT calc = processInput(cmd);
+
+        // Invoke calculator
+        try {
+            calc.getMeanSigma(haz01);
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+        System.exit(0);
+
 	}
 
 	public int getNumSites() {
