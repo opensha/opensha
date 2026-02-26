@@ -77,7 +77,7 @@ ParameterChangeListener, ChangeListener {
 
 	// instance of the selected ERF
 	BaseERF eqkRupForecast = null;
-	//instance of progress bar to show the progress of updation of forecast
+	//instance of progress bar to show the progress of forecast update
 	CalcProgressBar progress = null;
 
 
@@ -126,7 +126,7 @@ ParameterChangeListener, ChangeListener {
 
 	/**
 	 * Constructor : It accepts the classNames of the ERFs to be shown in the editor
-	 * @param erfClassNames
+	 * @param erfRefs
 	 */
 	public ERF_GuiBean(List<ERF_Ref> erfRefs) throws InvocationTargetException{
 		try {
@@ -140,7 +140,7 @@ ParameterChangeListener, ChangeListener {
 
 		// create the instance of ERFs
 		init_erf_IndParamListAndEditor();
-		// forecast 1  is selected initially
+		// forecast 1 is selected initially
 		setParamsInForecast();
 		
 		fallbackERF = eqkRupForecast;
@@ -481,12 +481,11 @@ ParameterChangeListener, ChangeListener {
 	/**
 	 *  This is the main function of this interface. Any time a control
 	 *  parameter or independent parameter is changed by the user in a GUI this
-	 *  function is called, and a paramater change event is passed in. This
+	 *  function is called, and a parameter change event is passed in. This
 	 *  function then determines what to do with the information ie. show some
-	 *  paramaters, set some as invisible, basically control the paramater
-	 *  lists.
+	 *  parameters, set some as invisible, control the parameter lists.
 	 *
-	 * @param  event
+	 * @param event
 	 */
 	public void parameterChange(ParameterChangeEvent event) {
 
@@ -547,7 +546,7 @@ ParameterChangeListener, ChangeListener {
 	 * This function allows user to add the more ERF's names to the existing list from the application.
 	 * This function allows user with the flexibility that he does not always have to specify the erfNames
 	 * at time of instantiating this ERF gui bean.
-	 * @param erfList
+	 * @param newRefs
 	 * @throws InvocationTargetException
 	 */
 	public void addERFs_ToList(ArrayList<ERF_Ref> newRefs) throws InvocationTargetException{
@@ -578,7 +577,7 @@ ParameterChangeListener, ChangeListener {
 	 * This function allows user to remove ERF's names from the existing list from the application.
 	 * This function allows user with the flexibility that he can always remove the erfNames
 	 * later after instantiating this ERF gui bean.
-	 * @param erfList
+	 * @param removed
 	 * @throws InvocationTargetException
 	 */
 	public void removeERFs_FromList(ArrayList<ERF_Ref> removed) throws InvocationTargetException{

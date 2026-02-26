@@ -15,23 +15,22 @@ import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.param.Parameter;
 import org.opensha.sha.calc.IM_EventSet.IMEventSetCalcAPI;
 import org.opensha.sha.calc.IM_EventSet.IM_EventSetOutputWriter;
-import org.opensha.sha.calc.sourceFilters.SourceFilterUtils;
-import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.OtherParams.StdDevTypeParam;
+import org.opensha.sha.calc.sourceFilters.SourceFilterUtils;
 
 /**
- * Writes the original format files for the IM Event Set Calculator.
+ * Writes the original TXT format files for the IM Event Set Calculator.
  */
-public class OriginalModWriter extends IM_EventSetOutputWriter {
-	public static final String NAME = "OpenSHA Format Writer";
+public class OriginalModTxtWriter extends IM_EventSetOutputWriter {
+	public static final String NAME = "OpenSHA TXT Format Writer";
 	
 	File outputDir;
 
-	public OriginalModWriter(IMEventSetCalcAPI calc) {
+	public OriginalModTxtWriter(IMEventSetCalcAPI calc) {
 		super(calc);
 	}
 
@@ -39,7 +38,7 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 	public void writeFiles(ArrayList<ERF> erfs,
 			ArrayList<ScalarIMR> attenRels, ArrayList<String> imts)
 			throws IOException {
-		logger.log(Level.INFO, "Writing old format files files");
+		logger.log(Level.INFO, "Writing OpenSHA TXT format files");
 		outputDir = null;
 		boolean multipleERFs = erfs.size() != 1;
         for (int erfID=0; erfID<erfs.size(); erfID++) {
@@ -68,11 +67,12 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 	 * 
 	 * @param erf
 	 * @param attenRel
+     * @param imt
 	 * @throws IOException
 	 */
 	private void writeOriginalMeanSigmaFiles(ERF erf, ScalarIMR attenRel, String imt) throws IOException {
 		setIMTFromString(imt, attenRel);
-		logger.log(Level.INFO, "Writing Mean/Sigma file for " + attenRel.getShortName() + ", " + imt);
+		logger.log(Level.INFO, "Writing Mean/Sigma TXT file for " + attenRel.getShortName() + ", " + imt);
 		ArrayList<Parameter> defaultSiteParams = getDefaultSiteParams(attenRel);
 
 		ArrayList<Site> sites = getInitializedSites(attenRel);
@@ -128,6 +128,7 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
                     double mean = Double.NaN, total = Double.NaN, inter = Double.NaN;
                     if (!SourceFilterUtils.canSkipSource(calc.getSourceFilters(), source, site) &&
                         !SourceFilterUtils.canSkipRupture(calc.getSourceFilters(), rup, site)) {
+                        shouldWriteRup = true;
                         attenRel.setSite(site);
                         mean = attenRel.getMean();
                         if (stdDevParam != null) {
@@ -143,11 +144,6 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
                             inter = attenRel.getStdDev();
                         }
                     }
-
-                    // Track if the line contains at least one site with valid values
-                    boolean hasNumber = Arrays.stream(new double[]{mean, total, inter})
-                            .anyMatch((i) -> !Double.isNaN(i));
-                    if (hasNumber) shouldWriteRup = true;
 
 					line += " " + meanSigmaFormat.format(mean) + " " + meanSigmaFormat.format(total)
 									+ " " + meanSigmaFormat.format(inter);
@@ -223,6 +219,9 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 		}
 		fw.close();
 		fw_jb.close();
+		logger.log(Level.INFO, "Done writing " + fname);
+		logger.log(Level.INFO, "Done writing " + fname_jb);
+
 	}
 	
 	/**
@@ -245,7 +244,12 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 		
 		int numSources = erf.getNumSources();
 		
-		double duration = ((TimeSpan)erf.getTimeSpan()).getDuration();
+        TimeSpan timespan = erf.getTimeSpan();
+        double duration;
+        if (timespan != null)
+            duration = timespan.getDuration();
+        else
+            duration = 1;
 
 		for (int sourceID=0; sourceID<numSources; sourceID++) {
 			ProbEqkSource source = erf.getSource(sourceID);
@@ -259,6 +263,7 @@ public class OriginalModWriter extends IM_EventSetOutputWriter {
 		fw.close();
 	}
 	
+	@Override
 	public String getName() {
 		return NAME;
 	}
