@@ -39,8 +39,9 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 	private final boolean sampleDownDip;
 
 	private final ConcurrentMap<RuptureKey, CachedFractileDistanceFuncs> valueFuncs = new ConcurrentHashMap<>();
-	
+
 	private boolean cache = true;
+	private boolean snap = true;
 	
 	private final double[] vertAlphaRad;
 	private final double[] vertCosAlpha;
@@ -176,6 +177,14 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 	public WeightedList<FractileBin> getFractiles() {
 		return fractiles;
 	}
+	
+	public void setCacheForRups(boolean cache) {
+		this.cache = cache;
+	}
+	
+	public void setSnapRupProps(boolean snap) {
+		this.snap = snap;
+	}
 
 	@Override
 	public WeightedList<SurfaceDistances> getCorrectedDistances(Location siteLoc, PointSurface surf,
@@ -195,7 +204,7 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 		if (cache)
 			fractileDists = getFractileDistances(surf, horzDist);
 		else
-			fractileDists = calcFractileDistances(new RuptureKey(surf), horzDist);
+			fractileDists = calcFractileDistances(new RuptureKey(surf, snap), horzDist);
 		
 		boolean doFW = fractileDists.fractFootwall > 0d;
 		boolean doHW = fractileDists.fractFootwall < 1d;
@@ -302,10 +311,6 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 		
 		// otherwise available
 		private final double zBot;
-		
-		public RuptureKey(PointSurface surf) {
-			this(surf, true);
-		}
 		
 		public RuptureKey(PointSurface surf, boolean snap) {
 			double rupLength = surf.getAveLength();
@@ -421,7 +426,7 @@ public class DistanceDistributionCorrection implements PointSourceDistanceCorrec
 	}
 	
 	public FractileDistances getFractileDistances(PointSurface surf, double horzDist) {
-		RuptureKey rupKey = new RuptureKey(surf);
+		RuptureKey rupKey = new RuptureKey(surf, snap);
 		QuickInterpolator qi = interp.getQuickInterpolator(horzDist, false);
 		if (qi.isDiscrete()) {
 			// no interpolation required
