@@ -91,12 +91,13 @@ public class NewCompoundSurface implements CacheEnabledSurface {
 	}
 	
 	private NewCompoundSurface(List<? extends RuptureSurface> surfaces, double[] surfaceAreas, double totArea,
-			RuptureSurface[] topSurfaces, RuptureSurface[] bottomSurfaces, double[] topSurfaceAreas,
+			boolean[] surfaceIsTop, RuptureSurface[] topSurfaces, RuptureSurface[] bottomSurfaces, double[] topSurfaceAreas,
 			double[] bottomSurfaceAreas, boolean[] topSurfacesReversed, boolean[] bottomSurfacesReversed,
 			double avgDip) {
 		this.surfaces = surfaces;
 		this.surfaceAreas = surfaceAreas;
 		this.totArea = totArea;
+		this.surfaceIsTop = surfaceIsTop;
 		this.topSurfaces = topSurfaces;
 		this.bottomSurfaces = bottomSurfaces;
 		this.topSurfaceAreas = topSurfaceAreas;
@@ -537,13 +538,13 @@ public class NewCompoundSurface implements CacheEnabledSurface {
 		} else {
 			movedBottomSurfaces = movedTopSurfaces;
 		}
-		return new NewCompoundSurface(movedSurfaces, surfaceAreas, totArea, movedTopSurfaces, movedBottomSurfaces, topSurfaceAreas,
+		return new NewCompoundSurface(movedSurfaces, surfaceAreas, totArea, surfaceIsTop, movedTopSurfaces, movedBottomSurfaces, topSurfaceAreas,
 				bottomSurfaceAreas, topSurfacesReversed, bottomSurfacesReversed, avgDip);
 	}
 
 	@Override
 	public RuptureSurface copyShallow() {
-		return new NewCompoundSurface(surfaces, surfaceAreas, totArea, topSurfaces, bottomSurfaces, topSurfaceAreas,
+		return new NewCompoundSurface(surfaces, surfaceAreas, totArea, surfaceIsTop, topSurfaces, bottomSurfaces, topSurfaceAreas,
 				bottomSurfaceAreas, topSurfacesReversed, bottomSurfacesReversed, avgDip);
 	}
 
@@ -554,6 +555,7 @@ public class NewCompoundSurface implements CacheEnabledSurface {
 
 	@Override
 	public LocationList getEvenlyDiscritizedPerimeter() {
+		// TODO this omits side connectors and isn't a true closed perimeter; revisit with the down-dip implementation.
 		LocationList perim = new LocationList();
 		perim.addAll(getEvenlyDiscritizedUpperEdge());
 		for (int s=bottomSurfaces.length; --s>=0;) {
@@ -585,6 +587,7 @@ public class NewCompoundSurface implements CacheEnabledSurface {
 	public SurfaceDistances calcDistances(Location loc) {
 		double distanceJB = Double.MAX_VALUE;
 		double distanceRup = Double.MAX_VALUE;
+		double distanceRupTop = Double.MAX_VALUE;
 		double dist;
 		RuptureSurface surfForX = null;
 		for (int i=0; i<surfaces.size(); i++) {
@@ -592,10 +595,11 @@ public class NewCompoundSurface implements CacheEnabledSurface {
 			dist = surf.getDistanceJB(loc);
 			if (dist<distanceJB) distanceJB=dist;
 			dist = surf.getDistanceRup(loc);
-			if (dist<distanceRup) {
-				distanceRup=dist;
-				if (surfaceIsTop[i])
-					surfForX = surf;
+			if (dist < distanceRup)
+				distanceRup = dist;
+			if (surfaceIsTop[i] && dist < distanceRupTop) {
+				distanceRupTop = dist;
+				surfForX = surf;
 			}
 		}
 		// use the closest sub-surface (determined via rRup) for distanceX
