@@ -678,15 +678,15 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 			
 			for (int r=0; r<source.getNumRuptures(); r++) {
 				double rake, mag;
-				if (source instanceof Point2Vert_FaultPoisSource) {
-					Point2Vert_FaultPoisSource fs = (Point2Vert_FaultPoisSource)source;
-					rake = fs.getAveRake(r);
-					mag = fs.getMag(r);
-				} else {
+//				if (source instanceof Point2Vert_FaultPoisSource) {
+//					Point2Vert_FaultPoisSource fs = (Point2Vert_FaultPoisSource)source;
+//					rake = fs.getAveRake(r);
+//					mag = fs.getMag(r);
+//				} else {
 					ProbEqkRupture rup = source.getRupture(r);
 					rake = rup.getAveRake();
 					mag = rup.getMag();
-				}
+//				}
 				
 				// need to scale loss by the fraction with that focal mech
 				double fract = 0d;

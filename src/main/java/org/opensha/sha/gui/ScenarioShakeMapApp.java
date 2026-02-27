@@ -1,29 +1,13 @@
 package org.opensha.sha.gui;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.GridLayout;
-import java.awt.Insets;
-import java.awt.SystemColor;
-import java.awt.Toolkit;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JSplitPane;
-import javax.swing.JTabbedPane;
-import javax.swing.Timer;
-import javax.swing.UIManager;
+import javax.swing.*;
 import javax.swing.border.Border;
 import javax.swing.border.EtchedBorder;
 
@@ -46,7 +30,7 @@ import org.opensha.commons.util.ListUtils;
 import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.commons.util.bugReports.BugReport;
 import org.opensha.commons.util.bugReports.BugReportDialog;
-import org.opensha.commons.util.bugReports.DefaultExceptoinHandler;
+import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 import org.opensha.sha.calc.ScenarioShakeMapCalculator;
 import org.opensha.sha.earthquake.ERF_Ref;
 import org.opensha.sha.earthquake.EqkRupture;
@@ -58,9 +42,7 @@ import org.opensha.sha.gui.beans.MapGuiBean;
 import org.opensha.sha.gui.beans.SitesInGriddedRectangularRegionGuiBean;
 import org.opensha.sha.gui.controls.CalculationSettingsControlPanel;
 import org.opensha.sha.gui.controls.CalculationSettingsControlPanelAPI;
-import org.opensha.sha.gui.controls.GMTMapCalcOptionControl;
 import org.opensha.sha.gui.controls.GenerateHazusControlPanelForSingleMultipleIMRs;
-import org.opensha.sha.gui.controls.IM_EventSetCEA_ControlPanel;
 import org.opensha.sha.gui.controls.PuenteHillsScenarioControlPanelUsingEqkRuptureCreation;
 import org.opensha.sha.gui.controls.RegionsOfInterestControlPanel;
 import org.opensha.sha.gui.controls.SanAndreasScenarioControlPanel;
@@ -94,6 +76,7 @@ import org.opensha.sha.imr.event.ScalarIMRChangeListener;
 public class ScenarioShakeMapApp extends JFrame implements ParameterChangeListener,
 AttenuationRelationshipSiteParamsRegionAPI,CalculationSettingsControlPanelAPI,Runnable, ScalarIMRChangeListener{
 	
+	private static final long serialVersionUID = 1L;
 	public static final String APP_NAME = "Scenario ShakeMap Application";
 	public static final String APP_SHORT_NAME = "ScenarioShakeMapLocal";
 	
@@ -165,11 +148,8 @@ AttenuationRelationshipSiteParamsRegionAPI,CalculationSettingsControlPanelAPI,Ru
 	protected RegionsOfInterestControlPanel regionsOfInterest;
 	protected PuenteHillsScenarioControlPanelUsingEqkRuptureCreation puenteHillsControlUsingEqkRupture;
 	protected SanAndreasScenarioControlPanel  sanAndreasControlUsingEqkRupture;
-	protected IM_EventSetCEA_ControlPanel imSetScenarioControl;
 	//protected PuenteHillsScenarioControlPanelForSingleMultipleAttenRel puenteHillsControl;
 	protected GenerateHazusControlPanelForSingleMultipleIMRs hazusControl;
-	private GMTMapCalcOptionControl calcControl;
-	protected CalculationSettingsControlPanel calcParamsControl;
 	//private SF_BayAreaScenarioControlPanel bayAreaControl;
 
 	// instances of the GUI Beans which will be shown in this applet
@@ -208,7 +188,7 @@ AttenuationRelationshipSiteParamsRegionAPI,CalculationSettingsControlPanelAPI,Ru
 	protected GridLayout gridLayout1 = new GridLayout();
 	protected GridBagLayout gridBagLayout1 = new GridBagLayout();
 	protected GridBagLayout gridBagLayout5 = new GridBagLayout();
-	protected JComboBox controlComboBox = new JComboBox();
+	protected JComboBox<String> controlComboBox = new JComboBox<>();
 	protected GridBagLayout gridBagLayout6 = new GridBagLayout();
 	protected BorderLayout borderLayout1 = new BorderLayout();
 	protected CalcProgressBar calcProgress;
@@ -286,6 +266,25 @@ AttenuationRelationshipSiteParamsRegionAPI,CalculationSettingsControlPanelAPI,Ru
 		this.initMapGuiBean();
 		// initialize the control pick list
 		initControlList();
+
+        // Set the size after the UI is fully built and visible
+        SwingUtilities.invokeLater(() -> {
+            String selected = (String) controlComboBox.getSelectedItem();
+            if (selected != null) {
+                FontMetrics fm = controlComboBox.getFontMetrics(controlComboBox.getFont());
+                int textWidth = fm.stringWidth(selected);
+                int totalWidth = textWidth + 50; // text + arrow + padding
+
+                Dimension size = new Dimension(totalWidth, controlComboBox.getPreferredSize().height);
+                controlComboBox.setPreferredSize(size);
+                controlComboBox.setMinimumSize(size);
+
+                // This is the key - revalidate the parent containers
+                controlComboBox.revalidate();
+                buttonPanel.revalidate();
+                mainPanel.revalidate();
+            }
+        });
 	}
 
 	/**
@@ -298,6 +297,7 @@ AttenuationRelationshipSiteParamsRegionAPI,CalculationSettingsControlPanelAPI,Ru
 				version = ApplicationVersion.loadBuildVersion();
 			} catch (IOException e) {
 				e.printStackTrace();
+				version = new ApplicationVersion(-1, -1, -1);
 			}
 		}
 		return version;
@@ -342,7 +342,7 @@ AttenuationRelationshipSiteParamsRegionAPI,CalculationSettingsControlPanelAPI,Ru
 				,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(1, 1, 2, 3), 0, 431));
 		mainSplitPane.add(buttonPanel, JSplitPane.BOTTOM);
 		buttonPanel.add(controlComboBox,  new GridBagConstraints(0, 0, 1, 1, 1.0, 0.0
-				,GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(48, 41, 47, 0), 5, 2));
+				,GridBagConstraints.CENTER, GridBagConstraints.NONE, new Insets(64, 32, 47, 0), 8, 2));
 		buttonPanel.add(addButton,  new GridBagConstraints(1, 0, 1, 1, 0.0, 0.0
 				,GridBagConstraints.CENTER, GridBagConstraints.NONE, new Insets(48, 88, 39, 139), 26, 9));
 		mainSplitPane.add(parameterTabbedPanel, JSplitPane.TOP);
@@ -365,7 +365,7 @@ AttenuationRelationshipSiteParamsRegionAPI,CalculationSettingsControlPanelAPI,Ru
 		this.setLocation((dim.width - getSize().width) / 2, (dim.height - getSize().height) / 2);
 		//EXIT_ON_CLOSE == 3
 		this.setDefaultCloseOperation(3);
-		this.setTitle("ScenarioShakeMap Application ("+getAppVersion()+" )");
+		this.setTitle("ScenarioShakeMap Application ("+getAppVersion().getDisplayString()+" )");
 
 		//adding the Menu to the application
 		/*helpMenu.setText("Help");
@@ -386,13 +386,13 @@ AttenuationRelationshipSiteParamsRegionAPI,CalculationSettingsControlPanelAPI,Ru
 	//Main method
 	public static void main(String[] args) throws IOException {
 		new DisclaimerDialog(APP_NAME, APP_SHORT_NAME, getAppVersion());
-		DefaultExceptoinHandler exp = new DefaultExceptoinHandler(
+		DefaultExceptionHandler exp = new DefaultExceptionHandler(
 				APP_SHORT_NAME, getAppVersion(), null, null);
 		Thread.setDefaultUncaughtExceptionHandler(exp);
 		launch(exp);
 	}
 	
-	public static ScenarioShakeMapApp launch(DefaultExceptoinHandler handler) {
+	public static ScenarioShakeMapApp launch(DefaultExceptionHandler handler) {
 		ScenarioShakeMapApp applet = new ScenarioShakeMapApp(APP_SHORT_NAME);
 		if (handler != null) {
 			handler.setApp(applet);
@@ -830,18 +830,19 @@ AttenuationRelationshipSiteParamsRegionAPI,CalculationSettingsControlPanelAPI,Ru
 	 * @return the Metadata string for the Calculation Settings Adjustable Params
 	 */
 	public String getCalcParamMetadataString(){
-		return getCalcAdjustableParams().getParameterListMetadataString();
+		ParameterList params = getCalcAdjustableParams();
+		if (params == null || params.size() == 0)
+			return "";
+		return params.getParameterListMetadataString();
 	}
 
-
-	/**
+    /**
 	 * Initialize the items to be added to the control list
 	 */
 	protected void initControlList() {
 		controlPanels = new ArrayList<ControlPanel>();
-		
 		controlComboBox.addItem(CONTROL_PANELS);
-		
+
 		/*		Regions of Interest Control		*/
 		controlComboBox.addItem(RegionsOfInterestControlPanel.NAME);
 		controlPanels.add(new RegionsOfInterestControlPanel(this, this.sitesGuiBean));
@@ -861,19 +862,12 @@ AttenuationRelationshipSiteParamsRegionAPI,CalculationSettingsControlPanelAPI,Ru
 		controlPanels.add(new SanAndreasScenarioControlPanel(erfGuiBean,imrGuiBean,
 				sitesGuiBean,mapGuiBean, this));
 		
-		/*		IM Event Set Scen Control		*/
-		controlComboBox.addItem(IM_EventSetCEA_ControlPanel.NAME);
-		controlPanels.add(new IM_EventSetCEA_ControlPanel(erfGuiBean,imrGuiBean,
-				sitesGuiBean,mapGuiBean, this));
-		
-		/*		Map Calc Control				*/
-		// this really isn't applicable anymore
-//		controlComboBox.addItem(GMTMapCalcOptionControl.NAME);
-//		controlPanels.add(new GMTMapCalcOptionControl(this));
-		
 		/*		Calc Params Control				*/
-		controlComboBox.addItem(CalculationSettingsControlPanel.NAME);
-		controlPanels.add(new CalculationSettingsControlPanel(this,this));
+		ParameterList params = getCalcAdjustableParams();
+		if (params != null && params.size() > 0) {
+			controlComboBox.addItem(CalculationSettingsControlPanel.NAME);
+			controlPanels.add(new CalculationSettingsControlPanel(this,this));
+		}
 	}
 	
 	protected void showControlPanel(String controlName) {

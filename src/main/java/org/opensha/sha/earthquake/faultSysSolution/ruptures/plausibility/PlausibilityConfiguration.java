@@ -328,6 +328,15 @@ BranchAverageableModule<PlausibilityConfiguration> {
 			filters.add(new SplayLengthFilter(maxLen, isFractOfMain, totalAcrossSplays, allowFullCluster));
 			return this;
 		}
+		
+		/**
+		 * 
+		 * @param maxLen maximum rupture length (km)
+		 */
+		public Builder maxLength(double maxLen) {
+			filters.add(new RuptureLengthFilter(maxLen));
+			return this;
+		}
 
 		
 		public Builder cumulativePenalty(float threshold, boolean noDoubleCount, Penalty... penalties) {

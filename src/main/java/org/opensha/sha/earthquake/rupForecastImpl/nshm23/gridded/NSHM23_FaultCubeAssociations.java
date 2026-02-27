@@ -402,8 +402,8 @@ public class NSHM23_FaultCubeAssociations implements FaultCubeAssociations, Arch
 				// build buffered polygon
 				Location topRight = new Location(proxyReg.getMaxLat(), proxyReg.getMaxLon());
 				Location botLeft = new Location(proxyReg.getMinLat(), proxyReg.getMinLon());
-				topRight = LocationUtils.location(topRight, Math.PI*0.25, maxFaultNuclDist);
-				botLeft = LocationUtils.location(botLeft, Math.PI*1.25, maxFaultNuclDist);
+				topRight = LocationUtils.location(topRight, Math.PI*0.25, 2d*maxFaultNuclDist);
+				botLeft = LocationUtils.location(botLeft, Math.PI*1.25, 2d*maxFaultNuclDist);
 				Region bufferedPoly = new Region(botLeft, topRight);
 				GriddedRegion griddedPolygonReg = new GriddedRegion(bufferedPoly, cgr.getCubeLatLonSpacing(), cgr.getCubeLocationForIndex(0));
 				
@@ -424,7 +424,7 @@ public class NSHM23_FaultCubeAssociations implements FaultCubeAssociations, Arch
 						if (depth <= upperDepth)
 							vertDist = upperDepth - depth;
 						else if (depth >= lowerDepth)
-							vertDist = depth = lowerDepth;
+							vertDist = depth - lowerDepth;
 						else
 							vertDist = 0d;
 						double dist;

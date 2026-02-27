@@ -60,6 +60,7 @@ import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.WarningDoubleParameter;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.ExecutorUtils;
+import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.ReturnPeriodUtils;
@@ -70,12 +71,12 @@ import org.opensha.sha.calc.disaggregation.DisaggregationCalculator.EpsilonCateg
 import org.opensha.sha.calc.disaggregation.DisaggregationPlotData;
 import org.opensha.sha.calc.disaggregation.DisaggregationSourceRuptureInfo;
 import org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter;
-import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
-import org.opensha.sha.calc.params.filters.SourceFilter;
-import org.opensha.sha.calc.params.filters.SourceFilterManager;
-import org.opensha.sha.calc.params.filters.SourceFilters;
-import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter;
-import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
+import org.opensha.sha.calc.sourceFilters.FixedDistanceCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
+import org.opensha.sha.calc.sourceFilters.SourceFilters;
+import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.DistCachedERFWrapper;
 import org.opensha.sha.earthquake.ProbEqkRupture;
@@ -93,6 +94,7 @@ import org.opensha.sha.earthquake.param.AseismicityAreaReductionParam;
 import org.opensha.sha.earthquake.param.FaultGridSpacingParam;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
+import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -101,6 +103,7 @@ import org.opensha.sha.faultSurface.cache.SurfaceCachingPolicy;
 import org.opensha.sha.faultSurface.cache.SurfaceCachingPolicy.CacheTypes;
 import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenRelRef;
+import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGV_Param;
@@ -192,7 +195,7 @@ public class SolSiteHazardCalc {
 		
 		// calculation parameters
 		
-		SolHazardMapCalc.addCommonOptions(ops, false);
+		FaultSysHazardCalcSettings.addCommonOptions(ops, false);
 		
 		ops.addOption(null, "spectra", false, "Flag to calculate and plot hazard spectra. Usually used in conjunction "
 				+ "with --all-periods. Also see --return-periods.");
@@ -277,7 +280,7 @@ public class SolSiteHazardCalc {
 		IncludeBackgroundOption mainGridOp = getGridOp(cmd, sol);
 		IncludeBackgroundOption compGridOp = compSol == null ? null : getGridOp(cmd, compSol);
 		
-		Map<TectonicRegionType, AttenRelRef> gmmSuppliers = SolHazardMapCalc.getGMMs(cmd);
+		Map<TectonicRegionType, ? extends AttenRelSupplier> gmmSuppliers = FaultSysHazardCalcSettings.getGMMs(cmd);
 		
 		if (gmmSuppliers.size() > 1) {
 			// see which ones we actually need
@@ -313,7 +316,7 @@ public class SolSiteHazardCalc {
 						gmmSuppliers.remove(trt);
 		}
 
-		SourceFilterManager sourceFilters = SolHazardMapCalc.getSourceFilters(cmd);
+		SourceFilterManager sourceFilters = FaultSysHazardCalcSettings.getSourceFilters(cmd);
 		double largestMaxDist = Double.NaN;
 		double smallestMaxDist = Double.NaN;
 		if (sourceFilters.isEnabled(SourceFilters.FIXED_DIST_CUTOFF)) {
@@ -337,7 +340,7 @@ public class SolSiteHazardCalc {
 			smallestMaxDist = largestMaxDist;
 		}
 		
-		Map<TectonicRegionType, ScalarIMR> gmms0 = SolHazardMapCalc.getGmmInstances(gmmSuppliers);
+		Map<TectonicRegionType, ScalarIMR> gmms0 = FaultSysHazardCalcSettings.getGmmInstances(gmmSuppliers);
 		
 		List<Site> sites = new ArrayList<>();
 		if (cmd.hasOption("site-location")) {
@@ -528,12 +531,17 @@ public class SolSiteHazardCalc {
 		double duration = cmd.hasOption("duration") ? Double.parseDouble(cmd.getOptionValue("duration")) : 1d;
 		
 		System.out.println("Building ERF for "+name);
-		FaultSystemSolutionERF erf = buildERF(sol, mainGridOp, duration);
+		GriddedSeismicitySettings griddedSettings = GriddedSeismicitySettings.DEFAULT;
+		if (mainGridOp != IncludeBackgroundOption.EXCLUDE || (compGridOp != null && compGridOp != IncludeBackgroundOption.EXCLUDE)) {
+			griddedSettings = FaultSysHazardCalcSettings.getGridSeisSettings(cmd);
+			System.out.println("Gridded seismicity settings: "+griddedSettings);
+		}
+		FaultSystemSolutionERF erf = buildERF(sol, mainGridOp, griddedSettings, duration);
 		
 		List<HazardCalcThread> calcThreads = new ArrayList<>(threads);		
 		for (int i=0; i<threads; i++) {
 			HazardCurveCalculator calc = new HazardCurveCalculator(sourceFilters);
-			calcThreads.add(new HazardCalcThread(calc, i == 0 ? gmms0 : SolHazardMapCalc.getGmmInstances(gmmSuppliers)));
+			calcThreads.add(new HazardCalcThread(calc, i == 0 ? gmms0 : FaultSysHazardCalcSettings.getGmmInstances(gmmSuppliers)));
 		}
 		
 		List<DiscretizedFunc[]> curves = calcHazardCurves(calcThreads, sites, erf, periods, periodXVals);
@@ -560,7 +568,7 @@ public class SolSiteHazardCalc {
 		List<DiscretizedFunc[]> compCurves = null;
 		if (compSol != null) {
 			System.out.println("Building ERF for "+compName);
-			compERF = buildERF(compSol, compGridOp, duration);
+			compERF = buildERF(compSol, compGridOp, griddedSettings, duration);
 			
 			// can't re-use threads, but can copy over previous curve calc and gmm
 			ArrayList<HazardCalcThread> compCalcThreads = new ArrayList<>(threads);		
@@ -999,7 +1007,7 @@ public class SolSiteHazardCalc {
 		for (int s=0; s<sites.size(); s++) {
 			Site site = sites.get(s);
 			
-			String prefix = site.getName().replaceAll("\\W+", "_");
+			String prefix = FileNameUtils.simplify(site.getName());
 			while (prefix.contains("__"))
 				prefix = prefix.replace("__", "_");
 			
@@ -1169,6 +1177,7 @@ public class SolSiteHazardCalc {
 						table.finalizeLine();
 					}
 					table.initNewLine();
+					List<String> csvLinks = new ArrayList<>();
 					for (int p=0; p<periods.length; p++) {
 						DisaggResult result = results[p][0];
 						
@@ -1301,8 +1310,10 @@ public class SolSiteHazardCalc {
 						plotFutures.add(plotContributionCurve(resourcesDir, disaggPrefix, periods[p], site.getName(), duration, rps,
 								curves.get(s)[p], name, contribCurves, contribChars, exec, writePDFs));
 						table.addColumn("!["+periodLabel(periods[p])+" Curves]("+resourcesDir.getName()+"/"+disaggPrefix+".png)");
+						csvLinks.add("[Download CSV]("+resourcesDir.getName()+"/"+disaggPrefix+".csv)");
 					}
 					table.finalizeLine();
+					table.addLine(csvLinks);
 				}
 				
 				lines.addAll(table.build());
@@ -1510,7 +1521,7 @@ public class SolSiteHazardCalc {
 	}
 	
 	private static void addDefaultSiteParams(Site site, Map<TectonicRegionType, ScalarIMR> gmms0, CommandLine cmd) {
-		for (Parameter<?> param : SolHazardMapCalc.getDefaultSiteParams(gmms0)) {
+		for (Parameter<?> param : FaultSysHazardCalcSettings.getDefaultSiteParams(gmms0)) {
 			param = (Parameter<?>) param.clone();
 			if (param.getName().equals(Vs30_Param.NAME) && cmd.hasOption("vs30"))
 				setDoubleParam(param, Double.parseDouble(cmd.getOptionValue("vs30")));
@@ -1549,10 +1560,14 @@ public class SolSiteHazardCalc {
 		}
 	}
 	
-	private static FaultSystemSolutionERF buildERF(FaultSystemSolution sol, IncludeBackgroundOption gridOp, double duration) {
+	private static FaultSystemSolutionERF buildERF(FaultSystemSolution sol, IncludeBackgroundOption gridOp,
+			GriddedSeismicitySettings gridSettings, double duration) {
 		FaultSystemSolutionERF erf = new FaultSystemSolutionERF(sol);
 		
 		erf.setParameter(IncludeBackgroundParam.NAME, gridOp);
+		erf.setGriddedSeismicitySettings(gridSettings);
+		
+		erf.setCacheGridSources(true);
 		
 		erf.getTimeSpan().setDuration(duration);
 		
@@ -1841,7 +1856,7 @@ public class SolSiteHazardCalc {
 				
 				LightFixedXFunc logCurve = new LightFixedXFunc(logXVals, new double[logXVals.length]);
 				
-				SolHazardMapCalc.setIMforPeriod(gmms, task.period);
+				FaultSysHazardCalcSettings.setIMforPeriod(gmms, task.period);
 				
 				calc.getHazardCurve(logCurve, task.site, gmms, erf);
 				
@@ -1907,6 +1922,30 @@ public class SolSiteHazardCalc {
 			line.add((float)site.getLocation().getLatitude()+"");
 			line.add((float)site.getLocation().getLongitude()+"");
 			DiscretizedFunc curve = curves.get(s);
+			Preconditions.checkState(curve.size() == curve0.size());
+			for (int i=0; i<curve.size(); i++)
+				line.add(curve.getY(i)+"");
+			csv.addLine(line);
+		}
+		
+		System.out.println("Writing "+csvFile.getAbsolutePath());
+		csv.writeToFile(csvFile);
+	}
+	
+	private static void writeSourceTypeCurvesCSV(File csvFile, List<DiscretizedFunc> curves) throws IOException {
+		CSVFile<String> csv = new CSVFile<>(true);
+		
+		DiscretizedFunc curve0 = curves.get(0);
+		List<String> header = new ArrayList<>(curve0.size()+1);
+		
+		header.add("Type");
+		for (int i=0; i<curve0.size(); i++)
+			header.add((float)curve0.getX(i)+"");
+		csv.addLine(header);
+		
+		for (DiscretizedFunc curve : curves) {
+			List<String> line = new ArrayList<>(header.size());
+			line.add(curve.getName());
 			Preconditions.checkState(curve.size() == curve0.size());
 			for (int i=0; i<curve.size(); i++)
 				line.add(curve.getY(i)+"");
@@ -2071,6 +2110,8 @@ public class SolSiteHazardCalc {
 		funcs.addAll(contribCurves);
 		chars.addAll(contribChars);
 		
+		writeSourceTypeCurvesCSV(new File(outputDir, prefix+".csv"), funcs);
+		
 		// add the curve again at the end so that it plots on top
 		curve = curve.deepClone();
 		curve.setName(null);
@@ -2214,7 +2255,7 @@ public class SolSiteHazardCalc {
 		});
 	}
 	
-	private static EvenlyDiscretizedFunc disaggRange(double min, double max, double delta, boolean recenter) {
+	public static EvenlyDiscretizedFunc disaggRange(double min, double max, double delta, boolean recenter) {
 		int num = 1;
 		Preconditions.checkArgument(max >= min);
 		double halfDelta = 0.5*delta;
@@ -2321,7 +2362,7 @@ public class SolSiteHazardCalc {
 				numDisagg += disaggIMLs.length;
 			
 			while (task != null) {
-				SolHazardMapCalc.setIMforPeriod(gmms, task.period);
+				FaultSysHazardCalcSettings.setIMforPeriod(gmms, task.period);
 				
 				DisaggResult[] results = new DisaggResult[numDisagg];
 				for (int i=0; i<numDisagg; i++) {
@@ -2462,7 +2503,7 @@ public class SolSiteHazardCalc {
 		if (sites.size() > 1) {
 			if (!sitePrefix.isBlank())
 				sitePrefix += "_";
-			sitePrefix += site.getName().replaceAll("\\W+", "_");
+			sitePrefix += FileNameUtils.simplify(site.getName());
 			while (sitePrefix.contains("__"))
 				sitePrefix = sitePrefix.replace("__", "_");
 		}
@@ -2479,7 +2520,7 @@ public class SolSiteHazardCalc {
 			if (sites.size() > 1) {
 				if (!sitePrefix.isBlank())
 					sitePrefix += "_";
-				sitePrefix += site.getName().replaceAll("\\W+", "_");
+				sitePrefix += FileNameUtils.simplify(site.getName());
 				while (sitePrefix.contains("__"))
 					sitePrefix = sitePrefix.replace("__", "_");
 			}

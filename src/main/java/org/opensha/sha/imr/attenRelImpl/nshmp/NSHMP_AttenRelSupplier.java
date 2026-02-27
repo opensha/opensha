@@ -33,7 +33,7 @@ public class NSHMP_AttenRelSupplier implements AttenRelSupplier {
 
 	@Override
 	public ScalarIMR get() {
-		NSHMP_GMM_Wrapper ret = new NSHMP_GMM_Wrapper(gmm, shortName, parameterize);
+		NSHMP_GMM_Wrapper ret = new NSHMP_GMM_Wrapper.Single(gmm, shortName, parameterize);
 		if (treefilter != null)
 			ret.setGroundMotionTreeFilter(treefilter);
 		return ret;

@@ -2,6 +2,9 @@ package scratch.UCERF3.erf.ETAS;
 
 import org.opensha.commons.data.TimeSpan;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.param.BackgroundRupType;
+import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 
@@ -15,16 +18,22 @@ import scratch.UCERF3.erf.FaultSystemSolutionERF;
 public class FaultSystemSolutionERF_ETAS extends FaultSystemSolutionERF {
 	
 	protected final static int START_TIME_MAX = FaultSystemSolutionERF.START_TIME_MAX+(int)DURATION_MAX;
+	
+	public static final GriddedSeismicitySettings GRID_SEIS_SETTINGS =
+			GriddedSeismicitySettings.DEFAULT.forSurfaceType(BackgroundRupType.POINT)
+			.forDistanceCorrections(PointSourceDistanceCorrections.NONE)
+			.forMinimumMagnitude(2.55)
+			.forSupersamplingSettings(null);
+	
+	public FaultSystemSolutionERF_ETAS() {
+		this(null);
+	}
 
 	public FaultSystemSolutionERF_ETAS(FaultSystemSolution faultSysSolution) {
 		super(faultSysSolution);
-	}
-
-	public FaultSystemSolutionERF_ETAS(String fullPathInputFile) {
-		super(fullPathInputFile);
-	}
-
-	public FaultSystemSolutionERF_ETAS() {
+		
+		// sets to point with mMin=2.55
+		setGriddedSeismicitySettings(GRID_SEIS_SETTINGS);
 	}
 	
 	/**

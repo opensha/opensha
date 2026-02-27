@@ -1,0 +1,21 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+			[-180.0, 49.5],
+			[-128.0, 49.5],
+			[-128.0, 72.0],
+			[-180.0, 72.0],
+			[-180.0, 49.5]
+      ]]
+      },
+      "properties": {
+        "title": "NSHMP Alaska"
+      }
+    }
+  ]
+}

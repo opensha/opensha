@@ -22,44 +22,43 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.StringTokenizer;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import javax.imageio.ImageIO;
 import javax.swing.JLabel;
 import javax.swing.JLayeredPane;
-import javax.swing.JPanel;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.apache.commons.math3.util.MathArrays;
+import org.apache.commons.math3.util.Precision;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.ChartRenderingInfo;
 import org.jfree.chart.title.PaintScaleLegend;
 import org.jfree.chart.ui.RectangleEdge;
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
@@ -68,6 +67,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.GraphPanel;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
@@ -79,6 +79,7 @@ import org.opensha.commons.logicTree.BranchWeightProvider;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.FileBackedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomlySampledLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
@@ -92,6 +93,7 @@ import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.io.archive.ArchiveInput;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.hazard.AbstractLTVarianceDecomposition.VarianceContributionResult;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_LogicTreeHazardCalc;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
@@ -124,264 +126,30 @@ public class LogicTreeHazardCompare {
 	
 	public static void main(String[] args) throws IOException {
 		System.setProperty("java.awt.headless", "true");
-		File invDir = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions");
 		
 		boolean currentWeights = false;
 		boolean compCurrentWeights = false;
 		
-//		File mainDir = new File(invDir, "2021_11_24-nshm23_draft_branches-FM3_1");
-//		String mainName = "NSHM23 Draft";
-//		LogicTreeNode[] subsetNodes = null;
-//		File compDir = new File(invDir, "2021_11_23-u3_branches-FM3_1-5h");
-//		String compName = "UCERF3 Redo";
-//		LogicTreeNode[] compSubsetNodes = null;
-//		File outputDir = new File(mainDir, "hazard_maps_vs_ucerf3_redo");
-////		File compDir = new File(invDir, "2021_11_30-u3_branches-orig_calcs-5h");
-////		String compName = "UCERF3 As Published";
-////		LogicTreeNode[] compSubsetNodes = null;
-////		File outputDir = new File(mainDir, "hazard_maps_vs_ucerf3_as_published");
-
-////		File mainDir = new File(invDir, "2022_02_15-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-JumpProb-2000ip");
-////		String mainName = "Draft-Model-Coulomb-Shaw-Seg-Jump-Prob";
-//		File mainDir = new File(invDir, "2022_02_22-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-StrictEquivJumpProb-2000ip");
-//		String mainName = "Seg-Strict-Equiv-Jump-Prob";
-////		File mainDir = new File(invDir, "2022_02_15-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-CappedRdst-2000ip");
-////		String mainName = "Draft-Model-Coulomb-Shaw-Seg-Capped-Redist";
-////		String mainName = "Max-Dist-Seg";
-////		File mainDir = new File(invDir, "2022_02_08-nshm23_u3_hybrid_branches-seg_bin_dist_capped_distr-FM3_1-CoulombRupSet-DsrUni-SubB1-2000ip");
-////		String mainName = "Draft-Model-Coulomb-Shaw-Seg";
-//		LogicTreeNode[] subsetNodes = null;
-////		LogicTreeNode[] subsetNodes = { SubSectConstraintModels.TOT_NUCL_RATE };
-////		File compDir = null;
-////		String compName = null;
-////		File outputDir = new File(mainDir, "hazard_maps");
-////		File compDir = new File(invDir, "2022_02_10-nshm23_u3_hybrid_branches-seg-no_adj-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-2000ip");
-////		String compName = "No-Seg";
-////		File outputDir = new File(mainDir, "hazard_maps_comp_no_seg");
-//////		File compDir = new File(invDir, "2022_02_10-nshm23_u3_hybrid_branches-seg-capped_self_contained-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-2000ip");
-////		File compDir = new File(invDir, "2022_02_10-nshm23_u3_hybrid_branches-seg-greedy_self_contained-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-2000ip");
-////		String compName = "Self-Contained";
-////		File outputDir = new File(mainDir, "hazard_maps_comp_self_contained");
-//		File compDir = new File(invDir, "2022_02_11-nshm23_u3_hybrid_branches-max_dist-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-2000ip");
-//		String compName = "Strict-Cutoff-Seg";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_strict_cutoff");
-////		File compDir = new File(invDir, "2022_02_15-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-CappedRdst-2000ip");
-////		String compName = "Seg-Capped-Redist";
-////		File outputDir = new File(mainDir, "hazard_maps_comp_capped_redist");
-////		File compDir = new File(invDir, "2022_02_08-nshm23_u3_hybrid_branches-seg_bin_dist_capped_distr-FM3_1-CoulombRupSet-DsrUni-SubB1-2000ip");
-////		String compName = "Capped-Distribution-Seg";
-////		File outputDir = new File(mainDir, "hazard_maps_comp_capped_distr_tot_rate");
-////		File compDir = new File(invDir, "2022_01_28-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-SubB1-5000ip");
-////		String compName = "5000 Iters/Rup";
-////		File outputDir = new File(mainDir, "hazard_maps_comp_5000ip");
-//		LogicTreeNode[] compSubsetNodes = null;
-////		LogicTreeNode[] compSubsetNodes = { SubSectConstraintModels.TOT_NUCL_RATE };
-		
-		/*
-		 * Sweep of draft models, late Feb 2022
-		 */
-//		File mainDir = new File(invDir, "2022_02_16-u3_branches-orig_calc_params-FM3_1");
-//		String mainName = "UCERF3 2022 Reproduction";
-		
-//		File mainDir = new File(invDir, "2022_02_17-u3_branches-orig_calc_params-new_avg-converged-FM3_1-2000ip");
-//		String mainName = "UCERF3 New-Avg Converged";
-		
-//		File mainDir = new File(invDir, "2022_02_20-u3_branches-orig_calc_params-new_avg-converged-noWL-FM3_1-2000ip");
-//		String mainName = "UCERF3 New-Avg Converged No-WL";
-		
-//		File mainDir = new File(invDir, "2022_02_20-u3_branches-orig_calc_params-new_avg-converged-new_perturb-FM3_1-2000ip");
-//		String mainName = "UCERF3 New-Avg Converged New-Perturb";
-		
-//		File mainDir = new File(invDir, "2022_02_22-u3_branches-orig_calc_params-new_avg-converged-noWL-new_perturb-FM3_1-2000ip");
-//		String mainName = "UCERF3 New-Avg Converged No-WL New-Perturb";
-		
-//		File mainDir = new File(invDir, "2022_02_21-u3_branches-orig_calc_params-new_avg-converged-noWL-new_perturb-try_zero_often-FM3_1-2000ip");
-//		String mainName = "UCERF3 New-Avg Converged New-Perturb No-WL Try-Zero";
-		
-//		File mainDir = new File(invDir, "2022_02_22-u3_branches-FM3_1-2000ip");
-//		String mainName = "UCERF3 New-Anneal Params";
-		
-//		File mainDir = new File(invDir, "2022_02_22-u3_branches-thinned_0.1-FM3_1-2000ip");
-//		String mainName = "UCERF3 New-Anneal Params, Reduced RS";
-		
-//		File mainDir = new File(invDir, "2022_03_25-u3_branches-coulomb-FM3_1-2000ip");
-//		String mainName = "UCERF3 New-Anneal Params, Coulomb RS";
-		
-//		File mainDir = new File(invDir, "2022_02_23-nshm23_u3_hybrid_branches-no_seg-FM3_1-U3RupSet-DsrUni-TotNuclRate-SubB1-2000ip");
-//		String mainName = "NSHM23 Draft, U3 RS, No Seg";
-		
-//		File mainDir = new File(invDir, "2022_02_23-nshm23_u3_hybrid_branches-no_seg-FM3_1-U3RedRupSet-DsrUni-TotNuclRate-SubB1-2000ip");
-//		String mainName = "NSHM23 Draft, U3 Reduced RS, No Seg";
-		
-//		File mainDir = new File(invDir, "2022_02_23-nshm23_u3_hybrid_branches-no_seg-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-2000ip");
-//		String mainName = "NSHM23 Draft, Coulomb RS, No Seg";
-		
-//		File mainDir = new File(invDir, "2022_02_27-nshm23_u3_hybrid_branches-strict_cutoff_seg-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-2000ip");
-//		String mainName = "NSHM23 Draft, Coulomb RS, Strict Seg";
-//		currentWeights = true;
-		
-//		File mainDir = new File(invDir, "2022_02_27-nshm23_u3_hybrid_branches-strict_cutoff_seg-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-2000ip-branch-translated");
-//		String mainName = "NSHM23 Draft, Coulomb RS, Strict Seg Translated";
-		
-//		File mainDir = new File(invDir, "2022_02_27-nshm23_u3_hybrid_branches-strict_cutoff_seg-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-2000ip-branch-translated-min3km");
-//		String mainName = "NSHM23 Draft, Coulomb RS, Strict Seg Translated >=3km";
-		
-//		File mainDir = new File(invDir, "2022_02_23-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-NoAdj-2000ip");
-//		String mainName = "NSHM23 Draft, Coulomb RS, Seg No-Adj";
-		
-//		File mainDir = new File(invDir, "2022_02_15-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-JumpProb-2000ip");
-//		String mainName = "NSHM23 Draft, Coulomb RS, Seg Thresh-Avg";
-		
-//		File mainDir = new File(invDir, "2022_02_22-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-StrictEquivJumpProb-2000ip");
-//		String mainName = "NSHM23 Draft, Coulomb RS, Seg Thresh-Avg @ Strict Bins";
-		
-//		File mainDir = new File(invDir, "2022_05_09-nshm23_u3_hybrid_branches-shift_seg_1km-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-ThreshAvg");
-//		String mainName = "NSHM23 Draft, Coulomb RS, Seg Thresh-Avg 1km-Shift";
-		
-//		File mainDir = new File(invDir, "2022_02_15-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-CappedRdst-2000ip");
-//		String mainName = "NSHM23 Draft, Coulomb RS, Seg Capped-Redist";
-		
-//		File mainDir = new File(invDir, "2022_03_03-nshm23_u3_hybrid_branches-shift_seg_1km-FM3_1-CoulombRupSet-DsrUni-NuclMFD-SubB1-JumpProb-2000ip");
-//		String mainName = "NSHM23 Draft, Coulomb RS, Seg Thresh-Avg 1km-Shift, Nucl-MFD";
-		
-//		File compDir = new File(invDir, "2022_03_24-nshm23_u3_hybrid_branches-shift_seg_1km-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-JumpProb-2000ip");
-//		String compName = "Previous Step";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_prev");
-
-//		File mainDir = new File(invDir, "2022_04_27-u3_branches-scaleLowerDepth1.3-FM3_1-2000ip");
-//		String mainName = "UCERF3, 1.3x Lower-Seis Depth";
-		
-//		File mainDir = new File(invDir, "2022_05_09-nshm23_u3_hybrid_branches-cluster_specific_inversion-shift_seg_1km-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-ThreshAvg");
-//		String mainName = "NSHM23 Draft, Cluster-Specific Inversions";
-		
-//		File mainDir = new File(invDir, "2022_05_20-nshm23_u3_hybrid_branches-scaleLowerDepth1.3-shift_seg_1km-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-ThreshAvg");
-//		String mainName = "NSHM23 Draft, 1.3x Lower-Seis Depth";
-		
-//		File mainDir = new File(invDir, "2022_05_20-nshm23_u3_hybrid_branches-test_scale_rels-scaleLowerDepth1.3-shift_seg_1km-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-ThreshAvg");
-//		String mainName = "NSHM23 Draft, Test Scale Rels, 1.3x Lower-Seis Depth";
-		
-//		File mainDir = new File(invDir, "2022_05_20-nshm23_u3_hybrid_branches-test_scale_rels-shift_seg_1km-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-ThreshAvg");
-//		String mainName = "NSHM23 Draft, Test Scale Rels";
-		
-////		File mainDir = new File(invDir, "2022_07_23-nshm23_branches-NSHM23_v1p4-CoulombRupSet-DsrUni-TotNuclRate-SubB1-Shift2km-ThreshAvgIterRelGR-IncludeThruCreep");
-//		File mainDir = new File(invDir, "2022_08_12-nshm23_branches-NSHM23_v2-CoulombRupSet-NSHM23_Avg-TotNuclRate-SubB1-ThreshAvgIterRelGR");
-////		File mainDir = new File(invDir, "2022_08_08-nshm23_branches-NSHM23_v2-CoulombRupSet-TotNuclRate-SubB1-ThreshAvgIterRelGR");
-//		String mainName = "NSHM23 Draft";
-		
-//		File mainDir = new File(invDir, "2022_08_09-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-ThreshAvgIterRelGR");
-//		String mainName = "NSHM23/U3 Draft";
-		
-//		File mainDir = new File(invDir, "2022_08_09-nshm23_u3_hybrid_branches-wide_seg_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-ThreshAvgIterRelGR");
-//		String mainName = "NSHM23/U3 Draft, Wide-Seg";
-		
-//		File mainDir = new File(invDir, "2022_08_05-nshm23_branches-NSHM23_v2-CoulombRupSet-NSHM23_Avg-TotNuclRate-SubB1-ThreshAvg");
-//		String mainName = "Thresh-Avg";
-		
-//		File mainDir = new File(invDir, "2022_07_29-nshm23_branches-NSHM23_v1p4-CoulombRupSet-DsrUni-TotNuclRate-SubB1-NoAdj");
-//		String mainName = "No-Adj";
-		
-//		File mainDir = new File(invDir, "2022_08_11-nshm23_branches-wide_seg_branches-NSHM23_v2-CoulombRupSet-NSHM23_Avg-TotNuclRate-SubB1-ThreshAvgIterRelGR");
-//		String mainName = "Wide-Seg-Branches";
-		
-//		File mainDir = new File(invDir, "2022_08_12-nshm23_branches-paleo_uncerts-NSHM23_v2-CoulombRupSet-NSHM23_Avg-TotNuclRate-SubB1-ThreshAvgIterRelGR");
-//		String mainName = "Paleo-Branches";
-		
-//		File mainDir = new File(invDir, "2022_08_11-u3_branches-new_seg-FM3_1");
-//		String mainName = "U3-Plus-Seg";
-		
-//		File mainDir = new File(invDir, "2022_08_22-nshm18_branches-NSHM18_WUS_NoCA-CoulombRupSet-TotNuclRate-NoRed-ThreshAvgIterRelGR");
-//		String mainName = "NSHM23/18 Draft";
-		
-//		File mainDir = new File(invDir, "2022_08_18-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-NoRed-ThreshAvgIterRelGR");
-//		String mainName = "NSHM23/U3 Draft";
-		
-//		File mainDir = new File(invDir, "2022_08_17-nshm23_branches-NSHM23_v2-CoulombRupSet-TotNuclRate-SubB1-ThreshAvgIterRelGR-360_samples");
-//		String mainName = "NSHM23 Draft";
-		
-		File mainDir = new File(invDir, "2022_08_22-nshm23_branches-NSHM23_v2-CoulombRupSet-TotNuclRate-NoRed-ThreshAvgIterRelGR");
-		String mainName = "NSHM23 Draft";
-		
-//		File mainDir = new File(invDir, "2022_08_15-nshm23_branches-paleo_uncerts-NSHM23_v2-CoulombRupSet-AVERAGE-TotNuclRate-SubB1-SupraB0.5-MidSeg-ThreshAvgIterRelGR");
-//		String mainName = "NSHM23 Draft, Mini-Scaling-Sweep";
+		File mainDir = null;
+		String mainName = null;
 		
 		LogicTreeNode[] subsetNodes = null;
 		LogicTreeNode[] compSubsetNodes = null;
 //		LogicTreeNode[] compSubsetNodes = { FaultModels.FM3_1 };
 		
-//		File compDir = null;
-//		String compName = null;
-//		File outputDir = new File(mainDir, "hazard_maps");
-//		File compDir = new File(invDir, "2022_07_23-nshm23_branches-no_seg-NSHM23_v1p4-CoulombRupSet-DsrUni-TotNuclRate-SubB1-IncludeThruCreep");
-//		String compName = "No Segmentation";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_no_seg");
-//		File compDir = new File(invDir, "2022_08_05-nshm23_branches-NSHM23_v2-CoulombRupSet-NSHM23_Avg-TotNuclRate-SubB1-ThreshAvg");
-//		String compName = "No Segmentation";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_thresh_avg");
-//		File compDir = new File(invDir, "2022_08_10-nshm23_branches-no_ghost_trans-NSHM23_v2-CoulombRupSet-NSHM23_Avg-TotNuclRate-SubB1-ThreshAvgIterRelGR");
-//		String compName = "No Segmentation";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_no_ghost_trans");
-//		File compDir = new File(invDir, "2022_08_09-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-ThreshAvgIterRelGR");
-//		String compName = "NSHM23/U3 Draft";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_nshm23_draft");
-//		File compDir = new File(invDir, "2022_07_29-nshm23_branches-NSHM23_v1p4-CoulombRupSet-DsrUni-TotNuclRate-SubB1-ThreshAvgIterRelGR");
-//		String compName = "NSHM23 Draft";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_nshm23_draft");
-		File compDir = new File(invDir, "2022_08_22-nshm23_branches-NSHM23_v2-CoulombRupSet-TotNuclRate-NoRed-ThreshAvgIterRelGR");
-		String compName = "Draft Subset";
-		File outputDir = new File(mainDir, "hazard_maps_comp_draft_subset");
-//		File compDir = new File(invDir, "2021_11_30-u3_branches-orig_calcs-5h");
-//		String compName = "UCERF3 As Published";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_ucerf3_as_published");
-//		String compName = "UCERF3 As Published, Uniform";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_ucerf3_as_published_uniform");
-//		LogicTreeNode[] compSubsetNodes = { FaultModels.FM3_1, SlipAlongRuptureModels.UNIFORM };
-//		File compDir = new File(invDir, "2022_03_24-u3_branches-FM3_1-2000ip");
-//		String compName = "UCERF3 New Anneal";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_ucerf3_new_anneal");
-//		File compDir = new File(invDir, "2022_03_13-u3_branches-coulomb-bilateral-FM3_1-2000ip");
-//		String compName = "UCERF3 Coulomb Bilateral";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_ucerf3_coulomb_bilateral");
-//		String compName = "UCERF3 New Anneal, Uniform";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_ucerf3_new_anneal_uniform");
-//		LogicTreeNode[] compSubsetNodes = { FaultModels.FM3_1, SlipAlongRuptureModels.UNIFORM };
-//		File compDir = new File(invDir, "2022_02_27-nshm23_u3_hybrid_branches-strict_cutoff_seg-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-2000ip");
-//		String compName = "Strict Segmentation";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_strict_seg");
-//		File compDir = new File(invDir, "");
-//		String compName = "Threshold Avg Shift-1km";
-//		String compName = "NSHM23 Draft";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_thresh_avg_shift_1km");
-//		File compDir = new File(invDir, "2022_05_09-nshm23_u3_hybrid_branches-shift_seg_1km-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-ThreshAvg");
-//		String compName = "NSHM23 Draft, Test Scale Rels";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_test_scale_rels");
-//		File compDir = new File(invDir, "2022_05_20-nshm23_u3_hybrid_branches-test_scale_rels-shift_seg_1km-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-ThreshAvg");
-//		String compName = "UCERF3 Full Segmented";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_fully_segmented");
-		
-		/**
-		 * NSHM18 ingredients
-		 */
-//		File mainDir = new File(invDir, "2022_04_08-nshm18_branches-shift_seg_1km-NSHM18_WUS_NoCA-CoulombRupSet-DsrUni-TotNuclRate-NoRed-JumpProb-10000ip");
-//		String mainName = "NSHM18 Ingred, Coulomb RS, Seg Thresh-Avg 1km-Shift";
-////		File mainDir = new File(invDir, "2022_04_08-nshm18_branches-no_seg-NSHM18_WUS_NoCA-AzimuthalRupSet-DsrUni-TotNuclRate-NoRed-10000ip");
-////		String mainName = "NSHM18 Ingred, Azimuthal RS, No Seg";
-////		File mainDir = new File(invDir, "2022_04_08-nshm18_branches-no_seg-NSHM18_WUS_NoCA-FullSegRupSet-DsrUni-TotNuclRate-NoRed-10000ip");
-////		String mainName = "NSHM18 Ingred, Full Segmented RS";
-//		
-//		LogicTreeNode[] subsetNodes = null;
-//		File compDir = new File(invDir, "2022_04_08-nshm18_branches-no_seg-NSHM18_WUS_NoCA-FullSegRupSet-DsrUni-TotNuclRate-NoRed-10000ip");
-//		String compName = "Fully Segmented RS";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_full_segmented");
-////		File compDir = new File(invDir, "2022_04_08-nshm18_branches-shift_seg_1km-NSHM18_WUS_NoCA-CoulombRupSet-DsrUni-TotNuclRate-NoRed-JumpProb-10000ip");
-////		String compName = "Coulomb RS w/ Seg";
-////		File outputDir = new File(mainDir, "hazard_maps_comp_coulomb");
-//		LogicTreeNode[] compSubsetNodes = null;
+		File compDir = null;
+		String compName = null;
+		File outputDir = null;
 		
 		CommandLine cmd = FaultSysTools.parseOptions(createOptions(), args, LogicTreeHazardCompare.class);
 		args = cmd.getArgs();
 		
 		if (cmd.hasOption("write-pdfs"))
 			SolHazardMapCalc.PDFS = true;
+		
+		boolean forceFileBacked = cmd.hasOption("force-file-backed-lt");
+		if (forceFileBacked)
+			System.out.println("Forcing file-backed logic trees");
 		
 		File resultsFile, hazardFile;
 		File compResultsFile, compHazardFile;
@@ -406,13 +174,15 @@ public class LogicTreeHazardCompare {
 				File treeFile = new File(cmd.getOptionValue("logic-tree"));
 				System.out.println("Reading custom logic tree from: "+treeFile.getAbsolutePath());
 				if (treeFile.getName().endsWith("zip"))
-					tree = loadTreeFromResults(treeFile);
+					tree = loadTreeFromResults(treeFile, forceFileBacked);
+				else if (forceFileBacked)
+					tree = LogicTree.readFileBacked(treeFile);
 				else
 					tree = LogicTree.read(treeFile);
 				ignorePrecomputed = true;
 			} else {
 				// read it from the hazard file if available
-				tree = loadTreeFromResults(hazardFile);
+				tree = loadTreeFromResults(hazardFile, forceFileBacked);
 			}
 			if (cmd.hasOption("ignore-precomputed-maps"))
 				ignorePrecomputed = true;
@@ -428,11 +198,14 @@ public class LogicTreeHazardCompare {
 				if (cmd.hasOption("comp-logic-tree")) {
 					File treeFile = new File(cmd.getOptionValue("comp-logic-tree"));
 					System.out.println("Reading custom logic tree from: "+treeFile.getAbsolutePath());
-					compTree = LogicTree.read(treeFile);
+					if (forceFileBacked)
+						compTree = LogicTree.readFileBacked(treeFile);
+					else
+						compTree = LogicTree.read(treeFile);
 					ignorePrecomputed = true;
 				} else {
 					// read it from the hazard file if available
-					compTree = loadTreeFromResults(compHazardFile);
+					compTree = loadTreeFromResults(compHazardFile, forceFileBacked);
 				}
 				compName = args[cnt++];
 			} else {
@@ -473,7 +246,29 @@ public class LogicTreeHazardCompare {
 		}
 		
 		ReturnPeriods[] rps = SolHazardMapCalc.MAP_RPS;
-		double[] periods = { 0d, 1d };
+		double[] periods;
+		if (cmd.hasOption("periods")) {
+			String perStr = cmd.getOptionValue("periods");
+			if (perStr.contains(",")) {
+				String[] split = perStr.split(",");
+				periods = new double[split.length];
+				for (int i=0; i<split.length; i++)
+					periods[i] = Double.parseDouble(split[i]);
+			} else {
+				periods = new double[] {Double.parseDouble(perStr)};
+			}
+		} else {
+			// detect periods in each zip file
+			ArchiveInput hazardZip = ArchiveInput.getDefaultInput(hazardFile);
+			
+			if (compHazardFile == null) {
+				periods = detectHazardPeriods(rps, hazardZip);
+			} else {
+				ArchiveInput compHazardZip = ArchiveInput.getDefaultInput(compHazardFile);
+				periods = detectHazardPeriods(rps, hazardZip, compHazardZip);
+				compHazardZip.close();
+			}
+		}
 		double spacing = -1; // detect
 //		double spacing = 0.1;
 //		double spacing = 0.25;
@@ -506,6 +301,30 @@ public class LogicTreeHazardCompare {
 				double upper = Double.parseDouble(split[1]);
 				System.out.println("CPT range: ["+(float)lower+", "+(float)upper+"]");
 				mapper.setCPTRange(lower, upper);
+			}
+			
+			if (cmd.hasOption("pdiff-range"))
+				mapper.setPDiffRange(Double.parseDouble(cmd.getOptionValue("pdiff-range")));
+			if (cmd.hasOption("diff-range"))
+				mapper.setDiffRange(Double.parseDouble(cmd.getOptionValue("diff-range")));
+			mapper.forceSparseLTVar = cmd.hasOption("force-sparse-lt-var");
+			
+			if (cmd.hasOption("plot-region")) {
+				String plotRegStr = cmd.getOptionValue("plot-region");
+				// see if it's a file
+				File regFile = new File(plotRegStr);
+				if (regFile.exists()) {
+					Feature feature = Feature.read(regFile);
+					mapper.mapRegion = Region.fromFeature(feature);
+				} else {
+					String[] commaSplit = plotRegStr.split(",");
+					Preconditions.checkState(commaSplit.length == 4, "--plot-region must be either a GeoJSON file, or minLat,minLon,maxLat,maxLon");
+					double minLat = Double.parseDouble(commaSplit[0]);
+					double minLon = Double.parseDouble(commaSplit[1]);
+					double maxLat = Double.parseDouble(commaSplit[2]);
+					double maxLon = Double.parseDouble(commaSplit[3]);
+					mapper.mapRegion = new Region(new Location(minLat, minLon), new Location(maxLat, maxLon));
+				}
 			}
 			
 			if (compHazardFile != null) {
@@ -551,6 +370,38 @@ public class LogicTreeHazardCompare {
 		System.exit(exit);
 	}
 	
+	public static double[] detectHazardPeriods(ReturnPeriods[] rps, ArchiveInput... archives) throws IOException {
+		Preconditions.checkState(archives.length > 0);
+		List<Double> periods = null;
+		for (ArchiveInput archive : archives) {
+			Set<String> uniqueMapNames = archive.entryStream()
+					.map(s -> s.contains("/") ? s.substring(s.lastIndexOf('/') + 1) : s)
+	                .filter(s -> s.startsWith("map_"))
+	                .filter(s -> s.contains(rps[0].name()))
+	                .collect(Collectors.toSet());
+			System.out.println("Detecting periods for "+archive.getName()+" with "+uniqueMapNames.size()
+					+" unique map names detected for "+rps[0].name());
+			Preconditions.checkState(!uniqueMapNames.isEmpty(), "No map files found in %s", archive.getName());
+			List<Double> myPeriods = new ArrayList<>();
+			for (double period=0d; period<=10.00001; period+=0.01) {
+				period = DataUtils.roundFixed(period, 3);
+				String fileName = MPJ_LogicTreeHazardCalc.mapPrefix(period, rps[0])+".txt";
+				if (uniqueMapNames.contains(fileName))
+					myPeriods.add(period);
+			}
+			Preconditions.checkState(!myPeriods.isEmpty(), "No periods detected for %s", archive.getName());
+			System.out.println("\tDetected periods: "+myPeriods);
+			if (periods == null) {
+				periods = myPeriods;
+			} else {
+				periods.retainAll(myPeriods);
+				Preconditions.checkState(!periods.isEmpty(),
+						"No common periods detected after adding %s from %s", myPeriods, archive.getName());
+			}
+		}
+		return Doubles.toArray(periods);
+	}
+	
 	public static Options createOptions() {
 		Options ops = new Options();
 		
@@ -562,13 +413,21 @@ public class LogicTreeHazardCompare {
 				"Path to alternative logic tree JSON file for the comparison model. Implies --ignore-precomputed-maps");
 		ops.addOption("ipm", "ignore-precomputed-maps", false,
 				"Flag to ignore precomputed mean maps");
+		ops.addOption(null, "plot-region", true,
+				"Custom plotting region. Must be either a path to a geojson file, or specified as minLat,minLon,maxLat,maxLon");
 		ops.addOption("pdf", "write-pdfs", false, "Flag to write PDFs of top level maps");
 		ops.addOption(null, "cpt-range", true, "Custom CPT range for hazard maps, in log10 units. Specify as min,max");
+		ops.addOption(null, "pdiff-range", true, "Maximum % difference to plot");
+		ops.addOption(null, "diff-range", true, "Maximum difference to plot");
+		ops.addOption(null, "periods", true, "Custom spectral periods, comma separated");
+		ops.addOption(null, "force-sparse-lt-var", false, "Flag to force using the sparse logic tree variance algorithm");
+		ops.addOption(null, "force-file-backed-lt", false, "Flag to force loading the logic tree exactly as registered "
+				+ "in the tree file and ignoring matching enums or classes");
 		
 		return ops;
 	}
 	
-	private static LogicTree<?> loadTreeFromResults(File resultsFile) throws IOException {
+	private static LogicTree<?> loadTreeFromResults(File resultsFile, boolean forceFileBacked) throws IOException {
 		ZipFile zip = new ZipFile(resultsFile);
 		
 		ZipEntry entry = zip.getEntry(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME);
@@ -578,15 +437,19 @@ public class LogicTreeHazardCompare {
 		}
 		
 		BufferedInputStream logicTreeIS = new BufferedInputStream(zip.getInputStream(entry));
-		Gson gson = new GsonBuilder().registerTypeAdapter(LogicTree.class, new LogicTree.Adapter<>()).create();
 		InputStreamReader reader = new InputStreamReader(logicTreeIS);
-		LogicTree<?> tree = gson.fromJson(reader, LogicTree.class);
+		LogicTree<?> tree;
+		if (forceFileBacked)
+			tree = LogicTree.readFileBacked(reader);
+		else
+			tree = LogicTree.read(reader);
 		zip.close();
 		return tree;
 	}
 	
 	private ReturnPeriods[] rps;
 	private double[] periods;
+	private boolean forceSparseLTVar = false;
 	
 	private ZipFile zip;
 	private List<? extends LogicTreeBranch<?>> branches;
@@ -610,6 +473,8 @@ public class LogicTreeHazardCompare {
 	private SolHazardMapCalc mapper;
 	private ExecutorService exec;
 	private List<Future<?>> futures;
+	
+	private Region mapRegion;
 	
 	private GriddedRegion forceRemapRegion;
 	
@@ -636,11 +501,13 @@ public class LogicTreeHazardCompare {
 		this.spacing = spacing;
 
 		logCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(-3d, 1d);
+		logCPT.setLog10(true);
 		spreadCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0, 1d);
 		spreadCPT.setNanColor(Color.LIGHT_GRAY);
 		spreadDiffCPT = GMT_CPT_Files.DIVERGING_BAM_UNIFORM.instance().reverse().rescale(-1d, 1d);
 		spreadDiffCPT.setNanColor(Color.LIGHT_GRAY);
 		iqrCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(-2, 0d);
+		iqrCPT.setLog10(true);
 		iqrCPT.setNanColor(Color.LIGHT_GRAY);
 		iqrDiffCPT = GMT_CPT_Files.DIVERGING_BAM_UNIFORM.instance().reverse().rescale(-0.05d, 0.05d);
 		iqrDiffCPT.setNanColor(Color.LIGHT_GRAY);
@@ -712,9 +579,18 @@ public class LogicTreeHazardCompare {
 	public void setCPTRange(double lower, double upper) {
 		try {
 			logCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(lower, upper);
+			logCPT.setLog10(true);
 		} catch (IOException e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
+	}
+	
+	public void setPDiffRange(double maxPDiff) {
+		pDiffCPT = pDiffCPT.rescale(-maxPDiff, maxPDiff);
+	}
+	
+	public void setDiffRange(double maxDiff) {
+		diffCPT = diffCPT.rescale(-maxDiff, maxDiff);
 	}
 	
 	public SolHazardMapCalc getMapper() {
@@ -789,8 +665,11 @@ public class LogicTreeHazardCompare {
 				System.out.println("Loading maps at 4-byte floating precision for "+branches.size()
 					+" branches and "+gridReg.getNodeCount()+" grid locs");
 			
-			if (mapper == null)
+			if (mapper == null) {
 				mapper = new SolHazardMapCalc(sol, null, gridReg, periods);
+				if (mapRegion != null)
+					mapper.setMapPlotRegion(mapRegion);
+			}
 		}
 		
 		if (mapper == null) {
@@ -804,6 +683,8 @@ public class LogicTreeHazardCompare {
 				// build mapper without a solution (no faults will be shown)
 				mapper = new SolHazardMapCalc(null, null, gridReg, periods);
 			}
+			if (mapRegion != null)
+				mapper.setMapPlotRegion(mapRegion);
 		}
 		
 		Stopwatch watch = Stopwatch.createStarted();
@@ -977,7 +858,7 @@ public class LogicTreeHazardCompare {
 		return checkRemap(xyz);
 	}
 	
-	private GriddedGeoDataSet loadPrecomputedMeanMap(String key, ReturnPeriods rp, double period) throws IOException {
+	GriddedGeoDataSet loadPrecomputedMeanMap(String key, ReturnPeriods rp, double period) throws IOException {
 		String entryName = key+"_"+MPJ_LogicTreeHazardCalc.mapPrefix(period, rp)+".txt";
 		ZipEntry entry = zip.getEntry(entryName);
 		if (entry == null)
@@ -1026,7 +907,7 @@ public class LogicTreeHazardCompare {
 		return avg;
 	}
 	
-	public GriddedGeoDataSet buildMean(List<GriddedGeoDataSet> maps, List<Double> weights) {
+	public static GriddedGeoDataSet buildMean(List<GriddedGeoDataSet> maps, List<Double> weights) {
 		GriddedGeoDataSet avg = new GriddedGeoDataSet(maps.get(0).getRegion(), false);
 		
 		double totWeight = 0d;
@@ -1044,7 +925,7 @@ public class LogicTreeHazardCompare {
 		return avg;
 	}
 	
-	private GriddedGeoDataSet buildMin(GriddedGeoDataSet[] maps, List<Double> weights) {
+	GriddedGeoDataSet buildMin(GriddedGeoDataSet[] maps, List<Double> weights) {
 		Preconditions.checkState(maps.length == weights.size());
 		GriddedGeoDataSet min = new GriddedGeoDataSet(maps[0].getRegion(), false);
 		
@@ -1059,7 +940,7 @@ public class LogicTreeHazardCompare {
 		return min;
 	}
 	
-	private GriddedGeoDataSet buildMax(GriddedGeoDataSet[] maps, List<Double> weights) {
+	GriddedGeoDataSet buildMax(GriddedGeoDataSet[] maps, List<Double> weights) {
 		Preconditions.checkState(maps.length == weights.size());
 		GriddedGeoDataSet max = new GriddedGeoDataSet(maps[0].getRegion(), false);
 		
@@ -1119,7 +1000,7 @@ public class LogicTreeHazardCompare {
 		return diff;
 	}
 	
-	private LightFixedXFunc[] buildNormCDFs(GriddedGeoDataSet[] maps, List<Double> weights) {
+	LightFixedXFunc[] buildNormCDFs(GriddedGeoDataSet[] maps, List<Double> weights) {
 		return buildNormCDFs(List.of(maps), weights);
 	}
 	
@@ -1370,7 +1251,7 @@ public class LogicTreeHazardCompare {
 //		return ret;
 //	}
 	
-	private GriddedGeoDataSet calcMapAtPercentile(LightFixedXFunc[] ncdfs, GriddedRegion gridReg,
+	GriddedGeoDataSet calcMapAtPercentile(LightFixedXFunc[] ncdfs, GriddedRegion gridReg,
 			double percentile) {
 		Preconditions.checkState(gridReg.getNodeCount() == ncdfs.length, "grid reg has %s, but have %s ncdfs",
 				gridReg.getNodeCount(), ncdfs.length);
@@ -1381,40 +1262,7 @@ public class LogicTreeHazardCompare {
 
 		Stopwatch watch = Stopwatch.createStarted();
 		for (int i=0; i<ret.size(); i++) {
-			int len = ncdfs[i].size();
-			double val;
-			if (len == 1) {
-				if (percentile == 50d)
-					val = ncdfs[i].getX(0);
-				else
-					val = Double.NaN;
-			} else if (fractile == 0d) {
-				val = ncdfs[i].getX(0);
-			} else if (fractile == 1d) {
-				val = ncdfs[i].getX(len-1);
-			} else {
-				double[] yVals = ncdfs[i].getYVals();
-				int index = Arrays.binarySearch(yVals, fractile);
-				if (index >= 0) {
-					// probably will never actually happen
-					val = ncdfs[i].getX(index);
-				} else if (yVals[0] >= fractile) {
-					val = ncdfs[i].getX(0);
-				} else {
-					// insertion index, value below this will be < fractile, value at will be >
-					index = -(index + 1);
-					// these cases should have been taken care of above
-					Preconditions.checkState(index > 0 && index < len,
-							"Unexpected insertion index=%s with len=%s, fractile=%s", index, len, fractile);
-					double v1 = ncdfs[i].getX(index-1);
-					double v2 = ncdfs[i].getX(index);
-					double f1 = ncdfs[i].getY(index-1);
-					double f2 = ncdfs[i].getY(index);
-					Preconditions.checkState(f1<fractile);
-					Preconditions.checkState(f2>fractile);
-					val = Interpolate.findX(v1, f1, v2, f2, fractile);
-				}
-			}
+			double val = ArbDiscrEmpiricalDistFunc.calcFractileFromNormCDF(ncdfs[i], fractile);
 			ret.set(i, val);
 		}
 		watch.stop();
@@ -1532,6 +1380,11 @@ public class LogicTreeHazardCompare {
 	
 	private void calcSD_COV(GriddedGeoDataSet[] maps, List<Double> weights,
 			GriddedGeoDataSet meanMap, GriddedGeoDataSet sd, GriddedGeoDataSet cov) {
+		calcSD_COV(maps, weights, meanMap, sd, cov, exec);
+	}
+	
+	static void calcSD_COV(GriddedGeoDataSet[] maps, List<Double> weights,
+			GriddedGeoDataSet meanMap, GriddedGeoDataSet sd, GriddedGeoDataSet cov, ExecutorService exec) {
 		double[] weightsArray = MathArrays.normalizeArray(Doubles.toArray(weights), weights.size());
 
 		Stopwatch watch = Stopwatch.createStarted();
@@ -1578,7 +1431,9 @@ public class LogicTreeHazardCompare {
 			sd = 0d;
 			cov = Double.NaN;
 		} else {
-			Variance var = new Variance();
+			// false here means to use the population formula, which does better for small N and is appropriate because
+			// our logic trees are the full population
+			Variance var = new Variance(false);
 			double[] cellVals = new double[maps.length];
 			for (int j=0; j<cellVals.length; j++)
 				cellVals[j] = maps[j].get(gridIndex);
@@ -1672,6 +1527,12 @@ public class LogicTreeHazardCompare {
 		
 		boolean intermediateWrite = branches != null && branches.size() > 50 && !new File(outputDir, "index.html").exists();
 		
+		int cptWidth = 800;
+		
+		List<LogicTreeLevel<?>> uniqueSamplingLevels = null;
+		Boolean canDecomposeVariance = null;
+		AbstractLTVarianceDecomposition varDecomposer = null;
+		
 		for (double period : periods) {
 			String perLabel, perPrefix, unitlessPerLabel;
 			if (period == 0d) {
@@ -1681,12 +1542,23 @@ public class LogicTreeHazardCompare {
 				unitlessPerLabel = (float)period+"s SA";
 				perPrefix = (float)period+"s";
 			}
-			perLabel = unitlessPerLabel+" (g)";
+			String perUnits = "(g)";
+			perLabel = unitlessPerLabel+" "+perUnits;
 			
 			for (ReturnPeriods rp : rps) {
 				String label = perLabel+", "+rp.label;
 				String unitlessLabel = unitlessPerLabel+", "+rp.label;
 				String prefix = perPrefix+"_"+rp.name();
+				
+				// plot CPT files for grabbing externally
+				PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt",
+						GeographicMapMaker.buildCPTLegend(logCPT, label), cptWidth, true, true);
+				PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt_cov",
+						GeographicMapMaker.buildCPTLegend(covCPT, "COV, "+unitlessLabel), cptWidth, true, true);
+				PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt_pDiff",
+						GeographicMapMaker.buildCPTLegend(pDiffCPT, "% Change, "+unitlessLabel), cptWidth, true, true);
+				PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt_diff",
+						GeographicMapMaker.buildCPTLegend(diffCPT, "Difference, "+label), cptWidth, true, true);
 				
 				System.out.println(label);
 				
@@ -1707,10 +1579,12 @@ public class LogicTreeHazardCompare {
 				// see if we've precomputed mean
 				GriddedGeoDataSet mean = ignorePrecomputed ? null :
 					loadPrecomputedMeanMap(LogicTreeCurveAverager.MEAN_PREFIX, rp, period);
+				GriddedGeoDataSet mapMean = null; // mean from the maps directly, not from curves
 				boolean meanIsFromCurves = mean != null;
 				if (mean == null) {
 					// need to calculate mean from branch maps
-					mean = buildMean(maps);
+					mapMean = buildMean(maps);
+					mean = mapMean;
 				}
 				GriddedGeoDataSet median = calcMapAtPercentile(mapNCDFs, region, 50d);
 				GriddedGeoDataSet max = buildMax(maps, weights);
@@ -1720,10 +1594,11 @@ public class LogicTreeHazardCompare {
 				GriddedGeoDataSet sd = new GriddedGeoDataSet(region);
 				GriddedGeoDataSet cov = new GriddedGeoDataSet(region);
 				calcSD_COV(maps, weights, mean, sd, cov);
+				GriddedGeoDataSet meanPercentile = calcPercentileWithinDist(mapNCDFs, mean);
 				
 				File hazardCSV = new File(resourcesDir, prefix+".csv");
 				System.out.println("Writing CSV: "+hazardCSV.getAbsolutePath());
-				writeHazardCSV(hazardCSV, mean, median, min, max, cov);
+				writeHazardCSV(hazardCSV, mean, median, min, max, cov, meanPercentile, null, null);
 				
 //				table.addLine(meanMinMaxSpreadMaps(mean, min, max, spread, name, label, prefix, resourcesDir));
 				
@@ -1736,6 +1611,10 @@ public class LogicTreeHazardCompare {
 				GriddedGeoDataSet ciqr = null;
 				GriddedGeoDataSet csd = null;
 				GriddedGeoDataSet ccov = null;
+				GriddedGeoDataSet cMeanPercentile = null;
+				GriddedGeoDataSet cMedianPercentile = null;
+				
+				boolean multi = branches.size() > 1;
 				
 				if (comp != null) {
 					comp.setRemapToRegion(region);
@@ -1762,9 +1641,14 @@ public class LogicTreeHazardCompare {
 					calcSD_COV(cmaps, comp.weights, cmean, csd, ccov);
 //					table.addLine(meanMinMaxSpreadMaps(cmean, cmin, cmax, cspread, compName, label, prefix+"_comp", resourcesDir));
 					
+					if (multi) {
+						cMeanPercentile = calcPercentileWithinDist(mapNCDFs, cmean);
+						cMedianPercentile = calcPercentileWithinDist(mapNCDFs, cmedian);
+					}
+					
 					File compHazardCSV = new File(resourcesDir, prefix+"_comp.csv");
 					System.out.println("Writing CSV: "+compHazardCSV.getAbsolutePath());
-					writeHazardCSV(compHazardCSV, cmean, cmedian, cmin, cmax, ccov);
+					writeHazardCSV(compHazardCSV, cmean, cmedian, cmin, cmax, ccov, null, cMeanPercentile, cMedianPercentile);
 					
 					lines.add("Download Mean Hazard CSVs: ["+hazardCSV.getName()+"]("+resourcesDir.getName()+"/"+hazardCSV.getName()
 						+")  ["+compHazardCSV.getName()+"]("+resourcesDir.getName()+"/"+compHazardCSV.getName()+")");
@@ -1773,23 +1657,24 @@ public class LogicTreeHazardCompare {
 				}
 				lines.add("");
 				
-				boolean multi = branches.size() > 1;
 				boolean cmulti = comp != null && comp.branches != null && comp.branches.size() > 1;
 				
-				MapPlot meanMapPlot = mapper.buildMapPlot(resourcesDir, prefix+"_mean", log10(mean),
-						logCPT, TITLES ? name : " ", "Log10 "+(multi ? "Weighted-Average" : "Mean")+", "+label, false);
+				MapPlot meanMapPlot = mapper.buildMapPlot(resourcesDir, prefix+"_mean", mean,
+						logCPT, TITLES ? name : " ", (multi ? "Weighted-Average" : "Mean")+", "+label, false);
 				File meanMapFile = new File(resourcesDir, meanMapPlot.prefix+".png");
 				GriddedGeoDataSet.writeXYZFile(mean, new File(resourcesDir, prefix+"_mean.xyz"));
 				File medianMapFile = null;
 				if (multi) {
-					medianMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_median", log10(median),
-							logCPT, TITLES ? name : " ", "Log10 Weighted-Median, "+label);
+					medianMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_median", median,
+							logCPT, TITLES ? name : " ", "Weighted-Median, "+label);
 					GriddedGeoDataSet.writeXYZFile(median, new File(resourcesDir, prefix+"_median.xyz"));
 				}
 				
 				if (cmean == null) {
-					lines.add("### Mean and median hazard maps, "+unitlessLabel);
-					lines.add(topLink); lines.add("");
+					if (multi) {
+						lines.add("### Mean and median hazard maps, "+unitlessLabel);
+						lines.add(topLink); lines.add("");
+					}
 					
 					TableBuilder table = MarkdownUtils.tableBuilder();
 					// no comparison, simple table
@@ -1804,6 +1689,11 @@ public class LogicTreeHazardCompare {
 					if (multi)
 						table.addColumn("![Median Map]("+resourcesDir.getName()+"/"+medianMapFile.getName()+")");
 					table.finalizeLine();
+					table.initNewLine();
+					table.addColumn(mapStats(mean));
+					if (multi)
+						table.addColumn(mapStats(median));
+					table.finalizeLine();
 					lines.addAll(table.build());
 					lines.add("");
 					
@@ -1814,14 +1704,16 @@ public class LogicTreeHazardCompare {
 						continue;
 					}
 				} else {
-					lines.add("### Mean hazard maps and comparisons, "+unitlessLabel);
-					lines.add(topLink); lines.add("");
+					if (multi) {
+						lines.add("### Mean hazard maps and comparisons, "+unitlessLabel);
+						lines.add(topLink); lines.add("");
+					}
 					
 					TableBuilder table = MarkdownUtils.tableBuilder();
 					
 					// comparison mean
-					File cmeanMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_mean", log10(cmean),
-							logCPT, TITLES ? compName : " ", "Log10 Weighted-Average, "+label);
+					File cmeanMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_mean", cmean,
+							logCPT, TITLES ? compName : " ", "Weighted-Average, "+label);
 					GriddedGeoDataSet.writeXYZFile(cmean, new File(resourcesDir, prefix+"_comp_mean.xyz"));
 					
 					table.initNewLine();
@@ -1836,6 +1728,11 @@ public class LogicTreeHazardCompare {
 					table.finalizeLine().initNewLine();
 					table.addColumn("![Mean Map]("+resourcesDir.getName()+"/"+meanMapFile.getName()+")");
 					table.addColumn("![Mean Map]("+resourcesDir.getName()+"/"+cmeanMapFile.getName()+")");
+					table.finalizeLine();
+					table.initNewLine();
+					table.addColumn(mapStats(mean));
+					if (multi)
+						table.addColumn(mapStats(cmean));
 					table.finalizeLine();
 					
 					lines.addAll(table.build());
@@ -1866,8 +1763,8 @@ public class LogicTreeHazardCompare {
 						lines.addAll(table.build());
 						lines.add("");
 						
-						File cmedianMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_median", log10(cmedian),
-								logCPT, TITLES ? compName : " ", "Log10 Weighted-Median, "+label);
+						File cmedianMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_median", cmedian,
+								logCPT, TITLES ? compName : " ", "Weighted-Median, "+label);
 						GriddedGeoDataSet.writeXYZFile(cmedian, new File(resourcesDir, prefix+"_comp_median.xyz"));
 						
 						lines.add("### Median hazard maps and comparisons, "+unitlessLabel);
@@ -1883,6 +1780,11 @@ public class LogicTreeHazardCompare {
 						table.finalizeLine().initNewLine();
 						table.addColumn("![Median Map]("+resourcesDir.getName()+"/"+medianMapFile.getName()+")");
 						table.addColumn("![Median Map]("+resourcesDir.getName()+"/"+cmedianMapFile.getName()+")");
+						table.finalizeLine();
+						table.initNewLine();
+						table.addColumn(mapStats(median));
+						if (multi)
+							table.addColumn(mapStats(cmedian));
 						table.finalizeLine();
 						
 						lines.addAll(table.build());
@@ -1903,8 +1805,6 @@ public class LogicTreeHazardCompare {
 						
 						table.addLine(MarkdownUtils.boldCentered("Comparison Mean Percentile"),
 								MarkdownUtils.boldCentered("Comparison Median Percentile"));
-						GriddedGeoDataSet cMeanPercentile = calcPercentileWithinDist(mapNCDFs, cmean);
-						GriddedGeoDataSet cMedianPercentile = calcPercentileWithinDist(mapNCDFs, cmedian);
 						if (comp.gridReg.getNodeCount() < gridReg.getNodeCount()) {
 							// see if we should shrink them to comparison
 							GriddedGeoDataSet remappedMeanPercentile = new GriddedGeoDataSet(comp.gridReg, false);
@@ -1923,6 +1823,7 @@ public class LogicTreeHazardCompare {
 								percentileCPT, TITLES ? name+" vs "+compName : " ", "Comparison Median %-ile, "+unitlessLabel);
 						table.addColumn("![Median Percentile Map]("+resourcesDir.getName()+"/"+map.getName()+")");
 						table.finalizeLine();
+						table.addLine(mapStats(cMeanPercentile), mapStats(cMedianPercentile));
 						lines.add("### Percentile comparison maps, "+unitlessLabel);
 						lines.add(topLink); lines.add("");
 						lines.add("The maps below show where the comparison (_"+compName+"_) model mean (left column) and "
@@ -1956,7 +1857,6 @@ public class LogicTreeHazardCompare {
 				
 				// plot mean percentile
 				TableBuilder table = MarkdownUtils.tableBuilder();
-				GriddedGeoDataSet meanPercentile = calcPercentileWithinDist(mapNCDFs, mean);
 				File meanPercentileMap = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_mean_percentile",
 						meanPercentile, percentileCPT, TITLES ? "Branch-Averaged Percentiles" : " ",
 						"Branch Averaged %-ile, "+unitlessLabel);
@@ -1967,6 +1867,7 @@ public class LogicTreeHazardCompare {
 						meanMedDiff, pDiffCPT, TITLES ? name : " ", "Mean / Median, % Change, "+unitlessLabel, true);
 				table.addLine("![BA percentiles]("+resourcesDir.getName()+"/"+meanPercentileMap.getName()+")",
 						"![Median vs Mean]("+resourcesDir.getName()+"/"+meanMedDiffMap.getName()+")");
+				table.addLine(mapStats(meanPercentile), mapStats(meanMedDiff, true));
 				String branchStr = "Branched-average hazard can be dominated by outlier branches. The map below on the "
 						+ "left shows the percentile at which the ";
 				if (comp != null)
@@ -2024,14 +1925,14 @@ public class LogicTreeHazardCompare {
 					table = MarkdownUtils.tableBuilder();
 					table.addLine(MarkdownUtils.boldCentered("Minimum"), MarkdownUtils.boldCentered("Maximum"));
 					
-					File minMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_min", log10(min),
-							logCPT, TITLES ? name : " ", "Log10 Minimum, "+label);
-					File maxMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_max", log10(max),
-							logCPT, TITLES ? name : " ", "Log10 Maximum, "+label);
+					File minMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_min", min,
+							logCPT, TITLES ? name : " ", "Minimum, "+label);
+					File maxMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_max", max,
+							logCPT, TITLES ? name : " ", "Maximum, "+label);
 					File spreadMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_spread", spread,
 							spreadCPT, TITLES ? name : " ", "Log10 (Max/Min), "+unitlessLabel);
-					File iqrMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_iqr", log10(iqr),
-							iqrCPT, TITLES ? name : " ", "Log10 IQR, "+label);
+					File iqrMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_iqr", iqr,
+							iqrCPT, TITLES ? name : " ", "IQR, "+label);
 					File sdMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_sd", sd,
 							sdCPT, TITLES ? name : " ", "SD, "+label);
 					File covMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_cov", cov,
@@ -2041,16 +1942,19 @@ public class LogicTreeHazardCompare {
 					table.addColumn("![Min Map]("+resourcesDir.getName()+"/"+minMapFile.getName()+")");
 					table.addColumn("![Max Map]("+resourcesDir.getName()+"/"+maxMapFile.getName()+")");
 					table.finalizeLine();
+					table.addLine(mapStats(min), mapStats(max));
 					table.addLine(MarkdownUtils.boldCentered("Log10 (Max/Min)"), MarkdownUtils.boldCentered("Interquartile Range"));
 					table.initNewLine();
 					table.addColumn("![Spread Map]("+resourcesDir.getName()+"/"+spreadMapFile.getName()+")");
 					table.addColumn("![IQR Map]("+resourcesDir.getName()+"/"+iqrMapFile.getName()+")");
 					table.finalizeLine();
+					table.addLine(mapStats(spread), mapStats(iqr));
 					table.addLine(MarkdownUtils.boldCentered("SD"), MarkdownUtils.boldCentered("COV"));
 					table.initNewLine();
 					table.addColumn("![SD Map]("+resourcesDir.getName()+"/"+sdMapFile.getName()+")");
 					table.addColumn("![COV Map]("+resourcesDir.getName()+"/"+covMapFile.getName()+")");
 					table.finalizeLine();
+					table.addLine(mapStats(sd), mapStats(cov));
 					
 					lines.add("");
 					lines.add(minMaxStr);
@@ -2061,19 +1965,19 @@ public class LogicTreeHazardCompare {
 					table = MarkdownUtils.tableBuilder();
 					// comparison
 					addMapCompDiffLines(min, name, cmin, compName, prefix+"_min", resourcesDir, table,
-							"Minimum", "Minimum "+label, "Minimum "+unitlessLabel, true, logCPT, diffCPT, pDiffCPT, comp.gridReg);
+							"Minimum", "Minimum "+label, "Minimum "+unitlessLabel, logCPT, diffCPT, pDiffCPT, comp.gridReg);
 					addMapCompDiffLines(max, name, cmax, compName, prefix+"_max", resourcesDir, table,
-							"Maximum", "Maximum "+label, "Maximum "+unitlessLabel, true, logCPT, diffCPT, pDiffCPT, comp.gridReg);
+							"Maximum", "Maximum "+label, "Maximum "+unitlessLabel, logCPT, diffCPT, pDiffCPT, comp.gridReg);
 					addMapCompDiffLines(spread, name, cspread, compName, prefix+"_spread", resourcesDir, table,
-							"Log10 (Max/Min)", "Log10 (Max/Min) "+unitlessLabel, "Log10 (Max/Min) "+unitlessLabel, false,
+							"Log10 (Max/Min)", "Log10 (Max/Min) "+unitlessLabel, "Log10 (Max/Min) "+unitlessLabel,
 							spreadCPT, spreadDiffCPT, pDiffCPT, comp.gridReg);
 					addMapCompDiffLines(iqr, name, ciqr, compName, prefix+"_iqr", resourcesDir, table,
-							"Interquartile Range", "IQR "+label, "IQR "+unitlessLabel, true,
+							"Interquartile Range", "IQR "+label, "IQR "+unitlessLabel,
 							iqrCPT, iqrDiffCPT, pDiffCPT, comp.gridReg);
 					addMapCompDiffLines(sd, name, csd, compName, prefix+"_sd", resourcesDir, table,
-							"SD", label+", SD", unitlessLabel+", SD", false, sdCPT, sdDiffCPT, pDiffCPT, comp.gridReg);
+							"SD", label+", SD", unitlessLabel+", SD", sdCPT, sdDiffCPT, pDiffCPT, comp.gridReg);
 					addMapCompDiffLines(cov, name, ccov, compName, prefix+"_cov", resourcesDir, table,
-							"COV", unitlessLabel+", COV", unitlessLabel+", COV", false, covCPT, covDiffCPT, pDiffCPT, comp.gridReg);
+							"COV", unitlessLabel+", COV", unitlessLabel+", COV", covCPT, covDiffCPT, pDiffCPT, comp.gridReg);
 					
 					lines.add("");
 					lines.add(minMaxStr+" Each of those quantities is plotted separately for the primary and comparison "
@@ -2106,8 +2010,151 @@ public class LogicTreeHazardCompare {
 						+ "the mean map considering subsets of the model holding each branch choice constant, and the "
 						+ "overall mean map.");
 				lines.add("");
+				lines.add("Summary CSVs: [Branch Mean % Change]("+resourcesDir.getName()+"/"+prefix+"_branch_mean_summary.csv) "
+						+ "&nbsp;|&nbsp; [Branch Abs Mean % Change]("+resourcesDir.getName()+"/"+prefix+"_branch_mean_abs_summary.csv)");
+				lines.add("");
 				
 				int combinedMapIndex = lines.size();
+				
+				int numLevels = tree.getLevels().size();
+				
+				if (canDecomposeVariance == null) {
+					System.out.println("Seeing if the logic tree is structured in a way that supports variance decomposition");
+					// track the levels where there are a unique sample for each branch in the tree, i.e., a value
+					// is never repeated across any upstream branches
+					// if there are multiple of these, we can't separate out the variance individually
+					uniqueSamplingLevels = new ArrayList<>();
+					System.out.println("Looking for unique random sampling levels (those where samples are not reused "
+							+ "across upstream branches) for exclusion in variance calculations");
+					boolean firstVaryingLevel = true;
+					for (int l=0; l<numLevels; l++) {
+						LogicTreeLevel<?> level = tree.getLevels().get(l);
+						if (level instanceof RandomlySampledLevel<?> || level instanceof FileBackedLevel) {
+							// either a random sampling level, or could have been (maybe deserialization failed is now is file backed)
+							// we want to detect the case where the random sampling is across the whole tree, i.e., values
+							// are never reused
+							
+							if (level.getNodes().size() == tree.size()) {
+								// full tree random sampling
+								System.out.println("\tDetected that "+level.getName()+" is a randomly sampled level "
+										+ "because it has a unique value for each tree branch");
+								uniqueSamplingLevels.add(level);
+							} else if (!firstVaryingLevel) {
+								// there's not a one-to-one correspondence, but it still could be tree-wide random sampling
+								// if the tree was later downsampled and/or combined with another tree
+								// 
+								// we'll detect this by checking to see if there are any values shared amongst upstream
+								// branches; if there are not (meaning that nodes from this level were never reused, at
+								// least looking at upstream branches), then we'll treat this as a random sampling level
+								// 
+								// we can only do this check for levels downstream of the first varying level, however
+								
+								List<LogicTreeLevel<? extends LogicTreeNode>> levelsAbove = new ArrayList<>(tree.getLevels().subList(0, l));
+								Map<LogicTreeNode, LogicTreeBranch<?>> prevBranchesAbove = new HashMap<>();
+								boolean match = true;
+								for (LogicTreeBranch<?> branch : tree) {
+									LogicTreeNode node = branch.getValue(l);
+									LogicTreeBranch<LogicTreeNode> branchAbove = new LogicTreeBranch<>(levelsAbove);
+									for (int i=0; i<l; i++)
+										branchAbove.setValue(i, branch.getValue(i));
+									LogicTreeBranch<?> prevBranchAbove = prevBranchesAbove.get(node);
+									if (prevBranchAbove == null) {
+										prevBranchesAbove.put(node, branchAbove);
+									} else if (!prevBranchAbove.equals(branchAbove)) {
+										// multiple upstream branches use this level
+										match = false;
+										break;
+									}
+								}
+								if (match) {
+									System.out.println("\tDetected that "+level.getName()+" is a randomly sampled level "
+											+ "because no unique upstream branches re-use it, even though it only has "
+											+level.getNodes().size()+" nodes for "+tree.size()+" total branches");
+									uniqueSamplingLevels.add(level);
+								}
+							}
+						}
+						if (firstVaryingLevel) {
+							// see if this node varies
+							LogicTreeNode firstVal = tree.getBranch(0).getValue(l);
+							for (LogicTreeBranch<?> branch : tree) {
+								if (!branch.getValue(l).equals(firstVal)) {
+									// there are multiple values for this level
+									firstVaryingLevel = false;
+									break;
+								}
+							}
+						}
+					}
+					
+					if (uniqueSamplingLevels.isEmpty()) {
+						System.out.println("\tNo such sampling levels found");
+					}
+					
+					// now see if the logic tree is complete or randomly sampled
+					// if complete, we'll use the better marginal averaging approach
+					// if not, we'll use the sparse approach
+					HashSet<LogicTreeBranch<?>> concreteBranches = new HashSet<>();
+					List<LogicTreeLevel<? extends LogicTreeNode>> concreteLevels = new ArrayList<>();
+					List<Integer> levelMappings = new ArrayList<>();
+					List<HashSet<LogicTreeNode>> encounteredConcreteNodes = new ArrayList<>();
+					for (int l=0; l<numLevels; l++) {
+						LogicTreeLevel<?> level = tree.getLevels().get(l);
+						if (!uniqueSamplingLevels.contains(level)) {
+							concreteLevels.add(level);
+							levelMappings.add(l);
+							encounteredConcreteNodes.add(new HashSet<>());
+						}
+					}
+					for (LogicTreeBranch<?> branch : tree) {
+						LogicTreeBranch<LogicTreeNode> concreteBranch = new LogicTreeBranch<>(concreteLevels);
+						for (int i=0; i<concreteLevels.size(); i++) {
+							LogicTreeNode node = branch.getValue(levelMappings.get(i));
+							concreteBranch.setValue(i, node);
+							encounteredConcreteNodes.get(i).add(node);
+						}
+						concreteBranches.add(concreteBranch);
+					};
+					int completeTreeCount = 1;
+					for (HashSet<LogicTreeNode> nodes : encounteredConcreteNodes)
+						completeTreeCount *= nodes.size();
+					if (completeTreeCount == 1) {
+						canDecomposeVariance = false;
+					} else if (completeTreeCount != concreteBranches.size() || forceSparseLTVar) {
+						System.out.println("Have to use sparse variance decomposition approach because the logic tree is downsampled");
+						canDecomposeVariance = true;
+						varDecomposer = new SparseLTVarianceDecomposition(tree, uniqueSamplingLevels, exec);
+					} else {
+						canDecomposeVariance = true;
+						varDecomposer = new MarginalAveragingLTVarianceDecomposition(tree, uniqueSamplingLevels, exec);
+					}
+				}
+				
+				List<VarianceContributionResult> varResults = null;
+				if (canDecomposeVariance) {
+					varResults = new ArrayList<>(numLevels);
+					for (int l=0; l<numLevels; l++)
+						varResults.add(null);
+					GriddedGeoDataSet covOfMapMean;
+					GriddedGeoDataSet varOfMapMean;
+					if (meanIsFromCurves) {
+						// need to calculate the raw mean of the maps because that's how we're going to calculate level COVs
+						mapMean = buildMean(maps);
+						covOfMapMean = new GriddedGeoDataSet(region);
+						for (int i=0; i<mapMean.size(); i++)
+							covOfMapMean.set(i, sd.get(i)/mapMean.get(i));
+					} else {
+						Preconditions.checkNotNull(mapMean);
+						covOfMapMean = cov;
+					}
+					varOfMapMean = new GriddedGeoDataSet(region);
+					for (int i=0; i<cov.size(); i++) {
+						double var = sd.get(i)*sd.get(i);
+						varOfMapMean.set(i, var);
+					}
+					varDecomposer.initForMaps(mapMean, varOfMapMean, maps, weights);
+				}
+				
 				
 				System.out.println("Building logic tree plots");
 				
@@ -2124,9 +2171,8 @@ public class LogicTreeHazardCompare {
 				List<HashMap<LogicTreeNode, GriddedGeoDataSet>> choiceMeanPercentilesList = new ArrayList<>();
 				
 				// do mean map calculations first so that we can clear out the full NormCDFs from memory
-				int numLevels = tree.getLevels().size();
+				
 				for (int l=0; l<numLevels; l++) {
-//				for (LogicTreeLevel<?> level : tree.getLevels()) {
 					LogicTreeLevel<?> level = tree.getLevels().get(l);
 					HashMap<LogicTreeNode, List<GriddedGeoDataSet>> choiceMaps = new HashMap<>();
 					HashMap<LogicTreeNode, List<Double>> choiceWeights = new HashMap<>();
@@ -2144,6 +2190,46 @@ public class LogicTreeHazardCompare {
 					}
 //					System.out.println("Processing level "+level.getName()+" with "+choiceMaps.size()+" choices");
 					boolean include = choiceMaps.size() > 1;
+					if (canDecomposeVariance && include) {
+						if (uniqueSamplingLevels.size() > 1 && uniqueSamplingLevels.get(0) != level &&
+								uniqueSamplingLevels.contains(level))
+							// this is a secondary unique sampling level, skip as already bundled previously
+							continue;
+						VarianceContributionResult varResult = varDecomposer.calcMapVarianceContributionForLevel(
+								l, level, choiceMaps, choiceWeights);
+						if (varResult != null) {
+//							// orig here is the full original, used for ratios
+//							// ref here is the reference value we're comparing to, used for differences
+//							AvgMaxCalc refCOVs = new AvgMaxCalc();
+//							AvgMaxCalc withoutCOVs = new AvgMaxCalc();
+//							AvgMaxCalc deltaCOVs = new AvgMaxCalc();
+//							AvgMaxCalc fDiffCOVs = new AvgMaxCalc();
+//							AvgMaxCalc fractVars = new AvgMaxCalc();
+//							for (int i=0; i<covExcluding.size(); i++) {
+//								double refCOV = refCOVMap.get(i);
+//								double origCOV = covOfMapMean.get(i);
+//								double withoutCOV = covExcluding.get(i);
+//								double refVar = refVarMap.get(i);
+//								double origVar = varOfMapMean.get(i);
+//								double withoutVar = sdExcluding.get(i)*sdExcluding.get(i);
+//								double varDiff = refVar - withoutVar;
+//								double deltaCOV = refCOV - withoutCOV;
+//								refCOVs.addValue(refCOV);
+//								withoutCOVs.addValue(withoutCOV);
+//								deltaCOVs.addValue(deltaCOV);
+//								fDiffCOVs.addValue(deltaCOV/origCOV);
+//								fractVars.addValue(varDiff/origVar);
+//							}
+//							
+//							System.out.println("\tOrigCOV="+(float)origCOVs.getAverage());
+//							System.out.println("\tRefCOV="+(float)refCOVs.getAverage());
+//							System.out.println("\tWithoutCOV="+(float)withoutCOVs.getAverage());
+//							System.out.println("\tdeltaCOV="+deltaCOVs.getAverage()+" ("+pDF.format(fDiffCOVs.getAverage())+")");
+//							System.out.println("\tdeltaVar="+fractVars.getAverage()+" ("+pDF.format(fractVars.getAverage())+")");
+							
+							varResults.set(l, varResult);
+						}
+					}
 					if (LogicTreeCurveAverager.shouldSkipLevel(level, choiceMaps.size())) {
 						System.out.println("Skipping randomly sampled level ("+level.getName()
 							+") with "+choiceMaps.size()+" choices");
@@ -2214,8 +2300,30 @@ public class LogicTreeHazardCompare {
 				mapNCDFs = null;
 				System.gc();
 				
+				if (period == periods[0] && rp == rps[0]) {
+					PlotUtils.writeScaleLegendOnly(resourcesDir, "cpt_branch_pDiff",
+							GeographicMapMaker.buildCPTLegend(pDiffCPT, "Branch Choice / Mean, % Change"), cptWidth, true, true);
+					PlotUtils.writeScaleLegendOnly(resourcesDir, "cpt_branch_diff",
+							GeographicMapMaker.buildCPTLegend(diffCPT, "Branch Choice - Mean "+perUnits), cptWidth, true, true);
+				}
+				
+				CSVFile<String> choiceMeanSummaryCSV = new CSVFile<>(false);
+				CSVFile<String> choiceMeanAbsSummaryCSV = new CSVFile<>(false);
+				
+				boolean levelNameOverlap = false;
+				List<String> levelPrefixes = new ArrayList<>();
+				for (LogicTreeLevel<?> level : tree.getLevels()) {
+					String ltPrefix = level.getFilePrefix();
+					levelNameOverlap |= levelPrefixes.contains(ltPrefix);
+					levelPrefixes.add(ltPrefix);
+				}
+				if (levelNameOverlap)
+					for (int i=0; i<levelPrefixes.size(); i++)
+						levelPrefixes.set(i, i+"_"+levelPrefixes.get(i));
+				
 				for (int l=0; l<choiceMapsList.size(); l++) {
 					LogicTreeLevel<?> level = tree.getLevels().get(l);
+					String levelPrefix = prefix+"_"+levelPrefixes.get(l);
 					HashMap<LogicTreeNode, List<GriddedGeoDataSet>> choiceMaps = choiceMapsList.get(l);
 					if (choiceMaps != null) {
 						System.out.println(level.getName()+" has "+choiceMaps.size()+" choices");
@@ -2240,17 +2348,25 @@ public class LogicTreeHazardCompare {
 //						List<LogicTreeNode> choices = new ArrayList<>(choiceMaps.keySet());
 //						Collections.sort(choices, nodeNameCompare);
 						
+						if (choiceMeanSummaryCSV.getNumRows() > 0) {
+							choiceMeanSummaryCSV.addLine("");
+							choiceMeanAbsSummaryCSV.addLine("");
+						}
+						int summaryRow = choiceMeanSummaryCSV.getNumRows();
+						choiceMeanSummaryCSV.addLine(level.getName());
+						choiceMeanAbsSummaryCSV.addLine(level.getName(), "Overall average absolute difference:", "");
+						List<String> csvHeader = new ArrayList<>();
+						csvHeader.add("Choice");
+						csvHeader.add("Vs Mean");
 						for (LogicTreeNode choice : choices) {
+							csvHeader.add("Vs "+choice.getShortName());
 							table.addColumn("**Vs "+choice.getShortName()+"**");
 							mapVsChoiceTable.addColumn("**Vs "+choice.getShortName()+"**");
 						}
+						choiceMeanSummaryCSV.addLine(csvHeader);
+						choiceMeanAbsSummaryCSV.addLine(csvHeader);
 						table.finalizeLine();
 						mapVsChoiceTable.finalizeLine();
-						
-						File choicesCSV = new File(resourcesDir, prefix+"_"+level.getShortName().replaceAll("\\W+", "_")+".csv");
-						writeChoiceHazardCSV(choicesCSV, mean, choices, choiceMeans);
-						lines.add("Download Choice Hazard CSV: ["+choicesCSV.getName()+"]("+resourcesDir.getName()+"/"+choicesCSV.getName()+")");
-						lines.add("");
 						
 						TableBuilder mapTable = MarkdownUtils.tableBuilder();
 						mapTable.addLine("", "Choice Mean vs Full Mean, % Change", "Choice Mean - Full Mean",
@@ -2288,25 +2404,36 @@ public class LogicTreeHazardCompare {
 							choiceCDFs[c] = buildNormCDFs(mapsWith, weightsWith);
 						}
 						
+						List<GriddedGeoDataSet> choicePDiffs = new ArrayList<>();
+						List<GriddedGeoDataSet> choiceDiffs = new ArrayList<>();
+						List<String> choiceShortNames = new ArrayList<>();
+						
 						for (int c=0; c<choices.size(); c++) {
 							LogicTreeNode choice = choices.get(c);
 							table.initNewLine().addColumn("**"+choice.getShortName()+"**");
 							mapVsChoiceTable.initNewLine().addColumn("**"+choice.getShortName()+"**");
 							
+							List<String> meanCSVLine = new ArrayList<>(csvHeader.size());
+							List<String> meanAbsCSVLine = new ArrayList<>(csvHeader.size());
+							meanCSVLine.add(choice.getShortName());
+							meanAbsCSVLine.add(choice.getShortName());
+							
 							GriddedGeoDataSet choiceMap = choiceMeans.get(choice);
-							table.addColumn(mapPDiffStr(choiceMap, mean, null, null));
+							table.addColumn(mapPDiffStr(choiceMap, mean, null, null, meanCSVLine, meanAbsCSVLine));
 							
 							for (LogicTreeNode oChoice : choices) {
 								if (choice == oChoice) {
 									table.addColumn("");
 									mapVsChoiceTable.addColumn("");
+									meanCSVLine.add("");
+									meanAbsCSVLine.add("");
 								} else {
 									table.addColumn(mapPDiffStr(choiceMap, choiceMeans.get(oChoice),
-											runningDiffAvg, runningAbsDiffAvg));
+											runningDiffAvg, runningAbsDiffAvg, meanCSVLine, meanAbsCSVLine));
 									// plot choice vs choice map
 									GriddedGeoDataSet oChoiceMap = choiceMeans.get(oChoice);
 									GriddedGeoDataSet pDiff = buildPDiff(oChoiceMap, choiceMap);
-									File map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_"+choice.getFilePrefix()+"_vs_"+oChoice.getFilePrefix(),
+									File map = submitMapFuture(mapper, exec, futures, resourcesDir, levelPrefix+"_"+choice.getFilePrefix()+"_vs_"+oChoice.getFilePrefix(),
 											pDiff, pDiffCPT, TITLES ? choice.getShortName()+" vs "+oChoice.getShortName() : " ",
 											choice.getShortName()+" / "+oChoice.getShortName()+", % Change, "+unitlessLabel, true);
 									mapVsChoiceTable.addColumn("![Difference Map]("+resourcesDir.getName()+"/"+map.getName()+")");
@@ -2315,14 +2442,18 @@ public class LogicTreeHazardCompare {
 							
 							table.finalizeLine();
 							mapVsChoiceTable.finalizeLine();
+							choiceMeanSummaryCSV.addLine(meanCSVLine);
+							choiceMeanAbsSummaryCSV.addLine(meanAbsCSVLine);
 							
 							// now maps
 							
 							mapTable.initNewLine().addColumn("**"+choice.getShortName()+"**");
 							
 							// pDiff
+							choiceShortNames.add(choice.getShortName());
 							GriddedGeoDataSet pDiff = buildPDiff(mean, choiceMap);
-							MapPlot pDiffMap = mapper.buildMapPlot(resourcesDir, prefix+"_"+choice.getFilePrefix()+"_pDiff",
+							choicePDiffs.add(pDiff);
+							MapPlot pDiffMap = mapper.buildMapPlot(resourcesDir, levelPrefix+"_"+choice.getFilePrefix()+"_pDiff",
 									pDiff, pDiffCPT, TITLES ? choice.getShortName()+" Comparison" : " ",
 									choice.getShortName()+" / Mean, % Change, "+unitlessLabel, true);
 							branchPDiffPlots.add(pDiffMap);
@@ -2331,9 +2462,10 @@ public class LogicTreeHazardCompare {
 							
 							// regular diff
 							GriddedGeoDataSet diff = new GriddedGeoDataSet(region, false);
+							choiceDiffs.add(diff);
 							for (int i=0; i<diff.size(); i++)
 								diff.set(i, choiceMap.get(i) - mean.get(i));
-							MapPlot diffMap = mapper.buildMapPlot(resourcesDir, prefix+"_"+choice.getFilePrefix()+"_diff",
+							MapPlot diffMap = mapper.buildMapPlot(resourcesDir, levelPrefix+"_"+choice.getFilePrefix()+"_diff",
 									diff, diffCPT, TITLES ? choice.getShortName()+" Comparison" : " ",
 									choice.getShortName()+" - Mean, "+label, false);
 							branchDiffPlots.add(diffMap);
@@ -2342,7 +2474,7 @@ public class LogicTreeHazardCompare {
 							
 							// percentile
 							GriddedGeoDataSet percentile = choiceMeanPercentiles.get(choice);
-							map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_"+choice.getFilePrefix()+"_percentile",
+							map = submitMapFuture(mapper, exec, futures, resourcesDir, levelPrefix+"_"+choice.getFilePrefix()+"_percentile",
 									percentile, percentileCPT, TITLES ? choice.getShortName()+" Comparison" : " ",
 									choice.getShortName()+" %-ile, "+unitlessLabel);
 							mapTable.addColumn("![Percentile Map]("+resourcesDir.getName()+"/"+map.getName()+")");
@@ -2371,13 +2503,34 @@ public class LogicTreeHazardCompare {
 //							LightFixedXFunc[] mapsWithoutNCDFs =
 //									withoutNCDFs.size() == 1 ? withoutNCDFs.get(0) : mergeNormCDFs(withoutNCDFs);
 							GriddedGeoDataSet percentileWithout = calcPercentileWithinDists(withoutNCDFs, withoutWeights, choiceMap);
-							map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_"+choice.getFilePrefix()+"_percentile_without",
+							map = submitMapFuture(mapper, exec, futures, resourcesDir, levelPrefix+"_"+choice.getFilePrefix()+"_percentile_without",
 									percentileWithout, percentileCPT, TITLES ? choice.getShortName()+" Comparison" : " ",
 									choice.getShortName()+" %-ile, "+unitlessLabel);
 							mapTable.addColumn("![Percentile Map]("+resourcesDir.getName()+"/"+map.getName()+")");
 							
 							mapTable.finalizeLine();
 						}
+						// write multi maps
+						int height = 360;
+//						int titleFont = 42;
+						int titleFont = 12;
+//						int subtitleFont = 40;
+						int subtitleFont = 46;
+						File pDiffMulti = submitMultiMapFuture(mapper, exec, futures, resourcesDir, levelPrefix+"_choice_pDiffs",
+								choicePDiffs, pDiffCPT, null, titleFont, choiceShortNames, subtitleFont, null, true, height);
+						File diffMulti = submitMultiMapFuture(mapper, exec, futures, resourcesDir, levelPrefix+"_choice_diffs",
+								choiceDiffs, diffCPT, null, titleFont, choiceShortNames, subtitleFont, null, true, height);
+						File choicesCSV = new File(resourcesDir, levelPrefix+".csv");
+						writeChoiceHazardCSV(choicesCSV, mean, choices, choiceMeans);
+						lines.add("![Combined "+level.getShortName()+" % difference plot]("+resourcesDir.getName()+"/"+pDiffMulti.getName()+")");
+						lines.add("");
+						lines.add("![% Diff CPT]("+resourcesDir.getName()+"/cpt_branch_pDiff.png)");
+						lines.add("");
+						lines.add("![Combined "+level.getShortName()+" difference plot]("+resourcesDir.getName()+"/"+diffMulti.getName()+")");
+						lines.add("");
+						lines.add("![Diff CPT]("+resourcesDir.getName()+"/cpt_branch_diff.png)");
+						lines.add("");
+						lines.add("Download Choice Hazard CSV: ["+choicesCSV.getName()+"]("+resourcesDir.getName()+"/"+choicesCSV.getName()+")");
 						lines.add("");
 						lines.add("The table below gives summary statistics for the spatial average difference and average "
 								+ "absolute difference of hazard between mean hazard maps for each individual branch "
@@ -2390,6 +2543,7 @@ public class LogicTreeHazardCompare {
 								+ "choice, a decent summary measure of how much hazard varies due to this branch choice, "
 								+ "is: **"+twoDigits.format(runningAbsDiffAvg.getAverage())+"%**");
 						System.out.println("\tOverall MAD: "+twoDigits.format(runningAbsDiffAvg.getAverage())+" %");
+						choiceMeanAbsSummaryCSV.set(summaryRow, 2, runningAbsDiffAvg.getAverage()+"%");
 						lines.add("");
 						lines.addAll(table.build());
 						lines.add("");
@@ -2427,7 +2581,7 @@ public class LogicTreeHazardCompare {
 								
 								GriddedGeoDataSet pDiff = buildPDiff(mean, choiceWithout);
 								ratioPlots.add(submitMapFuture(mapper, exec, futures, resourcesDir,
-										prefix+"_"+choice.getFilePrefix()+"_mean_pDiff_without",
+										levelPrefix+"_"+choice.getFilePrefix()+"_mean_pDiff_without",
 										pDiff, pDiffCPT, TITLES ? choice.getShortName()+" Removal Comparison" : " ",
 										choice.getShortName()+", Mean Without / With, % Change, "+unitlessLabel, true));
 								
@@ -2435,7 +2589,7 @@ public class LogicTreeHazardCompare {
 								for (int i=0; i<diff.size(); i++)
 									diff.set(i, choiceWithout.get(i) - mean.get(i));
 								diffPlots.add(submitMapFuture(mapper, exec, futures, resourcesDir,
-										prefix+"_"+choice.getFilePrefix()+"_mean_diff_without",
+										levelPrefix+"_"+choice.getFilePrefix()+"_mean_diff_without",
 										diff, diffCPT, TITLES ? choice.getShortName()+" Removal Comparison" : " ",
 										choice.getShortName()+", Mean Without - With, "+label, false));
 							}
@@ -2463,12 +2617,15 @@ public class LogicTreeHazardCompare {
 					}
 				}
 				
+				List<String> addInLines = new ArrayList<>();
+				
 				if (!branchLevels.isEmpty()) {
 					String combPrefix = prefix+"_branches_combined";
-					writeCombinedBranchMap(resourcesDir, combPrefix, name+", Mean Hazard Map",
-							meanMapPlot, branchLevels, branchLevelValues,
-							branchLevelPDiffPlots, "Branch Choice / Mean, % Change",
-							branchLevelDiffPlots, "Branch Choice - Mean (g)");
+					if (branchLevels.size() < 5)
+						writeCombinedBranchMap(resourcesDir, combPrefix, name+", Mean Hazard Map",
+								meanMapPlot, branchLevels, branchLevelValues,
+								branchLevelPDiffPlots, "Branch Choice / Mean, % Change",
+								branchLevelDiffPlots, "Branch Choice - Mean (g)");
 					combPrefix = prefix+"_branches_combined_pDiff";
 					writeCombinedBranchMap(resourcesDir, combPrefix, name+", Mean Hazard Map",
 							meanMapPlot, branchLevels, branchLevelValues, branchLevelPDiffPlots,
@@ -2481,8 +2638,27 @@ public class LogicTreeHazardCompare {
 							meanMapPlot, branchLevels, branchLevelValues, branchLevelDiffPlots,
 							"Branch Choice - Mean (g)");
 					table.addLine("![Combined Map]("+resourcesDir.getName()+"/"+combPrefix+".png)");
-					lines.addAll(combinedMapIndex, table.build());
+					addInLines.addAll(table.build());
+					
+					choiceMeanSummaryCSV.writeToFile(new File(resourcesDir, prefix+"_branch_mean_summary.csv"));
+					choiceMeanAbsSummaryCSV.writeToFile(new File(resourcesDir, prefix+"_branch_mean_abs_summary.csv"));
 				}
+				
+				if (canDecomposeVariance) {
+					List<String> varLines = varDecomposer.buildLines(varResults);
+					if (varLines != null && !varLines.isEmpty()) {
+						if (!addInLines.isEmpty())
+							addInLines.add("");
+						addInLines.add("#### "+varDecomposer.getHeading()+", "+unitlessLabel);
+						addInLines.add(topLink); addInLines.add("");
+						addInLines.addAll(varLines);
+					} else {
+						canDecomposeVariance = false;
+					}
+				}
+				
+				if (!addInLines.isEmpty())
+					lines.addAll(combinedMapIndex, addInLines);
 				
 				if (intermediateWrite)
 					writeIntermediate(outputDir, lines, tocIndex);
@@ -2505,6 +2681,76 @@ public class LogicTreeHazardCompare {
 		
 		// write markdown
 		MarkdownUtils.writeReadmeAndHTML(lines, outputDir);
+	}
+	
+	private String mapStats(GriddedGeoDataSet map) {
+		return mapStats(map, false);
+	}
+	
+	private String mapStats(GriddedGeoDataSet map, boolean percent) {
+		double min = Double.POSITIVE_INFINITY;
+		double max = Double.NEGATIVE_INFINITY;
+		double sum = 0d;
+		boolean hasNeg = false;
+		double sumAbs = 0d;
+		int count = 0;
+		for (int i=0; i<map.size(); i++) {
+			if (mapRegion != null && !mapRegion.contains(map.getLocation(i)))
+				continue;
+			double val = map.get(i);
+			if (Double.isFinite(val)) {
+				min = Double.min(min, val);
+				max = Double.max(max, val);
+				sum += val;
+				hasNeg |= val < 0;
+				sumAbs += Math.abs(val);
+				count++;
+			}
+		}
+		String ret;
+		if (count == 0) {
+			ret = "All values non-finite";
+		} else {
+			ret = "mean: "+String.format("%.3g", sum/(double)count);
+			if (percent)
+				ret += "%";
+			if (hasNeg) {
+				ret += ", abs: "+String.format("%.3g", sumAbs/(double)count);
+				if (percent)
+					ret += "%";
+			}
+			ret += ", range: [";
+			if (percent)
+				ret += String.format("%.3g", min)+"%, "+String.format("%.3g", max)+"%]";
+			else
+				ret += String.format("%.3g", min)+", "+String.format("%.3g", max)+"]";
+		}
+		return "<small>"+ret+"</small>";
+	}
+	
+	private static class AvgMaxCalc {
+		private double sum;
+		private double max = Double.NEGATIVE_INFINITY;
+		private int numUsed;
+		private int numSkipped;
+		
+		public void addValue(double value) {
+			if (Double.isFinite(value)) {
+				sum += value;
+				max = Math.max(value, max);
+				numUsed++;
+			} else {
+				numSkipped++;
+			}
+		}
+		
+		public double getAverage() {
+			return sum/numUsed;
+		}
+		
+		public double getMax() {
+			return max;
+		}
 	}
 	
 	private static void writeIntermediate(File outputDir, List<String> lines, int tocIndex) throws IOException {
@@ -2545,18 +2791,67 @@ public class LogicTreeHazardCompare {
 		return ret;
 	}
 	
+	private static File submitMultiMapFuture(SolHazardMapCalc mapper, ExecutorService exec, List<Future<?>> futures,
+			File outputDir, String prefix, List<GriddedGeoDataSet> xyzs, CPT cpt,
+			String title, int titleFontSize, List<String> subtitles, int subtitleFontSize,
+			String zLabel, boolean horizontal, int dimension) {
+		File ret = new File(outputDir, prefix+".png");
+		
+		futures.add(exec.submit(new Runnable() {
+			
+			@Override
+			public void run() {
+				try {
+					mapper.plotMultiMap(outputDir, prefix, xyzs, cpt, title, titleFontSize, subtitles, subtitleFontSize,
+							zLabel, horizontal, dimension, false, false);
+				} catch (IOException e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+			}
+		}));
+		
+		return ret;
+	}
+	
 	private void writeHazardCSV(File outputFile, GriddedGeoDataSet mean, GriddedGeoDataSet median,
-			GriddedGeoDataSet min, GriddedGeoDataSet max, GriddedGeoDataSet cov) throws IOException {
+			GriddedGeoDataSet min, GriddedGeoDataSet max, GriddedGeoDataSet cov, GriddedGeoDataSet meanPercentile,
+			GriddedGeoDataSet meanPercentileInComparison, GriddedGeoDataSet medianPercentileInComparison) throws IOException {
 		CSVFile<String> csv = new CSVFile<>(true);
 		
-		csv.addLine("Location Index", "Latitutde", "Longitude", "Weighted Mean", "Weighted Median", "Min", "Max", "COV");
+		List<String> header = new ArrayList<>();
+		header.addAll(List.of("Location Index", "Latitutde", "Longitude", "Weighted Mean", "Weighted Median", "Min", "Max", "COV"));
+		if (meanPercentile != null) {
+			if (meanPercentileInComparison == null)
+				header.add("Mean Map Percentile");
+			else
+				header.add("Mean Map Percentile (within own distribution)");
+		}
+		if (meanPercentileInComparison != null)
+			header.add("Mean Map Percentile (within comparison distribution)");
+		if (medianPercentileInComparison != null)
+			header.add("Median Map Percentile (within comparison distribution)");
+		csv.addLine(header);
 		
 		GriddedRegion reg = mean.getRegion();
 		for (int i=0; i<reg.getNodeCount(); i++) {
 			Location loc = reg.getLocation(i);
 			
-			csv.addLine(i+"", (float)loc.getLatitude()+"", (float)loc.getLongitude()+"", mean.get(i)+"",
-					median.get(i)+"", min.get(i)+"", max.get(i)+"", cov.get(i)+"");
+			List<String> line = new ArrayList<>(header.size());
+			line.add(i+"");
+			line.add((float)loc.getLatitude()+"");
+			line.add((float)loc.getLongitude()+"");
+			line.add(mean.get(i)+"");
+			line.add(median.get(i)+"");
+			line.add(min.get(i)+"");
+			line.add(max.get(i)+"");
+			line.add(cov.get(i)+"");
+			if (meanPercentile != null)
+				line.add((float)meanPercentile.get(i)+"");
+			if (meanPercentileInComparison != null)
+				line.add((float)meanPercentileInComparison.get(i)+"");
+			if (medianPercentileInComparison != null)
+				line.add((float)medianPercentileInComparison.get(i)+"");
+			csv.addLine(line);
 		}
 		
 		csv.writeToFile(outputFile);
@@ -2594,7 +2889,8 @@ public class LogicTreeHazardCompare {
 	}
 	
 	private static String mapPDiffStr(GriddedGeoDataSet map, GriddedGeoDataSet ref,
-			MinMaxAveTracker runningDiffAvg, MinMaxAveTracker runningAbsDiffAvg) {
+			MinMaxAveTracker runningDiffAvg, MinMaxAveTracker runningAbsDiffAvg,
+			List<String> meanCSVLine, List<String> meanAbsCSVLine) {
 		double mean = 0d;
 		double meanAbs = 0d;
 		int numFinite = 0;;
@@ -2617,10 +2913,15 @@ public class LogicTreeHazardCompare {
 		mean /= (double)numFinite;
 		meanAbs /= (double)numFinite;
 		
+		meanCSVLine.add(mean+"%");
+		meanAbsCSVLine.add(meanAbs+"%");
+		
 		return "Mean: "+twoDigits.format(mean)+"%, Mean Abs: "+twoDigits.format(meanAbs)+"%";
 	}
-	
-	private static final DecimalFormat twoDigits = new DecimalFormat("0.00");
+
+	static final DecimalFormat threeDigits = new DecimalFormat("0.000");
+	static final DecimalFormat twoDigits = new DecimalFormat("0.00");
+	static final DecimalFormat pDF = new DecimalFormat("0.0%");
 	
 	private static final Comparator<LogicTreeNode> nodeNameCompare = new Comparator<LogicTreeNode>() {
 
@@ -2710,6 +3011,10 @@ public class LogicTreeHazardCompare {
 			table.addColumn("![Range Difference Map]("+resourcesDir.getName()+"/"+map.getName()+")");
 		}
 		table.finalizeLine();
+		table.initNewLine();
+		table.addColumn(mapStats(diff, !difference));
+		table.addColumn(mapStats(diffFromRange, !difference));
+		table.finalizeLine();
 	}
 	
 	private void addSingleBranchDiffLines(GriddedGeoDataSet primary, String name, GriddedGeoDataSet comparison,
@@ -2745,7 +3050,11 @@ public class LogicTreeHazardCompare {
 		table.addColumn("![% Difference Map]("+resourcesDir.getName()+"/"+pDiffMap.getName()+")");
 		File diffMap = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_diff", diff, diffCPT,
 				TITLES ? name+" vs "+compName : " ", (TITLES ? "Primary - Comparison, " : "")+"Difference, "+label, false);
-		table.addColumn("![% Difference Map]("+resourcesDir.getName()+"/"+diffMap.getName()+")");
+		table.addColumn("![Difference Map]("+resourcesDir.getName()+"/"+diffMap.getName()+")");
+		table.finalizeLine();
+		table.initNewLine();
+		table.addColumn(mapStats(pDiff, true));
+		table.addColumn(mapStats(diff, false));
 		table.finalizeLine();
 	}
 	
@@ -2768,18 +3077,21 @@ public class LogicTreeHazardCompare {
 	
 	private void addMapCompDiffLines(GriddedGeoDataSet primary, String name, GriddedGeoDataSet comparison,
 			String compName, String prefix, File resourcesDir, TableBuilder table, String type, String label,
-			String unitlessLabel, boolean logMap, CPT cpt, CPT diffCPT, CPT pDiffCPT, GriddedRegion compReg) throws IOException {
+			String unitlessLabel, CPT cpt, CPT diffCPT, CPT pDiffCPT, GriddedRegion compReg) throws IOException {
 		
 		table.addLine(MarkdownUtils.boldCentered("Primary "+type), MarkdownUtils.boldCentered("Comparison "+type),
 				MarkdownUtils.boldCentered("Difference"), MarkdownUtils.boldCentered("% Change"));
 		
 		table.initNewLine();
 		File map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix,
-				logMap ? log10(primary) : primary, cpt, name, (logMap ? "Log10 " : "")+label);
+				primary, cpt, name, label);
 		table.addColumn("!["+type+"]("+resourcesDir.getName()+"/"+map.getName()+")");
 		map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp",
-				logMap ? log10(comparison) : comparison, cpt, compName, (logMap ? "Log10 " : "")+label);
+				comparison, cpt, compName, label);
 		table.addColumn("!["+type+"]("+resourcesDir.getName()+"/"+map.getName()+")");
+		
+		GriddedGeoDataSet diffForStats = null;
+		GriddedGeoDataSet pDiffForStats = null;
 		
 		for (boolean difference : new boolean[] {true, false}) {
 			GriddedGeoDataSet diff;
@@ -2793,11 +3105,13 @@ public class LogicTreeHazardCompare {
 				diffLabel = "Primary - Comparison, "+label;
 				diffPrefix = prefix+"_comp_diff";
 				myDiffCPT = diffCPT;
+				diffForStats = diff;
 			} else {
 				diff = buildPDiff(comparison, primary);
 				diffLabel = "Primary / Comparison, % Change, "+unitlessLabel;
 				diffPrefix = prefix+"_comp_pDiff";
 				myDiffCPT = pDiffCPT;
+				pDiffForStats = diff;
 			}
 			
 			if (compReg != null && compReg.getNodeCount() < primary.getRegion().getNodeCount()) {
@@ -2813,6 +3127,7 @@ public class LogicTreeHazardCompare {
 		}
 		
 		table.finalizeLine();
+		table.addLine(mapStats(primary), mapStats(comparison), mapStats(diffForStats), mapStats(pDiffForStats, true));
 	}
 	
 	public void writeCombinedBranchMap(File resourcesDir, String prefix, String fullTitle, MapPlot meanMap,
@@ -3023,6 +3338,9 @@ public class LogicTreeHazardCompare {
 			y += secondaryHeightEach;
 		}
 		
+		// write scale labels
+		// TODO
+		
 		// write PNG
 		BufferedImage bi = new BufferedImage(totalWidth, totalHeight, BufferedImage.TYPE_INT_ARGB);
 		Graphics2D g2d = bi.createGraphics();
@@ -3032,45 +3350,47 @@ public class LogicTreeHazardCompare {
 		panel.paint(bi.getGraphics());
 		ImageIO.write(bi, "png", new File(resourcesDir, prefix+".png"));
 		
-		// write PDF
-		// step 1
-		Document metadataDocument = new Document(new com.itextpdf.text.Rectangle(
-				totalWidth, totalHeight));
-		metadataDocument.addAuthor("OpenSHA");
-		metadataDocument.addCreationDate();
-//		HeaderFooter footer = new HeaderFooter(new Phrase("Powered by OpenSHA"), true);
-//		metadataDocument.setFooter(footer);
-		try {
-			// step 2
-			PdfWriter writer;
+		if (SolHazardMapCalc.PDFS) {
+			// write PDF
+			// step 1
+			Document metadataDocument = new Document(new com.itextpdf.text.Rectangle(
+					totalWidth, totalHeight));
+			metadataDocument.addAuthor("OpenSHA");
+			metadataDocument.addCreationDate();
+//			HeaderFooter footer = new HeaderFooter(new Phrase("Powered by OpenSHA"), true);
+//			metadataDocument.setFooter(footer);
+			try {
+				// step 2
+				PdfWriter writer;
 
-			writer = PdfWriter.getInstance(metadataDocument,
-					new FileOutputStream(new File(resourcesDir, prefix+".pdf")));
-			// step 3
-			metadataDocument.open();
-			// step 4
-			PdfContentByte cb = writer.getDirectContent();
-			PdfTemplate tp = cb.createTemplate(totalWidth, totalHeight);
+				writer = PdfWriter.getInstance(metadataDocument,
+						new FileOutputStream(new File(resourcesDir, prefix+".pdf")));
+				// step 3
+				metadataDocument.open();
+				// step 4
+				PdfContentByte cb = writer.getDirectContent();
+				PdfTemplate tp = cb.createTemplate(totalWidth, totalHeight);
 
-			FontMapper fontMapper = new PDF_UTF8_FontMapper();
-			g2d = new PdfGraphics2D(tp, totalWidth, totalHeight, fontMapper);
-			
-//			Graphics2D g2d = tp.createGraphics(width, height,
-//					new DefaultFontMapper());
-			panel.paint(g2d);
-			// repaint all chart panels
-			for (Consumer<Graphics2D> redraw : redraws)
-				redraw.accept(g2d);
-//			Rectangle2D r2d = new Rectangle2D.Double(0, 0, totalWidth, totalHeight);
-//			panel.draw(g2d, r2d);
-			g2d.dispose();
-			cb.addTemplate(tp, 0, 0);
+				FontMapper fontMapper = new PDF_UTF8_FontMapper();
+				g2d = new PdfGraphics2D(tp, totalWidth, totalHeight, fontMapper);
+				
+//				Graphics2D g2d = tp.createGraphics(width, height,
+//						new DefaultFontMapper());
+				panel.paint(g2d);
+				// repaint all chart panels
+				for (Consumer<Graphics2D> redraw : redraws)
+					redraw.accept(g2d);
+//				Rectangle2D r2d = new Rectangle2D.Double(0, 0, totalWidth, totalHeight);
+//				panel.draw(g2d, r2d);
+				g2d.dispose();
+				cb.addTemplate(tp, 0, 0);
+			}
+			catch (DocumentException de) {
+				de.printStackTrace();
+			}
+			// step 5
+			metadataDocument.close();
 		}
-		catch (DocumentException de) {
-			de.printStackTrace();
-		}
-		// step 5
-		metadataDocument.close();
 	}
 	
 	private HeadlessGraphPanel drawSimplifiedSecondaryPlot(MapPlot secondaryPlot, PlotPreferences secondaryPrefs,

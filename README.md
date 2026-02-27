@@ -6,7 +6,7 @@ Primary [OpenSHA](https://opensha.org) code repository
 
 | ![Build Status](https://github.com/opensha/opensha/actions/workflows/build_only.yml/badge.svg) | ![Test Status](https://github.com/opensha/opensha/actions/workflows/build_test.yml/badge.svg) | ![Server Status](https://github.com/opensha/opensha/actions/workflows/operational_tests.yml/badge.svg) |
 | --- | --- | --- |
-| This tests for compile errors on the master branch | This runs our standard test suite on the master branch | This runs every 6 hours and tests that our server at opensha.usc.edu is accessible and web services are working |
+| This tests for compile errors on the master branch | This runs our standard test suite on the master branch | This runs every 6 hours and tests that our servers at opensha.usc.edu and globus.org CARC is accessible and web services are working |
 
 ## Compilation and project configuration
 
@@ -60,6 +60,12 @@ Once you have eclipse installed and running, do the following:
 * Hit `Finish`  
 
 You can either use Eclipse's built in Git tools, or the Git command line client to pull/push changes. Any time any of the `.gradle` files are modified, or you see many unexpected compilation errors, right click on the project within eclipse and select `Gradle >  Refresh Gradle Project`.
+
+If that doesn't work and gradle dependency update still fails to take in eclipse (you'll see "Synchronize Gradle projects with workspace failed..." messages in the Error Log), you may need to do the following to fix it:
+
+* Option 1: Remove all projects from eclipse (do not check the delete contents on disk box!), then re-import them following the steps above
+* Option 2: Run this command in the terminal for each project: `./gradlew cleanEclipse eclipse --refresh-dependencies`
+    - Then right click on each project in eclipse and do a refresh (regular refresh, not a gradle refresh) so that eclipse sees that the project classpath files have been updated
 
 ## Repository history
 

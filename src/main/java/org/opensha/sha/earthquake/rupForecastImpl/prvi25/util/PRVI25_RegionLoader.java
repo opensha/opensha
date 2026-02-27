@@ -1,13 +1,21 @@
 package org.opensha.sha.earthquake.rupForecastImpl.prvi25.util;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 
+import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.ShortNamed;
+import org.opensha.commons.data.Site;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.NSHM23_BaseRegion;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalFaultModels;
 
 public class PRVI25_RegionLoader {
 	
@@ -22,27 +30,48 @@ public class PRVI25_RegionLoader {
 	 * @see NSHM23_SeisSmoothingAlgorithms
 	 * 
 	 */
-	public enum PRVI25_SeismicityRegions implements NSHM23_BaseRegion {
-		CAR_INTERFACE("CAR_Interface.geojson"),
-		CAR_INTRASLAB("CAR_Intraslab.geojson"),
-		CRUSTAL("PRVI_Crustal_Grid.geojson"),
-		MUE_INTERFACE("MUE_Interface.geojson"),
-		MUE_INTRASLAB("MUE_Intraslab.geojson");
+	public enum PRVI25_SeismicityRegions implements NSHM23_BaseRegion, ShortNamed {
+		CAR_INTERFACE("CAR_Interface.geojson", "Caribbean Interface", "CAR Interface"),
+		CAR_INTRASLAB("CAR_Intraslab.geojson", "Caribbean Intraslab", "CAR Intraslab"),
+		CRUSTAL("PRVI_Crustal_Grid.geojson", "Crustal", "Crustal"),
+		MUE_INTERFACE("MUE_Interface.geojson", "Muertos Interface", "MUE Interface"),
+		MUE_INTRASLAB("MUE_Intraslab.geojson", "Muertos Intraslab", "MUE Intraslab");
 		
 		private String fileName;
+		private String name;
+		private String shortName;
 
-		private PRVI25_SeismicityRegions(String fileName) {
+		private PRVI25_SeismicityRegions(String fileName, String name, String shortName) {
 			this.fileName = fileName;
+			this.name = name;
+			this.shortName = shortName;
 		}
 		
 		public String getResourcePath() {
 			return SEIS_REG_PATH+"/"+fileName;
+		}
+		
+		@Override
+		public String getName() {
+			return name;
+		}
+
+		@Override
+		public String getShortName() {
+			return shortName;
 		}
 	}
 	
 	public static Region loadPRVI_Tight() throws IOException {
 		BufferedReader reader = new BufferedReader(new InputStreamReader(
 				PRVI25_RegionLoader.class.getResourceAsStream(DIR+"/prvi-map.geojson")));
+		FeatureCollection features = FeatureCollection.read(reader);
+		return Region.fromFeature(features.features.get(1));
+	}
+	
+	public static Region loadPRVI_TightOld() throws IOException {
+		BufferedReader reader = new BufferedReader(new InputStreamReader(
+				PRVI25_RegionLoader.class.getResourceAsStream(DIR+"/prvi-map-original.geojson")));
 		FeatureCollection features = FeatureCollection.read(reader);
 		return Region.fromFeature(features.features.get(1));
 	}
@@ -54,14 +83,43 @@ public class PRVI25_RegionLoader {
 		return Region.fromFeature(features.features.get(0));
 	}
 	
+	public static Region loadPRVI_MapExtentsOld() throws IOException {
+		BufferedReader reader = new BufferedReader(new InputStreamReader(
+				PRVI25_RegionLoader.class.getResourceAsStream(DIR+"/prvi-map-original.geojson")));
+		FeatureCollection features = FeatureCollection.read(reader);
+		return Region.fromFeature(features.features.get(0));
+	}
+	
+	public static Region loadPRVI_IntermediateModelMapExtents() throws IOException {
+		return new Region(new Location(16.4,-70), new Location(20.2,-62));
+	}
+	
 	public static Region loadPRVI_ModelBroad() throws IOException {
 //		return new Region(new Location(16.5d, -70d), new Location(20, -62));
-		return PRVI25_SeismicityRegions.CRUSTAL.load();
+		Region reg = PRVI25_SeismicityRegions.CRUSTAL.load();
+		reg = reg.clone();
+		reg.setName("PRVI - Model Region");
+		return reg;
+	}
+	
+	public static List<Site> loadHazardSites() throws IOException {
+		CSVFile<String> csv = CSVFile.readStream(PRVI25_CrustalFaultModels.class.getResourceAsStream("/data/erf/prvi25/sites/prvi_sites.csv"), true);
+		List<Site> sites = new ArrayList<>();
+		for (int row=1; row<csv.getNumRows(); row++) {
+			String name = csv.get(row, 0);
+			Location loc = new Location(csv.getDouble(row, 2), csv.getDouble(row, 1));
+			sites.add(new Site(loc, name));
+		}
+		return sites;
 	}
 
 	public static void main(String[] args) throws IOException {
 		for (PRVI25_SeismicityRegions seisReg : PRVI25_SeismicityRegions.values())
 			seisReg.load();
+		
+		File origDir = new File("/data/kevin/nshm23/batch_inversions/2025_01_28-prvi03_original_model/");
+		Feature.write(loadPRVI_TightOld().toFeature(), new File(origDir, "orig_tight.geojson"));
+		Feature.write(loadPRVI_MapExtentsOld().toFeature(), new File(origDir, "orig_extents.geojson"));
 	}
 
 }

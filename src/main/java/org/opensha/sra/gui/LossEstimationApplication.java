@@ -61,10 +61,10 @@ import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.commons.util.bugReports.BugReport;
 import org.opensha.commons.util.bugReports.BugReportDialog;
-import org.opensha.commons.util.bugReports.DefaultExceptoinHandler;
+import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.HazardCurveCalculatorAPI;
-import org.opensha.sha.calc.params.MaxDistanceParam;
+import org.opensha.sha.calc.sourceFilters.params.MaxDistanceParam;
 import org.opensha.sha.earthquake.ERF_Ref;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.BaseERF;
@@ -96,6 +96,7 @@ import org.opensha.sra.vulnerability.models.curee.caltech.CCSmallHouseTypical;
 import org.opensha.sra.vulnerability.models.curee.caltech.CCTownhouseLimitedDrift;
 import org.opensha.sra.vulnerability.models.curee.caltech.CCTownhouseTypical;
 import org.opensha.sra.vulnerability.models.servlet.VulnerabilityServletAccessor;
+import org.opensha.sra.vulnerability.models.servlet.VulnerabilityLocalAccessor;
 import org.opensha.sra.gui.components.GuiBeanAPI;
 import org.opensha.sra.gui.components.VulnerabilityBean;
 
@@ -290,6 +291,7 @@ implements Runnable, ParameterChangeListener, CurveDisplayAppAPI, IMR_GuiBeanAPI
 	
 	public static List<AbstractVulnerability> fetchVulns() throws IOException {
 		VulnerabilityServletAccessor access = new VulnerabilityServletAccessor();
+//		VulnerabilityLocalAccessor access = new VulnerabilityLocalAccessor();
 		ArrayList<AbstractVulnerability> vms = new ArrayList<AbstractVulnerability>();
 		for (Vulnerability vuln : access.getVulnMap().values()) {
 			if (vuln instanceof AbstractVulnerability)
@@ -555,7 +557,7 @@ implements Runnable, ParameterChangeListener, CurveDisplayAppAPI, IMR_GuiBeanAPI
 	//Main method
 	public static void main(String[] args) {
 		new DisclaimerDialog(APP_NAME, APP_SHORT_NAME, getAppVersion());
-		DefaultExceptoinHandler exp = new DefaultExceptoinHandler(
+		DefaultExceptionHandler exp = new DefaultExceptionHandler(
 				APP_SHORT_NAME, getAppVersion(), null, null);
 		Thread.setDefaultUncaughtExceptionHandler(exp);
 		
@@ -633,6 +635,7 @@ implements Runnable, ParameterChangeListener, CurveDisplayAppAPI, IMR_GuiBeanAPI
 	protected void createCalcInstance(){
 		try {
 			calc = new HazardCurveCalculator();
+			calc.setTrackProgress(true);
 		}
 		catch (Exception ex) {
 			ex.printStackTrace();
@@ -895,7 +898,7 @@ implements Runnable, ParameterChangeListener, CurveDisplayAppAPI, IMR_GuiBeanAPI
 			(ArbitrarilyDiscretizedFunc)calc.getAnnualizedRates(currentHazardCurve, 
 					forecast.getTimeSpan().getDuration());
 		getAnnualizedPE(currentAnnualizedRates);
-	}*/
+	}*/	
 		AbstractVulnerability vuln = vulnBean.getCurrentModel();
 		Preconditions.checkNotNull(vuln, "Vulnerability model is null");
 		System.out.println("Vuln model: "+vuln.getName()+" ("+vuln.getClass()+")");

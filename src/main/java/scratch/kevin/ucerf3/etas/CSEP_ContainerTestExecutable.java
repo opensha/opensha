@@ -80,7 +80,6 @@ public class CSEP_ContainerTestExecutable {
 		/*
 		 * INPUTS
 		 */
-		AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF = 2.55;
 		ETAS_Simulator.D = false;
 		
 		lastEventData = LastEventData.load();

@@ -9,10 +9,9 @@ import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
-import org.opensha.sha.calc.params.filters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilter;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EqkRupture;
-import org.opensha.sha.faultSurface.utils.PtSrcDistCorr;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -24,7 +23,7 @@ import org.opensha.sha.util.TectonicRegionType;
  * @version 1.0
  */
 
-public interface HazardCurveCalculatorAPI {
+public interface HazardCurveCalculatorAPI extends CalculatorAPI {
 
 	/**
 	 * Get the adjustable parameter list of calculation parameters
@@ -39,20 +38,6 @@ public interface HazardCurveCalculatorAPI {
 	 * @return parameter iterator
 	 */
 	public ListIterator<Parameter<?>> getAdjustableParamsIterator();
-	
-	/**
-	 * This sets the type of point-source distance correction that is desired
-	 * (see the class PtSrcDistCorr for options)
-	 * @param ptSrcDistCorrType
-	 */
-	public void setPtSrcDistCorrType(PtSrcDistCorr.Type ptSrcDistCorrType);
-
-	/**
-	 * This gets the type of point-source distance correction that is desired
-	 * (see the class PtSrcDistCorr for options)
-	 * @param ptSrcDistCorrType
-	 */
-	public PtSrcDistCorr.Type getPtSrcDistCorrType();
 	
 	/**
 	 * This gets a list of source filters (e.g., distance, magnitude, etc) used to speed up
@@ -211,25 +196,40 @@ public interface HazardCurveCalculatorAPI {
 			Site site, ScalarIMR imr, EqkRupture rupture);
 
 
+	/**
+	 * Enables progress tracking
+	 * 
+	 * @see {@link #getCurrRuptures()}
+	 * @see {@link #getTotRuptures()}
+	 * @param trackProgress
+	 */
+	public void setTrackProgress(boolean trackProgress);
+	
+	/**
+	 * Returns the status of progress tracking
+	 * 
+	 * @see {@link #setTrackProgress(boolean)}
+	 * @return true if progress tracking is enabled
+	 */
+	public boolean isTrackProgress();
 
 	/**
-	 * gets the current rupture that is being processed
+	 * gets the current rupture that is being processed, or -1 if progress tracking disabled
 	 * 
-	 * @returncurrent rupture that is being processed
+	 * @see {@link #setTrackProgress(boolean)}
+	 * @see {@link #isTrackProgress()}
+	 * @return current rupture that is being processed
 	 */
 	public int getCurrRuptures();
 
 	/**
-	 * gets the total number of ruptures.
+	 * gets the total number of ruptures, or -1 if progress tracking disabled
 	 * 
+	 * @see {@link #setTrackProgress(boolean)}
+	 * @see {@link #isTrackProgress()}
 	 * @return total number of ruptures.
 	 */
 	public int getTotRuptures();
-
-	/**
-	 * stops the Hazard Curve calculations.
-	 */
-	public void stopCalc();
 
 	/**
 	 * This function computes an average hazard curve from a number of stochastic event sets

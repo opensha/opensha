@@ -11,6 +11,7 @@ import java.util.concurrent.Callable;
 
 import org.opensha.commons.data.IntegerSampler.ExclusionIntegerSampler;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.logicTree.BranchWeightProvider;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
@@ -21,6 +22,8 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetSubsectioningModel;
+import org.opensha.sha.earthquake.faultSysSolution.RuptureSets;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.CoulombRupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionConfigurationFactory;
@@ -57,8 +60,10 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
+import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SlipAlongRuptureModels;
@@ -78,12 +83,19 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.G
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.AnalyticalSingleFaultInversionSolver;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.ClassicModelInversionSolver;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.PRVI25_GridSourceBuilder;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.SeismicityRateFileLoader.RateType;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalBValues;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalDeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalFaultModels;
-import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_LogicTreeBranch;
-import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_RegionalSeismicity;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalSeismicityRate;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_LogicTree;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SeismicityRateEpoch;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionBValues;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionCaribbeanSeismicityRate;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionCouplingModels;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionDeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionFaultModels;
-import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionMuertosSeismicityRate;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -93,7 +105,7 @@ import com.google.common.collect.Table;
 
 public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory, GridSourceProviderFactory {
 	
-	protected transient Table<RupSetFaultModel, RupturePlausibilityModels, FaultSystemRupSet> rupSetCache = HashBasedTable.create();
+	protected transient RuptureSets.Cache rupSetCache = new RuptureSets.Cache();
 	protected transient Map<RupSetFaultModel, SectionDistanceAzimuthCalculator> distAzCache = new HashMap<>();
 	protected transient File cacheDir;
 	private boolean autoCache = true;
@@ -116,10 +128,12 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 	
 	public static SlipAlongRuptureModelBranchNode SLIP_ALONG_DEFAULT = NSHM23_SlipAlongRuptureModels.UNIFORM;
 	
-	public static boolean ALLOW_CONNECTED_PROXY_FAULTS_DEFAULT = false;
-	private static boolean allowConnectedProxyFaults = ALLOW_CONNECTED_PROXY_FAULTS_DEFAULT;
-	private static final double MAX_PROXY_FAULT_RUP_LEN_DEFAULT = 75d;
-	private static double maxProxyFaultRupLen = MAX_PROXY_FAULT_RUP_LEN_DEFAULT;
+	public static boolean ALLOW_CONNECTED_PROXY_FAULTS = false;
+	public static double MAX_PROXY_FAULT_RUP_LEN = Double.NaN;
+	
+	public static boolean PROXY_FAULT_MAG_CORNERS = true;
+	public static boolean PROXY_FAULT_FORCE_CLASSIC_B_1 = true;
+	public static double PROXY_FAULT_CLASSIC_MMAX = 7.5;
 	
 	public PRVI25_InvConfigFactory() {
 		numItersPerRup = NUM_ITERS_PER_RUP_DEFAULT;
@@ -142,16 +156,21 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 
 	protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) {
 		RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
+		RupSetSubsectioningModel ssm;
+		if (Double.isFinite(SUB_SECT_DDW_FRACT))
+			ssm = SubSectionBuilder.getModel(2, SUB_SECT_DDW_FRACT, Double.NaN);
+		else 
+			ssm = branch.requireValue(RupSetSubsectioningModel.class);
 		RupturePlausibilityModels model = branch.getValue(RupturePlausibilityModels.class);
 		if (model == null) {
 			if (fm instanceof PRVI25_SubductionFaultModels) // Subduction
-				model = RupturePlausibilityModels.SIMPLE_SUBDUCTION; // for now
+				model = RupturePlausibilityModels.SIMPLE_SUBDUCTION;
 			else
 				model = RupturePlausibilityModels.COULOMB;
 		}
 		
 		// check cache
-		FaultSystemRupSet rupSet = rupSetCache.get(fm, model);
+		FaultSystemRupSet rupSet = rupSetCache.get(fm, ssm, model);
 		if (rupSet != null)
 			return rupSet;
 		
@@ -160,17 +179,14 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		RupSetDeformationModel dm = fm.getDefaultDeformationModel();
 		List<? extends FaultSection> subSects;
 		try {
-			if (Double.isFinite(SUB_SECT_DDW_FRACT))
-				subSects = dm.build(fm, 2, SUB_SECT_DDW_FRACT, Double.NaN);
-			else
-				subSects = dm.build(fm);
+			subSects = buildSubSects(rupSet, fm, dm, ssm, branch);
 		} catch (IOException e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
 		
 		RupSetConfig config = model.getConfig(subSects, scale);
 		if (config instanceof CoulombRupSetConfig)
-			((CoulombRupSetConfig)config).setConnectProxyFaults(allowConnectedProxyFaults);
+			((CoulombRupSetConfig)config).setConnectProxyFaults(ALLOW_CONNECTED_PROXY_FAULTS);
 		
 		File cachedRupSetFile = null;
 		if (cacheDir != null) {
@@ -183,7 +199,8 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 				dmMoment += sect.calcMomentRate(false);
 			String momentStr = ((float)dmMoment+"").replace('.', 'p');
 			String rupSetFileName = "rup_set_"+model.getFilePrefix()+"_"
-				+SectionDistanceAzimuthCalculator.getUniqueSectCacheFileStr(subSects)+"_"+momentStr+"_moment.zip";
+				+SectionDistanceAzimuthCalculator.getUniqueSectCacheFileStr(subSects)+"_"+momentStr+"_moment"
+				+(ALLOW_CONNECTED_PROXY_FAULTS ? "_connProxies" : "")+ ".zip";
 			
 			cachedRupSetFile = new File(subDir, rupSetFileName);
 			config.setCacheDir(subDir);
@@ -230,7 +247,7 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		if (rupSet == null)
 			rupSet = config.build(threads);
-		rupSetCache.put(fm, model, rupSet);
+		rupSetCache.put(rupSet, fm, ssm, model);
 		
 		if (cachedRupSetFile != null && !cachedRupSetFile.exists()) {
 			// see if we should write it
@@ -290,9 +307,17 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		RupSetDeformationModel dm = branch.requireValue(RupSetDeformationModel.class);
 		Preconditions.checkState(dm.isApplicableTo(fm),
 				"Fault and deformation models are not compatible: %s, %s", fm.getName(), dm.getName());
+		RupSetSubsectioningModel ssm;
 		if (Double.isFinite(SUB_SECT_DDW_FRACT))
-			return dm.build(fm, 2, SUB_SECT_DDW_FRACT, Double.NaN);
-		return dm.build(fm);
+			ssm = SubSectionBuilder.getModel(2, SUB_SECT_DDW_FRACT, Double.NaN);
+		else 
+			ssm = branch.requireValue(RupSetSubsectioningModel.class);
+		return buildSubSects(rupSet, fm, dm, ssm, branch);
+	}
+	
+	protected List<? extends FaultSection> buildSubSects(FaultSystemRupSet rupSet, RupSetFaultModel fm,
+			RupSetDeformationModel dm, RupSetSubsectioningModel ssm, LogicTreeBranch<?> branch) throws IOException {
+		return dm.build(fm, ssm, branch);
 	}
 
 	@Override
@@ -300,7 +325,6 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 			throws IOException {
 		// we don't trust any modules attached to this rupture set as it could have been used for another calculation
 		// that could have attached anything. Instead, lets only keep the ruptures themselves
-		
 		
 		// override slip rates for the given deformation model
 		List<? extends FaultSection> subSects;
@@ -499,6 +523,8 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 			bVals = SupraSeisBValues.values();
 		else if (branch.hasValue(PRVI25_SubductionBValues.AVERAGE))
 			bVals = PRVI25_SubductionBValues.values();
+		else if (branch.hasValue(PRVI25_SubductionBValues.AVERAGE))
+			bVals = PRVI25_SubductionBValues.values();
 		else
 			bVals = new SectionSupraSeisBValues[] { branch.requireValue(SectionSupraSeisBValues.class) };
 		
@@ -506,7 +532,7 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		if (branch.hasValue(NSHM23_SegmentationModels.AVERAGE))
 			segModels = NSHM23_SegmentationModels.values();
 		else
-			segModels = new NSHM23_SegmentationModels[] { branch.requireValue(NSHM23_SegmentationModels.class) };
+			segModels = new NSHM23_SegmentationModels[] { branch.getValue(NSHM23_SegmentationModels.class) };
 
 		List<LogicTreeBranch<?>> avgBranches = new ArrayList<>();
 		List<Double> avgWeights = new ArrayList<>();
@@ -523,7 +549,8 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 				LogicTreeBranch<LogicTreeNode> subBranch = branchCopy.copy();
 				// now override our values
 				subBranch.setValue(bVal);
-				subBranch.setValue(segModel);
+				if (segModel != null)
+					subBranch.setValue(segModel);
 				
 				double subBranchWeight = 1d;
 				if (bVals.length > 1)
@@ -570,7 +597,8 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 	}
 	
 	private static NSHM23_ConstraintBuilder getConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-		if (branch.hasValue(NSHM23_SegmentationModels.AVERAGE) || branch.hasValue(SupraSeisBValues.AVERAGE) || branch.hasValue(PRVI25_SubductionBValues.AVERAGE))
+		if (branch.hasValue(NSHM23_SegmentationModels.AVERAGE) || branch.hasValue(SupraSeisBValues.AVERAGE)
+				|| branch.hasValue(PRVI25_CrustalBValues.AVERAGE) || branch.hasValue(PRVI25_SubductionBValues.AVERAGE))
 			// return averaged instance, looping over b-values and/or segmentation branches
 			return getAveragedConstraintBuilder(rupSet, branch);
 		return doGetConstraintBuilder(rupSet, branch);
@@ -606,6 +634,43 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		constrBuilder.adjustForActualRupSlips(NSHM23_ConstraintBuilder.ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT,
 				NSHM23_ConstraintBuilder.ADJ_FOR_SLIP_ALONG_DEFAULT);
+		
+		NSHM23_SegmentationModels segModel = branch.getValue(NSHM23_SegmentationModels.class);
+		if (segModel != null && PROXY_FAULT_MAG_CORNERS) {
+			double magCorner;
+			switch (segModel) {
+			case CLASSIC:
+				if (PROXY_FAULT_FORCE_CLASSIC_B_1 || PROXY_FAULT_CLASSIC_MMAX > 0d)
+					// special cases for classic model, disable corner mag
+					magCorner = Double.NaN;
+				else
+					// set to the same as high
+					magCorner = 7.2d;
+				break;
+			case HIGH:
+				magCorner = 7.2d;
+				break;
+			case MID:
+				magCorner = 7.4d;
+				break;
+			case LOW:
+				magCorner = 7.6d;
+				break;
+			case NONE:
+				magCorner = Double.NaN;
+				break;
+			case AVERAGE:
+				// average will actually use truly averaged MFDs so this doesn't really matter
+				magCorner = 7.4d;
+				break;
+
+			default:
+				throw new IllegalStateException("Unexpected segmentation model: "+segModel);
+			}
+			constrBuilder.proxyFaultMagCorner(magCorner);
+		}
+		if (PROXY_FAULT_FORCE_CLASSIC_B_1 && segModel == NSHM23_SegmentationModels.CLASSIC)
+			constrBuilder.proxyFaultBValue(1d);
 		
 		// apply any segmentation adjustments
 		if (hasJumps(rupSet)) {
@@ -793,14 +858,19 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 				exclusionModels.add(exclusionModel);
 		}
 		
-		if (!allowConnectedProxyFaults) {
+		if (!ALLOW_CONNECTED_PROXY_FAULTS) {
 			System.out.println("Excluding jumps to/from proxy faults");
 			exclusionModels.add(new ProxyConnectionExclusionModel());
 		}
 		
-		if (maxProxyFaultRupLen > 0d) {
-			System.out.println("Excluding proxy fault ruptures longer than "+(float)maxProxyFaultRupLen+" km");
-			exclusionModels.add(new ProxyMaxLenExclusionModel(maxProxyFaultRupLen));
+		if (MAX_PROXY_FAULT_RUP_LEN > 0d) {
+			System.out.println("Excluding proxy fault ruptures longer than "+(float)MAX_PROXY_FAULT_RUP_LEN+" km");
+			exclusionModels.add(new ProxyMaxLenExclusionModel(MAX_PROXY_FAULT_RUP_LEN));
+		}
+		
+		if (PROXY_FAULT_CLASSIC_MMAX > 0d && branch.hasValue(NSHM23_SegmentationModels.CLASSIC)) {
+			System.out.println("Excluding proxy fault ruptures on classic branch with M>"+(float)PROXY_FAULT_CLASSIC_MMAX);
+			exclusionModels.add(new ProxyMaxMagExclusionModel(rupSet, PROXY_FAULT_CLASSIC_MMAX));
 		}
 		
 		if (exclusionModels.isEmpty())
@@ -847,7 +917,7 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 
 		@Override
 		public String getName() {
-			return "Proxy Fault Connections Excluded";
+			return "Proxy Fault Len<"+(float)maxLen+" km";
 		}
 
 		@Override
@@ -863,6 +933,48 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 				}
 			}
 			return true;
+		}
+		
+	}
+	
+	private static class ProxyMaxMagExclusionModel implements BinaryRuptureProbabilityCalc {
+		
+		private double maxMag;
+		private FaultSystemRupSet rupSet;
+		private HashSet<UniqueRupture> excludes = new HashSet<>();
+
+		public ProxyMaxMagExclusionModel(FaultSystemRupSet rupSet, double maxMag) {
+			this.rupSet = rupSet;
+			this.maxMag = maxMag;
+			ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
+			for (int r=0; r<rupSet.getNumRuptures(); r++) {
+				if (rupSet.getMagForRup(r) > maxMag) {
+					boolean isProxy = false;
+					for (FaultSection sect : rupSet.getFaultSectionDataForRupture(r)) {
+						if (sect.isProxyFault()) {
+							isProxy = true;
+							break;
+						}
+					}
+					if (isProxy)
+						excludes.add(cRups.get(r).unique);
+				}
+			}
+		}
+
+		@Override
+		public boolean isDirectional(boolean splayed) {
+			return false;
+		}
+
+		@Override
+		public String getName() {
+			return "Proxy Fault Mmax="+(float)maxMag;
+		}
+
+		@Override
+		public boolean isRupAllowed(ClusterRupture fullRupture, boolean verbose) {
+			return !excludes.contains(fullRupture.unique);
 		}
 		
 	}
@@ -937,9 +1049,9 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 	@Override
 	public LogicTree<?> getGridSourceTree(LogicTree<?> faultTree) {
 		if (faultTree.getBranch(0).hasValue(PRVI25_CrustalFaultModels.class))
-			return LogicTree.buildExhaustive(PRVI25_LogicTreeBranch.levelsCrustalOffFault, true);
+			return LogicTree.buildExhaustive(PRVI25_LogicTree.levelsCrustalOffFault, true);
 		if (faultTree.getBranch(0).hasValue(PRVI25_SubductionFaultModels.class))
-			return LogicTree.buildExhaustive(PRVI25_LogicTreeBranch.levelsSubductionGridded, true);
+			return LogicTree.buildExhaustive(PRVI25_LogicTree.levelsSubductionGridded, true);
 		return null;
 	}
 
@@ -958,47 +1070,243 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		PRVI25_GridSourceBuilder.doPreGridBuildHook(sol, faultBranch);
 	}
 	
-	public static class LimitCrustalBelowObserved extends PRVI25_InvConfigFactory {
+	private static abstract class LimitCrustalBelowObserved extends PRVI25_InvConfigFactory {
 		
-		static double LIMIT_FRACT = 0.9;
-		static double WEIGHT = 1000d;
+		private double limitFract;
+		private double weight;
+
+		protected LimitCrustalBelowObserved(double limitFract, double weight) {
+			this.limitFract = limitFract;
+			this.weight = weight;
+			
+		}
 
 		@Override
 		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
 				int threads) {
 			InversionConfiguration config = super.buildInversionConfig(rupSet, branch, threads);
 			
-			EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(rupSet.getMaxMag());
-			IncrementalMagFreqDist obsMFD = PRVI25_RegionalSeismicity.PREFFERRED.build(PRVI25_SeismicityRegions.CRUSTAL, refMFD,
-					refMFD.getX(refMFD.getClosestXIndex(rupSet.getMaxMag())));
+			EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.OVERALL_MMIN, rupSet.getMaxMag());
+			IncrementalMagFreqDist obsMFD;
+			try {
+				obsMFD = PRVI25_CrustalSeismicityRate.PREFFERRED.build(PRVI25_SeismicityRateEpoch.DEFAULT, refMFD, refMFD.getX(refMFD.getClosestXIndex(rupSet.getMaxMag())));
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
 			RuptureSubSetMappings subsetMappings = rupSet.getModule(RuptureSubSetMappings.class);
-			if (LIMIT_FRACT != 1d)
-				obsMFD.scale(LIMIT_FRACT);
+			if (limitFract != 1d)
+				obsMFD.scale(limitFract);
 			if (subsetMappings != null) {
 				// we're inverting a subset, need to reduce
 				IncrementalMagFreqDist subsetTargets = rupSet.requireModule(InversionTargetMFDs.class).getTotalOnFaultSupraSeisMFD();
 				IncrementalMagFreqDist origTargets = subsetMappings.getOrigRupSet().requireModule(InversionTargetMFDs.class).getTotalOnFaultSupraSeisMFD();
-				Preconditions.checkState(subsetTargets.getMinX() == origTargets.getMinX());
-				Preconditions.checkState(subsetTargets.getMinX() == obsMFD.getMinX());
-				for (int i=0; i<obsMFD.size()&&i<subsetTargets.size(); i++) {
-					double subsetRate = subsetTargets.getY(i);
+				Preconditions.checkState(subsetTargets.getMinX() == origTargets.getMinX(),
+						"%s != %s", subsetTargets.getMinX(), origTargets.getMinX());
+				
+				int mfdOffset = 0;
+				if ((float)subsetTargets.getMinX() != (float)obsMFD.getMinX()) {
+					Preconditions.checkState(subsetTargets.getMinX() <= obsMFD.getMinX(),
+							"Targets MFD minX=%s must be <= obs MFD minX=%s", subsetTargets.getMinX(), obsMFD.getMinX());
+					mfdOffset = subsetTargets.getClosestXIndex(obsMFD.getMinX());
+				}
+				for (int i=0; i<obsMFD.size(); i++) {
+					int targetIndex = i+mfdOffset;
+					if (targetIndex >= subsetTargets.size())
+						break;
+					double targetX = subsetTargets.getX(targetIndex);
+					double obsX = obsMFD.getX(i);
+					Preconditions.checkState((float)obsX == (float)targetX);
+					double subsetRate = subsetTargets.getY(targetIndex);
 					if (subsetRate > 0d) {
-						double origRate = origTargets.getY(i);
+						double origRate = origTargets.getY(targetIndex);
 						double obsRate = obsMFD.getY(i);
-//						if (origRate > obsRate) {
-							// need to reduce
-							obsMFD.set(i, obsRate * subsetRate/origRate);
-//						}
+						// always scale, even if we're not below in this region
+						obsMFD.set(i, obsRate * subsetRate/origRate);
 					}
 				}
 			}
 			
 			MFDInversionConstraint constraint = new MFDInversionConstraint(
-					rupSet, WEIGHT, true, ConstraintWeightingType.NORMALIZED, List.of(obsMFD));
+					rupSet, weight, true, ConstraintWeightingType.NORMALIZED, List.of(obsMFD));
 			
 			config = InversionConfiguration.builder(config).add(constraint).build();
 			
 			return config;
+		}
+		
+	}
+	
+	public static class LimitCrustalBelowObserved_0p9 extends LimitCrustalBelowObserved {
+		
+		static double LIMIT_FRACT = 0.9;
+		static double WEIGHT = 1000d;
+		
+		public LimitCrustalBelowObserved_0p9() {
+			super(LIMIT_FRACT, WEIGHT);
+		}
+	}
+	
+	public static class RateBalanceAndLimitCrustalBelowObserved_0p9 extends LimitCrustalBelowObserved {
+		
+		static double LIMIT_FRACT = 0.9;
+		static double WEIGHT = 1000d;
+		
+		public RateBalanceAndLimitCrustalBelowObserved_0p9() {
+			super(LIMIT_FRACT, WEIGHT);
+			PRVI25_GridSourceBuilder.RATE_BALANCE_CRUSTAL_GRIDDED = true;
+		}
+	}
+	
+	public static class GriddedUseM1Bounds extends PRVI25_InvConfigFactory {
+		
+		public GriddedUseM1Bounds() {
+			PRVI25_CrustalSeismicityRate.TYPE = RateType.M1;
+			PRVI25_SubductionCaribbeanSeismicityRate.TYPE = RateType.M1;
+			PRVI25_SubductionMuertosSeismicityRate.TYPE = RateType.M1;
+		}
+		
+	}
+	
+	public static class GriddedUseM1toMmaxBounds extends PRVI25_InvConfigFactory {
+		
+		public GriddedUseM1toMmaxBounds() {
+			PRVI25_CrustalSeismicityRate.TYPE = RateType.M1_TO_MMAX;
+			PRVI25_SubductionCaribbeanSeismicityRate.TYPE = RateType.M1_TO_MMAX;
+			PRVI25_SubductionMuertosSeismicityRate.TYPE = RateType.M1_TO_MMAX;
+		}
+		
+	}
+	
+	public static class GriddedUseExactBounds extends PRVI25_InvConfigFactory {
+		
+		public GriddedUseExactBounds() {
+			PRVI25_CrustalSeismicityRate.TYPE = RateType.EXACT;
+			PRVI25_SubductionCaribbeanSeismicityRate.TYPE = RateType.EXACT;
+			PRVI25_SubductionMuertosSeismicityRate.TYPE = RateType.EXACT;
+		}
+		
+	}
+
+	
+	public static class GriddedForceCrustalRateBalancing extends PRVI25_InvConfigFactory {
+		
+		public GriddedForceCrustalRateBalancing() {
+			PRVI25_GridSourceBuilder.RATE_BALANCE_CRUSTAL_GRIDDED = true;
+		}
+		
+	}
+
+	
+	public static class GriddedForceSlab2Depths extends PRVI25_InvConfigFactory {
+		
+		public GriddedForceSlab2Depths() {
+			PRVI25_GridSourceBuilder.INTERFACE_USE_SECT_PROPERTIES = false;
+		}
+		
+	}
+
+	
+	public static class NoProxyLengthLimit extends PRVI25_InvConfigFactory {
+		
+		public NoProxyLengthLimit() {
+			MAX_PROXY_FAULT_RUP_LEN = 0d;
+		}
+		
+	}
+
+	
+	public static class MueAsCrustal extends PRVI25_InvConfigFactory {
+		
+		public MueAsCrustal() {
+			MAX_PROXY_FAULT_RUP_LEN = 0d;
+			PRVI25_GridSourceBuilder.MUERTOS_AS_CRUSTAL = true;
+		}
+		
+		public static List<? extends FaultSection> removeMuertosFromInterface(List<? extends FaultSection> origSubSects) {
+			List<FaultSection> modSubSects = new ArrayList<>();
+			// remove muertos
+			for (FaultSection sect : origSubSects) {
+				if (!sect.getSectionName().contains("Muertos")) {
+					if (sect.getSectionId() != modSubSects.size()) {
+						sect = sect.clone();
+						sect.setSectionId(modSubSects.size());
+					}
+					modSubSects.add(sect);
+				}
+			}
+			Preconditions.checkState(modSubSects.size() < origSubSects.size());
+			return modSubSects;
+		}
+		
+		public static List<? extends FaultSection> addMuertosToCrustal(List<? extends FaultSection> origSubSects,
+				RupSetFaultModel fm, RupSetDeformationModel dm, LogicTreeBranch<?> branch) throws IOException {
+			List<FaultSection> modSubSects = new ArrayList<>();
+			
+			modSubSects.addAll(origSubSects);
+			LogicTreeBranch<LogicTreeNode> interfaceBranch = PRVI25_LogicTree.DEFAULT_SUBDUCTION_INTERFACE.copy();
+			if (dm == PRVI25_CrustalDeformationModels.GEOLOGIC_DIST_AVG) {
+				// just use prefferred coupling
+				interfaceBranch.setValue(PRVI25_SubductionCouplingModels.PREFERRED);
+			} else {
+				// use randomly sampled coupling
+				double rand = Math.random();
+				double sumWeight = 0d;
+				for (PRVI25_SubductionCouplingModels coupling : PRVI25_SubductionCouplingModels.values()) {
+					double weight = coupling.getNodeWeight(branch);
+					if (weight > 0) {
+						sumWeight += weight;
+						if (rand <= sumWeight) {
+							interfaceBranch.setValue(coupling);
+							break;
+						}
+					}
+				}
+			}
+			List<? extends FaultSection> interfaceSects = PRVI25_SubductionDeformationModels.FULL.build(
+					PRVI25_SubductionFaultModels.PRVI_SUB_FM_LARGE, interfaceBranch);
+			for (FaultSection sect : interfaceSects) {
+				if (sect.getSectionName().contains("Muertos")) {
+					sect = sect.clone();
+					sect.setSectionId(modSubSects.size());
+					modSubSects.add(sect);
+				}
+			}
+			Preconditions.checkState(modSubSects.size() > origSubSects.size());
+			return modSubSects;
+		}
+
+		@Override
+		protected List<? extends FaultSection> buildSubSects(FaultSystemRupSet rupSet, RupSetFaultModel fm,
+				RupSetDeformationModel dm, RupSetSubsectioningModel ssm, LogicTreeBranch<?> branch) throws IOException {
+			this.cacheDir = null; // we don't want to cache these tests
+			List<? extends FaultSection> origSubSects = super.buildSubSects(rupSet, fm, dm, ssm, branch);
+			List<? extends FaultSection> modSubSects;
+			if (fm instanceof PRVI25_CrustalFaultModels) {
+				modSubSects = addMuertosToCrustal(origSubSects, fm, dm, branch);
+			} else {
+				Preconditions.checkState(fm instanceof PRVI25_SubductionFaultModels);
+				modSubSects = removeMuertosFromInterface(origSubSects);
+			}
+			Preconditions.checkState(!modSubSects.isEmpty());
+			return modSubSects;
+		}
+	}
+	
+	public static class Rates1973scaledTo1900 extends PRVI25_InvConfigFactory {
+		
+		public Rates1973scaledTo1900() {
+		}
+
+		@Override
+		public LogicTree<?> getGridSourceTree(LogicTree<?> faultTree) {
+			LogicTreeNode[] required = {PRVI25_SeismicityRateEpoch.RECENT_SCALED};
+			if (faultTree.getBranch(0).hasValue(PRVI25_CrustalFaultModels.class))
+				return LogicTree.buildExhaustive(PRVI25_LogicTree.levelsCrustalOffFault, true,
+						new BranchWeightProvider.NodeWeightOverrides(required, 1d), required);
+			if (faultTree.getBranch(0).hasValue(PRVI25_SubductionFaultModels.class))
+				return LogicTree.buildExhaustive(PRVI25_LogicTree.levelsSubductionGridded, true,
+						new BranchWeightProvider.NodeWeightOverrides(required, 1d), required);
+			throw new IllegalStateException();
 		}
 		
 	}

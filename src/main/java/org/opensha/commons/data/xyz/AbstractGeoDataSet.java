@@ -152,6 +152,26 @@ public abstract class AbstractGeoDataSet extends AbstractXYZ_DataSet implements 
 	}
 
 	@Override
+	public void add(Point2D point, double z) {
+		add(ptToLoc(point), z);
+	}
+
+	@Override
+	public void add(double x, double y, double z) {
+		add(new Point2D.Double(x, y), z);
+	}
+
+	@Override
+	public void add(int index, double z) {
+		add(getLocation(index), z);
+	}
+
+	@Override
+	public void add(Location loc, double z) {
+		set(loc, z+get(loc));
+	}
+
+	@Override
 	public double get(Point2D point) {
 		return get(ptToLoc(point));
 	}

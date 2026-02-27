@@ -886,6 +886,15 @@ public class DataUtils {
 		}
 		
 		/**
+		 * Returns the center value (average of min and max)
+		 * 
+		 * @return center value
+		 */
+		public double getCenter() {
+			return 0.5*(min + max);
+		}
+		
+		/**
 		 * Returns the length of the range
 		 * 
 		 * @return getMax()-getMin()

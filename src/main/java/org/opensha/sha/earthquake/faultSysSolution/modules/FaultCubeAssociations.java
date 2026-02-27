@@ -27,6 +27,7 @@ import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
+import org.opensha.commons.util.modules.helpers.LargeCSV_BackedModule;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
@@ -201,7 +202,7 @@ public interface FaultCubeAssociations extends FaultGridAssociations {
 						System.out.println("Lazily loading cube associations...");
 						CSVReader csv;
 						try {
-							csv = CSV_BackedModule.loadLargeFileFromArchive(sourceInput, sourceZipEntryPrefix, ARCHIVE_CUBE_ASSOC_FILE_NAME);
+							csv = LargeCSV_BackedModule.loadFromArchive(sourceInput, sourceZipEntryPrefix, ARCHIVE_CUBE_ASSOC_FILE_NAME);
 						} catch (IOException e) {
 							throw ExceptionUtils.asRuntimeException(e);
 						}

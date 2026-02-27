@@ -15,6 +15,7 @@ import org.opensha.commons.logicTree.DoesNotAffect.NotAffected;
 import org.opensha.commons.logicTree.LogicTreeBranch.NodeTypeAdapter;
 import org.opensha.commons.logicTree.LogicTreeNode.FileBackedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.RandomlySampledNode;
+import org.opensha.commons.util.FileNameUtils;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 
 import com.google.common.base.Preconditions;
@@ -29,6 +30,10 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 	public abstract List<? extends E> getNodes();
 	
 	public abstract boolean isMember(LogicTreeNode node);
+	
+	public String getFilePrefix() {
+		return FileNameUtils.simplify(getShortName());
+	}
 	
 	/**
 	 * Determines if this level affects the given thing (e.g., a file name or some sort of property key).
@@ -539,14 +544,20 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		
 		private boolean writeNodes;
 		private NodeTypeAdapter nodeAdapter;
+		private boolean forceFileBacked;
 
 		public Adapter() {
 			this(true);
 		}
 		
 		public Adapter(boolean writeNodes) {
+			this(writeNodes, false);
+		}
+		
+		public Adapter(boolean writeNodes, boolean forceFileBacked) {
 			this.writeNodes = writeNodes;
-			nodeAdapter = new NodeTypeAdapter(null);
+			this.forceFileBacked = forceFileBacked;
+			nodeAdapter = new NodeTypeAdapter(null, forceFileBacked);
 		}
 
 		@Override
@@ -655,7 +666,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			
 			LogicTreeLevel<E> level = null;
 			
-			if (enumClassName != null) {
+			if (!forceFileBacked && enumClassName != null) {
 				// load it as an enum
 				try {
 					Class<?> rawClass = Class.forName(enumClassName);
@@ -686,7 +697,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 						level.setAffected(affected, notAffected, true);
 				}
 			}
-			if (level == null && className != null) {
+			if (!forceFileBacked && level == null && className != null) {
 				// try to load it as a class via default constructor
 				try {
 					Class<?> rawClass = Class.forName(className);

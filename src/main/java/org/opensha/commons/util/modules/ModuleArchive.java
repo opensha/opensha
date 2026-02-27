@@ -327,14 +327,22 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 					}
 					subModule.setParent(container);
 				}
-				((ArchivableModule)module).initFromArchive(input, record.path);
 				if (module instanceof ModuleContainer<?>) {
+					// this module is a container itself, register all available sub-modules
+					// this won't actually load them
 					ModuleContainer<?> moduleContainer = (ModuleContainer<?>)module;
 					loadModules(moduleContainer, input, record.path, null, prevPrefixes, verbose);
 					int availableModules = moduleContainer.getAvailableModules().size();
 					if (availableModules > 0 && verbose)
 						System.out.println("Loaded "+availableModules+" available sub-modules");
 				}
+				// initFromArchive needs to be after available sub-module loading (above) because initFromArchive may
+				// check for the existence of modules before, e.g., looking for (and loading) any unlisted models, or
+				// attaching default versions.
+				// This doesn't break any sub-module dependency on the main module being loaded because the above code
+				// only registers them as available (without actually loading them); any sub-module loading will still
+				// occur after module initialization below
+				((ArchivableModule)module).initFromArchive(input, record.path);
 				return (E)module;
 			} catch (Exception e) {
 				e.printStackTrace();

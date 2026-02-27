@@ -28,6 +28,7 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader;
@@ -279,9 +280,7 @@ public class PoliticalBoundariesData {
 					continue;
 				XY_DataSet[] regOutlines = outlines.get(regName);
 				
-				String outFName = regName.replaceAll("\\W+", "_")+".txt";
-				while (outFName.contains("__"))
-					outFName = outFName.replace("__", "_");
+				String outFName = FileNameUtils.simplify(regName);
 				
 				File outFile = new File(subDir, outFName);
 				FileWriter fw = new FileWriter(outFile);

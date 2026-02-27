@@ -43,8 +43,18 @@ public class InversionMisfits implements ArchivableModule, AverageableModule<Inv
 	public InversionMisfits(List<ConstraintRange> constraintRanges, double[] misfits, double[] data,
 			double[] misfits_ineq, double[] data_ineq) {
 		this.constraintRanges = constraintRanges;
+		if (misfits != null) {
+			Preconditions.checkNotNull(data, "misfits supplied but data are null");
+			Preconditions.checkState(misfits.length == data.length,
+					"misfits has %s values but data has %s", misfits.length, data.length);
+		}
 		this.misfits = misfits;
 		this.data = data;
+		if (misfits_ineq != null) {
+			Preconditions.checkNotNull(data_ineq, "misfits_ineq supplied but data_ineq are null");
+			Preconditions.checkState(misfits_ineq.length == data_ineq.length,
+					"misfits_ineq has %s values but data_ineq has %s", misfits_ineq.length, data_ineq.length);
+		}
 		this.misfits_ineq = misfits_ineq;
 		this.data_ineq = data_ineq;
 	}
@@ -83,10 +93,10 @@ public class InversionMisfits implements ArchivableModule, AverageableModule<Inv
 	public double[] getMisfits(ConstraintRange range, boolean removeWeighting) {
 		double[] ret;
 		if (range.inequality) {
-			Preconditions.checkNotNull(misfits_ineq, "Inequality range supplied but not inequality misfits found");
+			Preconditions.checkNotNull(misfits_ineq, "Inequality range supplied but no inequality misfits found");
 			ret = getInRange(range, misfits_ineq);
 		} else {
-			Preconditions.checkNotNull(misfits, "Equality range supplied but not equality misfits found");
+			Preconditions.checkNotNull(misfits, "Equality range supplied but no equality misfits found");
 			ret = getInRange(range, misfits);
 		}
 		if (removeWeighting) {
@@ -183,7 +193,7 @@ public class InversionMisfits implements ArchivableModule, AverageableModule<Inv
 	private static void writeData(double[] misfits, double[] data,
 			String entryPrefix, String fileName, ArchiveOutput output) throws IOException {
 		CSVFile<String> csv = new CSVFile<>(true);
-		Preconditions.checkState(misfits.length == data.length, "%s != %s");
+		Preconditions.checkState(misfits.length == data.length, "%s != %s", misfits.length, data.length);
 		csv.addLine("Row", "Data", "Misfit");
 		for (int i=0; i<misfits.length; i++)
 			csv.addLine(i+"", data[i]+"", misfits[i]+"");

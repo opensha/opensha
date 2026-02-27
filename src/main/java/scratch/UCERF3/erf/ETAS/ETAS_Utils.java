@@ -2549,7 +2549,7 @@ System.out.println(sectID+"\t"+primaryFromSupraArray[sectID]+"\t"+resultArray[se
 		SummedMagFreqDist trulyOffMFD = new SummedMagFreqDist(2.55, 8.45, 60);
 		MFDGridSourceProvider gridProvider = erf.getSolution().requireModule(MFDGridSourceProvider.class);
 		for(int n=0; n<gridProvider.getNumLocations(); n++) {
-			ProbEqkSource src = gridProvider.getSourceUnassociated(n, 1.0, null, BackgroundRupType.POINT);
+			ProbEqkSource src = gridProvider.getSourceUnassociated(n, 1.0, null, FaultSystemSolutionERF_ETAS.GRID_SEIS_SETTINGS);
 			if(src != null) {
 				for(ProbEqkRupture rup : src) {
 					trulyOffMFD.add(rup.getMag(), rup.getMeanAnnualRate(1.0));

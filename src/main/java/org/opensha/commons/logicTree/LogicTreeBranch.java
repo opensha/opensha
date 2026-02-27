@@ -754,9 +754,15 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 	static class NodeTypeAdapter extends TypeAdapter<LogicTreeNode> {
 		
 		private LogicTreeBranch<?> branch;
+		private boolean forceFileBacked;
 
 		public NodeTypeAdapter(LogicTreeBranch<?> branch) {
+			this(branch, false);
+		}
+
+		public NodeTypeAdapter(LogicTreeBranch<?> branch, boolean forceFileBacked) {
 			this.branch = branch;
+			this.forceFileBacked = forceFileBacked;
 		}
 
 		@Override
@@ -862,20 +868,20 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 			
 			in.endObject();
 
-			if (adapterNode != null) {
+			if (!forceFileBacked && adapterNode != null) {
 				if (adapterNode instanceof AdapterBackedNode)
 					((AdapterBackedNode)adapterNode).init(name, shortName, prefix, weight);
 				return adapterNode;
 			}
 			
-			if (enumClass != null && enumName != null) {
+			if (!forceFileBacked && enumClass != null && enumName != null) {
 				// load it as an enum
 				for (Enum<? extends LogicTreeNode> option : enumClass.getEnumConstants())
 					if (option.name().equals(enumName))
 						return (LogicTreeNode) option;
 			}
 			
-			if (clazz != null) {
+			if (!forceFileBacked && clazz != null) {
 				// try to load it as a class via default constructor
 				try {
 					Constructor<? extends LogicTreeNode> constructor = clazz.getDeclaredConstructor();

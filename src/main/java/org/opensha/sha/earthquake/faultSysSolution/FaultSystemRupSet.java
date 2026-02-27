@@ -30,6 +30,7 @@ import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
+import org.opensha.commons.util.modules.helpers.LargeCSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BuildInfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
@@ -513,8 +514,8 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 
 	@Override
 	public final void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
-		System.out.println("\tLoading ruptures CSV...");
-		CSVReader rupSectsCSV = CSV_BackedModule.loadLargeFileFromArchive(input, entryPrefix, RUP_SECTS_FILE_NAME);
+		if (verbose) System.out.println("\tLoading ruptures CSV...");
+		CSVReader rupSectsCSV = LargeCSV_BackedModule.loadFromArchive(input, entryPrefix, RUP_SECTS_FILE_NAME);
 		CSVFile<String> rupPropsCSV = CSV_BackedModule.loadFromArchive(input, entryPrefix, RUP_PROPS_FILE_NAME);
 		
 		// fault sections
@@ -525,9 +526,9 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			"Fault sections must be provided in order starting with ID=0");
 
 		// load rupture data
-		System.out.println("\tParsing rupture properties CSV");
+		if (verbose) System.out.println("\tParsing rupture properties CSV");
 		RuptureProperties props = new RuptureProperties(rupPropsCSV);
-		System.out.println("\tParsing rupture sections CSV");
+		if (verbose) System.out.println("\tParsing rupture sections CSV");
 		List<List<Integer>> rupSectsList = loadRupSectsCSV(rupSectsCSV, sections.size(), props.mags.length);
 
 		int numRuptures = rupSectsList.size();

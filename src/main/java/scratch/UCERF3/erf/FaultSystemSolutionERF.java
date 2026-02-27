@@ -14,6 +14,7 @@ import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.param.event.ParameterChangeEvent;
+import org.opensha.sha.earthquake.aftershocks.MagnitudeDependentAftershockFilter;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
@@ -195,9 +196,7 @@ public class FaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 	/**
 	 * Put parameters in theParameterList
 	 */
-	protected void createParamList() {
-		super.createParamList();
-		
+	protected void postCreateParamListHook() {
 		adjustableParams.addParameter(applyAftershockFilterParam);
 		adjustableParams.addParameter(aleatoryMagAreaStdDevParam);
 		adjustableParams.addParameter(probModelParam);
@@ -440,7 +439,7 @@ public class FaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 	protected boolean isRuptureIncluded(int fltSystRupIndex) {
 		FaultSystemRupSet rupSet = faultSysSolution.getRupSet();
 		if (rupSet instanceof InversionFaultSystemRupSet)
-			return ((InversionFaultSystemRupSet)rupSet).isRuptureBelowSectMinMag(fltSystRupIndex);
+			return !((InversionFaultSystemRupSet)rupSet).isRuptureBelowSectMinMag(fltSystRupIndex);
 		ModSectMinMags minMags = rupSet.getModule(ModSectMinMags.class);
 		if (minMags != null)
 			return !minMags.isRupBelowSectMinMag(fltSystRupIndex);
@@ -448,7 +447,7 @@ public class FaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 	}
 
 	@Override
-	protected DoubleBinaryOperator getGridSourceAftershockFilter() {
+	protected MagnitudeDependentAftershockFilter getGridSourceAftershockFilter() {
 		return applyAftershockFilter ? AbstractGridSourceProvider.GK_AFTERSHOCK_FILTER : null;
 	}
 

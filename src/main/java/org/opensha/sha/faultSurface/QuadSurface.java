@@ -42,6 +42,7 @@ import org.opensha.sha.faultSurface.cache.CacheEnabledSurface;
 import org.opensha.sha.faultSurface.cache.SurfaceCachingPolicy;
 import org.opensha.sha.faultSurface.cache.SurfaceDistanceCache;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
+import org.opensha.sha.faultSurface.cache.SurfaceCachingPolicy.CacheTypes;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 
 import com.google.common.base.Preconditions;
@@ -112,7 +113,7 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	private FaultTrace[] horzSpansDiscr;
 	
 	// create cache using default caching policy
-	private SurfaceDistanceCache cache = SurfaceCachingPolicy.build(this);
+	private final SurfaceDistanceCache cache;
 	
 	/**
 	 * If true, distance X will use the average strike to extend the trace infinitely, as opposed
@@ -160,10 +161,7 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	}
 	
 	public QuadSurface(FaultSection sect, boolean aseisReducesArea) {
-		this(getTraceBelowSeismogenic(sect, aseisReducesArea),
-				sect.getAveDip(), calcWidth(sect, aseisReducesArea));
-//		this(prefData.getFaultTrace(),
-//				prefData.getAveDip(), calcWidth(prefData, aseisReducesArea));
+		this(getTraceBelowSeismogenic(sect, aseisReducesArea), sect.getAveDip(), sect.getDipDirection(), calcWidth(sect, aseisReducesArea), null);
 	}
 
 	/**
@@ -173,6 +171,26 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	 * @param width down dip width in km
 	 */
 	public QuadSurface(FaultTrace trace, double dip, double width) {
+		this(trace, dip, width, null);
+	}
+
+	/**
+	 * 
+	 * @param trace
+	 * @param dip in degrees
+	 * @param width down dip width in km
+	 * @param cacheType cache type for this surface
+	 */
+	public QuadSurface(FaultTrace trace, double dip, double width, CacheTypes cacheType) {
+		this(trace, dip, trace.getStrikeDirection() + 90d, width, cacheType);
+	}
+	
+	private QuadSurface(FaultTrace trace, double dip, double dipDir, double width, CacheTypes cacheType) {
+		Preconditions.checkState(width > 0d, "Width must be >0 (distance calculations fail otherwise)");
+		if (cacheType == null)
+			cache = SurfaceCachingPolicy.build(this);
+		else
+			cache = SurfaceCachingPolicy.build(this, cacheType);
 		this.trace = trace;
 		this.dipDeg = dip;
 		this.dipRad = dip * TO_RAD;
@@ -180,9 +198,8 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 		rots = new ArrayList<Rotation>();
 		surfs = new ArrayList<Path2D>();
 		
-		// TODO USE DIP DIR FROM FSD
-		avgDipDirRad = (trace.getStrikeDirection() * TO_RAD) + PI_BY_2;
-		avgDipDirDeg = avgDipDirRad * TO_DEG;
+		this.avgDipDirRad = dipDir * TO_RAD;
+		this.avgDipDirDeg = dipDir;
 		
 		initSegments(dipRad, avgDipDirRad, width, trace, rots, surfs);
 		
@@ -827,6 +844,7 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 		this.discr_km = gridSpacing;
 		horzSpans = null;
 		horzSpansDiscr = null;
+		surfLocs = null;
 	}
 
 	@Override

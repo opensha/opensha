@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
@@ -310,7 +311,7 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 					in.endArray();
 					break;
 				case "mappings":
-					mappings = new HashMap<>();
+					mappings = new LinkedHashMap<>();
 					in.beginObject();
 					while (in.hasNext()) {
 						String key = in.nextName();

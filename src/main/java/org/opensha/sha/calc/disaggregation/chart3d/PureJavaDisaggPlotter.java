@@ -33,9 +33,9 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.gui.plot.pdf.PDF_UTF8_FontMapper;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculator;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculator.EpsilonCategories;
+import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
+import org.opensha.sha.calc.sourceFilters.SourceFilters;
 import org.opensha.sha.calc.disaggregation.DisaggregationPlotData;
-import org.opensha.sha.calc.params.filters.SourceFilterManager;
-import org.opensha.sha.calc.params.filters.SourceFilters;
 import org.opensha.sha.earthquake.rupForecastImpl.Frankel96.Frankel96_AdjustableEqkRupForecast;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.MeanUCERF2.MeanUCERF2;
 import org.opensha.sha.imr.AttenRelRef;
@@ -243,7 +243,7 @@ public class PureJavaDisaggPlotter {
 				BaseColor bc = new BaseColor(c.getRed(), c.getGreen(), c.getBlue(), c.getAlpha());
 				para.add(new Phrase( (String) metadata,
 						FontFactory.getFont(
-								PDF_UTF8_FontMapper.LIBERATION_SANS, 10, Font.PLAIN, bc)));
+								PDF_UTF8_FontMapper.SANS, 10, Font.PLAIN, bc)));
 				metadataDocument.add(para);
 			}
 		}

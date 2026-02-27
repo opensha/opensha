@@ -1,16 +1,23 @@
 package org.opensha.sha.imr.attenRelImpl.nshmp;
 
+import static gov.usgs.earthquake.nshmp.gmm.GmmInput.Field.MW;
+import static gov.usgs.earthquake.nshmp.gmm.GmmInput.Field.RJB;
+import static gov.usgs.earthquake.nshmp.gmm.GmmInput.Field.VS30;
 import static org.opensha.commons.geo.GeoTools.TO_RAD;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
-import org.opensha.commons.calc.GaussianDistCalc;
+import org.opensha.commons.calc.GaussianExceedProbCalculator;
 import org.opensha.commons.data.Site;
+import org.opensha.commons.data.WeightedList;
+import org.opensha.commons.data.WeightedValue;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.exceptions.IMRException;
@@ -24,9 +31,9 @@ import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.sha.earthquake.DistCachedERFWrapper.DistCacheWrapperRupture;
 import org.opensha.sha.earthquake.EqkRupture;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.gcim.imr.param.EqkRuptureParams.FocalDepthParam;
+import org.opensha.sha.imr.AbstractIMR;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.param.EqkRuptureParams.DipParam;
 import org.opensha.sha.imr.param.EqkRuptureParams.MagParam;
@@ -65,6 +72,7 @@ import gov.usgs.earthquake.nshmp.gmm.GroundMotionModel;
 import gov.usgs.earthquake.nshmp.gmm.Imt;
 import gov.usgs.earthquake.nshmp.tree.Branch;
 import gov.usgs.earthquake.nshmp.tree.LogicTree;
+import gov.usgs.earthquake.nshmp.tree.LogicTree.Builder;
 
 /**
  * This wraps the Gmm implementations in nshmp-lib: https://code.usgs.gov/ghsc/nshmp/nshmp-lib
@@ -80,15 +88,14 @@ import gov.usgs.earthquake.nshmp.tree.LogicTree;
  * @author kevin
  *
  */
-public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements ParameterChangeListener {
+public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implements ParameterChangeListener {
 	
 	public final static String C = "NSHMP_GMM_WrapperFullParam";
 	
 	// inputs
-	private Gmm gmm;
+//	private Gmm gmm;
 	private String name;
 	private String shortName;
-	private Constraints constraints;
 	private ImmutableList<Field> fieldsUsedList;
 	private EnumSet<Field> fields;
 	private final boolean parameterize;
@@ -103,7 +110,6 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 	private FieldParameterValueManager valueManager;
 	// current GmmInput, reset to null whenever anything changes
 	private GmmInput gmmInput;
-	private EnumMap<Imt, GroundMotionModel> instanceMap;
 	private LogicTree<GroundMotion> gmTree;
 	
 	// if enabled, will cache GmmInputs on a per-rupture basis
@@ -117,56 +123,18 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 	private String defaultIMT = null;
 	private Double defaultPeriod = null; // if SA
 	
-	public NSHMP_GMM_Wrapper(Gmm gmm) {
-		this(gmm, gmm == null ? null : gmm.name());
-	}
+	private GaussianExceedProbCalculator exceedCalc;
 	
-	public NSHMP_GMM_Wrapper(Gmm gmm, boolean parameterize) {
-		this(gmm, gmm == null ? null : gmm.name(), parameterize);
-	}
-	
-	public NSHMP_GMM_Wrapper(Gmm gmm, String shortName) {
-		this(gmm, shortName, true);
-	}
-	
-	public NSHMP_GMM_Wrapper(Gmm gmm, String shortName, boolean parameterize) {
-		this(gmm, shortName, parameterize, null);
-	}
-	
-	public NSHMP_GMM_Wrapper(Gmm gmm, String shortName, boolean parameterize, Component component) {
-		this(gmm, gmm == null ? null : gmm.toString(), shortName, parameterize, component);
-	}
-	
-	public NSHMP_GMM_Wrapper(Gmm gmm, String name, String shortName, boolean parameterize, Component component) {
-		this.gmm = gmm;
+	protected NSHMP_GMM_Wrapper(String name, String shortName, boolean parameterize, Component component) {
 		this.name = name;
 		this.shortName = shortName;
 		this.component = component;
 		this.parameterize = parameterize;
-		
-		instanceMap = new EnumMap<>(Imt.class);
-		
-		if (gmm != null) {
-			this.constraints = gmm.constraints();
-			// figure out which fields are actually used by this GMM
-			ImmutableList.Builder<Field> fieldsUsedListBuilder = ImmutableList.builder();
-			for (Field field : Field.values()) {
-				if (constraints.get(field).isPresent()) {
-					// this field is used
-					
-					// make sure we support this field
-					FieldParameterValueManager.ensureSupported(field);
-					fieldsUsedListBuilder.add(field);
-				}
-			}
-			this.fieldsUsedList = fieldsUsedListBuilder.build();
-			this.fields = EnumSet.copyOf(fieldsUsedList);
-		} else {
-			// create inputs for all fields
-			this.constraints = Constraints.defaults();
-			this.fieldsUsedList = ImmutableList.copyOf(Field.values());
-			this.fields = EnumSet.allOf(Field.class);
-		}
+	}
+	
+	protected void init() {
+		this.fieldsUsedList = initFieldsUsed();
+		this.fields = EnumSet.copyOf(fieldsUsedList);
 		this.valueManager = new FieldParameterValueManager(this);
 		
 		initSupportedIntensityMeasureParams();
@@ -177,6 +145,279 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 		
 		initIndependentParamLists();
 	}
+	
+	public static class Single extends NSHMP_GMM_Wrapper {
+		
+		private Gmm gmm;
+		private EnumMap<Imt, GroundMotionModel> instanceMap;
+		
+		public Single(Gmm gmm) {
+			this(gmm, gmm.name());
+		}
+		
+		public Single(Gmm gmm, boolean parameterize) {
+			this(gmm, gmm.name(), parameterize);
+		}
+		
+		public Single(Gmm gmm, String shortName) {
+			this(gmm, shortName, true);
+		}
+		
+		public Single(Gmm gmm, String shortName, boolean parameterize) {
+			this(gmm, shortName, parameterize, null);
+		}
+		
+		public Single(Gmm gmm, String shortName, boolean parameterize, Component component) {
+			this(gmm, gmm.toString(), shortName, parameterize, component);
+		}
+		
+		public Single(Gmm gmm, String name, String shortName, boolean parameterize, Component component) {
+			super(name, shortName, parameterize, component);
+			Preconditions.checkNotNull(gmm, "Gmm must be supplied; use InputCacheGen if you don't have a Gmm");
+			this.gmm = gmm;
+			instanceMap = new EnumMap<>(Imt.class);
+			init();
+		}
+
+		@Override
+		public Type getType() {
+			return gmm.type();
+		}
+		
+		public Gmm getGmmRef() {
+			return gmm;
+		}
+		
+		private GroundMotionModel getBuildGMM(Imt imt) {
+			Preconditions.checkNotNull(imt);
+			GroundMotionModel gmmInstance = instanceMap.get(imt);
+			if (gmmInstance == null) {
+				gmmInstance = gmm.instance(imt);
+				instanceMap.put(imt, gmmInstance);
+			}
+			return gmmInstance;
+		}
+		
+		/**
+		 * @return a {@link GroundMotionModel} instance parameterized for the current IMT
+		 */
+		public GroundMotionModel getCurrentGMM_Instance() {
+			return getBuildGMM(getCurrentIMT());
+		}
+
+		@Override
+		public LogicTree<GroundMotion> buildGroundMotionTree() {
+			GroundMotionModel gmmInstance = getCurrentGMM_Instance();
+			
+			return gmmInstance.calc(getCurrentGmmInput());
+		}
+
+		@Override
+		protected Set<Imt> getSupportedIMTs() {
+			return gmm.supportedImts();
+		}
+
+		@Override
+		protected ImmutableList<Field> initFieldsUsed() {
+			Constraints constraints = gmm.constraints();
+			ImmutableList.Builder<Field> fieldsUsedListBuilder = ImmutableList.builder();
+			for (Field field : Field.values()) {
+				if (constraints.get(field).isPresent()) {
+					// this field is used
+					
+					// make sure we support this field
+					FieldParameterValueManager.ensureSupported(field);
+					fieldsUsedListBuilder.add(field);
+				}
+			}
+			return fieldsUsedListBuilder.build();
+		}
+
+		@Override
+		protected Object getCustomConstraintRange(Field field) {
+			return gmm.constraints().get(field).get();
+		}
+		
+	}
+	
+	public static class InputCacheGen extends NSHMP_GMM_Wrapper {
+		
+		public InputCacheGen() {
+			super("Cache-generator", "CacheGen", false, null);
+			init();
+		}
+		
+		@Override
+		public void setSite(Site site) {
+			setSite(site, false);
+		}
+
+		@Override
+		public Type getType() {
+			return null;
+		}
+
+		@Override
+		protected LogicTree<GroundMotion> buildGroundMotionTree() {
+			throw new UnsupportedOperationException("This is a cache-building instance only");
+		}
+
+		@Override
+		protected Set<Imt> getSupportedIMTs() {
+			return null;
+		}
+
+		@Override
+		protected ImmutableList<Field> initFieldsUsed() {
+			return ImmutableList.copyOf(Field.values());
+		}
+
+		@Override
+		protected Object getCustomConstraintRange(Field field) {
+			return null;
+		}
+	}
+	
+	public static class WeightedCombination extends NSHMP_GMM_Wrapper {
+		
+		private WeightedList<Gmm> gmms;
+		private List<EnumMap<Imt, GroundMotionModel>> instanceMaps;
+		private List<Constraints> constraintsList;
+		
+		public WeightedCombination(Map<Gmm, Double> gmms, String name, String shortName) {
+			this(gmmMapToList(gmms), name, shortName);
+		}
+		
+		public WeightedCombination(WeightedList<Gmm> gmms, String name, String shortName) {
+			this(gmms, name, shortName, true);
+		}
+		
+		public WeightedCombination(Map<Gmm, Double> gmms, String name, String shortName, boolean parameterize) {
+			this(gmmMapToList(gmms), name, shortName, parameterize, null);
+		}
+		
+		public WeightedCombination(WeightedList<Gmm> gmms, String name, String shortName, boolean parameterize) {
+			this(gmms, name, shortName, parameterize, null);
+		}
+		
+		public WeightedCombination(Map<Gmm, Double> gmms, String name, String shortName, boolean parameterize, Component component) {
+			this(gmmMapToList(gmms), name, shortName, parameterize, component);
+		}
+		
+		public WeightedCombination(WeightedList<Gmm> gmms, String name, String shortName, boolean parameterize, Component component) {
+			super(name, shortName, parameterize, component);
+			Preconditions.checkNotNull(gmms, "Gmms must be supplied; use InputCacheGen if you don't have any Gmms");
+			if (!gmms.isNormalized())
+				gmms.normalize();
+			if (!(gmms instanceof WeightedList.Unmodifiable<?>))
+				gmms = new WeightedList.Unmodifiable<>(gmms);
+			this.gmms = gmms;
+			instanceMaps = new ArrayList<>(gmms.size());
+			for (int i=0; i<gmms.size(); i++)
+				instanceMaps.add(new EnumMap<>(Imt.class));
+			init();
+		}
+		
+		private static WeightedList<Gmm> gmmMapToList(Map<Gmm, Double> map) {
+			WeightedList<Gmm> list = new WeightedList<>(map.size());
+			for (Gmm gmm : map.keySet())
+				list.add(gmm, map.get(gmm));
+			return list;
+		}
+
+		@Override
+		public Type getType() {
+			Type type = null;
+			for (int i=0; i<gmms.size(); i++) {
+				Type subType = gmms.getValue(i).type();
+				if (subType == null || (type != null && type != subType))
+					return null;
+				if (type == null)
+					type = subType;
+			}
+			return type;
+		}
+		
+		private GroundMotionModel getBuildGMM(Gmm gmm, EnumMap<Imt, GroundMotionModel> instanceMap, Imt imt) {
+			Preconditions.checkNotNull(imt);
+			GroundMotionModel gmmInstance = instanceMap.get(imt);
+			if (gmmInstance == null) {
+				gmmInstance = gmm.instance(imt);
+				instanceMap.put(imt, gmmInstance);
+			}
+			return gmmInstance;
+		}
+
+		@Override
+		protected LogicTree<GroundMotion> buildGroundMotionTree() {
+			Builder<GroundMotion> builder = LogicTree.builder("multi-gmms");
+			GmmInput input = getCurrentGmmInput();
+			Imt imt = getCurrentIMT();
+			for (int i=0; i<gmms.size(); i++) {
+				Gmm gmm = gmms.getValue(i);
+				double weight = gmms.getWeight(i);
+				GroundMotionModel model = getBuildGMM(gmm, instanceMaps.get(i), imt);
+				String prefix = gmm.name();
+				LogicTree<GroundMotion> subTree = model.calc(input);
+				if (subTree.size() == 1) {
+					builder.addBranch(prefix, subTree.get(0).value(), weight);
+				} else {
+					for (Branch<GroundMotion> branch : subTree)
+						builder.addBranch(prefix+"-"+branch.id(), branch.value(), branch.weight()*weight);
+				}
+			}
+			return builder.build();
+		}
+
+		@Override
+		protected Set<Imt> getSupportedIMTs() {
+			Set<Imt> ret = null;
+			for (int i=0; i<gmms.size(); i++) {
+				Set<Imt> subIMTs = gmms.getValue(i).supportedImts();
+				if (ret == null)
+					ret = EnumSet.copyOf(subIMTs);
+				else
+					ret.retainAll(subIMTs);
+			}
+			Preconditions.checkState(!ret.isEmpty(), "No common IMTs found among passed in GMMs");
+			return ret;
+		}
+
+		@Override
+		protected ImmutableList<Field> initFieldsUsed() {
+			constraintsList = new ArrayList<>(gmms.size());
+			for (int i=0; i<gmms.size(); i++)
+				constraintsList.add(gmms.getValue(i).constraints());
+			ImmutableList.Builder<Field> builder = ImmutableList.builder();
+			for (Field field : Field.values()) {
+				for (Constraints constraints : constraintsList) {
+					if (constraints.get(field).isPresent()) {
+						// this field is used by at least one Gmm
+						
+						// make sure we support this field
+						FieldParameterValueManager.ensureSupported(field);
+						builder.add(field);
+						break;
+					}
+				}
+			}
+			return builder.build();
+		}
+
+		@Override
+		protected Object getCustomConstraintRange(Field field) {
+			// return the first match
+			for (Constraints constraints : constraintsList) {
+				Optional<?> optional = constraints.get(field);
+				if (optional.isPresent())
+					return optional.get();
+			}
+			throw new IllegalStateException("No Gmms use field "+field);
+		}
+		
+	}
+	
+	protected abstract ImmutableList<Field> initFieldsUsed();
 	
 	/**
 	 * @return immutable list of {@link Field}s used by this GMM
@@ -206,21 +447,13 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 		return imt;
 	}
 	
-	private GroundMotionModel getBuildGMM(Imt imt) {
-		Preconditions.checkNotNull(imt);
-		GroundMotionModel gmmInstance = instanceMap.get(imt);
-		if (gmmInstance == null) {
-			gmmInstance = gmm.instance(imt);
-			instanceMap.put(imt, gmmInstance);
-		}
-		return gmmInstance;
-	}
+	public abstract Type getType();
 	
-	/**
-	 * @return a {@link GroundMotionModel} instance parameterized for the current IMT
-	 */
-	public GroundMotionModel getCurrentGMM_Instance() {
-		return getBuildGMM(getCurrentIMT());
+	public TectonicRegionType getTRT() {
+		Type type = getType();
+		if (type == null)
+			return null;
+		return trtForType(type);
 	}
 	
 	/**
@@ -277,6 +510,8 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 		return treeFilter;
 	}
 	
+	protected abstract LogicTree<GroundMotion> buildGroundMotionTree();
+	
 	/**
 	 * @return nshmp-lib ground motion logic tree for the current IMT and inputs
 	 */
@@ -285,9 +520,14 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 			// already built for these inputs and IMT
 			return gmTree;
 		
-		GroundMotionModel gmmInstance = getCurrentGMM_Instance();
+//		GroundMotionModel gmmInstance = getCurrentGMM_Instance();
+//		
+//		LogicTree<GroundMotion> gmTree = gmmInstance.calc(getCurrentGmmInput());
+//		if (treeFilter != null)
+//			gmTree = treeFilter.filter(gmTree);
+//		this.gmTree = gmTree;
 		
-		LogicTree<GroundMotion> gmTree = gmmInstance.calc(getCurrentGmmInput());
+		LogicTree<GroundMotion> gmTree = buildGroundMotionTree();
 		if (treeFilter != null)
 			gmTree = treeFilter.filter(gmTree);
 		this.gmTree = gmTree;
@@ -297,7 +537,10 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 
 	@Override
 	public double getMean() {
-		LogicTree<GroundMotion> gmTree = getGroundMotionTree();
+		return getWeightedMean(getGroundMotionTree());
+	}
+	
+	public static double getWeightedMean(LogicTree<GroundMotion> gmTree) {
 		if (gmTree.size() == 1)
 			return gmTree.get(0).value().mean();
 		
@@ -315,7 +558,10 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 
 	@Override
 	public double getStdDev() {
-		LogicTree<GroundMotion> gmTree = getGroundMotionTree();
+		return getWeightedStdDev(getGroundMotionTree());
+	}
+
+	public static double getWeightedStdDev(LogicTree<GroundMotion> gmTree) {
 		if (gmTree.size() == 1)
 			return gmTree.get(0).value().sigma();
 		
@@ -335,25 +581,17 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 	public DiscretizedFunc getExceedProbabilities(
 			DiscretizedFunc intensityMeasureLevels)
 			throws ParameterException {
-		LogicTree<GroundMotion> gmTree = getGroundMotionTree();
-		
-		// compute exceedance probability based on truncation type
-		final int sigmaTruncType;
-		if (sigmaTruncTypeParam == null ||
-				sigmaTruncTypeParam.getValue().equals(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_NONE))
-			sigmaTruncType = 0; // none
-		else if (sigmaTruncTypeParam.getValue().equals(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_1SIDED))
-			sigmaTruncType = 1;
-		else if (sigmaTruncTypeParam.getValue().equals(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_2SIDED))
-			sigmaTruncType = 2;
-		else
-			throw new IllegalStateException();
-		double numSig = sigmaTruncLevelParam.getValue();
+		return getWeightedExceedProbabilities(getGroundMotionTree(), exceedCalc, intensityMeasureLevels);
+	}
+	
+	public static DiscretizedFunc getWeightedExceedProbabilities(
+			LogicTree<GroundMotion> gmTree, GaussianExceedProbCalculator exceedCalc, DiscretizedFunc intensityMeasureLevels)
+			throws ParameterException {
 		
 		final int size = intensityMeasureLevels.size();
 		double weightSum = 0d;
 		boolean first = true;
-		double weight, mean, stdDev, x, y, stRndVar;
+		double weight, mean, invStdDev, y, stRndVar;
 		int i;
 		
 		double[] xVals, yVals;
@@ -371,23 +609,23 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 			weight = branch.weight();
 			weightSum += weight;
 			mean = branch.value().mean();
-			stdDev = branch.value().sigma();
+			invStdDev = 1d/branch.value().sigma();
 			for (i=0; i<size; i++) {
-				stRndVar = (xVals[i] - mean) / stdDev;
-				if (sigmaTruncType == 0)
-					y = GaussianDistCalc.getExceedProb(stRndVar);
-				else
-					y = GaussianDistCalc.getExceedProb(stRndVar, sigmaTruncType, numSig);
+				stRndVar = invStdDev*(xVals[i] - mean);
+				y = exceedCalc.getExceedProb(stRndVar);
 				if (first)
 					yVals[i] = y*weight;
 				else
+					// fma = a*b + c
 					yVals[i] = Math.fma(y, weight, yVals[i]);
 			}
 			first = false;
 		}
-		if (weightSum != 1d)
+		if (weightSum != 1d) {
+			weightSum = 1d/weightSum;
 			for (i=0; i<size; i++)
-				yVals[i] /= weightSum;
+				yVals[i] *= weightSum;
+		}
 		if (!(intensityMeasureLevels instanceof LightFixedXFunc))
 			// this means we didn't modify in place, need to set
 			for (i=0; i<size; i++)
@@ -406,7 +644,7 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 			weightSum += weight;
 			double mean = branch.value().mean();
 			double stdDev = branch.value().sigma();
-			double prob = getExceedProbability(mean, stdDev, iml)*weight;
+			double prob = getExceedProbability(mean, stdDev, iml);
 			weightValSum = Math.fma(prob, weight, weightValSum);
 		}
 		if (weightSum == 1d)
@@ -455,21 +693,20 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 		// TODO implement?
 		throw new UnsupportedOperationException("getSA_IML_AtExceedProbSpectrum is unsupported for "+C);
 	}
-
-	@Override
-	public double getTotExceedProbability(PointEqkSource ptSrc, double iml) {
-		throw new UnsupportedOperationException("getTotExceedProbability is unsupported for "+C);
-	}
+	
+	protected abstract Set<Imt> getSupportedIMTs();
 
 	@Override
 	protected void initSupportedIntensityMeasureParams() {
 		supportedIMParams.clear();
 		
-		if (gmm == null)
+//		if (gmm == null)
+//			return;
+//		
+//		Set<Imt> imts = gmm.supportedImts();
+		Set<Imt> imts = getSupportedIMTs();
+		if (imts == null)
 			return;
-		
-		// Create SA Parameter
-		Set<Imt> imts = gmm.supportedImts();
 		boolean hasSA = false;
 		for (Imt imt : imts) {
 			if (imt.isSA()) {
@@ -602,9 +839,11 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 		return getConstraintRange(field, Range.closed(min, max));
 	}
 	
+	protected abstract Object getCustomConstraintRange(Field field);
+	
 	@SuppressWarnings("unchecked")
 	private Range<Double> getConstraintRange(Field field, Range<Double> defaultRange) {
-		Object constraintRange = constraints.get(field).get();
+		Object constraintRange = getCustomConstraintRange(field);
 		if (constraintRange instanceof Range && ((Range<?>)constraintRange).lowerEndpoint() instanceof Double) {
 			// apply any translations (e.g., units)
 			Range<Double> range = (Range<Double>)constraintRange;
@@ -735,6 +974,10 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 	protected void initOtherParams() {
 		super.initOtherParams();
 		
+		sigmaTruncTypeParam.addParameterChangeListener(this);
+		sigmaTruncLevelParam.addParameterChangeListener(this);
+		updateExceedProbCalc();
+		
 		if (component != null) {
 			componentParam = new ComponentParam(component, component);
 			componentParam.setValueAsDefault();
@@ -742,18 +985,29 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 			otherParams.addParameter(componentParam);
 		}
 		
-		if (gmm != null) {
+		Type type = getType();
+		if (type != null) {
 			// tectonic region type
-			Type type = gmm.type();
-			if (type != null) {
-				String typeStr = trtForType(type).toString();
-				StringConstraint options = new StringConstraint();
-				options.addString(typeStr);
-				tectonicRegionTypeParam.setConstraint(options);
-			    tectonicRegionTypeParam.setDefaultValue(typeStr);
-			    tectonicRegionTypeParam.setValueAsDefault();
-			}
+			TectonicRegionType trt = trtForType(type);
+			tectonicRegionTypeParam.setOptions(EnumSet.of(trt));
+		    tectonicRegionTypeParam.setDefaultValue(trt);
+		    tectonicRegionTypeParam.setValueAsDefault();
 		}
+	}
+	
+	private void updateExceedProbCalc() {
+		final int sigmaTruncType;
+		if (sigmaTruncTypeParam == null ||
+				sigmaTruncTypeParam.getValue().equals(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_NONE))
+			sigmaTruncType = 0; // none
+		else if (sigmaTruncTypeParam.getValue().equals(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_1SIDED))
+			sigmaTruncType = 1;
+		else if (sigmaTruncTypeParam.getValue().equals(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_2SIDED))
+			sigmaTruncType = 2;
+		else
+			throw new IllegalStateException();
+		exceedCalc = GaussianExceedProbCalculator.getPrecomputedExceedProbCalc(sigmaTruncType, sigmaTruncLevelParam.getValue());
+//		exceedCalc = new GaussianExceedProbCalculator.Dynamic(sigmaTruncType, sigmaTruncLevelParam.getValue());
 	}
 	
 	public static TectonicRegionType trtForType(Type type) {
@@ -801,24 +1055,37 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 
 	@Override
 	public void setSite(Site site) {
+		this.setSite(site, true);
+	}
+
+	@Override
+	public void setSiteLocation(Location loc) {
+		if (site == null || site.getLocation() != loc) {
+			perRuptureInputCache = null;
+			clearCachedGmmInputs();
+		}
+		super.setSiteLocation(loc);
+	}
+
+	protected void setSite(Site site, boolean requireAllParams) {
 		if (site != this.site)
 			perRuptureInputCache = null;
 		super.setSite(site);
 		clearCachedGmmInputs();
 		
-		// the 'if (gmm != null || site.containsParameter(<param>.NAME))' checks make things work if we're using
+		// the 'if (requireAllParams || site.containsParameter(<param>.NAME))' checks make things work if we're using
 		// this just to pre-cache GmmInputs (gmm == null) and we were passed in a site that doesn't have that parameter
 		if (fields.contains(Field.VS30))
-			if (gmm != null || site.containsParameter(Vs30_Param.NAME))
+			if (requireAllParams || site.containsParameter(Vs30_Param.NAME))
 				valueManager.setParameterValue(Field.VS30, site.getParameter(Double.class, Vs30_Param.NAME).getValue());
 		if (fields.contains(Field.Z1P0))
-			if (gmm != null || site.containsParameter(DepthTo1pt0kmPerSecParam.NAME))
+			if (requireAllParams || site.containsParameter(DepthTo1pt0kmPerSecParam.NAME))
 				valueManager.setParameterValue(Field.Z1P0, site.getParameter(Double.class, DepthTo1pt0kmPerSecParam.NAME).getValue());
 		if (fields.contains(Field.Z2P5))
-			if (gmm != null || site.containsParameter(DepthTo2pt5kmPerSecParam.NAME))
+			if (requireAllParams || site.containsParameter(DepthTo2pt5kmPerSecParam.NAME))
 				valueManager.setParameterValue(Field.Z2P5, site.getParameter(Double.class, DepthTo2pt5kmPerSecParam.NAME).getValue());
 		if (fields.contains(Field.ZSED))
-			if (gmm != null || site.containsParameter(SedimentThicknessParam.NAME))
+			if (requireAllParams || site.containsParameter(SedimentThicknessParam.NAME))
 				valueManager.setParameterValue(Field.ZSED, site.getParameter(Double.class, SedimentThicknessParam.NAME).getValue());
 		
 		setPropagationEffectParams();
@@ -892,8 +1159,11 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 
 	@Override
 	public void parameterChange(ParameterChangeEvent event) {
-		if (event.getParameter() == saPeriodParam || event.getParameter() == saPeriodParam) {
+		Parameter<?> param = event.getParameter();
+		if (param == saPeriodParam || param == saPeriodParam) {
 			clearCachedImt();
+		} else if (param == sigmaTruncLevelParam || param == sigmaTruncTypeParam) {
+			updateExceedProbCalc();
 		} else {
 			clearCachedGmmInputs();
 			perRuptureInputCache = null; // this will only be called when set externally, clear any per-rupture input cache
@@ -906,12 +1176,12 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 		clearCachedImt();
 	}
 	
-	private void clearCachedImt() {
+	protected void clearCachedImt() {
 		imt = null;
 		gmTree = null;
 	}
 	
-	private void clearCachedGmmInputs() {
+	protected void clearCachedGmmInputs() {
 		gmmInput = null;
 		gmTree = null;
 	}

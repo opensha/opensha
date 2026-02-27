@@ -267,7 +267,7 @@ public class NGAW2_WrapperFullParam extends AttenuationRelationship implements P
 	}
 	
 	static FaultStyle getFaultStyle(Double rake) {
-		if (rake == null)
+		if (rake == null || Double.isNaN(rake))
 			return FaultStyle.UNKNOWN;
 		if (rake >= 135 || rake <= -135)
 			// right lateral
@@ -413,10 +413,8 @@ public class NGAW2_WrapperFullParam extends AttenuationRelationship implements P
 		stdDevTypeParam = new StdDevTypeParam(stdDevTypeConstraint);
 		otherParams.addParameter(stdDevTypeParam); 
 		
-		StringConstraint options = new StringConstraint();
-		options.addString(gmpe.get_TRT().toString());
-		tectonicRegionTypeParam.setConstraint(options);
-	    tectonicRegionTypeParam.setDefaultValue(gmpe.get_TRT().toString());
+	    tectonicRegionTypeParam.setOptions(EnumSet.of(gmpe.get_TRT()));
+	    tectonicRegionTypeParam.setDefaultValue(gmpe.get_TRT());
 	    tectonicRegionTypeParam.setValueAsDefault();
 	    
 		epiParam = new EnumParameter<EpistemicOption>(EPISTEMIC_PARAM_NAME,

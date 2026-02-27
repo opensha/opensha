@@ -8,6 +8,7 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.LayoutManager;
 
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -31,7 +32,7 @@ import javax.swing.border.MatteBorder;
  * @version 1.0
  */
 
-public class LabeledBoxPanel extends JPanel{
+public class LabeledBoxPanel extends JPanel {
 
     protected final static String C = "LabeledBoxPanel";
     protected final static boolean D = false;
@@ -196,7 +197,14 @@ public class LabeledBoxPanel extends JPanel{
         jScrollPane1.getViewport().add( editorPanel, ( Object ) null );
         addDefault = false;
     }
+    
+    public JScrollPane getScrollPane() {
+    	return jScrollPane1;
+    }
 
+    public JComponent getContents() {
+    	return editorPanel;
+    }
 
     public void addPanel(JPanel panel){
 

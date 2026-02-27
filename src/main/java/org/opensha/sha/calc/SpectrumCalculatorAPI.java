@@ -8,10 +8,9 @@ import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EqkRupture;
-import org.opensha.sha.faultSurface.utils.PtSrcDistCorr;
 import org.opensha.sha.imr.ScalarIMR;
 
-public interface SpectrumCalculatorAPI {
+public interface SpectrumCalculatorAPI extends CalculatorAPI {
 	/**
 	 *
 	 * @return the current rupture being traversed
@@ -71,18 +70,8 @@ public interface SpectrumCalculatorAPI {
 	 * @return the total number of ruptures in the earthquake rupture forecast model
 	 */
 	public int getTotRuptures();
-
-	/**
-	 * This sets the maximum distance of sources to be considered in the calculation
-	 * (as determined by the getMinDistance(Site) method of ProbEqkSource subclasses).
-	 * Sources more than this distance away are ignored.
-	 * Default value is 250 km.
-	 *
-	 * @param distance: the maximum distance in km
-	 */
-	public void setMaxSourceDistance(double distance);
-
-	public double getMaxSourceDistance();
+	
+	// TODO: methods to get and set source filters if we want programatic access
 
 	/**
 	 *
@@ -104,20 +93,6 @@ public interface SpectrumCalculatorAPI {
 	 * @return
 	 */
 	public ListIterator getAdjustableParamsIterator();
-
-	/**
-	 * This sets the type of point-source distance correction that is desired
-	 * (see the class PtSrcDistCorr for options)
-	 * @param ptSrcDistCorrType
-	 */
-	public void setPtSrcDistCorrType(PtSrcDistCorr.Type ptSrcDistCorrType);
-
-	/**
-	 * This gets the type of point-source distance correction that is desired
-	 * (see the class PtSrcDistCorr for options)
-	 * @param ptSrcDistCorrType
-	 */
-	public PtSrcDistCorr.Type getPtSrcDistCorrType();
 
 
 }

@@ -102,7 +102,7 @@ public class SlipRateInversionConstraint extends InversionConstraint {
 					double high = props.getDouble("HighRate", Double.NaN);
 					double low = props.getDouble("LowRate", Double.NaN);
 					// +/- 2 sigma means that there are 4 sigmas between low and high
-					stdDev = UncertaintyBoundType.TWO_SIGMA.estimateStdDev(meanRate, low, high);
+					stdDev = UncertaintyBoundType.TWO_SIGMA.estimateStdDev(low, high);
 					numInferred++;
 				} else {
 					stdDev = meanRate*defaultFractStdDev;

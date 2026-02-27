@@ -3,8 +3,8 @@ package org.opensha.commons.util.modules.helpers;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
@@ -114,7 +114,11 @@ public interface FileBackedModule extends ArchivableModule {
 		String entryName = ArchivableModule.getEntryName(entryPrefix, fileName);
 		Preconditions.checkNotNull(entryName, "entryName is null. prefix='%s', fileName='%s'", entryPrefix, fileName);
 		
-		return new BufferedInputStream(input.getInputStream(entryName), DEFAULT_BUFFER_SIZE);
+		InputStream is = input.getInputStream(entryName);
+		Preconditions.checkNotNull(is, "Couldn't load input stream for entryName='%s', prefix='%s', fileName='%s'",
+				entryName, entryPrefix, fileName);
+		
+		return new BufferedInputStream(is, DEFAULT_BUFFER_SIZE);
 	}
 	/**
 	 * Initialize this module from the contents of the file (via this stream)

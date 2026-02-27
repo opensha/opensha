@@ -26,11 +26,14 @@ import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetSubsectioningModel;
 import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -53,7 +56,7 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
-public enum NSHM18_DeformationModels implements RupSetDeformationModel {
+public enum NSHM18_DeformationModels implements RupSetDeformationModel, RupSetSubsectioningModel {
 	// TODO somehow honor slip-weight-exceptions.json?
 	GEOL("Geologic", "GEO", 0.8d),
 	BIRD("Bird", "BIRD", 0.1d),
@@ -168,10 +171,13 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 		}
 		
 	}
-	
+
 	@Override
-	public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
+	public List<? extends FaultSection> build(RupSetFaultModel faultModel, RupSetSubsectioningModel subSectionModel,
+			LogicTreeBranch<? extends LogicTreeNode> branch) throws IOException {
 		Preconditions.checkState(isApplicableTo(faultModel), "%s is not applicable to %s", name, faultModel.getName());
+		Preconditions.checkState(subSectionModel == null || subSectionModel == this, "NSHM18/UCERF3 DMs build their own subsections");
+		
 		List<? extends FaultSection> sectsOutsideCA = buildFullSects(NSHM18_FaultModels.NSHM18_WUS_NoCA);
 		
 		List<FaultSection> subsectsOutsideCA = SubSectionBuilder.buildSubSects(sectsOutsideCA);
@@ -181,9 +187,9 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 			// add UCERF3
 			List<? extends FaultSection> u3SubSects;
 			if (this == BRANCH_AVERAGED)
-				u3SubSects = DeformationModels.MEAN_UCERF3.build(FaultModels.FM3_1);
+				u3SubSects = DeformationModels.MEAN_UCERF3.build(FaultModels.FM3_1, null, null);
 			else if (this == GEOL)
-				u3SubSects = DeformationModels.GEOLOGIC.build(FaultModels.FM3_1);
+				u3SubSects = DeformationModels.GEOLOGIC.build(FaultModels.FM3_1, null, null);
 			else
 				throw new IllegalStateException("Can only build stitched NSHM18 w/ U3 DM for geologic or branch averaged");
 			
@@ -208,18 +214,26 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 	}
 
 	@Override
-	public List<? extends FaultSection> build(RupSetFaultModel faultModel, int minPerFault, double ddwFract,
-			double fixedLen) throws IOException {
-		Preconditions.checkState(minPerFault == 2, "minPerFault must be 2 for NSHM18");
-		Preconditions.checkState(ddwFract == 0.5, "ddwFract must be 0.5 for NSHM18");
-		Preconditions.checkState(!(fixedLen > 0d), "fixedLen must be NaN for NSHM18");
-		return build(faultModel);
+	public List<? extends FaultSection> apply(RupSetFaultModel faultModel,
+			LogicTreeBranch<? extends LogicTreeNode> branch, List<? extends FaultSection> subSects) throws IOException {
+		throw new UnsupportedOperationException("Not supported, NSHM18/UCERF3 must build the subsections");
 	}
 
 	@Override
-	public List<? extends FaultSection> buildForSubsects(RupSetFaultModel faultModel,
+	public List<? extends FaultSection> apply(RupSetFaultModel faultModel,
+			LogicTreeBranch<? extends LogicTreeNode> branch, List<? extends FaultSection> fullSects,
 			List<? extends FaultSection> subSects) throws IOException {
 		throw new UnsupportedOperationException("Not supported, NSHM18/UCERF3 must build the subsections");
+	}
+
+	@Override
+	public List<? extends FaultSection> buildSubSects(RupSetFaultModel faultModel,
+			List<? extends FaultSection> fullSections) {
+		try {
+			return build(faultModel, this, null);
+		} catch (IOException e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
 	}
 	
 	static class ActivityProbRecord {
@@ -438,13 +452,13 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 	
 	public static void main(String[] args) throws IOException {
 		System.out.println("Building GEOLOGIC");
-		GEOL.build(NSHM18_FaultModels.NSHM18_WUS_NoCA);
+		GEOL.build(NSHM18_FaultModels.NSHM18_WUS_NoCA, null, null);
 		System.out.println("Building ZENG");
-		ZENG.build(NSHM18_FaultModels.NSHM18_WUS_NoCA);
+		ZENG.build(NSHM18_FaultModels.NSHM18_WUS_NoCA, null, null);
 		System.out.println("Building BIRD");
-		BIRD.build(NSHM18_FaultModels.NSHM18_WUS_NoCA);
+		BIRD.build(NSHM18_FaultModels.NSHM18_WUS_NoCA, null, null);
 		System.out.println("Building BA");
-		BRANCH_AVERAGED.build(NSHM18_FaultModels.NSHM18_WUS_NoCA);
+		BRANCH_AVERAGED.build(NSHM18_FaultModels.NSHM18_WUS_NoCA, null, null);
 		
 //		plotML_Comparison(NSHM18_FaultModels.NSHM18_WUS_NoCA, new WC1994_MagLengthRelationship());
 	}

@@ -58,11 +58,12 @@ public class SparseGutenbergRichterSolver {
 	 * @param mags available magnitudes for this G-R
 	 * @param totMoRate total moment rate to fit
 	 * @param targetBValue target b-value to fit
+	 * @param magCorner corner magnitude for tapered GR if > 0
 	 * @return G-R only using the given magnitude bins, fitting the total moment rate and b-value
 	 */
 	public static IncrementalMagFreqDist getEquivGR(EvenlyDiscretizedFunc refFunc, Collection<Double> mags,
-			double totMoRate, double targetBValue) {
-		return getEquivGR(refFunc, mags, null, false, totMoRate, targetBValue);
+			double totMoRate, double targetBValue, double magCorner) {
+		return getEquivGR(refFunc, mags, null, false, totMoRate, targetBValue, magCorner);
 	}
 	
 	/**
@@ -75,11 +76,12 @@ public class SparseGutenbergRichterSolver {
 	 * @param groupEdgesIncreasingOnly if true, boundaries supplied will only be enforced when spreading to larger magnitudes
 	 * @param totMoRate total moment rate to fit
 	 * @param targetBValue target b-value to fit
+	 * @param magCorner corner magnitude for tapered GR if > 0
 	 * @return G-R only using the given magnitude bins, fitting the total moment rate and b-value
 	 */
 	public static IncrementalMagFreqDist getEquivGR(EvenlyDiscretizedFunc refFunc, Collection<Double> mags,
-			Collection<Double> groupBinEdges, boolean groupEdgesIncreasingOnly, double totMoRate, double targetBValue) {
-		return getEquivGR(refFunc, mags, groupBinEdges, groupEdgesIncreasingOnly, totMoRate, targetBValue, 0d, METHOD_DEFAULT, false);
+			Collection<Double> groupBinEdges, boolean groupEdgesIncreasingOnly, double totMoRate, double targetBValue, double magCorner) {
+		return getEquivGR(refFunc, mags, groupBinEdges, groupEdgesIncreasingOnly, totMoRate, targetBValue, magCorner, 0d, METHOD_DEFAULT, false);
 	}
 	
 	/**
@@ -90,6 +92,7 @@ public class SparseGutenbergRichterSolver {
 	 * @param mags available magnitudes for this G-R
 	 * @param totMoRate total moment rate to fit
 	 * @param targetBValue target b-value to fit
+	 * @param magCorner corner magnitude for tapered GR if > 0
 	 * @param sampleDiscr sampling to use when distributing rates. Small values here (compared to the reference gridding)
 	 * will super-sample the distribution, which may be more accurate but doesn't seem necessary
 	 * @param method method used to spread ruptures from empty bins to neighboring bins
@@ -97,8 +100,8 @@ public class SparseGutenbergRichterSolver {
 	 * @return G-R only using the given magnitude bins, fitting the total moment rate and b-value
 	 */
 	public static IncrementalMagFreqDist getEquivGR(EvenlyDiscretizedFunc refFunc, Collection<Double> mags,
-			double totMoRate, double targetBValue, double sampleDiscr, SpreadingMethod method, boolean preserveRates) {
-		return getEquivGR(refFunc, mags, null, false, totMoRate, targetBValue, sampleDiscr, method, preserveRates);
+			double totMoRate, double targetBValue, double magCorner, double sampleDiscr, SpreadingMethod method, boolean preserveRates) {
+		return getEquivGR(refFunc, mags, null, false, totMoRate, targetBValue, magCorner, sampleDiscr, method, preserveRates);
 	}
 	
 	/**
@@ -118,8 +121,8 @@ public class SparseGutenbergRichterSolver {
 	 * @return G-R only using the given magnitude bins, fitting the total moment rate and b-value
 	 */
 	public static IncrementalMagFreqDist getEquivGR(EvenlyDiscretizedFunc refFunc, Collection<Double> mags,
-			Collection<Double> groupBinEdges, boolean groupEdgesIncreasingOnly, double totMoRate, double targetBValue, double sampleDiscr,
-			SpreadingMethod method, boolean preserveRates) {
+			Collection<Double> groupBinEdges, boolean groupEdgesIncreasingOnly, double totMoRate, double targetBValue,
+			double magCorner, double sampleDiscr, SpreadingMethod method, boolean preserveRates) {
 		double minMag = Double.POSITIVE_INFINITY;
 		double maxMag = Double.NEGATIVE_INFINITY;
 		for (double mag : mags) {
@@ -153,9 +156,17 @@ public class SparseGutenbergRichterSolver {
 		
 		IncrementalMagFreqDist ret = new IncrementalMagFreqDist(refFunc.getMinX(), refFunc.size(), refFunc.getDelta());
 		
-		GutenbergRichterMagFreqDist superSampledGR = new GutenbergRichterMagFreqDist(
-				superSampledDiscretization.getMinX(), superSampledDiscretization.size(),
-				superSampledDiscretization.getDelta(), totMoRate, targetBValue);
+		IncrementalMagFreqDist superSampledGR;
+		if (magCorner > 0d) {
+			TaperedGR_MagFreqDist tapered = new TaperedGR_MagFreqDist(superSampledDiscretization.getMinX(), superSampledDiscretization.size(),
+				superSampledDiscretization.getDelta());
+			tapered.setAllButTotCumRate(superSampledDiscretization.getMinX(), magCorner, totMoRate, targetBValue);
+			superSampledGR = tapered;
+		} else {
+			superSampledGR = new GutenbergRichterMagFreqDist(
+					superSampledDiscretization.getMinX(), superSampledDiscretization.size(),
+					superSampledDiscretization.getDelta(), totMoRate, targetBValue);
+		}
 		
 		// first fill in all bins that have participation
 		boolean allFilled = true;

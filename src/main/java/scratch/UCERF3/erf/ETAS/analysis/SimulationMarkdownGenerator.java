@@ -50,6 +50,7 @@ import com.google.common.io.Files;
 import com.google.common.primitives.Doubles;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.annotations.JsonAdapter;
 
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
@@ -795,6 +796,7 @@ public class SimulationMarkdownGenerator {
 		public final long plotStartTime;
 		public final long plotEndTime;
 		public final int simulationsProcessed;
+		@JsonAdapter(ETAS_Config.FileTypeAdapter.class)
 		public final File dataFile;
 		public final String launcherGitHash;
 		public final Long launcherGitTime;

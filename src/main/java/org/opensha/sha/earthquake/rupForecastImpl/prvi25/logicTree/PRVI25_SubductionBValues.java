@@ -19,11 +19,11 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraS
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum PRVI25_SubductionBValues implements SectionSupraSeisBValues.Constant {
 	
-	B_0p0(0d,		0.2),
-	B_0p25(0.25,	0.2),
-	B_0p5(0.5,		0.2),
-	B_0p75(0.75,	0.2),
-	B_1p0(1d,		0.2),
+	B_0p0(0d,		0.25),
+	B_0p25(0.25,	0.0),
+	B_0p5(0.5,		0.5),
+	B_0p75(0.75,	0.0),
+	B_1p0(1d,		0.25),
 	AVERAGE(0.5,	0d) {
 
 		@Override

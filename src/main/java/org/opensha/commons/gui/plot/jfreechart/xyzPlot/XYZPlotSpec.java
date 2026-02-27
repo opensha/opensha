@@ -33,6 +33,7 @@ public class XYZPlotSpec extends PlotSpec {
 	private XYZ_DataSet xyzData;
 	private CPT cpt;
 	private String zAxisLabel;
+	private boolean includeZlabelInLegend = true;
 	private boolean cptVisible = true;
 	private double cptTickUnit = -1;
 	private RectangleEdge cptPosition = RectangleEdge.TOP;
@@ -99,6 +100,14 @@ public class XYZPlotSpec extends PlotSpec {
 
 	public void setZAxisLabel(String zAxisLabel) {
 		this.zAxisLabel = zAxisLabel;
+	}
+	
+	public boolean isIncludeZlabelInLegend() {
+		return includeZlabelInLegend;
+	}
+	
+	public void setIncludeZlabelInLegend(boolean includeZlabelInLegend) {
+		this.includeZlabelInLegend = includeZlabelInLegend;
 	}
 
 	public RectangleEdge getCPTPosition() {

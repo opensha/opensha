@@ -65,8 +65,7 @@ public class DistCachedERFWrapper extends AbstractERF {
 				List<ProbEqkRupture> rups = new ArrayList<>();
 				for (ProbEqkRupture origRup : source) {
 					RuptureSurface rupSurf = getWrappedSurface(wrappedMap, origRup.getRuptureSurface());
-					rups.add(new ProbEqkRupture(origRup.getMag(), origRup.getAveRake(),
-							origRup.getProbability(), rupSurf, origRup.getHypocenterLocation()));
+					rups.add(new DistCacheWrapperRupture(origRup, rupSurf));
 				}
 				sources.add(new CustomSource(source, sourceSurf, rups));
 			} else {
@@ -83,8 +82,7 @@ public class DistCachedERFWrapper extends AbstractERF {
 					List<ProbEqkRupture> rups = new ArrayList<>();
 					for (ProbEqkRupture origRup : source) {
 						RuptureSurface rupSurf = getWrappedSurface(wrappedMap, origRup.getRuptureSurface());
-						rups.add(new ProbEqkRupture(origRup.getMag(), origRup.getAveRake(),
-								origRup.getProbability(), rupSurf, origRup.getHypocenterLocation()));
+						rups.add(new DistCacheWrapperRupture(origRup, rupSurf));
 					}
 					sources.add(new CustomSource(source, sourceSurf, rups));
 				} else {
@@ -110,7 +108,7 @@ public class DistCachedERFWrapper extends AbstractERF {
 		}
 	}
 	
-	private static RuptureSurface getWrappedSurface(Map<RuptureSurface, CustomCacheWrappedSurface> wrappedMap,
+	public static RuptureSurface getWrappedSurface(Map<RuptureSurface, CustomCacheWrappedSurface> wrappedMap,
 			RuptureSurface origSurf) {
 		RuptureSurface wrappedSurf;
 		if (wrappedMap.containsKey(origSurf))

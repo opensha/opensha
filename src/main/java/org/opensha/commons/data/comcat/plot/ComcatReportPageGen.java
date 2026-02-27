@@ -53,6 +53,7 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
@@ -245,9 +246,7 @@ public class ComcatReportPageGen {
 		DateFormat df = new SimpleDateFormat("yyyy_MM_dd");
 		String name = df.format(new Date(originTime));
 		name += "-"+mainshock.getEventId()+"-M"+optionalDigitDF.format(mainshock.getMag());
-		String placeStripped = placeName.replaceAll("\\W+", "_"); 
-		while (placeStripped.contains("__"))
-			placeStripped = placeStripped.replaceAll("__", "_");
+		String placeStripped = FileNameUtils.simplify(placeName);
 		name += "-"+placeStripped;
 		return name;
 	}

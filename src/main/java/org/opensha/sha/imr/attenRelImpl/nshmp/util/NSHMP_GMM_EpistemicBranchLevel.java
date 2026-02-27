@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 import org.opensha.commons.logicTree.LogicTreeLevel.AdapterBackedLevel;
+import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.imr.attenRelImpl.nshmp.GroundMotionLogicTreeFilter;
 
@@ -108,14 +109,7 @@ public abstract class NSHMP_GMM_EpistemicBranchLevel extends AdapterBackedLevel 
 	
 	private static String getFilePrefix(String shortName) {
 		String filePrefix = shortName.replace("σ", "sig");
-		filePrefix = filePrefix.replaceAll("\\W+", "_");
-		while (filePrefix.contains("  "))
-			filePrefix = filePrefix.replace("__", "_");
-		while (filePrefix.startsWith("_"))
-			filePrefix = filePrefix.substring(1);
-		while (filePrefix.endsWith("_"))
-			filePrefix = filePrefix.substring(0, filePrefix.length()-1);
-		return filePrefix;
+		return FileNameUtils.simplify(filePrefix);
 	}
 
 	@Override

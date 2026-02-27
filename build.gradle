@@ -21,6 +21,8 @@ sourceSets {
             exclude '**/scratchData'
             exclude '**/data/erf/new_zealand_2010'
             exclude '**/data/erf/step/AllCal96ModelDaily.txt'
+            exclude '**/data/erf/ucerf3/EarthquakeCatalog'
+            exclude '**/data/erf/nshm23/seismicity/spatial_seis_pdfs/*/CONUS_EAST'
         }
     }
 }
@@ -69,10 +71,10 @@ task testOperational (type: Test) {
 
 dependencies {
 
-	api "ghsc:nshmp-gmm:1.4.27" // when you update this, also update nshmp-haz in dev to match
+	api "ghsc:nshmp-gmm:1.7.15" // when you update this, also update nshmp-haz in dev to match
 
     api 'com.google.guava:guava:31.1-jre'
-    api 'com.google.code.gson:gson:2.8.9'
+    api 'com.google.code.gson:gson:2.13.2'
     api 'org.jfree:jfreechart:1.5.3'
     api 'org.jfree:org.jfree.chart3d:2.1.0'
     api 'org.dom4j:dom4j:2.1.1'
@@ -101,6 +103,7 @@ dependencies {
     /* no remote repo */
     api files('lib/ncCore-4.0.jar')
     implementation files('lib/mpj-0.38.jar') // MPJ API
+    api files('lib/getfile-all.jar')
     api files('lib/f2jutil.jar') // used by NNLS code
     api files('lib/mpj-task-calculator-1.1.jar') // MPJTaskCalculator
     api files('lib/parallelcolt-0.9.4.jar')
@@ -114,7 +117,7 @@ dependencies {
     testImplementation 'org.mockito:mockito-core:3.5.13'
 }
 
-// TODO: application build tasks
+// application build tasks
 ext {
     appSuffix = '-'+getDate()+'-'+getGitHash()
 }
@@ -124,15 +127,16 @@ createAppTask("appJarAR", "AttenuationRelationshipGUI"+appSuffix, "org.opensha.s
 createAppTask("appJarSM", "ShakeMapGUI"+appSuffix, "org.opensha.sha.gui.ScenarioShakeMapApp")
 createAppTask("appJarSD", "SiteDataGUI"+appSuffix, "org.opensha.commons.data.siteData.gui.SiteDataCombinedApp")
 createAppTask("appJarGMT", "GMTMapApp"+appSuffix, "org.opensha.commons.mapping.gmt.gui.GMT_MapGeneratorApplet")
-createAppTask("appJarIM", "IMEventSetAppV3"+appSuffix, "org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetCalc_v3_0_ASCII")
+createAppTask("appJarIM-CLT", "IMEventSetCLT"+appSuffix, "org.opensha.sha.calc.IM_EventSet.IM_EventSetCalc_v3_0_ASCII")
+createAppTask("appJarIM-GUI", "IMEventSetGUI"+appSuffix, "org.opensha.sha.calc.IM_EventSet.gui.IM_EventSetGUI")
 
 task appZipIM(type: Zip) {
-    dependsOn 'appJarIM'
+    dependsOn 'appJarIM-CLT'
     from ('build/libs/') {
-        include 'IMEventSetAppV3-'+getDate()+'-'+getGitHash()+'.jar'
-        rename (('IMEventSetAppV3-'+getDate()+'-'+getGitHash()+'.jar'), 'IM_EventSetCalc_v3_0_ASCII.jar')
+        include 'IMEventSetCLT-'+getDate()+'-'+getGitHash()+'.jar'
+        rename (('IMEventSetCLT-'+getDate()+'-'+getGitHash()+'.jar'), 'IM_EventSetCalc_v3_0_ASCII.jar')
     }
-    from ('src/main/java/org/opensha/sha/calc/IM_EventSet/v03/') {
+    from ('src/main/java/org/opensha/sha/calc/IM_EventSet/') {
         include '*.txt'
     }
     archiveFileName = 'IM_EventSetCalc_v3_0_ASCII.zip'
@@ -142,5 +146,5 @@ task appZipIM(type: Zip) {
 }
 
 task appJars(type: GradleBuild) {
-     tasks = ['appJarHC', 'appJarHS', 'appJarAR', 'appJarSM', 'appJarSD', 'appJarGMT']
+     tasks = ['appJarHC', 'appJarHS', 'appJarAR', 'appJarSM', 'appJarSD', 'appJarGMT', 'appJarIM-CLT', 'appJarIM-GUI']
 }

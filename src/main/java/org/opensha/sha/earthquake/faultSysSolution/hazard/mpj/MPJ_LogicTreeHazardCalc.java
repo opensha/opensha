@@ -46,23 +46,30 @@ import org.opensha.commons.util.io.archive.ArchiveInput;
 import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ModuleArchive;
 import org.opensha.commons.util.modules.OpenSHA_Module;
-import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
-import org.opensha.sha.calc.params.filters.SourceFilterManager;
-import org.opensha.sha.calc.params.filters.SourceFilters;
-import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter;
-import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
+import org.opensha.sha.calc.sourceFilters.FixedDistanceCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
+import org.opensha.sha.calc.sourceFilters.SourceFilters;
+import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.LogicTreeCurveAverager;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.QuickGriddedHazardMapCalc;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings.ParamOverrideSupplier;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
+import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.imr.AttenRelRef;
+import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.logicTree.ScalarIMRsLogicTreeNode;
 import org.opensha.sha.imr.logicTree.ScalarIMR_ParamsLogicTreeNode;
@@ -89,7 +96,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private SourceFilterManager sourceFilter;
 	
 	private SourceFilterManager siteSkipSourceFilter;
-	private Map<TectonicRegionType, AttenRelRef> gmmRefs;
+	private Map<TectonicRegionType, AttenRelSupplier> gmmRefs;
 	
 //	static final double[] PERIODS_DEFAULT = { 0d, 0.2d, 1d };
 	public static final double[] PERIODS_DEFAULT = { 0d, 1d };
@@ -99,6 +106,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	
 	static final IncludeBackgroundOption GRID_SEIS_DEFAULT = IncludeBackgroundOption.EXCLUDE;
 	private IncludeBackgroundOption gridSeisOp = GRID_SEIS_DEFAULT;
+	
+	private GriddedSeismicitySettings griddedSettings;
 	
 	static final boolean AFTERSHOCK_FILTER_DEFAULT = false;
 	private boolean applyAftershockFilter = AFTERSHOCK_FILTER_DEFAULT;
@@ -123,7 +132,11 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private GridSourceProvider externalGridProv;
 	private SolHazardMapCalc externalGriddedCurveCalc;
 	
+	private FaultSystemSolution externalSol;
+	private SolHazardMapCalc externalSolCurveCalc;
+	
 	private QuickGriddedHazardMapCalc[] quickGridCalcs;
+	private ExecutorService quickGridExec;
 
 	private boolean noMFDs;
 	private boolean noProxyRups;
@@ -134,7 +147,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		this.shuffle = false;
 		
 		File inputFile = new File(cmd.getOptionValue("input-file"));
-		Preconditions.checkState(inputFile.exists());
+		Preconditions.checkState(inputFile.exists(), "Input file doesn't exist: %s", inputFile.getAbsolutePath());
 		if (inputFile.isDirectory()) {
 			Preconditions.checkArgument(cmd.hasOption("logic-tree"), "Must supply logic tree file if input-file is"
 					+ " a results directory");
@@ -165,14 +178,19 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		if (cmd.hasOption("gridded-seis"))
 			gridSeisOp = IncludeBackgroundOption.valueOf(cmd.getOptionValue("gridded-seis"));
 		
+		griddedSettings = FaultSysHazardCalcSettings.getGridSeisSettings(cmd);
+		
+		if (gridSeisOp != IncludeBackgroundOption.EXCLUDE)
+			debug("Gridded settings: "+griddedSettings);
+		
 		if (cmd.hasOption("grid-spacing"))
 			gridSpacing = Double.parseDouble(cmd.getOptionValue("grid-spacing"));
 		
-		sourceFilter = SolHazardMapCalc.getSourceFilters(cmd);
+		sourceFilter = FaultSysHazardCalcSettings.getSourceFilters(cmd);
 		
-		siteSkipSourceFilter = SolHazardMapCalc.getSiteSkipSourceFilters(sourceFilter, cmd);
+		siteSkipSourceFilter = FaultSysHazardCalcSettings.getSiteSkipSourceFilters(sourceFilter, cmd);
 		
-		gmmRefs = SolHazardMapCalc.getGMMs(cmd);
+		gmmRefs = FaultSysHazardCalcSettings.getGMMs(cmd);
 		if (rank == 0) {
 			debug("GMMs:");
 			for (TectonicRegionType trt : gmmRefs.keySet())
@@ -245,9 +263,18 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				externalGridProv = avgArchive.requireModule(GridSourceProvider.class);
 			}
 			Preconditions.checkArgument(gridSeisOp != IncludeBackgroundOption.EXCLUDE,
-					"External grid provider was supplied, but background seismicity is disabled?");
+					"External single grid provider was supplied, but background seismicity is disabled?");
 			
 			resultsInput.close();
+		}
+		
+		if (cmd.hasOption("external-fss")) {
+			File solFile = new File(cmd.getOptionValue("external-fss"));
+			Preconditions.checkState(solFile.exists());
+			externalSol = FaultSystemSolution.load(solFile);
+			
+			Preconditions.checkArgument(gridSeisOp != IncludeBackgroundOption.ONLY,
+					"External single solution was supplied, but only calculating for background seismicity?");
 		}
 		
 		if (gridSeisOp != IncludeBackgroundOption.EXCLUDE) {
@@ -276,7 +303,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			quickGridCalcs = new QuickGriddedHazardMapCalc[periods.length];
 			for (int p=0; p<quickGridCalcs.length; p++)
 				quickGridCalcs[p] = new QuickGriddedHazardMapCalc(gmmRefs, periods[p],
-						SolHazardMapCalc.getDefaultXVals(periods[p]), sourceFilter);
+						FaultSysHazardCalcSettings.getDefaultXVals(periods[p]), sourceFilter, griddedSettings);
 		}
 
 		noMFDs = cmd.hasOption("no-mfds");
@@ -403,6 +430,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				// write logic tree
 				LogicTree<?> tree = solTree.getLogicTree();
 				zout.putNextEntry(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME);
+				writer = new BufferedWriter(new OutputStreamWriter(zout.getOutputStream()));
 				Gson gson = new GsonBuilder().setPrettyPrinting()
 						.registerTypeAdapter(LogicTree.class, new LogicTree.Adapter<>()).create();
 				gson.toJson(tree, LogicTree.class, writer);
@@ -534,6 +562,9 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 
 	@Override
 	protected void doFinalAssembly() throws Exception {
+		if (quickGridExec != null)
+			quickGridExec.shutdown();
+		
 		// write out mean curves
 		// write out branch-specific averages
 		Preconditions.checkState(myAverageDir.exists() || myAverageDir.mkdir());
@@ -597,56 +628,6 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			ret += (float)period+"s";
 		ret += "_"+rp.name();
 		return ret;
-	}
-	
-	public static Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> getGMM_Suppliers(
-			LogicTreeBranch<?> branch, Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> upstream) {
-		if (branch == null)
-			return upstream;
-		
-		Map<TectonicRegionType, Supplier<ScalarIMR>> suppliers;
-		if (branch.hasValue(ScalarIMRsLogicTreeNode.class)) {
-			List<ScalarIMRsLogicTreeNode> gmmNodes = branch.getValues(ScalarIMRsLogicTreeNode.class);
-			suppliers = new EnumMap<>(TectonicRegionType.class);
-			for (ScalarIMRsLogicTreeNode gmmNode : gmmNodes) {
-				Map<TectonicRegionType, Supplier<ScalarIMR>> nodeSuppliers = gmmNode.getSuppliers();
-				for (TectonicRegionType trt : nodeSuppliers.keySet()) {
-					Preconditions.checkState(!suppliers.containsKey(trt),
-							"Multiple ScalarIMRsLogicTreeNode's supply GMMs for %s", trt);
-					suppliers.put(trt, nodeSuppliers.get(trt));
-				}
-			}
-		} else {
-			suppliers = new EnumMap<>(upstream);
-		}
-		
-		// see if we have any GMM parameter logic tree branches
-		for (int i=0; i<branch.size(); i++) {
-			LogicTreeNode node = branch.getValue(i);
-			if (node instanceof ScalarIMR_ParamsLogicTreeNode) {
-				ScalarIMR_ParamsLogicTreeNode params = (ScalarIMR_ParamsLogicTreeNode)node;
-				for (TectonicRegionType trt : List.copyOf(suppliers.keySet())) { // wrap in a list as we will be modifying the map
-					Supplier<ScalarIMR> myUpstream = suppliers.get(trt);
-					suppliers.put(trt, new Supplier<ScalarIMR>() {
-
-						@Override
-						public ScalarIMR get() {
-							ScalarIMR imr = myUpstream.get();
-							if (params.isApplicableTo(imr)) {
-								params.setParams(imr);
-							} else if (suppliers.size() == 1) {
-								throw new IllegalStateException(
-										"Only have 1 GMM ("+imr.getShortName()+"), and the ScalarIMR_ParamsLogicTreeNode ("
-												+node.getShortName()+") isn't applicable to it?");
-							}
-							return imr;
-						}
-					});
-				}
-			}
-		}
-		
-		return suppliers;
 	}
 	
 	private GriddedRegion detectRegion(FaultSystemSolution sol) {
@@ -838,11 +819,14 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						FaultSystemSolution extSol = new FaultSystemSolution(sol.getRupSet(), sol.getRateForAllRups());
 						extSol.setGridSourceProvider(externalGridProv);
 						
-						externalGriddedCurveCalc = new SolHazardMapCalc(extSol, getGMM_Suppliers(branch, gmmRefs), gridRegion,
+						externalGriddedCurveCalc = new SolHazardMapCalc(extSol,
+								FaultSysHazardCalcSettings.getGMM_Suppliers(branch, gmmRefs, true), gridRegion,
 								IncludeBackgroundOption.ONLY, applyAftershockFilter, periods);
 						
 						externalGriddedCurveCalc.setSourceFilter(sourceFilter);
 						externalGriddedCurveCalc.setSiteSkipSourceFilter(siteSkipSourceFilter);
+						externalGriddedCurveCalc.setGriddedSeismicitySettings(griddedSettings);
+						externalGriddedCurveCalc.setCacheGridSources(true);
 						
 						externalGriddedCurveCalc.calcHazardCurves(getNumThreads());
 					}
@@ -850,7 +834,30 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					combineWithOnlyCurves = externalGriddedCurveCalc;
 				}
 				
+				if (externalSol != null && gridSeisOp != IncludeBackgroundOption.ONLY && combineWithExcludeCurves == null) {
+					// we're combining with exclude curves from an external solution file
+					if (externalSolCurveCalc == null) {
+						if (sol == null)
+							sol = solTree.forBranch(branch);
+						// first time, calculate them
+						debug("Calculating external solution curves (will only do this once)");
+						
+						externalSolCurveCalc = new SolHazardMapCalc(externalSol,
+								FaultSysHazardCalcSettings.getGMM_Suppliers(branch, gmmRefs, true), gridRegion,
+								IncludeBackgroundOption.EXCLUDE, applyAftershockFilter, periods);
+						
+						externalSolCurveCalc.setSourceFilter(sourceFilter);
+						externalSolCurveCalc.setSiteSkipSourceFilter(siteSkipSourceFilter);
+						externalSolCurveCalc.setCacheGridSources(false);
+						
+						externalSolCurveCalc.calcHazardCurves(getNumThreads());
+					}
+					
+					combineWithExcludeCurves = externalSolCurveCalc;
+				}
+				
 				if (quickGridCalcs != null && combineWithOnlyCurves == null) {
+					Preconditions.checkState(!combineOnly, "Combine-only flag is set, but we need to calculate gridded only for "+branch);
 					if (sol == null)
 						sol = solTree.forBranch(branch);
 					QuickGriddedHazardMapCalc[] quickGridCalcs = this.quickGridCalcs;
@@ -858,14 +865,16 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						// need to make custom Ones
 						quickGridCalcs = new QuickGriddedHazardMapCalc[periods.length];
 						for (int p=0; p<periods.length; p++)
-							quickGridCalcs[p] = new QuickGriddedHazardMapCalc(getGMM_Suppliers(branch, gmmRefs), periods[p],
-									SolHazardMapCalc.getDefaultXVals(periods[p]), sourceFilter);
+							quickGridCalcs[p] = new QuickGriddedHazardMapCalc(
+									FaultSysHazardCalcSettings.getGMM_Suppliers(branch, gmmRefs, true), periods[p],
+									FaultSysHazardCalcSettings.getDefaultXVals(periods[p]), sourceFilter, griddedSettings);
 					}
 					debug("Doing quick gridded seismicity calc for "+index);
-					Preconditions.checkState(!combineOnly, "Combine-only flag is set, but we need to calculate gridded only for "+branch);
 					List<DiscretizedFunc[]> curves = new ArrayList<>();
+					if (quickGridExec == null)
+						quickGridExec = Executors.newFixedThreadPool(getNumThreads());
 					for (int p=0; p<periods.length; p++)
-						curves.add(quickGridCalcs[p].calc(sol.getGridSourceProvider(), gridRegion, getNumThreads()));
+						curves.add(quickGridCalcs[p].calc(sol.getGridSourceProvider(), gridRegion, quickGridExec, getNumThreads()));
 					combineWithOnlyCurves = SolHazardMapCalc.forCurves(sol, gridRegion, periods, curves);
 					if (gridSeisOp == IncludeBackgroundOption.ONLY)
 						// we'll probably be combining later, write out the curves
@@ -919,7 +928,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			if (calc == null) {
 				if (sol == null)
 					sol = solTree.forBranch(branch);
-				Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeSuppliers = getGMM_Suppliers(branch, gmmRefs);
+				Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeSuppliers = FaultSysHazardCalcSettings.getGMM_Suppliers(branch, gmmRefs, true);
 				String gmpeParamsStr = "";
 				if (gmpeSuppliers.size() == 1) {
 					ScalarIMR gmpe = gmpeSuppliers.values().iterator().next().get();
@@ -929,7 +938,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				}
 				debug("Calculating hazard curves for "+index+", bgOption="+gridSeisOp.name()
 						+", combineExclude="+(combineWithExcludeCurves != null)
-						+", combineOnly="+(combineWithOnlyCurves != null)
+						+", combineOnly="+combineOnly
 						+"\n\tBranch: "+branch
 						+gmpeParamsStr);
 				Preconditions.checkState(!combineOnly, "Combine-only flag is set, but we need to calculate for "+branch);
@@ -949,6 +958,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				}
 				calc.setSourceFilter(sourceFilter);
 				calc.setSiteSkipSourceFilter(siteSkipSourceFilter);
+				calc.setGriddedSeismicitySettings(griddedSettings);
+				calc.setCacheGridSources(true);
 				calc.setAseisReducesArea(aseisReducesArea);
 				calc.setNoMFDs(noMFDs);
 				calc.setUseProxyRups(!noProxyRups);
@@ -1023,7 +1034,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	public static Options createOptions() {
 		Options ops = MPJTaskCalculator.createOptions();
 		
-		SolHazardMapCalc.addCommonOptions(ops, true);
+		FaultSysHazardCalcSettings.addCommonOptions(ops, true);
 		
 		ops.addRequiredOption("if", "input-file", true, "Path to input file (solution logic tree zip)");
 		ops.addOption("lt", "logic-tree", true, "Path to logic tree JSON file, required if a results directory is "
@@ -1043,6 +1054,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		ops.addOption("egp", "external-grid-prov", true, "Path to external grid source provider to use for hazard "
 				+ "calculations. Can be either a fault system solution, or a zip file containing just a grid source "
 				+ "provider.");
+		ops.addOption(null, "external-fss", true, "Path to external fault-system solution to use for hazard "
+				+ "calculations; the regular input-file will only be used for gridded-seismicity.");
 		ops.addOption("qgc", "quick-grid-calc", false, "Flag to enable quick gridded seismicity calculation.");
 		ops.addOption("cwd", "combine-with-dir", true, "Path to a different directory to serach for pre-computed curves "
 				+ "to draw from. Can supply multiple times to specify multiple directories.");

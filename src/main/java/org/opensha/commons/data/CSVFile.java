@@ -55,6 +55,21 @@ public class CSVFile<E> implements Iterable<List<E>> {
 					Preconditions.checkArgument(cols == row.size(),
 							"Values lists aren't the same size!");
 			}
+		} else {
+			// see if they happen to all be the same size anyway
+			int exactCols = -1;
+			for (List<E> row : values) {
+				int size = row.size();
+				if (exactCols < 0) {
+					exactCols = size;
+				} else if (exactCols != size) {
+					exactCols = -1;
+					break;
+				}
+			}
+			if (exactCols >= 0)
+				// they're all the same size anyway
+				cols = exactCols;
 		}
 		this.values = values;
 	}
@@ -64,7 +79,10 @@ public class CSVFile<E> implements Iterable<List<E>> {
 	}
 	
 	/**
-	 * Return the number or rows, or -1 if empty or non strict row sizes
+	 * Returns the number or columns, or -1 if empty or column counts vary across rows.
+	 * 
+	 * If you're not sure that all rows are the exact same size, use {@link CSVFile#getLine(int)}
+	 * instead and then check the {@link List#size()}.
 	 * @return
 	 */
 	public int getNumCols() {

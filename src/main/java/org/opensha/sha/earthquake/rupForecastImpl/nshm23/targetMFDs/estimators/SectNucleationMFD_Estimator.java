@@ -69,7 +69,7 @@ public abstract class SectNucleationMFD_Estimator {
 		gr.setAllButBvalue(minMag, refFunc.getMaxX(), moRate, rate);
 		
 		if (sparseGR)
-			return SparseGutenbergRichterSolver.getEquivGR(refFunc, rupMags, moRate, gr.get_bValue());
+			return SparseGutenbergRichterSolver.getEquivGR(refFunc, rupMags, moRate, gr.get_bValue(), Double.NaN);
 		return gr;
 	}
 	
@@ -85,7 +85,7 @@ public abstract class SectNucleationMFD_Estimator {
 		gr.setAllButTotCumRate(minMag, gr.getMaxX(), moRate, bVal);
 		
 		if (sparseGR)
-			return SparseGutenbergRichterSolver.getEquivGR(refFunc, rupMags, moRate, gr.get_bValue());
+			return SparseGutenbergRichterSolver.getEquivGR(refFunc, rupMags, moRate, gr.get_bValue(), Double.NaN);
 		return gr;
 	}
 	

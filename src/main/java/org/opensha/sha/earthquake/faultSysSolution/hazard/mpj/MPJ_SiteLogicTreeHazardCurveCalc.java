@@ -35,13 +35,16 @@ import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.ExecutorUtils;
+import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.FileUtils;
-import org.opensha.sha.calc.params.filters.SourceFilterManager;
+import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
-import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
+import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.imr.AttenRelRef;
+import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -64,7 +67,9 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 	private static final IncludeBackgroundOption GRID_SEIS_DEFAULT = IncludeBackgroundOption.INCLUDE;
 	private IncludeBackgroundOption gridSeisOp = GRID_SEIS_DEFAULT;
 	
-	private Map<TectonicRegionType, AttenRelRef> gmms;
+	private GriddedSeismicitySettings griddedSettings;
+	
+	private Map<TectonicRegionType, AttenRelSupplier> gmms;
 	
 	private SourceFilterManager sourceFilters;
 	
@@ -125,9 +130,14 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		if (cmd.hasOption("gridded-seis"))
 			gridSeisOp = IncludeBackgroundOption.valueOf(cmd.getOptionValue("gridded-seis"));
 		
-		sourceFilters = SolHazardMapCalc.getSourceFilters(cmd);
+		griddedSettings = FaultSysHazardCalcSettings.getGridSeisSettings(cmd);
 		
-		gmms = SolHazardMapCalc.getGMMs(cmd);
+		if (gridSeisOp != IncludeBackgroundOption.EXCLUDE)
+			debug("Gridded settings: "+griddedSettings);
+		
+		sourceFilters = FaultSysHazardCalcSettings.getSourceFilters(cmd);
+		
+		gmms = FaultSysHazardCalcSettings.getGMMs(cmd);
 		if (rank == 0) {
 			debug("GMMs:");
 			for (TectonicRegionType trt : gmms.keySet())
@@ -150,7 +160,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		File sitesFile = new File(cmd.getOptionValue("sites-file"));
 		Preconditions.checkState(sitesFile.exists());
 		inputSitesCSV = CSVFile.readFile(sitesFile, true);
-		sites = parseSitesCSV(inputSitesCSV, SolHazardMapCalc.getDefaultRefSiteParams(gmms));
+		sites = parseSitesCSV(inputSitesCSV, FaultSysHazardCalcSettings.getDefaultRefSiteParams(gmms));
 		sitePrefixes = new ArrayList<>();
 		siteCSVs = new ArrayList<>();
 		for (Site site : sites) {
@@ -159,7 +169,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 				for (Parameter<?> param : site)
 					debug(param.getName()+": "+param.getValue());
 			}
-			sitePrefixes.add(site.getName().replaceAll("\\W+", "_"));
+			sitePrefixes.add(FileNameUtils.simplify(site.getName()));
 			siteCSVs.add(null);
 		}
 		
@@ -186,7 +196,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		int threads = getNumThreads();
 		exec = ExecutorUtils.newBlockingThreadPool(threads);
 		
-		calc = new AbstractSitewiseThreadedLogicTreeCalc(exec, sites.size(), solTree, gmms, periods, gridSeisOp, sourceFilters) {
+		calc = new AbstractSitewiseThreadedLogicTreeCalc(exec, sites.size(), solTree, gmms, periods, gridSeisOp, griddedSettings, sourceFilters) {
 			
 			@Override
 			public Site siteForIndex(int siteIndex, Map<TectonicRegionType, ScalarIMR> gmms) {
@@ -563,22 +573,29 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		}
 	}
 	
-	private String getCSVName(int siteIndex, int periodIndex) {
-		String ret = sitePrefixes.get(siteIndex);
-		if (periods[periodIndex] == -1d)
+	public static String getSitePeriodPrefix(String siteName, double period) {
+		return getSitePeriodPrefixConcat(FileNameUtils.simplify(siteName), period);
+	}
+	
+	private static String getSitePeriodPrefixConcat(String sitePrefix, double period) {
+		String ret = sitePrefix;
+		if (period == -1d)
 			ret += "_pgv";
-		else if (periods[periodIndex] == 0d)
+		else if (period == 0d)
 			ret += "_pga";
 		else
-			ret += "_sa_"+(float)periods[periodIndex];
-		ret += ".csv";
+			ret += "_sa_"+(float)period;
 		return ret;
+	}
+	
+	private String getCSVName(int siteIndex, int periodIndex) {
+		return getSitePeriodPrefixConcat(sitePrefixes.get(siteIndex), periods[periodIndex])+".csv";
 	}
 
 	public static Options createOptions() {
 		Options ops = MPJTaskCalculator.createOptions();
 		
-		SolHazardMapCalc.addCommonOptions(ops, false);
+		FaultSysHazardCalcSettings.addCommonOptions(ops, false);
 		
 		ops.addRequiredOption("if", "input-file", true, "Path to input file (solution logic tree zip)");
 		ops.addOption("lt", "logic-tree", true, "Path to logic tree JSON file, required if a results directory is "

@@ -602,6 +602,21 @@ implements IncrementalMagFreqDistAPI,java.io.Serializable {
 	public double compute_bValue() {
 		return compute_bValue(Double.NaN, Double.NaN);
 	}
+	
+	public IncrementalMagFreqDist getAboveMagnitude(double minMag) {
+		Preconditions.checkState((float)minMag <= (float)maxX, "new minMag=%s must be <= maxMag=%s", (float)minMag, (float)maxX);
+		if ((float)minMag <= (float)minX)
+			return this;
+		int minMagIndex = getClosestXIndex(minMag);
+		if ((float)minMag > (float)getX(minMagIndex)) {
+			// that's the closest bin, but it's above that bin center
+			minMagIndex++;
+		}
+		IncrementalMagFreqDist ret = new IncrementalMagFreqDist(getX(minMagIndex), num-minMagIndex, delta);
+		for (int i=0; i<ret.size(); i++)
+			ret.set(i, getY(i+minMagIndex));
+		return ret;
+	}
 
 	public static class Adapter extends GenericAdapter<IncrementalMagFreqDist> {
 

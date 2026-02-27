@@ -83,7 +83,4 @@ public interface BaseERF extends Named, Serializable, Comparable<BaseERF> {
 	 * @return : ArrayList<TectonicRegionType>
 	 */
 	public ArrayList<TectonicRegionType> getIncludedTectonicRegionTypes();
-
-
-
 }

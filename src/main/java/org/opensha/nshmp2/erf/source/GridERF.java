@@ -1,13 +1,8 @@
 package org.opensha.nshmp2.erf.source;
 
-import static org.opensha.nshmp2.util.FaultCode.*;
-import static org.opensha.nshmp2.util.SourceRegion.CEUS;
-import static org.opensha.nshmp2.util.SourceType.GRIDDED;
+import static org.opensha.nshmp2.util.FaultCode.FIXED;
 
 import java.awt.Color;
-import java.util.AbstractList;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -18,25 +13,26 @@ import java.util.logging.Logger;
 import org.opensha.commons.calc.magScalingRelations.MagLengthRelationship;
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_MagLengthRelationship;
 import org.opensha.commons.data.TimeSpan;
-import org.opensha.commons.geo.GriddedRegion;
+import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.RegionUtils;
+import org.opensha.nshmp2.calc.HazardCalc;
 import org.opensha.nshmp2.util.FaultCode;
 import org.opensha.nshmp2.util.NSHMP_Utils;
 import org.opensha.nshmp2.util.SourceIMR;
 import org.opensha.nshmp2.util.SourceRegion;
 import org.opensha.nshmp2.util.SourceType;
 import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.earthquake.rupForecastImpl.PointSource13b;
+import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
-import org.opensha.sha.util.NEHRP_TestCity;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.primitives.Ints;
 
 /**
@@ -65,6 +61,8 @@ public class GridERF extends NSHMP_ERF {
 	private SourceIMR srcIMR;
 	private double weight;
 	private double maxR, dR;
+	
+	private static WeightedList<PointSourceDistanceCorrection> distCorrs = PointSourceDistanceCorrections.NSHM_2008.get();
 
 	private final static MagLengthRelationship MLR = new WC1994_MagLengthRelationship();
 
@@ -244,8 +242,8 @@ public class GridERF extends NSHMP_ERF {
 		return (faultCode == FIXED)
 				? new FixedStrikeSource(locs.get(idx), mfds.get(idx), MLR,
 					timeSpan.getDuration(), depths, mechWtMap, strike)
-				: new PointSource13b(locs.get(idx), mfds.get(idx),
-					timeSpan.getDuration(), depths, mechWtMap);
+				: new PointSourceNshm(locs.get(idx), mfds.get(idx),
+					timeSpan.getDuration(), mechWtMap, PointSourceNshm.M_DEPTH_CUT_DEFAULT, depths[0], depths[1], distCorrs);
 		// @formatter:on
 	}
 

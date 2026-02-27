@@ -11,12 +11,15 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertainBoundedDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.util.FaultUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetSubsectioningModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ProxyFaultSectionInstances;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
@@ -24,24 +27,39 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionBuilder;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.PRVI25_GridSourceBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
+
+import com.google.common.base.Preconditions;
 
 @Affects(FaultSystemRupSet.SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
-public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
+public enum PRVI25_CrustalFaultModels implements RupSetFaultModel, RupSetSubsectioningModel {
 	PRVI_CRUSTAL_FM_V1p1("PRVI25 Crustal FM v1.1", "Crustal FM v1.1",
-			"/data/erf/prvi25/fault_models/crustal/NSHM2025_GeoDefModel_PRVI_v1-1_mod.geojson", 1d);
+			"/data/erf/prvi25/fault_models/crustal/NSHM2025_GeoDefModel_PRVI_v1-1_mod.geojson", 1d),
+	PRVI_CRUSTAL_FM_V1p2("PRVI25 Crustal FM v1.2", "Crustal FM v1.2",
+			"/data/erf/prvi25/fault_models/crustal/NSHM2025_GeoDefModel_PRVI_v1-2_ProjRates_mod.geojson", 0d);
 	
 	private String name;
 	private String shortName;
 	private String jsonPath;
 	private double weight;
+	
+	/**
+	 * if true, then slip rates are unprojected and need to be projected onto the plane
+	 */
+	public static final boolean PROJECT_TO_PLANE = false;
+	
+	public static final String HIGH_RATE_PROP_NAME = "HighRate";
+	public static final String LOW_RATE_PROP_NAME = "LowRate";
 
 	private PRVI25_CrustalFaultModels(String name, String shortName, String jsonPath, double weight) {
 		this.name = name;
@@ -73,8 +91,58 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 
 	@Override
 	public List<? extends FaultSection> getFaultSections() throws IOException {
+		return getFaultSections(PROJECT_TO_PLANE);
+	}
+
+	public List<? extends FaultSection> getFaultSections(boolean projectToPlane) throws IOException {
 		BufferedReader reader = new BufferedReader(new InputStreamReader(PRVI25_CrustalFaultModels.class.getResourceAsStream(jsonPath)));
-		return GeoJSONFaultReader.readFaultSections(reader);
+		List<GeoJSONFaultSection> sects = GeoJSONFaultReader.readFaultSections(reader);
+		
+		if (projectToPlane) {
+			// slip rates need to be projected
+			for (GeoJSONFaultSection sect : sects) {
+				sect.setAveSlipRate(projectSlip(sect.getOrigAveSlipRate(), sect.getAveDip(), sect.getAveRake()));
+				FeatureProperties props = sect.getProperties();
+				props.set(HIGH_RATE_PROP_NAME, projectSlip(
+						props.getDouble(HIGH_RATE_PROP_NAME, Double.NaN), sect.getAveDip(), sect.getAveRake()));
+				props.set(LOW_RATE_PROP_NAME, projectSlip(
+						props.getDouble(LOW_RATE_PROP_NAME, Double.NaN), sect.getAveDip(), sect.getAveRake()));
+			}
+		}
+		
+		return sects;
+	}
+	
+	public static double projectSlip(double origSlipRate, double dip, double rake) {
+		FaultUtils.assertValidRake(rake); // -180 to 180
+		double absRake = Math.abs(rake);
+		boolean oblique = (float)absRake != (float)180
+				&& (float)absRake != (float)90
+				&& (float)absRake != (float)0;
+		// is this closer to SS or thrust? if exactly 45 degrees (or less) from thrust, assume we have a vertical
+		// rate that needs to be projected down dip
+		boolean origIsHorizontal = (float)absRake > 135f || (float)absRake < 45f;
+		double slipRate = origSlipRate;
+		if (dip != 90d && !origIsHorizontal)
+			// we have a vertical slip rate that needs to be projected down dip
+			slipRate /= Math.sin(Math.toRadians(dip));
+		if (oblique) {
+			// we have oblique slip
+			// if it's closer to thrust, we'll assume that we have vertical slip rates and we need to add the horizontal component
+			// if it's closer to SS, we'll assume that we have horizontal slip rates and we need to add the vertical component
+			double obliqueAngle;
+			if (origIsHorizontal)
+				// difference between the rake and pure SS
+				obliqueAngle = Math.min(absRake, Math.abs(absRake - 180));
+			else
+				// difference between the rake and pure thrust
+				obliqueAngle = Math.abs(absRake - 90);
+			Preconditions.checkState((float)obliqueAngle <= 45f,
+					"Oblique angle should never be >45: %s", (float)obliqueAngle);
+			if (obliqueAngle > 0d)
+				slipRate /= Math.cos(Math.toRadians(obliqueAngle));
+		}
+		return slipRate;
 	}
 	
 	public static ModelRegion getDefaultRegion(LogicTreeBranch<?> branch) throws IOException {
@@ -97,7 +165,7 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 
 			@Override
 			public ProxyFaultSectionInstances call() throws Exception {
-				return ProxyFaultSectionInstances.build(rupSet, 5, 5d, 0.25, 5, 10);
+				return ProxyFaultSectionInstances.build(rupSet, 5, 3d, 0.25, 5, 10, true);
 			}
 		}, ProxyFaultSectionInstances.class);
 		
@@ -107,6 +175,7 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 			public RegionsOfInterest call() throws Exception {
 				List<Region> regions = new ArrayList<>();
 				List<IncrementalMagFreqDist> regionMFDs = new ArrayList<>();
+				List<TectonicRegionType> regionTRTs = new ArrayList<>();
 				List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
 				
 				// overall seismicity regions
@@ -116,27 +185,20 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 					if (!FaultSectionUtils.anySectInRegion(region, subSects, true))
 						continue;
 					
-					regionMFDs.add(getRegionalMFD(region, seisReg, branch));
+					regionMFDs.add(getRegionalMFD(seisReg, null, branch));
 					regions.add(region);
+					regionTRTs.add(TectonicRegionType.ACTIVE_SHALLOW);
 				}
 				
-//				// analysis regions
-//				for (Region region : NSHM23_RegionLoader.loadAnalysisRegions(subSects)) {
-//					if (!FaultSectionUtils.anySectInRegion(region, subSects, true))
-//						continue;
-//					
-//					regionMFDs.add(getRegionalMFD(region, null, branch));
-//					regions.add(region);
-//				}
-//				
-//				// local regions
-//				for (Region region : NSHM23_RegionLoader.loadLocalRegions(subSects)) {
-//					if (!FaultSectionUtils.anySectInRegion(region, subSects, true))
-//						continue;
-//					
-//					regionMFDs.add(getRegionalMFD(region, null, branch));
-//					regions.add(region);
-//				}
+				// smaller map map region
+				Region mapRegion = PRVI25_RegionLoader.loadPRVI_MapExtents();
+				if (FaultSectionUtils.anySectInRegion(mapRegion, subSects, true)) {
+					mapRegion.setName("PRVI - NSHMP Map Region");
+					regions.add(mapRegion);
+					regionMFDs.add(getRegionalMFD(PRVI25_SeismicityRegions.CRUSTAL, mapRegion, branch));
+					regionTRTs.add(null);
+				}
+				
 				for (int i=0; i<regions.size(); i++) {
 					String regName = regions.get(i).getName();
 					System.out.println(regName);
@@ -147,8 +209,7 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 							System.out.println("\t"+((UncertainBoundedDiscretizedFunc)mfd).getBoundName());
 					}
 				}
-//				System.exit(0);
-				return new RegionsOfInterest(regions, regionMFDs);
+				return new RegionsOfInterest(regions, regionMFDs, regionTRTs);
 			}
 		}, RegionsOfInterest.class);
 		rupSet.addAvailableModule(new Callable<RupSetTectonicRegimes>() {
@@ -161,28 +222,54 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 		// TODO: named faults?
 	}
 	
-	private static UncertainBoundedIncrMagFreqDist getRegionalMFD(Region region, PRVI25_SeismicityRegions seisRegion,
-			LogicTreeBranch<?> branch) throws IOException {
-		PRVI25_DeclusteringAlgorithms declustering = PRVI25_DeclusteringAlgorithms.AVERAGE;
-		if (branch != null && branch.hasValue(PRVI25_DeclusteringAlgorithms.class))
-			declustering = branch.requireValue(PRVI25_DeclusteringAlgorithms.class);
+	private static UncertainBoundedIncrMagFreqDist getRegionalMFD(PRVI25_SeismicityRegions seisRegion,
+			Region region, LogicTreeBranch<?> branch) throws IOException {
+//		PRVI25_DeclusteringAlgorithms declustering = PRVI25_DeclusteringAlgorithms.AVERAGE;
+//		if (branch != null && branch.hasValue(PRVI25_DeclusteringAlgorithms.class))
+//			declustering = branch.requireValue(PRVI25_DeclusteringAlgorithms.class);
+//		
+//		PRVI25_SeisSmoothingAlgorithms smooth = PRVI25_SeisSmoothingAlgorithms.AVERAGE;
+//		if (branch != null && branch.hasValue(PRVI25_SeisSmoothingAlgorithms.class))
+//			smooth = branch.requireValue(PRVI25_SeisSmoothingAlgorithms.class);
 		
-		PRVI25_SeisSmoothingAlgorithms smooth = PRVI25_SeisSmoothingAlgorithms.AVERAGE;
-		if (branch != null && branch.hasValue(PRVI25_SeisSmoothingAlgorithms.class))
-			smooth = branch.requireValue(PRVI25_SeisSmoothingAlgorithms.class);
-		
-		// double hardcode mMax
-		double mMax = 7.99;
-		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(mMax);
-		if (region != null)
-			return PRVI25_RegionalSeismicity.getRemapped(region, seisRegion, declustering, smooth, refMFD, mMax);
-		else
-			return PRVI25_RegionalSeismicity.getBounded(seisRegion, refMFD, mMax);
+		// this is just for plots, we want the "data" portion to extend past the right of the MFD plots
+		double mMax = 9.01;
+		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.OVERALL_MMIN, mMax);
+//		if (region != null)
+//			return PRVI25_RegionalSeismicity.getRemapped(region, seisRegion, declustering, smooth, refMFD, mMax);
+//		else
+		List<UncertainBoundedIncrMagFreqDist> mfds = new ArrayList<>();
+		List<Double> weights = new ArrayList<>();
+		for (PRVI25_SeismicityRateEpoch epoch : PRVI25_SeismicityRateEpoch.values()) {
+			double weight = epoch.getNodeWeight(branch);
+			if (weight == 0d)
+				continue;
+			UncertainBoundedIncrMagFreqDist mfd;
+			if (region != null)
+				mfd = PRVI25_CrustalSeismicityRate.loadRateModel(epoch).getRemapped(region, seisRegion,
+						PRVI25_DeclusteringAlgorithms.AVERAGE, PRVI25_SeisSmoothingAlgorithms.AVERAGE, refMFD, mMax);
+			else
+				mfd = PRVI25_CrustalSeismicityRate.loadRateModel(epoch).getBounded(refMFD, mMax);
+			mfds.add(mfd);
+			weights.add(weight);
+		}
+		return PRVI25_SeismicityRateEpoch.averageUncert(mfds, weights);
 	}
 
 	@Override
 	public RupSetDeformationModel getDefaultDeformationModel() {
 		return PRVI25_CrustalDeformationModels.GEOLOGIC;
+	}
+	
+	static final double DOWN_DIP_FRACT_DEFAULT = 0.5;
+	static final double MAX_LEN_DEFAULT = Double.NaN;
+	static final int MIN_SUB_SECTS_PER_FAULT_DEFAULT = 2;
+
+	@Override
+	public List<? extends FaultSection> buildSubSects(RupSetFaultModel faultModel,
+			List<? extends FaultSection> fullSections) {
+		return SubSectionBuilder.buildSubSects(fullSections,
+				MIN_SUB_SECTS_PER_FAULT_DEFAULT, DOWN_DIP_FRACT_DEFAULT, MAX_LEN_DEFAULT);
 	}
 
 }

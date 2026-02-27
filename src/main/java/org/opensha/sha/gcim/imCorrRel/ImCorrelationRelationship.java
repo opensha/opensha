@@ -342,19 +342,10 @@ public abstract class ImCorrelationRelationship implements Named  {
 	 * @param tectRegionName
 	 * @return
 	 */
-	public boolean isTectonicRegionSupported(String tectRegionName) {
+	public boolean isTectonicRegionSupported(TectonicRegionType tectRegion) {
 		if (tectonicRegionTypeParam == null)
 			return false;
-		return tectonicRegionTypeParam.isAllowed(tectRegionName);
-	}
-	
-	/**
-	 * Tells whether the given tectonic region is supported
-	 * @param tectRegion
-	 * @return
-	 */
-	public boolean isTectonicRegionSupported(TectonicRegionType tectRegion) {
-		return isTectonicRegionSupported(tectRegion.toString());
+		return tectonicRegionTypeParam.isAllowed(tectRegion);
 	}
 
     /**

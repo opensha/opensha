@@ -207,7 +207,7 @@ public enum PRVI25_SubductionScalingRelationships implements RupSetScalingRelati
 	@Override
 	public abstract double getMag(double area, double length, double width, double origWidth, double aveRake);
 	
-	private static class LogAPlusC extends MagAreaRelationship {
+	public static class LogAPlusC extends MagAreaRelationship {
 		
 		private double c;
 

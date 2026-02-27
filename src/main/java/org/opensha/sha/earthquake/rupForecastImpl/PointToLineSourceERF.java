@@ -1,6 +1,8 @@
 package org.opensha.sha.earthquake.rupForecastImpl;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.opensha.commons.calc.magScalingRelations.MagAreaRelationship;
 import org.opensha.commons.calc.magScalingRelations.MagScalingRelationship;
@@ -15,15 +17,16 @@ import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.impl.ArbitrarilyDiscretizedFuncParameter;
 import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.commons.param.impl.DoubleParameter;
-import org.opensha.commons.param.impl.EvenlyDiscretizedFuncParameter;
 import org.opensha.commons.param.impl.IntegerParameter;
 import org.opensha.commons.param.impl.LocationParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.FocalMechanism;
+import org.opensha.sha.earthquake.PointSource;
 import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.earthquake.griddedForecast.HypoMagFreqDistAtLoc;
-import org.opensha.sha.earthquake.rupForecastImpl.Point2MultVertSS_FaultSource;
+import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
+import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.utils.PointSurfaceBuilder;
 import org.opensha.sha.magdist.ArbIncrementalMagFreqDist;
 import org.opensha.sha.magdist.GaussianMagFreqDist;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
@@ -32,7 +35,8 @@ import org.opensha.sha.magdist.SingleMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 import org.opensha.sha.magdist.YC_1985_CharMagFreqDist;
 import org.opensha.sha.param.MagFreqDistParameter;
-import org.opensha.sha.param.SimpleFaultParameter;
+
+import com.google.common.base.Preconditions;
 
 
 /**
@@ -57,7 +61,7 @@ public class PointToLineSourceERF extends AbstractERF{
 	public final static String  NAME = "Point To Line Source ERF";
 
 	// this is the source (only 1 for this ERF)
-	private PointToFiniteSource source;
+	private PointSource source;
 
 	// adjustable parameter declarations
 	LocationParameter locParam;
@@ -292,7 +296,8 @@ public class PointToLineSourceERF extends AbstractERF{
 	 */
 	public void updateForecast(){
 		if (D) System.out.println(this.adjustableParams.toString());
-		Double strikeValue = strikeParam.getValue();
+		boolean spoke = spokedRupturesParam.getValue();
+		Double strikeValue = spoke ? firstStrikeParam.getValue() : strikeParam.getValue();
 		double strike;
 		// convert null strikes to NaN
 		if(strikeValue == null)
@@ -300,27 +305,97 @@ public class PointToLineSourceERF extends AbstractERF{
 		else
 			strike = strikeValue;
 		FocalMechanism focalMech = new FocalMechanism(strike, dipParam.getValue(), rakeParam.getValue());
-		HypoMagFreqDistAtLoc hypoMagFreqDistAtLoc = new HypoMagFreqDistAtLoc((IncrementalMagFreqDist)magDistParam.getValue(), 
-				locParam.getValue(), focalMech);
 		
-		if(spokedRupturesParam.getValue()) {
-			source = new PointToFiniteSource(hypoMagFreqDistAtLoc,
-					rupTopDepthParam.getValue(), 
-					getmagScalingRelationship(magScalingRelParam.getValue()),
-					lowerSeisDepthParam.getValue(), 
-					timeSpan.getDuration(), 
-					minMagParam.getValue(), 
-					numStrikeParam.getValue(), 
-					firstStrikeParam.getValue(), true);
+		IncrementalMagFreqDist mfd = magDistParam.getValue();
+		double minMag = minMagParam.getValue();
+		if (minMag > mfd.getMinX())
+			mfd = mfd.getAboveMagnitude(minMag);
+		
+		MagScalingRelationship scale = getmagScalingRelationship(magScalingRelParam.getValue());
+		ArbitrarilyDiscretizedFunc rupTopDepth = rupTopDepthParam.getValue();
+		int numStrikes = spoke ? numStrikeParam.getValue() : 1;
+		
+		source = PointSource.poissonBuilder(locParam.getValue())
+				.duration(timeSpan.getDuration())
+				.surfaceBuilder(new LineSurfaceBuilder(numStrikes, scale, rupTopDepth, lowerSeisDepthParam.getValue()))
+				.forMFDAndFocalMech(mfd, focalMech)
+				.build();
+	}
+	
+	private static class LineSurfaceBuilder implements PointSource.RuptureSurfaceBuilder {
+		
+		private int numStrikes;
+		private MagScalingRelationship magScaling;
+		private ArbitrarilyDiscretizedFunc rupTopDepth;
+		private double lowerDepth;
+		
+		// keep track of strikes by magnitude
+		private Map<Float, EvenlyGriddedSurface[]> surfsCache;
+
+		public LineSurfaceBuilder(int numStrikes, MagScalingRelationship magScaling,
+				ArbitrarilyDiscretizedFunc rupTopDepth, double lowerDepth) {
+			Preconditions.checkState(numStrikes >= 1, "NumStrikes must be >=1");
+			this.numStrikes = numStrikes;
+			this.magScaling = magScaling;
+			this.rupTopDepth = rupTopDepth;
+			this.lowerDepth = lowerDepth;
+			
+			if (numStrikes > 1)
+				// cache surfaces
+				surfsCache = new HashMap<>();
 		}
-		else {
-			source = new PointToFiniteSource(hypoMagFreqDistAtLoc,
-					rupTopDepthParam.getValue(), 
-					getmagScalingRelationship(magScalingRelParam.getValue()),
-					lowerSeisDepthParam.getValue(), 
-					timeSpan.getDuration(), 
-					minMagParam.getValue());
+
+		@Override
+		public int getNumSurfaces(double magnitude, FocalMechanism mech) {
+			return numStrikes;
 		}
+
+		@Override
+		public RuptureSurface getSurface(Location sourceLoc, double magnitude, FocalMechanism mech, int surfaceIndex) {
+			if (numStrikes > 1) {
+				// see if already cached
+				EvenlyGriddedSurface[] cached = surfsCache.get((float)magnitude);
+				if (cached != null)
+					return cached[surfaceIndex];
+			}
+			double upperDepth;
+			if (magnitude <= rupTopDepth.getMinX())
+				upperDepth = rupTopDepth.getMinX();
+			else if (magnitude >= rupTopDepth.getMaxX())
+				upperDepth = rupTopDepth.getMaxX();
+			else
+				// this is what was done by the old PointToFinite
+				upperDepth = rupTopDepth.getClosestYtoX(magnitude);
+			PointSurfaceBuilder builder = new PointSurfaceBuilder(sourceLoc)
+					.magnitude(magnitude)
+					.mechanism(mech)
+					.scaling(magScaling) // used for lengths
+					.upperDepth(upperDepth).lowerDepth(lowerDepth);
+			if (numStrikes == 1) {
+				if (Double.isNaN(mech.getStrike()))
+					builder.randomStrike();
+				return builder.buildLineSurface();
+			}
+			EvenlyGriddedSurface[] surfaces = builder.buildRandLineSurfaces(numStrikes);
+			surfsCache.put((float)magnitude, surfaces);
+			return surfaces[surfaceIndex];
+		}
+
+		@Override
+		public double getSurfaceWeight(double magnitude, FocalMechanism mech, int surfaceIndex) {
+			return 1d/(double)numStrikes;
+		}
+
+		@Override
+		public boolean isSurfaceFinite(double magnitude, FocalMechanism mech, int surfaceIndex) {
+			return true;
+		}
+
+		@Override
+		public Location getHypocenter(Location sourceLoc, RuptureSurface rupSurface) {
+			return null;
+		}
+		
 	}
 
 

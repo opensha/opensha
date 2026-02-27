@@ -20,7 +20,7 @@ import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.param.event.TimeSpanChangeListener;
-import org.opensha.sha.calc.params.filters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilter;
 import org.opensha.sha.util.TectonicRegionType;
 
 /**
@@ -268,6 +268,8 @@ public abstract class AbstractERF implements
 		ArrayList<EqkRupture> rupList = new ArrayList<EqkRupture>();
 		for(int s=0; s<this.getNumSources(); s++) {
 			ProbEqkSource source = getSource(s);
+			if (site != null && source instanceof SiteAdaptiveSource)
+				source = ((SiteAdaptiveSource)source).getForSite(site);
 			if (doFilter) {
 				boolean skip = false;
 				double dist = source.getMinDistance(site);

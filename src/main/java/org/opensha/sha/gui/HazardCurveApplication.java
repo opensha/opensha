@@ -16,10 +16,10 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -40,7 +40,6 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.UIManager;
 
-import org.apache.commons.lang3.SystemUtils;
 import org.jfree.data.Range;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
@@ -69,7 +68,7 @@ import org.opensha.commons.util.ListUtils;
 import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.commons.util.bugReports.BugReport;
 import org.opensha.commons.util.bugReports.BugReportDialog;
-import org.opensha.commons.util.bugReports.DefaultExceptoinHandler;
+import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.HazardCurveCalculatorAPI;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculator;
@@ -80,12 +79,18 @@ import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ERF_Ref;
 import org.opensha.sha.earthquake.EpistemicListERF;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.gcim.calc.GcimCalculator;
+import org.opensha.sha.gcim.imCorrRel.ImCorrelationRelationship;
+import org.opensha.sha.gcim.ui.GcimControlPanel;
+import org.opensha.sha.gcim.ui.infoTools.GcimPlotViewerWindow;
 import org.opensha.sha.gui.beans.ERF_GuiBean;
 import org.opensha.sha.gui.beans.EqkRupSelectorGuiBean;
 import org.opensha.sha.gui.beans.IMR_GuiBean;
 import org.opensha.sha.gui.beans.IMR_MultiGuiBean;
 import org.opensha.sha.gui.beans.IMT_NewGuiBean;
 import org.opensha.sha.gui.beans.Site_GuiBean;
+import org.opensha.sha.gui.beans.event.IMTChangeEvent;
+import org.opensha.sha.gui.beans.event.IMTChangeListener;
 import org.opensha.sha.gui.controls.CalculationSettingsControlPanel;
 import org.opensha.sha.gui.controls.CalculationSettingsControlPanelAPI;
 import org.opensha.sha.gui.controls.CurveDisplayAppAPI;
@@ -107,12 +112,12 @@ import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.CB_2008_AttenRel;
 import org.opensha.sha.imr.event.ScalarIMRChangeEvent;
 import org.opensha.sha.imr.event.ScalarIMRChangeListener;
+import org.opensha.sha.imr.param.IntensityMeasureParams.SA_InterpolatedParam;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
 import org.opensha.sha.util.TRTUtils;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.collect.Lists;
-
 
 /**
  * <p>
@@ -138,13 +143,8 @@ import com.google.common.collect.Lists;
  */
 
 public class HazardCurveApplication extends JFrame implements
-Runnable, ParameterChangeListener,
-CurveDisplayAppAPI, CalculationSettingsControlPanelAPI, ActionListener,
-ScalarIMRChangeListener {
-
-	/**
-	 * 
-	 */
+ParameterChangeListener, CurveDisplayAppAPI, CalculationSettingsControlPanelAPI,
+ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	private static final long serialVersionUID = 1L;
 	
 	private static ApplicationVersion version;
@@ -173,21 +173,23 @@ ScalarIMRChangeListener {
 	protected final static String CONTROL_PANELS = "Select";
 
 	// objects for control panels
-	protected PEER_TestCaseSelectorControlPanel peerTestsControlPanel;
-	protected DisaggregationControlPanel disaggregationControlPanel;
+	private PEER_TestCaseSelectorControlPanel peerTestsControlPanel;
+	private DisaggregationControlPanel disaggregationControlPanel;
 	protected ERF_EpistemicListControlPanel epistemicControlPanel;
 	//	protected SetMinSourceSiteDistanceControlPanel distanceControlPanel;
-	protected SitesOfInterestControlPanel sitesOfInterest;
-	protected SiteDataControlPanel cvmControlPanel;
-	protected X_ValuesInCurveControlPanel xValuesPanel;
+//	private SitesOfInterestControlPanel sitesOfInterest;
+	private SiteDataControlPanel cvmControlPanel;
+//	private X_ValuesInCurveControlPanel xValuesPanel;
 	private RunAll_PEER_TestCasesControlPanel runAllPeerTestsCP;
 	protected PlottingOptionControl plotOptionControl;
-	protected XY_ValuesControlPanel xyPlotControl;
+//	private XY_ValuesControlPanel xyPlotControl;
+	private CalculationSettingsControlPanel calcParamsControl;
+	private GcimControlPanel gcimControlPanel;
 
 	private ArrayList<ControlPanel> controlPanels;
 
-	// default insets
-	protected Insets defaultInsets = new Insets(4, 4, 4, 4); ///TODO remove
+	// flag to check for the gcim functionality
+	private boolean gcimFlag = false;
 
 	/**
 	 * List of ArbitrarilyDiscretized functions and Weighted funstions
@@ -227,20 +229,15 @@ ScalarIMRChangeListener {
 	// These keep track of which type of calculation is chosen (only one should be true at any time);
 	protected boolean isProbabilisticCurve = true;
 	protected boolean isDeterministicCurve = false;
-	protected boolean isStochasticCurve = false;
+	private boolean isStochasticCurve = false;
 
 	// PEER Test Cases
 	private static final String DEFAULT_TITLE = new String("Hazard Curves");
-
 
 	// accessible components
 	private JMenuItem saveMenuItem;
 	private JMenuItem printMenuItem;
 	private JMenuItem closeMenuItem;
-
-	//	private JButton saveButton; TODO clean
-	//	private JButton printButton;
-	//	private JButton closeButton;
 
 	private JButton computeButton;
 	private JButton cancelButton;
@@ -251,15 +248,12 @@ ScalarIMRChangeListener {
 	protected JComboBox<String> probDeterComboBox;
 
 	private JPanel plotPanel;
-	//private JPanel sitePanel;
-	//protected JPanel imrPanel; // TODO make private
-	//protected JPanel imtPanel; // TODO make private
-	//protected JPanel erfPanel; // TODO make private
 
 	private JSplitPane imrImtSplitPane;
 	private JTabbedPane paramsTabbedPane;
 	protected GraphWidget graphWidget; // actual plot widget
 
+	// GuiBeans
 	protected IMR_MultiGuiBean imrGuiBean;
 	private IMT_NewGuiBean imtGuiBean;
 	protected Site_GuiBean siteGuiBean;
@@ -267,27 +261,22 @@ ScalarIMRChangeListener {
 	protected EqkRupSelectorGuiBean erfRupSelectorGuiBean;
 
 
-
 	// instances of various calculators
 	protected HazardCurveCalculatorAPI calc;
 	protected DisaggregationCalculatorAPI disaggCalc;
-	CalcProgressBar progressClass;
-	CalcProgressBar disaggProgressClass;
+	private GcimCalculator gcimCalc;
+	protected CalcProgressBar progressClass;
+	private CalcProgressBar disaggProgressClass;
+	private CalcProgressBar gcimProgressClass;
 	protected CalcProgressBar startAppProgressClass;
 	// timer threads to show the progress of calculations
-	Timer timer;
-	Timer disaggTimer;
-	// calculation thead
-	Thread calcThread;
+	protected Timer timer;
+	private Timer disaggTimer;
+	private Timer gcimTimer;
 	// checks to see if HazardCurveCalculations are done
-	boolean isHazardCalcDone = false;
-
-
-
-	//	private final static String POWERED_BY_IMAGE = TODO clean
-	//			"logos/PoweredByOpenSHA_Agua.jpg";
-	//	private JLabel imgLabel = new JLabel(new ImageIcon(
-	//			ImageUtils.loadImage(this.POWERED_BY_IMAGE)));
+	protected boolean isHazardCalcDone = false;
+	private CompletableFuture<Void> calcFuture = null;
+	private volatile boolean cancelled = false;
 
 	// maintains which ERFList was previously selected
 	protected String prevSelectedERF_List = null;
@@ -303,9 +292,9 @@ ScalarIMRChangeListener {
 	 * of existing data, but if it is false then add new data to the existing
 	 * data(this option only works if it is ERF_List).
 	 * */
-	boolean addData = true;
+	protected boolean addData = true;
 	
-	protected static String errorInInitializationMessage = "Problem occured " +
+	private static String errorInInitializationMessage = "Problem occured " +
 				"during initialization the ERF's. All parameters are set to default.";
 
 	// Construct the applet
@@ -326,7 +315,7 @@ ScalarIMRChangeListener {
 			initSiteGuiBean();
 
 			initERF_GuiBean();
-			imrGuiBean.setTectonicRegions(this.erfGuiBean.getSelectedERF().getIncludedTectonicRegionTypes());
+			imrGuiBean.setTectonicRegions(getIncludedTectonicRegionTypes());
 
 			jbInit();
 
@@ -339,9 +328,6 @@ ScalarIMRChangeListener {
 			bugDialog.setVisible(true);
 		}
 		startAppProgressClass.dispose();
-
-		// TODO delete not sure why this is called; maybe other platforms need it
-		//((JPanel) getContentPane()).updateUI();
 	}
 	
 	protected String getGuideURL() {
@@ -547,11 +533,6 @@ ScalarIMRChangeListener {
 		// creating the GraphWidget
 		buildGraphWidget();
 
-		// IMR, IMT & Site panel
-		//imrPanel = new JPanel(new GridBagLayout());
-
-		//imtPanel = new JPanel(new GridBagLayout());
-
 		imrImtSplitPane = new JSplitPane(
 				JSplitPane.VERTICAL_SPLIT, true, 
 				imtGuiBean, imrGuiBean);
@@ -562,10 +543,6 @@ ScalarIMRChangeListener {
 		imrImtSplitPane.setMinimumSize(new Dimension(200,100));
 		imrImtSplitPane.setPreferredSize(new Dimension(280,100));
 
-		//sitePanel = new JPanel(new GridBagLayout());
-		//sitePanel.setBorder(BorderFactory.createEmptyBorder()); TODO clean
-		//sitePanel.setBackground(Color.white);
-
 		JSplitPane imrImtSiteSplitPane = new JSplitPane(
 				JSplitPane.HORIZONTAL_SPLIT, true, 
 				imrImtSplitPane, siteGuiBean);
@@ -575,9 +552,6 @@ ScalarIMRChangeListener {
 		imrImtSiteSplitPane.setOpaque(false);
 		//imrImtSiteSplitPane.setDividerLocation(0.5); //TODO revisit
 		//imrImtSiteSplitPane.setBorder(null);
-
-		// ERF panel
-		//erfPanel = new JPanel(new GridBagLayout());
 
 		// tabbed
 		paramsTabbedPane = new JTabbedPane();
@@ -605,27 +579,9 @@ ScalarIMRChangeListener {
 		content.add(contentSplitPane, BorderLayout.CENTER);
 		content.add(buttonPanel, BorderLayout.SOUTH);
 
-
-
-		// erfPanel.setLayout(new GridBagLayout());
-		//		erfPanel.validate();
-		//		erfPanel.repaint();
-		//		contentSplitPane.setDividerLocation(590);
-
-		//		JPanel contentPanel = new JPanel(new GridBagLayout());
-		//		contentPanel.add(contentSplitPane, new GridBagConstraints(
-		//				0, 0, 1, 1,
-		//				1.0, 1.0, 
-		//				GridBagConstraints.CENTER, 
-		//				GridBagConstraints.BOTH,
-		//				new Insets(11, 4, 5, 6), 
-		//				243, 231));
-
-		// assemble frame
-
 		// frame setup
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setTitle("Hazard Curve Application (" + getAppVersion() + " )");
+		setTitle("Hazard Curve Application (" + getAppVersion().getDisplayString() + " )");
 		setSize(1000, 720);
 		contentSplitPane.setDividerLocation(500);
 		Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
@@ -706,6 +662,7 @@ ScalarIMRChangeListener {
 				version = ApplicationVersion.loadBuildVersion();
 			} catch (IOException e) {
 				e.printStackTrace();
+				version = new ApplicationVersion(-1, -1, -1);
 			}
 		}
 		return version;
@@ -714,13 +671,13 @@ ScalarIMRChangeListener {
 	// Main method
 	public static void main(String[] args) throws IOException {
 		new DisclaimerDialog(APP_NAME, APP_SHORT_NAME, getAppVersion());
-		DefaultExceptoinHandler exp = new DefaultExceptoinHandler(
+		DefaultExceptionHandler exp = new DefaultExceptionHandler(
 				APP_SHORT_NAME, getAppVersion(), null, null);
 		Thread.setDefaultUncaughtExceptionHandler(exp);
-		launch(exp);
+        launch(exp);
 	}
 	
-	public static HazardCurveApplication launch(DefaultExceptoinHandler handler) {
+	public static HazardCurveApplication launch(DefaultExceptionHandler handler) {
 		HazardCurveApplication applet = new HazardCurveApplication(APP_SHORT_NAME);
 		if (handler != null) {
 			handler.setApp(applet);
@@ -728,7 +685,6 @@ ScalarIMRChangeListener {
 		}
 		applet.init();
 		applet.setIconImages(IconFetcher.fetchIcons(APP_SHORT_NAME));
-		//		applet.pack();
 		applet.setVisible(true);
 		applet.computeButton.requestFocusInWindow();
 		return applet;
@@ -765,8 +721,6 @@ ScalarIMRChangeListener {
 
 	/**
 	 * this function is called when Add Graph button is clicked
-	 * 
-	 * @param e
 	 */
 	void addButton_actionPerformed() {
 		if (this.runAllPeerTestsCP != null) {
@@ -858,69 +812,155 @@ ScalarIMRChangeListener {
 	}
 
 	/**
-	 * Implementing the run method in the Runnable interface that creates a new
-	 * thread to do Hazard Curve Calculation, this thread created is seperate
-	 * from the timer thread, so that progress bar updation does not conflicts
-	 * with Calculations.
-	 */
-	public void run() {
-		try {
-			computeHazardCurve();
-			cancelButton.setEnabled(false);
-			// disaggCalc = null;
-			calcThread = null;
-		} catch (ThreadDeath t) {
-			// expected if you cancelled it
-//			System.out.println("Caught ThreadDeath");
-			setButtonsEnable(true);
-		} catch (Throwable t) {
-			t.printStackTrace();
-			BugReport bug = new BugReport(t, getParametersInfoAsString(), appShortName, getAppVersion(), this);
-			BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
-			bugDialog.setVisible(true);
-			setButtonsEnable(true);
-		}
-
-	}
-
-	/**
 	 * This method creates the HazardCurveCalc and Disaggregation Calc(if selected) instances.
 	 * Calculations are performed on the user's own machine, no internet connection
 	 * is required for it.
 	 */
-	protected void createCalcInstance(){
-		try{
-			if(calc == null) {
+	protected void createCalcInstance() {
+		try {
+			if (calc == null) {
 				calc = new HazardCurveCalculator();
-//System.out.println("Created new calc from LocalModeApp");
+				calc.setTrackProgress(true);
+				if (this.calcParamsControl != null) {
+					calc.setAdjustableParams(calcParamsControl.getAdjustableCalcParams());
+				}
 			}
-			if(disaggregationFlag)
-				if(disaggCalc == null)
-					disaggCalc = new DisaggregationCalculator();
-		}catch(Exception e){
+			if (disaggregationFlag && disaggCalc == null) {
+				disaggCalc = new DisaggregationCalculator();
+			}
+			if (gcimFlag && gcimCalc == null) {
+				gcimCalc = new GcimCalculator();
+			}
+		} catch (Exception e) {
 			e.printStackTrace();
 			BugReport bug = new BugReport(e, this.getParametersInfoAsString(), appShortName, getAppVersion(), this);
 			BugReportDialog bugDialog = new BugReportDialog(this, bug, true);
 			bugDialog.setVisible(true);
 		}
-		
+	}
+	
+	/**
+	 * Start all the timers for all calculators.
+	 */
+	protected void initTimers() {
+		startPrimaryTimer();
+		startDisaggTimer();
+		startGcimTimer();
+	}
+	
+	/**
+	 * Timer for primary hazard calculator
+	 */
+	protected void startPrimaryTimer() {
+		timer = new Timer(200, new ActionListener() {
+			public void actionPerformed(ActionEvent evt) {
+				try {
+					if (!isEqkList) {
+						int totRupture = calc.getTotRuptures();
+						int currRupture = calc.getCurrRuptures();
+						boolean totCurCalculated = true;
+						if (currRupture == -1) {
+							progressClass
+							.setProgressMessage("Calculating total ruptures\u2026");
+							totCurCalculated = false;
+						}
+						if (!isHazardCalcDone && totCurCalculated)
+							progressClass.updateProgress(currRupture,
+									totRupture);
+					} else {
+						if ((numERFsInEpistemicList) != 0)
+							progressClass
+							.updateProgress(
+									currentERFInEpistemicListForHazardCurve,
+									numERFsInEpistemicList);
+					}
+					if (isHazardCalcDone) {
+						timer.stop();
+						progressClass.dispose();
+						drawGraph();
+					}
+				} catch (Exception e) {
+					timer.stop();
+					setButtonsEnable(true);
+					e.printStackTrace();
+					BugReport bug = new BugReport(e, getParametersInfoAsString(), APP_NAME,
+							getAppVersion(), getApplicationComponent());
+					BugReportDialog bugDialog = new BugReportDialog(getApplicationComponent(), bug, false);
+					bugDialog.setVisible(true);
+				}
+			}
+		});
+	}
+	
+	/**
+	 * Timer for disaggregation progress bar
+	 */
+	protected void startDisaggTimer() {
+		disaggTimer = new Timer(200, new ActionListener() {
+			public void actionPerformed(ActionEvent evt) {
+				try {
+					int totalRupture = disaggCalc.getTotRuptures();
+					int currRupture = disaggCalc.getCurrRuptures();
+					boolean calcDone = disaggCalc.done();
+					if (!calcDone)
+						disaggProgressClass.updateProgress(currRupture,
+								totalRupture);
+					if (calcDone) {
+						disaggTimer.stop();
+						disaggProgressClass.dispose();
+					}
+				} catch (Exception e) {
+					disaggTimer.stop();
+					setButtonsEnable(true);
+					e.printStackTrace();
+					BugReport bug = new BugReport(e, getParametersInfoAsString(), APP_NAME,
+							getAppVersion(), getApplicationComponent());
+					BugReportDialog bugDialog = new BugReportDialog(getApplicationComponent(), bug, false);
+					bugDialog.setVisible(true);
+				}
+			}
+		});
+	}
+
+	/**
+	 * Timer for GCIM progress bar
+	 */
+	private void startGcimTimer() {
+		gcimTimer = new Timer(200, new ActionListener() {
+			public void actionPerformed(ActionEvent evt) {
+				try {
+					int totalIMi = gcimCalc.getTotIMi(); 
+					int currIMi = gcimCalc.getCurrIMi(); 
+					boolean calcDone = gcimCalc.done();
+					if (!calcDone)
+						gcimProgressClass.updateProgress(currIMi,  
+								totalIMi);
+					if (calcDone) {
+						gcimTimer.stop();
+						gcimProgressClass.dispose();
+					}
+				} catch (Exception e) {
+					gcimTimer.stop();
+					setButtonsEnable(true);
+					e.printStackTrace();
+					BugReport bug = new BugReport(e, getParametersInfoAsString(), APP_NAME,
+							getAppVersion(), getApplicationComponent());
+					BugReportDialog bugDialog = new BugReportDialog(getApplicationComponent(), bug, false);
+					bugDialog.setVisible(true);
+				}
+			}
+		});
 	}
 
 	/**
 	 * this function is called to draw the graph
 	 */
 	protected void calculate() {
+		signalReset();
 		setButtonsEnable(false);
-		// do not show warning messages in IMR gui bean. this is needed
-		// so that warning messages for site parameters are not shown when Add
-		// graph is clicked
-		//		imrGuiBean.showWarningMessages(false); // TODO should we add this to the multi imr bean?
 		if (plotOptionControl != null) {
-			if (this.plotOptionControl.getSelectedOption().equals(
-					PlottingOptionControl.PLOT_ON_TOP))
-				addData = true;
-			else
-				addData = false;
+			addData = this.plotOptionControl.getSelectedOption().equals(
+					PlottingOptionControl.PLOT_ON_TOP);
 		}
 		try {
 			createCalcInstance();
@@ -934,74 +974,20 @@ ScalarIMRChangeListener {
 
 		// check if progress bar is desired and set it up if so
 		if (this.progressCheckBox.isSelected()) {
-			calcThread = new Thread(this);
-			calcThread.start();
-			timer = new Timer(200, new ActionListener() {
-				public void actionPerformed(ActionEvent evt) {
-					try {
-						if (!isEqkList) {
-							int totRupture = calc.getTotRuptures();
-							int currRupture = calc.getCurrRuptures();
-							boolean totCurCalculated = true;
-							if (currRupture == -1) {
-								progressClass
-								.setProgressMessage("Calculating total ruptures\u2026");
-								totCurCalculated = false;
-							}
-							if (!isHazardCalcDone && totCurCalculated)
-								progressClass.updateProgress(currRupture,
-										totRupture);
-						} else {
-							if ((numERFsInEpistemicList) != 0)
-								progressClass
-								.updateProgress(
-										currentERFInEpistemicListForHazardCurve,
-										numERFsInEpistemicList);
-						}
-						if (isHazardCalcDone) {
-							timer.stop();
-							progressClass.dispose();
-							drawGraph();
-						}
-					} catch (Exception e) {
-						// e.printStackTrace();
-						timer.stop();
-						setButtonsEnable(true);
-						e.printStackTrace();
-						BugReport bug = new BugReport(e, getParametersInfoAsString(), APP_NAME,
-								getAppVersion(), getApplicationComponent());
-						BugReportDialog bugDialog = new BugReportDialog(getApplicationComponent(), bug, false);
-						bugDialog.setVisible(true);
-					}
+			calcFuture = CompletableFuture.runAsync(() -> {
+				try {
+					computeHazardCurve();
+					cancelButton.setEnabled(false);
+					erfGuiBean.closeProgressBar();
+				} catch (Throwable t) {
+					t.printStackTrace();
+					BugReport bug = new BugReport(t, getParametersInfoAsString(), appShortName, getAppVersion(), this);
+					BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
+					bugDialog.setVisible(true);
+					setButtonsEnable(true);
 				}
 			});
-
-			// timer for disaggregation progress bar
-			disaggTimer = new Timer(200, new ActionListener() {
-				public void actionPerformed(ActionEvent evt) {
-					try {
-						int totalRupture = disaggCalc.getTotRuptures();
-						int currRupture = disaggCalc.getCurrRuptures();
-						boolean calcDone = disaggCalc.done();
-						if (!calcDone)
-							disaggProgressClass.updateProgress(currRupture,
-									totalRupture);
-						if (calcDone) {
-							disaggTimer.stop();
-							disaggProgressClass.dispose();
-						}
-					} catch (Exception e) {
-						disaggTimer.stop();
-						setButtonsEnable(true);
-						e.printStackTrace();
-						BugReport bug = new BugReport(e, getParametersInfoAsString(), APP_NAME,
-								getAppVersion(), getApplicationComponent());
-						BugReportDialog bugDialog = new BugReportDialog(getApplicationComponent(), bug, false);
-						bugDialog.setVisible(true);
-					}
-				}
-			});
-
+			initTimers();
 		} else {
 			computeHazardCurve();
 			drawGraph();
@@ -1020,10 +1006,7 @@ ScalarIMRChangeListener {
 	 * to draw the graph
 	 */
 	protected void drawGraph() {
-		// you can show warning messages now
-		//		imrGuiBean.showWarningMessages(true); // TODO should we add this to the multi imr bean?
 		runInEDT(new Runnable() {
-			
 			@Override
 			public void run() {
 				addGraphPanel();
@@ -1062,7 +1045,7 @@ ScalarIMRChangeListener {
 	public void setDisaggregationSelected(boolean isSelected) {
 		disaggregationFlag = isSelected;
 	}
-
+	
 	/*
 	 * void imgLabel_mouseClicked(MouseEvent e) { try{
 	 * this.getAppletContext().showDocument(new URL(OPENSHA_WEBSITE),
@@ -1073,29 +1056,28 @@ ScalarIMRChangeListener {
 	 */
 
 	/**
-	 * Any time a control paramater or independent paramater is changed by the
-	 * user in a GUI this function is called, and a paramater change event is
+	 * Any time a control parameter or independent parameter is changed by the
+	 * user in a GUI this function is called, and a parameter change event is
 	 * passed in. This function then determines what to do with the information
 	 * ie. show some paramaters, set some as invisible, basically control the
-	 * paramater lists.
+	 * parameter lists.
 	 * 
 	 * @param event
 	 */
 	public void parameterChange(ParameterChangeEvent event) {
-
 		String S = C + ": parameterChange(): ";
-		if (D)
-			System.out.println("\n" + S + "starting: ");
+		if (D) System.out.println("\n" + S + "starting: ");
 
 		String name1 = event.getParameterName();
+		if (D) System.out.println("Event: " + name1);
 
+		
 		// if IMR selection changed, update the site parameter list and
 		// supported IMT
 		if (name1.equalsIgnoreCase(IMR_GuiBean.IMR_PARAM_NAME)) {
 			updateSiteParams();
 		}
 		if (name1.equalsIgnoreCase(ERF_GuiBean.ERF_PARAM_NAME)) {
-
 			String plottingOption = null;
 			if (plotOptionControl != null)
 				plottingOption = this.plotOptionControl.getSelectedOption();
@@ -1117,12 +1099,7 @@ ScalarIMRChangeListener {
 				.setSelectedOption(PlottingOptionControl.PLOT_ON_TOP);
 				setButtonsEnable(true);
 			}
-			try {
-				imrGuiBean.setTectonicRegions(erfGuiBean.getSelectedERF_Instance().getIncludedTectonicRegionTypes());
-			} catch (InvocationTargetException e) {
-				e.printStackTrace();
-				imrGuiBean.setTectonicRegions(null);
-			}
+			imrGuiBean.setTectonicRegions(getIncludedTectonicRegionTypes());
 		}
 	}
 
@@ -1152,13 +1129,16 @@ ScalarIMRChangeListener {
 	/**
 	 * Gets the probabilities functiion based on selected parameters this
 	 * function is called when add Graph is clicked
+	 * @throws InterruptedException 
 	 */
 	protected void computeHazardCurve() {
-
 		// starting the calculation
 		isHazardCalcDone = false;
 
 		BaseERF forecast = null;
+
+		// Check for interrupts before updating the forecast
+		if (isCancelled()) return;
 
 		// get the selected forecast model
 		try {
@@ -1170,7 +1150,10 @@ ScalarIMRChangeListener {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			JOptionPane.showMessageDialog(this, e.getMessage(),
+			String message = (e.getMessage() != null)
+					? e.getMessage()
+					: e.toString();
+			JOptionPane.showMessageDialog(this, message,
 					"Incorrect Values", JOptionPane.ERROR_MESSAGE);
 			setButtonsEnable(true);
 			return;
@@ -1180,6 +1163,9 @@ ScalarIMRChangeListener {
 				"Starting\u2026");
 			timer.start();
 		}
+		
+		// Check for interrupts after updating the forecast
+		if (isCancelled()) return;
 
 		// get the selected IMR
 		Map<TectonicRegionType, ScalarIMR> imrMap = imrGuiBean.getIMRMap();
@@ -1215,7 +1201,7 @@ ScalarIMRChangeListener {
 						"Input Error", JOptionPane.INFORMATION_MESSAGE);
 				return;
 			}
-			this.isEqkList = true; // set the flag to indicate thatwe are
+			this.isEqkList = true; // set the flag to indicate that we are
 			// dealing with Eqk list
 			handleForecastList(site, imrMap, forecast);
 			// initializing the counters for ERF List to 0, for other ERF List
@@ -1238,7 +1224,6 @@ ScalarIMRChangeListener {
 		// intialize the hazard function
 		ArbitrarilyDiscretizedFunc hazFunction = new ArbitrarilyDiscretizedFunc();
 		initX_Values(hazFunction);
-		// System.out.println("22222222HazFunction: "+hazFunction.toString());
 		try {
 			// calculate the hazard curve
 			// eqkRupForecast =
@@ -1252,7 +1237,6 @@ ScalarIMRChangeListener {
 							hazFunction, site, imrGuiBean.getSelectedIMR(), (ERF) forecast);
 				} else { // deterministic
 					runInEDT(new Runnable() {
-						
 						@Override
 						public void run() {
 							progressCheckBox.setSelected(false);
@@ -1263,7 +1247,6 @@ ScalarIMRChangeListener {
 					EqkRupture rupture = this.erfRupSelectorGuiBean.getRupture();
 					hazFunction = (ArbitrarilyDiscretizedFunc) calc.getHazardCurve(hazFunction, site, imr, rupture);
 					runInEDT(new Runnable() {
-						
 						@Override
 						public void run() {
 							progressCheckBox.setSelected(true);
@@ -1277,14 +1260,15 @@ ScalarIMRChangeListener {
 				BugReport bug = new BugReport(e, getParametersInfoAsString(), appShortName, getAppVersion(), this);
 				BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
 				bugDialog.setVisible(true);
-
 			}
 			hazFunction = toggleHazFuncLogValues(hazFunction);
 			hazFunction.setInfo(getParametersInfoAsString());
 		} catch (RuntimeException e) {
-			JOptionPane.showMessageDialog(this, e.getMessage(),
-					"Parameters Invalid", JOptionPane.INFORMATION_MESSAGE);
-			// e.printStackTrace();
+			if (!isCancelled()) {
+				JOptionPane.showMessageDialog(this, e.getMessage(),
+						"Parameters Invalid", JOptionPane.INFORMATION_MESSAGE);
+			}
+			 e.printStackTrace();
 			setButtonsEnable(true);
 			return;
 		}
@@ -1296,7 +1280,6 @@ ScalarIMRChangeListener {
 		final String xAxisName = imt + " (" + firstIMRFromMap.getParameter(imt).getUnits() + ")";
 		final String yAxisName = "Probability of Exceedance";
 		runInEDT(new Runnable() {
-			
 			@Override
 			public void run() {
 				graphWidget.setXAxisLabel(xAxisName);
@@ -1311,7 +1294,6 @@ ScalarIMRChangeListener {
 		if (disaggregationFlag && isStochasticCurve) {
 			final Component parent = this;
 			runInEDT(new Runnable() {
-				
 				@Override
 				public void run() {
 					JOptionPane.showMessageDialog(parent,
@@ -1379,7 +1361,6 @@ ScalarIMRChangeListener {
 				bugDialog.setVisible(true);
 			}
 			try {
-
 				if (disaggregationParamVal
 						.equals(DisaggregationControlPanel.DISAGGREGATE_USING_PROB)) {
 					disaggrAtIML = false;
@@ -1441,11 +1422,10 @@ ScalarIMRChangeListener {
 				BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
 				bugDialog.setVisible(true);
 			}
-			// }
 			if (disaggSuccessFlag)
 				showDisaggregationResults(numSourcesForDisag, disaggrAtIML,
 						imlVal, probVal);
-			else
+			else if (!isCancelled())
 				JOptionPane
 				.showMessageDialog(
 						this,
@@ -1454,27 +1434,155 @@ ScalarIMRChangeListener {
 						+ "the given IML (or that interpolated from the chosen probability).",
 						"Disaggregation Message", JOptionPane.OK_OPTION);
 		}
-		runInEDT(new Runnable() {
+		// displays the disaggregation string in the pop-up window
+		disaggregationString = null;
+		
+		// checking the gcim flag and probability curve is being plotted
+		if (gcimFlag && isProbabilisticCurve) {
+			gcimCalc = new GcimCalculator();
+			if (this.progressCheckBox.isSelected()) {
+				gcimProgressClass = new CalcProgressBar(
+						"GCIM Calc Status",
+				"Beginning GCIM calculations ");
+				gcimTimer.start();
+			}
 			
+			int num = hazFunction.size();
+			// checks if successfully disaggregated.
+			boolean gcimSuccessFlag = false;
+			boolean gcimRealizationSuccessFlag = false;
+			boolean gcimAtIML = false;
+			Site gcimSite = gcimControlPanel.getGcimSite();
+			double gcimVal = gcimControlPanel.getGcimVal();
+			String gcimParamVal = gcimControlPanel.getGcimParamValue();
+			int gcimNumIMi = gcimControlPanel.getNumIMi();
+			double minApproxZVal = gcimControlPanel.getMinApproxZ();
+			double maxApproxZVal = gcimControlPanel.getMaxApproxZ();
+			double deltaApproxZVal = gcimControlPanel.getDeltaApproxZ();
+			int numGcimRealizations = gcimControlPanel.getNumGcimRealizations();
+			ArrayList<String> imiTypes = gcimControlPanel.getImiTypes(); 
+			ArrayList<? extends Map<TectonicRegionType, ScalarIMR>> imiMapAttenRels = 
+					gcimControlPanel.getImris();
+			
+			ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> imijCorrRels = 
+					gcimControlPanel.getImCorrRels();
+			ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> imikCorrRels = 
+				gcimControlPanel.getImikCorrRels();
+			
+			gcimCalc.setApproxCDFvalues(minApproxZVal, maxApproxZVal, deltaApproxZVal);
+			
+			double imlVal = 0, probVal = 0;
+			try {
+
+				if (gcimParamVal
+						.equals(GcimControlPanel.GCIM_USING_PROB)) {
+					gcimAtIML = false;
+					// if selected Prob is not within the range of the Exceed.
+					// prob of Hazard Curve function
+					if (gcimVal > hazFunction.getY(0)
+							|| gcimVal < hazFunction.getY(num - 1))
+						JOptionPane
+						.showMessageDialog(
+								this,
+								new String(
+										"Chosen Probability is not"
+										+ " within the range of the min and max prob."
+										+ " in the Hazard Curve"),
+										"GCIM error message",
+										JOptionPane.ERROR_MESSAGE);
+					else {
+						// gets the GCIM data
+						imlVal = hazFunction
+						.getFirstInterpolatedX_inLogXLogYDomain(gcimVal);
+						probVal = gcimVal;
+					}
+				} else if (gcimParamVal
+						.equals(GcimControlPanel.GCIM_USING_IML)) {
+					gcimAtIML = true;
+					// if selected IML is not within the range of the IML values
+					// chosen for Hazard Curve function
+					if (gcimVal < hazFunction.getX(0)
+							|| gcimVal > hazFunction.getX(num - 1))
+						JOptionPane
+						.showMessageDialog(
+								this,
+								new String(
+										"Chosen IML is not"
+										+ " within the range of the min and max IML values"
+										+ " in the Hazard Curve"),
+										"GCIM error message",
+										JOptionPane.ERROR_MESSAGE);
+					else {
+						imlVal = gcimVal;
+						probVal = hazFunction
+						.getInterpolatedY_inLogXLogYDomain(gcimVal);
+					}
+				}
+				gcimCalc.getRuptureContributions(Math.log(imlVal), gcimSite, imrMap,
+							 	(ERF) forecast, this.calc.getSourceFilters(),
+							 	calc.getAdjustableParams());
+				
+				gcimSuccessFlag = gcimCalc.getMultipleGcims(gcimNumIMi, imiMapAttenRels, imiTypes,
+										imijCorrRels, this.calc.getMaxSourceDistance(),
+										calc.getMagDistCutoffFunc());
+				
+				if (numGcimRealizations>0) {
+					gcimRealizationSuccessFlag = gcimCalc.getGcimRealizations(numGcimRealizations, gcimNumIMi, imiMapAttenRels, imiTypes,
+										imijCorrRels, imikCorrRels, this.calc.getMaxSourceDistance(),
+										calc.getMagDistCutoffFunc());
+				} else {
+					gcimRealizationSuccessFlag = true;
+				}
+				
+
+			} catch (WarningException warningException) {
+				setButtonsEnable(true);
+				JOptionPane.showMessageDialog(this, warningException
+						.getMessage());
+			} catch (Exception e) {
+				e.printStackTrace();
+				setButtonsEnable(true);
+				BugReport bug = new BugReport(e, getParametersInfoAsString(), appShortName, getAppVersion(), this);
+				BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
+				bugDialog.setVisible(true);
+			}
+			if (gcimSuccessFlag&gcimRealizationSuccessFlag) {
+				String imjName;
+				if (firstIMRFromMap.getIntensityMeasure().getName()==SA_Param.NAME) {
+					imjName= "SA (" + ((SA_Param) firstIMRFromMap.getIntensityMeasure()).getPeriodParam().getValue() + "s)";
+				}
+				else if (firstIMRFromMap.getIntensityMeasure().getName()==SA_InterpolatedParam.NAME) {
+					imjName= "SA (" + ((SA_InterpolatedParam) firstIMRFromMap.getIntensityMeasure()).getPeriodInterpolatedParam().getValue() + "s)";
+				}
+				else {
+					imjName = firstIMRFromMap.getIntensityMeasure().getName();
+				}
+				showGcimResults(imjName,gcimAtIML, imlVal, probVal);
+			}
+			else
+				JOptionPane
+				.showMessageDialog(
+						this,
+						"GCIM calculations failed because there is "
+						+ "no exceedance above \n "
+						+ "the given IML (or that interpolated from the chosen probability).",
+						"GCIM Message", JOptionPane.OK_OPTION);
+		}
+		runInEDT(new Runnable() {
 			@Override
 			public void run() {
 				setButtonsEnable(true);
 			}
 		});
-		// displays the disaggregation string in the pop-up window
-
-		disaggregationString = null;
 	}
 	
-	static void runInEDT(Runnable run) {
+	protected static void runInEDT(Runnable run) {
 		if (SwingUtilities.isEventDispatchThread()) {
 			run.run();
 		} else {
 			try {
 				SwingUtilities.invokeAndWait(run);
-			} catch (InvocationTargetException e) {
-				ExceptionUtils.throwAsRuntimeException(e);
-			} catch (InterruptedException e) {
+			} catch (InvocationTargetException | InterruptedException e) {
 				ExceptionUtils.throwAsRuntimeException(e);
 			}
 		}
@@ -1494,7 +1602,7 @@ ScalarIMRChangeListener {
 	 * @param probVal
 	 *            double if disaggregation is done based on prob. then its value
 	 */
-	private void showDisaggregationResults(int numSourceToShow,
+	protected void showDisaggregationResults(int numSourceToShow,
 			boolean imlBasedDisaggr, double imlVal, double probVal) {
 		boolean binDataToShow = disaggregationControlPanel.isShowDisaggrBinDataSelected();
 
@@ -1544,7 +1652,7 @@ ScalarIMRChangeListener {
 	 * 
 	 * @param site
 	 *            : Selected site
-	 * @param imr
+	 * @param imrMap
 	 *            : selected IMR
 	 * @param eqkRupForecast
 	 *            : List of Eqk Rup forecasts
@@ -1572,6 +1680,7 @@ ScalarIMRChangeListener {
 
 		XY_DataSetList hazardFuncList = new XY_DataSetList();
 		for (int i = 0; i < numERFsInEpistemicList; ++i) {
+			if (isCancelled()) return;
 			// current ERF's being used to calculated Hazard Curve
 			currentERFInEpistemicListForHazardCurve = i;
 			ArbitrarilyDiscretizedFunc hazFunction = new ArbitrarilyDiscretizedFunc();
@@ -1601,10 +1710,12 @@ ScalarIMRChangeListener {
 				}
 				hazFunction = toggleHazFuncLogValues(hazFunction);
 			} catch (RuntimeException e) {
-				JOptionPane.showMessageDialog(this, e.getMessage(),
-						"Parameters Invalid", JOptionPane.INFORMATION_MESSAGE);
+				if (!isCancelled()) {
+					JOptionPane.showMessageDialog(this, e.getMessage(),
+							"Parameters Invalid", JOptionPane.INFORMATION_MESSAGE);
+				}
 				setButtonsEnable(true);
-				// e.printStackTrace();
+				e.printStackTrace();
 				return;
 			}
 			hazardFuncList.add(hazFunction);
@@ -1656,8 +1767,6 @@ ScalarIMRChangeListener {
 
 	/**
 	 * This function is to whether to plot ERF_GuiBean or ERF_RupSelectorGuiBean
-	 * 
-	 * @param e
 	 */
 	protected void probDeterSelectionChange() {
 
@@ -1742,20 +1851,22 @@ ScalarIMRChangeListener {
 
 		imrGuiBean = new IMR_MultiGuiBean(imrs);
 		imrGuiBean.addIMRChangeListener(this);
-		imrGuiBean.setMaxChooserChars(30);
+		// imrGuiBean.setMaxChooserChars(30);
+        imrGuiBean.setChooserBoxSize(new Dimension(220, 25));
 		imrGuiBean.rebuildGUI();
 	}
 
 	/**
 	 * Initialize the IMT Gui Bean
 	 */
-	private void initIMT_GuiBean() {
+	protected void initIMT_GuiBean() {
 		// create the IMT Gui Bean object
 
 		imtGuiBean = new IMT_NewGuiBean(imrGuiBean);
 		imtGuiBean.setSelectedIMT(SA_Param.NAME);
 		imtGuiBean.setMinimumSize(new Dimension(200, 90));
 		imtGuiBean.setPreferredSize(new Dimension(290, 220));
+		imtGuiBean.addIMTChangeListener(this);
 		//		imtGuiBean = new IMT_GuiBean(imrGuiBean.getIMRs());
 	}
 
@@ -1795,10 +1906,6 @@ ScalarIMRChangeListener {
 				erfGuiBean.setERF(eqkRupForecast);
 			}
 		}
-//		erfPanel.removeAll(); TODO clean
-//		erfPanel.add(erfGuiBean, new GridBagConstraints( 0, 0, 1, 1, 1.0, 1.0,
-//				GridBagConstraints.CENTER,GridBagConstraints.BOTH, new Insets(0,0,0,0), 0, 0 ));
-//		erfPanel.updateUI();
 	}
 
 	/**
@@ -1825,11 +1932,6 @@ ScalarIMRChangeListener {
 		}
 		else
 			erfRupSelectorGuiBean.setEqkRupForecastModel(erf);
-//		erfPanel.removeAll(); TODO clean
-//		//erfGuiBean = null;
-//		erfPanel.add(erfRupSelectorGuiBean, new GridBagConstraints( 0, 0, 1, 1, 1.0, 1.0,
-//				GridBagConstraints.CENTER,GridBagConstraints.BOTH, defaultInsets, 0, 0 ));
-//		erfPanel.updateUI();
 	}
 
 	protected void initCommonControlList() {
@@ -1854,7 +1956,7 @@ ScalarIMRChangeListener {
 
 		/*		X Values Control				*/
 		controlComboBox.addItem(X_ValuesInCurveControlPanel.NAME);
-		controlPanels.add(xValuesPanel = new X_ValuesInCurveControlPanel(this, this));
+		controlPanels.add(new X_ValuesInCurveControlPanel(this, this));
 
 		/*		Plotting Prefs Control			*/
 		controlComboBox.addItem(PlottingOptionControl.NAME);
@@ -1864,7 +1966,7 @@ ScalarIMRChangeListener {
 		controlComboBox.addItem(XY_ValuesControlPanel.NAME);
 		controlPanels.add(new XY_ValuesControlPanel(this, this));
 		
-		/*		Epistempic list Control		*/
+		/*		Epistemic List Control		*/
 		controlComboBox.addItem(ERF_EpistemicListControlPanel.NAME);
 		epistemicControlPanel = new ERF_EpistemicListControlPanel(this, this);
 		System.out.println("init: " + epistemicControlPanel.getName());
@@ -1895,12 +1997,18 @@ ScalarIMRChangeListener {
 		controlComboBox.addItem(RunAll_PEER_TestCasesControlPanel.NAME);
 		controlPanels.add(new RunAll_PEER_TestCasesControlPanel(this));
 
+		/*		GCIM Control					*/
+		controlComboBox.addItem(GcimControlPanel.NAME);
+		gcimControlPanel = new GcimControlPanel(this, this);
+		controlPanels.add(gcimControlPanel);
 	}
 
-	private void selectControlPanel() {
+	protected void selectControlPanel() {
 		if (controlComboBox.getItemCount() <= 0)
 			return;
 		String selectedControl = controlComboBox.getSelectedItem().toString();
+		if (selectedControl == GcimControlPanel.NAME)
+			gcimControlPanel.updateWithParentDetails();
 		showControlPanel(selectedControl);
 
 		controlComboBox.setSelectedItem(CONTROL_PANELS);
@@ -1908,7 +2016,6 @@ ScalarIMRChangeListener {
 
 	/**
 	 *
-	 * @throws RemoteException 
 	 * @return the Adjustable parameters for the ScenarioShakeMap calculator
 	 */
 	public ParameterList getCalcAdjustableParams(){
@@ -1929,9 +2036,6 @@ ScalarIMRChangeListener {
 		return params.getParameterListMetadataString();
 	}
 
-
-
-
 	/**
 	 * 
 	 * @return the selected IMT
@@ -1948,11 +2052,10 @@ ScalarIMRChangeListener {
 			cvmControlPanel.init();
 		return cvmControlPanel;
 	}
-
+	
 	protected void showControlPanel(String controlName) {
+        if (controlName.trim().equalsIgnoreCase("Select")) return;
 		ControlPanel control = (ControlPanel)ListUtils.getObjectByName(controlPanels, controlName);
-		System.out.println("controlName: " + controlName);
-		System.out.println("control:" + control);
 		if (control == null)
 			throw new NullPointerException("Control Panel '" + controlName + "' not found!");
 		showControlPanel(control);
@@ -2025,10 +2128,10 @@ ScalarIMRChangeListener {
 	 * set x values in log space for Hazard Function to be passed to IMR if the
 	 * selected IMT are SA , PGA , PGV or FaultDispl It accepts 1 parameters
 	 * 
-	 * @param originalFunc
+	 * @param arb
 	 *            : this is the function with X values set
 	 */
-	private void initX_Values(DiscretizedFunc arb) {
+	protected void initX_Values(DiscretizedFunc arb) {
 
 		// if not using custom values get the function according to IMT.
 		if (!useCustomX_Values)
@@ -2049,10 +2152,10 @@ ScalarIMRChangeListener {
 	 * Hazard Function after completion of the Hazard Calculations if the
 	 * selected IMT are SA , PGA or PGV It accepts 1 parameters
 	 * 
-	 * @param hazFunction
+	 * @param hazFunc
 	 *            : this is the function with X values set
 	 */
-	private ArbitrarilyDiscretizedFunc toggleHazFuncLogValues(
+	protected ArbitrarilyDiscretizedFunc toggleHazFuncLogValues(
 			ArbitrarilyDiscretizedFunc hazFunc) {
 		int numPoints = hazFunc.size();
 		DiscretizedFunc tempFunc = hazFunc.deepClone();
@@ -2108,7 +2211,7 @@ ScalarIMRChangeListener {
 	 */
 	public String getParametersInfoAsString() {
 		return getMapParametersInfoAsHTML().replaceAll("<br>",
-				SystemUtils.LINE_SEPARATOR);
+				System.lineSeparator());
 	}
 	
 	public String getERFParametersInfoAsHTML() {
@@ -2159,7 +2262,7 @@ ScalarIMRChangeListener {
 		
 		StringBuilder str = new java.lang.StringBuilder();
 
-		str.append("<br>" + "Cacluation Type = ").append(calcType)
+		str.append("<br>" + "Calculation Type = ").append(calcType)
 		.append("<br><br>" + "IMR Param List:" + "<br>" + "---------------" + "<br>").append(imrMetadata)
 		.append("<br><br>")
 		.append("Site Param List: ")
@@ -2267,7 +2370,35 @@ ScalarIMRChangeListener {
 	public GraphWidget getGraphWidget() {
 		return graphWidget;
 	}
-
+	
+	/**
+	 * Checks if cancellation signal was issued. See `AbstractCalculator`.
+	 * Unlike in calculators, we want our `cancelled` boolean to be protected,
+	 * so we can share with child applications.
+	 * We don't reset the cancellation state here, but in `signalReset`.
+	 * This allows for application hooks to detect the cancellation state.
+	 */
+	final protected boolean isCancelled() {
+		if (D && cancelled) {
+			System.out.println("Cancellation signal caught in " + C);
+		}
+		return cancelled;
+	}
+	
+	final protected void signalCancel() {
+		if (D) {
+			System.out.println("Cancellation signal sent");
+		}
+		cancelled = true;
+	}
+	
+	/**
+	 * Cancellation signals should be reset prior to any new computations
+	 */
+	final protected void signalReset() {
+		cancelled = false;
+	}
+	
 	/**
 	 * This function stops the hazard curve calculation if started, so that user
 	 * does not have to wait for the calculation to finish. Note: This function
@@ -2275,38 +2406,58 @@ ScalarIMRChangeListener {
 	 * not changed any other parameter for the forecast, that won't be updated,
 	 * so saves time and memory for not updating the forecast everytime, cancel
 	 * is pressed.
-	 * 
-	 * @param e
 	 */
-	private void cancelCalculation() {
+	protected void cancelCalculation() {
+		if (calcFuture == null) {
+			if (D) System.out.println(
+					"Failed to cancel calculation. calculation thread is null. Has it started?");
+			return;
+		}
 		// stopping the Hazard Curve calculation thread
-		calcThread.stop(); // TODO remove dependency on depricated "stop" method
-		calcThread = null;
-		// close the progress bar for the ERF GuiBean that displays
-		// "Updating Forecast".
-		erfGuiBean.closeProgressBar();
-		// stoping the timer thread that updates the progress bar
-		if (timer != null && progressClass != null) {
-			timer.stop();
-			timer = null;
-			progressClass.dispose();
-		}
+		signalCancel();
 		// stopping the Hazard Curve calculations on server
-		if (calc != null) {
-			try {
+		try {
+			if (calc != null) {
 				calc.stopCalc();
-				calc = null;
-			} catch (RuntimeException ee) {
-				ee.printStackTrace();
-				BugReport bug = new BugReport(ee, getParametersInfoAsString(), appShortName, getAppVersion(), this);
-				BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
-				bugDialog.setVisible(true);
 			}
+			if (disaggCalc != null) {
+				disaggCalc.stopCalc();
+			}
+			if (gcimCalc != null) {
+				gcimCalc.stopCalc();
+			}
+		} catch (RuntimeException ee) {
+			ee.printStackTrace();
+			BugReport bug = new BugReport(ee, getParametersInfoAsString(), appShortName, getAppVersion(), this);
+			BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
+			bugDialog.setVisible(true);
 		}
-		this.isHazardCalcDone = false;
-		// making the buttons to be visible
-		setButtonsEnable(true);
-		cancelButton.setEnabled(false);
+		calcFuture.thenRun(() ->  {
+			setButtonsEnable(true);
+			// close the progress bar for the ERF GuiBean that displays
+			// "Updating Forecast".
+			erfGuiBean.closeProgressBar();
+			// stoping the timer thread that updates the progress bar
+			if (timer != null && progressClass != null) {
+				timer.stop();
+				timer = null;
+				progressClass.dispose();
+			}
+			if (disaggTimer != null && disaggProgressClass != null) {
+				disaggTimer.stop();
+				disaggTimer = null;
+				disaggProgressClass.dispose();
+			}
+			if (gcimTimer != null && gcimProgressClass != null) {
+				gcimTimer.stop();
+				gcimTimer = null;
+				gcimProgressClass.dispose();
+			}
+			this.isHazardCalcDone = false;
+			// making the buttons to be visible
+			setButtonsEnable(true);
+			cancelButton.setEnabled(false);
+		});
 	}
 
 	/**
@@ -2383,9 +2534,9 @@ ScalarIMRChangeListener {
 	 * Sets the application with the curve type chosen by the Cybershake
 	 * application
 	 * 
-	 * @param isDeterministic
-	 *            boolean :If deterministic calculation then make the applicaton
-	 *            to plot deterministic curves.
+	 * @param calcType
+	 *            If deterministic calculation then make the application
+	 *            plot deterministic curves.
 	 */
 	public void setCurveType(String calcType) {
 		if (calcType.equals(PROBABILISTIC))
@@ -2465,7 +2616,7 @@ ScalarIMRChangeListener {
 	}
 
 	/**
-	 * Updates the Site_GuiBean to reflect the chnaged SiteParams for the
+	 * Updates the Site_GuiBean to reflect the changed SiteParams for the
 	 * selected AttenuationRelationship. This method is called from the
 	 * IMR_GuiBean to update the application with the Attenuation's Site Params.
 	 * 
@@ -2479,6 +2630,88 @@ ScalarIMRChangeListener {
 	@Override
 	public void imrChange(ScalarIMRChangeEvent event) {
 		updateSiteParams();
+	}
+	
+
+	@Override
+	public void imtChange(IMTChangeEvent e) {
+		controlPanels.remove(gcimControlPanel);
+		gcimControlPanel = new GcimControlPanel(this, this);
+		controlPanels.add(gcimControlPanel);
+	}
+
+	/**
+	 * Specify whether gcim is selected or not
+	 * @param isSelected
+	 */
+	public void setGcimSelected(boolean isSelected) {
+		gcimFlag = isSelected;
+	}
+
+	/**
+	 * 
+	 * This function allows showing the GCIM results
+	 * @param imjName 
+	 * 			  The name of the IMT for which the GCIM results are conditioned on
+	 * @param imlBasedGcim
+	 *            boolean Disaggregation is done based on chosen IML
+	 * @param imlVal
+	 *            double iml value for the disaggregation
+	 * @param probVal
+	 *            double if disaggregation is done based on prob. then its value
+	 */
+	private void showGcimResults(String imjName, boolean imlBasedGcim, double imlVal, double probVal) {
+		
+		String headerString = "";
+		if (imlBasedGcim)
+			headerString = "GCIM Results: \n" +
+						   "Conditioning IM: " + imjName + "\n" +
+						   "IML  = " + imlVal + "\n" +
+						   "(Prob= " + (float) probVal + ")";
+		else
+			headerString = "GCIM Results: \n" +
+			   "Conditioning IM: " + imjName + "\n" +
+			   "Prob = " + probVal + "\n" +
+			   "(IML = " + (float) imlVal + ")";
+
+
+		String gcimResultsString = gcimCalc.getGcimResultsString();
+		
+		gcimResultsString = headerString + "\n\n" + gcimResultsString;
+
+		new GcimPlotViewerWindow(gcimResultsString);
+	}
+
+	/**
+	 * Returns the Gcim Results List
+	 * 
+	 * @return String
+	 */
+	public String getGcimResults() {
+		try {
+			return gcimCalc.getGcimResultsString();
+		} catch (Exception ex) {
+			ex.printStackTrace();
+			setButtonsEnable(true);
+			BugReport bug = new BugReport(ex, getParametersInfoAsString(), appShortName, getAppVersion(), this);
+			BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
+			bugDialog.setVisible(true);
+		}
+		return null;
+	}
+
+	/** 
+	 * This method gets the included tectonic region types, which is needed by some control panels
+	 */
+	public ArrayList<TectonicRegionType> getIncludedTectonicRegionTypes() {
+		try {
+			ArrayList<TectonicRegionType> includedTectonicRegionTypes =  erfGuiBean.getSelectedERF_Instance().getIncludedTectonicRegionTypes();
+			return includedTectonicRegionTypes;
+		} catch (InvocationTargetException e) {
+			e.printStackTrace();
+			imrGuiBean.setTectonicRegions(null);
+			return null;
+		}
 	}
 }
 

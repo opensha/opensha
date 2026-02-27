@@ -72,7 +72,7 @@ public class UncertainBoundedIncrMagFreqDist extends UncertainIncrMagFreqDist im
 				if (stdDevs == null) {
 					EvenlyDiscretizedFunc stdDevs = new EvenlyDiscretizedFunc(getMinX(), getMaxX(), size());
 					for (int i=0; i<size(); i++)
-						stdDevs.set(i, boundType.estimateStdDev(getY(i), getLowerY(i), getUpperY(i)));
+						stdDevs.set(i, boundType.estimateStdDev(getLowerY(i), getUpperY(i)));
 					this.stdDevs = stdDevs;
 				}
 			}

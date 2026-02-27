@@ -26,7 +26,7 @@ public class XYZDatasetWrapper extends AbstractXYZDataset implements IntervalXYD
 	
 	public XYZDatasetWrapper(XYZPlotSpec spec, boolean xLog, boolean yLog) {
 		this.xyz = spec.getXYZ_Data();
-		this.zLabel = spec.getZAxisLabel();
+		this.zLabel = spec.isIncludeZlabelInLegend() ? spec.getZAxisLabel() : "";
 		this.xLog = xLog;
 		this.yLog = yLog;
 		Double thicknessX = spec.getThicknessX();

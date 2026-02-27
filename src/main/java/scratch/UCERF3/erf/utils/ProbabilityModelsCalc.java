@@ -168,6 +168,7 @@ public class ProbabilityModelsCalc {
 	double totRupAreaWithDateOfLast;
 	boolean allSectionsHadDateOfLast;
 	boolean noSectionsHadDateOfLast;
+	public String u3_ProgGainForRupInfoString;
 
 	// data dir for Elastic Rebound simulations
 	final static File dataDir = new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR,File.separator+"erSimulations");
@@ -571,7 +572,7 @@ public class ProbabilityModelsCalc {
 		
 		double rupMag = fltSysRupSet.getMagForRup(fltSysRupIndex);
 
-		// get the average recurrence interval
+		// get the average conditional recurrence interval
 		double aveCondRecurInterval;
 		if(aveRecurIntervals) {
 			if(aveCondRecurIntervalForFltSysRups_type1 == null)
@@ -752,6 +753,17 @@ public class ProbabilityModelsCalc {
 //		if(fltSysRupIndex==testRupID) {
 //				System.out.println("\tprobGain="+probGain);
 //}
+		u3_ProgGainForRupInfoString = new String();
+		u3_ProgGainForRupInfoString += fltSysRupIndex+",";
+		u3_ProgGainForRupInfoString += rupMag+",";
+		u3_ProgGainForRupInfoString += aveCondRecurInterval+",";
+		u3_ProgGainForRupInfoString += aveNormTimeSinceLastEventWhereKnown+",";
+		u3_ProgGainForRupInfoString += probGain+",";
+		u3_ProgGainForRupInfoString += totRupArea+",";
+		u3_ProgGainForRupInfoString += totRupAreaWithDateOfLast+",";
+		u3_ProgGainForRupInfoString += allSectionsHadDateOfLast+",";
+		u3_ProgGainForRupInfoString += noSectionsHadDateOfLast;
+
 
 		
 		if(simulationMode) {
@@ -3770,7 +3782,8 @@ public class ProbabilityModelsCalc {
 	private void readSectTimeSinceLastEventFromFile(String fileName, long currentTimeMillis) {
 		
 		try {
-			File dataFile = new File(dataDir,File.separator+fileName);
+//			File dataFile = new File(dataDir,File.separator+fileName);
+			File dataFile = new File(fileName);
 			
 			System.out.println("Reading file "+fileName+"; currentTimeMillis+"+currentTimeMillis);
 			
@@ -4107,6 +4120,27 @@ public class ProbabilityModelsCalc {
 	 */
 	public static void main(String[] args) {
 		
+		
+		// This is a rerun test in March 2025 (extracted to un-commented stuff below); input file locations had changed.
+		String fileName="/Users/field/Library/CloudStorage/OneDrive-DOI/Field_Other/CEA_WGCEP/UCERF3/UCERF3-TI/Figures/Fig11_FaultClusterFig/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip";
+		String timeSinceLastFileName = "/Users/field/FilesFromOldComputerTransfer/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/erSimulations/timeSinceLastForSimulation.txt"; 
+		FaultSystemSolutionERF erf = new FaultSystemSolutionERF(fileName);
+		erf.getParameter(IncludeBackgroundParam.NAME).setValue(IncludeBackgroundOption.EXCLUDE);
+		erf.getParameter(ProbabilityModelParam.NAME).setValue(ProbabilityModelOptions.U3_BPT);
+		erf.getParameter(MagDependentAperiodicityParam.NAME).setValue(MagDependentAperiodicityOptions.MID_VALUES);
+		BPTAveragingTypeOptions aveType = BPTAveragingTypeOptions.AVE_RI_AVE_NORM_TIME_SINCE;
+		erf.setParameter(BPTAveragingTypeParam.NAME, aveType);
+		erf.updateForecast();
+		ProbabilityModelsCalc testCalc = new ProbabilityModelsCalc(erf);
+		testCalc.testER_Simulation(timeSinceLastFileName, null, erf, 20000d, "TestRun_120915");
+
+
+		
+		
+		
+		
+		
+		
 //		simpleModelTest(1000000);
 
 //		// THIS CODE WAS RUN ON JAN 30
@@ -4150,62 +4184,62 @@ public class ProbabilityModelsCalc {
 ////		testCalc.testER_Next50yrSimulation(erf, "SimpleFaultTest_Next50yrSimBPT_100yrTestGainFix", null, 5000);
 		
 
-		String fileName="dev/scratch/UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip";
-		FaultSystemSolutionERF erf = new FaultSystemSolutionERF(fileName);
-		erf.getParameter(IncludeBackgroundParam.NAME).setValue(IncludeBackgroundOption.EXCLUDE);
-		
-		
-
-		
-//		erf.getParameter(ProbabilityModelParam.NAME).setValue(ProbabilityModelOptions.POISSON);
-//		erf.updateForecast();
-//		ProbabilityModelsCalc testCalc = new ProbabilityModelsCalc(erf);
-////		testCalc.testER_Simulation(null, null, erf,200000d);
-//		testCalc.testER_Next50yrSimulation(erf, "TestER_Next50yrSimulation", 1000000);
-//
-//		String timeSinceLastFileNamePois = "timeSinceLastForSimulationPois.txt";
-		String timeSinceLastFileName = "timeSinceLastForSimulation.txt";
-		erf.getParameter(ProbabilityModelParam.NAME).setValue(ProbabilityModelOptions.U3_BPT);
-		erf.getParameter(MagDependentAperiodicityParam.NAME).setValue(MagDependentAperiodicityOptions.MID_VALUES);
-//		erf.getParameter(MagDependentAperiodicityParam.NAME).setValue(MagDependentAperiodicityOptions.ALL_PT2_VALUES);
-//		BPTAveragingTypeOptions aveType = BPTAveragingTypeOptions.AVE_RI_AVE_TIME_SINCE;
-		BPTAveragingTypeOptions aveType = BPTAveragingTypeOptions.AVE_RI_AVE_NORM_TIME_SINCE;
-//		BPTAveragingTypeOptions aveType = BPTAveragingTypeOptions.AVE_RATE_AVE_NORM_TIME_SINCE;
-		erf.setParameter(BPTAveragingTypeParam.NAME, aveType);
+//		String fileName="dev/scratch/UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip";
+//		FaultSystemSolutionERF erf = new FaultSystemSolutionERF(fileName);
+//		erf.getParameter(IncludeBackgroundParam.NAME).setValue(IncludeBackgroundOption.EXCLUDE);
 //		
-//		erf.getParameter(HistoricOpenIntervalParam.NAME).setValue(2014d-1850d);	
-
-//		erf.getTimeSpan().setStartTime(1910);
-//		System.out.println("startYear: "+erf.getTimeSpan().getStartTimeYear());
-//		erf.eraseDatesOfLastEventAfterStartTime();
-//		erf.getTimeSpan().setDuration(100);
-
-		erf.updateForecast();
-		
-		
-		
-//		// Write section info for Pitman canyon paleo site
-//		Location loc = new Location(34.2544,-117.4340, 0.0);
-//		double minDist = Double.MAX_VALUE;
-//		int minIndex=-1;
-//		int index = 0;
-//		for(FaultSectionPrefData data : erf.getSolution().getRupSet().getFaultSectionDataList()) {
-//			double dist = data.getStirlingGriddedSurface(1.0).getDistanceJB(loc);
-//			if(dist<minDist) {
-//				minDist = dist;
-//				minIndex = index;
-//			}
-//			index+=1;
-//		}
-//		System.out.println("Pitman Canyon section: "+minIndex+"\t"+erf.getSolution().getRupSet().getFaultSectionData(minIndex).getName());
-//		System.exit(-1);
-		
-		// TODO This could be obtained from the ERF, but the ERF would have to use the ProbabilityModelsCalc constructor that takes the ERF 
-		ProbabilityModelsCalc testCalc = new ProbabilityModelsCalc(erf);
-		
-//		testCalc.plotRatioHistOfRupCondProbs();
-
-		testCalc.testER_Simulation(timeSinceLastFileName, null, erf, 20000d, "TestRun_120915");
+//		
+//
+//		
+////		erf.getParameter(ProbabilityModelParam.NAME).setValue(ProbabilityModelOptions.POISSON);
+////		erf.updateForecast();
+////		ProbabilityModelsCalc testCalc = new ProbabilityModelsCalc(erf);
+//////		testCalc.testER_Simulation(null, null, erf,200000d);
+////		testCalc.testER_Next50yrSimulation(erf, "TestER_Next50yrSimulation", 1000000);
+////
+////		String timeSinceLastFileNamePois = "timeSinceLastForSimulationPois.txt";
+//		String timeSinceLastFileName = "timeSinceLastForSimulation.txt";
+//		erf.getParameter(ProbabilityModelParam.NAME).setValue(ProbabilityModelOptions.U3_BPT);
+//		erf.getParameter(MagDependentAperiodicityParam.NAME).setValue(MagDependentAperiodicityOptions.MID_VALUES);
+////		erf.getParameter(MagDependentAperiodicityParam.NAME).setValue(MagDependentAperiodicityOptions.ALL_PT2_VALUES);
+////		BPTAveragingTypeOptions aveType = BPTAveragingTypeOptions.AVE_RI_AVE_TIME_SINCE;
+//		BPTAveragingTypeOptions aveType = BPTAveragingTypeOptions.AVE_RI_AVE_NORM_TIME_SINCE;
+////		BPTAveragingTypeOptions aveType = BPTAveragingTypeOptions.AVE_RATE_AVE_NORM_TIME_SINCE;
+//		erf.setParameter(BPTAveragingTypeParam.NAME, aveType);
+////		
+////		erf.getParameter(HistoricOpenIntervalParam.NAME).setValue(2014d-1850d);	
+//
+////		erf.getTimeSpan().setStartTime(1910);
+////		System.out.println("startYear: "+erf.getTimeSpan().getStartTimeYear());
+////		erf.eraseDatesOfLastEventAfterStartTime();
+////		erf.getTimeSpan().setDuration(100);
+//
+//		erf.updateForecast();
+//		
+//		
+//		
+////		// Write section info for Pitman canyon paleo site
+////		Location loc = new Location(34.2544,-117.4340, 0.0);
+////		double minDist = Double.MAX_VALUE;
+////		int minIndex=-1;
+////		int index = 0;
+////		for(FaultSectionPrefData data : erf.getSolution().getRupSet().getFaultSectionDataList()) {
+////			double dist = data.getStirlingGriddedSurface(1.0).getDistanceJB(loc);
+////			if(dist<minDist) {
+////				minDist = dist;
+////				minIndex = index;
+////			}
+////			index+=1;
+////		}
+////		System.out.println("Pitman Canyon section: "+minIndex+"\t"+erf.getSolution().getRupSet().getFaultSectionData(minIndex).getName());
+////		System.exit(-1);
+//		
+//		// TODO This could be obtained from the ERF, but the ERF would have to use the ProbabilityModelsCalc constructor that takes the ERF 
+//		ProbabilityModelsCalc testCalc = new ProbabilityModelsCalc(erf);
+//		
+////		testCalc.plotRatioHistOfRupCondProbs();
+//
+//		testCalc.testER_Simulation(timeSinceLastFileName, null, erf, 20000d, "TestRun_120915");
 
 //		try {
 //			testCalc.testER_NextXyrSimulation(new File("TestSim_8"), null, 10, true, null);

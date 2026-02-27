@@ -1,6 +1,5 @@
 package org.opensha.sha.calc;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 
@@ -8,15 +7,14 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.param.ParameterList;
-import org.opensha.commons.param.impl.DoubleParameter;
-import org.opensha.sha.calc.params.MaxDistanceParam;
-import org.opensha.sha.calc.params.PtSrcDistanceCorrectionParam;
+import org.opensha.sha.calc.sourceFilters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
+import org.opensha.sha.calc.sourceFilters.SourceFilterUtils;
+import org.opensha.sha.calc.sourceFilters.params.SourceFiltersParam;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.faultSurface.PointSurface;
-import org.opensha.sha.faultSurface.utils.PtSrcDistCorr;
 import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
@@ -32,40 +30,46 @@ import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
  * @author Nitin Gupta
  * @version 1.0
  */
-public class SpectrumCalculator
+public class SpectrumCalculator extends AbstractCalculator
 implements SpectrumCalculatorAPI {
 
 
-	protected final static String C = "SpectrumCalculator";
-	protected final static boolean D = false;
+	private final static String C = "SpectrumCalculator";
+	private final static boolean D = false;
 
 	//Info for parameter that sets the maximum distance considered
-	private MaxDistanceParam maxDistanceParam;
-	private PtSrcDistanceCorrectionParam ptSrcDistCorrParam;
+	private SourceFilterManager sourceFilters;
+	private SourceFiltersParam sourceFilterParam;
 
 	private ParameterList adjustableParams;
 
 
-	protected int currRuptures = -1;
-	protected int totRuptures = 0;
+	private int currRuptures = -1;
+	private int totRuptures = 0;
 
 	//index to keep track how many sources have been traversed
-	protected int sourceIndex;
+	private int sourceIndex;
 	// get total number of sources
-	protected int numSources;
+	private int numSources;
 
 
 	/**
 	 * SpectrumCalculator
 	 */
 	public SpectrumCalculator() {
-
+		this(SourceFiltersParam.getDefault());
+	}
+	
+	/**
+	 * SpectrumCalculator
+	 */
+	public SpectrumCalculator(SourceFilterManager sourceFilters) {
+		this.sourceFilters = sourceFilters;
+		sourceFilterParam = new SourceFiltersParam(sourceFilters);
+		
 		// Create adjustable parameters and add to list
 		adjustableParams = new ParameterList();
-		maxDistanceParam = new MaxDistanceParam();
-		ptSrcDistCorrParam = new PtSrcDistanceCorrectionParam();
-		adjustableParams.addParameter(maxDistanceParam);
-		adjustableParams.addParameter(ptSrcDistCorrParam);
+		adjustableParams.addParameter(sourceFilterParam);
 	}
 
 	/**
@@ -84,15 +88,8 @@ implements SpectrumCalculatorAPI {
 	 */
 	public void setAdjustableParams(ParameterList paramList) {
 		this.adjustableParams = paramList;
-		this.maxDistanceParam= (MaxDistanceParam)paramList.getParameter(MaxDistanceParam.NAME);
-		this.ptSrcDistCorrParam= (PtSrcDistanceCorrectionParam)paramList.getParameter(PtSrcDistanceCorrectionParam.NAME);
-	}
-
-	/**
-	 * This is a direct way of getting the distance cutoff from that parameter
-	 */
-	public double getMaxSourceDistance() { 
-		return maxDistanceParam.getValue().doubleValue(); 
+		this.sourceFilterParam = (SourceFiltersParam)paramList.getParameter(SourceFiltersParam.NAME);
+		this.sourceFilters = sourceFilterParam.getValue();
 	}
 
 
@@ -103,20 +100,6 @@ implements SpectrumCalculatorAPI {
 	 */
 	public ListIterator getAdjustableParamsIterator() {
 		return adjustableParams.getParametersIterator();
-	}
-
-
-
-	/**
-	 * This sets the maximum distance of sources to be considered in the calculation.
-	 * Sources more than this distance away are ignored.  This is simply a direct
-	 * way of setting the parameter.
-	 * Default value is 250 km.
-	 *
-	 * @param distance: the maximum distance in km
-	 */
-	public void setMaxSourceDistance(double distance){
-		maxDistanceParam.setValue(distance);
 	}
 
 	/**
@@ -137,10 +120,9 @@ implements SpectrumCalculatorAPI {
 			ERF eqkRupForecast,
 			double probVal,
 			List supportedSA_Periods) {
+		signalReset();
 
 		this.currRuptures = -1;
-		
-		PtSrcDistCorr.Type distCorrType = getPtSrcDistCorrType();
 
 		/* this determines how the calucations are done (doing it the way it's outlined
      in the paper SRL gives probs greater than 1 if the total rate of events for the
@@ -176,7 +158,8 @@ implements SpectrumCalculatorAPI {
 		// get the number of points
 		int numPoints = tempSpecFunc.size();
 
-		double maxDistance = maxDistanceParam.getValue();
+		double maxDistance = sourceFilters.getMaxDistance();
+		List<SourceFilter> filters = sourceFilters.getEnabledFilters();
 
 		// set the maximum distance in the attenuation relationship
 		// (Note- other types of IMRs may not have this method so we should really check type here)
@@ -212,21 +195,16 @@ implements SpectrumCalculatorAPI {
 
 		// loop over sources
 		for (sourceIndex = 0; sourceIndex < numSources; sourceIndex++) {
-
+			if (isCancelled()) return null;
+			
 			// get the ith source
 			ProbEqkSource source = eqkRupForecast.getSource(sourceIndex);
 
 			// compute the source's distance from the site and skip if it's too far away
 			distance = source.getMinDistance(site);
-			if (distance > maxDistance) {
-				//update progress bar for skipped ruptures
-				/*
-                 if(source.getRupture(0).getRuptureSurface().getNumCols() != 1) throw new RuntimeException("prob");
-                 System.out.println("rejected "+
-                 (float)source.getRupture(0).getRuptureSurface().getLocation(0,0).getLongitude()+"  "+
-         (float)source.getRupture(0).getRuptureSurface().getLocation(0,0).getLatitude());
-				 */
-				currRuptures += source.getNumRuptures();
+			// apply any filters
+			if (SourceFilterUtils.canSkipSource(filters, source, site)) {
+				currRuptures += source.getNumRuptures();  //update progress bar for skipped ruptures
 				continue;
 			}
 
@@ -248,13 +226,17 @@ implements SpectrumCalculatorAPI {
 			for (int n = 0; n < numRuptures; n++, ++currRuptures) {
 
 				EqkRupture rupture = source.getRupture(n);
-				
-				// set point-source distance correction type & mag if it's a pointSurface
-				if(rupture.getRuptureSurface() instanceof PointSurface)
-					((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
 
 				// get the rupture probability
 				qkProb = ( (ProbEqkRupture) rupture).getProbability();
+				
+				if (qkProb == 0d)
+					continue;
+				
+				// apply any filters
+				if (SourceFilterUtils.canSkipRupture(filters, rupture, site)) {
+					continue;
+				}
 
 				// set the EqkRup in the IMR
 				imr.setEqkRupture(rupture);
@@ -379,13 +361,12 @@ implements SpectrumCalculatorAPI {
 			ERF eqkRupForecast,
 			double imlVal,
 			List supportedSA_Periods) {
+		signalReset();
 
 		//creating the Master function that initializes the Function with supported SA Periods Vals
 		DiscretizedFunc hazFunction = new ArbitrarilyDiscretizedFunc();
 		initDiscretizeValues(hazFunction, supportedSA_Periods, 1.0);
 		int numPoints = hazFunction.size();
-		
-		PtSrcDistCorr.Type distCorrType = getPtSrcDistCorrType();
 
 		this.currRuptures = -1;
 
@@ -406,7 +387,8 @@ implements SpectrumCalculatorAPI {
 		double qkProb, distance;
 		int k;
 
-		double maxDistance = maxDistanceParam.getValue();
+		double maxDistance = sourceFilters.getMaxDistance();
+		List<SourceFilter> filters = sourceFilters.getEnabledFilters();
 
 		// set the maximum distance in the attenuation relationship
 		// (Note- other types of IMRs may not have this method so we should really check type here)
@@ -446,24 +428,20 @@ implements SpectrumCalculatorAPI {
 
 		// loop over sources
 		for(sourceIndex=0;sourceIndex < numSources ;sourceIndex++) {
+			// quit if user cancelled the calculation
+			if (isCancelled()) return null;
 
 			// get the ith source
 			ProbEqkSource source = eqkRupForecast.getSource(sourceIndex);
 
 			// compute the source's distance from the site and skip if it's too far away
 			distance = source.getMinDistance(site);
-			if(distance > maxDistance) {
-				//update progress bar for skipped ruptures
-				/*
-         if(source.getRupture(0).getRuptureSurface().getNumCols() != 1) throw new RuntimeException("prob");
-         System.out.println("rejected "+
-         (float)source.getRupture(0).getRuptureSurface().getLocation(0,0).getLongitude()+"  "+
-         (float)source.getRupture(0).getRuptureSurface().getLocation(0,0).getLatitude());
-				 */
-				currRuptures += source.getNumRuptures();
+			// apply any filters
+			if (SourceFilterUtils.canSkipSource(filters, source, site)) {
+				currRuptures += source.getNumRuptures();  //update progress bar for skipped ruptures
 				continue;
 			}
-
+			
 			// indicate that a source has been used
 			sourceUsed = true;
 
@@ -477,13 +455,17 @@ implements SpectrumCalculatorAPI {
 			for(int n=0; n < numRuptures ; n++,++currRuptures) {
 
 				EqkRupture rupture = source.getRupture(n);
-				
-				// set point-source distance correction type & mag if it's a pointSurface
-				if(rupture.getRuptureSurface() instanceof PointSurface)
-					((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
 
 				// get the rupture probability
 				qkProb = ((ProbEqkRupture)rupture).getProbability();
+				
+				if (qkProb == 0d)
+					continue;
+				
+				// apply any filters
+				if (SourceFilterUtils.canSkipRupture(filters, rupture, site)) {
+					continue;
+				}
 
 				// set the EqkRup in the IMR
 				imr.setEqkRupture(rupture);
@@ -532,8 +514,6 @@ implements SpectrumCalculatorAPI {
 		if (D) System.out.println(C+"hazFunction.toString"+hazFunction.toString());
 		return hazFunction;
 	}
-
-
 
 	/**
 	 *
@@ -585,10 +565,6 @@ implements SpectrumCalculatorAPI {
 		//parameters. This allows the Server version of our application to listen to the
 		//parameter changes.
 		( (AttenuationRelationship) imr).resetParameterEventListeners();
-		
-		// set point-source distance correction type (& mag) if it's a pointSurface
-		if(rupture.getRuptureSurface() instanceof PointSurface)
-			((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), getPtSrcDistCorrType());
 
 
 		//System.out.println("hazFunction: "+hazFunction.toString());
@@ -616,18 +592,11 @@ implements SpectrumCalculatorAPI {
 		if (D) System.out.println(C + "hazFunction.toString" + hazFunction.toString());
 		return hazFunction;
 	}
-	
-//	@Override
-	public void setPtSrcDistCorrType(PtSrcDistCorr.Type type) {
-		ptSrcDistCorrParam.setValueFromTypePtSrcDistCorr(type);
+
+	@Override
+	protected boolean isCancelled() {
+		boolean cancelled = super.isCancelled();
+		if (D && cancelled) System.out.println("Signal caught in " + C);
+		return cancelled;
 	}
-	
-
-//	@Override
-	public PtSrcDistCorr.Type getPtSrcDistCorrType(){
-		return ptSrcDistCorrParam.getValueAsTypePtSrcDistCorr();
-	}
-
-
-
 }

@@ -24,9 +24,7 @@ import org.opensha.nshmp2.imr.impl.ZhaoEtAl_2006_AttenRel;
 import org.opensha.nshmp2.util.Period;
 import org.opensha.nshmp2.util.Utils;
 import org.opensha.sha.earthquake.EqkRupture;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
 import org.opensha.sha.imr.AttenuationRelationship;
-import org.opensha.sha.imr.PropagationEffect;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.EqkRuptureParams.MagParam;
 import org.opensha.sha.imr.param.EqkRuptureParams.RupTopDepthParam;
@@ -185,11 +183,7 @@ public class NSHMP08_SUB_Interface extends AttenuationRelationship implements
 		otherParams.addParameter(componentParam);
 
 		// TRT, uneditable and no connection to TRT in child imrs
-		StringConstraint trtConst = new StringConstraint();
-		String trtDefault = SUBDUCTION_INTERFACE.toString();
-		trtConst.addString(trtDefault);
-		tectonicRegionTypeParam = new TectonicRegionTypeParam(trtConst,
-			trtDefault);
+		tectonicRegionTypeParam = new TectonicRegionTypeParam(SUBDUCTION_INTERFACE);
 		otherParams.replaceParameter(
 			TectonicRegionTypeParam.NAME,
 			tectonicRegionTypeParam);
@@ -332,12 +326,6 @@ public class NSHMP08_SUB_Interface extends AttenuationRelationship implements
 	public DiscretizedFunc getSA_IML_AtExceedProbSpectrum(double exceedProb)
 			throws ParameterException, IMRException {
 		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public double getTotExceedProbability(PointEqkSource ptSrc, double iml) {
-		throw new UnsupportedOperationException(
-			"getTotExceedProbability is unsupported for " + C);
 	}
 
 	@Override

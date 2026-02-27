@@ -6,6 +6,7 @@ import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -25,6 +26,8 @@ import java.util.zip.ZipFile;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
+import org.apache.commons.math3.stat.descriptive.moment.Variance;
+import org.apache.commons.math3.util.MathArrays;
 import org.jfree.chart.annotations.XYAnnotation;
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.plot.DatasetRenderingOrder;
@@ -55,6 +58,7 @@ import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.ExecutorUtils;
+import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
@@ -66,11 +70,19 @@ import org.opensha.sha.earthquake.faultSysSolution.util.SolSiteHazardCalc;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
+import com.google.common.primitives.Doubles;
 
 public class SiteLogicTreeHazardPageGen {
 
 	@SuppressWarnings("unused")
 	public static void main(String[] args) throws ZipException, IOException {
+//		for (int i=0; i<100; i++) {
+//			double span = Math.random()*2;
+//			double delta = getHistDelta(span, 30);
+//			int values = (int)(span/delta + 0.5);
+//			System.out.println("span="+(float)span+", delta="+(float)delta+", expected="+values);
+//		}
+//		System.exit(0);
 		if (args.length == 1 && args[0].equals("--hardcoded")) {
 			args = new String[] {
 					"/home/kevin/OpenSHA/UCERF4/batch_inversions/"
@@ -82,6 +94,8 @@ public class SiteLogicTreeHazardPageGen {
 		
 		CommandLine cmd = FaultSysTools.parseOptions(createOptions(), args, SiteLogicTreeHazardPageGen.class);
 		args = cmd.getArgs();
+		
+		boolean resume = cmd.hasOption("resume");
 		
 		if (args.length < 2 || args.length > 3) {
 			System.err.println("USAGE: <zip-file> <output-dir> [<comp-zip-file>]");
@@ -137,13 +151,27 @@ public class SiteLogicTreeHazardPageGen {
 		boolean levelNameOverlap = false;
 		List<String> levelPrefixes = new ArrayList<>();
 		for (LogicTreeLevel<?> level : tree.getLevels()) {
-			String ltPrefix = level.getShortName().replaceAll("\\W+", "_");
+			String ltPrefix = level.getFilePrefix();
 			levelNameOverlap |= levelPrefixes.contains(ltPrefix);
 			levelPrefixes.add(ltPrefix);
 		}
 		if (levelNameOverlap)
 			for (int i=0; i<levelPrefixes.size(); i++)
 				levelPrefixes.set(i, i+"_"+levelPrefixes.get(i));
+		
+		List<CSVFile<String>> distSummaryCSVs = new ArrayList<>();
+		List<CSVFile<String>> compDistSummaryCSVs = compZip == null ? null : new ArrayList<>();
+		for (int r=0; r<rps.length; r++) {
+			List<String> header = buildDistHeader("Site Name", " g");
+			CSVFile<String> csv = new CSVFile<>(true);
+			csv.addLine(header);
+			distSummaryCSVs.add(csv);
+			if (compDistSummaryCSVs != null) {
+				csv = new CSVFile<>(true);
+				csv.addLine(header);
+				compDistSummaryCSVs.add(csv);
+			}
+		}
 		
 		for (Site site : sites) {
 			List<String> siteLines = new ArrayList<>();
@@ -159,7 +187,7 @@ public class SiteLogicTreeHazardPageGen {
 			
 			System.out.println("Site: "+site.getName());
 			
-			String sitePrefix = site.getName().replaceAll("\\W+", "_");
+			String sitePrefix = FileNameUtils.simplify(site.getName());
 			
 			lines.add("Summary figures across all branches are shown here. _[Click here for detailed branch-specific hazard "
 					+ "curves for "+site.getName()+"]("+sitePrefix+".md)_");
@@ -213,7 +241,7 @@ public class SiteLogicTreeHazardPageGen {
 				List<Double> weights = new ArrayList<>();
 				List<LogicTreeBranch<?>> branches = new ArrayList<>();
 				System.out.println("\tBuilding curve dists");
-				ArbDiscrEmpiricalDistFunc[] dists = loadCurvesAndDists(curvesCSV, tree.getLevels(), curves, branches, weights, true);
+				ValueDistribution[] dists = loadCurvesAndDists(curvesCSV, tree.getLevels(), curves, branches, weights, true);
 				
 				DiscretizedFunc meanCurve = calcMeanCurve(dists, xVals(curves.get(0)));
 				
@@ -223,7 +251,7 @@ public class SiteLogicTreeHazardPageGen {
 				
 				List<DiscretizedFunc> compCurves = null;
 				List<Double> compWeights = null;
-				ArbDiscrEmpiricalDistFunc[] compDists = null;
+				ValueDistribution[] compDists = null;
 				DiscretizedFunc compMeanCurve = null;
 				if (compEntry != null) {
 					System.out.println("\tReading comparison curves");
@@ -233,6 +261,8 @@ public class SiteLogicTreeHazardPageGen {
 					System.out.println("\tBuilding comparison curve dists");
 					compDists = loadCurvesAndDists(compCurvesCSV, null, compCurves, null, compWeights, true);
 					compMeanCurve = compCurves.size() == 1 ? compCurves.get(0) : calcMeanCurve(compDists, xVals(compCurves.get(0)));
+					if (compCurves.size() == 1)
+						compDists = null;
 				}
 				
 				String prefix = sitePrefix+"_"+perPrefix;
@@ -240,12 +270,17 @@ public class SiteLogicTreeHazardPageGen {
 				double[] xVals = xVals(curves.get(0));
 				
 				System.out.println("\tBuilding plots");
-				File plot = curveDistPlot(resourcesDir, prefix+"_curve_dists", site.getName(), perLabel, perUnits, dists,
-						xVals, primaryColor, rps, compMeanCurve, compColor, exec, plotFutures);
+				String plotPrefix = prefix+"_curve_dists";
+				File plot = new File(resourcesDir, plotPrefix+".png");
+				if (!resume || !plot.exists())
+					curveDistPlot(resourcesDir, plotPrefix, site.getName(), perLabel, perUnits, dists,
+							xVals, primaryColor, rps, compMeanCurve, compColor, exec, plotFutures);
 				
 				if (compDists == null || compCurves.size() < 2) {
 					lines.add("![Curve Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
 					siteLines.add("![Curve Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
+					lines.add("");
+					lines.add("[__Download CSV__]("+resourcesDir.getName()+"/"+prefix+"_curve_dists.csv)");
 				} else {
 					// we have a comparison distribution
 					TableBuilder table = MarkdownUtils.tableBuilder();
@@ -254,10 +289,18 @@ public class SiteLogicTreeHazardPageGen {
 					
 					table.initNewLine();
 					table.addColumn("![Curve Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
-					plot = curveDistPlot(resourcesDir, prefix+"_comp_curve_dists", site.getName(), perLabel, perUnits, compDists,
-							xVals(compCurves.get(0)), compColor, rps, calcMeanCurve(dists, xVals(compCurves.get(0))), primaryColor,
-							exec, plotFutures);
+					plotPrefix = prefix+"_comp_curve_dists";
+					plot = new File(resourcesDir, plotPrefix+".png");
+					if (!resume || !plot.exists())
+						plot = curveDistPlot(resourcesDir, plotPrefix, site.getName(), perLabel, perUnits, compDists,
+								xVals(compCurves.get(0)), compColor, rps, calcMeanCurve(dists, xVals(compCurves.get(0))), primaryColor,
+								exec, plotFutures);
 					table.addColumn("![Curve Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
+					table.finalizeLine();
+					
+					table.initNewLine();
+					table.addColumn("[__Download CSV__]("+resourcesDir.getName()+"/"+prefix+"_curve_dists.csv)");
+					table.addColumn("[__Download CSV__]("+resourcesDir.getName()+"/"+prefix+"_comp_curve_dists.csv)");
 					table.finalizeLine();
 					
 					lines.addAll(table.build());
@@ -278,11 +321,15 @@ public class SiteLogicTreeHazardPageGen {
 				List<Double> rpCompMeans = compCurves == null ? null : new ArrayList<>();
 				List<List<Double>> rpBranchValsList = new ArrayList<>();
 				List<List<Double>> rpCompBranchValsList = compCurves == null ? null : new ArrayList<>();
-				for (ReturnPeriods rp : rps) {
+				ValueDistribution[] branchDists = new ValueDistribution[rps.length];
+				ValueDistribution[] compBranchDists = compCurves == null ? null : new ValueDistribution[rps.length];
+				for (int r=0; r<rps.length; r++) {
+					ReturnPeriods rp = rps[r];
 					List<Double> branchVals = new ArrayList<>();
 					for (DiscretizedFunc curve : curves)
 						branchVals.add(curveVal(curve, rp));
 					rpBranchValsList.add(branchVals);
+					branchDists[r] = new ValueDistribution(branchVals, weights);
 					
 					List<Double> compBranchVals = null;
 					HistogramFunction refHist;
@@ -292,6 +339,7 @@ public class SiteLogicTreeHazardPageGen {
 						compBranchVals = new ArrayList<>();
 						for (DiscretizedFunc curve : compCurves)
 							compBranchVals.add(curveVal(curve, rp));
+						compBranchDists[r] = new ValueDistribution(compBranchVals, compWeights);
 						List<Double> allVals = new ArrayList<>(curves.size()+compCurves.size());
 						allVals.addAll(branchVals);
 						allVals.addAll(compBranchVals);
@@ -300,8 +348,10 @@ public class SiteLogicTreeHazardPageGen {
 //						compMean = mean(compWeights, compBranchVals);
 						compMean = curveVal(compMeanCurve, rp);
 						rpCompMeans.add(compMean);
-						compHist = buildHist(compWeights, compBranchVals, refHist);
-						compHist.setName("Comparison Distribution");
+						if (compCurves.size() > 1) {
+							compHist = buildHist(compWeights, compBranchVals, refHist);
+							compHist.setName("Comparison Distribution");
+						}
 						rpCompHists.add(compHist);
 					} else {
 						refHist = initHist(branchVals);
@@ -315,11 +365,13 @@ public class SiteLogicTreeHazardPageGen {
 					rpMeans.add(mean);
 					
 					String label = perLabel+", "+rp.label+" ("+perUnits+")";
-					String valPrefix = prefix+"_"+rp.name();
 					
-					plot = valDistPlot(resourcesDir, valPrefix, site.getName(), label,
-							hist, mean, primaryColor, null,
-							compHist, compMean, compColor, compHistColor, "Comparison", exec, plotFutures);
+					plotPrefix = prefix+"_"+rp.name();
+					plot = new File(resourcesDir, plotPrefix+".png");
+					if (!resume || !plot.exists())
+						plot = valDistPlot(resourcesDir, plotPrefix, site.getName(), label,
+								hist, mean, branchDists[r], primaryColor, null,
+								compHist, compMean, compColor, compHistColor, "Comparison", exec, plotFutures);
 					table.addColumn("![Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
 				}
 				table.finalizeLine();
@@ -336,14 +388,16 @@ public class SiteLogicTreeHazardPageGen {
 							HistogramFunction compHist = rpCompHists.get(r);
 							
 							String label = perLabel+", "+rps[r].label+" ("+perUnits+")";
-							String valPrefix = prefix+"_"+rps[r].name();
 							
 							HistogramFunction origHist = rpHists.get(r);
 							origHist.setName("Primary Distribution");
 							
-							plot = valDistPlot(resourcesDir, valPrefix+"_comp", site.getName(), label,
-									compHist, compMean, compColor, "Comparison",
-									origHist, mean, primaryColor, primaryHistColorOnCompPlot, "Primary", exec, plotFutures);
+							plotPrefix = prefix+"_"+rps[r].name()+"_comp";
+							plot = new File(resourcesDir, plotPrefix+".png");
+							if (!resume || !plot.exists())
+								plot = valDistPlot(resourcesDir, plotPrefix, site.getName(), label,
+										compHist, compMean, compBranchDists[r], compColor, "Comparison",
+										origHist, mean, primaryColor, primaryHistColorOnCompPlot, "Primary", exec, plotFutures);
 							table.addColumn("![Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
 							
 						}
@@ -370,40 +424,93 @@ public class SiteLogicTreeHazardPageGen {
 				siteLines.add("");
 				siteLines.addAll(table.build());
 				
-				int siteLinesLevelTableIndex = siteLines.size();
-				List<String> levelLinks = new ArrayList<>();
-				List<String> levelAvgPlotLinks = new ArrayList<>();
-				
 				// value table
 				table = MarkdownUtils.tableBuilder();
 				
-				table.initNewLine();
-				if (compDists != null)
-					table.addColumn("");
-				for (ReturnPeriods rp : rps)
-					table.addColumn(rp.label);
-				table.finalizeLine();
-				
-				table.initNewLine();
-				if (compDists != null)
-					table.addColumn("__Primary__");
-				for (double rpVal : rpMeans)
-					table.addColumn((float)rpVal+" (g)");
-				table.finalizeLine();
-				
-				if (rpCompMeans != null) {
-					table.initNewLine();
-					table.addColumn("__Comparison__");
-					for (double rpVal : rpCompMeans)
-						table.addColumn((float)rpVal+" (g)");
-					table.finalizeLine();
+				table.initNewLine().addColumn("");
+				for (ReturnPeriods rp : rps) {
+					if (compBranchDists == null)
+						table.addColumn(rp.label);
+					else
+						table.addColumn("Primary "+rp.label).addColumn("Comparison "+rp.label);
 				}
+				table.finalizeLine();
+				
+				table.initNewLine().addColumn("__Mean (g)__");
+				for (int r=0; r<rps.length; r++) {
+					table.addColumn(rpMeans.get(r).floatValue());
+					if (compBranchDists != null)
+						table.addColumn(rpCompMeans.get(r).floatValue());
+				}
+				table.finalizeLine();
+				
+				
+				if (dists[0].size > 1) {
+					table.initNewLine().addColumn("__Median (g)__");
+					for (int r=0; r<rps.length; r++) {
+						table.addColumn((float)branchDists[r].getInterpolatedFractile(0.5)+"");
+						if (compBranchDists != null) {
+							if (compBranchDists[0].size > 1)
+								table.addColumn((float)compBranchDists[r].getInterpolatedFractile(0.5)+"");
+							else
+								table.addColumn("__(N/A)__");
+						}
+					}
+					table.finalizeLine();
+					table.initNewLine().addColumn("__Std. Dev. (g)__");
+					for (int r=0; r<rps.length; r++) {
+						table.addColumn((float)branchDists[r].stdDev+"");
+						if (compBranchDists != null) {
+							if (compBranchDists[0].size > 1)
+								table.addColumn((float)compBranchDists[r].stdDev+"");
+							else
+								table.addColumn("__(N/A)__");
+						}
+					}
+					table.finalizeLine();
+					table.initNewLine().addColumn("__COV__");
+					for (int r=0; r<rps.length; r++) {
+						table.addColumn((float)(branchDists[r].stdDev/rpMeans.get(r))+"");
+						if (compBranchDists != null) {
+							if (compBranchDists[0].size > 1)
+								table.addColumn((float)(compBranchDists[r].stdDev/rpCompMeans.get(r))+"");
+							else
+								table.addColumn("__(N/A)__");
+						}
+					}
+					table.finalizeLine();
+					
+					for (int f=0; f<fractiles.length; f++) {
+						table.initNewLine().addColumn("__"+fractileHeaders[f]+" (g)__");
+						for (int r=0; r<rps.length; r++) {
+							table.addColumn((float)branchDists[r].getInterpolatedFractile(fractiles[f]));
+							if (compBranchDists != null) {
+								if (compBranchDists[0].size > 1)
+									table.addColumn((float)compBranchDists[r].getInterpolatedFractile(fractiles[f]));
+								else
+									table.addColumn("__(N/A)__");
+							}
+						}
+						table.finalizeLine();
+					}
+				}
+				
+				for (int r=0; r<rps.length; r++) {
+					distSummaryCSVs.get(r).addLine(dists[r].buildLine(site.getName()));
+					if (compDists != null)
+						compDistSummaryCSVs.get(r).addLine(compDists[r].buildLine(site.getName()));
+				}
+				
 				lines.add("");
 				lines.addAll(table.build());
 				lines.add("");
 				siteLines.add("");
 				siteLines.addAll(table.build());
 				siteLines.add("");
+				
+				int siteLinesLevelTableIndex = siteLines.size();
+				List<String> levelLinks = new ArrayList<>();
+				List<String> levelAvgPlotLinks = new ArrayList<>();
 				
 				// now logic tree (but only to the site page)
 				for (int l=0; l<tree.getLevels().size(); l++) {
@@ -451,10 +558,17 @@ public class SiteLogicTreeHazardPageGen {
 								MarkdownUtils.boldCentered("Choice Mean Curves"));
 						
 						table.initNewLine();
-						plot = curveBranchPlot(resourcesDir, ltPrefix+"_indv", site.getName(), perLabel, perUnits,
+						plotPrefix = ltPrefix+"_indv";
+						plot = new File(resourcesDir, plotPrefix+".png");
+						if (!resume || !plot.exists())
+							plot = curveBranchPlot(resourcesDir, plotPrefix, site.getName(), perLabel, perUnits,
 								dists, xVals, Color.BLACK, rps, compDists, Color.GRAY, nodes, nodeCurves, downsample, null, exec, plotFutures);
 						table.addColumn("!["+level.getShortName()+" Individual]("+resourcesDir.getName()+"/"+plot.getName()+")");
-						plot = curveBranchPlot(resourcesDir, ltPrefix+"_means", site.getName(), perLabel, perUnits,
+						
+						plotPrefix = ltPrefix+"_means";
+						plot = new File(resourcesDir, plotPrefix+".png");
+						if (!resume || !plot.exists())
+							plot = curveBranchPlot(resourcesDir, plotPrefix, site.getName(), perLabel, perUnits,
 								dists, xVals, Color.BLACK, rps, compDists, Color.GRAY, nodes, null, downsample, nodeMeanCurves, exec, plotFutures);
 						String plotEmbed = "!["+level.getShortName()+" Means]("+resourcesDir.getName()+"/"+plot.getName()+")";
 						table.addColumn(plotEmbed);
@@ -474,7 +588,6 @@ public class SiteLogicTreeHazardPageGen {
 						table.finalizeLine();
 						table.initNewLine();
 						for (int r=0; r<rps.length; r++) {
-							String rpPrefix = ltPrefix+"_"+rps[r].name();
 							String label = perLabel+", "+rps[r].label+" ("+perUnits+")";
 							
 							Double compVal = rpCompMeans == null ? null : rpCompMeans.get(r);
@@ -483,8 +596,11 @@ public class SiteLogicTreeHazardPageGen {
 							// clear the name
 							hist.setName(null);
 							
-							plot = valDistPlot(resourcesDir, rpPrefix, site.getName(), label,
-									hist, rpMeans.get(r), Color.BLACK, null,
+							plotPrefix = ltPrefix+"_"+rps[r].name();
+							plot = new File(resourcesDir, plotPrefix+".png");
+							if (!resume || !plot.exists())
+								plot = valDistPlot(resourcesDir, plotPrefix, site.getName(), label,
+									hist, rpMeans.get(r), null, Color.BLACK, null,
 									null, compVal, Color.GRAY, null, "Comparison",
 									nodes, nodeHists.get(r), nodeMeans.get(r), exec, plotFutures);
 							table.addColumn("![Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
@@ -492,6 +608,8 @@ public class SiteLogicTreeHazardPageGen {
 						table.finalizeLine();
 						
 						siteLines.addAll(table.build());
+						siteLines.add("");
+						siteLines.add("[__Download Choice Mean Curves CSV__]("+resourcesDir.getName()+"/"+ltPrefix+"_means.csv)");
 						siteLines.add("");
 						
 						// value table
@@ -570,16 +688,74 @@ public class SiteLogicTreeHazardPageGen {
 		// add TOC
 		lines.addAll(tocIndex, MarkdownUtils.buildTOC(lines, 2, sites.size() > 10 ? 2 : 3));
 		lines.add(tocIndex, "## Table Of Contents");
+		
+		List<String> valDistLines = new ArrayList<>();
+		valDistLines.add("Distribution CSV summary files:");
+		valDistLines.add("");
+		TableBuilder table = MarkdownUtils.tableBuilder();
+		if (compDistSummaryCSVs == null) {
+			table.initNewLine();
+			for (int r=0; r<rps.length; r++) {
+				CSVFile<String> csv = distSummaryCSVs.get(r);
+				File outFile = new File(resourcesDir, "dist_summary_"+rps[r].name()+".csv");
+				csv.writeToFile(outFile);
+				table.addColumn("["+rps[r].label+"]("+resourcesDir.getName()+"/"+outFile.getName()+")");
+			}
+			table.finalizeLine();
+		} else {
+			table.initNewLine().addColumn("");
+			for (int r=0; r<rps.length; r++)
+				table.addColumn(rps[r].label);
+			table.finalizeLine();
+			table.initNewLine().addColumn("Primary");
+			for (int r=0; r<rps.length; r++) {
+				CSVFile<String> csv = distSummaryCSVs.get(r);
+				File outFile = new File(resourcesDir, "dist_summary_"+rps[r].name()+".csv");
+				csv.writeToFile(outFile);
+				table.addColumn("[Download]("+resourcesDir.getName()+"/"+outFile.getName()+")");
+			}
+			table.finalizeLine();
+			table.initNewLine().addColumn("Comparison");
+			for (int r=0; r<rps.length; r++) {
+				CSVFile<String> csv = compDistSummaryCSVs.get(r);
+				File outFile = new File(resourcesDir, "dist_summary_comp_"+rps[r].name()+".csv");
+				csv.writeToFile(outFile);
+				table.addColumn("[Download]("+resourcesDir.getName()+"/"+outFile.getName()+")");
+			}
+			table.finalizeLine();
+		}
+		valDistLines.addAll(table.build());
+		valDistLines.add("");
 
 		// write markdown
 		MarkdownUtils.writeReadmeAndHTML(lines, outputDir);
 	}
 	
+	private static final DecimalFormat pDF = new DecimalFormat("0.##%");
+	
+	private static final double[] fractiles = {0d, 0.025d, 0.16, 0.84, 0.975, 1d};
+	private static final String[] fractileHeaders;
+	static {
+		fractileHeaders = new String[fractiles.length];
+		for (int f=0; f<fractiles.length; f++) {
+			if (fractiles[f] == 0.5d)
+				fractileHeaders[f] = "Median";
+			else if (fractiles[f] == 0d)
+				fractileHeaders[f] = "Minimum";
+			else if (fractiles[f] == 1d)
+				fractileHeaders[f] = "Maximum";
+			else
+				fractileHeaders[f] = "p"+(float)(fractiles[f]*100d);
+		}
+	}
+	
 	public static Options createOptions() {
 		Options ops = new Options();
-		
+
 		ops.addOption(null, "downsample", true,
 				"Maximum number of individual curves to include in plots (will be randomly downsampled to match if more curves exist).");
+		ops.addOption(null, "resume", false,
+				"Flag to resume a previos plot without regenerating everything.");
 		ops.addOption(FaultSysTools.threadsOption());
 		
 		return ops;
@@ -620,7 +796,10 @@ public class SiteLogicTreeHazardPageGen {
 		if (curves.size() != tree.size())
 			System.out.println("WARNING: we have "+curves.size()+" curves but the passed in tree has "
 					+tree.size()+" breanches. It's likely resampled and we will attempt to match.");
+		// if the passed in tree doesn't match that loaded from the CSV file, this list will contain curves
+		// remapped to the passed in tree
 		List<DiscretizedFunc> reordered = null;
+		// this is a map of each passed in logic tree branch to the (first) index in the passed in tree
 		Map<LogicTreeBranch<?>, Integer> treeBranchIndexes = null;
 		for (int i=0; i<curves.size(); i++) {
 			LogicTreeBranch<?> treeBranch = i < tree.size() ? tree.getBranch(i) : null;
@@ -630,16 +809,23 @@ public class SiteLogicTreeHazardPageGen {
 				if (reordered == null) {
 					// first time
 					treeBranchIndexes = new HashMap<>(tree.size());
-					for (int index=0; index<tree.size(); index++)
-						treeBranchIndexes.put(tree.getBranch(index), index);
-					Preconditions.checkState(treeBranchIndexes.size() == tree.size());
+					for (int index=0; index<tree.size(); index++) {
+						LogicTreeBranch<?> tempBranch = tree.getBranch(index);
+						if (!treeBranchIndexes.containsKey(tempBranch)) {
+							// that check was to make sure we only keep the first mapping
+							treeBranchIndexes.put(tempBranch, index);
+							Preconditions.checkState(treeBranchIndexes.containsKey(tempBranch));
+						}
+					}
+//					Preconditions.checkState(treeBranchIndexes.size() == tree.size());
 					reordered = new ArrayList<>(tree.size());
 					// fill in any that we already processed, and nulls after
 					for (int index=0; index<tree.size(); index++) {
-						if (index < i)
+						if (index < i) {
 							reordered.add(curves.get(index));
-						else
+						} else {
 							reordered.add(null);
+						}
 					}
 					System.out.println("Had to reorder hazard curves to match passed in logic tree; first mismatch i="
 							+i+" -> "+treeBranchIndexes.get(curveBranch)
@@ -654,15 +840,20 @@ public class SiteLogicTreeHazardPageGen {
 		}
 		if (reordered != null) {
 			// now see if there are any holes (will be the case if the passed in tree has duplicates)
-			int holes = 00;
+			int holes = 0;
 			for (int i=0; i<reordered.size(); i++) {
 				if (reordered.get(i) == null) {
 					holes++;
 					LogicTreeBranch<?> treeBranch = tree.getBranch(i);
 					// this branch should have been already filled in earlier
 					Integer prevIndex = treeBranchIndexes.get(treeBranch);
-					Preconditions.checkState(prevIndex != null && prevIndex < i, "No mappings found for branch %s", treeBranch);
-					reordered.set(i, reordered.get(prevIndex));
+					Preconditions.checkState(prevIndex != null,
+							"No mappings found for branch %s; i=%s, prevIndex=%s", treeBranch, i, prevIndex);
+					DiscretizedFunc curve = reordered.get(prevIndex);
+					Preconditions.checkNotNull(curve,
+							"Filling in a hole at %s, found prevIndex=%s but the curve at the index was null? branch: %s",
+							i, prevIndex, treeBranch);
+					reordered.set(i, curve);
 				}
 			}
 			if (holes > 0)
@@ -672,9 +863,16 @@ public class SiteLogicTreeHazardPageGen {
 		return curves;
 	}
 	
-	private static ArbDiscrEmpiricalDistFunc[] loadCurvesAndDists(CSVFile<String> curvesCSV,
+	static ValueDistribution[] loadCurvesAndDists(CSVFile<String> curvesCSV,
 			List<? extends LogicTreeLevel<? extends LogicTreeNode>> levels,
 			List<DiscretizedFunc> curves, List<LogicTreeBranch<?>> branches, List<Double> weights, boolean buildDists) {
+		return loadCurvesAndDists(curvesCSV, levels, curves, branches, weights, buildDists, null);
+	}
+	
+	static ValueDistribution[] loadCurvesAndDists(CSVFile<String> curvesCSV,
+			List<? extends LogicTreeLevel<? extends LogicTreeNode>> levels,
+			List<DiscretizedFunc> curves, List<LogicTreeBranch<?>> branches, List<Double> weights, boolean buildDists,
+			double[] outXVals) {
 		List<LogicTreeLevel<? extends LogicTreeNode>> levelsCopy;
 		int startCol;
 		if (levels == null) {
@@ -684,7 +882,7 @@ public class SiteLogicTreeHazardPageGen {
 			for (int i=0; i<header.size(); i++) {
 				try {
 					Double.parseDouble(header.get(i));
-					// valud number, this is it
+					// valid number, this is it
 					startCol = i;
 					break;
 				} catch (NumberFormatException e) {}
@@ -694,29 +892,47 @@ public class SiteLogicTreeHazardPageGen {
 			levelsCopy = new ArrayList<>(levels);
 			startCol = 3+levels.size();
 		}
-		double[] xVals = new double[curvesCSV.getNumCols()-startCol];
+		double[] inXVals = new double[curvesCSV.getNumCols()-startCol];
 //		ArbDiscrEmpiricalDistFunc[] dists = new ArbDiscrEmpiricalDistFunc[xVals.length];
-		List<List<Point2D>> distPoints = null;
-		if (buildDists) {
-			distPoints = new ArrayList<>();
+		List<List<Double>> distValues = null;
+		if (buildDists)
+			distValues = new ArrayList<>();
+		for (int i=0; i<inXVals.length; i++) {
+			inXVals[i] = curvesCSV.getDouble(0, startCol+i);
 		}
-		for (int i=0; i<xVals.length; i++) {
-			xVals[i] = curvesCSV.getDouble(0, startCol+i);
-//			dists[i] = new ArbDiscrEmpiricalDistFunc();
-			if (buildDists)
-				distPoints.add(new ArrayList<>(curvesCSV.getNumRows()-1));
-		}
+		if (outXVals == null)
+			outXVals = inXVals;
+		if (buildDists)
+			for (int i=0; i<outXVals.length; i++)
+				distValues.add(new ArrayList<>(curvesCSV.getNumRows()-1));
+		Preconditions.checkState(curves.isEmpty());
+		Preconditions.checkState(weights.isEmpty());
 		
 		for (int row=1; row<curvesCSV.getNumRows(); row++) {
 			double weight = curvesCSV.getDouble(row, 2);
-			double[] yVals = new double[xVals.length];
-			for (int i=0; i<yVals.length; i++) {
+			double[] yVals = new double[inXVals.length];
+			for (int i=0; i<yVals.length; i++)
 				yVals[i] = curvesCSV.getDouble(row, startCol+i);
-//				dists[i].set(yVals[i], weight);
-				if (buildDists)
-					distPoints.get(i).add(new Point2D.Double(yVals[i], weight));
+			LightFixedXFunc curve = new LightFixedXFunc(inXVals, yVals);
+			if (outXVals != inXVals) {
+				// interpolate
+				double[] interpYVals = new double[outXVals.length];
+				double curveMinX = curve.getMinX();
+				double curveMaxX = curve.getMaxX();
+				for (int j=0; j<outXVals.length; j++) {
+					double x = outXVals[j];
+					if (x < curveMinX) {
+						interpYVals[j] = curve.getY(0);
+					} else if (x > curveMaxX) {
+						interpYVals[j] = 0d;
+					} else
+						interpYVals[j] = curve.getInterpolatedY_inLogXDomain(x);
+				}
+				curve = new LightFixedXFunc(outXVals, interpYVals);
 			}
-			LightFixedXFunc curve = new LightFixedXFunc(xVals, yVals);
+			if (buildDists)
+				for (int i=0; i<curve.size(); i++)
+					distValues.get(i).add(curve.getY(i));
 			curves.add(curve);
 			weights.add(weight);
 			if (branches != null) {
@@ -741,16 +957,17 @@ public class SiteLogicTreeHazardPageGen {
 		
 		if (!buildDists)
 			return null;
-		ArbDiscrEmpiricalDistFunc[] dists = new ArbDiscrEmpiricalDistFunc[xVals.length];
+		ValueDistribution[] dists = new ValueDistribution[outXVals.length];
 		for (int i=0; i<dists.length; i++)
 			// this will initialize them more efficiently
-			dists[i] = new ArbDiscrEmpiricalDistFunc(distPoints.get(i));
+//			dists[i] = new ArbDiscrEmpiricalDistFunc(distPoints.get(i));
+			dists[i] = new ValueDistribution(distValues.get(i), weights);
 		
 		return dists;
 	}
 	
 	private static File curveDistPlot(File resourcesDir, String prefix, String siteName, String perLabel, String units,
-			ArbDiscrEmpiricalDistFunc[] curveDists, double[] xVals, Color color, ReturnPeriods[] rps,
+			ValueDistribution[] curveDists, double[] xVals, Color color, ReturnPeriods[] rps,
 			DiscretizedFunc compMeanCurve, Color compColor, ExecutorService exec, List<Future<?>> plotFutures)
 					throws IOException {
 		List<DiscretizedFunc> funcs = new ArrayList<>();
@@ -770,12 +987,12 @@ public class SiteLogicTreeHazardPageGen {
 		
 		meanCurve.setName("Mean");
 		funcs.add(meanCurve);
-		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, color.darker()));
-		
-		if (compMeanCurve != null) {
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, color.darker().darker()));
+		if (compMeanCurve == null) {
+		} else {
 			compMeanCurve.setName("Comparison Mean");
 			funcs.add(compMeanCurve);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, compColor.darker()));
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, compColor.darker().darker()));
 		}
 		
 		medianCurve.setName("Median");
@@ -789,6 +1006,15 @@ public class SiteLogicTreeHazardPageGen {
 		chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, transColor));
 		funcs.add(bounds68);
 		chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, transColor));
+		
+		CSVFile<String> csv = new CSVFile<>(true);
+		csv.addLine(perLabel+" ("+units+")", "Mean", "Median", "Min", "p2.5", "p16", "p84", "p97.5", "Max");
+		Preconditions.checkState(meanCurve.size() == medianCurve.size());
+		for (int i=0; i<meanCurve.size(); i++)
+			csv.addLine(meanCurve.getX(i)+"", meanCurve.getY(i)+"", medianCurve.getY(i)+"",
+					minMax.getLowerY(i)+"",	bounds95.getLowerY(i)+"", bounds68.getLowerY(i)+"",
+					bounds68.getUpperY(i)+"", bounds95.getUpperY(i)+"", minMax.getUpperY(i)+"");
+		csv.writeToFile(new File(resourcesDir, prefix+".csv"));
 		
 		Range yRange = new Range(1e-6, 1e0);
 		double minX = Double.POSITIVE_INFINITY;
@@ -809,6 +1035,10 @@ public class SiteLogicTreeHazardPageGen {
 					}
 				}
 			}
+		}
+		if (minX >= maxX || !Double.isFinite(minX) || !Double.isFinite(maxX)) {
+			System.out.println("min="+minX+", max="+maxX+" for "+siteName+" per="+perLabel);
+			System.out.println(meanCurve);
 		}
 		minX = Math.pow(10, Math.floor(Math.log10(minX)));
 		maxX = Math.pow(10, Math.ceil(Math.log10(maxX)));
@@ -848,8 +1078,8 @@ public class SiteLogicTreeHazardPageGen {
 	}
 	
 	private static File curveBranchPlot(File resourcesDir, String prefix, String siteName, String perLabel, String units,
-			ArbDiscrEmpiricalDistFunc[] curveDists, double[] xVals, Color color, ReturnPeriods[] rps,
-			ArbDiscrEmpiricalDistFunc[] compCurveDists, Color compColor, List<LogicTreeNode> nodes,
+			ValueDistribution[] curveDists, double[] xVals, Color color, ReturnPeriods[] rps,
+			ValueDistribution[] compCurveDists, Color compColor, List<LogicTreeNode> nodes,
 			List<List<DiscretizedFunc>> nodeIndvCurves, int downsample, List<DiscretizedFunc> nodeMeanCurves,
 			ExecutorService exec, List<Future<?>> plotFutures) throws IOException {
 		List<DiscretizedFunc> funcs = new ArrayList<>();
@@ -879,6 +1109,25 @@ public class SiteLogicTreeHazardPageGen {
 				funcs.add(nodeCurve);
 				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, nodeColor));
 			}
+			
+			CSVFile<String> csv = new CSVFile<>(true);
+			List<String> header = new ArrayList<>();
+			header.add(perLabel+" ("+units+")");
+			header.add("Mean");
+			for (int i=0; i<nodes.size(); i++)
+				header.add(nodes.get(i).getShortName());
+			csv.addLine(header);
+			for (int i=0; i<meanCurve.size(); i++) {
+				List<String> line = new ArrayList<>(header.size());
+				line.add((float)meanCurve.getX(i)+"");
+				line.add(meanCurve.getY(i)+"");
+				for (DiscretizedFunc nodeCurve : nodeMeanCurves) {
+					Preconditions.checkState((float)nodeCurve.getX(i) == (float)meanCurve.getX(i));
+					line.add(nodeCurve.getY(i)+"");
+				}
+				csv.addLine(line);
+			}
+			csv.writeToFile(new File(resourcesDir, prefix+".csv"));
 		}
 		
 		if (nodeIndvCurves != null) {
@@ -1024,6 +1273,92 @@ public class SiteLogicTreeHazardPageGen {
 		}
 	}
 	
+	static List<String> buildDistHeader(String firstCol, String units) {
+		if (units == null)
+			units = "";
+		else if (!units.isBlank() && !units.startsWith(" "))
+			units = " "+units;
+		List<String> header = new ArrayList<>();
+		header.add(firstCol);
+		header.add("Mean"+units);
+		header.add("Std. Dev."+units);
+		header.add("COV");
+		for (String f : fractileHeaders)
+			header.add(f+units);
+		return header;
+	}
+	
+	static class ValueDistribution {
+		public final double mean;
+		public final double min;
+		public final double max;
+		public final int size;
+		public final double stdDev;
+		public final LightFixedXFunc normCDF;
+		public final boolean allZero;
+		
+		public ValueDistribution(List<Double> values, List<Double> weights) {
+			Preconditions.checkState(values.size() == weights.size());
+			Preconditions.checkState(values.size() >= 1);
+			this.size = values.size();
+			if (size == 1) {
+				this.mean = values.get(0);
+				this.min = mean;
+				this.max = mean;
+				this.stdDev = Double.NaN;
+				this.normCDF = null;
+				this.allZero = this.mean == 0d;
+			} else {
+				double weightedMean = 0d;
+				double sumOrigWeights = 0d;
+				boolean allZero = true;
+				double min = Double.POSITIVE_INFINITY;
+				double max = Double.NEGATIVE_INFINITY;
+				for (int i=0; i<values.size(); i++) {
+					double val = values.get(i);
+					min = Math.min(min, val);
+					max = Math.max(max, val);
+					allZero &= val == 0d;
+					double weight = weights.get(i);
+					weightedMean += val*weight;
+					sumOrigWeights += weight;
+				}
+				weightedMean /= sumOrigWeights;
+				this.mean = weightedMean;
+				this.min = min;
+				this.max = max;
+				double[] valsArray = Doubles.toArray(values);
+				double[] weightsArray = MathArrays.normalizeArray(Doubles.toArray(weights), weights.size());
+				double var = new Variance(false).evaluate(valsArray, weightsArray, weightedMean);
+				this.stdDev = Math.sqrt(var);
+				this.normCDF = ArbDiscrEmpiricalDistFunc.calcQuickNormCDF(valsArray, weightsArray);
+				this.allZero = allZero;
+			}
+		}
+		
+		public double getInterpolatedFractile(double fractile) {
+			if (allZero)
+				return 0d;
+			return ArbDiscrEmpiricalDistFunc.calcFractileFromNormCDF(normCDF, fractile);
+		}
+		
+		public List<String> buildLine(String firstCol) {
+			List<String> line = new ArrayList<>(fractiles.length+4);
+			line.add(firstCol);
+			line.add((float)mean+"");
+			if (size > 1) {
+				line.add((float)stdDev+"");
+				line.add((float)(stdDev/mean)+"");
+				for (double fractile : fractiles)
+					line.add((float)getInterpolatedFractile(fractile)+"");
+			} else {
+				for (int i=0; i<fractiles.length+2; i++)
+					line.add("");
+			}
+			return line;
+		}
+	}
+	
 	private static double[] xVals(DiscretizedFunc curve) {
 		double[] ret = new double[curve.size()];
 		for (int i=0; i<ret.length; i++)
@@ -1031,16 +1366,16 @@ public class SiteLogicTreeHazardPageGen {
 		return ret;
 	}
 	
-	private static DiscretizedFunc calcMeanCurve(ArbDiscrEmpiricalDistFunc[] dists, double[] xVals) {
-		Preconditions.checkState(dists.length == xVals.length);
+	private static DiscretizedFunc calcMeanCurve(ValueDistribution[] dists, double[] xVals) {
+		Preconditions.checkState(dists.length == xVals.length, "have %s dists but %s xVals", dists.length, xVals.length);
 		double[] yVals = new double[xVals.length];
 		for (int i=0; i<dists.length; i++)
-			yVals[i] = dists[i].getMean();
+			yVals[i] = dists[i].mean;
 		return new LightFixedXFunc(xVals, yVals);
 	}
 	
-	private static DiscretizedFunc calcFractileCurve(ArbDiscrEmpiricalDistFunc[] dists, double[] xVals, double fractile) {
-		Preconditions.checkState(dists.length == xVals.length);
+	private static DiscretizedFunc calcFractileCurve(ValueDistribution[] dists, double[] xVals, double fractile) {
+		Preconditions.checkState(dists.length == xVals.length, "have %s dists but %s xVals", dists.length, xVals.length);
 		double[] yVals = new double[xVals.length];
 		for (int i=0; i<dists.length; i++)
 			yVals[i] = dists[i].getInterpolatedFractile(fractile);
@@ -1056,23 +1391,60 @@ public class SiteLogicTreeHazardPageGen {
 		}
 		if (min == max)
 			max = min+0.1;
-		double diff = max - min;
-		double delta;
-		if (diff > 100)
-			delta = 10;
-		else if (diff > 50)
-			delta = 5d;
-		else if (diff > 10)
-			delta = 1;
-		else if (diff > 5)
-			delta = 0.5;
-		else if (diff > 0.5)
-			delta = 0.05;
-		else if (diff > 0.1)
-			delta = 0.01;
-		else
-			delta = 0.005;
+		double span = max - min;
+		int minNumBins = 30;
+		double delta = getHistDelta(span, minNumBins);
 		return HistogramFunction.getEncompassingHistogram(min, max, delta);
+	}
+	
+	private static double getHistDelta(double span, int numDistBins) {
+		Preconditions.checkState(span > 0d);
+		// now we want easy to visually interpret bin sizes
+		// I like values that end in 1, 2, or 5,
+		// e.g., 0.01, 0.02, 0.05, 0.1, 0.2, 0.5
+		Preconditions.checkArgument(span > 0, "Span must be positive");
+		Preconditions.checkArgument(numDistBins > 0, "numDistBins must be positive");
+
+		double minDelta = 0.001;
+		double targetDelta = span / numDistBins;
+
+		// If targetDelta is already below minDelta, only option is minDelta
+		if (targetDelta < minDelta) {
+			return minDelta;
+		}
+
+		double[] multipliers = {1, 2, 5};
+
+		double bestDelta = Double.NaN;
+
+		double currentExp = Math.floor(Math.log10(targetDelta)) - 1;
+
+		for (int expOffset = 0; expOffset < 20; expOffset++) { // up to 20 decades
+			double base = Math.pow(10, currentExp + expOffset);
+
+			for (double mult : multipliers) {
+				double candidate = mult * base;
+
+				if (candidate < minDelta)
+					continue; // skip values below the hard lower limit
+
+				if (candidate > targetDelta) {
+					if (!Double.isNaN(bestDelta)) {
+						return bestDelta;
+					} else {
+						break;
+					}
+				}
+				bestDelta = candidate;
+			}
+
+			if (expOffset == 19 && !Double.isNaN(bestDelta)) {
+				return bestDelta;
+			}
+		}
+
+		// This should now never happen
+		throw new IllegalStateException("No valid 1-2-5 delta found for span=" + span + " and numDistBins=" + numDistBins);
 	}
 	
 	private static DiscretizedFunc getNodeMeanCurve(List<LogicTreeBranch<?>> branches, List<Double> weights,
@@ -1162,15 +1534,15 @@ public class SiteLogicTreeHazardPageGen {
 	}
 	
 	private static File valDistPlot(File resourcesDir, String prefix, String siteName, String label,
-			HistogramFunction hist, double mean, Color color, String primaryName,
+			HistogramFunction hist, double mean, ValueDistribution dist, Color color, String primaryName,
 			HistogramFunction compHist, Double compMean, Color compColor, Color compHistColor, String compName,
 			ExecutorService exec, List<Future<?>> plotFutures) throws IOException {
-		return valDistPlot(resourcesDir, prefix, siteName, label, hist, mean, color, primaryName,
+		return valDistPlot(resourcesDir, prefix, siteName, label, hist, mean, dist, color, primaryName,
 				compHist, compMean, compColor, compHistColor, compName, null, null, null, exec, plotFutures);
 	}
 	
 	private static File valDistPlot(File resourcesDir, String prefix, String siteName, String label,
-			HistogramFunction hist, double mean, Color color, String primaryName,
+			HistogramFunction hist, double mean, ValueDistribution dist, Color color, String primaryName,
 			HistogramFunction compHist, Double compMean, Color compColor, Color compHistColor, String compName,
 			List<LogicTreeNode> nodes, List<HistogramFunction> nodeHists, List<Double> nodeMeans,
 			ExecutorService exec, List<Future<?>> plotFutures) throws IOException {
@@ -1244,11 +1616,32 @@ public class SiteLogicTreeHazardPageGen {
 			// if we have a comp hist, it's already in the legend earlier
 			String lineLabel = compHist == null ? compName+" Mean" : null;
 			funcs.add(vertLine(compMean, 0d, maxY, lineLabel));
-			chars.add(new PlotCurveCharacterstics(nodeHists == null ? PlotLineType.SOLID : PlotLineType.DASHED, 4f, compColor));
+			chars.add(new PlotCurveCharacterstics(nodeHists == null ? PlotLineType.SOLID : PlotLineType.DASHED, 4f, compColor.darker()));
 		}
 		
 		funcs.add(vertLine(mean, 0d, maxY, (primaryName != null && !primaryName.isBlank() ? primaryName+" " : "")+"Mean"));
-		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, color));
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 5f, color.darker().darker()));
+		
+		
+		if (dist != null && dist.size > 1) {
+			// fractiles
+			funcs.add(vertLine(dist.getInterpolatedFractile(0.025), 0d, maxY, "p[2.5, 16, 50, 84, 97.5]"));
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, color));
+			funcs.add(vertLine(dist.getInterpolatedFractile(0.16), 0d, maxY, null));
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, color));
+			funcs.add(vertLine(dist.getInterpolatedFractile(0.5), 0d, maxY, null));
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, color));
+			funcs.add(vertLine(dist.getInterpolatedFractile(0.84), 0d, maxY, null));
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, color));
+			funcs.add(vertLine(dist.getInterpolatedFractile(0.975), 0d, maxY, null));
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, color));
+			
+//			// +/- sigma
+//			funcs.add(vertLine(mean-dist.stdDev, 0d, maxY, "Mean +/- σ"));
+//			chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 1f, Colors.DARK_GRAY));
+//			funcs.add(vertLine(mean+dist.stdDev, 0d, maxY, null));
+//			chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 1f, Colors.DARK_GRAY));
+		}
 		
 		Range xRange = new Range(hist.getMinX()-0.5*hist.getDelta(), hist.getMaxX()+0.5*hist.getDelta());
 		Range yRange = new Range(0d, maxY);

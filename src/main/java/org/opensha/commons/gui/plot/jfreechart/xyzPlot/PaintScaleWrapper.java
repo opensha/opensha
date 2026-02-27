@@ -24,7 +24,7 @@ public class PaintScaleWrapper implements PaintScale {
 
 	@Override
 	public Paint getPaint(double value) {
-		return cpt.getColor((float)value);
+		return cpt.getColor(value);
 	}
 
 	@Override

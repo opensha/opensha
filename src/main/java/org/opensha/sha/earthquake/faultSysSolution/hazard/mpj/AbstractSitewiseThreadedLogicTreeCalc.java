@@ -6,7 +6,6 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Deque;
 import java.util.EnumMap;
 import java.util.List;
@@ -25,20 +24,21 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.calc.HazardCurveCalculator;
-import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
-import org.opensha.sha.calc.params.filters.SourceFilter;
-import org.opensha.sha.calc.params.filters.SourceFilterManager;
+import org.opensha.sha.calc.sourceFilters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
+import org.opensha.sha.calc.sourceFilters.SourceFilterUtils;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.DistCachedERFWrapper;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
-import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
+import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.gui.infoTools.IMT_Info;
-import org.opensha.sha.imr.AttenRelRef;
+import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_GMM_Wrapper;
 import org.opensha.sha.imr.logicTree.ScalarIMRsLogicTreeNode;
@@ -50,7 +50,6 @@ import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
-import gov.usgs.earthquake.nshmp.gmm.GmmInput;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 
 public abstract class AbstractSitewiseThreadedLogicTreeCalc {
@@ -60,10 +59,11 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 	private SolutionLogicTree solTree;
 	private LogicTree<?> tree;
 	private boolean hasGMMLevels;
-	private Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmmRefs;
+	private Map<TectonicRegionType, AttenRelSupplier> gmmRefs;
 	private double[] periods;
 	private IncludeBackgroundOption gridSeisOp;
-	private boolean cacheGridSources = false;
+	private GriddedSeismicitySettings griddedSettings;
+	private boolean cacheGridSources = true;
 	private boolean doGmmInputCache = false;
 	private SourceFilterManager sourceFilters;
 	
@@ -78,20 +78,21 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 	private NSHMP_GMM_Wrapper[] gmmSiteCaches;
 
 	public AbstractSitewiseThreadedLogicTreeCalc(ExecutorService exec, int numSites, SolutionLogicTree solTree,
-			Supplier<ScalarIMR> gmmRef, double[] periods,
-					IncludeBackgroundOption gridSeisOp, SourceFilterManager sourceFilters) {
-		this(exec, numSites, solTree, SolHazardMapCalc.wrapInTRTMap(gmmRef), periods, gridSeisOp, sourceFilters);
+			AttenRelSupplier gmmRef, double[] periods,
+			IncludeBackgroundOption gridSeisOp, GriddedSeismicitySettings griddedSettings, SourceFilterManager sourceFilters) {
+		this(exec, numSites, solTree, FaultSysHazardCalcSettings.wrapInTRTMap(gmmRef), periods, gridSeisOp, griddedSettings, sourceFilters);
 	}
 
 	public AbstractSitewiseThreadedLogicTreeCalc(ExecutorService exec, int numSites, SolutionLogicTree solTree,
-			Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmmRefs, double[] periods,
-					IncludeBackgroundOption gridSeisOp, SourceFilterManager sourceFilters) {
+			Map<TectonicRegionType, AttenRelSupplier> gmmRefs, double[] periods,
+			IncludeBackgroundOption gridSeisOp, GriddedSeismicitySettings griddedSettings, SourceFilterManager sourceFilters) {
 		this.exec = exec;
 		this.numSites = numSites;
 		this.solTree = solTree;
 		this.gmmRefs = gmmRefs;
 		this.periods = periods;
 		this.gridSeisOp = gridSeisOp;
+		this.griddedSettings = griddedSettings;
 		this.sourceFilters = sourceFilters;
 		this.tree = solTree.getLogicTree();
 		for (LogicTreeLevel<?> level : tree.getLevels()) {
@@ -194,11 +195,12 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 						"Grid source provider is null, but gridded seis option is %s", gridSeisOp);
 			erf.setParameter(IncludeBackgroundParam.NAME, gridSeisOp);
 			erf.getTimeSpan().setDuration(1d);
+			erf.setGriddedSeismicitySettings(griddedSettings);
 			erf.setCacheGridSources(cacheGridSources);
 			erf.updateForecast();
 		}
 		
-		Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmmSuppliers = MPJ_LogicTreeHazardCalc.getGMM_Suppliers(branch, gmmRefs);
+		Map<TectonicRegionType, AttenRelSupplier> gmmSuppliers = FaultSysHazardCalcSettings.getGMM_Suppliers(branch, gmmRefs, true);
 		
 		boolean doGmmInputCache = false;
 		if (hasGMMLevels && this.doGmmInputCache) {
@@ -290,7 +292,7 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 		public NSHMP_GMM_Wrapper call() throws Exception {
 			DistCachedERFWrapper erf = checkOutERF(fssERF, erfDeque);
 			
-			NSHMP_GMM_Wrapper cache = new NSHMP_GMM_Wrapper(null, false);
+			NSHMP_GMM_Wrapper cache = new NSHMP_GMM_Wrapper.InputCacheGen();
 			
 			Collection<SourceFilter> filters = sourceFilters.getEnabledFilters();
 			
@@ -301,7 +303,7 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 			cache.setSite(site);
 			
 			for (ProbEqkSource source : erf) {
-				if (HazardCurveCalculator.canSkipSource(filters, source, site))
+				if (SourceFilterUtils.canSkipSource(filters, source, site))
 					continue;
 				
 				for (ProbEqkRupture rup : source)
@@ -334,7 +336,7 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 
 		@Override
 		public DiscretizedFunc[] call() throws Exception {
-			Map<TectonicRegionType, ScalarIMR> gmms = SolHazardMapCalc.getGmmInstances(gmmSuppliers);
+			Map<TectonicRegionType, ScalarIMR> gmms = FaultSysHazardCalcSettings.getGmmInstances(gmmSuppliers);
 			Site site = siteForIndex(siteIndex, gmms);
 			AbstractERF erf = null;
 			for (ScalarIMR gmm : gmms.values()) {
@@ -356,7 +358,7 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 			HazardCurveCalculator calc = new HazardCurveCalculator(sourceFilters);
 			
 			for (int p=0; p<periods.length; p++) {
-				SolHazardMapCalc.setIMforPeriod(gmms, periods[p]);
+				FaultSysHazardCalcSettings.setIMforPeriod(gmms, periods[p]);
 				
 				DiscretizedFunc logHazCurve = logXVals[p].deepClone();
 				

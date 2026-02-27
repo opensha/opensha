@@ -38,6 +38,51 @@ abstract class AbstractBranchMFDs implements FileBackedModule {
 
 	private static final DecimalFormat rateDF = new DecimalFormat("0.###E0");
 	
+	static void combine(AbstractBranchMFDs ret, List<? extends AbstractBranchMFDs> mfdsList, List<Double> weightsList) {
+		Preconditions.checkState(mfdsList.size() > 1);
+		double sumWeight;
+		if (weightsList == null) {
+			double weightEach = 1d/mfdsList.size();
+			weightsList = new ArrayList<>(mfdsList.size());
+			for (int i=0; i<mfdsList.size(); i++)
+				weightsList.add(weightEach);
+			sumWeight = 1d;
+		} else {
+			Preconditions.checkState(mfdsList.size() == weightsList.size());
+			sumWeight = weightsList.stream().mapToDouble(D->D).sum();
+		}
+		
+		int numCombBranches = 0;
+		for (AbstractBranchMFDs regMFDs : mfdsList)
+			numCombBranches += regMFDs.weights.length;
+		
+		AbstractBranchMFDs ref = mfdsList.get(0);
+		for (int i=1; i<mfdsList.size(); i++) {
+			IncrementalMagFreqDist refMFD = mfdsList.get(i).refMFD;
+			Preconditions.checkState(ref.refMFD.getMinX() == refMFD.getMinX());
+			Preconditions.checkState(ref.refMFD.size() == refMFD.size());
+		}
+		
+		ret.refMFD = ref.refMFD;
+		ret.branchSectMFDs = new float[numCombBranches][][];
+		ret.branchSectMinMagIndexes = new short[numCombBranches][];
+		
+		int index = 0;
+		for (int r=0; r<mfdsList.size(); r++) {
+			double myWeight = weightsList.get(r)/sumWeight;
+			AbstractBranchMFDs mfds = mfdsList.get(r);
+			
+			for (int i=0; i<mfds.weights.length; i++) {
+				ret.weights[index] = mfds.weights[i]*myWeight;
+				
+				ret.branchSectMFDs[index] = mfds.branchSectMFDs[i];
+				ret.branchSectMinMagIndexes[index] = mfds.branchSectMinMagIndexes[i];
+				
+				index++;
+			}
+		}
+	}
+	
 	static abstract class Builder<E extends AbstractBranchMFDs> implements BranchModuleBuilder<FaultSystemSolution, E> {
 		
 		// oversized reference MFD that starts at M=0 and goes to M=12

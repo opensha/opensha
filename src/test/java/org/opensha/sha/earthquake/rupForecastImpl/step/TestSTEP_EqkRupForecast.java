@@ -4,9 +4,8 @@ import static org.junit.Assert.*;
 
 import org.junit.Test;
 import org.opensha.commons.geo.Location;
+import org.opensha.sha.earthquake.PointSource.PoissonPointSource;
 import org.opensha.sha.earthquake.ProbEqkRupture;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
-import org.opensha.sha.earthquake.rupForecastImpl.step.STEP_EqkRupForecast;
 
 
 /**
@@ -64,7 +63,7 @@ public class TestSTEP_EqkRupForecast
 
 		// check first one
 		int index = 0;
-		PointEqkSource qkSrc = (PointEqkSource) forecast.getSource(index);
+		PoissonPointSource qkSrc = (PoissonPointSource) forecast.getSource(index);
 		assertEquals("Number of Ruptures",41,qkSrc.getNumRuptures());
 
 		double duration = qkSrc.getDuration();
@@ -86,7 +85,7 @@ public class TestSTEP_EqkRupForecast
 		}
 		// check last one
 		index = forecast.getNumSources()-1;
-		qkSrc = (PointEqkSource) forecast.getSource(index);
+		qkSrc = (PoissonPointSource) forecast.getSource(index);
 		assertEquals("Known number of ruptures:",41,qkSrc.getNumRuptures());
 		duration = qkSrc.getDuration();
 		assertTrue("Know duration:" + duration,1.0==duration);

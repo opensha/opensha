@@ -806,13 +806,20 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		System.out.println("Largest has "+clusters.get(0).getNumSections()+" sections, "
 				+clusters.get(0).getNumRuptures()+" ruptures");
 		
-		Color isolatedColor = Color.BLACK;
-		CPT clusterCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().reverse().rescale(0d, MAX_PLOT_CLUSTERS-1d);
+		float sectScalarThickness = 3f;
+		PlotCurveCharacterstics isolatedChar = new PlotCurveCharacterstics(PlotLineType.SOLID, sectScalarThickness, Color.BLACK);
+		PlotCurveCharacterstics isolatedProxyChar = new PlotCurveCharacterstics(PlotLineType.SHORT_DASHED, sectScalarThickness, Color.BLACK);
+		int numNonIsolated = 0;
+		for (ConnectivityCluster cluster : clusters)
+			if (cluster.getParentSectIDs().size() > 1)
+				numNonIsolated++;
+		int cptNumToPlot = Integer.min(MAX_PLOT_CLUSTERS, Integer.max(2, numNonIsolated));
+		CPT clusterCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().reverse().rescale(0d, cptNumToPlot-1d);
 		
-		List<Color> sectColors = new ArrayList<>();
+		List<PlotCurveCharacterstics> sectChars = new ArrayList<>();
 		List<Double> sectColorSortables = new ArrayList<>();
 		for (int s=0; s<rupSet.getNumSections(); s++) {
-			sectColors.add(null);
+			sectChars.add(null);
 			sectColorSortables.add(null);
 		}
 		
@@ -930,9 +937,10 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 				}
 			}
 			
-			Color color;
+			PlotCurveCharacterstics sectChar;
 			if (allSameParent) {
-				color = isolatedColor;
+				FaultSection first = rupSet.getFaultSectionData(cluster.getSectIDs().iterator().next());
+				sectChar = first.isProxyFault() ? isolatedProxyChar : isolatedChar;
 				
 				numIsolated++;
 				sectsIsolated += cluster.getNumSections();
@@ -946,8 +954,8 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 						}
 					}
 				}
-			} else if (tableIndex < MAX_PLOT_CLUSTERS) {
-				color = clusterCPT.getColor((float)tableIndex);
+			} else if (tableIndex < cptNumToPlot) {
+				Color color = clusterCPT.getColor((float)tableIndex);
 				
 				// make it a bit darker
 				Color darker = color.darker();
@@ -955,6 +963,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 						(int)(0.5*(color.getRed()+darker.getRed())+0.5),
 						(int)(0.5*(color.getGreen()+darker.getGreen())+0.5),
 						(int)(0.5*(color.getBlue()+darker.getBlue())+0.5));
+				sectChar = new PlotCurveCharacterstics(PlotLineType.SOLID, sectScalarThickness, color);
 				
 				tableIndex++;
 				if (table != null) {
@@ -1043,7 +1052,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 				
 				prevRands.put(cluster, myRand);
 				
-				Color c = clusterCPT.getColor((float)(myRand*(MAX_PLOT_CLUSTERS-1d)));
+				Color c = clusterCPT.getColor((float)(myRand*(cptNumToPlot-1d)));
 				int r = c.getRed();
 				int g = c.getGreen();
 				int b = c.getBlue();
@@ -1055,7 +1064,8 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 					b = (int)(0.5d*(b + 255d)+0.5);
 				}
 				
-				color = new Color(r, g, b);
+				Color color = new Color(r, g, b);
+				sectChar = new PlotCurveCharacterstics(PlotLineType.SOLID, sectScalarThickness, color);
 				
 				numOther++;
 				sectsOther += cluster.getNumSections();
@@ -1073,8 +1083,8 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			}
 			
 			for (int s : cluster.getSectIDs()) {
-				Preconditions.checkState(sectColors.get(s) == null);
-				sectColors.set(s, color);
+				Preconditions.checkState(sectChars.get(s) == null);
+				sectChars.set(s, sectChar);
 				sectColorSortables.set(s, cluster.getNumSections()+(double)cluster.getNumRuptures()/(double)rupSet.getNumRuptures());
 			}
 		}
@@ -1149,8 +1159,9 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		plotter.setLegendVisible(LEGENDS);
 		plotter.setLegendInset(LEGENDS_INSET);
 		plotter.setWriteGeoJSON(true);
+		plotter.setSectPolygonChar(new PlotCurveCharacterstics(PlotLineType.POLYGON_SOLID, 1f, new Color(127, 127, 127, 66)));
 		
-		plotter.plotSectColors(sectColors, null, null, sectColorSortables);
+		plotter.plotSectChars(sectChars, null, null, sectColorSortables);
 		
 		return plotter;
 	}

@@ -63,10 +63,4 @@ public interface CSV_BackedModule extends FileBackedModule {
 		zin.close();
 		return csv;
 	}
-
-	public static CSVReader loadLargeFileFromArchive(ArchiveInput input, String entryPrefix, String fileName) throws IOException {
-		BufferedInputStream zin = FileBackedModule.getInputStream(input, entryPrefix, fileName);
-
-		return new CSVReader(zin);
-	}
 }

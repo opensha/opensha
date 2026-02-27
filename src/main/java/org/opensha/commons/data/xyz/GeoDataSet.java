@@ -66,6 +66,16 @@ public interface GeoDataSet extends XYZ_DataSet {
 	public void set(Location loc, double value);
 	
 	/**
+	 * Add to the value at the given <code>Location</code>. If the location doesn't exist in the
+	 * dataset then it will be added.
+	 * 
+	 * @param loc - the location at which to set
+	 * @param value - the value to set
+	 * @throws NullPointerException if the <code>loc</code> is null
+	 */
+	public void add(Location loc, double value);
+	
+	/**
 	 * Get the value at the given <code>Location</code>, or null if it doesn't exist.
 	 * 
 	 * @param loc - the location at which to get

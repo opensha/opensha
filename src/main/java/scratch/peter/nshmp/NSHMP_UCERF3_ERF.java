@@ -11,6 +11,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
@@ -86,7 +87,8 @@ public class NSHMP_UCERF3_ERF extends FaultSystemSolutionERF {
 	@Override
 	protected ProbEqkSource getOtherSource(int iSource) {
 		return gridSources.getSource(indices.get(iSource), timeSpan.getDuration(),
-			applyAftershockFilter ? AbstractGridSourceProvider.GK_AFTERSHOCK_FILTER : null, BackgroundRupType.POINT);
+			applyAftershockFilter ? AbstractGridSourceProvider.GK_AFTERSHOCK_FILTER : null,
+					bgSettings);
 	}
 
 

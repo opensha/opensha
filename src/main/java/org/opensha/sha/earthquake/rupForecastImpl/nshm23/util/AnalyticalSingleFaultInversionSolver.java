@@ -211,7 +211,7 @@ public class AnalyticalSingleFaultInversionSolver extends InversionSolver.Defaul
 				double[] misfits_ineq = null;
 				if (inputGen.getA_ineq() != null) {
 					data_ineq = inputGen.getD_ineq();
-					misfits_ineq = new double[data_eq.length];
+					misfits_ineq = new double[data_ineq.length];
 					SerialSimulatedAnnealing.calculateMisfit(inputGen.getA_ineq(), data_ineq, rates, misfits_ineq);
 				}
 				

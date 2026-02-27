@@ -1,5 +1,7 @@
 package org.opensha.commons.util;
 
+import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
+
 import com.google.common.base.Preconditions;
 
 
@@ -147,6 +149,12 @@ public class ReturnPeriodUtils {
 		for (double rp : rps)
 			for (double dur : durs)
 				System.out.println("Prob for "+(float)rp+", "+(float)dur+" year: "+calcExceedanceProbForReturnPeriod(rp, dur));
+		
+		for (ReturnPeriods rp : ReturnPeriods.values()) {
+			System.out.println(rp.label);
+			System.out.println("\tReturn period: "+rp.returnPeriod);
+			System.out.println("\tOne year prob: "+rp.oneYearProb);
+		}
 	}
 
 }

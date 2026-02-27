@@ -473,7 +473,10 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 
 	@Override
 	public double getAveStrike() {
-		throw new RuntimeException("Method not yet implemented");
+		AngleAverager averager = new FaultUtils.AngleAverager();
+		averager.add(upperFaultTrace.getAveStrike(), 1d);
+		averager.add(lowerFaultTrace.getAveStrike(), 1d);
+		return averager.getAverage();
 	}
 
 

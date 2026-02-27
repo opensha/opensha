@@ -1,7 +1,5 @@
 package org.opensha.sha.faultSurface;
 
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.ListIterator;
 
 import org.opensha.commons.exceptions.InvalidRangeException;
@@ -11,8 +9,11 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.FaultUtils;
+import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
-import org.opensha.sha.faultSurface.utils.PtSrcDistCorr;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
+
+import com.google.common.base.Preconditions;
 
 
 /**
@@ -39,30 +40,29 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 
 	private Location pointLocation;
 	
-	
 	final static double SEIS_DEPTH = GriddedSurfaceUtils.SEIS_DEPTH;   // minimum depth for Campbell model
 	
 	// variables for the point-source distance correction; these
 	// are set by HazardCurveCalcs
-	protected PtSrcDistCorr.Type corrType = PtSrcDistCorr.Type.NONE;
-	protected double corrMag = Double.NaN;
+	protected double magForDistCorr = Double.NaN;
+	protected PointSourceDistanceCorrection distCorr = null;
 
 	/**
 	 * The average strike of this surface on the Earth. Even though this is a
 	 * point source, an average strike can be assigned to it to assist with
-	 * particular scientific caculations. Initially set to NaN.
+	 * particular scientific calculations. Initially set to NaN.
 	 */
 	protected double aveStrike=Double.NaN;
 
 	/**
 	 * The average dip of this surface into the Earth. Even though this is a
 	 * point source, an average dip can be assigned to it to assist with
-	 * particular scientific caculations. Initially set to NaN.
+	 * particular scientific calculations. Initially set to NaN.
 	 */
 	protected double aveDip=Double.NaN;
 	
 	/**
-	 * The average width of the surface. Although most ground motion models
+	 * The average width of the surface. Although older ground motion models
 	 * are not concerned with rupture width, some newer models require a
 	 * reasonable estimate to function properly (e.g. ASK_2014). */
 	protected double aveWidth = 0.0;
@@ -133,7 +133,7 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	public double getAveDip() { return aveDip; }
 
 
-	/** Since this is a point source, the single Location can be set without indexes. Does a clone copy. */
+	/** Since this is a point source, the single Location can be set without indexes. */
 	public void setLocation(Location location) {
 		pointLocation = location;
 	}
@@ -213,7 +213,6 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 
 	@Override
 	public LocationList getPerimeter() {
-		// TODO Auto-generated method stub
 		return getEvenlyDiscritizedPerimeter();
 	}
 	
@@ -228,17 +227,30 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 		return getFaultTrace();
 	}
 	
+	/**
+	 * This sets the point-source distance correction and rupture
+	 * @param correction
+	 * @param rupture
+	 */
+	public void setDistanceCorrection(PointSourceDistanceCorrection correction, EqkRupture rupture) {
+		setDistanceCorrection(correction, rupture.getMag());
+	}
 	
 	/**
-	 * This sets the magnitude and type for the point-source distance corrections
+	 * This sets the point-source distance correction
+	 * @param correction
 	 * @param mag
-	 * @param type
 	 */
-	public void setDistCorrMagAndType(double mag, PtSrcDistCorr.Type type) {
-		corrMag = mag;
-		corrType = type;
+	public void setDistanceCorrection(PointSourceDistanceCorrection correction, double mag) {
+		Preconditions.checkState(distCorr == null || Double.isFinite(mag),
+				"Magnitude must be finite if a distance correction is supplied");
+		this.distCorr = correction;
+		this.magForDistCorr = mag;
 	}
 
+	public PointSourceDistanceCorrection getDistanceCorrection() {
+		return distCorr;
+	}
 
 	/**
 	 * This sets the three propagation distances (distanceJB, distanceRup, & distanceSeis)
@@ -269,16 +281,17 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	
 	@Override
 	public double getDistanceRup(Location siteLoc){
-		double depth = pointLocation.getDepth();
+		double depth = getDepth();
 		double djb = getDistanceJB(siteLoc);
 		return Math.sqrt(depth * depth + djb * djb);
 	}
 
 	@Override
 	public double getDistanceJB(Location siteLoc){
-		double djb = LocationUtils.horzDistanceFast(pointLocation, siteLoc);
-		double corr = PtSrcDistCorr.getCorrection(djb, corrMag, corrType);
-		return djb * corr;
+		double horzDist = LocationUtils.horzDistanceFast(pointLocation, siteLoc);
+		if (distCorr == null)
+			return horzDist;
+		return distCorr.getCorrectedDistanceJB(magForDistCorr, this, horzDist);
 	}
 
 	@Override
@@ -290,7 +303,7 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	
 	@Override
 	public double getQuickDistance(Location siteLoc) {
-		return getDistanceRup(siteLoc);
+		return LocationUtils.horzDistanceFast(pointLocation, siteLoc);
 	}
 
 	/**
@@ -428,8 +441,7 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	@Override
 	public PointSurface copyShallow() {
 		PointSurface o = new PointSurface(pointLocation);
-		o.corrType = corrType;
-		o.corrMag = corrMag;
+		o.distCorr = distCorr;
 		o.aveStrike = aveStrike;
 		o.aveDip = aveDip;
 		o.aveWidth = aveWidth;

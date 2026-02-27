@@ -2,14 +2,13 @@ package org.opensha.sha.earthquake.rupForecastImpl.Frankel02;
 
 import org.opensha.commons.calc.magScalingRelations.MagLengthRelationship;
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_MagLengthRelationship;
-import org.opensha.commons.data.Site;
-import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
+import org.opensha.commons.geo.LocationVector;
+import org.opensha.sha.earthquake.FocalMechanism;
+import org.opensha.sha.earthquake.PointSource.PoissonPointSource;
 import org.opensha.sha.earthquake.ProbEqkRupture;
-import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.FrankelGriddedSurface;
 import org.opensha.sha.faultSurface.GriddedSubsetSurface;
@@ -18,13 +17,15 @@ import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
+import com.google.common.base.Preconditions;
+
 /**
  * <p>Title: Point2Vert_SS_FaultPoisSource </p>
  * <p>Description: For a given Location, IncrementalMagFreqDist (of Poissonian
  * rates), MagLengthRelationship, and duration, this creates a vertically dipping,
  * strike-slip ProbEqkRupture for each magnitude (that has a non-zero rate).  Each finite
  * rupture is centered on the given Location.  A user-defined strike will be used if given,
- * otherwise an random stike will be computed and applied.  One can also specify a
+ * otherwise a single random stike will be computed and applied to all ruptures.  One can also specify a
  * magCutOff (magnitudes less than or equal to this will be treated as point sources).
  * This assumes that the duration
  * units are the same as those for the rates in the IncrementalMagFreqDist.</p>
@@ -40,7 +41,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
  * @version 1.0
  */
 
-public class Point2Vert_SS_FaultPoisSource extends ProbEqkSource implements java.io.Serializable{
+public class Point2Vert_SS_FaultPoisSource extends PoissonPointSource implements java.io.Serializable{
 
 
 	//for Debug purposes
@@ -50,13 +51,10 @@ public class Point2Vert_SS_FaultPoisSource extends ProbEqkSource implements java
 	private IncrementalMagFreqDist magFreqDist;
 	private static final double aveDip=90;
 	private static final  double aveRake=0.0;
-	private double duration;
 	private MagLengthRelationship magLengthRelationship;
 	private double magCutOff;
 	private PointSurface ptSurface;
 	private FrankelGriddedSurface finiteFault;
-	
-	private Location loc;
 
 	// to hold the non-zero mags, rates, and rupture surfaces
 	//  ArrayList mags, rates, rupSurfaces;
@@ -73,6 +71,7 @@ public class Point2Vert_SS_FaultPoisSource extends ProbEqkSource implements java
 	public Point2Vert_SS_FaultPoisSource(Location loc, IncrementalMagFreqDist magFreqDist,
 			MagLengthRelationship magLengthRelationship,
 			double strike, double duration, double magCutOff){
+		super(loc, TECTONIC_REGION_TYPE_DEFAULT, duration, null, null); // TODO: dist corrs
 		this.magCutOff = magCutOff;
 
 		if(D) {
@@ -81,7 +80,7 @@ public class Point2Vert_SS_FaultPoisSource extends ProbEqkSource implements java
 		}
 
 		// set the mags, rates, and rupture surfaces
-		setAll(loc,magFreqDist,magLengthRelationship,strike,duration);
+		setAll(magFreqDist, magLengthRelationship, strike);
 	}
 
 
@@ -96,10 +95,11 @@ public class Point2Vert_SS_FaultPoisSource extends ProbEqkSource implements java
 	public Point2Vert_SS_FaultPoisSource(Location loc, IncrementalMagFreqDist magFreqDist,
 			MagLengthRelationship magLengthRelationship,
 			double duration, double magCutOff){
+		super(loc, TECTONIC_REGION_TYPE_DEFAULT, duration, null, null); // TODO: dist corrs
 		this.magCutOff = magCutOff;
 
 		// set the mags, rates, and rupture surfaces
-		setAll(loc,magFreqDist,magLengthRelationship,duration);
+		setAll(magFreqDist, magLengthRelationship);
 
 	}
 
@@ -107,20 +107,17 @@ public class Point2Vert_SS_FaultPoisSource extends ProbEqkSource implements java
 	 * This computes a random strike and then builds the list of magnitudes,
 	 * rates, and finite-rupture surfaces using the given MagLenthRelationship.
 	 * This also sets the duration.
-	 * @param loc
 	 * @param magFreqDist
 	 * @param magLengthRelationship
-	 * @param duration
 	 */
-	public void setAll(Location loc, IncrementalMagFreqDist magFreqDist,
-			MagLengthRelationship magLengthRelationship,
-			double duration) {
+	public void setAll(IncrementalMagFreqDist magFreqDist,
+			MagLengthRelationship magLengthRelationship) {
 
 		// get a random strike between -90 and 90
 		double strike = (Math.random()-0.5)*180.0;
 		if (strike < 0.0) strike +=360;
 		// System.out.println(C+" random strike = "+strike);
-		setAll(loc,magFreqDist,magLengthRelationship,strike,duration);
+		setAll(magFreqDist, magLengthRelationship, strike);
 	}
 
 
@@ -128,22 +125,21 @@ public class Point2Vert_SS_FaultPoisSource extends ProbEqkSource implements java
 	 * This builds the list of magnitudes, rates, and finite-rupture surfaces using
 	 * the given strike and MagLenthRelationship.  This also sets the duration.
 	 *
-	 * @param loc
 	 * @param magFreqDist
 	 * @param magLengthRelationship
 	 * @param strike
-	 * @param duration
 	 */
-	public void setAll(Location loc, IncrementalMagFreqDist magFreqDist,
+	public void setAll(IncrementalMagFreqDist magFreqDist,
 			MagLengthRelationship magLengthRelationship,
-			double strike, double duration) {
+			double strike) {
+		
+		Location loc = getLocation();
+		double duration = getDuration();
+		this.magFreqDist = magFreqDist;
+		this.magLengthRelationship = magLengthRelationship;
 
 		if(D) System.out.println("duration="+duration);
 		if(D) System.out.println("strike="+strike);
-		this.duration = duration;
-		this.magFreqDist = magFreqDist;
-		this.magLengthRelationship = magLengthRelationship;
-		this.loc = loc;
 
 		// make the point surface
 		ptSurface = new PointSurface(loc);
@@ -166,6 +162,48 @@ public class Point2Vert_SS_FaultPoisSource extends ProbEqkSource implements java
 			fault.add(loc2);
 			finiteFault = new FrankelGriddedSurface(fault,aveDip,loc.getDepth(),loc.getDepth(),1.0);
 		}
+		
+		SurfaceGenerator surfGen = new SurfaceGenerator();
+		
+		setData(dataForMFD(loc, magFreqDist, new FocalMechanism(strike, aveDip, aveRake), surfGen));
+	}
+	
+	private class SurfaceGenerator implements RuptureSurfaceBuilder {
+
+		@Override
+		public int getNumSurfaces(double magnitude, FocalMechanism mech) {
+			return 1;
+		}
+
+		@Override
+		public RuptureSurface getSurface(Location sourceLoc, double magnitude, FocalMechanism mech, int surfaceIndex) {
+			if (magnitude <= magCutOff)
+				return ptSurface;
+			if (magnitude == magFreqDist.getMaxX())
+				return finiteFault;
+			double rupLen = magLengthRelationship.getMedianLength(magnitude);
+			double startPoint = (double)finiteFault.getNumCols()/2.0 - 0.5 - rupLen/2.0;
+			return new GriddedSubsetSurface(1,Math.round((float)rupLen+1),
+					0,Math.round((float)startPoint),
+					finiteFault);
+		}
+
+		@Override
+		public double getSurfaceWeight(double magnitude, FocalMechanism mech, int surfaceIndex) {
+			Preconditions.checkState(surfaceIndex == 0);
+			return 1d;
+		}
+
+		@Override
+		public boolean isSurfaceFinite(double magnitude, FocalMechanism mech, int surfaceIndex) {
+			return magnitude > magCutOff;
+		}
+
+		@Override
+		public Location getHypocenter(Location sourceLoc, RuptureSurface rupSurface) {
+			return null;
+		}
+		
 	}
 
 	/**
@@ -183,107 +221,6 @@ public class Point2Vert_SS_FaultPoisSource extends ProbEqkSource implements java
 	public RuptureSurface getSourceSurface() {
 		if(this.finiteFault!=null) return finiteFault;
 		else return ptSurface;
-	}
-
-
-
-
-
-	/**
-	 * @return the number of rutures (equals number of mags with non-zero rates)
-	 */
-	public int getNumRuptures() {
-		//return magsAndRates.getNum();
-		return magFreqDist.size();
-	}
-
-
-	/**
-	 * This makes and returns the nth probEqkRupture for this source.
-	 */
-	public ProbEqkRupture getRupture(int nthRupture){
-
-		ProbEqkRupture probEqkRupture = new ProbEqkRupture();
-		probEqkRupture.setAveRake(aveRake);
-
-		// set the magnitude
-		double mag = magFreqDist.getX(nthRupture);
-		probEqkRupture.setMag(mag);
-
-		// compute and set the probability
-		double prob = 1 - Math.exp(-duration*magFreqDist.getY(nthRupture));
-		probEqkRupture.setProbability(prob);
-
-		// set the rupture surface
-		if(mag <= this.magCutOff)
-			probEqkRupture.setRuptureSurface(ptSurface);
-		else {
-			if(nthRupture == magFreqDist.size()-1) {
-				probEqkRupture.setRuptureSurface(finiteFault);
-			}
-			else {
-				double rupLen = magLengthRelationship.getMedianLength(mag);
-				double startPoint = (double)finiteFault.getNumCols()/2.0 - 0.5 - rupLen/2.0;
-				GriddedSubsetSurface rupSurf = new GriddedSubsetSurface(1,Math.round((float)rupLen+1),
-						0,Math.round((float)startPoint),
-						finiteFault);
-				probEqkRupture.setRuptureSurface(rupSurf);
-			}
-		}
-
-		// return the ProbEqkRupture
-		return probEqkRupture;
-	}
-
-
-	/**
-	 * This sets the duration used in computing Poisson probabilities.  This assumes
-	 * the same units as in the magFreqDist rates.
-	 * @param duration
-	 */
-	public void setDuration(double duration) {
-		this.duration=duration;
-	}
-
-
-	/**
-	 * This gets the duration used in computing Poisson probabilities
-	 * @param duration
-	 */
-	public double getDuration() {
-		return duration;
-	}
-
-
-	/**
-	 * This returns the shortest horizontal dist to the point source.
-	 * @param site
-	 * @return minimum distance
-	 */
-	public  double getMinDistance(Site site) {
-
-		/*
-      // get the largest rupture surface (the last one)
-      GriddedSurfaceAPI surf = (GriddedSurfaceAPI) rupSurfaces.get(rupSurfaces.size()-1);
-
-      double tempMin, min = Double.MAX_VALUE;
-      int nCols = surf.getNumCols();
-
-      // find the minimum to the ends and the center)
-      tempMin = LocationUtils.getHorzDistance(site.getLocation(),surf.getLocation(0,0));
-      if(tempMin < min) min = tempMin;
-      tempMin = LocationUtils.getHorzDistance(site.getLocation(),surf.getLocation(0,(int)nCols/2));
-      if(tempMin < min) min = tempMin;
-      tempMin = LocationUtils.getHorzDistance(site.getLocation(),surf.getLocation(0,nCols-1));
-      if(tempMin < min) min = tempMin;
-      return min;
-		 */
-		return LocationUtils.horzDistance(
-				site.getLocation(),ptSurface.getLocation());
-	}
-	
-	public Location getLocation() {
-		return loc;
 	}
 
 	/**
