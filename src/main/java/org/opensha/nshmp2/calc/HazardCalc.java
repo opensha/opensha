@@ -31,7 +31,7 @@ import org.opensha.nshmp2.util.SiteTypeParam;
 import org.opensha.nshmp2.util.SourceIMR;
 import org.opensha.nshmp2.util.SourceType;
 import org.opensha.nshmp2.util.Utils;
-import org.opensha.sha.calc.params.MaxDistanceParam;
+import org.opensha.sha.calc.sourceFilters.params.MaxDistanceParam;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EpistemicListERF;
 import org.opensha.sha.imr.ScalarIMR;

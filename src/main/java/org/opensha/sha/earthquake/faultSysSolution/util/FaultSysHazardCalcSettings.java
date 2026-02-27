@@ -16,11 +16,11 @@ import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.WarningParameter;
-import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
-import org.opensha.sha.calc.params.filters.SourceFilterManager;
-import org.opensha.sha.calc.params.filters.SourceFilters;
-import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter;
-import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
+import org.opensha.sha.calc.sourceFilters.FixedDistanceCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
+import org.opensha.sha.calc.sourceFilters.SourceFilters;
+import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
@@ -194,7 +194,7 @@ public class FaultSysHazardCalcSettings {
 					// TRT specific
 					TectonicRegionTypeParam trtParam = (TectonicRegionTypeParam)gmpeRef.get().getParameter(TectonicRegionTypeParam.NAME);
 					Preconditions.checkState(trtParam != null, "Multiple GMPEs supplied, but GMPE "+gmpeRef.getShortName()+" doesn't have a TRT");
-					TectonicRegionType trt = trtParam.getValueAsTRT();
+					TectonicRegionType trt = trtParam.getValue();
 					ret.put(trt, gmpeRef);
 				} else {
 					// single, just use ACTIVE_SHALLOW (will be used for all)

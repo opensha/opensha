@@ -7,7 +7,7 @@ import java.util.Map;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.calc.CalculatorAPI;
-import org.opensha.sha.calc.params.filters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilter;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.util.TectonicRegionType;

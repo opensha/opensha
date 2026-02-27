@@ -11,7 +11,7 @@ import org.opensha.commons.param.editor.ParameterEditor;
 import org.opensha.commons.param.editor.impl.DoubleParameterEditor;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.sha.calc.HazardCurveCalculator;
-import org.opensha.sha.calc.params.MaxDistanceParam;
+import org.opensha.sha.calc.sourceFilters.params.MaxDistanceParam;
 
 /**
  * <p>Title: SetMinSourceSiteDistanceControlPanel </p>

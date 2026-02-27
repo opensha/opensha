@@ -1,6 +1,5 @@
 package org.opensha.commons.mapping.gmt.gui;
 
-import java.applet.Applet;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
@@ -84,8 +83,8 @@ public class GMT_MapGeneratorApplet extends JPanel{
 
 
 	private final static String URL_NAME = "Enter URL";
-	private StringParameter xyzFileName=
-		new StringParameter(URL_NAME,"http://opensha.usc.edu/data/step/backGround.txt");
+	private StringParameter xyzFileName =
+		new StringParameter(URL_NAME,"https://data.opensha.org/data/step/backGround.txt");
 	private StringParameterEditor xyzFileEditor;
 	private JPanel parameterPanel = new JPanel();
 	private GridBagLayout gridBagLayout1 = new GridBagLayout();
