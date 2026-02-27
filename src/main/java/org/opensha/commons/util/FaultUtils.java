@@ -676,8 +676,9 @@ public final class FaultUtils {
 		 * @param weight
 		 */
 		public synchronized void add(double angle, double weight) {
-			xdir+=weight*Math.cos(Math.toRadians(angle));
-			ydir+=weight*Math.sin(Math.toRadians(angle));
+			double angleRad = Math.toRadians(angle);
+			xdir+=weight*Math.cos(angleRad);
+			ydir+=weight*Math.sin(angleRad);
 		}
 		
 		public double getAverage() {
