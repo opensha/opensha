@@ -389,7 +389,12 @@ public class GeoJSONFaultSection implements FaultSection {
 		Preconditions.checkState(Double.isFinite(value), "FaultSections must have the '%s' GeoJSON property", propName);
 	}
 
-	public GeoJSONFaultSection(FaultSection sect) {
+	private GeoJSONFaultSection(){
+		// Private default constructor to prevent inheritance.
+		// GeoJSONFaultSection does not have the final keyword so that it can be mocked.
+	}
+
+	private GeoJSONFaultSection(FaultSection sect) {
 		this.id = sect.getSectionId();
 		this.name = sect.getSectionName();
 		this.dip = sect.getAveDip();
@@ -442,7 +447,11 @@ public class GeoJSONFaultSection implements FaultSection {
 		this.properties = properties;
 		cacheCommonValues();
 	}
-	
+
+	public static GeoJSONFaultSection fromFaultSection(FaultSection section){
+		return new GeoJSONFaultSection(section);
+	}
+
 	public static GeoJSONFaultSection fromFeature(Feature feature) {
 		return new GeoJSONFaultSection(feature);
 	}

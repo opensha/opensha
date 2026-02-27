@@ -657,7 +657,7 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 				if (sect instanceof GeoJSONFaultSection)
 					geoSect = (GeoJSONFaultSection)sect;
 				else
-					geoSect = new GeoJSONFaultSection(sect);
+					geoSect = GeoJSONFaultSection.fromFaultSection(sect);
 				Feature feature = geoSect.toFeature();
 				FeatureProperties props = feature.properties;
 				double curLowDepth = props.getDouble(GeoJSONFaultSection.LOW_DEPTH, Double.NaN);
