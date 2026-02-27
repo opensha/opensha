@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -258,10 +259,8 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 	}
 
 	@Override
-	public ArrayList<TectonicRegionType> getIncludedTectonicRegionTypes() {
-		ArrayList<TectonicRegionType> list = new ArrayList<TectonicRegionType>();
-		list.add(TectonicRegionType.ACTIVE_SHALLOW);
-		return list;
+	public Set<TectonicRegionType> getIncludedTectonicRegionTypes() {
+		return EnumSet.of(TectonicRegionType.ACTIVE_SHALLOW);
 	}
 
 	@Override
