@@ -62,17 +62,6 @@ public interface DiscretizedFunc extends XY_DataSet {
 	/* INTERPOLATION */
 	/* ***************/
 
-	/**
-     * Given the imput y value, finds the two sequential
-     * x values with the closest y values, then calculates an
-     * interpolated x value for this y value, fitted to the curve. <p>
-     *
-     * Since there may be multiple y values with the same value, this
-     * function just matches the first found starting at the x-min point
-     * along the x-axis.
-     */
-    public double getFirstInterpolatedX(double y);
-
     /**
      * Given the input x value, finds the two sequential
      * x values with the closest x values, then calculates an
@@ -105,6 +94,29 @@ public interface DiscretizedFunc extends XY_DataSet {
 	 * y value in logX space.
 	 */
 	public double getInterpolatedY_inLogXDomain(double x);
+
+	/**
+     * Given the input y value, finds the two sequential
+     * x values with the closest y values, then calculates an
+     * interpolated x value for this y value, fitted to the curve. <p>
+     *
+     * Since there may be multiple y values with the same value, this
+     * function just matches the first found starting at the x-min point
+     * along the x-axis.
+     */
+    public double getFirstInterpolatedX(double y);
+
+	/**
+     * Given the input y value, finds the two sequential
+     * x values with the closest y values, then calculates an
+     * interpolated x value for this y value, fitted to the curve.
+     * The y values are interpolated in log space. <p>
+     *
+     * Since there may be multiple y values with the same value, this
+     * function just matches the first found starting at the x-min point
+     * along the x-axis.
+     */
+    public double getFirstInterpolatedX_inLogYDomain(double y);
 
 	/**
 	 * Given the input y value, finds the two sequential

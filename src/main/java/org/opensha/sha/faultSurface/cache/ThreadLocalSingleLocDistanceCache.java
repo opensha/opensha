@@ -66,11 +66,6 @@ public class ThreadLocalSingleLocDistanceCache implements SurfaceDistanceCache {
 	}
 
 	@Override
-	public double getDistanceX(Location loc) {
-		return getCache().getDistanceX(loc);
-	}
-
-	@Override
 	public synchronized void clearCache() {
 		threadCaches.clear();
 	}

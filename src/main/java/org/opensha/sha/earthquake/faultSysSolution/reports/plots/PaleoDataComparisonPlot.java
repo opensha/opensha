@@ -463,7 +463,7 @@ public class PaleoDataComparisonPlot extends AbstractRupSetPlot {
 		PlotSpec plot = new PlotSpec(funcs, chars, title, "Paleoseismic Data Recurrence Rate (/yr)", yAxisLabel);
 		plot.setLegendVisible(true);
 		
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 		gp.drawGraphPanel(plot, true, true, range, range);
 		
 		PlotUtils.writePlots(outputDir, prefix, gp, 800, false, true, true, false);
@@ -497,7 +497,7 @@ public class PaleoDataComparisonPlot extends AbstractRupSetPlot {
 		
 		PlotSpec plot = new PlotSpec(funcs, chars, title, "z-score (standard deviations)", "Count");
 		
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 		gp.drawGraphPanel(plot, false, false, xRange, yRange);
 		
 		PlotUtils.setYTick(gp, 1d);

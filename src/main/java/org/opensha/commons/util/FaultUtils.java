@@ -36,6 +36,8 @@ public final class FaultUtils {
 	private static final String S2 = C + ": assertValidDip(): ";
 	/** debugging string */
 	private static final String S3 = C + ": assertValidRake(): ";
+	/** debugging string */
+	private static final String S4 = C + ": assertValidDepth(): ";
 
 
 
@@ -81,7 +83,7 @@ public final class FaultUtils {
 	public static void assertValidDepth( double depth)
 			throws InvalidRangeException
 			{
-		if( !(depth >= 0) ) throw new InvalidRangeException( S2 +
+		if( !(depth >= 0) ) throw new InvalidRangeException( S4 +
 				"Depth on fault must be positive" );
 			}
 
@@ -96,7 +98,7 @@ public final class FaultUtils {
 
 		assertValidDepth(upperSeis);
 		assertValidDepth(lowerSeis);
-		if( upperSeis > lowerSeis ) throw new InvalidRangeException( S2 +
+		if( upperSeis > lowerSeis ) throw new InvalidRangeException( S4 +
 				"upperSeisDepth must be < lowerSeisDepth" );
 	}
 	/**

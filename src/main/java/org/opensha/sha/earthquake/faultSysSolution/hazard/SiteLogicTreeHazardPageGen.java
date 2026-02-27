@@ -1054,7 +1054,7 @@ public class SiteLogicTreeHazardPageGen {
 			
 			@Override
 			public void run() {
-				HeadlessGraphPanel gp = PlotUtils.initHeadless();
+				HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 				
 				gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
 				gp.drawGraphPanel(spec, true, true, xRange, yRange);
@@ -1240,7 +1240,7 @@ public class SiteLogicTreeHazardPageGen {
 			
 			@Override
 			public void run() {
-				HeadlessGraphPanel gp = PlotUtils.initHeadless();
+				HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 				
 				gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
 				gp.drawGraphPanel(spec, true, true, xRange, yRange);
@@ -1653,7 +1653,7 @@ public class SiteLogicTreeHazardPageGen {
 			
 			@Override
 			public void run() {
-				HeadlessGraphPanel gp = PlotUtils.initHeadless();
+				HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 				
 				gp.drawGraphPanel(spec, false, false, xRange, yRange);
 				

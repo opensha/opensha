@@ -259,7 +259,10 @@ implements IntensityMeasureRelationship {
 	 */
 	public void setIntensityMeasure(Parameter intensityMeasure) throws
 	ParameterException, ConstraintException {
-
+		if (im == intensityMeasure) {
+			// already the same, don't bother setting
+			return;
+		}
 		if (isIntensityMeasureSupported(intensityMeasure)) {
 			setIntensityMeasure(intensityMeasure.getName());
 			for (Parameter<?> param : intensityMeasure.getIndependentParameterList())

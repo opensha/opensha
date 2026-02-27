@@ -25,6 +25,7 @@ import org.opensha.commons.gui.plot.GraphPanel;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
+import org.opensha.commons.gui.plot.PlotPreferences;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.MarkdownUtils;
@@ -442,18 +443,15 @@ public class JumpAzimuthsPlot extends AbstractRupSetPlot {
 			spec.addPlotAnnotation(new XYPolygonAnnotation(polygon, stroke, Color.DARK_GRAY, color));
 		}
 		
+		PlotPreferences prefs = PlotPreferences.getDefaultScreenFigurePrefs();
 		PaintScaleLegend cptBar = GraphPanel.getLegendForCPT(cpt, "Fraction",
-				24, 18, 0.05d, RectangleEdge.BOTTOM);
+				prefs, 0.05d, RectangleEdge.BOTTOM);
 		spec.addSubtitle(cptBar);
 		
 		Range xRange = new Range(-1.1d, 1.1d);
 		Range yRange = new Range(-1.1d, 1.1d);
 		
-		HeadlessGraphPanel gp = new HeadlessGraphPanel();
-		gp.setTickLabelFontSize(18);
-		gp.setAxisLabelFontSize(24);
-		gp.setPlotLabelFontSize(22);
-		gp.setBackgroundColor(Color.WHITE);
+		HeadlessGraphPanel gp = new HeadlessGraphPanel(prefs);
 		
 		gp.drawGraphPanel(spec, false, false, xRange, yRange);
 		

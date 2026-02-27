@@ -772,9 +772,14 @@ public abstract class AbstractParameter<E> implements Parameter<E> {
 	public String getDependentParamMetadataString() {
 		if (independentParameters.size() > 0) {
 			StringBuffer metadata = new StringBuffer();
-			metadata.append(getName() + " [ ");
+			metadata.append(getName()).append(" [ ");
+			boolean first = true;
 			for (Parameter<?> tempParam : getIndependentParameterList()) {
-				metadata.append(tempParam.getMetadataString() + " ; ");
+				if (first)
+					first = false;
+				else
+					metadata.append(" ; ");
+				metadata.append(tempParam.getMetadataString());
 				/*
 				 * Note that the getmetadatSring is called here rather than the
 				 * getDependentParamMetadataString() method becuase the former
@@ -782,7 +787,7 @@ public abstract class AbstractParameter<E> implements Parameter<E> {
 				 * independent parameters; we may want to change this later on.
 				 */
 			}
-			metadata.replace(metadata.length() - 2, metadata.length(), " ]");
+			metadata.append(" ]");
 			metadataString = metadata.toString();
 		}
 		return metadataString;

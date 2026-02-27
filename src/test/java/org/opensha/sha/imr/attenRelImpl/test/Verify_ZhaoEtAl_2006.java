@@ -608,9 +608,10 @@ public class Verify_ZhaoEtAl_2006 {
 	private static ArrayList<Double> getPeriods(ScalarIMR imr) {
 		// Get the list of periods available for the selected IMR
 		ArrayList<Double> per = new ArrayList<Double>();
-		ListIterator<Parameter<?>> it = imr.getSupportedIntensityMeasuresIterator();
-		while(it.hasNext()){
-			Parameter tempParam = (Parameter)it.next();
+//		ListIterator<Parameter<?>> it = imr.getSupportedIntensityMeasuresIterator();
+//		while(it.hasNext()){
+//			Parameter tempParam = (Parameter)it.next();
+		for (Parameter<?> tempParam : imr.getSupportedIntensityMeasures()) {
 			if (tempParam.getName().equalsIgnoreCase(SA_Param.NAME)){
 				for (Parameter<?> independentParam : tempParam.getIndependentParameterList()) {
 					if (independentParam.getName().equalsIgnoreCase(PeriodParam.NAME)){

@@ -157,7 +157,7 @@ public class UCERF1ComparisonPlotter {
 		aFaultsPlotter.setPlottingFeatures(plotChars);
 		PlotSpec spec = aFaultsPlotter.getPlotSpec();
 		spec.setTitle(label);
-		GraphWindow graphWindow= new GraphWindow(spec, PlotPreferences.getDefault(),
+		GraphWindow graphWindow= new GraphWindow(spec, PlotPreferences.getDefaultAppPrefs(),
 				aFaultsPlotter.getXLog(), aFaultsPlotter.getYLog(),
 				new Range(aFaultsPlotter.getUserMinX(), aFaultsPlotter.getUserMaxX()),
 				new Range(aFaultsPlotter.getUserMinY(), aFaultsPlotter.getUserMaxY()));
@@ -203,7 +203,7 @@ public class UCERF1ComparisonPlotter {
 			A_FaultsMFD_Plotter aFaultsPlotter = new A_FaultsMFD_Plotter(funcArrayList, false);
 			PlotSpec spec = aFaultsPlotter.getPlotSpec();
 			spec.setTitle(faultName);
-			GraphWindow graphWindow= new GraphWindow(spec, PlotPreferences.getDefault(),
+			GraphWindow graphWindow= new GraphWindow(spec, PlotPreferences.getDefaultAppPrefs(),
 					aFaultsPlotter.getXLog(), aFaultsPlotter.getYLog(),
 					new Range(aFaultsPlotter.getUserMinX(), aFaultsPlotter.getUserMaxX()),
 					new Range(aFaultsPlotter.getUserMinY(), aFaultsPlotter.getUserMaxY()));
@@ -222,7 +222,7 @@ public class UCERF1ComparisonPlotter {
 			A_FaultsMFD_Plotter aFaultsPlotter = new A_FaultsMFD_Plotter(funcArrayList, false);
 			PlotSpec spec = aFaultsPlotter.getPlotSpec();
 			spec.setTitle(faultName);
-			GraphWindow graphWindow= new GraphWindow(spec, PlotPreferences.getDefault(),
+			GraphWindow graphWindow= new GraphWindow(spec, PlotPreferences.getDefaultAppPrefs(),
 					aFaultsPlotter.getXLog(), aFaultsPlotter.getYLog(),
 					new Range(aFaultsPlotter.getUserMinX(), aFaultsPlotter.getUserMaxX()),
 					new Range(aFaultsPlotter.getUserMinY(), aFaultsPlotter.getUserMaxY()));
@@ -443,7 +443,7 @@ public class UCERF1ComparisonPlotter {
 			A_FaultsMFD_Plotter aFaultsPlotter = new A_FaultsMFD_Plotter(funcArrayList, false);
 			PlotSpec spec = aFaultsPlotter.getPlotSpec();
 			spec.setTitle(faultName);
-			GraphWindow graphWindow= new GraphWindow(spec, PlotPreferences.getDefault(),
+			GraphWindow graphWindow= new GraphWindow(spec, PlotPreferences.getDefaultAppPrefs(),
 					aFaultsPlotter.getXLog(), aFaultsPlotter.getYLog(),
 					new Range(aFaultsPlotter.getUserMinX(), aFaultsPlotter.getUserMaxX()),
 					new Range(aFaultsPlotter.getUserMinY(), aFaultsPlotter.getUserMaxY()));
@@ -461,7 +461,7 @@ public class UCERF1ComparisonPlotter {
 			A_FaultsMFD_Plotter aFaultsPlotter = new A_FaultsMFD_Plotter(funcArrayList, false);
 			PlotSpec spec = aFaultsPlotter.getPlotSpec();
 			spec.setTitle(faultName);
-			GraphWindow graphWindow= new GraphWindow(spec, PlotPreferences.getDefault(),
+			GraphWindow graphWindow= new GraphWindow(spec, PlotPreferences.getDefaultAppPrefs(),
 					aFaultsPlotter.getXLog(), aFaultsPlotter.getYLog(),
 					new Range(aFaultsPlotter.getUserMinX(), aFaultsPlotter.getUserMaxX()),
 					new Range(aFaultsPlotter.getUserMinY(), aFaultsPlotter.getUserMaxY()));

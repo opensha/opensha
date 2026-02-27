@@ -44,6 +44,7 @@ import org.jfree.data.Range;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.data.function.WeightedFuncListforPlotting;
 import org.opensha.commons.data.function.XY_DataSetList;
 import org.opensha.commons.exceptions.WarningException;
@@ -820,7 +821,6 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 		try {
 			if (calc == null) {
 				calc = new HazardCurveCalculator();
-				calc.setTrackProgress(true);
 				if (this.calcParamsControl != null) {
 					calc.setAdjustableParams(calcParamsControl.getAdjustableCalcParams());
 				}
@@ -856,17 +856,12 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 			public void actionPerformed(ActionEvent evt) {
 				try {
 					if (!isEqkList) {
-						int totRupture = calc.getTotRuptures();
-						int currRupture = calc.getCurrRuptures();
-						boolean totCurCalculated = true;
-						if (currRupture == -1) {
-							progressClass
-							.setProgressMessage("Calculating total ruptures\u2026");
-							totCurCalculated = false;
-						}
+						int totProgress = calc.getTotalProgressCount();
+						int currProgress = calc.getCurrentProgress();
+						boolean totCurCalculated = currProgress >= 0 && currProgress > 0;
 						if (!isHazardCalcDone && totCurCalculated)
-							progressClass.updateProgress(currRupture,
-									totRupture);
+							progressClass.updateProgress(currProgress,
+									totProgress);
 					} else {
 						if ((numERFsInEpistemicList) != 0)
 							progressClass
@@ -1222,18 +1217,17 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 		// initialize the values in condProbfunc with log values as passed in
 		// hazFunction
 		// intialize the hazard function
-		ArbitrarilyDiscretizedFunc hazFunction = new ArbitrarilyDiscretizedFunc();
-		initX_Values(hazFunction);
+		DiscretizedFunc hazFunction = initX_Values();
 		try {
 			// calculate the hazard curve
 			// eqkRupForecast =
 			// (EqkRupForecastAPI)FileUtils.loadObject("erf.obj");
 			try {
 				if (isProbabilisticCurve) {
-					hazFunction = (ArbitrarilyDiscretizedFunc) calc.getHazardCurve(hazFunction, site, imrMap,
+					hazFunction = calc.getHazardCurve(hazFunction, site, imrMap,
 							(ERF) forecast);
 				} else if (isStochasticCurve) {
-					hazFunction = (ArbitrarilyDiscretizedFunc) calc.getAverageEventSetHazardCurve(
+					hazFunction = calc.getAverageEventSetHazardCurve(
 							hazFunction, site, imrGuiBean.getSelectedIMR(), (ERF) forecast);
 				} else { // deterministic
 					runInEDT(new Runnable() {
@@ -1245,7 +1239,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 					});
 					ScalarIMR imr = imrGuiBean.getSelectedIMR();
 					EqkRupture rupture = this.erfRupSelectorGuiBean.getRupture();
-					hazFunction = (ArbitrarilyDiscretizedFunc) calc.getHazardCurve(hazFunction, site, imr, rupture);
+					hazFunction = calc.getHazardCurve(hazFunction, site, imr, rupture);
 					runInEDT(new Runnable() {
 						@Override
 						public void run() {
@@ -1683,18 +1677,16 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 			if (isCancelled()) return;
 			// current ERF's being used to calculated Hazard Curve
 			currentERFInEpistemicListForHazardCurve = i;
-			ArbitrarilyDiscretizedFunc hazFunction = new ArbitrarilyDiscretizedFunc();
 
 			// intialize the hazard function
-			initX_Values(hazFunction);
+			DiscretizedFunc hazFunction = initX_Values();
 			try {
 				try {
 					// calculate the hazard curve
 					if(isProbabilisticCurve)
-						hazFunction = (ArbitrarilyDiscretizedFunc) calc
-						.getHazardCurve(hazFunction, site, imrMap, erfList.getERF(i));
+						hazFunction = calc.getHazardCurve(hazFunction, site, imrMap, erfList.getERF(i));
 					else if(isStochasticCurve) // it's stochastic
-						hazFunction = (ArbitrarilyDiscretizedFunc) calc
+						hazFunction = calc
 						.getAverageEventSetHazardCurve(
 								hazFunction, site, imrGuiBean.getSelectedIMR(), erfList.getERF(i));
 					else
@@ -1875,7 +1867,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 */
 	protected void initSiteGuiBean() {
 		siteGuiBean = new Site_GuiBean();
-		siteGuiBean.addSiteParams(imrGuiBean.getMultiIMRSiteParamIterator());
+		siteGuiBean.addSiteParams(imrGuiBean.getMultiIMRSiteParams());
 	}
 
 	/**
@@ -2030,6 +2022,8 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 * @return the Metadata string for the Calculation Settings Adjustable Params
 	 */
 	public String getCalcParamMetadataString(){
+		if (calc == null)
+			return "";
 		ParameterList params = getCalcAdjustableParams();
 		if (params == null)
 			return "";
@@ -2131,7 +2125,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 * @param arb
 	 *            : this is the function with X values set
 	 */
-	protected void initX_Values(DiscretizedFunc arb) {
+	protected LightFixedXFunc initX_Values() {
 
 		// if not using custom values get the function according to IMT.
 		if (!useCustomX_Values)
@@ -2139,8 +2133,11 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 					.getSelectedIMT());
 
 		if (IMT_Info.isIMT_LogNormalDist(imtGuiBean.getSelectedIMT())) {
+			double[] xVals = new double[function.size()];
 			for (int i = 0; i < function.size(); ++i)
-				arb.set(Math.log(function.getX(i)), 1);
+				xVals[i] = Math.log(function.getX(i));
+			
+			return new LightFixedXFunc(xVals, new double[xVals.length]);
 
 			// System.out.println("11111111111HazFunction: "+arb.toString());
 		} else
@@ -2155,17 +2152,19 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 * @param hazFunc
 	 *            : this is the function with X values set
 	 */
-	protected ArbitrarilyDiscretizedFunc toggleHazFuncLogValues(
-			ArbitrarilyDiscretizedFunc hazFunc) {
-		int numPoints = hazFunc.size();
-		DiscretizedFunc tempFunc = hazFunc.deepClone();
-		hazFunc = new ArbitrarilyDiscretizedFunc();
+	protected DiscretizedFunc toggleHazFuncLogValues(
+			DiscretizedFunc inputFunc) {
+		int numPoints = inputFunc.size();
+		double[] xVals = new double[inputFunc.size()];
+		double[] yVals = new double[inputFunc.size()];
 		// take log only if it is PGA, PGV ,SA or FaultDispl
 
 		if (IMT_Info.isIMT_LogNormalDist(imtGuiBean.getSelectedIMT())) {
-			for (int i = 0; i < numPoints; ++i)
-				hazFunc.set(function.getX(i), tempFunc.getY(i));
-			return hazFunc;
+			for (int i = 0; i < numPoints; ++i) {
+				xVals[i] = function.getX(i);
+				yVals[i] = inputFunc.getY(i);
+			}
+			return new LightFixedXFunc(xVals, yVals);
 		} else
 			throw new RuntimeException("Unsupported IMT");
 	}
@@ -2622,7 +2621,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 * 
 	 */
 	public void updateSiteParams() {
-		siteGuiBean.replaceSiteParams(imrGuiBean.getMultiIMRSiteParamIterator());
+		siteGuiBean.replaceSiteParams(imrGuiBean.getMultiIMRSiteParams());
 		siteGuiBean.validate();
 		siteGuiBean.repaint();
 	}

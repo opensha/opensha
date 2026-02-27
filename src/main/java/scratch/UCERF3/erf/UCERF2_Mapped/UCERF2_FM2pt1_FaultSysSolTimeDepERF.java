@@ -40,7 +40,7 @@ public class UCERF2_FM2pt1_FaultSysSolTimeDepERF extends FaultSystemSolutionERF 
 	
 	public UCERF2_FM2pt1_FaultSysSolTimeDepERF() {
 		super(UCERF2_ComparisonSolutionFetcher.getUCERF2Solution(FaultModels.FM2_1));
-		nshmp_gridSrcGen = new NSHMP_GridSourceGeneratorMod2(bgSettings.distanceCorrections);
+		nshmp_gridSrcGen = new NSHMP_GridSourceGeneratorMod2(bgSettings.distanceCorrection);
 		// treat as point sources
 		nshmp_gridSrcGen.setAsPointSources(true);
 		numOtherSources = nshmp_gridSrcGen.getNumSources();
@@ -54,7 +54,7 @@ public class UCERF2_FM2pt1_FaultSysSolTimeDepERF extends FaultSystemSolutionERF 
 	public void parameterChange(ParameterChangeEvent event) {
 		super.parameterChange(event);
 		if (event.getParameter() == bgSettingsParam)
-			nshmp_gridSrcGen.setDistanceCorrections(bgSettings.distanceCorrections);
+			nshmp_gridSrcGen.setDistanceCorrection(bgSettings.distanceCorrection);
 	}
 
 

@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.CSVReader;
@@ -46,6 +47,8 @@ import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.utils.PointSurfaceBuilder;
+import org.opensha.sha.faultSurface.utils.PointSurfaceBuilder.LazyRuptureSurfaceSupplier;
+import org.opensha.sha.faultSurface.utils.PointSurfaceBuilder.RuptureSurfaceSupplier;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
 import org.opensha.sha.util.TectonicRegionType;
@@ -201,28 +204,28 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 	}
 
 	@Override
-	public ProbEqkSource getSource(int sourceIndex, double duration, MagnitudeDependentAftershockFilter aftershockFilter,
+	public PointSource getSource(int sourceIndex, double duration, MagnitudeDependentAftershockFilter aftershockFilter,
 			GriddedSeismicitySettings gridSourceSettings) {
 		return getSource(tectonicRegionTypeForSourceIndex(sourceIndex), getLocationIndexForSource(sourceIndex),
 				duration, aftershockFilter, gridSourceSettings);
 	}
 
 	@Override
-	public ProbEqkSource getSource(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
+	public PointSource getSource(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings) {
 		return buildSource(getLocation(gridIndex), getRuptures(tectonicRegionType, gridIndex),
 				duration, aftershockFilter, gridSourceSettings, tectonicRegionType);
 	}
 
 	@Override
-	public ProbEqkSource getSourceSubSeisOnFault(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
+	public PointSource getSourceSubSeisOnFault(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings) {
 		return buildSource(getLocation(gridIndex), getRupturesSubSeisOnFault(tectonicRegionType, gridIndex),
 				duration, aftershockFilter, gridSourceSettings, tectonicRegionType);
 	}
 
 	@Override
-	public ProbEqkSource getSourceUnassociated(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
+	public PointSource getSourceUnassociated(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings) {
 		return buildSource(getLocation(gridIndex), getRupturesUnassociated(tectonicRegionType, gridIndex),
 				duration, aftershockFilter, gridSourceSettings, tectonicRegionType);
@@ -1108,48 +1111,73 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		return surfBuilder;
 	}
 	
+	public static PoissonPointSourceData buildPointSourceData(Location gridLoc, List<GriddedRupture> gridRups,
+				MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings) {
+		return new GriddedRuptureSourceData(gridLoc, gridRups.get(0).properties.tectonicRegionType,
+				gridRups, aftershockFilter, gridSourceSettings);
+	}
+	
 	private static class GriddedRuptureSourceData implements PoissonPointSourceData {
 		
 		private List<GriddedRupture> rups;
 		private List<Double> rates;
-		private final List<RuptureSurface> surfs;
+		private final List<RuptureSurfaceSupplier<? extends RuptureSurface>> surfSuppliers;
+		private TectonicRegionType trt;
 		
-		public GriddedRuptureSourceData(Location gridLoc, List<GriddedRupture> gridRups,
+		public GriddedRuptureSourceData(Location gridLoc, TectonicRegionType trt, List<GriddedRupture> gridRups,
 				MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings) {
 			Preconditions.checkState(!gridRups.isEmpty());
-			if (gridRups.get(0).properties.magnitude >= gridSourceSettings.minimumMagnitude) {
-				// probably not mag-filtering, build lists with initial capacity
+			this.trt = trt;
+			// should we initialize lists with expected size? better if we're likely to be correct, but unnecessary
+			// overhead if we're not
+			if (
+					// we're (probably) not filtering by magnitude
+					gridRups.get(0).properties.magnitude >= gridSourceSettings.minimumMagnitude
+					// or we have point sources (and thus 1 surf per rup regardless of filtering)
+					|| gridSourceSettings.surfaceType == BackgroundRupType.POINT
+					// or we have 1 finite surf per rup regardless of filtering
+					|| gridSourceSettings.finiteRuptureSettings.numSurfaces == 1) {
 				int expectedSize = gridRups.size(); 
-				if (gridSourceSettings.surfaceType == BackgroundRupType.CROSSHAIR)
-					expectedSize *= 2;
+				if (gridSourceSettings.finiteRuptureSettings != null)
+					expectedSize *= gridSourceSettings.finiteRuptureSettings.numSurfaces;
 				rups = new ArrayList<>(expectedSize);
 				rates = new ArrayList<>(expectedSize);
-				surfs = new ArrayList<>(expectedSize);
+				surfSuppliers = new ArrayList<>(expectedSize);
 			} else {
 				// mag-filtering, don't use initial capacity
 				rups = new ArrayList<>();
 				rates = new ArrayList<>();
-				surfs = new ArrayList<>();
+				surfSuppliers = new ArrayList<>();
 			}
 			PointSurfaceBuilder surfBuilder = new PointSurfaceBuilder(gridLoc);
 			for (GriddedRupture rup : gridRups) {
 				if (rup.properties.magnitude < gridSourceSettings.minimumMagnitude)
 					continue;
+				Preconditions.checkState(rup.properties.tectonicRegionType == trt);
 				boolean forcePointSurf = rup.properties.magnitude < gridSourceSettings.pointSourceMagnitudeCutoff;
+				// true means the lazy initializer will build the surface on demand and cache it
+				// setting this to false means the surface will be built on demand each time
+				// lazy initialization will speed things up but can cause memory issues with high finite surface counts
+				boolean lazyInit = forcePointSurf || gridSourceSettings.finiteRuptureSettings == null
+						|| gridSourceSettings.finiteRuptureSettings.numSurfaces <= 10;
 				double rate = rup.rate;
 				if (aftershockFilter != null)
 					rate = aftershockFilter.getFilteredRate(rup.properties.magnitude, rup.rate);
 				if (rate == 0d)
 					continue;
 				updateSurfBuilderForLoc(surfBuilder, rup, forcePointSurf);
-				WeightedList<? extends RuptureSurface> rupSurfs = surfBuilder.build(
-						forcePointSurf ? BackgroundRupType.POINT : gridSourceSettings.surfaceType, null);
-				for (int i=0; i<rupSurfs.size(); i++) {
-					RuptureSurface surf = rupSurfs.getValue(i);
-					double weight = rupSurfs.getWeight(i);
+				WeightedList<? extends RuptureSurfaceSupplier<? extends RuptureSurface>> rupSurfSuppliers = surfBuilder.supply(
+						forcePointSurf ? BackgroundRupType.POINT : gridSourceSettings.surfaceType,
+						gridSourceSettings.finiteRuptureSettings);
+				for (int i=0; i<rupSurfSuppliers.size(); i++) {
+					RuptureSurfaceSupplier<? extends RuptureSurface> supplier = rupSurfSuppliers.getValue(i);
+					if (lazyInit && !(supplier instanceof LazyRuptureSurfaceSupplier<?>))
+						// make it lazy init
+						supplier = new LazyRuptureSurfaceSupplier<>(supplier);
+					double weight = rupSurfSuppliers.getWeight(i);
 					rups.add(rup);
 					rates.add(rate*weight);
-					surfs.add(surf);
+					surfSuppliers.add(supplier);
 				}
 			}
 		}
@@ -1176,17 +1204,22 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 
 		@Override
 		public RuptureSurface getSurface(int rupIndex) {
-			return surfs.get(rupIndex);
+			return surfSuppliers.get(rupIndex).get();
 		}
 
 		@Override
 		public boolean isFinite(int rupIndex) {
-			return !(surfs.get(rupIndex) instanceof PointSurface);
+			return surfSuppliers.get(rupIndex).isFinite();
 		}
 
 		@Override
 		public Location getHypocenter(Location sourceLoc, RuptureSurface rupSurface, int rupIndex) {
 			return new Location(sourceLoc.lat, sourceLoc.lon, rups.get(rupIndex).properties.getHypocentralDepth());
+		}
+
+		@Override
+		public TectonicRegionType getTectonicRegionType() {
+			return trt;
 		}
 		
 	}
@@ -1196,10 +1229,10 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 			TectonicRegionType tectonicRegionType) {
 		if (gridRups.isEmpty())
 			return null;
-		PointSource.PoissonBuilder builder = PointSource.poissonBuilder(gridLoc, tectonicRegionType);
+		PointSource.PoissonBuilder builder = PointSource.poissonBuilder(gridLoc);
 		
-		builder.data(new GriddedRuptureSourceData(gridLoc, gridRups, aftershockFilter, gridSourceSettings));
-		builder.distCorrs(gridSourceSettings.distanceCorrections);
+		builder.data(new GriddedRuptureSourceData(gridLoc, tectonicRegionType, gridRups, aftershockFilter, gridSourceSettings));
+		builder.distCorr(gridSourceSettings.distanceCorrection, gridSourceSettings.pointSourceMagnitudeCutoff);
 		builder.duration(duration);
 		
 		if (gridSourceSettings.supersamplingSettings != null) {

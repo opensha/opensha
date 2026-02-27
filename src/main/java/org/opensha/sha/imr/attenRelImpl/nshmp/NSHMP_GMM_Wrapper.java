@@ -20,6 +20,7 @@ import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.WeightedValue;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
+import org.opensha.commons.exceptions.ConstraintException;
 import org.opensha.commons.exceptions.IMRException;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.geo.Location;
@@ -32,6 +33,7 @@ import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.sha.earthquake.DistCachedERFWrapper.DistCacheWrapperRupture;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.gcim.imr.param.EqkRuptureParams.FocalDepthParam;
 import org.opensha.sha.imr.AbstractIMR;
 import org.opensha.sha.imr.AttenuationRelationship;
@@ -249,7 +251,7 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 		
 		@Override
 		public void setSite(Site site) {
-			setSite(site, false);
+			setSite(site, false, true);
 		}
 
 		@Override
@@ -635,6 +637,13 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 	}
 
 	@Override
+	public double getExceedProbability() throws ParameterException, IMRException {
+		double iml = ((Double) im.getValue()).doubleValue();
+		
+		return getExceedProbability(iml);
+	}
+
+	@Override
 	public double getExceedProbability(double iml) throws ParameterException,
 			IMRException {
 		double weightSum = 0d;
@@ -662,8 +671,13 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 			);
 		}
 
-		double exceedProb = ( (Double) ( (Parameter<Double>) exceedProbParam).getValue()).doubleValue();
+		double exceedProb = exceedProbParam.getValue().doubleValue();
 		
+		return getIML_AtExceedProb(exceedProb);
+	}
+
+	@Override
+	public double getIML_AtExceedProb(double exceedProb) throws ParameterException {
 		double weightSum = 0d;
 		double weightValSum = 0d;
 		for (Branch<GroundMotion> branch : getGroundMotionTree()) {
@@ -679,20 +693,6 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 		
 		return weightValSum/weightSum;
 	}
-
-	@Override
-	public DiscretizedFunc getSA_ExceedProbSpectrum(double iml)
-			throws ParameterException, IMRException {
-		// TODO implement?
-		throw new UnsupportedOperationException("getSA_IML_AtExceedProbSpectrum is unsupported for "+C);
-	}
-
-	@Override
-	public DiscretizedFunc getSA_IML_AtExceedProbSpectrum(double exceedProb)
-			throws ParameterException, IMRException {
-		// TODO implement?
-		throw new UnsupportedOperationException("getSA_IML_AtExceedProbSpectrum is unsupported for "+C);
-	}
 	
 	protected abstract Set<Imt> getSupportedIMTs();
 
@@ -700,10 +700,6 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 	protected void initSupportedIntensityMeasureParams() {
 		supportedIMParams.clear();
 		
-//		if (gmm == null)
-//			return;
-//		
-//		Set<Imt> imts = gmm.supportedImts();
 		Set<Imt> imts = getSupportedIMTs();
 		if (imts == null)
 			return;
@@ -1055,7 +1051,7 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 
 	@Override
 	public void setSite(Site site) {
-		this.setSite(site, true);
+		this.setSite(site, true, true);
 	}
 
 	@Override
@@ -1067,7 +1063,15 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 		super.setSiteLocation(loc);
 	}
 
-	protected void setSite(Site site, boolean requireAllParams) {
+	@Override
+	public void setAll(EqkRupture eqkRupture, Site site, Parameter intensityMeasure)
+			throws ParameterException, IMRException, ConstraintException {
+		this.setSite(site, true, false); // don't compute the propagation effects on setting the site, because it'll happen next
+		this.setEqkRupture(eqkRupture); // this will compute propagation effects
+		this.setIntensityMeasure(intensityMeasure);
+	}
+
+	protected void setSite(Site site, boolean requireAllParams, boolean setPropEffectParams) {
 		if (site != this.site)
 			perRuptureInputCache = null;
 		super.setSite(site);
@@ -1088,73 +1092,79 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 			if (requireAllParams || site.containsParameter(SedimentThicknessParam.NAME))
 				valueManager.setParameterValue(Field.ZSED, site.getParameter(Double.class, SedimentThicknessParam.NAME).getValue());
 		
-		setPropagationEffectParams();
+		if (setPropEffectParams)
+			setPropagationEffectParams();
 	}
 
 	@Override
 	public void setEqkRupture(EqkRupture eqkRupture) {
 		super.setEqkRupture(eqkRupture);
 		clearCachedGmmInputs();
-		
-		boolean usePerRupCache = cacheInputsPerRupture && site != null;
-		EqkRupture rupForCache = eqkRupture;
-		if (usePerRupCache) {
-			if (perRuptureInputCache == null)
-				perRuptureInputCache = new HashMap<>();
-			if (eqkRupture instanceof DistCacheWrapperRupture)
-				rupForCache = ((DistCacheWrapperRupture)eqkRupture).getOriginalRupture();
-			GmmInput cached = perRuptureInputCache.get(rupForCache);
-			if (cached != null) {
-				setCurrentGmmInput(cached);
-				return;
+		if (eqkRupture != null) {
+			boolean usePerRupCache = cacheInputsPerRupture && site != null;
+			EqkRupture rupForCache = eqkRupture;
+			if (usePerRupCache) {
+				if (perRuptureInputCache == null)
+					perRuptureInputCache = new HashMap<>();
+				if (eqkRupture instanceof DistCacheWrapperRupture)
+					rupForCache = ((DistCacheWrapperRupture)eqkRupture).getOriginalRupture();
+				GmmInput cached = perRuptureInputCache.get(rupForCache);
+				if (cached != null) {
+					setCurrentGmmInput(cached);
+					return;
+				}
 			}
-		}
-		
-		RuptureSurface surf = eqkRupture.getRuptureSurface();
-		
-		if (fields.contains(Field.MW))
-			valueManager.setParameterValue(Field.MW, eqkRupture.getMag());
-		if (fields.contains(Field.RAKE))
-			valueManager.setParameterValue(Field.RAKE, eqkRupture.getAveRake());
-		if (fields.contains(Field.DIP))
-			valueManager.setParameterValue(Field.DIP, surf.getAveDip());
-		if (fields.contains(Field.WIDTH))
-			valueManager.setParameterValue(Field.WIDTH, surf.getAveWidth());
-		if (fields.contains(Field.ZTOR))
-			valueManager.setParameterValue(Field.ZTOR, surf.getAveRupTopDepth());
-		if (fields.contains(Field.ZHYP)) {
-			double zHyp;
-			if (eqkRupture.getHypocenterLocation() != null) {
-				zHyp = eqkRupture.getHypocenterLocation().getDepth();
-			} else {
-				zHyp = surf.getAveRupTopDepth() +
-					Math.sin(surf.getAveDip() * TO_RAD) * surf.getAveWidth()/2.0;
+			
+			RuptureSurface surf = eqkRupture.getRuptureSurface();
+			
+			if (fields.contains(Field.MW))
+				valueManager.setParameterValue(Field.MW, eqkRupture.getMag());
+			if (fields.contains(Field.RAKE))
+				valueManager.setParameterValue(Field.RAKE, eqkRupture.getAveRake());
+			if (fields.contains(Field.DIP))
+				valueManager.setParameterValue(Field.DIP, surf.getAveDip());
+			if (fields.contains(Field.WIDTH))
+				valueManager.setParameterValue(Field.WIDTH, surf.getAveWidth());
+			if (fields.contains(Field.ZTOR))
+				valueManager.setParameterValue(Field.ZTOR, surf.getAveRupTopDepth());
+			if (fields.contains(Field.ZHYP)) {
+				double zHyp;
+				if (eqkRupture.getHypocenterLocation() != null) {
+					zHyp = eqkRupture.getHypocenterLocation().getDepth();
+				} else {
+					zHyp = surf.getAveRupTopDepth() +
+						Math.sin(surf.getAveDip() * TO_RAD) * surf.getAveWidth()/2.0;
+				}
+				valueManager.setParameterValue(Field.ZHYP, zHyp);
 			}
-			valueManager.setParameterValue(Field.ZHYP, zHyp);
-		}
-		
-		setPropagationEffectParams();
-		
-		if (usePerRupCache) {
-			// cache the GmmInput for future reuse
-			perRuptureInputCache.put(rupForCache, getCurrentGmmInput());
+			
+			setPropagationEffectParams();
+			
+			if (usePerRupCache) {
+				// cache the GmmInput for future reuse
+				perRuptureInputCache.put(rupForCache, getCurrentGmmInput());
+			}
 		}
 	}
 
 	@Override
 	protected void setPropagationEffectParams() {
-		clearCachedGmmInputs();
 		if (site != null && eqkRupture != null) {
-			Location siteLoc = site.getLocation();
-			RuptureSurface surf = eqkRupture.getRuptureSurface();
-			
-			if (fields.contains(Field.RJB))
-				valueManager.setParameterValue(Field.RJB, surf.getDistanceJB(siteLoc));
-			if (fields.contains(Field.RRUP))
-				valueManager.setParameterValue(Field.RRUP, surf.getDistanceRup(siteLoc));
-			if (fields.contains(Field.RX))
-				valueManager.setParameterValue(Field.RX, surf.getDistanceX(siteLoc));
+			setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
+		} else {
+			clearCachedGmmInputs();
 		}
+	}
+
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		clearCachedGmmInputs();
+		if (fields.contains(Field.RJB))
+			valueManager.setParameterValue(Field.RJB, distances.getDistanceJB());
+		if (fields.contains(Field.RRUP))
+			valueManager.setParameterValue(Field.RRUP, distances.getDistanceRup());
+		if (fields.contains(Field.RX))
+			valueManager.setParameterValue(Field.RX, distances.getDistanceX());
 	}
 
 	@Override

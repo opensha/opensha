@@ -1,9 +1,11 @@
 package org.opensha.sha.imr.attenRelImpl;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
 import org.opensha.sha.imr.AttenRelRef;
+import org.opensha.sha.imr.ErgodicIMR;
 import org.opensha.sha.imr.ScalarIMR;
 
 import com.google.common.collect.Lists;
@@ -13,9 +15,9 @@ public class NGAWest_2014_Averaged_AttenRel extends MultiIMR_Averaged_AttenRel {
 	public static final String NAME = "NGAWest2 2014 Averaged Attenuation Relationship";
 	public static final String SHORT_NAME = "NGAWest_2014";
 	
-	private static ArrayList<ScalarIMR> buildIMRs(ParameterChangeWarningListener listener,
+	private static List<ErgodicIMR> buildIMRs(ParameterChangeWarningListener listener,
 			boolean idriss) {
-		ArrayList<ScalarIMR> imrs = new ArrayList<ScalarIMR>();
+		List<ErgodicIMR> imrs = new ArrayList<>(idriss ? 5 : 4);
 		imrs.add(AttenRelRef.ASK_2014.instance(listener));
 		imrs.add(AttenRelRef.BSSA_2014.instance(listener));
 		imrs.add(AttenRelRef.CB_2014.instance(listener));

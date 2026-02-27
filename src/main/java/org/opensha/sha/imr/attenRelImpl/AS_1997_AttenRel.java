@@ -26,6 +26,7 @@ import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.EqkRuptureParams.FaultTypeParam;
@@ -180,11 +181,12 @@ public class AS_1997_AttenRel extends AttenuationRelationship {
 	 */
 	@Override
 	public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
-
-		magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
-		setFaultTypeFromRake(eqkRupture.getAveRake());
-		this.eqkRupture = eqkRupture;
-		setPropagationEffectParams();
+		super.setEqkRupture(eqkRupture);
+		if (eqkRupture != null) {
+			magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
+			setFaultTypeFromRake(eqkRupture.getAveRake());
+			setPropagationEffectParams();
+		}
 
 	}
 
@@ -200,10 +202,9 @@ public class AS_1997_AttenRel extends AttenuationRelationship {
 	 */
 	@Override
 	public void setSite(Site site) throws ParameterException {
-
-		siteTypeParam.setValue((String)site.getParameter(SITE_TYPE_NAME).getValue());
-		this.site = site;
-		setPropagationEffectParams();
+		if (site != null)
+			siteTypeParam.setValue((String)site.getParameter(SITE_TYPE_NAME).getValue());
+		super.setSite(site); // will call setPropagationEffectParams
 
 	}
 
@@ -221,24 +222,28 @@ public class AS_1997_AttenRel extends AttenuationRelationship {
 	protected void setPropagationEffectParams() {
 
 		if ( (this.site != null) && (this.eqkRupture != null)) {
+			setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
+		}
+	}
 
-			distanceRupParam.setValue(eqkRupture, site);
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		distanceRupParam.setValue(distances.getDistanceRup());
 
-			// here is the hanging wall term.  This should really be implemented as a
-			// formal propagation-effect parameter.
-			boolean isPointSurface = eqkRupture.getRuptureSurface().isPointSurface();
+		// here is the hanging wall term.  This should really be implemented as a
+		// formal propagation-effect parameter.
+		boolean isPointSurface = eqkRupture.getRuptureSurface().isPointSurface();
 
-			if (!isPointSurface && eqkRupture.getRuptureSurface().getAveDip() <= 70 && isOnHangingWall()) {
-				isOnHangingWallParam.setValue(IS_ON_HANGING_WALL_TRUE);
-			}
-			else {
-				isOnHangingWallParam.setValue(IS_ON_HANGING_WALL_FALSE);
-			}
+		if (!isPointSurface && eqkRupture.getRuptureSurface().getAveDip() <= 70 && isOnHangingWall()) {
+			isOnHangingWallParam.setValue(IS_ON_HANGING_WALL_TRUE);
+		}
+		else {
+			isOnHangingWallParam.setValue(IS_ON_HANGING_WALL_FALSE);
+		}
 
-			if (D) {
-				System.out.println("AS_1997 hanging wall value: " +
-						isOnHangingWallParam.getValue().toString());
-			}
+		if (D) {
+			System.out.println("AS_1997 hanging wall value: " +
+					isOnHangingWallParam.getValue().toString());
 		}
 	}
 

@@ -95,10 +95,8 @@ public class IMR_ChooserPanel extends NamesListPanel implements ScalarIMRChangeL
 	}
 	
 	private void updateSiteParams(ScalarIMR imr) {
-		ListIterator<Parameter<?>> it = imr.getSiteParamsIterator();
 		ParameterList list = new ParameterList();
-		while (it.hasNext()) {
-			Parameter<?> param = it.next();
+		for (Parameter<?> param : imr.getSiteParams()) {
 //			System.out.println("adding: " + param.getName());
 			list.addParameter(param);
 		}

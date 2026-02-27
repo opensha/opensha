@@ -3,6 +3,7 @@ package org.opensha.sha.faultSurface;
 import java.io.Serializable;
 import java.util.Iterator;
 import java.util.ListIterator;
+import java.util.function.Function;
 
 import org.opensha.commons.data.ContainerSubset2D;
 import org.opensha.commons.data.Window2D;
@@ -127,6 +128,12 @@ public class GriddedSubsetSurface extends ContainerSubset2D<Location>  implement
     public double getAveWidth() {
     	return getGridSpacingDownDip() * (getNumRows()-1);
     }
+
+    @Override
+    public double getAveHorizontalWidth() {
+    	double dip = getAveDip();
+    	return dip == 90d ? 0d : getAveWidth()*Math.cos(Math.toRadians(dip));
+    }
     
 
     @Override
@@ -249,10 +256,17 @@ public class GriddedSubsetSurface extends ContainerSubset2D<Location>  implement
 		return getEvenlyDiscritizedUpperEdge();
 	}
 	
+	private Function<Location, Double> distXCalcFunc = new Function<Location, Double>() {
+		
+		@Override
+		public Double apply(Location t) {
+			return GriddedSurfaceUtils.getDistanceX(getEvenlyDiscritizedUpperEdge(), t);
+		}
+	};
+	
 	@Override
 	public SurfaceDistances calcDistances(Location loc) {
-		double[] dCalc = GriddedSurfaceUtils.getPropagationDistances(this, loc);
-		return new SurfaceDistances(dCalc[0], dCalc[1], dCalc[2]);
+		return GriddedSurfaceUtils.getPropagationDistances(this, loc, distXCalcFunc);
 	}
 	
 	@Override
@@ -263,11 +277,6 @@ public class GriddedSubsetSurface extends ContainerSubset2D<Location>  implement
 	@Override
 	public double calcQuickDistance(Location siteLoc) {
 		return GriddedSurfaceUtils.getCornerMidpointDistance(this, siteLoc);
-	}
-
-	@Override
-	public double calcDistanceX(Location loc) {
-		return GriddedSurfaceUtils.getDistanceX(getEvenlyDiscritizedUpperEdge(), loc);
 	}
 	
 	/**
@@ -291,16 +300,6 @@ public class GriddedSubsetSurface extends ContainerSubset2D<Location>  implement
 	}
 
 	/**
-	 * This returns "distance seis" (shortest distance in km to point on rupture 
-	 * deeper than 3 km), assuming the location has zero depth (for numerical 
-	 * expediency).
-	 * @return
-	 */
-	public double getDistanceSeis(Location siteLoc){
-		return cache.getSurfaceDistances(siteLoc).getDistanceSeis();
-	}
-
-	/**
 	 * This returns distance X (the shortest distance in km to the rupture 
 	 * trace extended to infinity), where values >= 0 are on the hanging wall
 	 * and values < 0 are on the foot wall.  The location is assumed to be at zero
@@ -308,21 +307,36 @@ public class GriddedSubsetSurface extends ContainerSubset2D<Location>  implement
 	 * @return
 	 */
 	public double getDistanceX(Location siteLoc){
-		return cache.getDistanceX(siteLoc);
+		return cache.getSurfaceDistances(siteLoc).getDistanceX();
 	}
 	
+	@Override
+	public SurfaceDistances getDistances(Location siteLoc) {
+		return cache.getSurfaceDistances(siteLoc);
+	}
+
 
 	@Override
 	public double getAveRupTopDepth() {
 		if (this.data instanceof EvenlyGriddedSurfFromSimpleFaultData) // all depths are the same on the top row
 			return getLocation(0,0).getDepth();
 		else {
-			double depth = 0;
-			FaultTrace topTrace = getRowAsTrace(0);
-			for(Location loc:topTrace)
-				depth += loc.getDepth();
-			return depth/topTrace.size();
+			int numCols = getNumCols();
+			double dep=0;
+			for (int col=0; col<numCols; col++)
+				dep += getLocation(0, col).depth;
+			return dep/(double)numCols;
 		}
+	}
+
+	@Override
+	public double getAveRupBottomDepth() {
+		int numCols = getNumCols();
+		final int lastRow = getNumRows()-1;
+		double dep=0;
+		for (int col=0; col<numCols; col++)
+			dep += getLocation(lastRow, col).depth;
+		return dep/(double)numCols;
 	}
 
 	@Override

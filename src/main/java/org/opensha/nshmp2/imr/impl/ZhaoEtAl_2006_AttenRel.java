@@ -23,6 +23,7 @@ import org.opensha.nshmp2.util.Utils;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.PropagationEffect;
 import org.opensha.sha.imr.ScalarIMR;
@@ -107,17 +108,19 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 
 	@Override
 	public void setEqkRupture(EqkRupture eqkRupture) {
-		magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));		
-		this.eqkRupture = eqkRupture;
-		setPropagationEffectParams();
+		super.setEqkRupture(eqkRupture);
+		if (eqkRupture != null) {
+			magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));		
+			setPropagationEffectParams();
+		}
 	}
 
 	@Override
 	public void setSite(Site site) throws ParameterException {
-		vs30Param.setValueIgnoreWarning((Double) site.getParameter(
-			Vs30_Param.NAME).getValue());
-		this.site = site;
-		setPropagationEffectParams();
+		if (site != null)
+			vs30Param.setValueIgnoreWarning((Double) site.getParameter(
+					Vs30_Param.NAME).getValue());
+		super.setSite(site);
 	}
 	
 
@@ -126,6 +129,11 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 		if ( (this.site != null) && (this.eqkRupture != null)) {
 			distanceRupParam.setValue(eqkRupture,site);
 		}
+	}
+
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		distanceRupParam.setValue(eqkRupture,site, distances);
 	}
 
 	private void setCoeffIndex() throws ParameterException {

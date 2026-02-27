@@ -358,16 +358,11 @@ public class RupturePlotGenerator {
 			specs.add(lastSpec);
 		}
 		
-		HeadlessGraphPanel gp = new HeadlessGraphPanel();
-		gp.setTickLabelFontSize(18);
-		gp.setAxisLabelFontSize(24);
-		gp.setPlotLabelFontSize(24);
-		gp.setBackgroundColor(Color.WHITE);
-		
-		PlotPreferences prefs = gp.getPlotPrefs();
+		PlotPreferences prefs = PlotPreferences.getDefaultScreenFigurePrefs();
+		HeadlessGraphPanel gp = new HeadlessGraphPanel(prefs);
 		
 		PaintScaleLegend slipCPTbar = GraphPanel.getLegendForCPT(slipCPT, "Cumulative Slip (m)",
-				prefs.getAxisLabelFontSize(), prefs.getTickLabelFontSize(), 1d, RectangleEdge.TOP);
+				prefs, 1d, RectangleEdge.TOP);
 		double timeInc;
 		if (endTime > 20)
 			timeInc = 5;
@@ -377,7 +372,7 @@ public class RupturePlotGenerator {
 			timeInc = 1;
 		String timeLabel = includeLast ? "Time (s)" : "Time First Slip (s)";
 		PaintScaleLegend timeCPTbar = GraphPanel.getLegendForCPT(timeCPT, timeLabel,
-				prefs.getAxisLabelFontSize(), prefs.getTickLabelFontSize(), timeInc, RectangleEdge.BOTTOM);
+				prefs, timeInc, RectangleEdge.BOTTOM);
 		slipSpec.addSubtitle(slipCPTbar);
 		firstSpec.addSubtitle(timeCPTbar);
 		
@@ -463,20 +458,15 @@ public class RupturePlotGenerator {
 		double maxTime = Math.ceil(func.getEndTime()/dt)*dt;
 		String title = "Rupture Animation";
 		
-		HeadlessGraphPanel gp = new HeadlessGraphPanel();
-		gp.setTickLabelFontSize(16);
-		gp.setAxisLabelFontSize(18);
-		gp.setPlotLabelFontSize(18);
-		gp.setBackgroundColor(Color.WHITE);
-		
-		PlotPreferences prefs = gp.getPlotPrefs();
+		PlotPreferences prefs = PlotPreferences.getDefaultScreenFigurePrefs();
+		HeadlessGraphPanel gp = new HeadlessGraphPanel(prefs);
 		
 		PaintScaleLegend slipCPTbar = GraphPanel.getLegendForCPT(slipCPT, "Cumulative Slip (m)",
-				prefs.getAxisLabelFontSize(), prefs.getTickLabelFontSize(), 1d, RectangleEdge.TOP);
+				prefs, 1d, RectangleEdge.TOP);
 		PaintScaleLegend velCPTbar = null;
 		if (func.getMaxSlipVel() != func.getMinSlipVel())
 			velCPTbar = GraphPanel.getLegendForCPT(velCPT, "SLip Velocity (m/s)",
-					prefs.getAxisLabelFontSize(), prefs.getTickLabelFontSize(), 0.5, RectangleEdge.BOTTOM);
+					prefs, 0.5, RectangleEdge.BOTTOM);
 		
 		double minDAS = Double.POSITIVE_INFINITY;
 		double maxDAS = Double.NEGATIVE_INFINITY;
@@ -823,16 +813,13 @@ public class RupturePlotGenerator {
 		spec.setPlotAnnotations(anns);
 		
 		if (outputDir != null) {
-			HeadlessGraphPanel gp = new HeadlessGraphPanel();
-			gp.setTickLabelFontSize(18);
-			gp.setAxisLabelFontSize(24);
-			gp.setPlotLabelFontSize(24);
-			gp.setBackgroundColor(Color.WHITE);
+			PlotPreferences prefs = PlotPreferences.getDefaultScreenFigurePrefs();
+			HeadlessGraphPanel gp = new HeadlessGraphPanel(prefs);
 			
 			gp.drawGraphPanel(spec, false, false, xRange, yRange);
 			
 			if (customElemScalars != null) {
-				PaintScaleLegend cptLegend = GraphPanel.getLegendForCPT(elemCPT, scalarLabel, 24, 18, -1, RectangleEdge.BOTTOM);
+				PaintScaleLegend cptLegend = GraphPanel.getLegendForCPT(elemCPT, scalarLabel, prefs, -1, RectangleEdge.BOTTOM);
 				gp.getChartPanel().getChart().addSubtitle(cptLegend);
 			}
 			

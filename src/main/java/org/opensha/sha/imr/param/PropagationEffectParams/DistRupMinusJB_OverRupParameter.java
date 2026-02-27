@@ -3,14 +3,17 @@ package org.opensha.sha.imr.param.PropagationEffectParams;
 import java.util.ListIterator;
 
 import org.dom4j.Element;
+import org.opensha.commons.data.Site;
 import org.opensha.commons.exceptions.ConstraintException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.param.WarningParameter;
 import org.opensha.commons.param.constraint.ParameterConstraint;
 import org.opensha.commons.param.constraint.impl.DoubleConstraint;
+import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 
 
 /**
@@ -103,49 +106,22 @@ public class DistRupMinusJB_OverRupParameter extends AbstractDoublePropEffectPar
 
 
     /**
-     * Note that this doesn not throw a warning
+     * Note that this does not throw a warning
      */
-    protected void calcValueFromSiteAndEqkRup(){
-        if( ( this.site != null ) && ( this.eqkRupture != null ) ){
-
-            Location loc1 = site.getLocation();
-            double minRupDistance = Double.MAX_VALUE;
-            double minHorzDistance = Double.MAX_VALUE;
-            double horzDist, vertDist, totalDist;
-
-            RuptureSurface rupSurf = eqkRupture.getRuptureSurface();
-            
-			// get locations to iterate over depending on dip
-			ListIterator it;
-			if(rupSurf.getAveDip() > 89)
-				it = rupSurf.getEvenlyDiscritizedUpperEdge().listIterator();
-			else
-				it = rupSurf.getLocationsIterator();
-			
-
-            while( it.hasNext() ){
-
-                Location loc2 = (Location) it.next();
-
-                horzDist = LocationUtils.horzDistance(loc1, loc2);
-                vertDist = LocationUtils.vertDistance(loc1, loc2);
-
-                totalDist = horzDist * horzDist + vertDist * vertDist;
-                if( totalDist < minRupDistance ) minRupDistance = totalDist;
-                if( horzDist < minHorzDistance ) minHorzDistance = horzDist;
-
-            }
-            totalDist = Math.sqrt( minRupDistance );
-            if(totalDist == 0)
-              this.setValueIgnoreWarning( Double.valueOf( 0 ));
-            else{
-              double fract = (totalDist - minHorzDistance) / totalDist;
-              this.setValueIgnoreWarning(Double.valueOf(fract));
-            }
-        }
-        else this.value = null;
-
-
+    protected void setValueFromDistances(EqkRupture eqkRupture, Site site, SurfaceDistances dists) {
+    	if (dists == null) {
+    		this.value = null;
+    	} else {
+    		double rRup = dists.getDistanceRup();
+        	double rJB = dists.getDistanceJB();
+        	
+        	if(rRup == 0)
+        		this.setValueIgnoreWarning( Double.valueOf( 0 ));
+        	else{
+        		double fract = (rRup - rJB) / rRup;
+        		this.setValueIgnoreWarning(Double.valueOf(fract));
+        	}
+    	}
     }
 
     /** This is used to determine what widget editor to use in GUI Applets.  */
@@ -191,8 +167,6 @@ public class DistRupMinusJB_OverRupParameter extends AbstractDoublePropEffectPar
         param.warningConstraint = c2;
         param.name = name;
         param.info = info;
-        param.site = site;
-        param.eqkRupture = eqkRupture;
         if( !this.editable ) param.setNonEditable();
         return param;
     }

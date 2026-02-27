@@ -8,13 +8,15 @@ import org.opensha.commons.exceptions.IMRException;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.ParameterList;
+import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.util.TectonicRegionType;
 
 
 /**
- * <b>Title:</b> ScalarIntensityMeasureRelationshipAPI<br>
+ * <b>Title:</b> ScalarIMR<br>
  * <b>Description:</b> ScalarIntensityMeasureRelationshipAPI extends IntensityMeasureParameterAPI
- * for the case where the intensity-measure type is a scalar value (DoubleParameter).   
+ * for the case where the intensity-measure type is a scalar value (DoubleParameter).
  *
  * @author     Edward H. Field
  * @created    February 21, 2002
@@ -156,16 +158,6 @@ public interface ScalarIMR extends IntensityMeasureRelationship {
 	public double getEpsilon(double iml);
 
 	/**
-	 *  Returns an iterator over all the Parameters that the Mean calculation depends upon.
-	 *  (not including the intensity-measure related parameters and their internal,
-	 *  independent parameters).
-	 *
-	 * @return    The Independent Params Iterator
-	 */
-	@Deprecated
-	public ListIterator getMeanIndependentParamsIterator();
-
-	/**
 	 *  Returns a list of all the Parameters that the Mean calculation depends upon.
 	 *  (not including the intensity-measure related parameters and their internal,
 	 *  independent parameters).
@@ -173,16 +165,6 @@ public interface ScalarIMR extends IntensityMeasureRelationship {
 	 * @return    The Independent Params list
 	 */
 	public ParameterList getMeanIndependentParams();
-
-	/**
-	 *  Returns an iterator over all the Parameters that the StdDev calculation depends upon
-	 *  (not including the intensity-measure related parameters and their internal,
-	 *  independent parameters).
-	 *
-	 * @return    The Independent Parameters Iterator
-	 */
-	@Deprecated
-	public ListIterator getStdDevIndependentParamsIterator();
 
 	/**
 	 *  Returns a list of all the Parameters that the StdDev calculation depends upon
@@ -194,16 +176,6 @@ public interface ScalarIMR extends IntensityMeasureRelationship {
 	public ParameterList getStdDevIndependentParams();
 
 	/**
-	 *  Returns an iterator over all the Parameters that the exceedProb calculation
-	 *  depends upon (not including the intensity-measure related parameters and
-	 *  their internal, independent parameters).
-	 *
-	 * @return    The Independent Params Iterator
-	 */
-	@Deprecated
-	public ListIterator getExceedProbIndependentParamsIterator();
-
-	/**
 	 *  Returns a list of all the Parameters that the exceedProb calculation
 	 *  depends upon (not including the intensity-measure related parameters and
 	 *  their internal, independent parameters).
@@ -211,16 +183,6 @@ public interface ScalarIMR extends IntensityMeasureRelationship {
 	 * @return    The Independent Params list
 	 */
 	public ParameterList getExceedProbIndependentParams();
-
-	/**
-	 *  Returns an iterator over all the Parameters that the IML-at-exceed-
-	 *  probability calculation depends upon. (not including the intensity-measure
-	 *  related paramters and their internal, independent parameters).
-	 *
-	 * @return    The Independent Params Iterator
-	 */
-	@Deprecated
-	public ListIterator getIML_AtExceedProbIndependentParamsIterator();
 
 	/**
 	 *  Returns a list of all the Parameters that the IML-at-exceed-

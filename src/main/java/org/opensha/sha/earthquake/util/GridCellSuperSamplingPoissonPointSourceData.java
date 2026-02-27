@@ -12,10 +12,13 @@ import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.Interpolate;
+import org.opensha.sha.earthquake.PointSource;
+import org.opensha.sha.earthquake.PointSource.DataSubsamplingIndexTracker;
 import org.opensha.sha.earthquake.PointSource.PoissonPointSourceData;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
@@ -153,6 +156,7 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 			datas.add(new LocSamplingWrapper(data, centerLoc, locs, applyToFinite));
 			cutoffDists.add(cornerDist);
 		}
+		Preconditions.checkState(!datas.isEmpty(), "No supersampling distances encountered");
 		super.init(centerLoc, datas, cutoffDists, data);
 	}
 	
@@ -222,6 +226,32 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 		return locs;
 	}
 	
+	private static class NoGapsIndexTracker implements DataSubsamplingIndexTracker {
+		
+		private int numNodes;
+
+		public NoGapsIndexTracker(int numNodes) {
+			this.numNodes = numNodes;
+			
+		}
+
+		@Override
+		public void set(int index, int origDataIndex, int subsampleIndex) {
+			throw new IllegalStateException();
+		}
+
+		@Override
+		public int getOriginalDataIndex(int rupIndex) {
+			return rupIndex / numNodes;
+		}
+
+		@Override
+		public int getSubsampleIndex(int rupIndex) {
+			return rupIndex % numNodes;
+		}
+		
+	}
+	
 	private static class LocSamplingWrapper implements PoissonPointSourceData {
 		
 		private PoissonPointSourceData data;
@@ -231,8 +261,9 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 		private int numNodes;
 		private double nodeRateScalar;
 		
-		private short[] rupDataIndexes;
-		private short[] rupNodeIndexes;
+		// this usually tracks data indexes and correction indexes, but here correction index is node index
+		private DataSubsamplingIndexTracker indexes;
+		private int numRuptures;
 
 		public LocSamplingWrapper(PoissonPointSourceData data, Location centerLoc, LocationList samples, boolean applyToFinite) {
 			this.data = data;
@@ -245,16 +276,16 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 			this.nodeRateScalar = 1d/(double)numNodes;
 			
 			if (applyToFinite) {
-				int numRuptures = data.getNumRuptures() * numNodes;
-				rupDataIndexes = new short[numRuptures];
-				rupNodeIndexes = new short[numRuptures];
-				for (int r=0; r<numRuptures; r++) {
-					rupDataIndexes[r] = (short)(r / numNodes);
-					rupNodeIndexes[r] = (short)(r % numNodes);
-				}
+				long numRuptures = data.getNumRuptures() * numNodes;
+				Preconditions.checkState(numRuptures < Integer.MAX_VALUE);
+				indexes = new NoGapsIndexTracker(numNodes);
+//				indexes = PointSource.getDataCorrIndexTracker(numRuptures, data.getNumRuptures(), numNodes);
+//				for (int r=0; r<numRuptures; r++)
+//					indexes.set(r, r / numNodes, r % numNodes);
+				this.numRuptures = (int)numRuptures;
 			} else {
-				// only apply to gridded ruptures
-				int sampledNumRuptures = 0;
+				// only apply to point surface ruptures
+				long sampledNumRuptures = 0;
 				int dataNumRuptures = data.getNumRuptures();
 				for (int r=0; r<dataNumRuptures; r++) {
 					if (data.isFinite(r))
@@ -263,62 +294,59 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 						sampledNumRuptures += numNodes;
 				}
 				
-				rupDataIndexes = new short[sampledNumRuptures];
-				rupNodeIndexes = new short[sampledNumRuptures];
-				int rupIndex = 0;
-				for (int dataIndex=0; dataIndex<dataNumRuptures; dataIndex++) {
-					if (data.isFinite(dataIndex)) {
-						rupDataIndexes[rupIndex] = (short)dataIndex;
-						rupNodeIndexes[rupIndex] = -1; // not sampled
-						rupIndex++;
-					} else {
-						for (int n=0; n<numNodes; n++) {
-							rupDataIndexes[rupIndex] = (short)dataIndex;
-							rupNodeIndexes[rupIndex] = (short)n;
-							rupIndex++;
+				if (sampledNumRuptures == data.getNumRuptures() * numNodes) {
+					// simple case, no gaps
+					indexes = new NoGapsIndexTracker(numNodes);
+				} else {
+					indexes = PointSource.getDataCorrIndexTracker(sampledNumRuptures, dataNumRuptures, numNodes);
+					int rupIndex = 0;
+					for (int dataIndex=0; dataIndex<dataNumRuptures; dataIndex++) {
+						if (data.isFinite(dataIndex)) {
+							indexes.set(rupIndex++, dataIndex, -1); // not sampled
+						} else {
+							for (int n=0; n<numNodes; n++)
+								indexes.set(rupIndex++, dataIndex, n);
 						}
 					}
+					Preconditions.checkState(rupIndex == sampledNumRuptures);
 				}
-				Preconditions.checkState(rupIndex == sampledNumRuptures);
+				this.numRuptures = (int)sampledNumRuptures;
 			}
 		}
 
 		@Override
 		public int getNumRuptures() {
-			return rupDataIndexes.length;
+			return numRuptures;
 		}
 
 		@Override
 		public double getMagnitude(int rupIndex) {
-			return data.getMagnitude(rupDataIndexes[rupIndex]);
+			return data.getMagnitude(indexes.getOriginalDataIndex(rupIndex));
 		}
 
 		@Override
 		public double getAveRake(int rupIndex) {
-			return data.getAveRake(rupDataIndexes[rupIndex]);
+			return data.getAveRake(indexes.getOriginalDataIndex(rupIndex));
 		}
 
 		@Override
 		public double getRate(int rupIndex) {
-			if (rupNodeIndexes[rupIndex] < 0)
-				// not sampled (finite)
-				return data.getRate(rupDataIndexes[rupIndex]);
-			return data.getRate(rupDataIndexes[rupIndex]) * nodeRateScalar;
+			if (indexes.getSubsampleIndex(rupIndex) < 0)
+				// not sampled (e.g., finite)
+				return data.getRate(indexes.getOriginalDataIndex(rupIndex));
+			return data.getRate(indexes.getOriginalDataIndex(rupIndex)) * nodeRateScalar;
 		}
 
 		@Override
 		public RuptureSurface getSurface(int rupIndex) {
-			RuptureSurface surf = data.getSurface(rupDataIndexes[rupIndex]);
-			if (rupNodeIndexes[rupIndex] < 0)
+			RuptureSurface surf = data.getSurface(indexes.getOriginalDataIndex(rupIndex));
+			if (indexes.getSubsampleIndex(rupIndex) < 0)
 				// not sampled
 				return surf;
-			Location destLoc = samples.get(rupNodeIndexes[rupIndex]);
+			Location destLoc = samples.get(indexes.getSubsampleIndex(rupIndex));
 			if (surf instanceof PointSurface) {
 				// shortcut to avoid the more costly LocationVector creation
-				PointSurface moved = ((PointSurface)surf).copyShallow();
-				// keep same depth
-				moved.setLocation(new Location(destLoc.lat, destLoc.lon, moved.getLocation().depth));
-				return moved;
+				return ((PointSurface)surf).getMoved(destLoc.lat, destLoc.lon);
 			}
 			LocationVector vector = LocationUtils.vector(centerLoc, destLoc);
 			vector.setVertDistance(0d);
@@ -327,20 +355,25 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 
 		@Override
 		public boolean isFinite(int rupIndex) {
-			return data.isFinite(rupDataIndexes[rupIndex]);
+			return data.isFinite(indexes.getOriginalDataIndex(rupIndex));
 		}
 
 		@Override
 		public Location getHypocenter(Location sourceLoc, RuptureSurface rupSurface, int rupIndex) {
-			Location hypo = data.getHypocenter(sourceLoc, rupSurface, rupDataIndexes[rupIndex]);
-			if (hypo == null || rupNodeIndexes[rupIndex] < 0)
+			Location hypo = data.getHypocenter(sourceLoc, rupSurface, indexes.getOriginalDataIndex(rupIndex));
+			if (hypo == null || indexes.getSubsampleIndex(rupIndex) < 0)
 				return hypo;
 			
 			// move it but keep the original depth
-			Location nodeLoc = samples.get(rupNodeIndexes[rupIndex]);
+			Location nodeLoc = samples.get(indexes.getSubsampleIndex(rupIndex));
 			if (hypo.depth != nodeLoc.depth)
 				nodeLoc = new Location(nodeLoc.lat, nodeLoc.lon, hypo.depth);
 			return nodeLoc;
+		}
+
+		@Override
+		public TectonicRegionType getTectonicRegionType() {
+			return data.getTectonicRegionType();
 		}
 		
 	}
@@ -391,6 +424,11 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 			@Override
 			public double getAveRake(int rupIndex) {
 				return 0;
+			}
+
+			@Override
+			public TectonicRegionType getTectonicRegionType() {
+				return TectonicRegionType.ACTIVE_SHALLOW;
 			}
 		};
 		GridCellSuperSamplingPoissonPointSourceData sampler = new GridCellSuperSamplingPoissonPointSourceData(

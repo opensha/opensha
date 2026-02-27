@@ -365,17 +365,19 @@ public class TestIMR_MultiGuiBean implements ScalarIMRChangeListener {
 	public void testMultiIMRSiteParams() {
 		setupMultipleDiffIMRs();
 		
-		Iterator<Parameter<?>> siteParamIt;
+//		Iterator<Parameter<?>> siteParamIt;
 		
 		for (ScalarIMR imr : gui.getIMRMap().values()) {
-			ListIterator<Parameter<?>> mySiteParamIt = imr.getSiteParamsIterator();
-			
-			while (mySiteParamIt.hasNext()) {
-				Parameter<?> myParam = mySiteParamIt.next();
-				siteParamIt = gui.getMultiIMRSiteParamIterator();
+//			ListIterator<Parameter<?>> mySiteParamIt = imr.getSiteParamsIterator();
+//			
+//			while (mySiteParamIt.hasNext()) {
+			for (Parameter<?> myParam : imr.getSiteParams()) {
+//				Parameter<?> myParam = mySiteParamIt.next();
+//				siteParamIt = gui.getMultiIMRSiteParam();
 				boolean found = false;
-				while (siteParamIt.hasNext()) {
-					Parameter<?> param = siteParamIt.next();
+//				while (siteParamIt.hasNext()) {
+//					Parameter<?> param = siteParamIt.next();
+				for (Parameter<?> param : gui.getMultiIMRSiteParams()) {
 					if (myParam.getName().equals(param.getName())) {
 						found = true;
 						break;
