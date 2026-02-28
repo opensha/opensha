@@ -11,11 +11,11 @@ import java.util.function.Function;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
+import org.opensha.commons.geo.LocationUtils.LocationAverager;
 import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.FaultUtils.AngleAverager;
-import org.opensha.commons.util.FaultUtils.LocationAverager;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet.IntListWrapper;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet.ShortListWrapper;
 import org.opensha.sha.faultSurface.cache.CacheEnabledSurface;
@@ -254,6 +254,7 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 		private final List<Integer> bottomIndexes;
 		private final List<Integer> leftIndexes;
 		private final List<Integer> rightIndexes;
+		private final double avgDip;
 		
 		public DownDip(List<? extends RuptureSurface> surfaces, List<? extends FaultSection> sections) {
 			super(surfaces);
@@ -326,17 +327,17 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 					if (g > 0) {
 						// compare to previous section
 						List<List<Integer>> priorGroup = groupedRowColOrganized.get(g-1);
-						AngleAverager priorStrikeAvg = new AngleAverager();
-						for (List<Integer> row : priorGroup)
-							for (Integer index : row)
-								priorStrikeAvg.add(sections.get(index).getFaultTrace().getStrikeDirection(), surfaceAreas[index]);
-						double priorStrike = priorStrikeAvg.getAverage();
-						AngleAverager strikeAvg = new AngleAverager();
-						for (List<Integer> row : rowColOrganized)
-							for (Integer index : row)
-								strikeAvg.add(sections.get(index).getFaultTrace().getStrikeDirection(), surfaceAreas[index]);
-						double strike = strikeAvg.getAverage();
 						if (groupReversals[g-1] != null) {
+							AngleAverager priorStrikeAvg = new AngleAverager();
+							for (List<Integer> row : priorGroup)
+								for (Integer index : row)
+									priorStrikeAvg.add(sections.get(index).getFaultTrace().getStrikeDirection(), surfaceAreas[index]);
+							double priorStrike = priorStrikeAvg.getAverage();
+							AngleAverager strikeAvg = new AngleAverager();
+							for (List<Integer> row : rowColOrganized)
+								for (Integer index : row)
+									strikeAvg.add(sections.get(index).getFaultTrace().getStrikeDirection(), surfaceAreas[index]);
+							double strike = strikeAvg.getAverage();
 							// we already know the direction of the prior group
 							if (groupReversals[g-1])
 								priorStrike += 180;
@@ -355,8 +356,8 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 							Location end2 = null;
 							for (boolean prior : new boolean[] {true,false}) {
 								List<List<Integer>> rowCol = prior ? priorGroup : rowColOrganized;
-								LocationAverager startAvg = new LocationAverager();
-								LocationAverager endAvg = new LocationAverager();
+								LocationUtils.LocationAverager startAvg = new LocationUtils.LocationAverager();
+								LocationUtils.LocationAverager endAvg = new LocationUtils.LocationAverager();
 								for (List<Integer> row : rowCol) {
 									for (int index : row) {
 										FaultSection sect = sections.get(index);
@@ -391,21 +392,49 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 							
 							if (minIndex==0) { // first_first
 								groupReversals[g-1] = true;
+								groupReversals[g] = false;
 							} else if (minIndex==1) { // first_last
 								groupReversals[g-1] = true;
 								groupReversals[g] = true;
 							} else if (minIndex==2) { // last_first
+								groupReversals[g-1] = false;
+								groupReversals[g] = false;
 							} else { // minIndex==3 // last_last
+								groupReversals[g-1] = false;
 								groupReversals[g] = true;
 							}
 						}
 					}
 				} else {
 					groupReversals[g] = !forward;
+					if (g > 0 && groupReversals[g-1] == null) {
+						// need to back-propagate and fill in the direction of that one
+						List<List<Integer>> priorGroup = groupedRowColOrganized.get(g-1);
+						AngleAverager priorStrikeAvg = new AngleAverager();
+						for (List<Integer> row : priorGroup)
+							for (Integer index : row)
+								priorStrikeAvg.add(sections.get(index).getFaultTrace().getStrikeDirection(), surfaceAreas[index]);
+						double priorStrike = priorStrikeAvg.getAverage();
+						AngleAverager strikeAvg = new AngleAverager();
+						for (List<Integer> row : rowColOrganized)
+							for (Integer index : row)
+								strikeAvg.add(sections.get(index).getFaultTrace().getStrikeDirection(), surfaceAreas[index]);
+						double strike = strikeAvg.getAverage();
+						// we already know the direction of this group
+						if (groupReversals[g])
+							strike += 180;
+						// this returns differences in the range [0, 180]
+						double diff = FaultUtils.getAbsAngleDiff(priorStrike, strike);
+						// if we're more than 90 degrees off, we're facing the opposite direction
+						groupReversals[g-1] = diff > 90d;
+					}
 				}
 				
 				groupedRowColOrganized.add(rowColOrganized);
 			}
+			if (groups.size() == 1 && groupReversals[0] == null)
+				// only one group, and only 1 column in that group
+				groupReversals[0] = false;
 			
 			// now build the edges and set reversal flags
 			reversed = new BitSet(numSurfaces);
@@ -422,9 +451,11 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 					List<Integer> row = rowColOrganized.get(r);
 					if (row.isEmpty())
 						continue;
-					if (first)
+					if (first) {
 						// we're on top
 						topIndexes.addAll(row);
+						first = false;
+					}
 					if (r == rowColOrganized.size()-1)
 						// wer're on bottom
 						bottomIndexes.addAll(row);
@@ -474,12 +505,14 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 				this.leftIndexes = new IntListWrapper(leftIndexes);
 				this.rightIndexes = new IntListWrapper(rightIndexes);
 			}
+			this.avgDip = avgDip;
 		}
 
 		private DownDip(List<? extends RuptureSurface> surfaces, double[] surfaceAreas, double totArea,
-				BitSet reversed, BitSet tops, List<Integer> topIndexes, List<Integer> bottomIndexes,
+				double avgDip, BitSet reversed, BitSet tops, List<Integer> topIndexes, List<Integer> bottomIndexes,
 				List<Integer> leftIndexes, List<Integer> rightIndexes) {
 			super(surfaces, surfaceAreas, totArea);
+			this.avgDip = avgDip;
 			this.reversed = reversed;
 			this.tops = tops;
 			this.topIndexes = topIndexes;
@@ -490,7 +523,7 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 
 		@Override
 		public double getAveDip() {
-			return getAveDip();
+			return avgDip;
 		}
 
 		@Override
@@ -531,7 +564,7 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 		@Override
 		public DownDip copyShallow() {
 			// TODO Auto-generated method stub
-			return new DownDip(surfaces, surfaceAreas, totArea, reversed, tops,
+			return new DownDip(surfaces, surfaceAreas, totArea, avgDip, reversed, tops,
 					topIndexes, bottomIndexes, leftIndexes, rightIndexes);
 		}
 		
