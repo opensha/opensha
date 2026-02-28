@@ -1,10 +1,11 @@
 package org.opensha.sha.faultSurface;
 
+import java.util.AbstractList;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.BitSet;
+import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Map;
 import java.util.function.Function;
 
 import org.opensha.commons.geo.Location;
@@ -12,67 +13,48 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.util.FaultUtils;
+import org.opensha.commons.util.FaultUtils.AngleAverager;
+import org.opensha.commons.util.FaultUtils.LocationAverager;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet.IntListWrapper;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet.ShortListWrapper;
 import org.opensha.sha.faultSurface.cache.CacheEnabledSurface;
 import org.opensha.sha.faultSurface.cache.SurfaceCachingPolicy;
 import org.opensha.sha.faultSurface.cache.SurfaceDistanceCache;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
+import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 
 import com.google.common.base.Preconditions;
 
-public class NewCompoundSurface implements CacheEnabledSurface {
+public abstract class NewCompoundSurface implements CacheEnabledSurface {
 	
 	/*
 	 * These are populated by the top level init
 	 */
 	
 	/**
-	 * Original list in order passed in
+	 * number of surfaces
 	 */
-	private List<? extends RuptureSurface> surfaces;
+	protected final int numSurfaces;
+	
+	/**
+	 * Original list in order passed in; not final because of {@link #getMoved(LocationVector)}
+	 */
+	protected List<? extends RuptureSurface> surfaces;
 	/**
 	 * Areas of each surface (in original order)
 	 */
-	private double[] surfaceAreas;
+	protected final double[] surfaceAreas;
 	/**
 	 * Total area
 	 */
-	private double totArea;
+	protected final double totArea;
 	
 	/*
 	 * These are populated by the specific init methods
 	 */
 	
-	/**
-	 * Flags indicating if elements of {@link #surfaces} are on the upper edge (and should be included in Rx calcs)
-	 */
-	private boolean[] surfaceIsTop;
-	/**
-	 * Array of surfaces that constitute the upper edge
-	 */
-	private RuptureSurface[] topSurfaces;
-	/**
-	 * Array of surfaces that constitute the bottom edge; this can be equal to (or otherwise overlap with) {@link #topSurfaces}
-	 */
-	private RuptureSurface[] bottomSurfaces;
-	/**
-	 * Areas of the sections in {@link #topSurfaces}, used for area-weighting properties of the upper edge
-	 */
-	private double[] topSurfaceAreas;
-	/**
-	 * Areas of the sections in {@link #bottomSurfaces}, used for area-weighting properties of the lower edge
-	 */
-	private double[] bottomSurfaceAreas;
-	/**
-	 * Flags indicating if the traces of {@link #topSurfaces} need to be reversed
-	 */
-	private boolean[] topSurfacesReversed;
-	/**
-	 * Flags indicating if the traces of {@link #bottomSurfaces} need to be reversed
-	 */
-	private boolean[] bottomSurfacesReversed;
-	
-	// these are populated in the init methods
-	private double avgDip;
+
 	
 	/*
 	 * These are lazy-init
@@ -82,195 +64,521 @@ public class NewCompoundSurface implements CacheEnabledSurface {
 	private double horzWidth = Double.NaN;
 	private double topDepth = Double.NaN;
 	private double bottomDepth = Double.NaN;
-	private FaultTrace upperEdge = null;
 	
 	private SurfaceDistanceCache cache = SurfaceCachingPolicy.build(this);
 
-	public NewCompoundSurface(List<? extends RuptureSurface> surfaces, List<? extends FaultSection> sections) {
-		init(surfaces, sections);
-	}
-	
-	private NewCompoundSurface(List<? extends RuptureSurface> surfaces, double[] surfaceAreas, double totArea,
-			boolean[] surfaceIsTop, RuptureSurface[] topSurfaces, RuptureSurface[] bottomSurfaces, double[] topSurfaceAreas,
-			double[] bottomSurfaceAreas, boolean[] topSurfacesReversed, boolean[] bottomSurfacesReversed,
-			double avgDip) {
-		this.surfaces = surfaces;
-		this.surfaceAreas = surfaceAreas;
-		this.totArea = totArea;
-		this.surfaceIsTop = surfaceIsTop;
-		this.topSurfaces = topSurfaces;
-		this.bottomSurfaces = bottomSurfaces;
-		this.topSurfaceAreas = topSurfaceAreas;
-		this.bottomSurfaceAreas = bottomSurfaceAreas;
-		this.topSurfacesReversed = topSurfacesReversed;
-		this.bottomSurfacesReversed = bottomSurfacesReversed;
-		this.avgDip = avgDip;
-	}
-
-	private void init(List<? extends RuptureSurface> surfaces, List<? extends FaultSection> sections) {
+	public NewCompoundSurface(List<? extends RuptureSurface> surfaces) {
 		Preconditions.checkNotNull(surfaces, "Surfaces list is null");
-		Preconditions.checkArgument(surfaces.size() > 1, "Must supply at least 2 surfaces (have %s)", surfaces.size());
+		this.numSurfaces = surfaces.size();
+		Preconditions.checkArgument(numSurfaces > 1, "Must supply at least 2 surfaces (have %s)", numSurfaces);
 		this.surfaces = surfaces;
 		surfaceAreas = new double[surfaces.size()];
-		totArea = 0d;
+		double totArea = 0d;
 		for (int s=0; s<surfaceAreas.length; s++) {
 			surfaceAreas[s] = surfaces.get(s).getArea();
 			totArea += surfaceAreas[s];
 		}
-		
-		if (sections != null) {
-			Preconditions.checkArgument(sections.size() == surfaces.size(),
-					"Passed in section list must be null or of equal size as the surfaces list: %s != %s",
-					sections.size(), surfaces.size());
-			// we have fault section data; do we have any down dip?
-			if (sections.stream().anyMatch(S->S.getSubSectionIndexDownDip() > 0))
-				// we have subsections down-dip
-				initDownDip(sections);
-			else
-				initSimple();
-		} else {
-			initSimple();
-		}
+		this.totArea = totArea;
 	}
 	
-	private void initSimple() {
-		int numSurfaces = surfaces.size();
+	private NewCompoundSurface(List<? extends RuptureSurface> surfaces, double[] surfaceAreas, double totArea) {
+		this.surfaces = surfaces;
+		this.numSurfaces = surfaces.size();
+		this.surfaceAreas = surfaceAreas;
+		this.totArea = totArea;
+	}
+	
+	public static class Simple extends NewCompoundSurface {
 		
-		// keep track of those we will need to reverse; don't do so just yet because we might have to flip the whole
-		// surface at the end
-		boolean[] reverse = new boolean[numSurfaces];
+		private final double avgDip;
+		private final BitSet reversed;
+		private final boolean wholeRupReversed;
+		private final ContiguousIntList indexes;
 		
-		// need to check the first 2 beforehand to establish the direction
-		RuptureSurface surf1 = surfaces.get(0);
-		RuptureSurface surf2 = surfaces.get(1);
-		double[] dist = new double[4];
-		// use cartesian dist sq, just need a quick and relative distance so don't bother with sqrt or true geographic transformations
-		dist[0] = LocationUtils.cartesianDistanceSq(surf1.getFirstLocOnUpperEdge(), surf2.getFirstLocOnUpperEdge());
-		dist[1] = LocationUtils.cartesianDistanceSq(surf1.getFirstLocOnUpperEdge(), surf2.getLastLocOnUpperEdge());
-		dist[2] = LocationUtils.cartesianDistanceSq(surf1.getLastLocOnUpperEdge(), surf2.getFirstLocOnUpperEdge());
-		dist[3] = LocationUtils.cartesianDistanceSq(surf1.getLastLocOnUpperEdge(), surf2.getLastLocOnUpperEdge());
-		
-		double min = dist[0];
-		int minIndex = 0;
-		for(int i=1; i<4;i++) {
-			if(dist[i]<min) {
-				minIndex = i;
-				min = dist[i];
-			}
-		}
-		
-		if(minIndex==0) { // first_first
-			reverse[0] = true;
-			reverse[1] = false;
-		} else if (minIndex==1) { // first_last
-			reverse[0] = true;
-			reverse[1] = true;
-		} else if (minIndex==2) { // last_first
-			reverse[0] = false;
-			reverse[1] = false;
-		} else { // minIndex==3 // last_last
-			reverse[0] = false;
-			reverse[1] = true;
-		}
-		
-		// there was a bug in the prior implementation: it always compared against the original orientation of the prior
-		// surface, not the potentially-reversed version; that's wrong, but may have never caused issues in practice.
-		Location prevLast = reverse[1] ? surf2.getFirstLocOnUpperEdge() : surf2.getLastLocOnUpperEdge();
-		double d1, d2;
-		Location first, last;
-		RuptureSurface surf;
-		for (int s=2; s<numSurfaces; s++) {
-			surf = surfaces.get(s);
-			first = surf.getFirstLocOnUpperEdge();
-			last = surf.getLastLocOnUpperEdge();
-			d1 = LocationUtils.cartesianDistanceSq(prevLast, first);
-			d2 = LocationUtils.cartesianDistanceSq(prevLast, last);
-			reverse[s] = d2 < d1;
-			prevLast = reverse[s] ? first : last;
-		}
-		
-		double avgDip = 0d;
-		double sumArea = 0d;
-		for (int s=0; s<numSurfaces; s++) {
-			surf = surfaces.get(s);
-			double dip = surf.getAveDip();
-			if (reverse[s])
-				avgDip += (180d-dip)*surfaceAreas[s];
-			else
-				avgDip += dip*surfaceAreas[s];
-			sumArea += surfaceAreas[s];
-		}
-		avgDip /= sumArea;
-		Preconditions.checkState(avgDip > 0 && avgDip < 180d, "Bad avgDip=%s", avgDip);
-		
-		if (avgDip > 90d) {
-			// whole surface is reversed according to aki & richards, need to flip it
-			avgDip = 180d-avgDip;
+		public Simple(List<? extends RuptureSurface> surfaces) {
+			super(surfaces);
 			
-			topSurfaces = new RuptureSurface[numSurfaces];
-			topSurfaceAreas = new double[numSurfaces];
-			topSurfacesReversed = new boolean[numSurfaces];
-			int index = 0;
-			for (int s=numSurfaces; --s>=0;) {
-				topSurfaces[index] = surfaces.get(s);
-				topSurfaceAreas[index] = surfaceAreas[s];
-				topSurfacesReversed[index] = !reverse[s];
-				index++;
+			// keep track of those we will need to reverse; don't do so just yet because we might have to flip the whole
+			// surface at the end
+			reversed = new BitSet(numSurfaces);
+			
+			// need to check the first 2 beforehand to establish the direction
+			RuptureSurface surf1 = surfaces.get(0);
+			RuptureSurface surf2 = surfaces.get(1);
+			double[] dist = new double[4];
+			// use cartesian dist sq, just need a quick and relative distance so don't bother with sqrt or true geographic transformations
+			dist[0] = LocationUtils.cartesianDistanceSq(surf1.getFirstLocOnUpperEdge(), surf2.getFirstLocOnUpperEdge());
+			dist[1] = LocationUtils.cartesianDistanceSq(surf1.getFirstLocOnUpperEdge(), surf2.getLastLocOnUpperEdge());
+			dist[2] = LocationUtils.cartesianDistanceSq(surf1.getLastLocOnUpperEdge(), surf2.getFirstLocOnUpperEdge());
+			dist[3] = LocationUtils.cartesianDistanceSq(surf1.getLastLocOnUpperEdge(), surf2.getLastLocOnUpperEdge());
+			
+			double min = dist[0];
+			int minIndex = 0;
+			for(int i=1; i<4;i++) {
+				if(dist[i]<min) {
+					minIndex = i;
+					min = dist[i];
+				}
 			}
-		} else {
-			topSurfaces = surfaces.toArray(new RuptureSurface[numSurfaces]);
-			topSurfaceAreas = surfaceAreas;
-			topSurfacesReversed = reverse;
+			
+			if (minIndex==0) { // first_first
+				reversed.set(0);
+			} else if (minIndex==1) { // first_last
+				reversed.set(0);
+				reversed.set(1);
+			} else if (minIndex==2) { // last_first
+			} else { // minIndex==3 // last_last
+				reversed.set(1);
+			}
+			
+			// there was a bug in the prior implementation: it always compared against the original orientation of the prior
+			// surface, not the potentially-reversed version; that's wrong, but may have never caused issues in practice.
+			Location prevLast = reversed.get(1) ? surf2.getFirstLocOnUpperEdge() : surf2.getLastLocOnUpperEdge();
+			double d1, d2;
+			Location first, last;
+			RuptureSurface surf;
+			for (int s=2; s<numSurfaces; s++) {
+				surf = surfaces.get(s);
+				first = surf.getFirstLocOnUpperEdge();
+				last = surf.getLastLocOnUpperEdge();
+				d1 = LocationUtils.cartesianDistanceSq(prevLast, first);
+				d2 = LocationUtils.cartesianDistanceSq(prevLast, last);
+				if (d2 < d1) {
+					reversed.set(s);
+					prevLast = first;
+				} else {
+					prevLast = last;
+				}
+			}
+			
+			double avgDip = 0d;
+			for (int s=0; s<numSurfaces; s++) {
+				surf = surfaces.get(s);
+				double dip = surf.getAveDip();
+				if (reversed.get(s))
+					avgDip += (180d-dip)*surfaceAreas[s];
+				else
+					avgDip += dip*surfaceAreas[s];
+			}
+			avgDip /= totArea;
+			Preconditions.checkState(avgDip > 0 && avgDip < 180d, "Bad avgDip=%s", avgDip);
+			
+			wholeRupReversed = avgDip > 90d;
+			
+			if (wholeRupReversed) {
+				// whole surface is reversed according to aki & richards, need to flip it
+				avgDip = 180d-avgDip;
+				// flip the direction of each surface
+				reversed.flip(0, numSurfaces);
+			}
+			this.avgDip = avgDip;
+			this.indexes = new ContiguousIntList();
 		}
-		bottomSurfaces = topSurfaces;
-		bottomSurfaceAreas = topSurfaceAreas;
-		bottomSurfacesReversed = topSurfacesReversed;
-		surfaceIsTop = new boolean[numSurfaces];
-		for (int i=0; i<numSurfaces; i++)
-			surfaceIsTop[i] = true;
+
+		private Simple(List<? extends RuptureSurface> surfaces, double[] surfaceAreas, double totArea,
+				double avgDip, BitSet reversed,
+				boolean wholeRupReversed, ContiguousIntList indexes) {
+			super(surfaces, surfaceAreas, totArea);
+			this.avgDip = avgDip;
+			this.reversed = reversed;
+			this.wholeRupReversed = wholeRupReversed;
+			this.indexes = indexes;
+		}
+
+		@Override
+		public double getAveDip() {
+			return avgDip;
+		}
+
+		@Override
+		public boolean hasSurfacesDownDip() {
+			return false;
+		}
+
+		@Override
+		public List<Integer> getUpperEdgeSurfaceIndexes() {
+			return indexes;
+		}
+
+		@Override
+		public List<Integer> getLowerEdgeSurfaceIndexes() {
+			return indexes;
+		}
+
+		@Override
+		public List<Integer> getRightEdgeSurfaceIndexes() {
+			return List.of(wholeRupReversed ? 0 : surfaces.size()-1);
+		}
+
+		@Override
+		public List<Integer> getLeftEdgeSurfaceIndexes() {
+			return List.of(wholeRupReversed ? surfaces.size()-1 : 0);
+		}
+
+		@Override
+		public boolean isSurfaceReversed(int index) {
+			return reversed.get(index);
+		}
+
+		@Override
+		public boolean isSurfaceOnUpperEdge(int index) {
+			return true;
+		}
+
+		@Override
+		public Simple copyShallow() {
+			return new Simple(surfaces, surfaceAreas, totArea, avgDip, reversed, wholeRupReversed, indexes);
+		}
 		
-		this.avgDip = avgDip;
-		this.totArea = sumArea;
+		private class ContiguousIntList extends AbstractList<Integer> {
+
+			@Override
+			public int size() {
+				return numSurfaces;
+			}
+
+			@Override
+			public Integer get(int index) {
+				return wholeRupReversed ? (numSurfaces-1) - index : index;
+			}
+			
+		}
+		
 	}
 	
-//	private static class EdgeSupplier implements Supplier<LocationList> {
-//		
-//		private final RuptureSurface surf;
-//		private final boolean upper;
-//		private final boolean reversed;
-//		private volatile LocationList cached;
-//
-//		public EdgeSupplier(RuptureSurface surf, boolean upper, boolean reversed) {
-//			this.surf = surf;
-//			this.upper = upper;
-//			this.reversed = reversed;
-//		}
-//
-//		@Override
-//		public LocationList get() {
-//			if (cached != null)
-//				return cached;
-//			LocationList edge = upper ? surf.getEvenlyDiscritizedUpperEdge() : surf.getEvenlyDiscritizedLowerEdge();
-//			if (reversed) {
-//				LocationList reversedEdge = new LocationList(edge.size());
-//				for (int i=edge.size(); --i>=0;)
-//					reversedEdge.add(edge.get(i));
-//				edge = reversedEdge;
-//			}
-//			cached = edge;
-//			return edge;
-//		}
-//		
-//	}
-	
-	private void initDownDip(List<? extends FaultSection> sections) {
-		// TODO
+	public static class DownDip extends NewCompoundSurface {
+
+		private final BitSet reversed;
+		private final BitSet tops;
+		private final List<Integer> topIndexes;
+		private final List<Integer> bottomIndexes;
+		private final List<Integer> leftIndexes;
+		private final List<Integer> rightIndexes;
+		
+		public DownDip(List<? extends RuptureSurface> surfaces, List<? extends FaultSection> sections) {
+			super(surfaces);
+			Preconditions.checkArgument(sections.size() == numSurfaces,
+					"Passed in section list must be null or of equal size as the surfaces list: %s != %s",
+					sections.size(), numSurfaces);
+			
+			List<Integer> topIndexes = new ArrayList<>();
+			List<Integer> bottomIndexes = new ArrayList<>();
+			List<Integer> leftIndexes = new ArrayList<>(1);
+			List<Integer> rightIndexes = new ArrayList<>(1);
+			
+			// bundle by parent section ID
+			List<List<FaultSection>> groups = new ArrayList<>();
+			List<FaultSection> current = null;
+			int prevParent = -1;
+			for (FaultSection sect : sections) {
+				int parent = sect.getParentSectionId();
+				if (current == null || parent != prevParent) {
+					current = new ArrayList<>();
+					groups.add(current);
+					prevParent = parent;
+				}
+				current.add(sect);
+			}
+			
+			List<List<List<Integer>>> groupedRowColOrganized = new ArrayList<>(groups.size()); 
+			Boolean[] groupReversals = new Boolean[groups.size()];
+			int globalIndex = 0;
+			int[] numPopulatedRows = new int[groups.size()];
+			for (int g=0; g<groups.size(); g++) {
+				List<FaultSection> group = groups.get(g);
+				List<List<Integer>> rowColOrganized = new ArrayList<>(1);
+				for (FaultSection sect : group) {
+					int indexDD = sect.getSubSectionIndexDownDip();
+					Preconditions.checkState(indexDD >= 0, "Bad indexDD=%s for section %s", indexDD, sect);
+					while (indexDD >= rowColOrganized.size())
+						rowColOrganized.add(new ArrayList<>(group.size()));
+					rowColOrganized.get(indexDD).add(globalIndex++);
+				}
+				Boolean forward = null;
+				for (List<Integer> row : rowColOrganized) {
+					if (!row.isEmpty()) {
+						numPopulatedRows[g]++;
+						if (row.size() > 1) {
+							// direction checks
+							if (forward == null) {
+								// first one
+								forward = sections.get(row.get(1)).getSubSectionIndexAlong() > sections.get(row.get(0)).getSubSectionIndexAlong();
+							}
+							int prevIndexAlong = -1;
+							for (int i=0; i<row.size(); i++) {
+								FaultSection sect = sections.get(row.get(i));
+								int indexAlong = sect.getSubSectionIndexAlong();
+								Preconditions.checkState(indexAlong >= 0,
+										"Bad indexAlong=%s for sect %s", indexAlong, sect);
+								if (i > 0) {
+									if (forward)
+										Preconditions.checkState(indexAlong > prevIndexAlong, "Column ordering inconsistent");
+									else
+										Preconditions.checkState(indexAlong < prevIndexAlong, "Column ordering inconsistent");
+								}
+								prevIndexAlong = indexAlong;
+							}
+						}
+					}
+				}
+				if (forward == null) {
+					// we only have a single section per row, need to determine direction
+					if (g > 0) {
+						// compare to previous section
+						List<List<Integer>> priorGroup = groupedRowColOrganized.get(g-1);
+						AngleAverager priorStrikeAvg = new AngleAverager();
+						for (List<Integer> row : priorGroup)
+							for (Integer index : row)
+								priorStrikeAvg.add(sections.get(index).getFaultTrace().getStrikeDirection(), surfaceAreas[index]);
+						double priorStrike = priorStrikeAvg.getAverage();
+						AngleAverager strikeAvg = new AngleAverager();
+						for (List<Integer> row : rowColOrganized)
+							for (Integer index : row)
+								strikeAvg.add(sections.get(index).getFaultTrace().getStrikeDirection(), surfaceAreas[index]);
+						double strike = strikeAvg.getAverage();
+						if (groupReversals[g-1] != null) {
+							// we already know the direction of the prior group
+							if (groupReversals[g-1])
+								priorStrike += 180;
+							// this returns differences in the range [0, 180]
+							double diff = FaultUtils.getAbsAngleDiff(priorStrike, strike);
+							// if we're more than 90 degrees off, we're facing the opposite direction
+							groupReversals[g] = diff > 90d;
+						} else {
+							// we don't know the direction of either
+							double[] dist = new double[4];
+							
+							// find average start and end locations for each
+							Location start1 = null;
+							Location end1 = null;
+							Location start2 = null;
+							Location end2 = null;
+							for (boolean prior : new boolean[] {true,false}) {
+								List<List<Integer>> rowCol = prior ? priorGroup : rowColOrganized;
+								LocationAverager startAvg = new LocationAverager();
+								LocationAverager endAvg = new LocationAverager();
+								for (List<Integer> row : rowCol) {
+									for (int index : row) {
+										FaultSection sect = sections.get(index);
+										startAvg.add(sect.getFaultTrace().first(), 1d);
+										endAvg.add(sect.getFaultTrace().last(), 1d);
+									}
+								}
+								if (prior) {
+									start1 = startAvg.getAverage();
+									end1 = endAvg.getAverage();
+								} else {
+									start2 = startAvg.getAverage();
+									end2 = endAvg.getAverage();
+								}
+							}
+							
+							// use cartesian dist sq, just need a quick and relative distance so don't bother with sqrt or true geographic transformations
+							
+							dist[0] = LocationUtils.cartesianDistanceSq(start1, start2);
+							dist[1] = LocationUtils.cartesianDistanceSq(start1, end2);
+							dist[2] = LocationUtils.cartesianDistanceSq(end1, start2);
+							dist[3] = LocationUtils.cartesianDistanceSq(end1, end2);
+							
+							double min = dist[0];
+							int minIndex = 0;
+							for(int i=1; i<4;i++) {
+								if(dist[i]<min) {
+									minIndex = i;
+									min = dist[i];
+								}
+							}
+							
+							if (minIndex==0) { // first_first
+								groupReversals[g-1] = true;
+							} else if (minIndex==1) { // first_last
+								groupReversals[g-1] = true;
+								groupReversals[g] = true;
+							} else if (minIndex==2) { // last_first
+							} else { // minIndex==3 // last_last
+								groupReversals[g] = true;
+							}
+						}
+					}
+				} else {
+					groupReversals[g] = !forward;
+				}
+				
+				groupedRowColOrganized.add(rowColOrganized);
+			}
+			
+			// now build the edges and set reversal flags
+			reversed = new BitSet(numSurfaces);
+			double avgDip = 0d;
+			for (int g=0; g<groups.size(); g++) {
+				// just assume that the top row is the extent of the top and the bottom row is the extent of the bottom
+				// we could try to define the top edge more carefully of a curved surface, but it's not really important
+				// and would add computational cost for no real benefit
+				
+				boolean first = true;
+				
+				List<List<Integer>> rowColOrganized = groupedRowColOrganized.get(g);
+				for (int r=0; r<rowColOrganized.size(); r++) {
+					List<Integer> row = rowColOrganized.get(r);
+					if (row.isEmpty())
+						continue;
+					if (first)
+						// we're on top
+						topIndexes.addAll(row);
+					if (r == rowColOrganized.size()-1)
+						// wer're on bottom
+						bottomIndexes.addAll(row);
+					if (g == 0)
+						// first group
+						leftIndexes.add(row.get(0));
+					if (g == groups.size()-1)
+						rightIndexes.add(row.get(row.size()-1));
+					for (int index : row) {
+						double dip = sections.get(index).getAveDip();
+						if (groupReversals[g]) {
+							reversed.set(index);
+							avgDip += (180d-dip)*surfaceAreas[index];
+						} else {
+							avgDip += dip*surfaceAreas[index];
+						}
+					}
+				}
+			}
+			
+			avgDip /= totArea;
+			Preconditions.checkState(avgDip > 0 && avgDip < 180d, "Bad avgDip=%s", avgDip);
+			if (avgDip > 90d) {
+				// the whole thing is reversed
+				Collections.reverse(topIndexes);
+				Collections.reverse(bottomIndexes);
+				List<Integer> tmp = leftIndexes;
+				leftIndexes = rightIndexes;
+				rightIndexes = tmp;
+				reversed.flip(0, numSurfaces);
+			}
+			
+			tops = new BitSet(numSurfaces);
+			for (int index : topIndexes)
+				tops.set(index);
+			
+			// wrap lists in more memory efficient versions
+			if (numSurfaces < Short.MAX_VALUE) {
+				this.topIndexes = new ShortListWrapper(topIndexes);
+				this.bottomIndexes = new ShortListWrapper(bottomIndexes);
+				this.leftIndexes = new ShortListWrapper(leftIndexes);
+				this.rightIndexes = new ShortListWrapper(rightIndexes);
+			} else {
+				// still more memory efficient (int array rather than boxed)
+				this.topIndexes = new IntListWrapper(topIndexes);
+				this.bottomIndexes = new IntListWrapper(bottomIndexes);
+				this.leftIndexes = new IntListWrapper(leftIndexes);
+				this.rightIndexes = new IntListWrapper(rightIndexes);
+			}
+		}
+
+		private DownDip(List<? extends RuptureSurface> surfaces, double[] surfaceAreas, double totArea,
+				BitSet reversed, BitSet tops, List<Integer> topIndexes, List<Integer> bottomIndexes,
+				List<Integer> leftIndexes, List<Integer> rightIndexes) {
+			super(surfaces, surfaceAreas, totArea);
+			this.reversed = reversed;
+			this.tops = tops;
+			this.topIndexes = topIndexes;
+			this.bottomIndexes = bottomIndexes;
+			this.leftIndexes = leftIndexes;
+			this.rightIndexes = rightIndexes;
+		}
+
+		@Override
+		public double getAveDip() {
+			return getAveDip();
+		}
+
+		@Override
+		public boolean hasSurfacesDownDip() {
+			return true;
+		}
+
+		@Override
+		public List<Integer> getUpperEdgeSurfaceIndexes() {
+			return topIndexes;
+		}
+
+		@Override
+		public List<Integer> getLowerEdgeSurfaceIndexes() {
+			return bottomIndexes;
+		}
+
+		@Override
+		public List<Integer> getRightEdgeSurfaceIndexes() {
+			return rightIndexes;
+		}
+
+		@Override
+		public List<Integer> getLeftEdgeSurfaceIndexes() {
+			return leftIndexes;
+		}
+
+		@Override
+		public boolean isSurfaceReversed(int index) {
+			return reversed.get(index);
+		}
+
+		@Override
+		public boolean isSurfaceOnUpperEdge(int index) {
+			return tops.get(index);
+		}
+
+		@Override
+		public DownDip copyShallow() {
+			// TODO Auto-generated method stub
+			return new DownDip(surfaces, surfaceAreas, totArea, reversed, tops,
+					topIndexes, bottomIndexes, leftIndexes, rightIndexes);
+		}
+		
 	}
+	
+	public abstract boolean hasSurfacesDownDip();
+	
+	/**
+	 * @return List indexes in the surfaces list corresponding to the upper edge and ordered in the along-strike
+	 * direction
+	 */
+	public abstract List<Integer> getUpperEdgeSurfaceIndexes();
+	
+	/**
+	 * @return array of indexes in the surfaces list corresponding to the upper edge and ordered in the along-strike
+	 * direction
+	 */
+	public abstract List<Integer> getLowerEdgeSurfaceIndexes();
+	
+	/**
+	 * @return array of indexes in the surfaces list corresponding to the right (last along-strike) edge and ordered
+	 * from top to bottom
+	 */
+	public abstract List<Integer> getRightEdgeSurfaceIndexes();
+	
+	/**
+	 * @return array of indexes in the surfaces list corresponding to the left (first along-strike) edge and ordered
+	 * from top to bottom
+	 */
+	public abstract List<Integer> getLeftEdgeSurfaceIndexes();
+	
+	/**
+	 * @param index surface index
+	 * @return true if the surface must be flipped to connect to its neighbors and conform with the Aki & Richards
+	 * convention
+	 */
+	public abstract boolean isSurfaceReversed(int index);
+	
+	/**
+	 * @param index surface index
+	 * @return true if the surface is on the upper edge and should thus be included in distance X calculations
+	 * convention
+	 */
+	public abstract boolean isSurfaceOnUpperEdge(int index);
 
 	@Override
-	public double getAveDip() {
-		return avgDip;
-	}
+	public abstract NewCompoundSurface copyShallow();
 
 	@Override
 	public double getAveStrike() {
@@ -281,15 +589,11 @@ public class NewCompoundSurface implements CacheEnabledSurface {
 	public double getAveLength() {
 		if (Double.isNaN(length)) {
 			double length = 0d;
-			for (RuptureSurface surf : topSurfaces)
-				length += surf.getAveLength();
+			for (int index : getUpperEdgeSurfaceIndexes())
+				length += surfaces.get(index).getAveLength();
 			this.length = length;
 		}
 		return length;
-	}
-	
-	public boolean hasSurfacesDownDip() {
-		return topSurfaces != bottomSurfaces;
 	}
 
 	@Override
@@ -299,12 +603,12 @@ public class NewCompoundSurface implements CacheEnabledSurface {
 				// we have subsections down-dip, approximate it
 				double upper = getAveRupTopDepth();
 				double lower = getAveRupBottomDepth();
-				width = (lower - upper)/Math.sin(Math.toRadians(avgDip));
+				width = (lower - upper)/Math.sin(Math.toRadians(getAveDip()));
 			} else {
 				// simple
 				double width = 0d;
-				for (int s=0; s<topSurfaces.length; s++)
-					width += topSurfaces[s].getAveWidth()*topSurfaceAreas[s];
+				for (int index : getUpperEdgeSurfaceIndexes())
+					width += surfaces.get(index).getAveWidth()*surfaceAreas[index];
 				this.width = width/totArea;
 			}
 		}
@@ -317,11 +621,11 @@ public class NewCompoundSurface implements CacheEnabledSurface {
 			if (hasSurfacesDownDip()) {
 				// we have subsections down-dip, approximate it
 				double width = getAveWidth();
-				horzWidth = width * Math.cos(Math.toRadians(avgDip));
+				horzWidth = width * Math.cos(Math.toRadians(getAveDip()));
 			} else {
 				double horzWidth = 0;
-				for (int s=0; s<topSurfaces.length; s++)
-					horzWidth += topSurfaces[s].getAveHorizontalWidth()*topSurfaceAreas[s];
+				for (int index : getUpperEdgeSurfaceIndexes())
+					horzWidth += surfaces.get(index).getAveHorizontalWidth()*surfaceAreas[index];
 				this.horzWidth = horzWidth/totArea;
 			}
 		}
@@ -369,20 +673,38 @@ public class NewCompoundSurface implements CacheEnabledSurface {
 	}
 	
 	private FaultTrace getEvenlyDiscretizedEdge(boolean upper) {
-		RuptureSurface[] sects = upper ? topSurfaces : bottomSurfaces;
-		boolean[] reversed = upper ? topSurfacesReversed : bottomSurfacesReversed;
-		FaultTrace evenUpperEdge = new FaultTrace(null);
-		for (int s=0; s<sects.length; s++) {
-			LocationList trace = upper ? sects[s].getEvenlyDiscritizedUpperEdge() : sects[s].getEvenlyDiscritizedLowerEdge();
-			if (reversed[s]) {
-				for (int i=trace.size(); --i>=0;)
-					evenUpperEdge.add(trace.get(i));
+		List<Integer> indexes = upper ? getUpperEdgeSurfaceIndexes() : getLowerEdgeSurfaceIndexes();
+		
+		double avgSpacing = getAveGridSpacing();
+		FaultTrace evenEdge = new FaultTrace(null);
+		for (int i=0; i<indexes.size(); i++) {
+			int index = indexes.get(i);
+			boolean reversed = isSurfaceReversed(index);
+			LocationList edge = upper ? surfaces.get(index).getEvenlyDiscritizedUpperEdge()
+					: surfaces.get(index).getEvenlyDiscritizedLowerEdge();
+			boolean firstIsDuplicate = false;
+			if (i > 0) {
+				// see if wee need to connect with the previous one
+				Location first = reversed ? edge.last() : edge.first();
+				double distToFirst = LocationUtils.linearDistanceFast(evenEdge.last(), first);
+				if (distToFirst > avgSpacing)
+					// add connector
+					addDiscretizedLineBetween(evenEdge, evenEdge.last(), first, avgSpacing);
+				else if (distToFirst < 0.1*avgSpacing)
+					// super close, skip our first one
+					firstIsDuplicate = true;
+			}
+			
+			if (reversed) {
+				for (int j=firstIsDuplicate?edge.size()-1:edge.size(); --j>=0;)
+					evenEdge.add(edge.get(j));
 			} else {
-				evenUpperEdge.addAll(trace);
+				for (int j=firstIsDuplicate?1:0; j<edge.size(); j++)
+					evenEdge.add(edge.get(j));
 			}
 		}
 		
-		return evenUpperEdge;
+		return evenEdge;
 	}
 
 	@Override
@@ -424,9 +746,9 @@ public class NewCompoundSurface implements CacheEnabledSurface {
 		if (Double.isNaN(topDepth)) {
 			double topDepth = 0d;
 			double sumArea = 0d;
-			for (int s=0; s<topSurfaces.length; s++) {
-				topDepth += topSurfaces[s].getAveRupTopDepth()*topSurfaceAreas[s];
-				sumArea += topSurfaceAreas[s];
+			for (int s : getUpperEdgeSurfaceIndexes()) {
+				topDepth += surfaces.get(s).getAveRupTopDepth()*surfaceAreas[s];
+				sumArea += surfaceAreas[s];
 			}
 			this.topDepth = topDepth/sumArea;
 		}
@@ -438,9 +760,9 @@ public class NewCompoundSurface implements CacheEnabledSurface {
 		if (Double.isNaN(bottomDepth)) {
 			double bottomDepth = 0d;
 			double sumArea = 0d;
-			for (int s=0; s<bottomSurfaces.length; s++) {
-				bottomDepth += bottomSurfaces[s].getAveRupBottomDepth()*bottomSurfaceAreas[s];
-				sumArea += bottomSurfaceAreas[s];
+			for (int s : getLowerEdgeSurfaceIndexes()) {
+				bottomDepth += surfaces.get(s).getAveRupBottomDepth()*surfaceAreas[s];
+				sumArea += surfaceAreas[s];
 			}
 			this.bottomDepth = bottomDepth/sumArea;
 		}
@@ -457,38 +779,50 @@ public class NewCompoundSurface implements CacheEnabledSurface {
 
 	@Override
 	public FaultTrace getUpperEdge() {
-		if (upperEdge == null) {
-			FaultTrace upperEdge = new FaultTrace(null, topSurfaces.length);
-			for (int s=0; s<topSurfaces.length; s++) {
-				FaultTrace trace;
-				try {
-					// some surfaces don't support getUpperEdge in some circumstances,
-					// so revert to evenly discretized upper if needed
-					trace = topSurfaces[s].getUpperEdge();
-				} catch (RuntimeException e) {
-					trace = topSurfaces[s].getEvenlyDiscritizedUpperEdge();
-				}
-				if (topSurfacesReversed[s]) {
-					for (int i=trace.size(); --i>=0;)
-						upperEdge.add(trace.get(i));
-				} else {
-					upperEdge.addAll(trace);
-				}
+		FaultTrace upperEdge = new FaultTrace(null);
+		for (int index : getUpperEdgeSurfaceIndexes()) {
+			FaultTrace trace;
+			try {
+				// some surfaces don't support getUpperEdge in some circumstances,
+				// so revert to evenly discretized upper if needed
+				trace = surfaces.get(index).getUpperEdge();
+			} catch (RuntimeException e) {
+				trace = surfaces.get(index).getEvenlyDiscritizedUpperEdge();
 			}
-			this.upperEdge = upperEdge;
+			if (isSurfaceReversed(index)) {
+				for (int i=trace.size(); --i>=0;)
+					upperEdge.add(trace.get(i));
+			} else {
+				upperEdge.addAll(trace);
+			}
 		}
 		return upperEdge;
 	}
 
 	@Override
 	public Location getFirstLocOnUpperEdge() {
-		return topSurfacesReversed[0] ? topSurfaces[0].getLastLocOnUpperEdge() : topSurfaces[0].getFirstLocOnUpperEdge();
+		int index = getUpperEdgeSurfaceIndexes().get(0);
+		return isSurfaceReversed(index) ? surfaces.get(index).getLastLocOnUpperEdge() : surfaces.get(index).getFirstLocOnUpperEdge();
 	}
 
 	@Override
 	public Location getLastLocOnUpperEdge() {
-		int last = topSurfaces.length-1;
-		return topSurfacesReversed[last] ? topSurfaces[last].getFirstLocOnUpperEdge() : topSurfaces[last].getLastLocOnUpperEdge();
+		List<Integer> upperIndexes = getUpperEdgeSurfaceIndexes();
+		int index = upperIndexes.get(upperIndexes.size()-1);
+		return isSurfaceReversed(index) ? surfaces.get(index).getFirstLocOnUpperEdge() : surfaces.get(index).getLastLocOnUpperEdge();
+	}
+
+	@Override
+	public Location getFirstLocOnLowerEdge() {
+		int index = getLowerEdgeSurfaceIndexes().get(0);
+		return isSurfaceReversed(index) ? surfaces.get(index).getLastLocOnLowerEdge() : surfaces.get(index).getFirstLocOnLowerEdge();
+	}
+
+	@Override
+	public Location getLastLocOnLowerEdge() {
+		List<Integer> upperIndexes = getLowerEdgeSurfaceIndexes();
+		int index = upperIndexes.get(upperIndexes.size()-1);
+		return isSurfaceReversed(index) ? surfaces.get(index).getFirstLocOnLowerEdge() : surfaces.get(index).getLastLocOnLowerEdge();
 	}
 
 	@Override
@@ -516,36 +850,17 @@ public class NewCompoundSurface implements CacheEnabledSurface {
 	}
 
 	@Override
-	public RuptureSurface getMoved(LocationVector v) {
-		Map<RuptureSurface, RuptureSurface> movedInstances = new HashMap<>(surfaces.size());
+	public NewCompoundSurface getMoved(LocationVector v) {
 		List<RuptureSurface> movedSurfaces = new ArrayList<>(surfaces.size());
 		for (RuptureSurface surf : surfaces) {
 			RuptureSurface moved = surf.getMoved(v);
 			movedSurfaces.add(moved);
-			movedInstances.put(surf, moved);
 		}
 		
-		// these can be in reverse order for the surface list even if we don't have any down-dip
-		RuptureSurface[] movedTopSurfaces = new RuptureSurface[topSurfaces.length];
-		for (int s=0; s<topSurfaces.length; s++)
-			movedTopSurfaces[s] = movedInstances.get(topSurfaces[s]);
+		NewCompoundSurface copy = copyShallow();
+		copy.surfaces = movedSurfaces;
 		
-		RuptureSurface[] movedBottomSurfaces;
-		if (hasSurfacesDownDip()) {
-			movedBottomSurfaces = new RuptureSurface[bottomSurfaces.length];
-			for (int s=0; s<bottomSurfaces.length; s++)
-				movedBottomSurfaces[s] = movedInstances.get(bottomSurfaces[s]);
-		} else {
-			movedBottomSurfaces = movedTopSurfaces;
-		}
-		return new NewCompoundSurface(movedSurfaces, surfaceAreas, totArea, surfaceIsTop, movedTopSurfaces, movedBottomSurfaces, topSurfaceAreas,
-				bottomSurfaceAreas, topSurfacesReversed, bottomSurfacesReversed, avgDip);
-	}
-
-	@Override
-	public RuptureSurface copyShallow() {
-		return new NewCompoundSurface(surfaces, surfaceAreas, totArea, surfaceIsTop, topSurfaces, bottomSurfaces, topSurfaceAreas,
-				bottomSurfaceAreas, topSurfacesReversed, bottomSurfacesReversed, avgDip);
+		return copy;
 	}
 
 	@Override
@@ -555,22 +870,69 @@ public class NewCompoundSurface implements CacheEnabledSurface {
 
 	@Override
 	public LocationList getEvenlyDiscritizedPerimeter() {
-		// TODO this omits side connectors and isn't a true closed perimeter; revisit with the down-dip implementation.
 		LocationList perim = new LocationList();
+		double avgSpacing = getAveGridSpacing();
+		
 		perim.addAll(getEvenlyDiscritizedUpperEdge());
-		for (int s=bottomSurfaces.length; --s>=0;) {
-			LocationList lower = bottomSurfaces[s].getEvenlyDiscritizedLowerEdge();
-			// need to go backwards on the bottom, so reverse logic is flipped here
-			if (bottomSurfacesReversed[s]) {
-				// go forwards
-				perim.addAll(lower);
+		
+		// right edge
+		List<Integer> rightIndexes = getRightEdgeSurfaceIndexes();
+		for (int i=0; i<rightIndexes.size(); i++) {
+			int index = rightIndexes.get(i);
+			RuptureSurface surf = surfaces.get(index);
+			Location top, bottom;
+			if (isSurfaceReversed(index)) {
+				top = surf.getFirstLocOnUpperEdge();
+				bottom = surf.getFirstLocOnLowerEdge();
 			} else {
-				// go backwards
-				for (int i=lower.size(); --i>=0;)
-					perim.add(lower.get(i));
+				top = surf.getLastLocOnUpperEdge();
+				bottom = surf.getLastLocOnLowerEdge();
 			}
+			if (i > 0 && LocationUtils.linearDistanceFast(perim.last(), top) > 0.1*avgSpacing)
+				// top of the first will always be a duplicate, skip it; only include if not the first on the edge and
+				// not equal to the prior bottom
+				perim.add(top);
+			addDiscretizedLineBetween(perim, top, bottom, avgSpacing);
+			if (i < rightIndexes.size()-1)
+				// only add the bottom if we're not last, otherwise it will be a duplicate with the lower edge
+				perim.add(bottom);
+		}
+		
+		LocationList lower = getEvenlyDiscritizedLowerEdge();
+		// add lower in reverse order
+		for (int i=lower.size(); --i>=0;)
+			perim.add(lower.get(i));
+		
+		// left edge
+		List<Integer> leftIndexes = getLeftEdgeSurfaceIndexes();
+		for (int i=leftIndexes.size(); --i>=0;) {
+			int index = leftIndexes.get(i);
+			RuptureSurface surf = surfaces.get(index);
+			Location top, bottom;
+			if (isSurfaceReversed(index)) {
+				top = surf.getLastLocOnUpperEdge();
+				bottom = surf.getLastLocOnLowerEdge();
+			} else {
+				top = surf.getFirstLocOnUpperEdge();
+				bottom = surf.getFirstLocOnLowerEdge();
+			}
+			if (i < leftIndexes.size()-1 && LocationUtils.linearDistanceFast(perim.last(), top) > 0.1*avgSpacing)
+				// bottom of the first will always be a duplicate, skip it; only include if not the first on the edge and
+				// not equal to the prior top
+				perim.add(bottom);
+			addDiscretizedLineBetween(perim, bottom, top, avgSpacing);
+			if (i > 0)
+				// only add the top if we're not last, otherwise it will be a duplicate with the upper edge
+				perim.add(top);
 		}
 		return perim;
+	}
+	
+	private static void addDiscretizedLineBetween(LocationList perim, Location from, Location to, double avgSpacing) {
+		LocationList line = GriddedSurfaceUtils.getEvenlyDiscretizedLine(from, to, avgSpacing);
+		// skip first and last as they'll be duplicates
+		for (int i=1; i<line.size()-1; i++)
+			perim.add(line.get(i));
 	}
 
 	@Override
@@ -589,7 +951,7 @@ public class NewCompoundSurface implements CacheEnabledSurface {
 		double distanceRup = Double.MAX_VALUE;
 		double distanceRupTop = Double.MAX_VALUE;
 		double dist;
-		RuptureSurface surfForX = null;
+		int surfIndexForX = -1;
 		for (int i=0; i<surfaces.size(); i++) {
 			RuptureSurface surf = surfaces.get(i);
 			dist = surf.getDistanceJB(loc);
@@ -597,18 +959,23 @@ public class NewCompoundSurface implements CacheEnabledSurface {
 			dist = surf.getDistanceRup(loc);
 			if (dist < distanceRup)
 				distanceRup = dist;
-			if (surfaceIsTop[i] && dist < distanceRupTop) {
+			if (dist < distanceRupTop && isSurfaceOnUpperEdge(i)) {
 				distanceRupTop = dist;
-				surfForX = surf;
+				surfIndexForX = i;
 			}
 		}
 		// use the closest sub-surface (determined via rRup) for distanceX
-		final RuptureSurface theSurfForX = surfForX;
+		final RuptureSurface theSurfForX = surfaces.get(surfIndexForX);
+		final boolean surfForXReversed = isSurfaceReversed(surfIndexForX);
 		return new SurfaceDistances.PrecomputedLazyX(loc, distanceRup, distanceJB, new Function<Location, Double>() {
 			
 			@Override
 			public Double apply(Location t) {
-				return theSurfForX.getDistanceX(loc);
+				double rX = theSurfForX.getDistanceX(loc);
+				if (surfForXReversed)
+					// reversed, so the sign is flipped
+					return -rX;
+				return rX;
 			}
 		});
 	}
