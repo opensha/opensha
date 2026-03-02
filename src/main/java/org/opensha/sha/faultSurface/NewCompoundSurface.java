@@ -51,12 +51,6 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 	protected final double totArea;
 	
 	/*
-	 * These are populated by the specific init methods
-	 */
-	
-
-	
-	/*
 	 * These are lazy-init
 	 */
 	private double length = Double.NaN;
@@ -96,62 +90,228 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 		private final ContiguousIntList indexes;
 		
 		public Simple(List<? extends RuptureSurface> surfaces) {
+			this(surfaces, null);
+		}
+		
+		public Simple(List<? extends RuptureSurface> surfaces, List<? extends FaultSection> sects) {
 			super(surfaces);
-			
+
 			// keep track of those we will need to reverse; don't do so just yet because we might have to flip the whole
 			// surface at the end
-			reversed = new BitSet(numSurfaces);
+			BitSet reversed = null;
 			
-			// need to check the first 2 beforehand to establish the direction
-			RuptureSurface surf1 = surfaces.get(0);
-			RuptureSurface surf2 = surfaces.get(1);
-			double[] dist = new double[4];
-			// use cartesian dist sq, just need a quick and relative distance so don't bother with sqrt or true geographic transformations
-			dist[0] = LocationUtils.cartesianDistanceSq(surf1.getFirstLocOnUpperEdge(), surf2.getFirstLocOnUpperEdge());
-			dist[1] = LocationUtils.cartesianDistanceSq(surf1.getFirstLocOnUpperEdge(), surf2.getLastLocOnUpperEdge());
-			dist[2] = LocationUtils.cartesianDistanceSq(surf1.getLastLocOnUpperEdge(), surf2.getFirstLocOnUpperEdge());
-			dist[3] = LocationUtils.cartesianDistanceSq(surf1.getLastLocOnUpperEdge(), surf2.getLastLocOnUpperEdge());
-			
-			double min = dist[0];
-			int minIndex = 0;
-			for(int i=1; i<4;i++) {
-				if(dist[i]<min) {
-					minIndex = i;
-					min = dist[i];
+			if (sects != null && !sects.isEmpty()) {
+				Preconditions.checkState(sects.size() == surfaces.size(),
+						"Have %s sects and %s surfaces", sects.size(), surfaces.size());
+				// use surface indexing
+
+				List<List<Integer>> groups = new ArrayList<>();
+				List<Integer> curBundle = null;
+				int prevParent = -1;
+				int prevAlong = -1;
+				Boolean curForward = null;
+				for (int s=0; s<sects.size(); s++) {
+					FaultSection sect = sects.get(s);
+					int parent = sect.getParentSectionId();
+					int along = sect.getSubSectionIndexAlong();
+					if (parent < 0 || along < 0) {
+						// no parent or along strike information
+						groups = null;
+						break;
+					}
+					if (prevParent == parent) {
+						if (along == prevAlong+1) {
+							if (curForward == null) {
+								curForward = true;
+							} else if (!curForward) {
+								// not monotonic 
+								groups = null;
+								break;
+							}
+						} else if (along == prevAlong-1) {
+							if (curForward == null) {
+								curForward = false;
+							} else if (curForward) {
+								// not monotonic 
+								groups = null;
+								break;
+							}
+						} else {
+							// not contiguous
+							groups = null;
+							break;
+						}
+					} else {
+						curBundle = new ArrayList<>();
+						groups.add(curBundle);
+						curForward = null;
+					}
+					curBundle.add(s);
+					prevParent = parent;
+					prevAlong = along;
+				}
+				
+				if (groups != null) {
+					// we have valid section data to use
+					
+					// figure out order within groups
+					Boolean[] groupReversals = new Boolean[groups.size()];
+					for (int g=0; g<groups.size(); g++) {
+						List<Integer> group = groups.get(g);
+						if (group.size() > 1) {
+							FaultSection sect1 = sects.get(group.get(0));
+							FaultSection sect2 = sects.get(group.get(group.size()-1));
+							groupReversals[g] = sect2.getSubSectionIndexAlong() < sect1.getSubSectionIndexAlong();
+						} else {
+							// we only have a single section per row, need to determine direction
+							RuptureSurface surface = surfaces.get(group.get(0));
+							if (g > 0) {
+								// compare to previous group
+								List<Integer> priorGroup = groups.get(g-1);
+								if (groupReversals[g-1] != null) {
+									RuptureSurface priorFirst = surfaces.get(priorGroup.get(0));
+									RuptureSurface priorLast = surfaces.get(priorGroup.get(priorGroup.size()-1));
+									Location priorStart, priorEnd;
+									if (groupReversals[g-1]) {
+										priorStart = priorFirst.getLastLocOnUpperEdge();
+										priorEnd = priorLast.getFirstLocOnUpperEdge();
+									} else {
+										priorStart = priorFirst.getFirstLocOnUpperEdge();
+										priorEnd = priorLast.getLastLocOnUpperEdge();
+									}
+									double priorStrike = LocationUtils.azimuth(priorStart, priorEnd);
+									double strike = LocationUtils.azimuth(surface.getFirstLocOnUpperEdge(), surface.getLastLocOnUpperEdge());
+									// this returns differences in the range [0, 180]
+									double diff = FaultUtils.getAbsAngleDiff(priorStrike, strike);
+									// if we're more than 90 degrees off, we're facing the opposite direction
+									groupReversals[g] = diff > 90d;
+								} else {
+									// we don't know the direction of either
+									Preconditions.checkState(priorGroup.size() == 1);
+									RuptureSurface priorSurface = surfaces.get(priorGroup.get(0));
+									double[] dist = new double[4];
+									dist[0] = distForReversalCheck(priorSurface.getFirstLocOnUpperEdge(), surface.getFirstLocOnUpperEdge());
+									dist[1] = distForReversalCheck(priorSurface.getFirstLocOnUpperEdge(), surface.getLastLocOnUpperEdge());
+									dist[2] = distForReversalCheck(priorSurface.getLastLocOnUpperEdge(), surface.getFirstLocOnUpperEdge());
+									dist[3] = distForReversalCheck(priorSurface.getLastLocOnUpperEdge(), surface.getLastLocOnUpperEdge());
+									
+									double min = dist[0];
+									int minIndex = 0;
+									for(int i=1; i<4;i++) {
+										if(dist[i]<min) {
+											minIndex = i;
+											min = dist[i];
+										}
+									}
+									
+									if (minIndex==0) { // first_first
+										groupReversals[g-1] = true;
+										groupReversals[g] = false;
+									} else if (minIndex==1) { // first_last
+										groupReversals[g-1] = true;
+										groupReversals[g] = true;
+									} else if (minIndex==2) { // last_first
+										groupReversals[g-1] = false;
+										groupReversals[g] = false;
+									} else { // minIndex==3 // last_last
+										groupReversals[g-1] = false;
+										groupReversals[g] = true;
+									}
+								}
+							}
+						}
+						if (g > 0 && groupReversals[g-1] == null) {
+							RuptureSurface priorSurface = surfaces.get(groups.get(g-1).get(0));
+							double priorStrike = LocationUtils.azimuth(priorSurface.getFirstLocOnUpperEdge(), priorSurface.getLastLocOnUpperEdge());
+							RuptureSurface myFirst = surfaces.get(group.get(0));
+							RuptureSurface myLast = surfaces.get(group.get(group.size()-1));
+							Location start, end;
+							if (groupReversals[g]) {
+								start = myFirst.getLastLocOnUpperEdge();
+								end = myLast.getFirstLocOnUpperEdge();
+							} else {
+								start = myFirst.getFirstLocOnUpperEdge();
+								end = myLast.getLastLocOnUpperEdge();
+							}
+							double strike = LocationUtils.azimuth(start, end);
+							// this returns differences in the range [0, 180]
+							double diff = FaultUtils.getAbsAngleDiff(priorStrike, strike);
+							// if we're more than 90 degrees off, we're facing the opposite direction
+							groupReversals[g-1] = diff > 90d;
+						}
+					}
+					if (groups.size() == 1 && groupReversals[0] == null)
+						// only one group, and only 1 column in that group
+						groupReversals[0] = false;
+					
+					reversed = new BitSet(numSurfaces);
+					for (int g=0; g<groups.size(); g++) {
+						if (groupReversals[g]) {
+							for (int s : groups.get(g))
+								reversed.set(s);
+						}
+					}
 				}
 			}
 			
-			if (minIndex==0) { // first_first
-				reversed.set(0);
-			} else if (minIndex==1) { // first_last
-				reversed.set(0);
-				reversed.set(1);
-			} else if (minIndex==2) { // last_first
-			} else { // minIndex==3 // last_last
-				reversed.set(1);
-			}
-			
-			// there was a bug in the prior implementation: it always compared against the original orientation of the prior
-			// surface, not the potentially-reversed version; that's wrong, but may have never caused issues in practice.
-			Location prevLast = reversed.get(1) ? surf2.getFirstLocOnUpperEdge() : surf2.getLastLocOnUpperEdge();
-			double d1, d2;
-			Location first, last;
-			RuptureSurface surf;
-			for (int s=2; s<numSurfaces; s++) {
-				surf = surfaces.get(s);
-				first = surf.getFirstLocOnUpperEdge();
-				last = surf.getLastLocOnUpperEdge();
-				d1 = LocationUtils.cartesianDistanceSq(prevLast, first);
-				d2 = LocationUtils.cartesianDistanceSq(prevLast, last);
-				if (d2 < d1) {
-					reversed.set(s);
-					prevLast = first;
-				} else {
-					prevLast = last;
+			if (reversed == null) {
+				// either no section data, or that section data was unusable
+				reversed = new BitSet(numSurfaces);
+				
+				// naive approach, similar to original implementation but with bugfixes
+				RuptureSurface surf1 = surfaces.get(0);
+				RuptureSurface surf2 = surfaces.get(1);
+				double[] dist = new double[4];
+				dist[0] = distForReversalCheck(surf1.getFirstLocOnUpperEdge(), surf2.getFirstLocOnUpperEdge());
+				dist[1] = distForReversalCheck(surf1.getFirstLocOnUpperEdge(), surf2.getLastLocOnUpperEdge());
+				dist[2] = distForReversalCheck(surf1.getLastLocOnUpperEdge(), surf2.getFirstLocOnUpperEdge());
+				dist[3] = distForReversalCheck(surf1.getLastLocOnUpperEdge(), surf2.getLastLocOnUpperEdge());
+				
+				double min = dist[0];
+				int minIndex = 0;
+				for(int i=1; i<4;i++) {
+					if(dist[i]<min) {
+						minIndex = i;
+						min = dist[i];
+					}
+				}
+				
+				if (minIndex==0) { // first_first
+					reversed.set(0);
+				} else if (minIndex==1) { // first_last
+					reversed.set(0);
+					reversed.set(1);
+				} else if (minIndex==2) { // last_first
+				} else { // minIndex==3 // last_last
+					reversed.set(1);
+				}
+				
+				// there was a bug in the prior implementation: it always compared against the original orientation of the prior
+				// surface, not the potentially-reversed version; that's wrong, but may have never caused issues in practice.
+				Location prevLast = reversed.get(1) ? surf2.getFirstLocOnUpperEdge() : surf2.getLastLocOnUpperEdge();
+				double d1, d2;
+				Location first, last;
+				RuptureSurface surf;
+				for (int s=2; s<numSurfaces; s++) {
+					// uncomment this if you want to reproduce the old buggy behavior
+//					prevLast = surfaces.get(s-1).getLastLocOnUpperEdge();
+					surf = surfaces.get(s);
+					first = surf.getFirstLocOnUpperEdge();
+					last = surf.getLastLocOnUpperEdge();
+					d1 = distForReversalCheck(prevLast, first);
+					d2 = distForReversalCheck(prevLast, last);
+					if (d2 < d1) {
+						reversed.set(s);
+						prevLast = first;
+					} else {
+						prevLast = last;
+					}
 				}
 			}
+			this.reversed = reversed;
 			
 			double avgDip = 0d;
+			RuptureSurface surf;
 			for (int s=0; s<numSurfaces; s++) {
 				surf = surfaces.get(s);
 				double dip = surf.getAveDip();
@@ -162,7 +322,6 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 			}
 			avgDip /= totArea;
 			Preconditions.checkState(avgDip > 0 && avgDip < 180d, "Bad avgDip=%s", avgDip);
-			
 			wholeRupReversed = avgDip > 90d;
 			
 			if (wholeRupReversed) {
@@ -374,12 +533,10 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 								}
 							}
 							
-							// use cartesian dist sq, just need a quick and relative distance so don't bother with sqrt or true geographic transformations
-							
-							dist[0] = LocationUtils.cartesianDistanceSq(start1, start2);
-							dist[1] = LocationUtils.cartesianDistanceSq(start1, end2);
-							dist[2] = LocationUtils.cartesianDistanceSq(end1, start2);
-							dist[3] = LocationUtils.cartesianDistanceSq(end1, end2);
+							dist[0] = distForReversalCheck(start1, start2);
+							dist[1] = distForReversalCheck(start1, end2);
+							dist[2] = distForReversalCheck(end1, start2);
+							dist[3] = distForReversalCheck(end1, end2);
 							
 							double min = dist[0];
 							int minIndex = 0;
@@ -570,6 +727,13 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 		
 	}
 	
+	private static double distForReversalCheck(Location loc1, Location loc2) {
+		// this would probably work just fine (we only care about relative distances)
+//		return LocationUtils.cartesianDistanceSq(loc1, loc2);
+		// but this is what the original compound surface used
+		return LocationUtils.horzDistanceFast(loc1, loc2);
+	}
+	
 	public abstract boolean hasSurfacesDownDip();
 	
 	/**
@@ -676,68 +840,6 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 		for (RuptureSurface surf : surfaces)
 			area += surf.getAreaInsideRegion(region);
 		return area;
-	}
-
-	@Override
-	public LocationList getEvenlyDiscritizedListOfLocsOnSurface() {
-		// modified to use an expected size
-		// not caching in order to avoid memory bloat, but individual surfaces should already be cached, making this quick'
-		int count = 0;
-		List<LocationList> surfLists = new ArrayList<>(surfaces.size());
-		for(RuptureSurface surf:surfaces) {
-			LocationList surfList = surf.getEvenlyDiscritizedListOfLocsOnSurface();
-			count += surfList.size();
-			surfLists.add(surfList);
-		}
-		LocationList locs = new LocationList(count);
-		for (LocationList surfList : surfLists)
-			locs.addAll(surfList);
-		return locs;
-	}
-
-	@Override
-	public FaultTrace getEvenlyDiscritizedUpperEdge() {
-		return getEvenlyDiscretizedEdge(true);
-	}
-
-	@Override
-	public FaultTrace getEvenlyDiscritizedLowerEdge() {
-		return getEvenlyDiscretizedEdge(false);
-	}
-	
-	private FaultTrace getEvenlyDiscretizedEdge(boolean upper) {
-		List<Integer> indexes = upper ? getUpperEdgeSurfaceIndexes() : getLowerEdgeSurfaceIndexes();
-		
-		double avgSpacing = getAveGridSpacing();
-		FaultTrace evenEdge = new FaultTrace(null);
-		for (int i=0; i<indexes.size(); i++) {
-			int index = indexes.get(i);
-			boolean reversed = isSurfaceReversed(index);
-			LocationList edge = upper ? surfaces.get(index).getEvenlyDiscritizedUpperEdge()
-					: surfaces.get(index).getEvenlyDiscritizedLowerEdge();
-			boolean firstIsDuplicate = false;
-			if (i > 0) {
-				// see if wee need to connect with the previous one
-				Location first = reversed ? edge.last() : edge.first();
-				double distToFirst = LocationUtils.linearDistanceFast(evenEdge.last(), first);
-				if (distToFirst > avgSpacing)
-					// add connector
-					addDiscretizedLineBetween(evenEdge, evenEdge.last(), first, avgSpacing);
-				else if (distToFirst < 0.1*avgSpacing)
-					// super close, skip our first one
-					firstIsDuplicate = true;
-			}
-			
-			if (reversed) {
-				for (int j=firstIsDuplicate?edge.size()-1:edge.size(); --j>=0;)
-					evenEdge.add(edge.get(j));
-			} else {
-				for (int j=firstIsDuplicate?1:0; j<edge.size(); j++)
-					evenEdge.add(edge.get(j));
-			}
-		}
-		
-		return evenEdge;
 	}
 
 	@Override
@@ -900,11 +1002,78 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 	public ListIterator<Location> getLocationsIterator() {
 		return getEvenlyDiscritizedListOfLocsOnSurface().listIterator();
 	}
+	
+
+
+	@Override
+	public LocationList getEvenlyDiscritizedListOfLocsOnSurface() {
+		// modified to use an expected size
+		// not caching in order to avoid memory bloat, but individual surfaces should already be cached, making this quick'
+		int count = 0;
+		List<LocationList> surfLists = new ArrayList<>(surfaces.size());
+		for(RuptureSurface surf:surfaces) {
+			LocationList surfList = surf.getEvenlyDiscritizedListOfLocsOnSurface();
+			count += surfList.size();
+			surfLists.add(surfList);
+		}
+		LocationList locs = new LocationList(count);
+		for (LocationList surfList : surfLists)
+			locs.addAll(surfList);
+		return locs;
+	}
+
+	@Override
+	public FaultTrace getEvenlyDiscritizedUpperEdge() {
+		return getEvenlyDiscretizedEdge(true);
+	}
+
+	@Override
+	public FaultTrace getEvenlyDiscritizedLowerEdge() {
+		return getEvenlyDiscretizedEdge(false);
+	}
+	
+	private FaultTrace getEvenlyDiscretizedEdge(boolean upper) {
+		List<Integer> indexes = upper ? getUpperEdgeSurfaceIndexes() : getLowerEdgeSurfaceIndexes();
+		
+		final double identicalSpacingThreshold = 0.1*getAveGridSpacing();
+		
+		FaultTrace evenEdge = new FaultTrace(null);
+		for (int i=0; i<indexes.size(); i++) {
+			int index = indexes.get(i);
+			boolean reversed = isSurfaceReversed(index);
+			LocationList edge = upper ? surfaces.get(index).getEvenlyDiscritizedUpperEdge()
+					: surfaces.get(index).getEvenlyDiscritizedLowerEdge();
+			if (reversed) {
+				if (i == 0 || LocationUtils.linearDistanceFast(evenEdge.last(), edge.last()) > identicalSpacingThreshold) {
+					// include the whole thing
+					for (int j=edge.size(); --j>=0;)
+						evenEdge.add(edge.get(j));
+				} else {
+					// skip the first one
+					for (int j=edge.size()-1; --j>=0;)
+						evenEdge.add(edge.get(j));
+				}
+			} else {
+				if (i == 0 || LocationUtils.linearDistanceFast(evenEdge.last(), edge.first()) > identicalSpacingThreshold) {
+					// include the whole thing
+					for (int j=0; j<edge.size(); j++)
+						evenEdge.add(edge.get(j));
+				} else {
+					// skip the first one
+					for (int j=1; j<edge.size(); j++)
+						evenEdge.add(edge.get(j));
+				}
+			}
+		}
+		
+		return evenEdge;
+	}
 
 	@Override
 	public LocationList getEvenlyDiscritizedPerimeter() {
 		LocationList perim = new LocationList();
-		double avgSpacing = getAveGridSpacing();
+		final double avgSpacing = getAveGridSpacing();
+		final double identicalSpacingThreshold = 0.1*avgSpacing;
 		
 		perim.addAll(getEvenlyDiscritizedUpperEdge());
 		
@@ -921,7 +1090,7 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 				top = surf.getLastLocOnUpperEdge();
 				bottom = surf.getLastLocOnLowerEdge();
 			}
-			if (i > 0 && LocationUtils.linearDistanceFast(perim.last(), top) > 0.1*avgSpacing)
+			if (i > 0 && LocationUtils.linearDistanceFast(perim.last(), top) > identicalSpacingThreshold)
 				// top of the first will always be a duplicate, skip it; only include if not the first on the edge and
 				// not equal to the prior bottom
 				perim.add(top);
@@ -949,7 +1118,7 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 				top = surf.getFirstLocOnUpperEdge();
 				bottom = surf.getFirstLocOnLowerEdge();
 			}
-			if (i < leftIndexes.size()-1 && LocationUtils.linearDistanceFast(perim.last(), top) > 0.1*avgSpacing)
+			if (i < leftIndexes.size()-1 && LocationUtils.linearDistanceFast(perim.last(), top) > identicalSpacingThreshold)
 				// bottom of the first will always be a duplicate, skip it; only include if not the first on the edge and
 				// not equal to the prior top
 				perim.add(bottom);
@@ -961,6 +1130,14 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 		return perim;
 	}
 	
+	/**
+	 * Adds an evenly discretized line to the given list spanning from -> to, but with from and to omittied (only
+	 * interior locations retained).
+	 * @param perim
+	 * @param from
+	 * @param to
+	 * @param avgSpacing
+	 */
 	private static void addDiscretizedLineBetween(LocationList perim, Location from, Location to, double avgSpacing) {
 		LocationList line = GriddedSurfaceUtils.getEvenlyDiscretizedLine(from, to, avgSpacing);
 		// skip first and last as they'll be duplicates
@@ -970,7 +1147,60 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 
 	@Override
 	public LocationList getPerimeter() {
-		return getEvenlyDiscritizedPerimeter();
+		LocationList perim = new LocationList();
+		// top
+		for (int index : getUpperEdgeSurfaceIndexes()) {
+			RuptureSurface surf = surfaces.get(index);
+			if (isSurfaceReversed(index)) {
+				perim.add(surf.getLastLocOnUpperEdge());
+				perim.add(surf.getFirstLocOnUpperEdge());
+			} else {
+				perim.add(surf.getFirstLocOnUpperEdge());
+				perim.add(surf.getLastLocOnUpperEdge());
+			}
+		}
+
+		// right
+		for (int index : getRightEdgeSurfaceIndexes()) {
+			RuptureSurface surf = surfaces.get(index);
+			if (isSurfaceReversed(index)) {
+				perim.add(surf.getFirstLocOnUpperEdge());
+				perim.add(surf.getFirstLocOnLowerEdge());
+			} else {
+				perim.add(surf.getLastLocOnUpperEdge());
+				perim.add(surf.getLastLocOnLowerEdge());
+			}
+		}
+		
+		// bottom
+		List<Integer> bottomIndexes = getLowerEdgeSurfaceIndexes();
+		for (int i=bottomIndexes.size(); --i>=0;) {
+			int index = bottomIndexes.get(i);
+			RuptureSurface surf = surfaces.get(index);
+			if (isSurfaceReversed(index)) {
+				perim.add(surf.getFirstLocOnLowerEdge());
+				perim.add(surf.getLastLocOnLowerEdge());
+			} else {
+				perim.add(surf.getLastLocOnLowerEdge());
+				perim.add(surf.getFirstLocOnLowerEdge());
+			}
+		}
+		
+		// left
+		List<Integer> LeftIndexes = getLeftEdgeSurfaceIndexes();
+		for (int i=LeftIndexes.size(); --i>=0;) {
+			int index = LeftIndexes.get(i);
+			RuptureSurface surf = surfaces.get(index);
+			if (isSurfaceReversed(index)) {
+				perim.add(surf.getLastLocOnLowerEdge());
+				perim.add(surf.getLastLocOnUpperEdge());
+			} else {
+				perim.add(surf.getFirstLocOnLowerEdge());
+				perim.add(surf.getFirstLocOnUpperEdge());
+			}
+		}
+		
+		return perim;
 	}
 
 	@Override
@@ -998,6 +1228,7 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 			}
 		}
 		// use the closest sub-surface (determined via rRup) for distanceX
+		// TODO: implement GC2 which gets rid of a lot of nastiness
 		final RuptureSurface theSurfForX = surfaces.get(surfIndexForX);
 		final boolean surfForXReversed = isSurfaceReversed(surfIndexForX);
 		return new SurfaceDistances.PrecomputedLazyX(loc, distanceRup, distanceJB, new Function<Location, Double>() {
@@ -1005,9 +1236,31 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 			@Override
 			public Double apply(Location t) {
 				double rX = theSurfForX.getDistanceX(loc);
-				if (surfForXReversed)
-					// reversed, so the sign is flipped
-					return -rX;
+				if (surfForXReversed) {
+					// The closest section, which we use to determine Rx, is reversed. That means that its Rx sign
+					// (footwall vs hanging wall) is opposite that of the rupture in general; we can either return its
+					// sign, e.g., saying that you are on the footwall of the closest section even if you are on the
+					// hanging wall side of the rupture more broadly, or flip it to match the full rupture.
+					
+					// If we return the sign as is, we're saying that what matters is if you're on the HW vs FW of the
+					// local/nearest surface, even if you are on the opposite side of the rupture more broadly. So if a
+					// fault briefly dips the opposite way in a complex rupture, this would return the HW/FW
+					// classification of that deviation (if it's closest). That might make sense if the local section
+					// is actually dipping because the closest section should control the ground motion and it makes
+					// sense that the HW term, if enabled, should be based on that closest section.
+					// 
+					// Looking at actual rupture examples in our models, they can get really squirrelly such that
+					// the rupture strike direction doesn't carry a lot of meaning; for now, we'll stick to using the
+					// closest section's Rx sign, and note that we should move to GC2 distance-weighting in the future
+					return rX;
+					
+					// If we instead return the flipped sign, we're saying that what matters is if you're on the HW vs
+					// FW more generally of the full rupture, even though the local version might be a deviation. The
+					// argument I can see here is that the closest section might be SS and its HW/FW classification
+					// might be arbitrary, but it's part of a largely dipping rupture, and we would then want to honor
+					// the HW/FW flag of the main rupture. 
+//					return -rX;
+				}
 				return rX;
 			}
 		});

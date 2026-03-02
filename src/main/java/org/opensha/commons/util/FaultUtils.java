@@ -683,6 +683,16 @@ public final class FaultUtils {
 			ydir+=weight*Math.sin(angleRad);
 		}
 		
+		/**
+		 * 
+		 * @param angle in radians
+		 * @param weight
+		 */
+		public synchronized void addRad(double angleRad, double weight) {
+			xdir+=weight*Math.cos(angleRad);
+			ydir+=weight*Math.sin(angleRad);
+		}
+		
 		public double getAverage() {
 			double avg;
 
@@ -707,7 +717,7 @@ public final class FaultUtils {
 			return avg;
 		}
 	}
-
+	
 	/**
 	 * Returns an average of the given angles scaled by the given scalars. Note that this
 	 * expects angles in degrees, and will return angles from 0 to 360 degrees.

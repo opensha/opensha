@@ -198,6 +198,16 @@ class TriangularElementSurface implements RuptureSurface {
 	}
 
 	@Override
+	public Location getFirstLocOnLowerEdge() {
+		throw new UnsupportedOperationException("Not yet implemented");
+	}
+
+	@Override
+	public Location getLastLocOnLowerEdge() {
+		throw new UnsupportedOperationException("Not yet implemented");
+	}
+
+	@Override
 	public double getFractionOfSurfaceInRegion(Region region) {
 		double third = 1d/3d;
 		double ret = 0;

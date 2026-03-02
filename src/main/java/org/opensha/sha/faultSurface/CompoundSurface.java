@@ -478,7 +478,19 @@ public class CompoundSurface implements RuptureSurface, CacheEnabledSurface {
 
 	@Override
 	public Location getLastLocOnUpperEdge() {
-		return getUpperEdge().get(getUpperEdge().size()-1);
+		LocationList upperEdge = getUpperEdge();
+		return upperEdge.get(upperEdge.size()-1);
+	}
+
+	@Override
+	public Location getFirstLocOnLowerEdge() {
+		return getEvenlyDiscritizedLowerEdge().get(0);
+	}
+
+	@Override
+	public Location getLastLocOnLowerEdge() {
+		LocationList lowerEdge = getEvenlyDiscritizedLowerEdge();
+		return lowerEdge.get(lowerEdge.size()-1);
 	}
 
 	@Override
