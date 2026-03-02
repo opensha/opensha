@@ -3,10 +3,12 @@ package org.opensha.sha.earthquake;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.EventObject;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Set;
 
 import org.dom4j.Element;
 import org.opensha.commons.data.Site;
@@ -304,12 +306,10 @@ public abstract class AbstractERF implements
 	 * This specifies what types of Tectonic Regions are included in the ERF.
 	 * This default implementation includes only ACTIVE_SHALLOW, so it should 
 	 * be overridden in subclasses if other types are used
-	 * @return : ArrayList<TectonicRegionType>
+	 * @return : Set<TectonicRegionType>
 	 */
-	public ArrayList<TectonicRegionType> getIncludedTectonicRegionTypes(){
-		ArrayList<TectonicRegionType> list = new ArrayList<TectonicRegionType>();
-		list.add(TectonicRegionType.ACTIVE_SHALLOW);
-		return list;
+	public Set<TectonicRegionType> getIncludedTectonicRegionTypes(){
+		return EnumSet.of(TectonicRegionType.ACTIVE_SHALLOW);
 	}
 
 	@Override

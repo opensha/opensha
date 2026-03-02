@@ -1,6 +1,8 @@
 package org.opensha.sha.gui.beans;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.Set;
 
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.ProbEqkSource;
@@ -8,13 +10,11 @@ import org.opensha.sha.util.TectonicRegionType;
 
 public class MultiERFDummy extends AbstractERF {
 	
-	ArrayList<TectonicRegionType> regions;
+	Set<TectonicRegionType> regions;
 	
 	public MultiERFDummy() {
-		regions = new ArrayList<TectonicRegionType>();
-		regions.add(TectonicRegionType.ACTIVE_SHALLOW);
-		regions.add(TectonicRegionType.STABLE_SHALLOW);
-		regions.add(TectonicRegionType.SUBDUCTION_SLAB);
+		regions = EnumSet.of(TectonicRegionType.ACTIVE_SHALLOW,
+				TectonicRegionType.STABLE_SHALLOW, TectonicRegionType.SUBDUCTION_SLAB);
 	}
 
 	@Override
@@ -48,7 +48,7 @@ public class MultiERFDummy extends AbstractERF {
 	}
 
 	@Override
-	public ArrayList<TectonicRegionType> getIncludedTectonicRegionTypes() {
+	public Set<TectonicRegionType> getIncludedTectonicRegionTypes() {
 		return regions;
 	}
 
