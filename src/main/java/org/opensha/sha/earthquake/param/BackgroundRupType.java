@@ -13,7 +13,7 @@ import org.opensha.sha.earthquake.util.GriddedFiniteRuptureSettings;
 @SuppressWarnings("javadoc")
 public enum BackgroundRupType {
 	POINT("Point sources"),
-	FINITE("Random-strike faults");
+	FINITE("Random-strike virtual faults");
 	
 	private String label;
 	private BackgroundRupType(String label) {
