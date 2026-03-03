@@ -8,8 +8,6 @@ import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.util.DevStatus;
 import org.opensha.commons.util.ServerPrefs;
 import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm.DistanceCorrection2013;
-import org.opensha.sha.faultSurface.utils.RjbDistributionDistanceCorrection;
-import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrection.Single;
 
 /**
  * {@link PointSourceDistanceCorrection} implementation enum.
@@ -27,39 +25,19 @@ public enum PointSourceDistanceCorrections implements Supplier<PointSourceDistan
 			return null;
 		}
 	},
-	FIELD("Field", FieldPointSourceCorrection.class, DevStatus.PRODUCTION) {
-		@Override
-		protected PointSourceDistanceCorrection initCorr() {
-			return new FieldPointSourceCorrection();
-		}
-	},
 	NSHM_2013("USGS NSHM (2013)", DistanceCorrection2013.class, DevStatus.PRODUCTION) {
 		@Override
 		protected PointSourceDistanceCorrection initCorr() {
 			return new DistanceCorrection2013();
 		}
 	},
-	AVERAGE_SPINNING_CENTERED("Spinning Average (centered)", DistanceDistributionCorrection.class, DevStatus.DEVELOPMENT) {
-		@Override
-		protected DistanceDistributionCorrection initCorr() {
-			return DistanceDistributionCorrection.getSingleAverage(false, false);
-		}
-	},
-	AVERAGE_SPINNING("Spinning Average (uncentered)", DistanceDistributionCorrection.class, DevStatus.DEVELOPMENT) {
+	AVERAGE_SPINNING("Spinning Average", DistanceDistributionCorrection.class, DevStatus.DEVELOPMENT) {
 		@Override
 		protected DistanceDistributionCorrection initCorr() {
 			return DistanceDistributionCorrection.getSingleAverage(true, true);
 		}
 	},
-	FIVE_POINT_SPINNING_DIST_CENTERED("5-Point Spinning Distribution (centered)",
-			DistanceDistributionCorrection.class, DevStatus.DEVELOPMENT) {
-		@Override
-		protected DistanceDistributionCorrection initCorr() {
-			// for the simple case I found that evenly weighted fractiles performs better than importance sampled
-			return DistanceDistributionCorrection.getEvenlyWeightedFractiles(5, false, false);
-		}
-	},
-	FIVE_POINT_SPINNING_DIST("5-Point Spinning Distribution (uncentered)",
+	FIVE_POINT_SPINNING_DIST("5-Point Spinning Distribution",
 			DistanceDistributionCorrection.class, DevStatus.DEVELOPMENT) {
 		@Override
 		protected DistanceDistributionCorrection initCorr() {
@@ -72,18 +50,38 @@ public enum PointSourceDistanceCorrections implements Supplier<PointSourceDistan
 					new double[] {0, 0.05, 0.15, 0.30, 0.55, 1}, true, true); // new "best so far"?
 		}
 	},
-	TWENTY_POINT_SPINNING_DIST_CENTERED("20-Point Spinning Distribution (centered)",
+	AVERAGE_SPINNING_CENTERED("Spinning Average (centered)", DistanceDistributionCorrection.class, DevStatus.DEVELOPMENT) {
+		@Override
+		protected DistanceDistributionCorrection initCorr() {
+			return DistanceDistributionCorrection.getSingleAverage(false, false);
+		}
+	},
+	FIVE_POINT_SPINNING_DIST_CENTERED("5-Point Spinning Distribution (centered)",
 			DistanceDistributionCorrection.class, DevStatus.DEVELOPMENT) {
+		@Override
+		protected DistanceDistributionCorrection initCorr() {
+			// for the simple case I found that evenly weighted fractiles performs better than importance sampled
+			return DistanceDistributionCorrection.getEvenlyWeightedFractiles(5, false, false);
+		}
+	},
+	TWENTY_POINT_SPINNING_DIST_CENTERED("20-Point Spinning Distribution (centered)",
+			DistanceDistributionCorrection.class, DevStatus.EXPERIMENTAL) {
 		@Override
 		protected DistanceDistributionCorrection initCorr() {
 			return DistanceDistributionCorrection.getEvenlyWeightedFractiles(20, false, false);
 		}
 	},
 	TWENTY_POINT_SPINNING_DIST("20-Point Spinning Distribution (uncentered)",
-			DistanceDistributionCorrection.class, DevStatus.DEVELOPMENT) {
+			DistanceDistributionCorrection.class, DevStatus.EXPERIMENTAL) {
 		@Override
 		protected DistanceDistributionCorrection initCorr() {
 			return DistanceDistributionCorrection.getEvenlyWeightedFractiles(20, true, true);
+		}
+	},
+	FIELD("Field", FieldPointSourceCorrection.class, DevStatus.PRODUCTION) {
+		@Override
+		protected PointSourceDistanceCorrection initCorr() {
+			return new FieldPointSourceCorrection();
 		}
 	};
 	
@@ -112,7 +110,7 @@ public enum PointSourceDistanceCorrections implements Supplier<PointSourceDistan
 	
 	public static EnumSet<PointSourceDistanceCorrections> forServerPrefs(ServerPrefs prefs) {
 		if (prefs == ServerPrefs.DEV_PREFS)
-			return forDevStatus(DevStatus.PRODUCTION, DevStatus.DEVELOPMENT, DevStatus.EXPERIMENTAL);
+			return forDevStatus(DevStatus.PRODUCTION, DevStatus.DEVELOPMENT);
 		else if (prefs == ServerPrefs.PRODUCTION_PREFS)
 			return forDevStatus(DevStatus.PRODUCTION);
 		else
