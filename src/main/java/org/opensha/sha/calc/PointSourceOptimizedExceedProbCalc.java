@@ -51,7 +51,7 @@ public class PointSourceOptimizedExceedProbCalc extends AbstractPointSourceOptim
 		else
 			ret = new LightFixedXFunc(exceedProbs);
 		
-		calcExceedanceProbabilities(gmm, eqkRupture, ret);
+		gmm.getExceedProbabilities(eqkRupture, ret);
 		
 		return ret;
 	}
@@ -110,7 +110,7 @@ public class PointSourceOptimizedExceedProbCalc extends AbstractPointSourceOptim
 //				printCacheStats(exceedProbCache);
 			return;
 		}
-		calcExceedanceProbabilities(gmm, eqkRupture, exceedProbs);
+		gmm.getExceedProbabilities(eqkRupture, exceedProbs);
 	}
 
 }

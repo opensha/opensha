@@ -555,11 +555,8 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 			if (SourceFilterUtils.canSkipRupture(filters, rupture, site))
 				continue;
 
-			// set the EqkRup in the IMR
-			imr.setEqkRupture(rupture);
-
 			// get the conditional probability of exceedance from the IMR
-			condProbFunc=imr.getExceedProbabilities(condProbFunc);
+			imr.getExceedProbabilities(rupture, condProbFunc);
 
 			// multiply this into the total non-exceedance probability
 			// (get the product of all non-eceedance probabilities)
@@ -657,11 +654,8 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
     		}
 			 */
 
-			// set the EqkRup in the IMR
-			imr.setEqkRupture(rupture);
-
 			// get the conditional probability of exceedance from the IMR
-			condProbFunc=imr.getExceedProbabilities(condProbFunc);
+			imr.getExceedProbabilities(rupture, condProbFunc);
 
 			// add this cond prob to hazard function
 			for(k=0;k<numPoints;k++) 
@@ -747,10 +741,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
     		}
 			 */
 
-			// set the EqkRup in the IMR
-			imr.setEqkRupture(rupture);
-
-			double randIML = imr.getRandomIML(random);
+			double randIML = imr.getRandomIML(rupture, random);
 			if(maxIML < randIML)
 				maxIML = randIML;
 
@@ -828,10 +819,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
     		}
 			 */
 
-			// set the EqkRup in the IMR
-			imr.setEqkRupture(rupture);
-
-			double randIML = imr.getRandomIML(random);
+			double randIML = imr.getRandomIML(rupture, random);
 			
 			for(int i=0;i<hazFunction.size();++i) {
 				if(hazFunction.getX(i) < randIML)
@@ -873,11 +861,8 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 
 		if (D) System.out.println(C + ": starting hazard curve calculation");
 
-		// set the EqkRup in the IMR
-		imr.setEqkRupture(rupture);
-
 		// get the conditional probability of exceedance from the IMR
-		hazFunction = imr.getExceedProbabilities(hazFunction);
+		imr.getExceedProbabilities(rupture, hazFunction);
 
 		if (D) System.out.println(C + "hazFunction.toString" + hazFunction.toString());
 

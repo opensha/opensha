@@ -406,9 +406,6 @@ implements DisaggregationCalculatorAPI {
 		        	continue;
 		        }
 
-				// set the rupture in the imr
-				imr.setEqkRupture(rupture);
-
 				// get the cond prob
 				condProb = imr.getExceedProbability(iml);
 				// should the following throw an exception?
@@ -417,7 +414,7 @@ implements DisaggregationCalculatorAPI {
 							"Exceedance probability is zero! (thus the NaNs below)");
 
 				// get the mean, stdDev, epsilon, dist, and mag
-				epsilon = imr.getEpsilon();
+				epsilon = imr.getEpsilon(rupture);
 				distRup.setValue(rupture, site);
 				dist = ( (Double) distRup.getValue()).doubleValue();
 				mag = rupture.getMag();
@@ -431,7 +428,7 @@ implements DisaggregationCalculatorAPI {
 				}
 
 				if (calcSourceExceedances) {
-					imr.getExceedProbabilities(condProbFunc);
+					imr.getExceedProbabilities(rupture, condProbFunc);
 					
 					if(poissonSource) {
 						if(Math.log(1.0-qkProb) < -30.0)

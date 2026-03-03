@@ -1,11 +1,14 @@
 package org.opensha.sha.imr;
 
 import java.util.Random;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.WeightedValue;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.exceptions.IMRException;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.geo.Location;
@@ -37,6 +40,29 @@ public interface ScalarIMR extends IntensityMeasureRelationship {
 	 * @return
 	 */
 	public double getRandomIML(Random random);
+	
+	/**
+	 * This returns a random IML.  Performance could probably be improved by
+	 * not testing random samples for being within truncation limits.
+	 * @return
+	 */
+	public default double getRandomIML(EqkRupture eqkRupture, Random randomSampler) {
+		RuptureSurface surf = eqkRupture.getRuptureSurface();
+		if (surf instanceof PointSurface.DistanceCorrectable) {
+			if (randomSampler == null)
+				randomSampler = new Random();
+			Location siteLoc = getSite().getLocation();
+			SurfaceDistances dists = ((PointSurface.DistanceCorrectable)surf).getCorrectedDistances(siteLoc).sample(randomSampler);
+			SiteSpecificDistanceCorrected corrSurf = new SiteSpecificDistanceCorrected((PointSurface)surf, siteLoc, dists);
+			setEqkRupture(new EqkRupture(eqkRupture.getMag(), eqkRupture.getAveRake(), corrSurf, eqkRupture.getHypocenterLocation()));
+			double ret = getRandomIML(randomSampler);
+			setEqkRupture(null);
+			return ret;
+		} else {
+			setEqkRupture(eqkRupture);
+			return getRandomIML(randomSampler);
+		}
+	}
 
 	/**
 	 * This returns metadata for all parameters (only showing the independent parameters
@@ -105,7 +131,7 @@ public interface ScalarIMR extends IntensityMeasureRelationship {
 	 * @return
 	 */
 	public default double getMean(EqkRupture eqkRupture) {
-		return calculateAverageValueAcrossDistanceCorrections(this, eqkRupture, S->S.getMean());
+		return calculateAverageValueAcrossDistanceCorrections(this, eqkRupture, ()->getMean());
 	}
 	
 	/**
@@ -115,10 +141,10 @@ public interface ScalarIMR extends IntensityMeasureRelationship {
 	 * @return
 	 */
 	public default double getStdDev(EqkRupture eqkRupture) {
-		return calculateAverageValueAcrossDistanceCorrections(this, eqkRupture, S->S.getStdDev());
+		return calculateAverageValueAcrossDistanceCorrections(this, eqkRupture, ()->getStdDev());
 	}
 	
-	private static double calculateAverageValueAcrossDistanceCorrections(ScalarIMR gmm, EqkRupture eqkRupture, Function<ScalarIMR, Double> calculator) {
+	static double calculateAverageValueAcrossDistanceCorrections(ScalarIMR gmm, EqkRupture eqkRupture, Supplier<Double> calculator) {
 		RuptureSurface surf = eqkRupture.getRuptureSurface();
 		if (surf instanceof PointSurface.DistanceCorrectable) {
 			// point surface with distance corrections
@@ -139,7 +165,7 @@ public interface ScalarIMR extends IntensityMeasureRelationship {
 					((ErgodicIMR)gmm).setPropagationEffectParams(dists.value);
 				}
 				
-				avgValue += calculator.apply(gmm)*dists.weight;
+				avgValue += calculator.get()*dists.weight;
 			}
 			
 			// clear the eqkRupture object so that we don't leave a stale site-specific corrected instance
@@ -150,7 +176,43 @@ public interface ScalarIMR extends IntensityMeasureRelationship {
 			// no special treatment
 			gmm.setEqkRupture(eqkRupture);
 			
-			return calculator.apply(gmm);
+			return calculator.get();
+		}
+	}
+	
+	static double calcAverageAcrossDisCorrs(ScalarIMR gmm, EqkRupture eqkRupture, Supplier<Double> calculator) {
+		RuptureSurface surf = eqkRupture.getRuptureSurface();
+		if (surf instanceof PointSurface.DistanceCorrectable) {
+			// point surface with distance corrections
+			Location siteLoc = gmm.getSite().getLocation();
+			WeightedList<SurfaceDistances> surfs = ((PointSurface.DistanceCorrectable)surf).getCorrectedDistances(siteLoc);
+			Preconditions.checkState(surfs.isNormalized());
+			
+			double avgValue = 0d;
+			for (int s=0; s<surfs.size(); s++) {
+				WeightedValue<SurfaceDistances> dists = surfs.get(s);
+				
+				if (s == 0 || !(gmm instanceof ErgodicIMR)) {
+					// first time, need to set the full rupture
+					SiteSpecificDistanceCorrected corrSurf = new SiteSpecificDistanceCorrected((PointSurface)surf, siteLoc, dists.value);
+					gmm.setEqkRupture(new EqkRupture(eqkRupture.getMag(), eqkRupture.getAveRake(), corrSurf, eqkRupture.getHypocenterLocation()));
+				} else {
+					// subsequent time(s), only need to set the distances
+					((ErgodicIMR)gmm).setPropagationEffectParams(dists.value);
+				}
+				
+				avgValue += calculator.get()*dists.weight;
+			}
+			
+			// clear the eqkRupture object so that we don't leave a stale site-specific corrected instance
+			gmm.setEqkRupture(null);
+			
+			return avgValue;
+		} else {
+			// no special treatment
+			gmm.setEqkRupture(eqkRupture);
+			
+			return calculator.get();
 		}
 	}
 
@@ -166,6 +228,58 @@ public interface ScalarIMR extends IntensityMeasureRelationship {
 	public DiscretizedFunc getExceedProbabilities(
 			DiscretizedFunc intensityMeasureLevels
 	);
+	
+	/**
+	 * This returns the result {@link #getExceedProbabilities(DiscretizedFunc)}, except properly handling
+	 * the case of multiple point-source distance corrections (and returning an average value across them if so).
+	 * @param eqkRupture
+	 * @return
+	 */
+	public default void getExceedProbabilities(EqkRupture eqkRupture, DiscretizedFunc exceedProbs) {
+		RuptureSurface surf = eqkRupture.getRuptureSurface();
+		if (surf instanceof PointSurface.DistanceCorrectable) {
+			// point surface with distance corrections
+			Location siteLoc = getSite().getLocation();
+			WeightedList<SurfaceDistances> surfs = ((PointSurface.DistanceCorrectable)surf).getCorrectedDistances(siteLoc);
+			Preconditions.checkState(surfs.isNormalized());
+			
+			LightFixedXFunc working;
+			if (exceedProbs instanceof LightFixedXFunc)
+				working = (LightFixedXFunc)exceedProbs;
+			else
+				working = new LightFixedXFunc(exceedProbs);
+			
+			double[] avgProbs = new double[working.size()];
+			for (int s=0; s<surfs.size(); s++) {
+				WeightedValue<SurfaceDistances> dists = surfs.get(s);
+				
+				if (s == 0 || !(this instanceof ErgodicIMR)) {
+					// first time, need to set the full rupture
+					SiteSpecificDistanceCorrected corrSurf = new SiteSpecificDistanceCorrected((PointSurface)surf, siteLoc, dists.value);
+					setEqkRupture(new EqkRupture(eqkRupture.getMag(), eqkRupture.getAveRake(), corrSurf, eqkRupture.getHypocenterLocation()));
+				} else {
+					// subsequent time(s), only need to set the distances
+					((ErgodicIMR)this).setPropagationEffectParams(dists.value);
+				}
+				
+				getExceedProbabilities(working);
+				
+				for (int i=0; i<avgProbs.length; i++)
+					avgProbs[i] = Math.fma(working.getY(i), dists.weight, avgProbs[i]);
+			}
+			
+			// clear the eqkRupture object so that we don't leave a stale site-specific corrected instance
+			setEqkRupture(null);
+			
+			for (int i=0; i<avgProbs.length; i++)
+				exceedProbs.set(i, avgProbs[i]);
+		} else {
+			// no special treatment
+			setEqkRupture(eqkRupture);
+			
+			getExceedProbabilities(exceedProbs);
+		}
+	}
 
 	/**
 	 * This calculates the intensity-measure level for each SA Period
@@ -178,7 +292,6 @@ public interface ScalarIMR extends IntensityMeasureRelationship {
 	ParameterException,
 	IMRException;
 
-
 	/**
 	 *  This calculates the exceed-probability at each SA Period for
 	 *  the supplied intensity-measure level (a hazard spectrum).  The x values 
@@ -188,8 +301,6 @@ public interface ScalarIMR extends IntensityMeasureRelationship {
 	 */
 	public DiscretizedFunc getSA_ExceedProbSpectrum(double iml) throws ParameterException,
 	IMRException ;
-
-
 
 	/**
 	 *  This calculates the probability that the supplied intensity-measure level
@@ -205,20 +316,43 @@ public interface ScalarIMR extends IntensityMeasureRelationship {
 	public double getExceedProbability(double iml);
 
 	/**
+	 * This returns {@link #getExceedProbability(EqkRupture, double)}, except properly handling
+	 * the case of multiple point-source distance corrections (and returning an average value across them if so).
+	 */
+	public default double getExceedProbability(EqkRupture eqkRup, double iml) {
+		return calculateAverageValueAcrossDistanceCorrections(this, eqkRup, ()->getExceedProbability(iml));
+	}
+
+	/**
 	 * This returns (iml-mean)/stdDev, ignoring any truncation.  This gets the iml
 	 * from the value in the Intensity-Measure Parameter.
 	 * @return double
 	 */
 	public double getEpsilon();
 
-
 	/**
-	 * This returns (iml-mean)/stdDev, ignoring any truncation.
-	 *
-	 * @param iml double
+	 * This returns (iml-mean)/stdDev, ignoring any truncation.  This gets the iml
+	 * from the value in the Intensity-Measure Parameter.
 	 * @return double
 	 */
+	public default double getEpsilon(EqkRupture eckRup) {
+		return calculateAverageValueAcrossDistanceCorrections(this, eckRup, ()->getEpsilon());
+	}
+
+
+	/**
+	 * This returns {@link #getEpsilon()}, except properly handling
+	 * the case of multiple point-source distance corrections (and returning an average value across them if so).
+	 */
 	public double getEpsilon(double iml);
+
+	/**
+	 * This returns {@link #getEpsilon(double)}, except properly handling
+	 * the case of multiple point-source distance corrections (and returning an average value across them if so).
+	 */
+	public default double getEpsilon(EqkRupture eckRup, double iml) {
+		return calculateAverageValueAcrossDistanceCorrections(this, eckRup, ()->getEpsilon(iml));
+	}
 
 	/**
 	 *  Returns a list of all the Parameters that the Mean calculation depends upon.
