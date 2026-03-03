@@ -23,7 +23,19 @@ import java.util.stream.Collectors;
 public class SiteFileWriter {
     private final boolean lonFirst;
     private final ArrayList<String> siteDataTypes;
-    private static final String SEP = " ";
+    private final String delim;
+
+    /**
+     * Writes site data to files with default delimiter of space.
+     * <p>
+     * The file coordinates and ordered site data are determined at initialization.
+     * </p>
+     * @param lonFirst coordinates are written with longitude first if true
+     * @param siteDataTypes ordered list of data to write for each site
+     */
+    public SiteFileWriter(boolean lonFirst, ArrayList<String> siteDataTypes) {
+        this(lonFirst, siteDataTypes, ",");
+    }
 
     /**
      * Writes site data to files.
@@ -32,10 +44,12 @@ public class SiteFileWriter {
      * </p>
      * @param lonFirst coordinates are written with longitude first if true
      * @param siteDataTypes ordered list of data to write for each site
+     * @param delim delimiter used to separate data values in each line
      */
-    public SiteFileWriter(boolean lonFirst, ArrayList<String> siteDataTypes) {
+    public SiteFileWriter(boolean lonFirst, ArrayList<String> siteDataTypes, String delim) {
         this.lonFirst = lonFirst;
         this.siteDataTypes = siteDataTypes;
+        this.delim = delim;
     }
 
     /**
@@ -52,21 +66,21 @@ public class SiteFileWriter {
 
         try (FileWriter fileWriter = new FileWriter(file)) {
             // Write header
-            fileWriter.write(SiteFileLoader.COM + SEP);
+            fileWriter.write(SiteFileLoader.COM + " ");
             if (lonFirst)
-                fileWriter.write("Lon" + SEP + "Lat");
+                fileWriter.write("Lon" + delim + "Lat");
             else
-                fileWriter.write("Lat" + SEP + "Lon");
+                fileWriter.write("Lat" + delim + "Lon");
             for (String dataType : siteDataTypes) {
                 String label = dataType;
                 if (label.equals(SiteData.TYPE_DEPTH_TO_1_0))
                     label = "Z1.0";
                 else if (label.equals(SiteData.TYPE_DEPTH_TO_2_5))
                     label = "Z2.5";
-                if (label.contains(SEP))
-                    fileWriter.write(SEP + "\"" + label + "\"");
+                if (label.contains(delim))
+                    fileWriter.write(delim + "\"" + label + "\"");
                 else
-                    fileWriter.write(SEP + label);
+                    fileWriter.write(delim + label);
             }
             fileWriter.write("\n");
             // Write data rows
@@ -101,7 +115,7 @@ public class SiteFileWriter {
                 }
                 assert(line.size() == siteDataTypes.size()+2);
 
-                fileWriter.write(line.stream().map(String::valueOf).collect(Collectors.joining(SEP)));
+                fileWriter.write(line.stream().map(String::valueOf).collect(Collectors.joining(delim)));
                 fileWriter.write("\n");
             }
         }

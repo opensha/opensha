@@ -3,12 +3,14 @@ package org.opensha.sha.gui.beans;
 import static org.junit.Assert.*;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.Stack;
 
 import javax.swing.JCheckBox;
@@ -42,9 +44,9 @@ import org.opensha.sha.util.TectonicRegionType;
 public class TestIMR_MultiGuiBean implements ScalarIMRChangeListener {
 	
 	static List<? extends ScalarIMR> imrs;
-	static ArrayList<TectonicRegionType> demoTRTs;
-	static ArrayList<TectonicRegionType> demoTRTsNoSub;
-	static ArrayList<TectonicRegionType> demoSingleTRT;
+	static Set<TectonicRegionType> demoTRTs;
+	static Set<TectonicRegionType> demoTRTsNoSub;
+	static Set<TectonicRegionType> demoSingleTRT;
 	
 	IMR_MultiGuiBean gui;
 	
@@ -66,18 +68,12 @@ public class TestIMR_MultiGuiBean implements ScalarIMRChangeListener {
 	@BeforeClass
 	public static void setUpBeforeClass() {
 		imrs = getBuildIMRs();
-		demoTRTs = new ArrayList<TectonicRegionType>();
-		demoTRTs.add(TectonicRegionType.ACTIVE_SHALLOW);
-		demoTRTs.add(TectonicRegionType.STABLE_SHALLOW);
-		demoTRTs.add(TectonicRegionType.SUBDUCTION_INTERFACE);
-		demoTRTs.add(TectonicRegionType.SUBDUCTION_SLAB);
+		demoTRTs = EnumSet.of(TectonicRegionType.ACTIVE_SHALLOW, TectonicRegionType.STABLE_SHALLOW,
+				TectonicRegionType.SUBDUCTION_SLAB, TectonicRegionType.SUBDUCTION_INTERFACE);
 		
-		demoTRTsNoSub = new ArrayList<TectonicRegionType>();
-		demoTRTsNoSub.add(TectonicRegionType.ACTIVE_SHALLOW);
-		demoTRTsNoSub.add(TectonicRegionType.STABLE_SHALLOW);
+		demoTRTsNoSub = EnumSet.of(TectonicRegionType.ACTIVE_SHALLOW, TectonicRegionType.STABLE_SHALLOW);
 		
-		demoSingleTRT = new ArrayList<TectonicRegionType>();
-		demoSingleTRT.add(TectonicRegionType.ACTIVE_SHALLOW);
+		demoSingleTRT = EnumSet.of(TectonicRegionType.ACTIVE_SHALLOW);
 	}
 	
 	@Before
@@ -249,19 +245,19 @@ public class TestIMR_MultiGuiBean implements ScalarIMRChangeListener {
 		gui.setTectonicRegions(demoTRTs);
 		
 		try {
-			gui.setIMR(ShakeMap_2003_AttenRel.NAME, demoTRTs.get(0));
+			gui.setIMR(ShakeMap_2003_AttenRel.NAME, demoTRTs.iterator().next());
 			fail("Should throw exception when setIMR called in single IMR mode");
 		} catch (RuntimeException e) {}
 		
 		gui.setMultipleIMRs(true);
 		
 		try {
-			gui.setIMR(null, demoTRTs.get(0));
+			gui.setIMR(null, demoTRTs.iterator().next());
 			fail("Should throw exception when setIMR called with null name");
 		} catch (NoSuchElementException e) {}
 		
 		try {
-			gui.setIMR(null, demoTRTs.get(0));
+			gui.setIMR(null, demoTRTs.iterator().next());
 			fail("Should throw exception when setIMR called with null name");
 		} catch (NoSuchElementException e) {}
 		
@@ -271,16 +267,16 @@ public class TestIMR_MultiGuiBean implements ScalarIMRChangeListener {
 		} catch (RuntimeException e) {}
 		
 		try {
-			gui.setIMR(BA_2008_AttenRel.NAME, demoTRTs.get(0));
+			gui.setIMR(BA_2008_AttenRel.NAME, demoTRTs.iterator().next());
 			fail("Setting IMR should fail if IMR doesn't support current IMT!");
 		} catch (Exception e) {}
 		
 		gui.setIMT(pgaIMR);
 		
-		gui.setIMR(CY_2008_AttenRel.NAME, demoTRTs.get(0));
+		gui.setIMR(CY_2008_AttenRel.NAME, demoTRTs.iterator().next());
 		
 		assertEquals("Set IMR for TRT 0 didn't work!",
-				CY_2008_AttenRel.NAME, gui.getIMRMap().get(demoTRTs.get(0)).getName());
+				CY_2008_AttenRel.NAME, gui.getIMRMap().get(demoTRTs.iterator().next()).getName());
 		
 		gui.setTectonicRegions(demoTRTsNoSub);
 		

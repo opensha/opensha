@@ -106,7 +106,7 @@ public class FaultSectionBranchAverager {
 			avgSectSlipRateStdDevs[s] /= totWeight;
 			double avgRake = FaultUtils.getInRakeRange(avgSectRakes.get(s).getAverage());
 			
-			GeoJSONFaultSection avgSect = new GeoJSONFaultSection(new AvgFaultSection(refSect, avgSectAseis[s],
+			GeoJSONFaultSection avgSect = GeoJSONFaultSection.fromFaultSection(new AvgFaultSection(refSect, avgSectAseis[s],
 					avgSectCoupling[s], avgRake, avgSectSlipRates[s], avgSectSlipRateStdDevs[s]));
 			if (avgSectCreep != null && sectAnyCreeps[s]) {
 				avgSectCreep[s] /= totWeight;

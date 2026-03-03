@@ -1,8 +1,10 @@
 package org.opensha.sha.earthquake.griddedForecast;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.EventObject;
 import java.util.ListIterator;
+import java.util.Set;
 
 import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.geo.GriddedRegion;
@@ -183,10 +185,8 @@ ParameterChangeListener {
 	 * be overridden in subclasses if other types are used
 	 * @return : ArrayList<TectonicRegionType>
 	 */
-	public ArrayList<TectonicRegionType> getIncludedTectonicRegionTypes(){
-		ArrayList<TectonicRegionType> list = new ArrayList<TectonicRegionType>();
-		list.add(TectonicRegionType.ACTIVE_SHALLOW);
-		return list;
+	public Set<TectonicRegionType> getIncludedTectonicRegionTypes(){
+		return EnumSet.of(TectonicRegionType.ACTIVE_SHALLOW);
 	}
 
 	@Override

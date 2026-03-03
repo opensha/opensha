@@ -62,7 +62,10 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 	private List<? extends ScalarIMR> imrs;
 	private ArrayList<Boolean> imrEnables;
 
-	private ArrayList<TectonicRegionType> regions = null;
+	// set from the ERF
+	private Set<TectonicRegionType> regions = null;
+	// list for fixed iteration order
+	private List<TectonicRegionType> regionsList = null;
 	
 	private IMR_ParamEditor paramEdit = null;
 	private int chooserForEditor = 0;
@@ -168,9 +171,10 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 			// this is for multiple IMRs
 			if (!refreshOnly)
 				showHideButtons = new ArrayList<ShowHideButton>();
-			for (int i=0; i<regions.size(); i++) {
+			
+			for (int i=0; i<regionsList.size(); i++) {
+				TectonicRegionType region = regionsList.get(i);
 				// create label for tectonic region
-				TectonicRegionType region = regions.get(i);
 				JLabel label = new JLabel(region.toString());
 				label.setFont(trtFont);
 				this.add(wrapInPanel(label));
@@ -252,10 +256,12 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 	 * 
 	 * @param regions
 	 */
-	public void setTectonicRegions(ArrayList<TectonicRegionType> regions) {
+	public void setTectonicRegions(Set<TectonicRegionType> regions) {
+//		System.out.println("IMR_MultiGuiBean.setTectonicRegions("+regions+")");
 		// we can refresh only if there are none or < 2 regions, and the check box isn't showing
 		boolean refreshOnly = (regions == null || regions.size() < 2) && !isCheckBoxVisible();
 		this.regions = regions;
+		this.regionsList = regions == null ? null : new ArrayList<>(regions);
 		boolean prevSingle = !isMultipleIMRs();
 		this.rebuildGUI(refreshOnly);
 		boolean newSingle = !isMultipleIMRs();
@@ -270,7 +276,7 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 	 * 
 	 * @return the list Tectonic Regions from the GUI
 	 */
-	public ArrayList<TectonicRegionType> getTectonicRegions() {
+	public Set<TectonicRegionType> getTectonicRegions() {
 		return regions;
 	}
 
@@ -341,13 +347,13 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 	 */
 	public class EnableableCellRenderer extends BasicComboBoxRenderer {
 		
-		protected ArrayList<Boolean> trtSupported = null;
+		protected List<Boolean> trtSupported = null;
 		
 		public EnableableCellRenderer(TectonicRegionType trt) {
 			this(wrapInList(trt));
 		}
 		
-		public EnableableCellRenderer(ArrayList<TectonicRegionType> trts) {
+		public EnableableCellRenderer(List<TectonicRegionType> trts) {
 			if (trts != null) {
 				trtSupported = new ArrayList<Boolean>();
 				for (ScalarIMR imr : imrs) {
@@ -442,12 +448,12 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 		public void resetRenderer() {
 			EnableableCellRenderer renderer;
 			if (isMultipleIMRs()) {
-				TectonicRegionType trt = regions.get(comboBoxIndex);
+				TectonicRegionType trt = regionsList.get(comboBoxIndex);
 //				System.out.println("Resetting renderer for single: " + trt);
 				renderer = new EnableableCellRenderer(trt);
 			} else {
 //				System.out.println("Resetting renderer for multiple: " + regions);
-				renderer = new EnableableCellRenderer(regions);
+				renderer = new EnableableCellRenderer(regionsList);
 			}
 			this.setRenderer(renderer);
 		}
@@ -461,7 +467,7 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 		if (!isMultipleIMRs())
 			return chooserBoxes.get(0);
 		for (int i=0; i<regions.size(); i++) {
-			if (regions.get(i).toString().equals(trt.toString()))
+			if (regionsList.get(i) == trt)
 				return chooserBoxes.get(i);
 		}
 		return null;
@@ -601,7 +607,7 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 		if (!isMultipleIMRs())
 			throw new RuntimeException("Cannot show param editor for TRT in single IMR mode!");
 		for (int i=0; i<regions.size(); i++) {
-			if (regions.get(i).toString().equals(trt.toString())) {
+			if (regionsList.get(i) == trt) {
 				ShowHideButton button = showHideButtons.get(i);
 				if (button.isShowing())
 					button.doClick();
@@ -637,7 +643,7 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 			map.put(TectonicRegionType.ACTIVE_SHALLOW, imr);
 		} else {
 			for (int i=0; i<regions.size(); i++) {
-				TectonicRegionType region = regions.get(i);
+				TectonicRegionType region = regionsList.get(i);
 				map.put(region, getIMRForChooser(i));
 			}
 		}
@@ -692,7 +698,7 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 		if (trt == null)
 			throw new IllegalArgumentException("Tectonic Region Type cannot be null!");
 		for (int i=0; i<regions.size(); i++) {
-			if (trt.toString().equals(regions.get(i).toString())) {
+			if (trt == regionsList.get(i)) {
 				int index = ListUtils.getIndexByName(imrs, imrName);
 				if (index < 0)
 					throw new NoSuchElementException("IMR '" + imrName + "' not found");
