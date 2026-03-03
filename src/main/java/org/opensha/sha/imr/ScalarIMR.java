@@ -1,16 +1,23 @@
 package org.opensha.sha.imr;
 
-import java.util.ListIterator;
 import java.util.Random;
+import java.util.function.Function;
 
+import org.opensha.commons.data.WeightedList;
+import org.opensha.commons.data.WeightedValue;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.exceptions.IMRException;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.PointSurface;
+import org.opensha.sha.faultSurface.PointSurface.SiteSpecificDistanceCorrected;
+import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.util.TectonicRegionType;
+
+import com.google.common.base.Preconditions;
 
 
 /**
@@ -90,6 +97,62 @@ public interface ScalarIMR extends IntensityMeasureRelationship {
 	 * @return    The stdDev value
 	 */
 	public double getStdDev();
+	
+	/**
+	 * This returns the mean intensity-measure for the given earthquake rupture, properly handling the case of
+	 * multiple point-source distance corrections (and returning an average value across them).
+	 * @param eqkRupture
+	 * @return
+	 */
+	public default double getMean(EqkRupture eqkRupture) {
+		return calculateAverageValueAcrossDistanceCorrections(this, eqkRupture, S->S.getMean());
+	}
+	
+	/**
+	 * This returns the standard deviation of the intensity-measure for the given earthquake rupture, properly handling
+	 * the case of multiple point-source distance corrections (and returning an average value across them).
+	 * @param eqkRupture
+	 * @return
+	 */
+	public default double getStdDev(EqkRupture eqkRupture) {
+		return calculateAverageValueAcrossDistanceCorrections(this, eqkRupture, S->S.getStdDev());
+	}
+	
+	private static double calculateAverageValueAcrossDistanceCorrections(ScalarIMR gmm, EqkRupture eqkRupture, Function<ScalarIMR, Double> calculator) {
+		RuptureSurface surf = eqkRupture.getRuptureSurface();
+		if (surf instanceof PointSurface.DistanceCorrectable) {
+			// point surface with distance corrections
+			Location siteLoc = gmm.getSite().getLocation();
+			WeightedList<SurfaceDistances> surfs = ((PointSurface.DistanceCorrectable)surf).getCorrectedDistances(siteLoc);
+			Preconditions.checkState(surfs.isNormalized());
+			
+			double avgValue = 0d;
+			for (int s=0; s<surfs.size(); s++) {
+				WeightedValue<SurfaceDistances> dists = surfs.get(s);
+				
+				if (s == 0 || !(gmm instanceof ErgodicIMR)) {
+					// first time, need to set the full rupture
+					SiteSpecificDistanceCorrected corrSurf = new SiteSpecificDistanceCorrected((PointSurface)surf, siteLoc, dists.value);
+					gmm.setEqkRupture(new EqkRupture(eqkRupture.getMag(), eqkRupture.getAveRake(), corrSurf, eqkRupture.getHypocenterLocation()));
+				} else {
+					// subsequent time(s), only need to set the distances
+					((ErgodicIMR)gmm).setPropagationEffectParams(dists.value);
+				}
+				
+				avgValue += calculator.apply(gmm)*dists.weight;
+			}
+			
+			// clear the eqkRupture object so that we don't leave a stale site-specific corrected instance
+			gmm.setEqkRupture(null);
+			
+			return avgValue;
+		} else {
+			// no special treatment
+			gmm.setEqkRupture(eqkRupture);
+			
+			return calculator.apply(gmm);
+		}
+	}
 
 	/**
 	 *  This fills in the exceedance probability for multiple intensityMeasure

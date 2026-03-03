@@ -27,7 +27,7 @@ public interface RuptureExceedProbCalculator {
 	
 	static void calcExceedanceProbabilities(ScalarIMR gmm, EqkRupture eqkRupture, DiscretizedFunc exceedProbs) {
 		RuptureSurface surf = eqkRupture.getRuptureSurface();
-		if (gmm instanceof ErgodicIMR &&  surf instanceof DistanceCorrectable) {
+		if (surf instanceof DistanceCorrectable) {
 			// point surface with distance corrections
 			Location siteLoc = gmm.getSite().getLocation();
 			WeightedList<SurfaceDistances> surfs = ((PointSurface.DistanceCorrectable)surf).getCorrectedDistances(siteLoc);

@@ -770,6 +770,34 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 		public double getUncorrectedDistanceX(Location siteLoc) {
 			return super.getDistanceX(siteLoc);
 		}
+
+		public SurfaceDistances getUncorrectedDistances(Location siteLoc) {
+			return super.getDistances(siteLoc);
+		}
+		
+		public double getAverageDistanceRup(Location siteLoc) {
+			return getAverageDistances(siteLoc).getDistanceRup();
+		}
+		
+		public double getAverageDistanceJB(Location siteLoc) {
+			return getAverageDistances(siteLoc).getDistanceJB();
+		}
+		
+		public double getAverageDistanceX(Location siteLoc) {
+			return getAverageDistances(siteLoc).getDistanceX();
+		}
+
+		public SurfaceDistances getAverageDistances(Location siteLoc) {
+			double rRup=0d, rJB=0d, rX=0d;
+			WeightedList<SurfaceDistances> dists = getCorrectedDistances(siteLoc);
+			Preconditions.checkState(dists.isNormalized());
+			for (WeightedValue<SurfaceDistances> val : dists) {
+				rRup += val.weight * val.value.getDistanceRup();
+				rJB += val.weight * val.value.getDistanceJB();
+				rX += val.weight * val.value.getDistanceX();
+			}
+			return new SurfaceDistances.Precomputed(siteLoc, rRup, rJB, rX);
+		}
 		
 		public PointSurface getUncorrectedSurface() {
 			return surf;
