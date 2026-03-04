@@ -172,7 +172,7 @@ public class HAZ01Writer extends IM_EventSetOutputWriter {
                     RuptureSurface surf = rup.getRuptureSurface();
                     double rupDist;
                     if (surf instanceof PointSurface.DistanceCorrectable)
-                    	rupDist = ((PointSurface.DistanceCorrectable)surf).getAverageDistanceRup(site.getLocation());
+                    	rupDist = ((PointSurface.DistanceCorrectable)surf).getAverageDistances(site.getLocation()).getDistanceRup();
                     else
                     	rupDist = surf.getDistanceRup(site.getLocation());
 					

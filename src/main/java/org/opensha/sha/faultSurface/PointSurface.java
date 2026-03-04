@@ -721,9 +721,8 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 		
 		private static final String MESSAGE = "This PointSurface has a distance correction attached and should not be "
 				+ "used direction; insatead, you can access corrected instances via getCorrectedSurfaces(Location). "
-				+ "If accessed as part of a PointSource, use PointSource.getForSite(Site) to get a corrected source. "
-				+ "If you really need to access the distance metrics, uncorrected alternatives are provided, e.g., "
-				+ "getUncorrectedDistanceRup(Location).";
+				+ "If you really need to access the distance metrics, uncorrected or averaged alternatives are provided, e.g., "
+				+ "getUncorrectedDistances(Location) or getAverageDistances(Location).";
 		
 		private PointSurface surf;
 		
@@ -759,32 +758,8 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 			throw new IllegalStateException(MESSAGE);
 		}
 
-		public double getUncorrectedDistanceRup(Location siteLoc) {
-			return super.getDistanceRup(siteLoc);
-		}
-
-		public double getUncorrectedDistanceJB(Location siteLoc) {
-			return super.getDistanceJB(siteLoc);
-		}
-
-		public double getUncorrectedDistanceX(Location siteLoc) {
-			return super.getDistanceX(siteLoc);
-		}
-
 		public SurfaceDistances getUncorrectedDistances(Location siteLoc) {
 			return super.getDistances(siteLoc);
-		}
-		
-		public double getAverageDistanceRup(Location siteLoc) {
-			return getAverageDistances(siteLoc).getDistanceRup();
-		}
-		
-		public double getAverageDistanceJB(Location siteLoc) {
-			return getAverageDistances(siteLoc).getDistanceJB();
-		}
-		
-		public double getAverageDistanceX(Location siteLoc) {
-			return getAverageDistances(siteLoc).getDistanceX();
 		}
 
 		public SurfaceDistances getAverageDistances(Location siteLoc) {

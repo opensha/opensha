@@ -36,6 +36,7 @@ import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.PropagationEffectParams.DistanceRupParameter;
@@ -247,8 +248,6 @@ implements DisaggregationCalculatorAPI {
 
 		pdf3D = new double[dist_center.length][mag_center.length][NUM_E];
 
-		DistanceRupParameter distRup = new DistanceRupParameter();
-
 		String S = C + ": disaggregate(): ";
 
 		if (D) System.out.println(S + "STARTING DISAGGREGATION");
@@ -415,8 +414,11 @@ implements DisaggregationCalculatorAPI {
 
 				// get the mean, stdDev, epsilon, dist, and mag
 				epsilon = imr.getEpsilon(rupture);
-				distRup.setValue(rupture, site);
-				dist = ( (Double) distRup.getValue()).doubleValue();
+				RuptureSurface surf = rupture.getRuptureSurface();
+				if (surf instanceof PointSurface.DistanceCorrectable)
+					dist = ((PointSurface.DistanceCorrectable)surf).getAverageDistances(site.getLocation()).getDistanceRup();
+				else
+					dist = surf.getDistanceRup(site.getLocation());
 				mag = rupture.getMag();
 
 				// get the equiv. Poisson rate over the time interval (not annualized)

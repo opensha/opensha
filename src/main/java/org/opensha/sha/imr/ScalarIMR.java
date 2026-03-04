@@ -230,10 +230,10 @@ public interface ScalarIMR extends IntensityMeasureRelationship {
 	);
 	
 	/**
-	 * This returns the result {@link #getExceedProbabilities(DiscretizedFunc)}, except properly handling
+	 * This does the same as {@link #getExceedProbabilities(DiscretizedFunc)}, except properly handling
 	 * the case of multiple point-source distance corrections (and returning an average value across them if so).
 	 * @param eqkRupture
-	 * @return
+	 * @param exceedProbs
 	 */
 	public default void getExceedProbabilities(EqkRupture eqkRupture, DiscretizedFunc exceedProbs) {
 		RuptureSurface surf = eqkRupture.getRuptureSurface();
