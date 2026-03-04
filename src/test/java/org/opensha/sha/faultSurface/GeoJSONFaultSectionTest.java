@@ -47,7 +47,7 @@ public class GeoJSONFaultSectionTest {
 		if (sect instanceof GeoJSONFaultSection)
 			jsonSect = (GeoJSONFaultSection)sect;
 		else
-			jsonSect = new GeoJSONFaultSection(sect);
+			jsonSect = GeoJSONFaultSection.fromFaultSection(sect);
 		
 		return gson.toJson(jsonSect.toFeature());
 	}
@@ -200,7 +200,7 @@ public class GeoJSONFaultSectionTest {
 		String stringPropName = "StringProp";
 		String boolPropName = "BooleanProp";
 		for (FaultSection sect : faultModel) {
-			GeoJSONFaultSection jsonSect = new GeoJSONFaultSection(sect);
+			GeoJSONFaultSection jsonSect = GeoJSONFaultSection.fromFaultSection(sect);
 			
 			int intVal = r.nextInt();
 			long longVal = r.nextLong();
@@ -241,7 +241,7 @@ public class GeoJSONFaultSectionTest {
 		String singleQuoteBoolPropName = "SingleQuoteBoolProp";
 		String doubleQuoteBoolPropName = "DoubleQuoteBoolProp";
 		for (FaultSection sect : faultModel) {
-			GeoJSONFaultSection jsonSect = new GeoJSONFaultSection(sect);
+			GeoJSONFaultSection jsonSect = GeoJSONFaultSection.fromFaultSection(sect);
 			
 			long longVal = r.nextLong();
 			double doubleVal = r.nextDouble();

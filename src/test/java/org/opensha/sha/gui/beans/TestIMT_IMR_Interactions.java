@@ -3,7 +3,9 @@ package org.opensha.sha.gui.beans;
 import static org.junit.Assert.*;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -26,7 +28,7 @@ import org.opensha.sha.util.TectonicRegionType;
 public class TestIMT_IMR_Interactions {
 
 	static List<? extends ScalarIMR> imrs;
-	static ArrayList<TectonicRegionType> demoTRTs;
+	static Set<TectonicRegionType> demoTRTs;
 
 	IMR_MultiGuiBean imrGui;
 	IMT_NewGuiBean imtGui;
@@ -37,11 +39,8 @@ public class TestIMT_IMR_Interactions {
 		imrs =  AttenRelRef.instanceList(null, true);
 		for (ScalarIMR imr : imrs)
 			imr.setParamDefaults();
-		demoTRTs = new ArrayList<TectonicRegionType>();
-		demoTRTs.add(TectonicRegionType.ACTIVE_SHALLOW);
-		demoTRTs.add(TectonicRegionType.STABLE_SHALLOW);
-		demoTRTs.add(TectonicRegionType.SUBDUCTION_INTERFACE);
-		demoTRTs.add(TectonicRegionType.SUBDUCTION_SLAB);
+		demoTRTs = EnumSet.of(TectonicRegionType.ACTIVE_SHALLOW, TectonicRegionType.STABLE_SHALLOW,
+				TectonicRegionType.SUBDUCTION_SLAB, TectonicRegionType.SUBDUCTION_INTERFACE);
 	}
 
 	@Before

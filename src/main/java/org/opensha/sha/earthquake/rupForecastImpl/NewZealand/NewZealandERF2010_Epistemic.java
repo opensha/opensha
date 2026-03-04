@@ -6,6 +6,7 @@ package org.opensha.sha.earthquake.rupForecastImpl.NewZealand;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.StringTokenizer;
 import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.data.estimate.DiscreteValueEstimate;
@@ -182,7 +183,7 @@ public class NewZealandERF2010_Epistemic  extends AbstractEpistemicListERF{
 	}
 	
 	@Override
-	public ArrayList<TectonicRegionType> getIncludedTectonicRegionTypes() {
+	public Set<TectonicRegionType> getIncludedTectonicRegionTypes() {
 
 		return newZealand2010ERF.getTectonicRegionTypes();
 	}

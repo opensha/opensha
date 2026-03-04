@@ -2,7 +2,9 @@ package org.opensha.sha.earthquake.rupForecastImpl.NewZealand;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.StringTokenizer;
 
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.HanksBakun2002_MagAreaRel;
@@ -154,7 +156,7 @@ public class NewZealandERF2015_ChchAftershock extends AbstractERF{
 	private ArrayList<Double> sourceMedianAnnualRates = new ArrayList<Double>();
 	
 	//Tectonic types
-	private ArrayList<TectonicRegionType> tectonicRegionTypes;
+	private Set<TectonicRegionType> tectonicRegionTypes;
 	private final static String ACTIVE_SHALLOW = "ACTIVE_SHALLOW";
 	private final static String SUBDUCTION_INTERFACE = "SUBDUCTION_INTERFACE";
 	private final static String SUBDUCTION_SLAB = "SUBDUCTION_SLAB";
@@ -723,7 +725,7 @@ public class NewZealandERF2015_ChchAftershock extends AbstractERF{
 	 * This method makes the tectonic regions list
 	 */
 	public void makeTectonicRegionList() {
-		tectonicRegionTypes = new ArrayList<TectonicRegionType>();
+		tectonicRegionTypes = EnumSet.noneOf(TectonicRegionType.class);
 		if(numActiveShallow>0) tectonicRegionTypes.add(TectonicRegionType.ACTIVE_SHALLOW);
 		if(numVolcanic>0) tectonicRegionTypes.add(TectonicRegionType.VOLCANIC);
 		if(numSubSlab>0) tectonicRegionTypes.add(TectonicRegionType.SUBDUCTION_SLAB);
@@ -733,7 +735,7 @@ public class NewZealandERF2015_ChchAftershock extends AbstractERF{
 	/**
 	 * This method copies the tectonicRegionTypes for using in the epistemic uncertainty version
 	 */
-	public ArrayList<TectonicRegionType> getTectonicRegionTypes() {
+	public Set<TectonicRegionType> getTectonicRegionTypes() {
 		return tectonicRegionTypes;
 	}
 	
@@ -818,7 +820,7 @@ public class NewZealandERF2015_ChchAftershock extends AbstractERF{
 	}
 	
 	@Override
-	public ArrayList<TectonicRegionType> getIncludedTectonicRegionTypes() {
+	public Set<TectonicRegionType> getIncludedTectonicRegionTypes() {
 		return tectonicRegionTypes;
 	}
 	

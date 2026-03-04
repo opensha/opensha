@@ -290,7 +290,7 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel, RupSetSu
 		List<GeoJSONFaultSection> modSects = new ArrayList<>();
 		int numNonZero = 0;
 		for (FaultSection sect : origSects) {
-			GeoJSONFaultSection modSect = new GeoJSONFaultSection(sect);
+			GeoJSONFaultSection modSect = GeoJSONFaultSection.fromFaultSection(sect);
 			DefModelRecord rec = recordMap.get(sect.getSectionId());
 			if (rec == null) {
 				System.err.println("WARNING: no matching deformation model record for id="

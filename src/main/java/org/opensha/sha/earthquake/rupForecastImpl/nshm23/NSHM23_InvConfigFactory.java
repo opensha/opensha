@@ -2002,7 +2002,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				if (sect instanceof GeoJSONFaultSection)
 					geoSect = (GeoJSONFaultSection)sect;
 				else
-					geoSect = new GeoJSONFaultSection(sect);
+					geoSect = GeoJSONFaultSection.fromFaultSection(sect);
 				Feature feature = geoSect.toFeature();
 				FeatureProperties props = feature.properties;
 				double curLowDepth = props.getDouble(GeoJSONFaultSection.LOW_DEPTH, Double.NaN);
@@ -2411,7 +2411,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 					double newLower = 7d + (origLower - origUpper);
 					
 					GeoJSONFaultSection origSect = (sect instanceof GeoJSONFaultSection) ?
-							(GeoJSONFaultSection)sect : new GeoJSONFaultSection(sect);
+							(GeoJSONFaultSection)sect : GeoJSONFaultSection.fromFaultSection(sect);
 					Feature feature = origSect.toFeature();
 					feature.properties.set(GeoJSONFaultSection.UPPER_DEPTH, newUpper);
 					feature.properties.set(GeoJSONFaultSection.LOW_DEPTH, newLower);

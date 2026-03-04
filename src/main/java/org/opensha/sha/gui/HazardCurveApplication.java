@@ -19,6 +19,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import javax.swing.BorderFactory;
@@ -2702,9 +2703,12 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	/** 
 	 * This method gets the included tectonic region types, which is needed by some control panels
 	 */
-	public ArrayList<TectonicRegionType> getIncludedTectonicRegionTypes() {
+	public Set<TectonicRegionType> getIncludedTectonicRegionTypes() {
 		try {
-			ArrayList<TectonicRegionType> includedTectonicRegionTypes =  erfGuiBean.getSelectedERF_Instance().getIncludedTectonicRegionTypes();
+			BaseERF selectedERF = erfGuiBean.getSelectedERF();
+//			System.out.println("Getting TRTs for "+selectedERF.getName());
+			Set<TectonicRegionType> includedTectonicRegionTypes =  selectedERF.getIncludedTectonicRegionTypes();
+//			System.out.println("Returning TRTs: "+includedTectonicRegionTypes);
 			return includedTectonicRegionTypes;
 		} catch (InvocationTargetException e) {
 			e.printStackTrace();

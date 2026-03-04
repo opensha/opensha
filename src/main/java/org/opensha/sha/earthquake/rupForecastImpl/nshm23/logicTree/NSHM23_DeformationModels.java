@@ -445,7 +445,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 			if (sect instanceof GeoJSONFaultSection)
 				geoSects.add((GeoJSONFaultSection)sect);
 			else
-				geoSects.add(new GeoJSONFaultSection(sect));
+				geoSects.add(GeoJSONFaultSection.fromFaultSection(sect));
 		}
 		GeoJSONFaultReader.attachGeoDefModel(geoSects, defModel);
 		

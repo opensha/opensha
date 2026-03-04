@@ -445,7 +445,7 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 			int numProxySectsPerPoly = numProxySectsPerPolys.get(sectID);
 			
 			Preconditions.checkState(proxyTraces.size() == numProxySectsPerPoly);
-			GeoJSONFaultSection geoSect = sect instanceof GeoJSONFaultSection ? (GeoJSONFaultSection)sect : new GeoJSONFaultSection(sect);
+			GeoJSONFaultSection geoSect = sect instanceof GeoJSONFaultSection ? (GeoJSONFaultSection)sect : GeoJSONFaultSection.fromFaultSection(sect);
 			Feature origFeature = geoSect.toFeature();
 			FeatureProperties proxyProps = new FeatureProperties(origFeature.properties);
 			proxyProps.remove(GeoJSONFaultSection.FAULT_ID);
