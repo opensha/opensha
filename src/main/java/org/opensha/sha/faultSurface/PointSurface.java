@@ -14,7 +14,6 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.FaultUtils;
-import org.opensha.sha.earthquake.PointSource;
 import org.opensha.sha.faultSurface.cache.CacheEnabledSurface;
 import org.opensha.sha.faultSurface.cache.SingleLocDistanceCache;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
@@ -31,12 +30,8 @@ import com.google.common.base.Preconditions;
  * <b>Description:</b> This is a special case of RuptureSurface
  * that is a point surface (has only one Location). <p>
  * 
- * This class has been modified to have threadsafe distance methods that are
- * not synchronized like those of the finite fault sources.
- *
- * A PointSurface should only be used with a threadsafe EqkRupture; users
- * should ensure that new surfaces or parent ruptures are being created
- * for each calculation loop and each calculator.
+ * Distance-correctioned surfaces can be accessed via
+ * {@link #getForDistanceCorrection(PointSourceDistanceCorrection, TectonicRegionType, double)} and related methods.
  *
  * @author     Ned Field (completely rewritten)
  * @created    February 26, 2002
@@ -187,9 +182,18 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	 * @param magnitude
 	 * @return on-the-fly distance correcting view of this point source for the given single distance correction
 	 */
-	public DistanceCorrecting getForDistanceCorrection(
+	public DistanceCorrecting getForSingleDistanceCorrection(
 			PointSourceDistanceCorrection.Single singleCorr, TectonicRegionType trt, double magnitude) {
 		return new DistanceCorrecting(this, singleCorr, trt, magnitude);
+	}
+	
+	/**
+	 * 
+	 * @return a version of this source for the given distance correction that blocks access to all raw distance metrics
+	 * and provides access to distance-corrected surface instances
+	 */
+	public DistanceCorrectable getForDistanceCorrection(PointSourceDistanceCorrection corr, TectonicRegionType trt, double magnitude) {
+		return new DistanceCorrectable(this, corr, trt, magnitude);
 	}
 	
 	/**
@@ -203,9 +207,7 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	 */
 	public WeightedList<SiteSpecificDistanceCorrected> getForDistanceCorrection(Location siteLoc,
 			PointSourceDistanceCorrection distCorr, TectonicRegionType trt, double magnitude) {
-		double horzDist = LocationUtils.horzDistanceFast(pointLocation, siteLoc);
-		WeightedList<SurfaceDistances> corrDists = distCorr.getCorrectedDistances(siteLoc, this, trt, magnitude, horzDist);
-		Preconditions.checkState(corrDists.isNormalized(), "Returned corrected distances aren't normalized for %s", distCorr);
+		WeightedList<SurfaceDistances> corrDists = getCorrectedDistances(siteLoc, distCorr, trt, magnitude);
 		List<WeightedValue<SiteSpecificDistanceCorrected>> surfs = new ArrayList<>(corrDists.size());
 		for (int i=0; i<corrDists.size(); i++) {
 			SurfaceDistances dists = corrDists.getValue(i);
@@ -231,15 +233,6 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 		WeightedList<SurfaceDistances> corrDists = distCorr.getCorrectedDistances(siteLoc, this, trt, magnitude, horzDist);
 		Preconditions.checkState(corrDists.isNormalized(), "Returned corrected distances aren't normalized for %s", distCorr);
 		return corrDists;
-	}
-	
-	/**
-	 * 
-	 * @return a version of this source that blocks access to all distance metrics, used to ensure that raw distances
-	 * are never used when distance corrections are enabled
-	 */
-	public DistanceCorrectable getDistancedProtected(PointSourceDistanceCorrection corr, TectonicRegionType trt, double magnitude) {
-		return new DistanceCorrectable(this, corr, trt, magnitude);
 	}
 
 	/**
@@ -585,7 +578,10 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	
 	/**
 	 * Point surface wrapper with pre-computed {@link SurfaceDistances} for a specific site, usually from a
-	 * {@link PointSourceDistanceCorrection}
+	 * {@link PointSourceDistanceCorrection}. In order to prevent stale instances from being reused for new sites,
+	 * this asserts that, when calling getDistance*(Location), the passed in site equals the original site.
+	 * <p>
+	 * If ever accidentally reused for a new location, an {@link IllegalStateException} is thrown.
 	 */
 	public static class SiteSpecificDistanceCorrected extends PointSurface {
 		
@@ -627,6 +623,9 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 
 	}
 	
+	/**
+	 * Interface indicating that a rupture surface has a distance correction attached to it
+	 */
 	public interface DistanceCorrectionAttached extends RuptureSurface {
 		/**
 		 * @return magnitude used with {@link #getDistanceCorrection()}
@@ -646,7 +645,9 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	
 	/**
 	 * Point surface wrapper with that calculates corrected distances on the fly from a
-	 * {@link PointSourceDistanceCorrection.Single} correction.
+	 * {@link PointSourceDistanceCorrection.Single} correction. This is only used for distance corrections that
+	 * always return single distances (i.e., only {@link PointSourceDistanceCorrection.Single} and not
+	 * {@link PointSourceDistanceCorrection}).
 	 */
 	public static class DistanceCorrecting extends PointSurface implements DistanceCorrectionAttached, CacheEnabledSurface {
 		
@@ -713,16 +714,24 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	}
 	
 	/**
-	 * Point surface wrapper that blocks access to all distance metrics; used by a {@link PointSource} to prevent other
-	 * classes from accidentally accessing non-corrected distance metrics. Instead, an {@link IllegalStateException} will
-	 * be thrown.
+	 * Point surface wrapper for surface with a distance correction attached that needs to be applied in order to
+	 * retrieve distances for a given site. Because corrections can return a {@link WeightedList} of {@link SurfaceDistances},
+	 * calculators must retrieve the corrected views via {@link DistanceCorrectable#getCorrectedDistances(Location)} or
+	 * {@link DistanceCorrectable#getCorrectedSurfaces(Location)}.
+	 * <p>
+	 * This is implemented in a paranoid manner as to avoid accidental access of the raw, uncorrected distances. Any
+	 * calls to the getDistance*(Location) methods will throw an {@link IllegalStateException}. If you really need the
+	 * uncorrected distances, you can get the original surface via {@link DistanceCorrectable#getUncorrectedSurface()}
+	 * or the distances via {@link DistanceCorrectable#getUncorrectedDistances(Location)}. You can also access
+	 * weighted-average distances, which should not be used to parameterize IMRs but can be useful for things like
+	 * disaggregation, via {@link DistanceCorrectable#getAverageDistances(Location)}.
 	 */
 	public static class DistanceCorrectable extends PointSurface implements DistanceCorrectionAttached {
 		
 		private static final String MESSAGE = "This PointSurface has a distance correction attached and should not be "
-				+ "used direction; insatead, you can access corrected instances via getCorrectedSurfaces(Location). "
-				+ "If you really need to access the distance metrics, uncorrected or averaged alternatives are provided, e.g., "
-				+ "getUncorrectedDistances(Location) or getAverageDistances(Location).";
+				+ "used directly; insatead, you can access corrected instances via getCorrectedSurfaces(Location). "
+				+ "If need to access the single distance metrics, uncorrected or averaged alternatives are provided "
+				+ "via getUncorrectedDistances(Location) or getAverageDistances(Location).";
 		
 		private PointSurface surf;
 		
@@ -758,13 +767,30 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 			throw new IllegalStateException(MESSAGE);
 		}
 
+		/**
+		 * 
+		 * @param siteLoc
+		 * @return
+		 */
 		public SurfaceDistances getUncorrectedDistances(Location siteLoc) {
 			return super.getDistances(siteLoc);
 		}
 
+		/**
+		 * This returns weight-averaged distances across all corrected distances supplied by the chosen
+		 * {@link PointSourceDistanceCorrection} for the given site.
+		 * <p>
+		 * Note that this should not be used to parameterize IMRs or similar models because values (e.g., exceedance 
+		 * probabilities) computed using average distances are not the same as values computed for each distance
+		 * and then averaged.
+		 * @param siteLoc
+		 * @return
+		 */
 		public SurfaceDistances getAverageDistances(Location siteLoc) {
 			double rRup=0d, rJB=0d, rX=0d;
 			WeightedList<SurfaceDistances> dists = getCorrectedDistances(siteLoc);
+			if (dists.size() == 1)
+				return dists.getValue(0);
 			Preconditions.checkState(dists.isNormalized());
 			for (WeightedValue<SurfaceDistances> val : dists) {
 				rRup += val.weight * val.value.getDistanceRup();
@@ -774,6 +800,9 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 			return new SurfaceDistances.Precomputed(siteLoc, rRup, rJB, rX);
 		}
 		
+		/**
+		 * @return the original uncorrected surface
+		 */
 		public PointSurface getUncorrectedSurface() {
 			return surf;
 		}
