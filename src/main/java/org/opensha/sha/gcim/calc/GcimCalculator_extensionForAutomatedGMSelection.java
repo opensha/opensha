@@ -261,13 +261,10 @@ implements GcimCalculatorAPI {
 		        	numRupRejected+=1;
 		        	continue;
 		        }
-				
-				// set the rupture in the imr
-				imri.setEqkRupture(rupture);
 
 				// get the unconditional mean, stdDev of lnIMi for the given rupture
-				mulnIMi_Rup = imri.getMean();
-				stdlnIMi_Rup = imri.getStdDev();
+				mulnIMi_Rup = imri.getMean(rupture);
+				stdlnIMi_Rup = imri.getStdDev(rupture);
 				
 				// get the conditional mean, stdDev of lnIMi for the given rupture
 				mulnIMi_RupIMj[i][j] = mulnIMi_Rup + stdlnIMi_Rup * rho_lnIMilnIMj *epsilonIMj[i][j];

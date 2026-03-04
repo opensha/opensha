@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -65,7 +66,8 @@ public class IMCorrRel_MultiGuiBean extends LabeledBoxPanel implements ActionLis
 	private ArrayList<ImCorrelationRelationship> imCorrRels;
 	private ArrayList<Boolean> imCorrRelEnables;
 
-	private ArrayList<TectonicRegionType> regions = null;
+	private Set<TectonicRegionType> regions = null;
+	private List<TectonicRegionType> regionsList = null;
 	
 	private IMCorrRel_ParamEditor paramEdit = null;
 	private int chooserForEditor = 0;
@@ -149,9 +151,9 @@ public class IMCorrRel_MultiGuiBean extends LabeledBoxPanel implements ActionLis
 			// this is for multiple IMCorrRels
 			if (!refreshOnly)
 				showHideButtons = new ArrayList<ShowHideButton>();
-			for (int i=0; i<regions.size(); i++) {
+			for (int i=0; i<regionsList.size(); i++) {
 				// create label for tectonic region
-				TectonicRegionType region = regions.get(i);
+				TectonicRegionType region = regionsList.get(i);
 				JLabel label = new JLabel(region.toString());
 				label.setFont(trtFont);
 				this.add(wrapInPanel(label));
@@ -232,10 +234,11 @@ public class IMCorrRel_MultiGuiBean extends LabeledBoxPanel implements ActionLis
 	 * 
 	 * @param regions
 	 */
-	public void setTectonicRegions(ArrayList<TectonicRegionType> regions) {
+	public void setTectonicRegions(Set<TectonicRegionType> regions) {
 		// we can refresh only if there are none or < 2 regions, and the check box isn't showing
 		boolean refreshOnly = (regions == null || regions.size() < 2) && !isCheckBoxVisible();
 		this.regions = regions;
+		this.regionsList = regions == null ? null : new ArrayList<>(regions);
 		boolean prevSingle = !isMultipleIMCorrRels();
 		this.rebuildGUI(refreshOnly);
 		boolean newSingle = !isMultipleIMCorrRels();
@@ -250,7 +253,7 @@ public class IMCorrRel_MultiGuiBean extends LabeledBoxPanel implements ActionLis
 	 * 
 	 * @return the list Tectonic Regions from the GUI
 	 */
-	public ArrayList<TectonicRegionType> getTectonicRegions() {
+	public Set<TectonicRegionType> getTectonicRegions() {
 		return regions;
 	}
 
@@ -392,7 +395,7 @@ public class IMCorrRel_MultiGuiBean extends LabeledBoxPanel implements ActionLis
 
 			TectonicRegionType trt = null;
 			if (isMultipleIMCorrRels())
-				trt = regions.get(index);
+				trt = regionsList.get(index);
 			this.setRenderer(new EnableableCellRenderer(trt));
 			
 			this.comboBoxIndex = index;
@@ -408,8 +411,8 @@ public class IMCorrRel_MultiGuiBean extends LabeledBoxPanel implements ActionLis
 	protected ChooserComboBox getChooser(TectonicRegionType trt) {
 		if (!isMultipleIMCorrRels())
 			return chooserBoxes.get(0);
-		for (int i=0; i<regions.size(); i++) {
-			if (regions.get(i).toString().equals(trt.toString()))
+		for (int i=0; i<regionsList.size(); i++) {
+			if (regionsList.get(i).toString().equals(trt.toString()))
 				return chooserBoxes.get(i);
 		}
 		return null;
@@ -548,8 +551,8 @@ public class IMCorrRel_MultiGuiBean extends LabeledBoxPanel implements ActionLis
 	public void showParamEditor(TectonicRegionType trt) {
 		if (!isMultipleIMCorrRels())
 			throw new RuntimeException("Cannot show param editor for TRT in single IMCorrRel mode!");
-		for (int i=0; i<regions.size(); i++) {
-			if (regions.get(i).toString().equals(trt.toString())) {
+		for (int i=0; i<regionsList.size(); i++) {
+			if (regionsList.get(i) == trt) {
 				ShowHideButton button = showHideButtons.get(i);
 				if (button.isShowing())
 					button.doClick();
@@ -597,7 +600,7 @@ public class IMCorrRel_MultiGuiBean extends LabeledBoxPanel implements ActionLis
 			map.put(TectonicRegionType.ACTIVE_SHALLOW, imCorrRel);
 		} else {
 			for (int i=0; i<regions.size(); i++) {
-				TectonicRegionType region = regions.get(i);
+				TectonicRegionType region = regionsList.get(i);
 				map.put(region, getIMCorrRelForChooser(i));
 			}
 		}
@@ -678,7 +681,7 @@ public class IMCorrRel_MultiGuiBean extends LabeledBoxPanel implements ActionLis
 		if (trt == null)
 			throw new IllegalArgumentException("Tectonic Region Type cannot be null!");
 		for (int i=0; i<regions.size(); i++) {
-			if (trt.toString().equals(regions.get(i).toString())) {
+			if (trt == regionsList.get(i)) {
 				int index = ListUtils.getIndexByName(imCorrRels, imCorrRelName);
 				if (index < 0)
 					throw new NoSuchElementException("IMCorrRel '" + imCorrRelName + "' not found");
@@ -706,8 +709,8 @@ public class IMCorrRel_MultiGuiBean extends LabeledBoxPanel implements ActionLis
 			ImCorrelationRelationship imCorrRel = imikCorrRel; //Hard coded
 			map.put(TectonicRegionType.ACTIVE_SHALLOW, imCorrRel);
 		} else {
-			for (int i=0; i<regions.size(); i++) {
-				TectonicRegionType region = regions.get(i);
+			for (int i=0; i<regionsList.size(); i++) {
+				TectonicRegionType region = regionsList.get(i);
 				map.put(region, imikCorrRel);  //Hard coded
 			}
 		}

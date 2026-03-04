@@ -4,6 +4,7 @@ package org.opensha.sha.earthquake;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.ListIterator;
+import java.util.Set;
 
 import org.opensha.commons.data.Named;
 import org.opensha.commons.data.TimeSpan;
@@ -80,7 +81,7 @@ public interface BaseERF extends Named, Serializable, Comparable<BaseERF> {
 
 	/**
 	 * This specifies what types of Tectonic Regions are included in the ERF
-	 * @return : ArrayList<TectonicRegionType>
+	 * @return : Set<TectonicRegionType>
 	 */
-	public ArrayList<TectonicRegionType> getIncludedTectonicRegionTypes();
+	public Set<TectonicRegionType> getIncludedTectonicRegionTypes();
 }

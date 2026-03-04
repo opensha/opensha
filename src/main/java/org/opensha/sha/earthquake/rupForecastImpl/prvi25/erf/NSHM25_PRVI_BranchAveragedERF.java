@@ -4,10 +4,12 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.NSHM25_Downloader;
+import org.opensha.sha.util.TectonicRegionType;
 
 import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
+import java.util.Set;
 
 /**
  * USGS 2025 NSHM ERF, Puerto Rico and Virgin Islands, Branch Averaged ERF
@@ -71,7 +73,7 @@ public class NSHM25_PRVI_BranchAveragedERF extends BaseFaultSystemSolutionERF {
         }).join();
     }
 
-    /**
+	/**
      * Ensure our solution is fetched and loaded and then update the forecast.
      * Only checks for newer models if not already loaded in this session.
      */
@@ -85,6 +87,9 @@ public class NSHM25_PRVI_BranchAveragedERF extends BaseFaultSystemSolutionERF {
     }
 
     public static void main(String[] args) {
-        new NSHM25_PRVI_BranchAveragedERF().updateForecast();
+    	NSHM25_PRVI_BranchAveragedERF erf = new NSHM25_PRVI_BranchAveragedERF();
+    	erf.updateForecast();
+    	
+    	System.out.println("TRTs:\n"+erf.getIncludedTectonicRegionTypes());
     }
 }

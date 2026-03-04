@@ -284,9 +284,9 @@ extends JPanel implements EqkRupSelectorGuiBeanAPI, ParameterChangeListener {
 			PointSourceDistanceCorrection corr = distCorrParam.getValue().get();
 			if (corr != null) {
 				if (corr instanceof PointSourceDistanceCorrection.Single) {
-					ptSurface = ptSurface.getForDistanceCorrection((PointSourceDistanceCorrection.Single)corr, null, magParam.getValue());
+					ptSurface = ptSurface.getForSingleDistanceCorrection((PointSourceDistanceCorrection.Single)corr, null, magParam.getValue());
 				} else {
-					ptSurface = ptSurface.getDistancedProtected(corr, null, magParam.getValue());
+					ptSurface = ptSurface.getForDistanceCorrection(corr, null, magParam.getValue());
 				}
 			}
 			this.ruptureSurface = ptSurface;

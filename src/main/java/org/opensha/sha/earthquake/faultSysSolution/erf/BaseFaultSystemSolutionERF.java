@@ -5,9 +5,11 @@ import static org.opensha.sha.earthquake.param.IncludeBackgroundOption.ONLY;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.EventObject;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.UnaryOperator;
 
 import javax.swing.event.ChangeEvent;
@@ -113,6 +115,8 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	protected FaultSystemSolution faultSysSolution;		// the FFS for the ERF
 	protected Optional<RupMFDsModule> mfdsModuleOptional; // rupture MFDs (if available); null until first load is tried
 	protected Optional<ProxyFaultSectionInstances> proxySectsModuleOptional;					// proxy sects (if available); null until first load is tried
+	protected Optional<RupSetTectonicRegimes> trtsModuleOptional;		// rupture-specific TRTs module
+	protected Set<TectonicRegionType> erfTRTs;			// TRTs from the rupture set and gridded seismicity
 	protected boolean cacheGridSources = false;			// if true, grid sources are cached instead of built on the fly
 	protected ProbEqkSource[] gridSourceCache = null;
 	protected int numNonZeroFaultSystemSources;			// this is the number of faultSystemRups with non-zero rates (each is a source here)
@@ -511,6 +515,8 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		// clear out any cached values
 		mfdsModuleOptional = null;
 		proxySectsModuleOptional = null;
+		trtsModuleOptional = null;
+		erfTRTs = null;
 		gridSourceCache = null;
 		
 		// set flags
@@ -655,6 +661,20 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 			// no MFD for this rupture, or it only has 1 value
 			return null;
 		return rupMFD;
+	}
+	
+	protected RupSetTectonicRegimes getRupSetTectonicRegimes() {
+		if (trtsModuleOptional == null) {
+			synchronized (this) {
+				if (trtsModuleOptional == null) {
+					trtsModuleOptional = faultSysSolution.getRupSet().getOptionalModule(RupSetTectonicRegimes.class);
+				}
+			}
+		}
+		if (trtsModuleOptional.isEmpty())
+			// don't have TRTs
+			return null;
+		return trtsModuleOptional.get();
 	}
 	
 	/**
@@ -925,6 +945,31 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		if (disaggSourceConsolidator == null)
 			disaggSourceConsolidator = new SolutionDisaggConsolidator(this);
 		return disaggSourceConsolidator;
+	}
+
+	@Override
+	public Set<TectonicRegionType> getIncludedTectonicRegionTypes() {
+		if (erfTRTs == null) {
+			if (faultSysSolution == null)
+				return EnumSet.of(TectonicRegionType.ACTIVE_SHALLOW);
+			synchronized (this) {
+				if (erfTRTs == null) {
+					EnumSet<TectonicRegionType> trts = EnumSet.noneOf(TectonicRegionType.class);
+					
+					// add in those from the rupture set
+					RupSetTectonicRegimes rupSetTRTs = getRupSetTectonicRegimes();
+					if (rupSetTRTs != null)
+						trts.addAll(rupSetTRTs.getSet());
+					
+					// add in those from the gridded seismicity
+					GridSourceProvider gridProv = getGridSourceProvider();
+					if (gridProv != null)
+						trts.addAll(gridProv.getTectonicRegionTypes());
+					erfTRTs = trts;
+				}
+			}
+		}
+		return erfTRTs;
 	}
 	
 }
