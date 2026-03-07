@@ -35,6 +35,13 @@ public class FaultTrace extends LocationList implements Named {
 	 *  Fault name field
 	 */
 	private String faultName;
+	
+	public static FaultTrace of(Location... locs) {
+		FaultTrace ret = new FaultTrace(null, locs.length);
+		for (Location loc : locs)
+			ret.add(loc);
+		return ret;
+	}
 
 	public FaultTrace() {
 		this(null);

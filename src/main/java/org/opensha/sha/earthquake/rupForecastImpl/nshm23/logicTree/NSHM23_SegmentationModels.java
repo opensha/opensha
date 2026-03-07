@@ -291,7 +291,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	
 	public abstract JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch);
 	
-	private static JumpProbabilityCalc buildModel(FaultSystemRupSet rupSet, double shawR0, double shawShift,
+	public static JumpProbabilityCalc buildModel(FaultSystemRupSet rupSet, double shawR0, double shawShift,
 			double wasatchProb, double creepingProb, double hardCutoff, boolean namedFaultsOnly) {
 		// distance dependent model, possibly with a horizontal shift
 		JumpProbabilityCalc model = null;

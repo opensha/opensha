@@ -218,6 +218,11 @@ public class GeoJSONFaultSection implements FaultSection {
 			return this;
 		}
 		
+		public Builder aseismicity(double aseismicity) {
+			props.set(ASEIS, aseismicity);
+			return this;
+		}
+		
 		public Feature getFeature() {
 			return feature;
 		}
