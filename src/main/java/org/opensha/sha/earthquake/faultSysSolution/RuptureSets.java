@@ -451,8 +451,16 @@ public class RuptureSets {
 		@Expose	private boolean requireFullWidthAfterJumps = RectangularDownDipGrowingStrategy.REQUIRE_FULL_WIDTH_AFTER_JUMPS_DEFAULT;
 		// maximum individual jump distance
 		@Expose	private double maxJumpDist = 5d;
+		private Range<Double> minSeismogenicDepthRange;
 
-		public RectangularDownDipSubductionRupSetConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
+		public RectangularDownDipSubductionRupSetConfig(List<? extends FaultSection> subSects,
+				RupSetScalingRelationship scale) {
+			this(subSects, scale, null);
+		}
+
+		public RectangularDownDipSubductionRupSetConfig(List<? extends FaultSection> subSects,
+				RupSetScalingRelationship scale, Range<Double> minSeismogenicDepthRange) {
+			this.minSeismogenicDepthRange = minSeismogenicDepthRange;
 			init(subSects, scale);
 		}
 		
@@ -487,6 +495,14 @@ public class RuptureSets {
 		public void setRequireFullWidthAfterJumps(boolean requireFullWidthAfterJumps) {
 			this.requireFullWidthAfterJumps = requireFullWidthAfterJumps;
 			growingStrategy = null;
+		}
+
+		public Range<Double> getMinSeismogenicDepthRange() {
+			return minSeismogenicDepthRange;
+		}
+
+		public void setMinSeismogenicDepthRange(Range<Double> minSeismogenicDepthRange) {
+			this.minSeismogenicDepthRange = minSeismogenicDepthRange;
 		}
 
 		@Override
@@ -530,7 +546,7 @@ public class RuptureSets {
 		@Override
 		public RuptureGrowingStrategy getGrowingStrategy() {
 			if (growingStrategy == null)
-				growingStrategy = new RectangularDownDipGrowingStrategy(neighborThreshold, requireFullWidthAfterJumps);
+				growingStrategy = new RectangularDownDipGrowingStrategy(neighborThreshold, requireFullWidthAfterJumps, minSeismogenicDepthRange);
 			return growingStrategy;
 		}
 

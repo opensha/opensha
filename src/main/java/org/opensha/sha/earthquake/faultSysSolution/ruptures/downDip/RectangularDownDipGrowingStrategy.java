@@ -31,19 +31,26 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 	
 	private float neighborThreshold;
 	private boolean requireFullWidthAfterJumps;
+
+	private Range<Double> minSeismogenicDepthRange;
 	
 	private ConcurrentMap<FaultSubsectionCluster, NeighborOverlaps> cachedNeighborsDD;
 	
 	public static final float NEIGHBOR_THRESHOLD_DEFAULT = 0.4f;
 	public static final boolean REQUIRE_FULL_WIDTH_AFTER_JUMPS_DEFAULT = false;
-
 	public RectangularDownDipGrowingStrategy() {
-		this(NEIGHBOR_THRESHOLD_DEFAULT, REQUIRE_FULL_WIDTH_AFTER_JUMPS_DEFAULT);
+		this(null);
+	}
+	
+	public RectangularDownDipGrowingStrategy(Range<Double> minSeismogenicDepthRange) {
+		this(NEIGHBOR_THRESHOLD_DEFAULT, REQUIRE_FULL_WIDTH_AFTER_JUMPS_DEFAULT, minSeismogenicDepthRange);
 	}
 
-	public RectangularDownDipGrowingStrategy(float neighborThreshold, boolean requireFullWidthAfterJumps) {
+	public RectangularDownDipGrowingStrategy(float neighborThreshold, boolean requireFullWidthAfterJumps,
+			Range<Double> minSeismogenicDepthRange) {
 		this.neighborThreshold = neighborThreshold;
 		this.requireFullWidthAfterJumps = requireFullWidthAfterJumps;
+		this.minSeismogenicDepthRange = minSeismogenicDepthRange;
 		this.cachedNeighborsDD = new ConcurrentHashMap<>();
 	}
 
@@ -54,6 +61,42 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 	
 	public void setDebug(boolean debug) {
 		this.debug = debug;
+	}
+	
+	private Range<Integer> getMinSupraSeisRowRange(FaultSubsectionCluster fullCluster) {
+		int numRows = fullCluster.indexDownDipRange.upperEndpoint()+1;
+		
+		if (minSeismogenicDepthRange == null) {
+			return Range.closed(0, numRows-1);
+		}
+		
+		double[] rowDepths = new double[numRows];
+		int[] rowCounts = new int[numRows];
+		for (FaultSection sect : fullCluster.subSects) {
+			double depth = 0.5*(sect.getOrigAveUpperDepth()+sect.getAveLowerDepth());
+			int row = sect.getSubSectionIndexDownDip();
+			rowDepths[row] += depth;
+			rowCounts[row]++;
+		}
+		for (int i=0; i<numRows; i++) {
+			Preconditions.checkState(rowCounts[i] > 0);
+			rowDepths[i] /= (double)rowCounts[i];
+		}
+		
+		int firstInside = -1;
+		int lastInside = -1;
+		for (int i=0; i<numRows; i++) {
+			if (minSeismogenicDepthRange.contains(rowDepths[i])) {
+				if (firstInside < 0)
+					firstInside = i;
+				lastInside = i;
+			}
+		}
+		if (debug) System.out.println("\tMinimum supra-seismogenic row range: ["+firstInside+", "+lastInside+"]");
+		Preconditions.checkState(lastInside >= 0, "No rows found within supra-seis depth range %s", minSeismogenicDepthRange);
+		Preconditions.checkState(lastInside >= firstInside);
+		
+		return Range.closed(firstInside, lastInside);
 	}
 
 	@Override
@@ -80,9 +123,10 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 		
 		int numRows = fullCluster.indexDownDipRange.upperEndpoint()+1;
 		
+		Range<Integer> minSupraSeisRange = getMinSupraSeisRowRange(fullCluster);
+		
 		// build out sub-seismogenic
 		while (true) {
-			// first grow it in each direction
 			Range<Integer> curRowRange = current.indexDownDipRange;
 			if (curRowRange.lowerEndpoint() == 0 && curRowRange.upperEndpoint() == numRows-1) {
 				if (debug) System.out.println("\tReached full seismogenic width");
@@ -93,6 +137,7 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 			if (debug)
 				System.out.println("\tExpanding rupture: "+current);
 			
+			// grow in each direction
 			FaultSubsectionCluster unilateral = null;
 			for (EnumSet<GrowthDirection> directions : SUB_SEIS_DIRECTIONS) {
 				FaultSubsectionCluster expanded = expandRupture(fullCluster, current, neighborsDD, directions);
@@ -101,9 +146,37 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 					if (!uniques.contains(expanded.unique)) {
 						variations.add(expanded);
 						uniques.add(expanded.unique);
+						
+						if (minSeismogenicDepthRange != null && (directions.contains(GrowthDirection.UP) || directions.contains(GrowthDirection.DOWN))) {
+							if (expanded.indexDownDipRange.lowerEndpoint() <= minSupraSeisRange.lowerEndpoint()
+									&& expanded.indexDownDipRange.upperEndpoint() >= minSupraSeisRange.upperEndpoint()) {
+								if (debug)
+									System.out.println("\tReached min-supra depth range, expanding laterally from rowRange="+expanded.indexDownDipRange+": "+current);
+								
+								int numAdded = 0;
+								for (EnumSet<GrowthDirection> directions2 : SUPRA_SEIS_DIRECTIONS) {
+									FaultSubsectionCluster current2 = expanded;
+									while (true) {
+										current2 = expandRupture(fullCluster, current2, neighborsDD, directions2);
+										if (current2 != null) {
+											if (!uniques.contains(current2.unique)) {
+												variations.add(current2);
+												uniques.add(current2.unique);
+												numAdded++;
+											}
+										} else {
+											break;
+										}
+									}
+								}
+								if (debug) System.out.println("\t\tAdded "+numAdded+" laterally");
+							}
+							
+						}
 					}
-					if (directions == UNILATERAL)
+					if (directions == UNILATERAL) {
 						unilateral = expanded;
+					}
 				} else if (debug) {
 					System.out.println("\t\tCouldn't exapand "+directions);
 				}
@@ -190,7 +263,7 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 		UP,
 		DOWN
 	}
-	
+
 	private static final EnumSet<GrowthDirection> UNILATERAL = EnumSet.allOf(GrowthDirection.class);
 	
 	private static final List<EnumSet<GrowthDirection>> SUPRA_SEIS_DIRECTIONS = List.of(
