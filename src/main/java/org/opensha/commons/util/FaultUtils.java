@@ -783,6 +783,27 @@ public final class FaultUtils {
 			diff = 360.0 - diff;
 		return diff;
 	}
+	
+	/**
+	 * Returns the signed smallest difference between two angles in degrees.
+	 * Angles may be any real values (not restricted to 0-360), wraparound is handled internally.
+	 *
+	 * The result is in the range [-180, 180].
+	 * Positive values indicate a counter-clockwise rotation from angle1 to angle2,
+	 * negative values indicate a clockwise rotation.
+	 *
+	 * @return signed difference between the two angles in decimal degrees
+	 */
+	public static double getSignedAngleDiff(double angle1, double angle2) {
+		double diff = (angle2 - angle1) % 360.0;
+
+		if (diff > 180.0)
+			diff -= 360.0;
+		else if (diff < -180.0)
+			diff += 360.0;
+
+		return diff;
+	}
 
 	/* <b>x</b>-axis unit normal vector [1,0,0]*/ 
 	private static final double[] VX_UNIT_NORMAL = { 1.0, 0.0, 0.0 };
