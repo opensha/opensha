@@ -523,8 +523,16 @@ public class GeographicMapMaker {
 		this.writePDFs = writePDFs;
 	}
 	
+	public boolean isWritePDFs() {
+		return this.writePDFs;
+	}
+	
 	public void setWriteGeoJSON(boolean writeGeoJSON) {
 		this.writeGeoJSON = writeGeoJSON;
+	}
+	
+	public boolean isWriteGeoJSON() {
+		return this.writeGeoJSON;
 	}
 
 	public void setFillSurfaces(boolean fillSurfaces) {
