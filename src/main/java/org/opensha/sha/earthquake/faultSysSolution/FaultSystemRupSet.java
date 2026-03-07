@@ -1779,13 +1779,14 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		int numRups = sectionForRups.size();
 		double[] rupLengths = new double[numRups];
 		for (int r=0; r<numRups; r++) {
+			// don't use calculateLength because we don't want to build the List<FaultSection> for each rupture in memory
 			SectLengthAccumulator simpleAccumulator = new SimpleSectLengthAccumulator();
 			SectLengthAccumulator ddAccumulator = null;
 			for (int s : sectionForRups.get(r)) {
 				FaultSection sect = faultSectionData.get(s);
 				int rowDD = sect.getSubSectionIndexDownDip();
 				if (rowDD > 0 || (rowDD == 0 && sect.getParentSectionId() >= 0)) {
-					// this section (or might have) down-dip subsections
+					// this section has (or might have) down-dip subsections
 					if (ddAccumulator == null)
 						ddAccumulator = new DownDipSectLengthAccumulator();
 					ddAccumulator.processSection(sect);
@@ -1799,6 +1800,33 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				rupLengths[r] += ddAccumulator.getLength()*1e3; // km --> m
 		}
 		return rupLengths;
+	}
+	
+	/**
+	 * Calculates the aggregate length of the given collection of subsections without any dulication in the case of
+	 * multiple sections down-dip 
+	 * @param sects
+	 * @return length in SI units (m)
+	 */
+	public static double calculateLength(Collection<? extends FaultSection> sects) {
+		SectLengthAccumulator simpleAccumulator = new SimpleSectLengthAccumulator();
+		SectLengthAccumulator ddAccumulator = null;
+		for (FaultSection sect : sects) {
+			int rowDD = sect.getSubSectionIndexDownDip();
+			if (rowDD > 0 || (rowDD == 0 && sect.getParentSectionId() >= 0)) {
+				// this section has (or might have) down-dip subsections
+				if (ddAccumulator == null)
+					ddAccumulator = new DownDipSectLengthAccumulator();
+				ddAccumulator.processSection(sect);
+			} else {
+				// not a DD section
+				simpleAccumulator.processSection(sect);
+			}
+		}
+		double len = simpleAccumulator.getLength();
+		if (ddAccumulator != null)
+			len = ddAccumulator.getLength();
+		return len * 1e3; // km -> m
 	}
 	
 	private static interface SectLengthAccumulator {
