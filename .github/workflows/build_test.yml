@@ -33,10 +33,9 @@ jobs:
       if: ${{ failure() }}
       uses: slackapi/slack-github-action@v2
       with:
-        # choose method: 'incoming-webhook' (with webhook_url) or 'bot' (with bot token)
-        slack-webhook-url: ${{ secrets.SLACK_WEBHOOK }}   # TODO: Add secret in main repo
-        msg: |
-          :x: *Workflow failed*
-          Repo: `${{ github.repository }}`
-          Workflow: `${{ github.workflow }}`
-          Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
+        method: 'incoming-webhook'
+        webhook: ${{ secrets.SLACK_WEBHOOK }}
+        payload: >
+          {
+            "text": ":x: *Workflow failed*\nRepo: `${{ github.repository }}`\nWorkflow: `${{ github.workflow }}`\nRun: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"
+          }
