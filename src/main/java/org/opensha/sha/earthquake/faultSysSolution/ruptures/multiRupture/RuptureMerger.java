@@ -95,15 +95,13 @@ public class RuptureMerger {
      * create more complex ruptures. But we need to implement avoiding duplicate sections beforehand.
      *
      * @param nucleation A rupture that we want to combine with other ruptures
-     * @param targets    a list of ruptures that are potential jump targets from the nucleation rupture.
      * @return a list of merged ruptures.
      */
-    public List<ClusterRupture> merge(ClusterRupture nucleation, List<ClusterRupture> targets) {
+    public List<ClusterRupture> merge(ClusterRupture nucleation) {
         List<ClusterRupture> result = new ArrayList<>();
 
-        for (ClusterRupture target : targets) {
+        for (ClusterRupture target : getJumpTargets(nucleation)) {
             MultiRuptureJump jump = makeJump(nucleation, target);
-            if (jump != null) {
                 PlausibilityResult compatibility = PlausibilityResult.PASS;
                 for (MultiRuptureCompatibilityFilter filter : compatibilityFilters) {
                     compatibility = compatibility.logicalAnd(filter.apply(jump, VERBOSE));
@@ -114,7 +112,6 @@ public class RuptureMerger {
                 if (compatibility.isPass()) {
                     result.add(MultiClusterRupture.takeSplayJump(jump));
                 }
-            }
         }
 
         int counter = mergeCounter++;
@@ -126,10 +123,10 @@ public class RuptureMerger {
         return result;
     }
 
-    public List<ClusterRupture> merge(List<ClusterRupture> nucleations, List<ClusterRupture> targets) {
-        return nucleations
+    public List<ClusterRupture> merge() {
+        return nucleationRuptures
                 .parallelStream()
-                .map(nucleation -> merge(nucleation, targets))
+                .map(this::merge)
                 .flatMap(Collection::stream)
                 .collect(Collectors.toList());
     }
@@ -142,31 +139,6 @@ public class RuptureMerger {
             }
         }
         return null;
-    }
-
-    public int countNearRuptures(List<ClusterRupture> nucleation, List<ClusterRupture> target, String faultName) {
-        return nucleation.stream()
-                .filter(r -> r.clusters[0].startSect.getSectionName().contains(faultName))
-                .parallel()
-                .mapToInt(
-                        r -> (int) (target.parallelStream()
-                                .filter(cr -> cr.buildOrderedSectionList().stream().mapToDouble(s -> s.getArea(false)).sum() >= 100000000)
-                                //.filter(cr -> getDistance(r, cr) <= maxJumpDist)
-                                .count())
-                )
-                .sum();
-    }
-
-    public void countPossibleCombinations(List<ClusterRupture> subduction, List<ClusterRupture> crustal){
-        System.out.println("Counting possible combinations");
-        int hiku = countNearRuptures(subduction, crustal, "Hikurangi");
-        int puy = countNearRuptures(subduction, crustal, "Puysegur");
-
-        System.out.println("Possible Hikurangi jumps: " + hiku);
-        System.out.println("Possible Puysegur jumps: " + puy);
-
-        System.out.println("Total: " + (hiku + puy));
-
     }
 
     public static boolean isSubduction(ClusterRupture rupture) {
@@ -276,7 +248,7 @@ public class RuptureMerger {
 
         // full calculation
      	merger.setVerbose(false); // otherwise too much stdout
-        List<ClusterRupture> mergedRuptures = merger.merge(nucleationRuptures, targetRuptures);
+        List<ClusterRupture> mergedRuptures = merger.merge();
 
 //        List<ClusterRupture> shortList = nucleationRuptures.stream()
 //                .filter(rupture -> rupture.clusters[0].subSects.get(0).getFaultTrace().first().lat > -42 &&
