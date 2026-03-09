@@ -27,10 +27,44 @@ public class RuptureMerger {
     List<MultiRuptureCompatibilityFilter> compatibilityFilters = new ArrayList<>();
     final SectionDistanceAzimuthCalculator disAzCalc;
     final double maxJumpDist;
+    final List<ClusterRupture> nucleationRuptures;
+    final List<ClusterRupture> targetRuptures;
 
-    public RuptureMerger(FaultSystemRupSet rupSet, double maxJumpDist) {
+    final Map<Integer, Collection<ClusterRupture>> sectionToRupture;
+
+    public RuptureMerger(FaultSystemRupSet rupSet, double maxJumpDist, List<ClusterRupture> nucleationRuptures, List<ClusterRupture> targetRuptures) {
         disAzCalc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
         this.maxJumpDist = maxJumpDist;
+        this.nucleationRuptures = nucleationRuptures;
+        this.targetRuptures = targetRuptures;
+        this.sectionToRupture = buildJumpLookup();
+        System.out.println("Indices Created. sectionToRupture: " + sectionToRupture.size() + " entries");
+    }
+
+    public Map<Integer, Collection<ClusterRupture>> buildJumpLookup() {
+        RuptureProximityLookup lookup = new RuptureProximityLookup(disAzCalc, targetRuptures, maxJumpDist);
+        Set<Integer> nucleationSections = new HashSet<>();
+        for (ClusterRupture rupture : nucleationRuptures) {
+            for (FaultSection sect : rupture.buildOrderedSectionList()) {
+                nucleationSections.add(sect.getSectionId());
+            }
+        }
+        return lookup.findNearbyRuptures(nucleationSections);
+    }
+
+    public List<ClusterRupture> getJumpTargets(ClusterRupture nucleationRupture) {
+        Set<ClusterRupture> ruptures = new HashSet<>();
+        for(FaultSection section: nucleationRupture.buildOrderedSectionList()){
+            ruptures.addAll(sectionToRupture.getOrDefault(section.getSectionId(), Collections.emptyList()));
+        }
+        return new ArrayList<>(ruptures);
+    }
+
+
+    public long countPossibleJumps(){
+        return nucleationRuptures.parallelStream().mapToLong(
+                r -> getJumpTargets(r).size()
+        ).sum();
     }
 
     public void addFilter(MultiRuptureCompatibilityFilter filter) {
@@ -43,23 +77,6 @@ public class RuptureMerger {
 
     transient int mergeCounter = 0;
 
-    protected double getDistance(ClusterRupture nucleation, ClusterRupture target) {
-        double result = Double.MAX_VALUE;
-
-        for (FaultSection targetSection : target.buildOrderedSectionList()) {
-            for (FaultSection nucleationSection : nucleation.clusters[0].subSects) {
-                double distance = disAzCalc.getDistance(targetSection, nucleationSection);
-                if (distance <= maxJumpDist) {
-                    return distance;
-                }
-                if (distance < result) {
-                    result = distance;
-                }
-            }
-        }
-        return result;
-    }
-
     /**
      * Creates a jump between the two ruptures if at least two fault sections are within maxJumpDist.
      * Does not guarantee to create the shortest jump.
@@ -68,14 +85,8 @@ public class RuptureMerger {
      * @return
      */
     protected MultiRuptureJump makeJump(ClusterRupture nucleation, ClusterRupture target) {
-        double distance = getDistance(nucleation, target);
-        if (distance <= maxJumpDist) {
-            return new MultiRuptureJump(nucleation.clusters[0].startSect, nucleation, target.clusters[0].startSect, target, distance);
-        }
-        return null;
+        return new MultiRuptureJump(nucleation.clusters[0].startSect, nucleation, target.clusters[0].startSect, target, maxJumpDist);
     }
-
-
 
     /**
      * Create new ruptures that combine the nucleation rupture and any of the target ruptures if they
@@ -140,7 +151,7 @@ public class RuptureMerger {
                 .mapToInt(
                         r -> (int) (target.parallelStream()
                                 .filter(cr -> cr.buildOrderedSectionList().stream().mapToDouble(s -> s.getArea(false)).sum() >= 100000000)
-                                .filter(cr -> getDistance(r, cr) <= maxJumpDist)
+                                //.filter(cr -> getDistance(r, cr) <= maxJumpDist)
                                 .count())
                 )
                 .sum();
@@ -195,6 +206,7 @@ public class RuptureMerger {
     	// dirty...but this will help us collaborate better...
     	// Oakley's file:
     	File inputFile = resolveFile(
+                "C:\\tmp\\nzshm22_merged.zip",
                 "C:\\Users\\user\\GNS\\rupture sets\\nzshm_complete_merged.zip",
                 "/home/kevin/Downloads/rupset-disjointed.zip");
         FaultSystemRupSet rupSet = FaultSystemRupSet.load(inputFile);
@@ -234,9 +246,10 @@ public class RuptureMerger {
         // set up RuptureMerger
         double maxJumpDist = 15d;
         String outPrefix = "mergedRupset_"+oDF.format(maxJumpDist)+"km";
-        RuptureMerger merger = new RuptureMerger(rupSet, maxJumpDist);
+        RuptureMerger merger = new RuptureMerger(rupSet, maxJumpDist, nucleationRuptures, targetRuptures);
 
-        merger.countPossibleCombinations(nucleationRuptures, targetRuptures);
+        System.out.println("possible jumps: "+merger.countPossibleJumps());
+        System.exit(0);
 
         StiffnessCalcModule stiffness = new StiffnessCalcModule(rupSet, 2, new File("C:\\tmp\\stiffnessCaches"));
 
