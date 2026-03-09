@@ -7,11 +7,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 import org.opensha.commons.data.IntegerSampler.ExclusionIntegerSampler;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
@@ -27,9 +29,13 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.Compl
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.GenerationFunctionType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
+import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.SolutionProcessor;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
@@ -60,7 +66,9 @@ import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_Subduc
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Range;
+import com.google.common.collect.Table;
 
 public class NSHM26_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory {
 	
@@ -88,6 +96,11 @@ public class NSHM26_InvConfigFactory implements ClusterSpecificInversionConfigur
 
 	@Override
 	public FaultSystemRupSet buildRuptureSet(LogicTreeBranch<?> branch, int threads) throws IOException {
+		// build empty-ish rup set without modules attached
+		return updateRuptureSetForBranch(buildGenericRupSet(branch, threads), branch);
+	}
+
+	public FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) throws IOException {
 		RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
 		RupSetSubsectioningModel ssm = branch.requireValue(RupSetSubsectioningModel.class);
 		RupturePlausibilityModels model = branch.getValue(RupturePlausibilityModels.class);
@@ -495,6 +508,149 @@ public class NSHM26_InvConfigFactory implements ClusterSpecificInversionConfigur
 		SegmentationModelBranchNode segModel = branch.getValue(SegmentationModelBranchNode.class);
 		JumpProbabilityCalc jumpProb = segModel == null ? null : segModel.getModel(rupSet, branch);
 		return jumpProb;
+	}
+
+	@Override
+	public SolutionProcessor getSolutionLogicTreeProcessor() {
+		return new NSHM26SolProcessor();
+	}
+	
+	public static class NSHM26SolProcessor implements SolutionProcessor {
+		
+		private Table<RupSetFaultModel, RupturePlausibilityModels, PlausibilityConfiguration> configCache = HashBasedTable.create();
+
+		@Override
+		public synchronized FaultSystemRupSet processRupSet(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+			// here we do trust the incoming rupture set to not be wholly incompatible (e.g., average slips)
+			// so we generally offer modules instead of forcing them
+			
+			rupSet.addModule(branch);
+			
+			// offer average slips, don't force replacement
+			if (branch.hasValue(RupSetScalingRelationship.class)) {
+				rupSet.offerAvailableModule(new Callable<AveSlipModule>() {
+
+					@Override
+					public AveSlipModule call() throws Exception {
+						return AveSlipModule.forModel(rupSet, branch.requireValue(RupSetScalingRelationship.class));
+					}
+				}, AveSlipModule.class);
+			}
+			
+			// slip along rupture model
+			if (branch.hasValue(SlipAlongRuptureModelBranchNode.class)) {
+				// force replacement as rupture sets can have a default slip along rupture model attached, which we
+				// need to make sure to override
+				SlipAlongRuptureModel model = branch.getValue(SlipAlongRuptureModelBranchNode.class).getModel();
+				if (rupSet.getModule(SlipAlongRuptureModel.class) != model)
+					rupSet.addModule(model);
+			}
+			
+			RupSetFaultModel fm = branch.getValue(RupSetFaultModel.class);
+			
+			// named faults, regions of interest
+			if (fm != null)
+				fm.attachDefaultModules(rupSet);
+			
+			// add inversion target MFDs
+			rupSet.offerAvailableModule(new Callable<SupraSeisBValInversionTargetMFDs>() {
+
+				@Override
+				public SupraSeisBValInversionTargetMFDs call() throws Exception {
+					return getConstraintBuilder(rupSet, branch).getTargetMFDs();
+				}
+			}, SupraSeisBValInversionTargetMFDs.class);
+			// add target slip rates (modified for sub-seismogenic ruptures)
+			// don't offer as a default implementation could have been attached
+			rupSet.addAvailableModule(new Callable<SectSlipRates>() {
+
+				@Override
+				public SectSlipRates call() throws Exception {
+					SupraSeisBValInversionTargetMFDs targetMFDs = rupSet.getModule(SupraSeisBValInversionTargetMFDs.class, false);
+					if (targetMFDs != null)
+						// we already have target MFDs loaded, get it from there
+						return targetMFDs.getSectSlipRates();
+					// build them
+					SubSeisMoRateReduction moRateRed = branch.hasValue(SubSeisMoRateReductions.class) ?
+							branch.getValue(SubSeisMoRateReductions.class).getChoice() :
+								SupraSeisBValInversionTargetMFDs.SUB_SEIS_MO_RATE_REDUCTION_DEFAULT;
+					SupraSeisBValInversionTargetMFDs.Builder builder;
+					RandomBValSampler.Node bValNode = branch.getValue(RandomBValSampler.Node.class);
+					if (bValNode != null) {
+						RandomBValSampler sampler = rupSet.requireModule(BranchSamplingManager.class).getSampler(bValNode);
+						builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet, sampler.getBValues());
+					} else {
+						builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet,  branch.requireValue(SectionSupraSeisBValues.class));
+					}
+					return builder.subSeisMoRateReduction(moRateRed).buildSlipRatesOnly();
+				}
+			}, SectSlipRates.class);
+			
+			// don't override existing plausibility configuration, offer it instead
+			// mostly for branch averaging
+			List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
+			rupSet.offerAvailableModule(new Callable<PlausibilityConfiguration>() {
+
+				@Override
+				public PlausibilityConfiguration call() throws Exception {
+					RupturePlausibilityModels model = branch.requireValue(RupturePlausibilityModels.class);
+					RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class); // for now
+					PlausibilityConfiguration config;
+					synchronized (configCache) {
+						config = configCache.get(fm, model);
+						if (config == null) {
+							config = model.getConfig(subSects,
+									branch.requireValue(RupSetScalingRelationship.class)).getPlausibilityConfig();
+							configCache.put(fm, model, config);
+						}
+					}
+					return config;
+				}
+			}, PlausibilityConfiguration.class);
+			
+			// offer cluster ruptures
+			// should always be single stranded
+			rupSet.offerAvailableModule(new Callable<ClusterRuptures>() {
+
+				@Override
+				public ClusterRuptures call() throws Exception {
+					return ClusterRuptures.singleStranded(rupSet);
+				}
+			}, ClusterRuptures.class);
+			
+			if (BranchSamplingManager.hasSamplingNodes(branch)) {
+				rupSet.offerAvailableModule(new Callable<BranchSamplingManager>() {
+
+					@Override
+					public BranchSamplingManager call() throws Exception {
+						return new BranchSamplingManager(rupSet, branch);
+					}
+				}, BranchSamplingManager.class);
+			}
+			return rupSet;
+		}
+
+		@Override
+		public FaultSystemSolution processSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
+			FaultSystemRupSet rupSet = sol.getRupSet();
+			if (!sol.hasAvailableModule(SolutionSlipRates.class) && rupSet.hasAvailableModule(AveSlipModule.class)
+					&& rupSet.hasAvailableModule(SlipAlongRuptureModel.class)) {
+				sol.addAvailableModule(new Callable<SolutionSlipRates>() {
+
+					@Override
+					public SolutionSlipRates call() throws Exception {
+						return SolutionSlipRates.calc(sol, rupSet.requireModule(AveSlipModule.class),
+								rupSet.requireModule(SlipAlongRuptureModel.class));
+					}
+				}, SolutionSlipRates.class);
+			}
+			
+			if (!sol.hasModule(LogicTreeBranch.class) || !branch.equals(sol.getModule(LogicTreeBranch.class)))
+				sol.addModule(branch);
+			
+			return sol;
+		}
+		
 	}
 
 }
