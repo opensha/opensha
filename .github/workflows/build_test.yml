@@ -5,9 +5,9 @@ name: Build & Test
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ] # TODO: Change back to master for opensha/opensha
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
@@ -29,3 +29,14 @@ jobs:
       run: ./gradlew -Dorg.gradle.internal.http.connectionTimeout=60000 -Dorg.gradle.internal.http.socketTimeout=300000 assemble
     - name: Run standard tests with Gradle
       run: ./gradlew -Dorg.gradle.internal.http.connectionTimeout=60000 -Dorg.gradle.internal.http.socketTimeout=300000 testVerbose
+    - name: Notify Slack on failure
+      if: ${{ failure() }}
+      uses: slackapi/slack-github-action@v2
+      with:
+        # choose method: 'incoming-webhook' (with webhook_url) or 'bot' (with bot token)
+        slack-webhook-url: ${{ secrets.SLACK_WEBHOOK }}   # TODO: Add secret in main repo
+        msg: |
+          :x: *Workflow failed*
+          Repo: `${{ github.repository }}`
+          Workflow: `${{ github.workflow }}`
+          Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
