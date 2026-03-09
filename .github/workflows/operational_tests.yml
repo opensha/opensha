@@ -30,3 +30,13 @@ jobs:
       run: ./gradlew -Dorg.gradle.internal.http.connectionTimeout=60000 -Dorg.gradle.internal.http.socketTimeout=300000 assemble
     - name: Run operational tests with Gradle
       run: ./gradlew -Dorg.gradle.internal.http.connectionTimeout=60000 -Dorg.gradle.internal.http.socketTimeout=300000 testOperational
+    - name: Notify Slack on failure
+      if: ${{ failure() }}
+      uses: slackapi/slack-github-action@v2
+      with:
+        webhook: ${{ secrets.SLACK_WEBHOOK }}
+        webhook-type: incoming-webhook
+        payload: >
+          {
+            "text": ":x: *Workflow failed*\nRepo: `${{ github.repository }}`\nWorkflow: `${{ github.workflow }}`\nRun: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"
+          }
