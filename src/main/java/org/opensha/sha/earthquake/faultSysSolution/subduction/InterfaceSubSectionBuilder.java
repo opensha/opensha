@@ -989,8 +989,12 @@ public class InterfaceSubSectionBuilder {
 		boolean smoothTraceForDDW = true;
 		String prefix = "ker_slab2";
 		Range<Double> depthRange = Range.closed(0d, 60d);
-		Range<Double> lonFilter = null;
-		Range<Double> latFilter = Range.atLeast(-30d);
+		// these happen before cleanup
+		Range<Double> preLonFilter = null;
+		Range<Double> preLatFilter = Range.atLeast(-30d);
+		// these happen after cleanup
+		Range<Double> postLonFilter = null;
+		Range<Double> postLatFilter = Range.atLeast(-23.7335);
 		boolean filterStartPerpendicular = false;
 		boolean filterEndPerpendicular = true;
 		
@@ -1021,17 +1025,19 @@ public class InterfaceSubSectionBuilder {
 		List<FaultTrace> rawContours = loadDepthContours(countoursIn);
 		FaultTrace upperTrace = loadTrenchDepthCSV(traceCSV);
 		
-		if (latFilter != null || lonFilter != null) {
+		if (preLatFilter != null || preLonFilter != null) {
+			System.out.println("Pre-filtering contours");
 			int origCount = rawContours.size();
-			upperTrace = filterContour(upperTrace, latFilter, lonFilter);
-			if (filterStartPerpendicular || filterEndPerpendicular) {
+			upperTrace = filterContour(upperTrace, preLatFilter, preLonFilter);
+			if (postLatFilter == null && postLonFilter == null && (filterStartPerpendicular || filterEndPerpendicular)) {
 				if (filterStartPerpendicular)
 					rawContours = filterContoursTracePerpenducular(rawContours, upperTrace, true, backTraceDist);
 				if (filterEndPerpendicular)
 					rawContours = filterContoursTracePerpenducular(rawContours, upperTrace, false, backTraceDist);
 			} else {
-				rawContours = filterContours(rawContours, latFilter, lonFilter);
+				rawContours = filterContours(rawContours, preLatFilter, preLonFilter);
 			}
+			rawContours = filterContours(rawContours, preLatFilter, preLonFilter);
 			System.out.println("Retained "+rawContours.size()+"/"+origCount+" contours");
 		}
 		
@@ -1042,6 +1048,25 @@ public class InterfaceSubSectionBuilder {
 		builder.stitchContours();
 		
 		builder.writeContourStitchPlot(outputDir, prefix+"_contour_stitch");
+		
+		if (postLatFilter != null || postLonFilter != null) {
+			System.out.println("Post-filtering contours");
+			rawContours = new ArrayList<>(builder.depthContours);
+			rawContours.remove(0); // remove upper trace
+			int origCount = rawContours.size();
+			upperTrace = filterContour(upperTrace, postLatFilter, postLonFilter);
+			if (filterStartPerpendicular || filterEndPerpendicular) {
+				if (filterStartPerpendicular)
+					rawContours = filterContoursTracePerpenducular(rawContours, upperTrace, true, backTraceDist);
+				if (filterEndPerpendicular)
+					rawContours = filterContoursTracePerpenducular(rawContours, upperTrace, false, backTraceDist);
+			} else {
+				rawContours = filterContours(rawContours, postLatFilter, postLonFilter);
+			}
+			System.out.println("Retained "+rawContours.size()+"/"+origCount+" contours");
+			
+			builder = new InterfaceSubSectionBuilder(faultID, faultName, upperTrace, rawContours, scaleLength);
+		}
 		
 		builder.buildInterpolatedDepthContours(depthRange, smoothTraceForDDW, traceSmoothDist);
 		
