@@ -35,7 +35,7 @@ import com.google.common.base.Preconditions;
  * The {@link DownDip} implementation requires a surface list with populated indexes along strike and down dip, as well
  * as parent section indexes. It only uses the uppermost row (within any parent) for DistanceX calculations.
  */
-public abstract class NewCompoundSurface implements CacheEnabledSurface {
+public abstract class CompoundSurface implements CacheEnabledSurface {
 	
 	/*
 	 * These are populated by the top level init
@@ -70,11 +70,11 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 	
 	private SurfaceDistanceCache cache = SurfaceCachingPolicy.build(this);
 	
-	public NewCompoundSurface get(List<? extends RuptureSurface> surfaces) {
+	public CompoundSurface get(List<? extends RuptureSurface> surfaces) {
 		return new Simple(surfaces);
 	}
 	
-	public NewCompoundSurface get(List<? extends RuptureSurface> surfaces, List<? extends FaultSection> sections) {
+	public CompoundSurface get(List<? extends RuptureSurface> surfaces, List<? extends FaultSection> sections) {
 		if (sections == null)
 			return new Simple(surfaces);
 		boolean anyDD = sections.stream().anyMatch(S->S.getSubSectionIndexDownDip()>0);
@@ -83,7 +83,7 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 		return new Simple(surfaces);
 	}
 
-	protected NewCompoundSurface(List<? extends RuptureSurface> surfaces) {
+	protected CompoundSurface(List<? extends RuptureSurface> surfaces) {
 		Preconditions.checkNotNull(surfaces, "Surfaces list is null");
 		this.numSurfaces = surfaces.size();
 		Preconditions.checkArgument(numSurfaces > 1, "Must supply at least 2 surfaces (have %s)", numSurfaces);
@@ -97,7 +97,7 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 		this.totArea = totArea;
 	}
 	
-	private NewCompoundSurface(List<? extends RuptureSurface> surfaces, double[] surfaceAreas, double totArea) {
+	private CompoundSurface(List<? extends RuptureSurface> surfaces, double[] surfaceAreas, double totArea) {
 		this.surfaces = surfaces;
 		this.numSurfaces = surfaces.size();
 		this.surfaceAreas = surfaceAreas;
@@ -105,10 +105,10 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 	}
 	
 	/**
-	 * Simple {@link NewCompoundSurface} implementation for ruptures without any sections down-dip. An optional
+	 * Simple {@link CompoundSurface} implementation for ruptures without any sections down-dip. An optional
 	 * {@link FaultSection} list can be supplied to help with grouping and ordering.
 	 */
-	public static class Simple extends NewCompoundSurface {
+	public static class Simple extends CompoundSurface {
 		
 		private final double avgDip;
 		private final BitSet reversed;
@@ -432,11 +432,11 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 	}
 	
 	/**
-	 * Implementation of {@link NewCompoundSurface} that supports multiple sections down-dip. For this implementation,
+	 * Implementation of {@link CompoundSurface} that supports multiple sections down-dip. For this implementation,
 	 * the subsection list is required and all sections must have {@link FaultSection#getSubSectionIndexDownDip()},
 	 * {@link FaultSection#getSubSectionIndexAlong()}, and {@link FaultSection#getParentSectionId()} populated.
 	 */
-	public static class DownDip extends NewCompoundSurface {
+	public static class DownDip extends CompoundSurface {
 
 		private final BitSet reversed;
 		private final BitSet tops;
@@ -810,7 +810,7 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 	}
 
 	@Override
-	public abstract NewCompoundSurface copyShallow();
+	public abstract CompoundSurface copyShallow();
 
 	@Override
 	public double getAveStrike() {
@@ -1020,14 +1020,14 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 	}
 
 	@Override
-	public NewCompoundSurface getMoved(LocationVector v) {
+	public CompoundSurface getMoved(LocationVector v) {
 		List<RuptureSurface> movedSurfaces = new ArrayList<>(surfaces.size());
 		for (RuptureSurface surf : surfaces) {
 			RuptureSurface moved = surf.getMoved(v);
 			movedSurfaces.add(moved);
 		}
 		
-		NewCompoundSurface copy = copyShallow();
+		CompoundSurface copy = copyShallow();
 		copy.surfaces = movedSurfaces;
 		
 		return copy;

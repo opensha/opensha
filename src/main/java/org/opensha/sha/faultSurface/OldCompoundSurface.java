@@ -25,7 +25,7 @@ import com.google.common.collect.Lists;
  * handled properly (these data were analyzed externally using Igor).
  * 
  * @author field
- * @deprecated use {@link NewCompoundSurface}
+ * @deprecated use {@link CompoundSurface}
  *
  */
 @Deprecated

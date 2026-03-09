@@ -53,7 +53,7 @@ import org.opensha.sha.faultSurface.OldCompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
-import org.opensha.sha.faultSurface.NewCompoundSurface;
+import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
 import org.opensha.sha.util.TectonicRegionType;
@@ -1065,13 +1065,6 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			if (surf != null)
 				return surf;
 			List<FaultSection> fltDatas =  getFaultSectionDataForRupture(rupIndex);
-//			List<RuptureSurface> rupSurfs = new ArrayList<>(fltDatas.size());
-//			for (FaultSection fltData : fltDatas)
-//				rupSurfs.add(fltData.getFaultSurface(gridSpacing, false, aseisReducesArea));
-//			if (rupSurfs.size() == 1)
-//				surf = rupSurfs.get(0);
-//			else
-//				surf = new CompoundSurface(rupSurfs);
 			List<RuptureSurface> rupSurfs = new ArrayList<>(fltDatas.size());
 			boolean anyDD = false;
 			for (FaultSection fltData : fltDatas) {
@@ -1081,9 +1074,9 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			if (rupSurfs.size() == 1)
 				surf = rupSurfs.get(0);
 			else if (anyDD)
-				surf = new NewCompoundSurface.DownDip(rupSurfs, fltDatas);
+				surf = new CompoundSurface.DownDip(rupSurfs, fltDatas);
 			else
-				surf = new NewCompoundSurface.Simple(rupSurfs, fltDatas);
+				surf = new CompoundSurface.Simple(rupSurfs, fltDatas);
 			rupSurfaceCache.put(rupIndex, surf);
 			return surf;
 		}
