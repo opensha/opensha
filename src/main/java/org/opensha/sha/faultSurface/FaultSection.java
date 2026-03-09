@@ -200,8 +200,8 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 	
 	/**
 	 * If this fault is a subsection of larger parent fault section (usually with id={@link #getParentSectionId()}),
-	 * this gives the subsection index within that parent fault section. Indexes are 0-based, meaning that the first
-	 * subsection for this parent.
+	 * this gives the subsection index within that parent fault section. Indexes are 0-based, meaning that 0 represents
+	 * the first subsection for this parent.
 	 * 
 	 * @return subsection index (0-based), or -1 if unknown or not a subsection
 	 */
