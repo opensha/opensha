@@ -15,8 +15,6 @@ import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import java.io.*;
 import java.text.DecimalFormat;
 import java.util.*;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class RuptureMerger {
@@ -25,6 +23,7 @@ public class RuptureMerger {
 
     boolean VERBOSE = true;
     List<MultiRuptureCompatibilityFilter> compatibilityFilters = new ArrayList<>();
+    TargetRuptureSelector selector;
     final SectionDistanceAzimuthCalculator disAzCalc;
     final double maxJumpDist;
     final List<ClusterRupture> nucleationRuptures;
@@ -39,6 +38,14 @@ public class RuptureMerger {
         this.targetRuptures = targetRuptures;
         this.sectionToRupture = buildJumpLookup();
         System.out.println("Indices Created. sectionToRupture: " + sectionToRupture.size() + " entries");
+    }
+
+    public SectionDistanceAzimuthCalculator getDisAzCalc(){
+        return disAzCalc;
+    }
+
+    public void setTargetSelector(TargetRuptureSelector selector) {
+        this.selector = selector;
     }
 
     public Map<Integer, Collection<ClusterRupture>> buildJumpLookup() {
@@ -57,7 +64,7 @@ public class RuptureMerger {
         for(FaultSection section: nucleationRupture.buildOrderedSectionList()){
             ruptures.addAll(sectionToRupture.getOrDefault(section.getSectionId(), Collections.emptyList()));
         }
-        return new ArrayList<>(ruptures);
+        return selector.select(ruptures);
     }
 
 
@@ -219,6 +226,9 @@ public class RuptureMerger {
         double maxJumpDist = 15d;
         String outPrefix = "mergedRupset_"+oDF.format(maxJumpDist)+"km";
         RuptureMerger merger = new RuptureMerger(rupSet, maxJumpDist, nucleationRuptures, targetRuptures);
+
+        AreaSpreadSelector targetSelector = new AreaSpreadSelector(merger.getDisAzCalc(), 3, 0.1);
+        merger.setTargetSelector(targetSelector);
 
         System.out.println("possible jumps: "+merger.countPossibleJumps());
         System.exit(0);
