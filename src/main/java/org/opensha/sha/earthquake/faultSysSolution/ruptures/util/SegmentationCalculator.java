@@ -2430,7 +2430,7 @@ public class SegmentationCalculator {
 ////				+ "node_branch_averaged/MaxDist_MaxDist3km.zip");
 //				+ "2022_02_15-coulomb-fm31-ref_branch-seg_model_adjustments-U3_ZENG-Shaw09Mod-DsrUni-SupraB0.8-TotNuclRate-ShawR0_3/GREEDY/solution.zip");
 		FaultSystemSolution sol = FaultSystemSolution.load(inputFile);
-		ClusterRuptures cRups = ClusterRuptures.singleStranged(sol.getRupSet());
+		ClusterRuptures cRups = ClusterRuptures.singleStranded(sol.getRupSet());
 		PlausibilityConfiguration config = sol.getRupSet().getModule(PlausibilityConfiguration.class);
 		ClusterConnectionStrategy connStrat = config.getConnectionStrategy();
 		SegmentationCalculator calc = new SegmentationCalculator(sol, cRups.getAll(),

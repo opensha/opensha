@@ -186,6 +186,18 @@ public interface RuptureSurface extends Surface3D {
 	public Location getLastLocOnUpperEdge();
 	
 	/**
+	 * This returns the first location on the upper edge of the surface
+	 * @return
+	 */
+	public Location getFirstLocOnLowerEdge();
+	
+	/**
+	 * This returns the last location on the upper edge of the surface
+	 * @return
+	 */
+	public Location getLastLocOnLowerEdge();
+	
+	/**
 	 * The is returns the fraction of this rupture surface 
 	 * that's inside the given region.
 	 * @param region

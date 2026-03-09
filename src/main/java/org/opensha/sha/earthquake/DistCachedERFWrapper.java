@@ -130,7 +130,7 @@ public class DistCachedERFWrapper extends AbstractERF {
 					subSurfs.add(subSurf);
 				}
 			}
-			wrappedSurf = new CustomCacheWrappedSurface(new CompoundSurface(subSurfs));
+			wrappedSurf = new CustomCacheWrappedSurface(CompoundSurface.get(subSurfs));
 			wrappedMap.put(origSurf, (CustomCacheWrappedSurface)wrappedSurf);
 		} else if (origSurf instanceof CacheEnabledSurface) {
 			wrappedSurf = new CustomCacheWrappedSurface((CacheEnabledSurface)origSurf);

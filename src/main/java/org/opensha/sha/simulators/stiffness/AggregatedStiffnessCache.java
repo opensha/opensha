@@ -39,8 +39,6 @@ public class AggregatedStiffnessCache {
 		this.patchAggregatedCache = new HashMap<>();
 		this.patchSectAggregatedCache = new HashMap<>();
 		Preconditions.checkArgument(sects != null && !sects.isEmpty());
-		for (int i=0; i<sects.size(); i++)
-			Preconditions.checkState(sects.get(i).getSectionId() == i, "section IDs must be 0-based indexes");
 	}
 	
 	public synchronized void clear() {
@@ -51,9 +49,11 @@ public class AggregatedStiffnessCache {
 	
 	public ReceiverDistribution[] getPatchAggregated(AggregationMethod patchAggMethod, FaultSection source, FaultSection receiver) {
 		ReceiverDistribution[][][] cache = patchAggregatedCache.get(patchAggMethod);
-		if (cache == null || cache[receiver.getSectionId()] == null)
+		int rID = calc.index(receiver);
+		int sID = calc.index(source);
+		if (cache == null || cache[rID] == null)
 			return null;
-		return cache[receiver.getSectionId()][source.getSectionId()];
+		return cache[rID][sID];
 	}
 	
 	public synchronized void putPatchAggregated(AggregationMethod patchAggMethod, FaultSection source,
@@ -63,9 +63,11 @@ public class AggregatedStiffnessCache {
 			cache = new ReceiverDistribution[sects.size()][sects.size()][];
 			patchAggregatedCache.put(patchAggMethod, cache);
 		}
-		if (cache[receiver.getSectionId()] == null)
-			cache[receiver.getSectionId()] = new ReceiverDistribution[sects.size()][];
-		cache[receiver.getSectionId()][source.getSectionId()] = aggregated;
+		int rID = calc.index(receiver);
+		int sID = calc.index(source);
+		if (cache[ rID] == null)
+			cache[ rID] = new ReceiverDistribution[sects.size()][];
+		cache[rID][sID] = aggregated;
 	}
 	
 	public StiffnessAggregation getSectAggregated(AggregationMethod patchAggMethod, FaultSection source, FaultSection receiver) {
@@ -74,14 +76,16 @@ public class AggregatedStiffnessCache {
 			cache = fullDistCache;
 		else
 			cache = patchSectAggregatedCache.get(patchAggMethod);
-		if (cache == null || cache[receiver.getSectionId()] == null)
+		int rID = calc.index(receiver);
+		int sID = calc.index(source);
+		if (cache == null || cache[rID] == null)
 			return null;
-		return cache[receiver.getSectionId()][source.getSectionId()];
+		return cache[rID][sID];
 	}
 	
 	public synchronized void putSectAggregated(AggregationMethod patchAggMethod, FaultSection source,
 			FaultSection receiver, StiffnessAggregation aggregated) {
-		putSectAggregated(patchAggMethod, source.getSectionId(), receiver.getSectionId(), aggregated);
+		putSectAggregated(patchAggMethod, calc.index(source), calc.index(receiver), aggregated);
 	}
 	
 	private void putSectAggregated(AggregationMethod patchAggMethod, int sourceID, int receiverID, StiffnessAggregation aggregated) {

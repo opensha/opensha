@@ -179,7 +179,7 @@ public abstract class TriggerRupture {
 				rupture.setRuptureSurface(rupSurfs.get(0));
 			} else {
 				rupture.setAveRake(FaultUtils.getInRakeRange(FaultUtils.getScaledAngleAverage(areas, rakes)));
-				rupture.setRuptureSurface(new CompoundSurface(rupSurfs));
+				rupture.setRuptureSurface(CompoundSurface.get(rupSurfs));
 			}
 		}
 
@@ -268,7 +268,7 @@ public abstract class TriggerRupture {
 			if (rupSurfs.size() == 1)
 				rupture.setRuptureSurface(rupSurfs.get(0));
 			else
-				rupture.setRuptureSurface(new CompoundSurface(rupSurfs));
+				rupture.setRuptureSurface(CompoundSurface.get(rupSurfs));
 		}
 
 		@Override
@@ -317,7 +317,7 @@ public abstract class TriggerRupture {
 			if (rupSurfs.size() == 1)
 				rupture.setRuptureSurface(rupSurfs.get(0));
 			else
-				rupture.setRuptureSurface(new CompoundSurface(rupSurfs));
+				rupture.setRuptureSurface(CompoundSurface.get(rupSurfs));
 		}
 
 		@Override

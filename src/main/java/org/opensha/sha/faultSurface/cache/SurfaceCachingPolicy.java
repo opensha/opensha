@@ -19,7 +19,7 @@ public final class SurfaceCachingPolicy {
 	/**
 	 * The <i>dist.cache.force</i> property is a can be used to force surfaces to use the specified cache.
 	 * The value, if set, must be one of the {@link CacheTypes} enum constant names.
-	 * when size > 1, exept for {@link CompoundSurface}'s. 
+	 * when size > 1, exept for {@link OldCompoundSurface}'s. 
 	 */
 	public static final String FORCE_TYPE = "dist.cache.force";
 	public static enum CacheTypes {

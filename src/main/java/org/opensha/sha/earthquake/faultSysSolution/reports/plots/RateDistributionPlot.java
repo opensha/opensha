@@ -555,7 +555,7 @@ public class RateDistributionPlot extends AbstractSolutionPlot {
 
 			@Override
 			public ClusterRuptures call() throws Exception {
-				return ClusterRuptures.singleStranged(sol1.getRupSet());
+				return ClusterRuptures.singleStranded(sol1.getRupSet());
 			}
 		}, ClusterRuptures.class);
 	

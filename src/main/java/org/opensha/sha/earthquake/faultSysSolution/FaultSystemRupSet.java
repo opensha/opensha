@@ -53,6 +53,7 @@ import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
+import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
 import org.opensha.sha.util.TectonicRegionType;
@@ -819,10 +820,15 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 
 	public void clearCache() {
-		rupturesForSectionCache.clear();
-		rupturesForParentSectionCache.clear();
-		fractRupsInsideRegions.clear();
-		fractSectsInsideRegions.clear();
+		if (rupturesForSectionCache != null)
+			rupturesForSectionCache.clear();
+		if (rupturesForParentSectionCache != null)
+			rupturesForParentSectionCache.clear();
+		if (fractRupsInsideRegions != null)
+			fractRupsInsideRegions.clear();
+		if (fractSectsInsideRegions != null)
+			fractSectsInsideRegions.clear();
+		surfCache.clear();
 	}
 
 	public void copyCacheFrom(FaultSystemRupSet rupSet) {
@@ -1019,11 +1025,27 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @return
 	 */
 	public List<FaultSection> getFaultSectionDataForRupture(int rupIndex) {
-		List<Integer> inds = getSectionsIndicesForRup(rupIndex);
-		ArrayList<FaultSection> datas = new ArrayList<FaultSection>(inds.size());
-		for (int ind : inds)
-			datas.add(getFaultSectionData(ind));
-		return datas;
+		return new RupSectionList(getSectionsIndicesForRup(rupIndex));
+	}
+	
+	private class RupSectionList extends AbstractList<FaultSection> {
+		
+		private List<Integer> sectIndexes;
+
+		public RupSectionList(List<Integer> sectIndexes) {
+			this.sectIndexes = sectIndexes;
+		}
+
+		@Override
+		public int size() {
+			return sectIndexes.size();
+		}
+
+		@Override
+		public FaultSection get(int index) {
+			return faultSectionData.get(sectIndexes.get(index));
+		}
+		
 	}
 
 	private class RupSurfaceCache {
@@ -1044,14 +1066,24 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				return surf;
 			List<FaultSection> fltDatas =  getFaultSectionDataForRupture(rupIndex);
 			List<RuptureSurface> rupSurfs = new ArrayList<>(fltDatas.size());
-			for (FaultSection fltData : fltDatas)
+			boolean anyDD = false;
+			for (FaultSection fltData : fltDatas) {
+				anyDD |= fltData.getSubSectionIndexDownDip() > 0;
 				rupSurfs.add(fltData.getFaultSurface(gridSpacing, false, aseisReducesArea));
+			}
 			if (rupSurfs.size() == 1)
 				surf = rupSurfs.get(0);
+			else if (anyDD)
+				surf = new CompoundSurface.DownDip(rupSurfs, fltDatas);
 			else
-				surf = new CompoundSurface(rupSurfs);
+				surf = new CompoundSurface.Simple(rupSurfs, fltDatas);
 			rupSurfaceCache.put(rupIndex, surf);
 			return surf;
+		}
+
+		public void clear() {
+			if (rupSurfaceCache != null)
+				rupSurfaceCache.clear();
 		}
 	}
 
@@ -1779,13 +1811,111 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		int numRups = sectionForRups.size();
 		double[] rupLengths = new double[numRups];
 		for (int r=0; r<numRups; r++) {
+			// don't use calculateLength because we don't want to build the List<FaultSection> for each rupture in memory
+			SectLengthAccumulator simpleAccumulator = new SimpleSectLengthAccumulator();
+			SectLengthAccumulator ddAccumulator = null;
 			for (int s : sectionForRups.get(r)) {
 				FaultSection sect = faultSectionData.get(s);
-				double length = sect.getTraceLength()*1e3;	// km --> m
-				rupLengths[r] += length;
+				int rowDD = sect.getSubSectionIndexDownDip();
+				if (rowDD > 0 || (rowDD == 0 && sect.getParentSectionId() >= 0)) {
+					// this section has (or might have) down-dip subsections
+					if (ddAccumulator == null)
+						ddAccumulator = new DownDipSectLengthAccumulator();
+					ddAccumulator.processSection(sect);
+				} else {
+					// not a DD section
+					simpleAccumulator.processSection(sect);
+				}
 			}
+			rupLengths[r] += simpleAccumulator.getLength()*1e3; // km --> m
+			if (ddAccumulator != null)
+				rupLengths[r] += ddAccumulator.getLength()*1e3; // km --> m
 		}
 		return rupLengths;
+	}
+	
+	/**
+	 * Calculates the aggregate length of the given collection of subsections without any dulication in the case of
+	 * multiple sections down-dip 
+	 * @param sects
+	 * @return length in SI units (m)
+	 */
+	public static double calculateLength(Collection<? extends FaultSection> sects) {
+		SectLengthAccumulator simpleAccumulator = new SimpleSectLengthAccumulator();
+		SectLengthAccumulator ddAccumulator = null;
+		for (FaultSection sect : sects) {
+			int rowDD = sect.getSubSectionIndexDownDip();
+			if (rowDD > 0 || (rowDD == 0 && sect.getParentSectionId() >= 0)) {
+				// this section has (or might have) down-dip subsections
+				if (ddAccumulator == null)
+					ddAccumulator = new DownDipSectLengthAccumulator();
+				ddAccumulator.processSection(sect);
+			} else {
+				// not a DD section
+				simpleAccumulator.processSection(sect);
+			}
+		}
+		double len = simpleAccumulator.getLength();
+		if (ddAccumulator != null)
+			len = ddAccumulator.getLength();
+		return len * 1e3; // km -> m
+	}
+	
+	private static interface SectLengthAccumulator {
+		
+		public void processSection(FaultSection sect);
+		
+		public double getLength();
+	}
+	
+	private static class SimpleSectLengthAccumulator implements SectLengthAccumulator {
+		private double lengthSum = 0d;
+
+		@Override
+		public void processSection(FaultSection sect) {
+			lengthSum += sect.getTraceLength();
+		}
+
+		@Override
+		public double getLength() {
+			return lengthSum;
+		}
+		
+	}
+	
+	private static class DownDipSectLengthAccumulator implements SectLengthAccumulator {
+		private static final int INITIAL_NUM_DD = 5;
+		
+		private Map<Integer, double[]> parentSectRowLengths = new HashMap<>();
+
+		@Override
+		public void processSection(FaultSection sect) {
+			int parentID = sect.getParentSectionId();
+			Preconditions.checkState(parentID >= 0, "Must have a parent section ID for down-dip sections: %s", sect);
+			int row = sect.getSubSectionIndexDownDip();
+			Preconditions.checkState(row >= 0, "Not a down-dip section? %s", sect);
+			double length = sect.getTraceLength();
+			double[] sectLengths = parentSectRowLengths.get(parentID);
+			if (sectLengths == null) {
+				sectLengths = new double[Integer.max(INITIAL_NUM_DD, row+1)];
+				parentSectRowLengths.put(parentID, sectLengths);
+			}
+			if (row >= sectLengths.length) {
+				// need to grow it
+				sectLengths = Arrays.copyOf(sectLengths, row+3);
+				parentSectRowLengths.put(parentID, sectLengths);
+			}
+			sectLengths[row] += length;
+		}
+
+		@Override
+		public double getLength() {
+			double sum = 0d;
+			for (double[] parentLengths : parentSectRowLengths.values())
+				sum += StatUtils.max(parentLengths);
+			return sum;
+		}
+		
 	}
 	
 	public static class Builder {

@@ -364,6 +364,16 @@ public class SimEventCumDistFuncSurface implements CacheEnabledSurface {
 	}
 
 	@Override
+	public Location getFirstLocOnLowerEdge() {
+		throw new UnsupportedOperationException("Not yet implemented");
+	}
+
+	@Override
+	public Location getLastLocOnLowerEdge() {
+		throw new UnsupportedOperationException("Not yet implemented");
+	}
+
+	@Override
 	public double getFractionOfSurfaceInRegion(Region region) {
 		throw new UnsupportedOperationException("Not yet implemented");
 	}

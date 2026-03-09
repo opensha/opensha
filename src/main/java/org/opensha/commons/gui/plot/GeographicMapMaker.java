@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.IntFunction;
 
 import org.jfree.chart.annotations.XYAnnotation;
 import org.jfree.chart.title.PaintScaleLegend;
@@ -111,11 +113,13 @@ public class GeographicMapMaker {
 	protected List<LocationList> sectPerimeters;
 	protected boolean plotAseisReducedSurfaces = false;
 	protected boolean fillSurfaces = false;
+	protected boolean fillVertialSurfaces = false;
 	protected boolean plotTracesForFilledSurfaces = true;
 	protected boolean plotOutlinesForFilledSurfaces = true;
 	protected boolean plotAllSectPolys = false;
 	protected boolean plotProxySectPolys = true;
 	protected boolean plotSectPolysOnTop = false;
+	protected boolean plotSectsOnTop = false;
 	
 	/*
 	 * General plot items
@@ -320,13 +324,22 @@ public class GeographicMapMaker {
 	
 	public void setFaultSections(List<? extends FaultSection> sects) {
 		clearFaultSections();
-		this.sects = sects;
-		this.sectIndexMap = new HashMap<>();
-		
-		for (int s=0; s<sects.size(); s++)
-			sectIndexMap.put(sects.get(s), s);
-		
-		Preconditions.checkState(sectIndexMap.size() == sects.size(), "Duplicate section ID?");
+		if (sects != null) {
+			this.sects = sects;
+			this.sectIndexMap = new HashMap<>();
+			
+			boolean hasDD = false;
+			for (int s=0; s<sects.size(); s++) {
+				FaultSection sect = sects.get(s);
+				sectIndexMap.put(sect, s);
+				hasDD |= sect.getSubSectionIndexDownDip() > 0;
+			}
+			
+			if (hasDD)
+				fillSurfaces = true;
+			
+			Preconditions.checkState(sectIndexMap.size() == sects.size(), "Duplicate section ID?");
+		}
 	}
 	
 	/**
@@ -510,12 +523,33 @@ public class GeographicMapMaker {
 		this.writePDFs = writePDFs;
 	}
 	
+	public boolean isWritePDFs() {
+		return this.writePDFs;
+	}
+	
 	public void setWriteGeoJSON(boolean writeGeoJSON) {
 		this.writeGeoJSON = writeGeoJSON;
+	}
+	
+	public boolean isWriteGeoJSON() {
+		return this.writeGeoJSON;
 	}
 
 	public void setFillSurfaces(boolean fillSurfaces) {
 		this.fillSurfaces = fillSurfaces;
+	}
+
+	public void setFillVerticalSurfaces(boolean fillVertialSurfaces) {
+		this.fillVertialSurfaces = fillVertialSurfaces;
+		
+		if (fillVertialSurfaces) {
+			this.sectUpperEdges = null;
+			this.sectPerimeters = null;
+		}
+	}
+
+	public void setPlotSectsOnTop(boolean plotSectsOnTop) {
+		this.plotSectsOnTop = plotSectsOnTop;
 	}
 
 	public void setPlotTracesForFilledSurfaces(boolean plotTracesForFilledSurfaces) {
@@ -564,6 +598,22 @@ public class GeographicMapMaker {
 	
 	public void plotSectScalars(double[] scalars, CPT cpt, String label) {
 		plotSectScalars(Doubles.asList(scalars), cpt, label);
+	}
+	
+	public void plotSectScalarsByIndex(IntFunction<Double> function, CPT cpt, String label) {
+		checkHasSections();
+		List<Double> scalars = new ArrayList<>(sects.size());
+		for (FaultSection sect : sects)
+			scalars.add(function.apply(sect.getSectionId()));
+		plotSectScalars(scalars, cpt, label);
+	}
+	
+	public void plotSectScalars(Function<FaultSection, Double> function, CPT cpt, String label) {
+		checkHasSections();
+		List<Double> scalars = new ArrayList<>(sects.size());
+		for (FaultSection sect : sects)
+			scalars.add(function.apply(sect));
+		plotSectScalars(scalars, cpt, label);
 	}
 	
 	public void plotSectScalars(double[] scalars, double[] sortables, CPT cpt, String label) {
@@ -919,7 +969,7 @@ public class GeographicMapMaker {
 					List<LocationList> upperEdges = new ArrayList<>();
 					List<LocationList> perimeters = new ArrayList<>();
 					for (FaultSection sect : sects) {
-						if (sect.getAveDip() == 90d) {
+						if (!fillVertialSurfaces && sect.getAveDip() == 90d) {
 							// vertical, don't bother with perimeter
 							upperEdges.add(sect.getFaultTrace());
 							perimeters.add(null);
@@ -993,7 +1043,9 @@ public class GeographicMapMaker {
 		}
 	}
 	
-	protected Feature surfFeature(FaultSection sect, PlotCurveCharacterstics pChar) {
+	public static final double GEOJSON_DEFAULT_SURF_OPACITY = 0.05d;
+	
+	protected Feature surfFeature(FaultSection sect, PlotCurveCharacterstics pChar, double opacity) {
 		Polygon poly = new Polygon(getPerimeter(sect));
 		FeatureProperties props = new FeatureProperties();
 		props.set("name", sect.getSectionName());
@@ -1004,7 +1056,7 @@ public class GeographicMapMaker {
 			props.set(FeatureProperties.STROKE_WIDTH_PROP, pChar.getLineWidth());
 			props.set(FeatureProperties.STROKE_COLOR_PROP, pChar.getColor());
 		}
-		props.set(FeatureProperties.FILL_OPACITY_PROP, 0.05d);
+		props.set(FeatureProperties.FILL_OPACITY_PROP, opacity);
 		return new Feature(sect.getSectionName(), poly, props);
 	}
 	
@@ -1158,12 +1210,16 @@ public class GeographicMapMaker {
 		}
 		
 		protected void plotBeforeSects() {
-			// do nothing (can be overridden)
+			if (!plotRegionsAboveFaults)
+				plotRegionOutlines();
 		}
 		
 		protected void plotSects() {
 			if (sects == null || sects.isEmpty())
 				return;
+			int startIndex = funcs.size();
+			int startGeoIndex = features == null ? -1 : features.size();
+			
 			Range xRange = getXRange();
 			Range yRange = getYRange();
 			Region plotRegion = new Region(new Location(yRange.getLowerBound(), xRange.getLowerBound()), 
@@ -1221,20 +1277,20 @@ public class GeographicMapMaker {
 				if (!doTraces && (!skipNaNs || sectNaNChar != null))
 					// plot the trace anyway if it's NaN
 					doTraces = isNaN;
-				if (sectsAreColored && fillSurfaces && plotTracesForFilledSurfaces && sect.getAveDip() != 90d) {
+				if (sectsAreColored && fillSurfaces && plotTracesForFilledSurfaces && (fillVertialSurfaces || sect.getAveDip() != 90d)) {
 					// plot the trace if we're filling the surface
 					// if we're not doing custom sorting, do it here as the fills will be put on bottom
 					// if we're doing custom sorting, we'll add them in on top later instead
 					doTraces = !isNaN && sectSortables == null && sectColorComparables == null && sectCharsComparables == null;
 				}
 				
-				if (sectOutlineChar != null && (sect.getAveDip() != 90d)) {
+				if (sectOutlineChar != null && (fillVertialSurfaces || sect.getAveDip() != 90d)) {
 					XY_DataSet outline = new DefaultXY_DataSet();
 					for (Location loc : getPerimeter(sect))
 						outline.set(loc.getLongitude(), loc.getLatitude());
 					
 					boolean reused = false;
-					if (prevOutline != null && funcs.get(0) == prevOutline) {
+					if (prevOutline != null && funcs.get(startIndex) == prevOutline) {
 						int matchIndex = -1;
 						Point2D myFirst = outline.get(0);
 						for (int i=0; i<prevOutline.size(); i++) {
@@ -1254,20 +1310,20 @@ public class GeographicMapMaker {
 								merged.set(outline.get(i));
 							for (int i=matchIndex+1; i<prevOutline.size(); i++)
 								merged.set(prevOutline.get(i));
-							funcs.set(0, merged);
+							funcs.set(startIndex, merged);
 							prevOutline = merged;
 						}
 					}
 					
 					if (!reused) {
-						funcs.add(0, outline);
+						funcs.add(startIndex, outline);
 						prevOutline = outline;
-						chars.add(0, sectOutlineChar);
+						chars.add(startIndex, sectOutlineChar);
 						if (doTraces && sectTraceChar == null && s == 0)
 							outline.setName("Fault Sections");
 					}
-					if (writeGeoJSON) {
-						Feature feature = surfFeature(sect, sectOutlineChar);
+					if (writeGeoJSON && !fillSurfaces) {
+						Feature feature = surfFeature(sect, sectOutlineChar, GEOJSON_DEFAULT_SURF_OPACITY);
 						outlineFeatures.put(sect.getSectionId(), feature);
 						features.add(0, feature);
 					}
@@ -1327,6 +1383,20 @@ public class GeographicMapMaker {
 					sectOrder = ComparablePairing.getSortedData(comps, sectOrder);
 //					System.out.println("Sorted sect order: "+sectOrder);
 				}
+				int fillIndex = -1;
+				int fillGeoIndex = -1;
+				if (fillSurfaces && sectSortables == null) {
+					if (plotSectsOnTop) {
+						// probably wanted these on top as well
+						// plot all fills now, traces will still go above
+						fillIndex = startIndex;
+						fillGeoIndex = startGeoIndex;
+					} else {
+						// plot all fills at the true bottom
+						fillIndex = 0;
+						fillGeoIndex = 0;
+					}
+				}
 				for (int s : sectOrder) {
 					FaultSection sect = sects.get(s);
 					float scalar = sectScalars.get(s).floatValue();
@@ -1336,7 +1406,7 @@ public class GeographicMapMaker {
 					if (Double.isNaN(scalar) && sectNaNChar != null)
 						color = sectNaNChar.getColor();
 
-					if (fillSurfaces && sect.getAveDip() != 90d) {
+					if (fillSurfaces && (fillVertialSurfaces || sect.getAveDip() != 90d)) {
 						XY_DataSet outline = new DefaultXY_DataSet();
 						for (Location loc : getPerimeter(sect))
 							outline.set(loc.getLongitude(), loc.getLatitude());
@@ -1344,9 +1414,8 @@ public class GeographicMapMaker {
 						PlotCurveCharacterstics fillChar = new PlotCurveCharacterstics(PlotLineType.POLYGON_SOLID, 0.5f, color);
 
 						if (sectSortables == null) {
-							// put fills on bottom
-							funcs.add(0, outline);
-							chars.add(0, fillChar);
+							funcs.add(fillIndex, outline);
+							chars.add(fillIndex, fillChar);
 						} else {
 							// assume already sorted as desired
 							funcs.add(outline);
@@ -1361,6 +1430,13 @@ public class GeographicMapMaker {
 								funcs.add(traces.get(s));
 								chars.add(sectTraceChar);
 							}
+						}
+						
+						if (writeGeoJSON) {
+							double opacity = (double)color.getAlpha()/255d;
+							Feature feature = surfFeature(sect, fillChar, opacity);
+							outlineFeatures.put(sect.getSectionId(), feature);
+							features.add(0, feature);
 						}
 					} else {
 						XY_DataSet trace = new DefaultXY_DataSet();
@@ -1432,7 +1508,7 @@ public class GeographicMapMaker {
 					if (!plotSects.contains(sect))
 						continue;
 
-					if (fillSurfaces && sect.getAveDip() != 90d) {
+					if (fillSurfaces && (fillVertialSurfaces || sect.getAveDip() != 90d)) {
 						XY_DataSet outline = new DefaultXY_DataSet();
 						LocationList perimeter = getPerimeter(sect);
 						for (Location loc : perimeter)
@@ -1442,8 +1518,8 @@ public class GeographicMapMaker {
 
 						if (comps == null) {
 							// put fills on bottom
-							funcs.add(0, outline);
-							chars.add(0, fillChar);
+							funcs.add(startIndex, outline);
+							chars.add(startIndex, fillChar);
 						} else {
 							// assume already sorted as desired
 							funcs.add(outline);
@@ -1572,7 +1648,8 @@ public class GeographicMapMaker {
 		}
 		
 		protected void plotAfterSects() {
-			// do nothing (can be overridden)
+			if (plotRegionsAboveFaults)
+				plotRegionOutlines();
 		}
 		
 		protected void plotJumps() {
@@ -1947,15 +2024,11 @@ public class GeographicMapMaker {
 			
 			plotPoliticalBoundaries();
 			
-			if (!plotRegionsAboveFaults)
-				plotRegionOutlines();
-			
-			plotBeforeSects();
-			plotSects();
-			plotAfterSects();
-			
-			if (plotRegionsAboveFaults)
-				plotRegionOutlines();
+			if (!plotSectsOnTop) {
+				plotBeforeSects();
+				plotSects();
+				plotAfterSects();
+			}
 			
 			plotJumps();
 			
@@ -1964,6 +2037,12 @@ public class GeographicMapMaker {
 			plotArrows();
 			
 			plotScatters();
+			
+			if (plotSectsOnTop) {
+				plotBeforeSects();
+				plotSects();
+				plotAfterSects();
+			}
 			
 			plotLast();
 			
@@ -2153,6 +2232,26 @@ public class GeographicMapMaker {
 		plot(outputDir, prefix, spec, width, null);
 	}
 	
+	public double getAxisTick() {
+		return getAxisTick(getXRange(), getYRange());
+	}
+	
+	private double getAxisTick(Range xRange, Range yRange) {
+		double maxSpan = Math.max(xRange.getLength(), yRange.getLength());
+		double tick;
+		if (maxSpan > 20)
+			tick = 5d;
+		else if (maxSpan > 8)
+			tick = 2d;
+		else if (maxSpan > 3)
+			tick = 1d;
+		else if (maxSpan > 1)
+			tick = 0.5d;
+		else
+			tick = 0.2;
+		return tick;
+	}
+	
 	public void plot(File outputDir, String prefix, String title, double widthInches, int dpi) throws IOException {
 		plot(outputDir, prefix, buildPlot(title, true), widthInches, dpi);
 	}
@@ -2169,18 +2268,7 @@ public class GeographicMapMaker {
 		
 		gp.drawGraphPanel(spec, false, false, xRange, yRange);
 		if (axisTicks) {
-			double maxSpan = Math.max(xRange.getLength(), yRange.getLength());
-			double tick;
-			if (maxSpan > 20)
-				tick = 5d;
-			else if (maxSpan > 8)
-				tick = 2d;
-			else if (maxSpan > 3)
-				tick = 1d;
-			else if (maxSpan > 1)
-				tick = 0.5d;
-			else
-				tick = 0.2;
+			double tick = getAxisTick(xRange, yRange);
 			PlotUtils.setXTick(gp, tick);
 			PlotUtils.setYTick(gp, tick);
 		} else {
