@@ -107,7 +107,7 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 	/**
 	 * Simple {@link CompoundSurface} implementation for ruptures without any sections down-dip. An optional
 	 * {@link FaultSection} list can be supplied to help with grouping and ordering. If that surface list is omitted,
-	 * the original CompoundSurface ordering implementation is retained.
+	 * the original CompoundSurface ordering implementation is retained (except for some minor bugfixes).
 	 */
 	public static class Simple extends CompoundSurface {
 		
