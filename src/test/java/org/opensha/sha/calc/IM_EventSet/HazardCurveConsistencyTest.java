@@ -115,7 +115,6 @@ public class HazardCurveConsistencyTest implements IMEventSetCalcAPI {
 	
 	@Test
 	public void testHazardCurve() throws IOException {
-        fail(); // Force failure for Build_Test workflow check
 		HazardCurveCalculator calc = new HazardCurveCalculator();
 		
 		ArbitrarilyDiscretizedFunc realCurve = IMT_Info.getUSGS_SA_Function();
