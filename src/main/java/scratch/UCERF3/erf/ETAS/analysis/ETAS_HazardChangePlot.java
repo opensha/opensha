@@ -40,7 +40,7 @@ import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
-import org.opensha.sha.faultSurface.OldCompoundSurface;
+import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
@@ -141,8 +141,8 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 				RuptureSurface surf = rup.getRuptureSurface();
 				if (surf == null || surf instanceof PointSurface) {
 					triggerRegions.add(new Region(rup.getHypocenterLocation(), radius));
-				} else if (surf instanceof OldCompoundSurface) {		
-					for (RuptureSurface subSurf : ((OldCompoundSurface)surf).getSurfaceList()) {
+				} else if (surf instanceof CompoundSurface) {		
+					for (RuptureSurface subSurf : ((CompoundSurface)surf).getSurfaceList()) {
 						LocationList upper;
 						try {
 							upper = subSurf.getUpperEdge();

@@ -28,7 +28,7 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.commons.util.cpt.CPT;
-import org.opensha.sha.faultSurface.OldCompoundSurface;
+import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.SimpleFaultData;
@@ -903,7 +903,7 @@ public class RSQSimSubSectionMapper {
 				mappedIDs.add((double)sect.getSectionId());
 		}
 		
-		OldCompoundSurface surfaceToOutline = new OldCompoundSurface(sectSurfs);
+		CompoundSurface surfaceToOutline = CompoundSurface.get(sectSurfs);
 		
 		double[] dasScalars = new double[mappedElements.size()];
 		

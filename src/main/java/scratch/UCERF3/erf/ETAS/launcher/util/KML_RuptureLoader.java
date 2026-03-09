@@ -16,7 +16,7 @@ import org.dom4j.DocumentException;
 import org.dom4j.Element;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.util.XMLUtils;
-import org.opensha.sha.faultSurface.OldCompoundSurface;
+import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.SimpleFaultData;
@@ -257,7 +257,7 @@ public class KML_RuptureLoader {
 		}
 		if (surfs.size() == 1)
 			return surfs.get(0);
-		return new OldCompoundSurface(surfs);
+		return CompoundSurface.get(surfs);
 	}
 
 	public static void main(String[] args) throws IOException, DocumentException {

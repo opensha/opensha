@@ -20,7 +20,7 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
-import org.opensha.sha.faultSurface.OldCompoundSurface;
+import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.FrankelGriddedSurface;
@@ -799,50 +799,6 @@ public class GriddedSurfaceUtils {
 			return distJB <= min_dist;
 		}
 		return false;
-	}
-	
-	/**
-	 * Trims the given number of points from the start and end of the given compound surface. All sub surfaces
-	 * must be instances of EvenlyGriddedSurfaces
-	 * @param compoundSurf
-	 * @param numFromStart
-	 * @param numFromEnd
-	 * @return
-	 */
-	public static OldCompoundSurface trimEndsOfSurface(OldCompoundSurface compoundSurf, int numFromStart, int numFromEnd) {
-		Preconditions.checkArgument(numFromStart > 0 || numFromEnd > 0, "must remove at least one point");
-		List<? extends RuptureSurface> surfList = compoundSurf.getSurfaceList();
-		// make sure each one is an evenly gridded surface
-		for (RuptureSurface subSurf : surfList)
-			Preconditions.checkState(subSurf instanceof EvenlyGriddedSurface, "all sub surfaces must be evenly gridded");
-		
-		List<RuptureSurface> newSurfList = Lists.newArrayList();
-		// add first. if first is reversed, then trim from the end instead
-		EvenlyGriddedSurface trimmedStart = (EvenlyGriddedSurface) surfList.get(0);
-		if (numFromStart > 0) {
-			if (compoundSurf.isSubSurfaceReversed(0))
-				trimmedStart = trimEndsOfSurface(trimmedStart, 0, numFromStart);
-			else
-				trimmedStart = trimEndsOfSurface(trimmedStart, numFromStart, 0);
-		}
-		newSurfList.add(trimmedStart);
-		int lastIndex = surfList.size()-1;
-		// add middle
-		for (int i=1; i<lastIndex; i++)
-			newSurfList.add(surfList.get(i));
-		// add last. if last is reversed, then trim from start instead
-		EvenlyGriddedSurface trimmedEnd = (EvenlyGriddedSurface)surfList.get(lastIndex);
-		if (numFromEnd > 0) {
-			if (compoundSurf.isSubSurfaceReversed(lastIndex))
-				trimmedEnd = trimEndsOfSurface(trimmedEnd, numFromEnd, 0);
-			else
-				trimmedEnd = trimEndsOfSurface(trimmedEnd, 0, numFromEnd);
-		}
-		newSurfList.add(trimmedEnd);
-		
-		Preconditions.checkState(newSurfList.size() == surfList.size(), "Size is messed up");
-		
-		return new OldCompoundSurface(newSurfList);
 	}
 	
 	/**

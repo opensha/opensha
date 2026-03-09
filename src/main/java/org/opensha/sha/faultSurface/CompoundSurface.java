@@ -70,11 +70,11 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 	
 	private SurfaceDistanceCache cache = SurfaceCachingPolicy.build(this);
 	
-	public CompoundSurface get(List<? extends RuptureSurface> surfaces) {
+	public static CompoundSurface get(List<? extends RuptureSurface> surfaces) {
 		return new Simple(surfaces);
 	}
 	
-	public CompoundSurface get(List<? extends RuptureSurface> surfaces, List<? extends FaultSection> sections) {
+	public static CompoundSurface get(List<? extends RuptureSurface> surfaces, List<? extends FaultSection> sections) {
 		if (sections == null)
 			return new Simple(surfaces);
 		boolean anyDD = sections.stream().anyMatch(S->S.getSubSectionIndexDownDip()>0);
@@ -106,7 +106,8 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 	
 	/**
 	 * Simple {@link CompoundSurface} implementation for ruptures without any sections down-dip. An optional
-	 * {@link FaultSection} list can be supplied to help with grouping and ordering.
+	 * {@link FaultSection} list can be supplied to help with grouping and ordering. If that surface list is omitted,
+	 * the original CompoundSurface ordering implementation is retained.
 	 */
 	public static class Simple extends CompoundSurface {
 		

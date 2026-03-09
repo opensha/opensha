@@ -21,7 +21,7 @@ import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
-import org.opensha.sha.faultSurface.OldCompoundSurface;
+import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
@@ -300,7 +300,7 @@ public class NSHMP13_DeterminisiticERF extends AbstractERF {
 				surfs.add(sect.getFaultSurface(SPACING, false, true));
 			}
 			surfaceMap.put(id, (surfs.size() == 1) ? surfs.get(0)
-				: new OldCompoundSurface(surfs));
+				: CompoundSurface.get(surfs));
 		}
 	}
 	

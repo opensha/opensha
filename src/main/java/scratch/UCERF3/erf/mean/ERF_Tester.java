@@ -17,7 +17,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
-import org.opensha.sha.faultSurface.OldCompoundSurface;
+import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -98,7 +98,7 @@ public class ERF_Tester {
 		for (int i=0; i<erf.getNumSources(); i++) {
 			ProbEqkSource source = erf.getSource(i);
 			totRups += source.getNumRuptures();
-			OldCompoundSurface surf = (OldCompoundSurface)source.getSourceSurface();
+			CompoundSurface surf = (CompoundSurface)source.getSourceSurface();
 			for (RuptureSurface subSurf : surf.getSurfaceList())
 				surfPts += subSurf.getEvenlyDiscritizedListOfLocsOnSurface().size();
 		}

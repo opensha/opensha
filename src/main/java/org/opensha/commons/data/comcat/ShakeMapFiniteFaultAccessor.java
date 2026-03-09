@@ -27,7 +27,7 @@ import org.opensha.commons.geo.json.Geometry.MultiPolygon;
 import org.opensha.commons.geo.json.Geometry.Point;
 import org.opensha.commons.geo.json.Geometry.Polygon;
 import org.opensha.commons.util.ExceptionUtils;
-import org.opensha.sha.faultSurface.OldCompoundSurface;
+import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Preconditions;
@@ -228,7 +228,7 @@ public class ShakeMapFiniteFaultAccessor {
 			surfs.add(EdgeRuptureSurface.build(outline, MAX_GRID_SPACING));
 		if (surfs.size() == 1)
 			return surfs.get(0);
-		return new OldCompoundSurface(surfs);
+		return CompoundSurface.get(surfs);
 	}
 	
 	private static LocationList[] parseFaultTextFile(URL url) throws IOException {

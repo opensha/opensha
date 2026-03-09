@@ -31,7 +31,7 @@ import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
-import org.opensha.sha.faultSurface.OldCompoundSurface;
+import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -423,8 +423,8 @@ public class ETAS_EventMapPlotUtils {
 	
 	public static List<XY_DataSet> getSurfTraces(RuptureSurface surf) {
 		List<RuptureSurface> allSurfs = new ArrayList<>();
-		if (surf instanceof OldCompoundSurface)
-			allSurfs.addAll(((OldCompoundSurface)surf).getSurfaceList());
+		if (surf instanceof CompoundSurface)
+			allSurfs.addAll(((CompoundSurface)surf).getSurfaceList());
 		else
 			allSurfs.add(surf);
 		List<XY_DataSet> ret = new ArrayList<>();
@@ -446,8 +446,8 @@ public class ETAS_EventMapPlotUtils {
 			dip = 45;
 		}
 		List<RuptureSurface> allSurfs = new ArrayList<>();
-		if (surf instanceof OldCompoundSurface)
-			allSurfs.addAll(((OldCompoundSurface)surf).getSurfaceList());
+		if (surf instanceof CompoundSurface)
+			allSurfs.addAll(((CompoundSurface)surf).getSurfaceList());
 		else
 			allSurfs.add(surf);
 		List<XY_DataSet> ret = new ArrayList<>();
@@ -560,9 +560,9 @@ public class ETAS_EventMapPlotUtils {
 			return;
 		
 		FaultTrace trace;
-		if (surf instanceof OldCompoundSurface) {
+		if (surf instanceof CompoundSurface) {
 			// use extents
-			List<? extends RuptureSurface> subSurfs = ((OldCompoundSurface)surf).getSurfaceList();
+			List<? extends RuptureSurface> subSurfs = ((CompoundSurface)surf).getSurfaceList();
 			List<Location[]> pairs = new ArrayList<>();
 			for (int i=0; i<subSurfs.size(); i++) {
 				LocationList tr1 = getUpperEdge(subSurfs.get(i));
@@ -597,8 +597,8 @@ public class ETAS_EventMapPlotUtils {
 		PlotCurveCharacterstics rupAboveChar = new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, Color.BLACK);
 		List<XY_DataSet> rupFuncs = new ArrayList<>();
 		List<RuptureSurface> subSurfs = new ArrayList<>();
-		if (surf instanceof OldCompoundSurface)
-			subSurfs.addAll(((OldCompoundSurface)surf).getSurfaceList());
+		if (surf instanceof CompoundSurface)
+			subSurfs.addAll(((CompoundSurface)surf).getSurfaceList());
 		else
 			subSurfs.add(surf);
 		for (RuptureSurface subSurf : subSurfs) {

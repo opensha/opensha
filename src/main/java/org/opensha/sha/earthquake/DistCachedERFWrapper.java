@@ -11,7 +11,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.sha.calc.disaggregation.DisaggregationSourceRuptureInfo;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
-import org.opensha.sha.faultSurface.OldCompoundSurface;
+import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.cache.CacheEnabledSurface;
 import org.opensha.sha.faultSurface.cache.CustomCacheWrappedSurface;
@@ -115,10 +115,10 @@ public class DistCachedERFWrapper extends AbstractERF {
 			// already encountered (duplicate surface)
 			return wrappedMap.get(origSurf);
 		// need to wrap it here
-		if (origSurf instanceof OldCompoundSurface) {
+		if (origSurf instanceof CompoundSurface) {
 			// wrap the individual ones first
 			List<RuptureSurface> subSurfs = new ArrayList<>();
-			for (RuptureSurface subSurf : ((OldCompoundSurface)origSurf).getSurfaceList()) {
+			for (RuptureSurface subSurf : ((CompoundSurface)origSurf).getSurfaceList()) {
 				if (wrappedMap.containsKey(subSurf)) {
 					subSurfs.add(wrappedMap.get(subSurf));
 				} else if (subSurf instanceof CacheEnabledSurface) {
@@ -130,7 +130,7 @@ public class DistCachedERFWrapper extends AbstractERF {
 					subSurfs.add(subSurf);
 				}
 			}
-			wrappedSurf = new CustomCacheWrappedSurface(new OldCompoundSurface(subSurfs));
+			wrappedSurf = new CustomCacheWrappedSurface(CompoundSurface.get(subSurfs));
 			wrappedMap.put(origSurf, (CustomCacheWrappedSurface)wrappedSurf);
 		} else if (origSurf instanceof CacheEnabledSurface) {
 			wrappedSurf = new CustomCacheWrappedSurface((CacheEnabledSurface)origSurf);
