@@ -20,6 +20,7 @@ public class ERFLoopTest {
 	
 	@Test
 	public void testSourceLooping() {
+        fail(); // Force failure for build_test workflow
 		Iterator<ProbEqkSource> sourceIt = erf.iterator();
 		
 		for (int sourceID=0; sourceID<erf.getNumSources(); sourceID++) {
