@@ -431,7 +431,7 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 							Math.pow(10, Math.ceil(Math.log10(maxWeight))));
 				}
 				
-				HeadlessGraphPanel gp = PlotUtils.initHeadless();
+				HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 				
 				gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
 				gp.drawGraphPanel(spec, false, yLog, xRange, yRange);
@@ -454,7 +454,7 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 				madSpec.setTitle(" ");
 				weightSpec.setTitle(" ");
 				
-				HeadlessGraphPanel gp = PlotUtils.initHeadless();
+				HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 				
 				gp.setTickLabelFontSize(22);
 				gp.setAxisLabelFontSize(24);

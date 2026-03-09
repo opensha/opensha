@@ -180,7 +180,7 @@ public class GRParticRateEstimator implements SectParticipationRateEstimator {
 			range = new Range(Math.pow(10, Math.floor(Math.log10(range.getLowerBound()))),
 					Math.pow(10, Math.ceil(Math.log(range.getUpperBound()))));
 			
-			HeadlessGraphPanel gp = PlotUtils.initHeadless();
+			HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 			
 			gp.drawGraphPanel(plot, true, true, range, range);
 			

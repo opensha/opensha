@@ -7,8 +7,10 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.Paint;
+import java.awt.RenderingHints;
 import java.awt.Shape;
 import java.awt.Stroke;
+import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.awt.print.PrinterException;
@@ -16,11 +18,13 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
+import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
@@ -45,9 +49,13 @@ import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.axis.NumberTickUnit;
 import org.jfree.chart.axis.TickUnits;
 import org.jfree.chart.axis.ValueAxis;
+import org.jfree.chart.encoders.EncoderUtil;
+import org.jfree.chart.encoders.ImageFormat;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.CombinedRangeXYPlot;
 import org.jfree.chart.plot.DatasetRenderingOrder;
+import org.jfree.chart.plot.PlotRenderingInfo;
+import org.jfree.chart.plot.PlotState;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYItemRenderer;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
@@ -189,8 +197,7 @@ public class GraphPanel extends JSplitPane {
 	 */
 	public GraphPanel(PlotPreferences plotPrefs) {
 		super(JSplitPane.VERTICAL_SPLIT, true);
-		this.plotPrefs = plotPrefs;
-		this.backgroundColor = plotPrefs.getBackgroundColor();
+		setPlotPrefs(plotPrefs);
 		setResizeWeight(1);
 		setBorder(null);
 
@@ -376,6 +383,7 @@ public class GraphPanel extends JSplitPane {
 		// getting the tick label font size
 		int tickFontSize = plotPrefs.getTickLabelFontSize();
 		int legendFontSize = plotPrefs.getLegendFontSize();
+		double sizeScalar = plotPrefs.getSizeScalar();
 
 		// create the standard ticks so that smaller values too can plotted on the chart
 		TickUnits units = MyTickUnits.createStandardTickUnits();
@@ -396,7 +404,8 @@ public class GraphPanel extends JSplitPane {
 				if (xLog) {
 					JFreeLogarithmicAxis logAxis = new JFreeLogarithmicAxis(spec.getXAxisLabel());
 					// this fixes the overlap issue with the bottom of the plot
-					logAxis.setVerticalAnchorShift(4);
+//					logAxis.setVerticalAnchorShift(4);
+					logAxis.setVerticalAnchorShift(plotPrefs.getTickLabelFontSize()*0.2f);
 					xAxis = logAxis;
 				} else
 					xAxis = new NumberAxis(spec.getXAxisLabel());
@@ -418,7 +427,6 @@ public class GraphPanel extends JSplitPane {
 				if (!(xAxis instanceof CustomOffsetNumberAxis))
 					xAxis.setStandardTickUnits(units);
 				xAxis.setTickMarksVisible(false);
-				xAxis.setTickLabelInsets(new RectangleInsets(3, 10, 3, 10));
 				// Axis label font
 				Font axisLabelFont = xAxis.getLabelFont();
 				xAxis.setLabelFont(new Font(axisLabelFont.getFontName(), axisLabelFont.getStyle(), axisFontSize));
@@ -523,6 +531,8 @@ public class GraphPanel extends JSplitPane {
 				// TODO make sure button panel gets updated
 			}
 
+			setupAxis(xAxis, true);
+			setupAxis(yAxis, false);
 			subXAxis.add(xAxis);
 			subYAxis.add(yAxis);
 
@@ -563,7 +573,7 @@ public class GraphPanel extends JSplitPane {
 				}
 
 			};
-			((CombinedRangeXYPlot) plot).setGap(30);
+			((CombinedRangeXYPlot) plot).setGap(plotPrefs.getSubplotGap());
 		} else {
 			plot = new CombinedDomainXYPlot(xAxis) {
 
@@ -576,7 +586,7 @@ public class GraphPanel extends JSplitPane {
 				}
 
 			};
-			((CombinedDomainXYPlot) plot).setGap(30);
+			((CombinedDomainXYPlot) plot).setGap(plotPrefs.getSubplotGap());
 		}
 
 		setupPlot(plot, tickFontSize);
@@ -643,7 +653,7 @@ public class GraphPanel extends JSplitPane {
 						cptSubtitles = new ArrayList<>();
 						cptLocation = xyzSpec.getCPTPosition();
 					}
-					cptSubtitles.add(getLegendForCPT(scale, xyzSpec.getZAxisLabel(), axisFontSize, tickFontSize,
+					cptSubtitles.add(getLegendForCPT(scale, xyzSpec.getZAxisLabel(), plotPrefs,
 							xyzSpec.getCPTTickUnit(), xyzSpec.getCPTPosition()));
 				}
 			}
@@ -656,7 +666,6 @@ public class GraphPanel extends JSplitPane {
 			if (plotChars == null) {
 				plotChars = new ArrayList<>();
 				plotSpec.setChars(plotChars);
-				;
 			}
 
 			int charIndex = 0;
@@ -783,7 +792,8 @@ public class GraphPanel extends JSplitPane {
 					// to be send to JFreechart for plotting.
 //					drawCurvesUsingPlottingFeatures(subPlot, lineType, lineWidth, symbol, symbolWidth, color, dataIndex);
 
-					XYItemRenderer renderer = PlotLineType.buildRenderer(lineType, symbol, lineWidth, symbolWidth);
+					XYItemRenderer renderer = PlotLineType.buildRenderer(lineType, symbol, lineWidth, symbolWidth,
+							plotPrefs);
 
 					subPlot.setRenderer(datasetIndex, renderer);
 //					xyItemRenderer.setPaint(color);
@@ -852,6 +862,8 @@ public class GraphPanel extends JSplitPane {
 		// backs
 		// a panel fo curves,
 		JFreeChart chart = new JFreeChart(specs.get(0).getTitle(), newPlotLabelFont, plot, false);
+		if (chart.getTitle() != null)
+			chart.getTitle().setMaximumLinesToDisplay(plotPrefs.getTitleMaxLines());
 
 		chart.setBackgroundPaint(backgroundColor);
 
@@ -864,6 +876,9 @@ public class GraphPanel extends JSplitPane {
 					return legendItemsFin;
 				}
 			});
+//			chartLegend.setPadding(plotPrefs.getLegendPadding());
+			chartLegend.setLegendItemGraphicPadding(plotPrefs.getLegendItemGraphicPadding());
+			chartLegend.setItemLabelPadding(plotPrefs.getLegendItemLabelPadding());
 			chartLegend.setPosition(legendLocation);
 			Font legendFont = chartLegend.getItemFont();
 			chartLegend.setItemFont(new Font(legendFont.getName(), legendFont.getStyle(), legendFontSize));
@@ -1066,20 +1081,27 @@ public class GraphPanel extends JSplitPane {
 		}
 	}
 
-	public static void setupPlot(XYPlot plot, int tickFontSize) {
+	private void setupPlot(XYPlot plot, int tickFontSize) {
 		// setting the plot properties
 		plot.setDomainCrosshairLockedOnData(false);
 		plot.setDomainCrosshairVisible(false);
 		plot.setRangeCrosshairLockedOnData(false);
 		plot.setRangeCrosshairVisible(false);
-		plot.setInsets(new RectangleInsets(10, 0, 0, tickFontSize + 15));
+		plot.setInsets(plotPrefs.getPlotPadding());
 
 		// TODO make this selectable?
 		plot.setDomainGridlineStroke(new BasicStroke(0.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0.0f));
 		plot.setDomainGridlinePaint(new Color(225, 225, 225));
 		plot.setRangeGridlineStroke(new BasicStroke(0.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0.0f));
 		plot.setRangeGridlinePaint(new Color(225, 225, 225));
-
+	}
+	
+	private void setupAxis(ValueAxis axis, boolean horizontal) {
+//		System.out.println("Axis: "+axis.getLabel());
+//		System.out.println("Axis label insets were: "+axis.getLabelInsets());
+//		System.out.println("Tick label insets were: "+axis.getTickLabelInsets());
+		axis.setLabelInsets(plotPrefs.getAxisLabelPadding());
+		axis.setTickLabelInsets(horizontal ? plotPrefs.getAxisTickLabelPaddingX() : plotPrefs.getAxisTickLabelPaddingY());
 	}
 
 	/**
@@ -1367,6 +1389,42 @@ public class GraphPanel extends JSplitPane {
 	public void saveAsPNG(String fileName, int width, int height) throws IOException {
 		ChartUtils.saveChartAsPNG(new File(fileName), chartPanel.getChart(), width, height);
 	}
+	
+	public void saveAsScaledPNG(String fileName, int width, int height, int dpi) throws IOException {
+		saveAsScaledPNG(fileName, width, height, (double)dpi/72d);
+	}
+	
+	public void saveAsScaledPNG(String fileName, int width, int height, double scale) throws IOException {
+		int W = (int)Math.round(width * scale);
+		int H = (int)Math.round(height * scale);
+
+		BufferedImage hi = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g2 = hi.createGraphics();
+		try {
+			// quality hints
+			g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+			g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+			g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+			g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+
+			// scale everything uniformly
+			g2.scale(scale, scale);
+
+			chartPanel.getChart().draw(g2, new Rectangle2D.Double(0, 0, width, height));
+		} finally {
+			g2.dispose();
+		}
+//		ImageIO.write(hi, "png", new File(fileName));
+		// for some reason writing this way (rather than ImageIO) plays more nicely with viewers that have the file open,
+		// e.g., eog on Linux will fail to show the updated file (switching to a different image in the same dir)
+		// when using ImageIO
+		OutputStream out = new BufferedOutputStream(new FileOutputStream(fileName));
+		try {
+			EncoderUtil.writeBufferedImage(hi, ImageFormat.PNG, out);
+		} finally {
+			out.close();
+		}
+	}
 
 	/**
 	 * Allows the user to save the chart contents and metadata as PDF. This allows
@@ -1375,239 +1433,24 @@ public class GraphPanel extends JSplitPane {
 	 * @throws IOException
 	 */
 	public void saveAsPDF(String fileName) throws IOException {
+		saveAsPDF(fileName, true);
+	}
+
+	/**
+	 * Allows the user to save the chart contents and metadata as PDF. This allows
+	 * to preserve the color coding of the metadata.
+	 * 
+	 * @throws IOException
+	 */
+	public void saveAsPDF(String fileName, boolean includeMetadata) throws IOException {
 		int width = chartPanel.getWidth();
 		int height = chartPanel.getHeight();
-		this.saveAsPDF(fileName, width, height);
+		this.saveAsPDF(fileName, width, height, includeMetadata, 1d);
 	}
 
 	public BufferedImage getBufferedImage(int width, int height) {
 		return chartPanel.getChart().createBufferedImage(width, height, null);
 	}
-
-//	private static class UTF8_FontMapper implements FontMapper {
-//
-//		/** Maps aliases to names.
-//	     */    
-//	    private HashMap aliases = new HashMap();
-//	    /** Maps names to BaseFont parameters.
-//	     */    
-//	    private HashMap mapper = new HashMap();
-//	    
-//	    private final String encoding = BaseFont.IDENTITY_H;
-//	    /**
-//	     * Returns a BaseFont which can be used to represent the given AWT Font
-//	     *
-//	     * @param	font		the font to be converted
-//	     * @return	a BaseFont which has similar properties to the provided Font
-//	     */
-//	    
-//	    public BaseFont awtToPdf(Font font) {
-//	        try {
-//	            BaseFontParameters p = getBaseFontParameters(font.getFontName());
-//	            if (p != null)
-//	                return BaseFont.createFont(p.fontName, p.encoding, p.embedded, p.cached, p.ttfAfm, p.pfb);
-//	            String fontKey = null;
-//	            String logicalName = font.getName();
-//
-//	            if (logicalName.equalsIgnoreCase("DialogInput") || logicalName.equalsIgnoreCase("Monospaced") || logicalName.equalsIgnoreCase("Courier")) {
-//
-//	                if (font.isItalic()) {
-//	                    if (font.isBold()) {
-//	                        fontKey = BaseFont.COURIER_BOLDOBLIQUE;
-//
-//	                    } else {
-//	                        fontKey = BaseFont.COURIER_OBLIQUE;
-//	                    }
-//
-//	                } else {
-//	                    if (font.isBold()) {
-//	                        fontKey = BaseFont.COURIER_BOLD;
-//
-//	                    } else {
-//	                        fontKey = BaseFont.COURIER;
-//	                    }
-//	                }
-//
-//	            } else if (logicalName.equalsIgnoreCase("Serif") || logicalName.equalsIgnoreCase("TimesRoman")) {
-//
-//	                if (font.isItalic()) {
-//	                    if (font.isBold()) {
-//	                        fontKey = BaseFont.TIMES_BOLDITALIC;
-//
-//	                    } else {
-//	                        fontKey = BaseFont.TIMES_ITALIC;
-//	                    }
-//
-//	                } else {
-//	                    if (font.isBold()) {
-//	                        fontKey = BaseFont.TIMES_BOLD;
-//
-//	                    } else {
-//	                        fontKey = BaseFont.TIMES_ROMAN;
-//	                    }
-//	                }
-//
-//	            } else {  // default, this catches Dialog and SansSerif
-//
-//	                if (font.isItalic()) {
-//	                    if (font.isBold()) {
-//	                        fontKey = BaseFont.HELVETICA_BOLDOBLIQUE;
-//
-//	                    } else {
-//	                        fontKey = BaseFont.HELVETICA_OBLIQUE;
-//	                    }
-//
-//	                } else {
-//	                    if (font.isBold()) {
-//	                        fontKey = BaseFont.HELVETICA_BOLD;
-//	                    } else {
-//	                        fontKey = BaseFont.HELVETICA;
-//	                    }
-//	                }
-//	            }
-//	            return BaseFont.createFont(fontKey, encoding, false);
-//	        }
-//	        catch (Exception e) {
-//	            throw new ExceptionConverter(e);
-//	        }
-//	    }
-//	    
-//	    /**
-//	     * Returns an AWT Font which can be used to represent the given BaseFont
-//	     *
-//	     * @param	font		the font to be converted
-//	     * @param	size		the desired point size of the resulting font
-//	     * @return	a Font which has similar properties to the provided BaseFont
-//	     */
-//	    
-//	    public Font pdfToAwt(BaseFont font, int size) {
-//	        String names[][] = font.getFullFontName();
-//	        if (names.length == 1)
-//	            return new Font(names[0][3], 0, size);
-//	        String name10 = null;
-//	        String name3x = null;
-//	        for (int k = 0; k < names.length; ++k) {
-//	            String name[] = names[k];
-//	            if (name[0].equals("1") && name[1].equals("0"))
-//	                name10 = name[3];
-//	            else if (name[2].equals("1033")) {
-//	                name3x = name[3];
-//	                break;
-//	            }
-//	        }
-//	        String finalName = name3x;
-//	        if (finalName == null)
-//	            finalName = name10;
-//	        if (finalName == null)
-//	            finalName = names[0][3];
-//	        return new Font(finalName, 0, size);
-//	    }
-//	    
-//	    /** Maps a name to a BaseFont parameter.
-//	     * @param awtName the name
-//	     * @param parameters the BaseFont parameter
-//	     */    
-//	    public void putName(String awtName, BaseFontParameters parameters) {
-//	        mapper.put(awtName, parameters);
-//	    }
-//	    
-//	    /** Maps an alias to a name.
-//	     * @param alias the alias
-//	     * @param awtName the name
-//	     */    
-//	    public void putAlias(String alias, String awtName) {
-//	        aliases.put(alias, awtName);
-//	    }
-//	    
-//	    /** Looks for a BaseFont parameter associated with a name.
-//	     * @param name the name
-//	     * @return the BaseFont parameter or <CODE>null</CODE> if not found.
-//	     */    
-//	    public BaseFontParameters getBaseFontParameters(String name) {
-//	        String alias = (String)aliases.get(name);
-//	        if (alias == null)
-//	            return (BaseFontParameters)mapper.get(name);
-//	        BaseFontParameters p = (BaseFontParameters)mapper.get(alias);
-//	        if (p == null)
-//	            return (BaseFontParameters)mapper.get(name);
-//	        else
-//	            return p;
-//	    }
-//	    
-//	    /**
-//	     * Inserts the names in this map.
-//	     * @param allNames the returned value of calling {@link BaseFont#getAllFontNames(String, String, byte[])}
-//	     * @param path the full path to the font
-//	     */    
-//	    public void insertNames(Object allNames[], String path) {
-//	        String names[][] = (String[][])allNames[2];
-//	        String main = null;
-//	        for (int k = 0; k < names.length; ++k) {
-//	            String name[] = names[k];
-//	            if (name[2].equals("1033")) {
-//	                main = name[3];
-//	                break;
-//	            }
-//	        }
-//	        if (main == null)
-//	            main = names[0][3];
-//	        BaseFontParameters p = new BaseFontParameters(path);
-//	        mapper.put(main, p);
-//	        for (int k = 0; k < names.length; ++k) {
-//	            aliases.put(names[k][3], main);
-//	        }
-//	        aliases.put(allNames[0], main);
-//	    }
-//	    
-//	    /** Inserts all the fonts recognized by iText in the
-//	     * <CODE>directory</CODE> into the map. The encoding
-//	     * will be <CODE>BaseFont.CP1252</CODE> but can be
-//	     * changed later.
-//	     * @param dir the directory to scan
-//	     * @return the number of files processed
-//	     */    
-//	    public int insertDirectory(String dir) {
-//	        File file = new File(dir);
-//	        if (!file.exists() || !file.isDirectory())
-//	            return 0;
-//	        File files[] = file.listFiles();
-//	        if (files == null)
-//	        	return 0;
-//	        int count = 0;
-//	        for (int k = 0; k < files.length; ++k) {
-//	            file = files[k];
-//	            String name = file.getPath().toLowerCase();
-//	            try {
-//	                if (name.endsWith(".ttf") || name.endsWith(".otf") || name.endsWith(".afm")) {
-//	                    Object allNames[] = BaseFont.getAllFontNames(file.getPath(), encoding, null);
-//	                    insertNames(allNames, file.getPath());
-//	                    ++count;
-//	                }
-//	                else if (name.endsWith(".ttc")) {
-//	                    String ttcs[] = BaseFont.enumerateTTCNames(file.getPath());
-//	                    for (int j = 0; j < ttcs.length; ++j) {
-//	                        String nt = file.getPath() + "," + j;
-//	                        Object allNames[] = BaseFont.getAllFontNames(nt, encoding, null);
-//	                        insertNames(allNames, nt);
-//	                    }
-//	                    ++count;
-//	                }
-//	            }
-//	            catch (Exception e) {
-//	            }
-//	        }
-//	        return count;
-//	    }
-//	    
-//	    public HashMap getMapper() {
-//	        return mapper;
-//	    }
-//	    
-//	    public HashMap getAliases() {
-//	        return aliases;
-//	    }
-//		
-//	}
 
 	/**
 	 * Allows the user to save the chart contents and metadata as PDF. This allows
@@ -1616,10 +1459,20 @@ public class GraphPanel extends JSplitPane {
 	 * @throws IOException
 	 */
 	public void saveAsPDF(String fileName, int width, int height) throws IOException {
-		int textLength = metadataText.getStyledDocument().getLength();
-		int totalLength = textLength + height;
+		saveAsPDF(fileName, width, height, false, 1d);
+	}
+
+	/**
+	 * Allows the user to save the chart contents and metadata as PDF. This allows
+	 * to preserve the color coding of the metadata.
+	 * 
+	 * @throws IOException
+	 */
+	public void saveAsPDF(String fileName, int width, int height, boolean includeMetadata, double scale) throws IOException {
+		float pdfW = (float)(width*scale);
+		float pdfH = (float)(height*scale);
 		// step 1
-		Document metadataDocument = new Document(new com.itextpdf.text.Rectangle(width, height));
+		Document metadataDocument = new Document(new com.itextpdf.text.Rectangle(pdfW, pdfH));
 		metadataDocument.addAuthor("OpenSHA");
 		metadataDocument.addCreationDate();
 //		HeaderFooter footer = new HeaderFooter(new Phrase("Powered by OpenSHA"), true);
@@ -1633,12 +1486,16 @@ public class GraphPanel extends JSplitPane {
 			metadataDocument.open();
 			// step 4
 			PdfContentByte cb = writer.getDirectContent();
-			PdfTemplate tp = cb.createTemplate(width, height);
+			PdfTemplate tp = cb.createTemplate(pdfW, pdfH);
 //			tp.creategraphics
 //			new 
 //			FontMapper fontMapper = new DefaultFontMapper();
 			FontMapper fontMapper = new PDF_UTF8_FontMapper();
-			Graphics2D g2d = new PdfGraphics2D(tp, width, height, fontMapper);
+			Graphics2D g2d = new PdfGraphics2D(tp, pdfW, pdfH, fontMapper);
+			
+			if (scale != 1d)
+				g2d.scale(scale, scale);
+			
 //			Graphics2D g2d = tp.createGraphics(width, height,
 //					new DefaultFontMapper());
 			Rectangle2D r2d = new Rectangle2D.Double(0, 0, width, height);
@@ -1646,23 +1503,27 @@ public class GraphPanel extends JSplitPane {
 			g2d.dispose();
 			cb.addTemplate(tp, 0, 0);
 			// starts the metadata from the new page.
-			metadataDocument.newPage();
-			int size = legendString.size();
-			for (int i = 0, legendColor = 0; i < size; ++i, ++legendColor) {
-				com.itextpdf.text.Paragraph para = new com.itextpdf.text.Paragraph();
-				// checks to see if the WeightFuncList exists in the list of functions
-				// then plot it in black else plot in the same as the legend
-				if (weightedfuncListIndexes != null && weightedfuncListIndexes.contains(i)) {
-					para.add(new Phrase((String) legendString.get(i),
-							FontFactory.getFont(PDF_UTF8_FontMapper.SANS, 10, Font.PLAIN, BaseColor.BLACK)));
-					--legendColor;
-				} else {
-					Color c = this.plottedChars.get(legendColor).getColor();
-					BaseColor bc = new BaseColor(c.getRed(), c.getGreen(), c.getBlue(), c.getAlpha());
-					para.add(new Phrase((String) legendString.get(i),
-							FontFactory.getFont(PDF_UTF8_FontMapper.SANS, 10, Font.PLAIN, bc)));
+			if (includeMetadata) {
+				int textLength = metadataText.getStyledDocument().getLength();
+				
+				metadataDocument.newPage();
+				int size = legendString.size();
+				for (int i = 0, legendColor = 0; i < size; ++i, ++legendColor) {
+					com.itextpdf.text.Paragraph para = new com.itextpdf.text.Paragraph();
+					// checks to see if the WeightFuncList exists in the list of functions
+					// then plot it in black else plot in the same as the legend
+					if (weightedfuncListIndexes != null && weightedfuncListIndexes.contains(i)) {
+						para.add(new Phrase((String) legendString.get(i),
+								FontFactory.getFont(PDF_UTF8_FontMapper.SANS, 10, Font.PLAIN, BaseColor.BLACK)));
+						--legendColor;
+					} else {
+						Color c = this.plottedChars.get(legendColor).getColor();
+						BaseColor bc = new BaseColor(c.getRed(), c.getGreen(), c.getBlue(), c.getAlpha());
+						para.add(new Phrase((String) legendString.get(i),
+								FontFactory.getFont(PDF_UTF8_FontMapper.SANS, 10, Font.PLAIN, bc)));
+					}
+					metadataDocument.add(para);
 				}
-				metadataDocument.add(para);
 			}
 		} catch (DocumentException de) {
 			de.printStackTrace();
@@ -1796,25 +1657,31 @@ public class GraphPanel extends JSplitPane {
 	public PlotPreferences getPlotPrefs() {
 		return plotPrefs;
 	}
+	
+	public void setPlotPrefs(PlotPreferences plotPrefs) {
+		Preconditions.checkNotNull(plotPrefs, "Plot preferences cannot be null");
+		this.plotPrefs = plotPrefs;
+		this.backgroundColor = plotPrefs.getBackgroundColor();
+	}
 
 	public void setGriddedFuncAxesTicks(boolean histogramAxesTicks) {
 		this.griddedFuncAxesTicks = histogramAxesTicks;
 	}
 
-	public static PaintScaleLegend getLegendForCPT(CPT cpt, String zAxisLabel, int axisFontSize, int tickFontSize,
+	public static PaintScaleLegend getLegendForCPT(CPT cpt, String zAxisLabel, PlotPreferences plotPrefs,
 			double tickUnit, RectangleEdge position) {
-		return getLegendForCPT(new PaintScaleWrapper(cpt), zAxisLabel, axisFontSize, tickFontSize, tickUnit, position);
+		return getLegendForCPT(new PaintScaleWrapper(cpt), zAxisLabel, plotPrefs, tickUnit, position);
 	}
 
-	private static PaintScaleLegend getLegendForCPT(PaintScaleWrapper scale, String zAxisLabel, int axisFontSize,
-			int tickFontSize, double tickUnit, RectangleEdge position) {
+	private static PaintScaleLegend getLegendForCPT(PaintScaleWrapper scale, String zAxisLabel, PlotPreferences plotPrefs,
+			double tickUnit, RectangleEdge position) {
 		CPT cpt = scale.getCPT();
 		ValueAxis fakeZAxis;
 		if (cpt.isLog10()) {
 			JFreeLogarithmicAxis logAxis = new JFreeLogarithmicAxis(zAxisLabel);
 			// this fixes the overlap issue with the bottom of the plot (not sure if needed
 			// here, used for regular plots)
-			logAxis.setVerticalAnchorShift(4);
+			logAxis.setVerticalAnchorShift(plotPrefs.getTickLabelFontSize()*0.1f);
 			logAxis.setLowerBound(scale.getLowerBound());
 			logAxis.setUpperBound(scale.getUpperBound());
 
@@ -1829,22 +1696,45 @@ public class GraphPanel extends JSplitPane {
 
 			fakeZAxis = linearAxis;
 		}
+		fakeZAxis.setMinorTickMarkOutsideLength((float)plotPrefs.getCptTickMinorLength());
+		fakeZAxis.setTickMarkOutsideLength((float)plotPrefs.getCptTickLength());
 		Font axisLabelFont = fakeZAxis.getLabelFont();
-		fakeZAxis.setLabelFont(new Font(axisLabelFont.getFontName(), axisLabelFont.getStyle(), axisFontSize));
+		fakeZAxis.setLabelFont(new Font(axisLabelFont.getFontName(), axisLabelFont.getStyle(), plotPrefs.getAxisLabelFontSize()));
 		Font axisTickFont = fakeZAxis.getTickLabelFont();
-		fakeZAxis.setTickLabelFont(new Font(axisTickFont.getFontName(), axisTickFont.getStyle(), tickFontSize));
+		fakeZAxis.setTickLabelFont(new Font(axisTickFont.getFontName(), axisTickFont.getStyle(), plotPrefs.getTickLabelFontSize()));
 		PaintScaleLegend legend = new PixelSpacePaintScaleLegend(scale, fakeZAxis, 1); // number here is width in pixels
 																						// for each span
-		legend.setSubdivisionCount(500);
+		legend.setStripWidth(plotPrefs.getCptStripWidth());
+		legend.setSubdivisionCount(500); // not actually used anymore by PaintScaleLegend
 		if (position != null)
 			legend.setPosition(position);
-		if (legend.getPosition() == RectangleEdge.BOTTOM || legend.getPosition() == RectangleEdge.TOP)
-			legend.setPadding(5d, 50d, 5d, 50d);
-		else if (legend.getPosition() == RectangleEdge.LEFT)
-			legend.setPadding(5d, 5d, 50d, 20d);
-		else
-			// right
-			legend.setPadding(5d, 20d, 50d, 5d);
+		RectangleInsets plotPad = plotPrefs.getPlotPadding();
+		double cptPad = plotPrefs.getCptPadding();
+		if (RectangleEdge.isTopOrBottom(position)) {
+			// use the plot's right padding as a guide and center it left/right
+			legend.setPadding(cptPad, plotPad.getRight(), cptPad, plotPad.getRight());
+		} else {
+			// vertical on one of the sides
+			
+			// assume there's a title and add the plot top padding
+			// also use that as the bottom padding (make it symmetrical vertically, won't match the actual plot)
+//			double topPad = plotPrefs.getPlotLabelFontSize() + plotPad.getTop();
+			
+			double topPad = plotPad.getTop();
+			RectangleInsets tickPad = plotPrefs.getAxisTickLabelPaddingX();
+			RectangleInsets axisPad = plotPrefs.getAxisLabelPadding();
+			double bottomPad = tickPad.getTop()+plotPrefs.getTickLabelFontSize()+tickPad.getBottom()
+				+ axisPad.getTop()+plotPrefs.getAxisLabelFontSize()+axisPad.getBottom()
+				+ plotPad.getBottom();
+			
+			double betweenPad = plotPrefs.getSubplotGap();
+			
+			if (position == RectangleEdge.LEFT)
+				legend.setPadding(topPad, cptPad, bottomPad, betweenPad);
+			else
+				// right
+				legend.setPadding(topPad, betweenPad, bottomPad, cptPad);
+		}
 		return legend;
 	}
 }

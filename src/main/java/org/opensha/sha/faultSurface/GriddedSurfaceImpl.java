@@ -63,10 +63,18 @@ public class GriddedSurfaceImpl extends AbstractEvenlyGriddedSurface implements 
 	@Override
 	public double getAveRupTopDepth() {
 		double dep=0;
-		FaultTrace trace = getRowAsTrace(0);
-		for(Location loc: trace)
-			dep += loc.getDepth();
-		return dep/trace.size();
+		for (int col=0; col<numCols; col++)
+			dep += getLocation(0, col).depth;
+		return dep/(double)numCols;
+	}
+
+	@Override
+	public double getAveRupBottomDepth() {
+		final int lastRow = numRows-1;
+		double dep=0;
+		for (int col=0; col<numCols; col++)
+			dep += getLocation(lastRow, col).depth;
+		return dep/(double)numCols;
 	}
 
 	@Override

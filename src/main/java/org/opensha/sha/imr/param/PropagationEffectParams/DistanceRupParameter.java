@@ -3,14 +3,17 @@ package org.opensha.sha.imr.param.PropagationEffectParams;
 import java.util.ListIterator;
 
 import org.dom4j.Element;
+import org.opensha.commons.data.Site;
 import org.opensha.commons.exceptions.ConstraintException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.param.WarningParameter;
 import org.opensha.commons.param.constraint.ParameterConstraint;
 import org.opensha.commons.param.constraint.impl.DoubleConstraint;
+import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 
 
 /**
@@ -106,9 +109,9 @@ public class DistanceRupParameter extends AbstractDoublePropEffectParam {
 	/**
 	 * Note that this doesn't not throw a warning
 	 */
-	protected void calcValueFromSiteAndEqkRup(){
-		if( ( site != null ) && ( eqkRupture != null ))
-			setValueIgnoreWarning(eqkRupture.getRuptureSurface().getDistanceRup(site.getLocation()));
+	protected void setValueFromDistances(EqkRupture eqkRupture, Site site, SurfaceDistances dists) {
+		if (dists != null)
+			setValueIgnoreWarning(dists.getDistanceRup());
 		else
 			value = null;
 	}
@@ -188,8 +191,6 @@ public class DistanceRupParameter extends AbstractDoublePropEffectParam {
 		param.warningConstraint = c2;
 		param.name = name;
 		param.info = info;
-		param.site = site;
-		param.eqkRupture = eqkRupture;
 		if( !this.editable ) param.setNonEditable();
 		return param;
 	}

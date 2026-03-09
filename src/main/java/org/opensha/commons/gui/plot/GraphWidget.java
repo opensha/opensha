@@ -79,7 +79,7 @@ public class GraphWidget extends JPanel {
 	 * @param plotSpec
 	 */
 	public GraphWidget(PlotSpec plotSpec) {
-		this(plotSpec, PlotPreferences.getDefault(), false, false, null, null);
+		this(plotSpec, PlotPreferences.getDefaultAppPrefs(), false, false, null, null);
 	}
 
 	/**
@@ -109,7 +109,7 @@ public class GraphWidget extends JPanel {
 	public GraphWidget(List<? extends PlotSpec> plotSpecs, PlotPreferences plotPrefs, boolean xLog, boolean yLog,
 			List<Range> xRanges, List<Range> yRanges) {
 		if (plotPrefs == null)
-			plotPrefs = PlotPreferences.getDefault();
+			plotPrefs = PlotPreferences.getDefaultAppPrefs();
 		this.plotPrefs = plotPrefs;
 		this.plotSpecs = plotSpecs;
 		graphPanel = new GraphPanel(plotPrefs);

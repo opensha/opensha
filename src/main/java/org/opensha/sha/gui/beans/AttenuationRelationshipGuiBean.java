@@ -305,11 +305,12 @@ ParameterChangeWarningListener, ParameterChangeFailListener{
 			//if so then initialise it with the default param settings.
 			if(firstTimeIMR_ParamInit){
 				imr.setParamDefaults();
-				Iterator it1 = imr.getSiteParamsIterator();
+//				Iterator it1 = imr.getSiteParamsIterator();
 
 				// add change fail listener to the site parameters for this IMR
-				while(it1.hasNext()) {
-					Parameter param = (Parameter)it1.next();
+//				while(it1.hasNext()) {
+//					Parameter param = (Parameter)it1.next();
+				for (Parameter<?> param : imr.getSiteParams()) {
 					param.addParameterChangeFailListener(this);
 				}
 			}
@@ -371,9 +372,10 @@ ParameterChangeWarningListener, ParameterChangeFailListener{
 		 * associated with the IMR, which are : SIGMA_TRUNC_TYPE_NAME, SIGMA_TRUNC_LEVEL_NAME,
 		 * STD_DEV_TYPE_NAME and any other param assoctade with the IMR.
 		 */
-		ListIterator lt = imr.getOtherParamsIterator();
-		while(lt.hasNext()){
-			Parameter tempParam=(Parameter)lt.next();
+//		ListIterator lt = imr.getOtherParamsIterator();
+//		while(lt.hasNext()){
+//			Parameter tempParam=(Parameter)lt.next();
+		for (Parameter<?> tempParam : imr.getOtherParams()) {
 			//adding the parameter to the parameterList.
 			tempParam.addParameterChangeListener(this);
 			singleAttenRelParamList.addParameter(tempParam);
@@ -434,10 +436,11 @@ ParameterChangeWarningListener, ParameterChangeFailListener{
 
 		for(int i=0;i<numSupportedAttenRels;++i){
 			paramList[i] = new ParameterList();
-			ListIterator it =((ScalarIMR)attenRelsSupported.get(i)).getOtherParamsIterator();
-			//iterating over all the Attenuation relationship parameters for the IMR.
-			while(it.hasNext()){
-				Parameter tempParam  = (Parameter)it.next();
+//			ListIterator it =((ScalarIMR)attenRelsSupported.get(i)).getOtherParamsIterator();
+//			//iterating over all the Attenuation relationship parameters for the IMR.
+//			while(it.hasNext()){
+//				Parameter tempParam  = (Parameter)it.next();
+			for (Parameter<?> tempParam : ((ScalarIMR)attenRelsSupported.get(i)).getOtherParams()) {
 
 				/*if(!tempParam.getName().equals(SigmaTruncLevelParam.NAME) &&
            !tempParam.getName().equals(SigmaTruncTypeParam.NAME))*/
@@ -613,12 +616,13 @@ ParameterChangeWarningListener, ParameterChangeFailListener{
 		ArrayList<String> imt=new ArrayList<String>();
 		imtParam = new ArrayList<Parameter>();
 		for(int i=0;i<numSupportedAttenRels;++i){
-			Iterator<Parameter<?>> it =
-				((ScalarIMR)attenRelsSupported.get(i)).getSupportedIntensityMeasuresIterator();
-
-			//loop over each IMT and get their independent parameters
-			while ( it.hasNext() ) {
-				Parameter param = (Parameter) it.next();
+//			Iterator<Parameter<?>> it =
+//				((ScalarIMR)attenRelsSupported.get(i)).getSupportedIntensityMeasuresIterator();
+//
+//			//loop over each IMT and get their independent parameters
+//			while ( it.hasNext() ) {
+//				Parameter param = (Parameter) it.next();
+			for (Parameter<?> param : ((ScalarIMR)attenRelsSupported.get(i)).getSupportedIntensityMeasures()) {
 
 				String imtName = param.getName();
 				DoubleParameter param1 = null;
@@ -883,12 +887,14 @@ ParameterChangeWarningListener, ParameterChangeFailListener{
 		else if(singleAttenRelSelected) //if single attenRel selected
 			imr = getSelectedIMR_Instance();
 
-		ListIterator it = imr.getSiteParamsIterator();
+//		ListIterator it = imr.getSiteParamsIterator();
 		boolean found = false;
 		// see whether this parameter exists in site param list for this IMR
-		while(it.hasNext() && !found)
-			if(((Parameter)it.next()).getName().equalsIgnoreCase(name))
+		for (Parameter<?> tempParam : imr.getSiteParams()) {
+//		while(it.hasNext() && !found)
+			if (tempParam.getName().equalsIgnoreCase(name))
 				found = true;
+		}
 
 		// if this parameter for which failure was issued does not exist in
 		// site parameter list, then do not show the message box
@@ -938,10 +944,11 @@ ParameterChangeWarningListener, ParameterChangeFailListener{
 		else if(singleAttenRelSelected) //if single attenRel selected
 			imr = getSelectedIMR_Instance();
 
-		ListIterator it = imr.getSiteParamsIterator();
+//		ListIterator it = imr.getSiteParamsIterator();
 		boolean found = false;
-		while(it.hasNext() && !found)
-			if(param.getName().equalsIgnoreCase(((Parameter)it.next()).getName()))
+//		while(it.hasNext() && !found)
+		for (Parameter<?> tempParam : imr.getSiteParams())
+			if(param.getName().equalsIgnoreCase(tempParam.getName()))
 				found = true;
 		if(!found) {
 			param.setValueIgnoreWarning(e.getNewValue());
@@ -1131,7 +1138,7 @@ ParameterChangeWarningListener, ParameterChangeFailListener{
 	 * It also avoids the duplicity of the site params if AttenuationRelationships
 	 * share them.
 	 */
-	public Iterator getSelectedAttenRelSiteParams(){
+	public Iterable<Parameter<?>> getSelectedAttenRelSiteParams(){
 		// get the selected IMR
 		ArrayList attenRel = getSelectedIMRs();
 
@@ -1144,9 +1151,10 @@ ParameterChangeWarningListener, ParameterChangeFailListener{
 		//the selected attenRels.
 		for(int i=0;i<attenRel.size();++i){
 			ScalarIMR attenRelApp = (ScalarIMR)attenRel.get(i);
-			ListIterator it = attenRelApp.getSiteParamsIterator();
-			while(it.hasNext()){
-				Parameter tempParam = (Parameter)it.next();
+//			ListIterator it = attenRelApp.getSiteParamsIterator();
+//			while(it.hasNext()){
+//				Parameter tempParam = (Parameter)it.next();
+			for (Parameter<?> tempParam : attenRelApp.getSiteParams()) {
 				boolean flag = true;
 				//iterating over all the added siteParams to check if we have added that
 				//site param before.
@@ -1160,7 +1168,7 @@ ParameterChangeWarningListener, ParameterChangeFailListener{
 				}
 			}
 		}
-		return siteParams.iterator();
+		return siteParams;
 	}
 
 

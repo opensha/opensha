@@ -7,7 +7,7 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.util.modules.OpenSHA_Module;
-import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.PointSource;
 import org.opensha.sha.earthquake.aftershocks.MagnitudeDependentAftershockFilter;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -22,7 +22,7 @@ import org.opensha.sha.util.TectonicRegionType;
  * that are unassociated with any modeled fault (see {@link #getMFD_Unassociated(int)}).
  * <p>
  * Focal mechanisms at each grid location are available via the {@link #getFracStrikeSlip(int)},
- * {@link #getFracReverse(int)}, and {@link #getFracNormal(int)} methods. {@link ProbEqkSource} implementations for are
+ * {@link #getFracReverse(int)}, and {@link #getFracNormal(int)} methods. {@link PointSource} implementations for are
  * available via the {@link #getSource(int, double, MagnitudeDependentAftershockFilter, GriddedSeismicitySettings)} method,
  * and also via related methods for sub-seismogenic and/or unassociated sources only.
  * 
@@ -83,7 +83,7 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	 * @param gridSourceSettings gridded seismicity settings (rupture type, distance corrections, etc)
 	 * @return the source at {@code index}
 	 */
-	public ProbEqkSource getSource(int sourceIndex, double duration,
+	public PointSource getSource(int sourceIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings);
 
 	/**
@@ -97,7 +97,7 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	 * @param gridSourceSettings gridded seismicity settings (rupture type, distance corrections, etc)
 	 * @return the source at {@code index}
 	 */
-	public ProbEqkSource getSource(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
+	public PointSource getSource(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings);
 	
 
@@ -114,7 +114,7 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	 * @param gridSourceSettings gridded seismicity settings (rupture type, distance corrections, etc)
 	 * @return the source at {@code index}
 	 */
-	public ProbEqkSource getSourceSubSeisOnFault(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
+	public PointSource getSourceSubSeisOnFault(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings supersamplingSettings);
 
 	/**
@@ -130,7 +130,7 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	 * @param gridSourceSettings gridded seismicity settings (rupture type, distance corrections, etc)
 	 * @return the source at {@code index}
 	 */
-	public ProbEqkSource getSourceUnassociated(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
+	public PointSource getSourceUnassociated(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings supersamplingSettings);
 	
 	/**

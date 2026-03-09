@@ -281,7 +281,7 @@ public class HazusDataSetCalcApp extends JFrame
      attenRel = (AttenuationRelationship)imrGuiBean.getSelectedIMR_Instance();
      // create the Site Gui Bean object
      sitesGuiBean = new SitesInGriddedRectangularRegionGuiBean();
-     sitesGuiBean.addSiteParams(attenRel.getSiteParamsIterator());
+     sitesGuiBean.addSiteParams(attenRel.getSiteParams());
      // show the sitebean in JPanel
      gridRegionSitePanel.add(this.sitesGuiBean, new GridBagConstraints( 0, 0, 1, 1, 1.0, 1.0,
          GridBagConstraints.CENTER, GridBagConstraints.BOTH, defaultInsets, 0, 0 ));
@@ -334,7 +334,7 @@ public class HazusDataSetCalcApp extends JFrame
     // if IMR selection changed, update the site parameter list and supported IMT
     if ( name1.equalsIgnoreCase(imrGuiBean.IMR_PARAM_NAME)) {
       attenRel = (AttenuationRelationship)imrGuiBean.getSelectedIMR_Instance();
-      sitesGuiBean.replaceSiteParams(attenRel.getSiteParamsIterator());
+      sitesGuiBean.replaceSiteParams(attenRel.getSiteParams());
       sitesGuiBean.validate();
       sitesGuiBean.repaint();
     }
@@ -499,7 +499,7 @@ public class HazusDataSetCalcApp extends JFrame
  public void updateSiteParams() {
    //get the selected IMR
 	ScalarIMR imr = imrGuiBean.getSelectedIMR_Instance();
-	sitesGuiBean.replaceSiteParams(imr.getSiteParamsIterator());
+	sitesGuiBean.replaceSiteParams(imr.getSiteParams());
 	sitesGuiBean.validate();
     sitesGuiBean.repaint();
  }

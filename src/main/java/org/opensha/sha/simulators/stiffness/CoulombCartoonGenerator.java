@@ -20,6 +20,7 @@ import org.opensha.commons.gui.plot.GraphPanel;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
+import org.opensha.commons.gui.plot.PlotPreferences;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.MarkdownUtils;
@@ -336,18 +337,14 @@ public class CoulombCartoonGenerator {
 			cptDelta = 5d;
 		else
 			cptDelta = 2d;
+		PlotPreferences prefs = PlotPreferences.getDefaultPrintFigurePrefs();
 		PaintScaleLegend cptLegend = GraphPanel.getLegendForCPT(cpt, type.toString(),
-				22, 18, cptDelta, RectangleEdge.BOTTOM);
+				prefs, cptDelta, RectangleEdge.BOTTOM);
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, title, "X (km)", "Y (km)");
 		spec.addSubtitle(cptLegend);
 		
-		HeadlessGraphPanel gp = new HeadlessGraphPanel();
-		gp.setBackgroundColor(Color.WHITE);
-		gp.setTickLabelFontSize(18);
-		gp.setAxisLabelFontSize(20);
-		gp.setPlotLabelFontSize(21);
-		gp.setLegendFontSize(22);
+		HeadlessGraphPanel gp = new HeadlessGraphPanel(prefs);
 		
 		gp.drawGraphPanel(spec, false, false, xRange, yRange);
 		gp.getChartPanel().setSize(1000, 1000);

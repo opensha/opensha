@@ -19,6 +19,8 @@ import org.opensha.sha.calc.sourceFilters.SourceFilterUtils;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.faultSurface.PointSurface;
+import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.OtherParams.StdDevTypeParam;
 import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
@@ -166,11 +168,15 @@ public class HAZ01Writer extends IM_EventSetOutputWriter {
 					ProbEqkRupture rup = source.getRupture(rupID);
                     if (SourceFilterUtils.canSkipRupture(calc.getSourceFilters(), rup, site))
                         continue;
-					attenRel.setEqkRupture(rup);
 					
-					double rupDist = rup.getRuptureSurface().getDistanceRup(site.getLocation());
+                    RuptureSurface surf = rup.getRuptureSurface();
+                    double rupDist;
+                    if (surf instanceof PointSurface.DistanceCorrectable)
+                    	rupDist = ((PointSurface.DistanceCorrectable)surf).getAverageDistances(site.getLocation()).getDistanceRup();
+                    else
+                    	rupDist = surf.getDistanceRup(site.getLocation());
 					
-					double mean = attenRel.getMean();
+					double mean = attenRel.getMean(rup);
                     if (stdDevParam != null) {
                         if (stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_TOTAL)) {
                             stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL);
@@ -178,11 +184,11 @@ public class HAZ01Writer extends IM_EventSetOutputWriter {
                             stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL_MAG_DEP);
                         }
                     }
-                    double total = attenRel.getStdDev();
+                    double total = attenRel.getStdDev(rup);
 					double inter = Double.NaN;
 					if (hasInterIntra) {
 						stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_INTER);
-						inter = attenRel.getStdDev();
+						inter = attenRel.getStdDev(rup);
 					}
 					
 					String line = haz01a.getLine(lineID, sourceID, rupID, vs30, rupDist, mean, total, inter);

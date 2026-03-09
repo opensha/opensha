@@ -8,6 +8,7 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.sha.earthquake.PointSource.PoissonPointSourceData;
 import org.opensha.sha.earthquake.PointSource.SiteAdaptivePointSourceData;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
@@ -41,8 +42,8 @@ public class SiteDistanceDependentPoissonPointSourceData implements SiteAdaptive
 			List<Double> cutoffDistances, PoissonPointSourceData fallbackData) {
 		this.centerLoc = centerLoc;
 		this.datas = datas;
-				this.cutoffDistances = cutoffDistances;
-				this.fallbackData = fallbackData;
+		this.cutoffDistances = cutoffDistances;
+		this.fallbackData = fallbackData;
 		Preconditions.checkArgument(datas.size() == cutoffDistances.size());
 		for (int i=1; i<cutoffDistances.size(); i++) {
 			double dist0 = cutoffDistances.get(i-1);
@@ -107,6 +108,11 @@ public class SiteDistanceDependentPoissonPointSourceData implements SiteAdaptive
 	@Override
 	public boolean isDiscrete() {
 		return true;
+	}
+
+	@Override
+	public TectonicRegionType getTectonicRegionType() {
+		return fallbackData.getTectonicRegionType();
 	}
 
 }

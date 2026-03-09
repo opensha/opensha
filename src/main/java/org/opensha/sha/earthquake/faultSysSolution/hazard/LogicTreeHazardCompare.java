@@ -1533,6 +1533,8 @@ public class LogicTreeHazardCompare {
 		Boolean canDecomposeVariance = null;
 		AbstractLTVarianceDecomposition varDecomposer = null;
 		
+		PlotPreferences prefs = GeographicMapMaker.PLOT_PREFS_SCREEN_DEFAULT;
+		
 		for (double period : periods) {
 			String perLabel, perPrefix, unitlessPerLabel;
 			if (period == 0d) {
@@ -1552,13 +1554,13 @@ public class LogicTreeHazardCompare {
 				
 				// plot CPT files for grabbing externally
 				PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt",
-						GeographicMapMaker.buildCPTLegend(logCPT, label), cptWidth, true, true);
+						GeographicMapMaker.buildCPTLegend(logCPT, label, prefs), cptWidth, true, true);
 				PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt_cov",
-						GeographicMapMaker.buildCPTLegend(covCPT, "COV, "+unitlessLabel), cptWidth, true, true);
+						GeographicMapMaker.buildCPTLegend(covCPT, "COV, "+unitlessLabel, prefs), cptWidth, true, true);
 				PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt_pDiff",
-						GeographicMapMaker.buildCPTLegend(pDiffCPT, "% Change, "+unitlessLabel), cptWidth, true, true);
+						GeographicMapMaker.buildCPTLegend(pDiffCPT, "% Change, "+unitlessLabel, prefs), cptWidth, true, true);
 				PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt_diff",
-						GeographicMapMaker.buildCPTLegend(diffCPT, "Difference, "+label), cptWidth, true, true);
+						GeographicMapMaker.buildCPTLegend(diffCPT, "Difference, "+label, prefs), cptWidth, true, true);
 				
 				System.out.println(label);
 				
@@ -2302,9 +2304,9 @@ public class LogicTreeHazardCompare {
 				
 				if (period == periods[0] && rp == rps[0]) {
 					PlotUtils.writeScaleLegendOnly(resourcesDir, "cpt_branch_pDiff",
-							GeographicMapMaker.buildCPTLegend(pDiffCPT, "Branch Choice / Mean, % Change"), cptWidth, true, true);
+							GeographicMapMaker.buildCPTLegend(pDiffCPT, "Branch Choice / Mean, % Change", prefs), cptWidth, true, true);
 					PlotUtils.writeScaleLegendOnly(resourcesDir, "cpt_branch_diff",
-							GeographicMapMaker.buildCPTLegend(diffCPT, "Branch Choice - Mean "+perUnits), cptWidth, true, true);
+							GeographicMapMaker.buildCPTLegend(diffCPT, "Branch Choice - Mean "+perUnits, prefs), cptWidth, true, true);
 				}
 				
 				CSVFile<String> choiceMeanSummaryCSV = new CSVFile<>(false);
@@ -3161,7 +3163,7 @@ public class LogicTreeHazardCompare {
 			Preconditions.checkState(branchLevelPlots2.size() == branchLevelPlots1.size());
 		Preconditions.checkState(maxNumChoices > 0);
 		
-		PlotPreferences primaryPrefs = PlotUtils.getDefaultFigurePrefs();
+		PlotPreferences primaryPrefs = PlotPreferences.getDefaultScreenFigurePrefs();
 		primaryPrefs.scaleFontSizes(1.25d);
 		PlotPreferences secondaryPrefs = primaryPrefs.clone();
 		secondaryPrefs.scaleFontSizes(secondaryScale);
@@ -3178,13 +3180,11 @@ public class LogicTreeHazardCompare {
 		CPT diffCPT = branchLevelPlots1.get(0).get(0).spec.getCPT();
 		PlotPreferences prefs = primaryGP.getPlotPrefs();
 		PaintScaleLegend diffSubtitle = GraphPanel.getLegendForCPT(diffCPT, label1,
-				prefs.getAxisLabelFontSize(), prefs.getTickLabelFontSize(),
-				-1, RectangleEdge.BOTTOM);
+				prefs, -1, RectangleEdge.BOTTOM);
 		if (branchLevelPlots2 != null) {
 			CPT diffCPT2 = branchLevelPlots2.get(0).get(0).spec.getCPT();
 			PaintScaleLegend diffSubtitle2 = GraphPanel.getLegendForCPT(diffCPT2, label2,
-					prefs.getAxisLabelFontSize(), prefs.getTickLabelFontSize(),
-					-1, RectangleEdge.BOTTOM);
+					prefs, -1, RectangleEdge.BOTTOM);
 			primarySpec.addSubtitle(diffSubtitle2);
 		}
 		primarySpec.addSubtitle(diffSubtitle);

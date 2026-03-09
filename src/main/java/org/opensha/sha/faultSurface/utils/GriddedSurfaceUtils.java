@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.function.Function;
 
 import org.apache.commons.math3.util.Precision;
 import org.opensha.commons.geo.BorderType;
@@ -25,6 +26,7 @@ import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.FrankelGriddedSurface;
 import org.opensha.sha.faultSurface.GriddedSubsetSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -39,36 +41,54 @@ public class GriddedSurfaceUtils {
 	/** minimum depth for Campbell model */
 	public final static double SEIS_DEPTH = 3d;
 	
+	private static class LazyXCalculator implements Function<Location, Double> {
+		
+		private EvenlyGriddedSurface surface;
+
+		private LazyXCalculator(EvenlyGriddedSurface surface) {
+			this.surface = surface;
+		}
+
+		@Override
+		public Double apply(Location t) {
+			return GriddedSurfaceUtils.getDistanceX(surface.getEvenlyDiscritizedUpperEdge(), t);
+		}
+		
+	}
 	
 	/**
-	 * This computes distRup, distJB, & distSeis, which are available in the returned
-	 * array in elements 0, 1, and 2 respectively.
+	 * This computes distRup and distJB, and provides lazily-initialized distX
+	 * 
 	 * @param surface
 	 * @param loc
 	 * @return
 	 */
-	public static double[] getPropagationDistances(EvenlyGriddedSurface surface, Location loc) {
+	public static SurfaceDistances getPropagationDistances(EvenlyGriddedSurface surface, Location loc) {
+		return getPropagationDistances(surface, loc, new LazyXCalculator(surface));
+	}
+	
+	/**
+	 * This computes distRup and distJB, and provides lazily-initialized distX
+	 * 
+	 * @param surface
+	 * @param loc
+	 * @return
+	 */
+	public static SurfaceDistances getPropagationDistances(EvenlyGriddedSurface surface, Location loc,
+			Function<Location, Double> distXCalcFunc) {
 		
 		Location loc1 = loc;
 		Location loc2;
 		double distJB = Double.MAX_VALUE;
-		double distSeis = Double.MAX_VALUE;
 		double distRup = Double.MAX_VALUE;
 		
 		double horzDist, vertDist, rupDist;
-
-		// flag to project to seisDepth if only one row and depth is below seisDepth
-		boolean projectToDepth = false;
-		if (surface.getNumRows() == 1 && surface.getLocation(0,0).getDepth() < SEIS_DEPTH)
-			projectToDepth = true;
 
 		// get locations to iterate over depending on dip
 		ListIterator<Location> it;
 		try {
 			if(surface.getAveDip() > 89) {
 				it = surface.getColumnIterator(0);
-				if (surface.getLocation(0,0).getDepth() < SEIS_DEPTH)
-					projectToDepth = true;
 			} else {
 				it = surface.getLocationsIterator();
 			}
@@ -91,53 +111,37 @@ public class GriddedSurfaceUtils {
 
 			rupDist = horzDist * horzDist + vertDist * vertDist;
 			if(rupDist < distRup) distRup = rupDist;
-
-			if (loc2.getDepth() >= SEIS_DEPTH) {
-				if (rupDist < distSeis)
-					distSeis = rupDist;
-			}
-			// take care of shallow line or point source case
-			else if(projectToDepth) {
-				rupDist = horzDist * horzDist + SEIS_DEPTH * SEIS_DEPTH;
-				if (rupDist < distSeis)
-					distSeis = rupDist;
-			}
 		}
 
 		distRup = Math.pow(distRup,0.5);
-		distSeis = Math.pow(distSeis,0.5);
 
 		if(D) {
 			System.out.println(C+": distRup = " + distRup);
-			System.out.println(C+": distSeis = " + distSeis);
 			System.out.println(C+": distJB = " + distJB);
 		}
 		
 		// Check whether small values of distJB should really be zero
-		if(distJB <surface.getAveGridSpacing()) { // check this first since the next steps could take time
+		if(distJB <surface.getAveGridSpacing() && surface.getAveDip() != 90) { // check this first since the next steps could take time
 			
 			// first identify whether it's a frankel type surface
 			boolean frankelTypeSurface=false;
 			if(surface instanceof FrankelGriddedSurface) {
 				frankelTypeSurface = true;
-			}
-			else if(surface instanceof GriddedSubsetSurface) {
-				if(((GriddedSubsetSurface)surface).getParentSurface() instanceof FrankelGriddedSurface) {
+			} else if(surface instanceof GriddedSubsetSurface) {
+				if(((GriddedSubsetSurface)surface).getParentSurface() instanceof FrankelGriddedSurface)
 					frankelTypeSurface = true;
-				}
 			}
 					
 			if (frankelTypeSurface) {
-				if (isDjbZeroFrankel(surface, distJB)) distJB = 0;
+				if (isDjbZeroFrankel(surface, distJB))
+					distJB = 0;
 			} else {
-				if (isDjbZero(surface.getPerimeter(), loc)) distJB = 0;
+				if (isDjbZero(surface.getPerimeter(), loc))
+					distJB = 0;
 			}
 		}
-
-		double[] results = {distRup, distJB, distSeis};
 		
-		return results;
-
+		return new SurfaceDistances.PrecomputedLazyX(loc, distRup, distJB, distXCalcFunc);
 	}
 	
 	/**

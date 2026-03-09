@@ -388,7 +388,7 @@ public class BiasiWesnouskyJumpProb {
 			Range xRange = new Range(distFunc.getMinX(), distFunc.getMaxX());
 			Range yRange = new Range(0d, 1d);
 			
-			HeadlessGraphPanel gp = PlotUtils.initHeadless();
+			HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 			
 			gp.drawGraphPanel(spec, false, false, xRange, yRange);
 			

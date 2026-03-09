@@ -442,7 +442,7 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel, RupSetSu
 		funcs.add(scatter);
 		chars.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 2f, Color.BLACK));
 		
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, "M-L comparison", "Deformation Model JSON Characteristic Magnitude", ml.getName());
 		gp.drawGraphPanel(spec, false, false, range, range);

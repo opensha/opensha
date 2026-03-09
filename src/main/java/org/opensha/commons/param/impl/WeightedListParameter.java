@@ -69,8 +69,8 @@ public class WeightedListParameter<E> extends AbstractParameter<WeightedList<E>>
 
 	@Override
 	public Object clone() {
-		// TODO Auto-generated method stub
-		return null;
+		WeightedListParameter<E> copy = new WeightedListParameter<>(getName(), new WeightedList<>(getValue()));
+		return copy;
 	}
 
 }
