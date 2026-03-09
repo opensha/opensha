@@ -1,6 +1,11 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm26.util;
 
+import java.io.IOException;
+
 import org.opensha.commons.data.ShortNamed;
+import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationList;
+import org.opensha.commons.geo.Region;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.NSHM23_BaseRegion;
 
 public class NSHM26_RegionLoader {
@@ -42,6 +47,21 @@ public class NSHM26_RegionLoader {
 		public String getShortName() {
 			return shortName;
 		}
+
+		@Override
+		public Region load() throws IOException {
+			return checkConvertLon(NSHM23_BaseRegion.super.load());
+		}
+	}
+	
+	private static Region checkConvertLon(Region region) {
+		if (region.getMinLon() < 0) {
+			LocationList modBorder = new LocationList();
+			for (Location loc : region.getBorder())
+				modBorder.add(new Location(loc.lat, loc.lon+360d));
+			return new Region(modBorder, region.getBorderType());
+		}
+		return region;
 	}
 
 }
