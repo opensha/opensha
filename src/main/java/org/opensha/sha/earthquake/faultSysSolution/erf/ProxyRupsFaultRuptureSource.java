@@ -11,7 +11,7 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.OldCompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
@@ -59,7 +59,7 @@ public class ProxyRupsFaultRuptureSource extends ProbEqkSource {
 			if (rupSurfs.size() == 1)
 				surf = rupSurfs.get(0);
 			else
-				surf = new CompoundSurface(rupSurfs);
+				surf = new OldCompoundSurface(rupSurfs);
 			for (Point2D mfdPt : rupMFD) {
 				double mag = mfdPt.getX();
 				double origRate = mfdPt.getY();

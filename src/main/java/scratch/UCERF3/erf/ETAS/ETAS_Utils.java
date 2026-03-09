@@ -55,7 +55,7 @@ import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
-import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.OldCompoundSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -1774,7 +1774,7 @@ public class ETAS_Utils {
 		if (rupSurfs.size() == 1)
 			return rupSurfs.get(0);
 		else
-			return new CompoundSurface(rupSurfs);
+			return new OldCompoundSurface(rupSurfs);
 	}
 	
 	/**

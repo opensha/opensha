@@ -62,7 +62,7 @@ import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.earthquake.observedEarthquake.Declustering.GardnerKnopoffDeclustering;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
-import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.OldCompoundSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.PointSurface;
@@ -1183,9 +1183,9 @@ public class ETAS_SimAnalysisTools {
 	 */
 	private static double quickSurfDistUseCutoff(Location hypo, RuptureSurface surf,
 			double minDistCutoff) {
-		if (surf instanceof CompoundSurface) {
+		if (surf instanceof OldCompoundSurface) {
 			double min = Double.POSITIVE_INFINITY;
-			for (RuptureSurface subSurf : ((CompoundSurface)surf).getSurfaceList()) {
+			for (RuptureSurface subSurf : ((OldCompoundSurface)surf).getSurfaceList()) {
 				min = Math.min(min, quickSurfDistUseCutoff(hypo, subSurf, minDistCutoff));
 				if (min < minDistCutoff)
 					return min;

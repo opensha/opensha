@@ -26,6 +26,15 @@ import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 
 import com.google.common.base.Preconditions;
 
+/**
+ * Updated compound surface implementation with support for multiple subsections down-dip and decreased memory footprint.
+ * <p>
+ * The {@link Simple} implementation reproduces the original implementation exactly if the surface list isn't passed in, but
+ * can have different/better ordering if a surface list is supplied. Distance metrics are identical.
+ * <p>
+ * The {@link DownDip} implementation requires a surface list with populated indexes along strike and down dip, as well
+ * as parent section indexes. It only uses the uppermost row (within any parent) for DistanceX calculations.
+ */
 public abstract class NewCompoundSurface implements CacheEnabledSurface {
 	
 	/*
@@ -60,12 +69,25 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 	private double bottomDepth = Double.NaN;
 	
 	private SurfaceDistanceCache cache = SurfaceCachingPolicy.build(this);
+	
+	public NewCompoundSurface get(List<? extends RuptureSurface> surfaces) {
+		return new Simple(surfaces);
+	}
+	
+	public NewCompoundSurface get(List<? extends RuptureSurface> surfaces, List<? extends FaultSection> sections) {
+		if (sections == null)
+			return new Simple(surfaces);
+		boolean anyDD = sections.stream().anyMatch(S->S.getSubSectionIndexDownDip()>0);
+		if (anyDD)
+			return new DownDip(surfaces, sections);
+		return new Simple(surfaces);
+	}
 
-	public NewCompoundSurface(List<? extends RuptureSurface> surfaces) {
+	protected NewCompoundSurface(List<? extends RuptureSurface> surfaces) {
 		Preconditions.checkNotNull(surfaces, "Surfaces list is null");
 		this.numSurfaces = surfaces.size();
 		Preconditions.checkArgument(numSurfaces > 1, "Must supply at least 2 surfaces (have %s)", numSurfaces);
-		this.surfaces = surfaces;
+		this.surfaces = Collections.unmodifiableList(surfaces);
 		surfaceAreas = new double[surfaces.size()];
 		double totArea = 0d;
 		for (int s=0; s<surfaceAreas.length; s++) {
@@ -82,6 +104,10 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 		this.totArea = totArea;
 	}
 	
+	/**
+	 * Simple {@link NewCompoundSurface} implementation for ruptures without any sections down-dip. An optional
+	 * {@link FaultSection} list can be supplied to help with grouping and ordering.
+	 */
 	public static class Simple extends NewCompoundSurface {
 		
 		private final double avgDip;
@@ -405,6 +431,11 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 		
 	}
 	
+	/**
+	 * Implementation of {@link NewCompoundSurface} that supports multiple sections down-dip. For this implementation,
+	 * the subsection list is required and all sections must have {@link FaultSection#getSubSectionIndexDownDip()},
+	 * {@link FaultSection#getSubSectionIndexAlong()}, and {@link FaultSection#getParentSectionId()} populated.
+	 */
 	public static class DownDip extends NewCompoundSurface {
 
 		private final BitSet reversed;
@@ -773,6 +804,10 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 	 * convention
 	 */
 	public abstract boolean isSurfaceOnUpperEdge(int index);
+	
+	public List<? extends RuptureSurface> getSurfaceList() {
+		return surfaces;
+	}
 
 	@Override
 	public abstract NewCompoundSurface copyShallow();
@@ -1212,7 +1247,7 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 	public SurfaceDistances calcDistances(Location loc) {
 		double distanceJB = Double.MAX_VALUE;
 		double distanceRup = Double.MAX_VALUE;
-		double distanceRupTop = Double.MAX_VALUE;
+		double distanceRup_topRow = Double.MAX_VALUE;
 		double dist;
 		int surfIndexForX = -1;
 		for (int i=0; i<surfaces.size(); i++) {
@@ -1222,8 +1257,9 @@ public abstract class NewCompoundSurface implements CacheEnabledSurface {
 			dist = surf.getDistanceRup(loc);
 			if (dist < distanceRup)
 				distanceRup = dist;
-			if (dist < distanceRupTop && isSurfaceOnUpperEdge(i)) {
-				distanceRupTop = dist;
+			if (dist < distanceRup_topRow && isSurfaceOnUpperEdge(i)) {
+				// keep track of closest surface that is on the upper edge for distance x calculation
+				distanceRup_topRow = dist;
 				surfIndexForX = i;
 			}
 		}

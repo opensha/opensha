@@ -20,7 +20,7 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
-import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.OldCompoundSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.FrankelGriddedSurface;
@@ -809,7 +809,7 @@ public class GriddedSurfaceUtils {
 	 * @param numFromEnd
 	 * @return
 	 */
-	public static CompoundSurface trimEndsOfSurface(CompoundSurface compoundSurf, int numFromStart, int numFromEnd) {
+	public static OldCompoundSurface trimEndsOfSurface(OldCompoundSurface compoundSurf, int numFromStart, int numFromEnd) {
 		Preconditions.checkArgument(numFromStart > 0 || numFromEnd > 0, "must remove at least one point");
 		List<? extends RuptureSurface> surfList = compoundSurf.getSurfaceList();
 		// make sure each one is an evenly gridded surface
@@ -842,7 +842,7 @@ public class GriddedSurfaceUtils {
 		
 		Preconditions.checkState(newSurfList.size() == surfList.size(), "Size is messed up");
 		
-		return new CompoundSurface(newSurfList);
+		return new OldCompoundSurface(newSurfList);
 	}
 	
 	/**

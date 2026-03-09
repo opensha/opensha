@@ -51,7 +51,7 @@ import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.cpt.CPTVal;
-import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.OldCompoundSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.simulators.EventRecord;
 import org.opensha.sha.simulators.RSQSimEvent;
@@ -305,8 +305,8 @@ public class RupturePlotGenerator {
 		
 		if (surfaceToOutline != null) {
 			List<RuptureSurface> surfaces = new ArrayList<>();
-			if (surfaceToOutline instanceof CompoundSurface)
-				surfaces.addAll(((CompoundSurface)surfaceToOutline).getSurfaceList());
+			if (surfaceToOutline instanceof OldCompoundSurface)
+				surfaces.addAll(((OldCompoundSurface)surfaceToOutline).getSurfaceList());
 			else
 				surfaces.add(surfaceToOutline);
 			Stroke surfStroke = OTHER_SURF_STROKE.buildStroke(3f);
@@ -624,8 +624,8 @@ public class RupturePlotGenerator {
 		}
 		if (surfaceToOutline != null) {
 			List<RuptureSurface> surfaces = new ArrayList<>();
-			if (surfaceToOutline instanceof CompoundSurface)
-				surfaces.addAll(((CompoundSurface)surfaceToOutline).getSurfaceList());
+			if (surfaceToOutline instanceof OldCompoundSurface)
+				surfaces.addAll(((OldCompoundSurface)surfaceToOutline).getSurfaceList());
 			else
 				surfaces.add(surfaceToOutline);
 			for (RuptureSurface surf : surfaces) {
@@ -764,8 +764,8 @@ public class RupturePlotGenerator {
 		if (surfaceToOutline != null) {
 			PlotCurveCharacterstics rectChar = new PlotCurveCharacterstics(OTHER_SURF_STROKE, 2f*(float)minThickness, OTHER_SURF_COLOR);
 			List<RuptureSurface> surfaces = new ArrayList<>();
-			if (surfaceToOutline instanceof CompoundSurface)
-				surfaces.addAll(((CompoundSurface)surfaceToOutline).getSurfaceList());
+			if (surfaceToOutline instanceof OldCompoundSurface)
+				surfaces.addAll(((OldCompoundSurface)surfaceToOutline).getSurfaceList());
 			else
 				surfaces.add(surfaceToOutline);
 			for (RuptureSurface surf : surfaces) {

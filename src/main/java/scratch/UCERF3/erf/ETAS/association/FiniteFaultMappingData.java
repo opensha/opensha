@@ -25,7 +25,7 @@ import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupOrigTimeComparator;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.earthquake.observedEarthquake.parsers.UCERF3_CatalogParser;
-import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.OldCompoundSurface;
 import org.opensha.sha.faultSurface.GriddedSurfaceImpl;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
@@ -146,7 +146,7 @@ public class FiniteFaultMappingData implements XMLSaveable {
 			count++;
 			RuptureSurface surf = data.getSurface(rup, fm, rupSet);
 			rup.setRuptureSurface(surf);
-			if (surf instanceof CompoundSurface) {
+			if (surf instanceof OldCompoundSurface) {
 				// set FSS index
 				int obsRupIndex = data.rupIndexMap.get(rup);
 				int rupIndex = data.mappedRupIndexes.get(obsRupIndex).get(fm);

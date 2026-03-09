@@ -3,7 +3,7 @@ package org.opensha.sha.faultSurface.cache;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
-import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.OldCompoundSurface;
 
 /**
  * This class determines which cache should be used by @link CacheEnabledSurface}'s. It is configurable via
@@ -19,7 +19,7 @@ public final class SurfaceCachingPolicy {
 	/**
 	 * The <i>dist.cache.force</i> property is a can be used to force surfaces to use the specified cache.
 	 * The value, if set, must be one of the {@link CacheTypes} enum constant names.
-	 * when size > 1, exept for {@link CompoundSurface}'s. 
+	 * when size > 1, exept for {@link OldCompoundSurface}'s. 
 	 */
 	public static final String FORCE_TYPE = "dist.cache.force";
 	public static enum CacheTypes {
@@ -78,7 +78,7 @@ public final class SurfaceCachingPolicy {
 	
 	/**
 	 * Build a cache for the given {@link CacheEnabledSurface}. Returns a {@link HybridDistanceCache} if
-	 * the force multi property is set, or if size>1 and it is not a {@link CompoundSurface}. Otherwise a
+	 * the force multi property is set, or if size>1 and it is not a {@link OldCompoundSurface}. Otherwise a
 	 * {@link SingleLocDistanceCache} will be returned (unless size=0 for testing, and a {@link DisabledDistanceCache}
 	 * is returned).
 	 * @param surf
@@ -88,7 +88,7 @@ public final class SurfaceCachingPolicy {
 		if (force != null) {
 			return build(surf, force);
 		}
-		boolean multi = (size > 1 && !(surf instanceof CompoundSurface));
+		boolean multi = (size > 1 && !(surf instanceof OldCompoundSurface));
 		if (multi)
 			return build(surf, CacheTypes.HYBRID);
 		if (size == 0)

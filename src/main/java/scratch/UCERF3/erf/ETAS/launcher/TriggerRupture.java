@@ -10,7 +10,7 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
-import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.OldCompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.SimpleFaultData;
@@ -179,7 +179,7 @@ public abstract class TriggerRupture {
 				rupture.setRuptureSurface(rupSurfs.get(0));
 			} else {
 				rupture.setAveRake(FaultUtils.getInRakeRange(FaultUtils.getScaledAngleAverage(areas, rakes)));
-				rupture.setRuptureSurface(new CompoundSurface(rupSurfs));
+				rupture.setRuptureSurface(new OldCompoundSurface(rupSurfs));
 			}
 		}
 
@@ -268,7 +268,7 @@ public abstract class TriggerRupture {
 			if (rupSurfs.size() == 1)
 				rupture.setRuptureSurface(rupSurfs.get(0));
 			else
-				rupture.setRuptureSurface(new CompoundSurface(rupSurfs));
+				rupture.setRuptureSurface(new OldCompoundSurface(rupSurfs));
 		}
 
 		@Override
@@ -317,7 +317,7 @@ public abstract class TriggerRupture {
 			if (rupSurfs.size() == 1)
 				rupture.setRuptureSurface(rupSurfs.get(0));
 			else
-				rupture.setRuptureSurface(new CompoundSurface(rupSurfs));
+				rupture.setRuptureSurface(new OldCompoundSurface(rupSurfs));
 		}
 
 		@Override

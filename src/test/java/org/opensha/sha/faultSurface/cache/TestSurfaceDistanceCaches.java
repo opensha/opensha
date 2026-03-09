@@ -17,7 +17,7 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.threads.Task;
 import org.opensha.commons.util.threads.ThreadedTaskComputer;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
-import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.OldCompoundSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.QuadSurface;
@@ -60,7 +60,7 @@ public class TestSurfaceDistanceCaches {
 				sfd.getLowerSeismogenicDepth()-sfd.getUpperSeismogenicDepth());
 	}
 	
-	private static CompoundSurface buildCompoundSurf() {
+	private static OldCompoundSurface buildCompoundSurf() {
 		List<RuptureSurface> surfs = Lists.newArrayList();
 		
 		surfs.add(new StirlingGriddedSurface(buildSFD(), 1d));
@@ -71,7 +71,7 @@ public class TestSurfaceDistanceCaches {
 		sfd2.setFaultTrace(trace);
 		surfs.add(new StirlingGriddedSurface(sfd2, 1d));
 		
-		return new CompoundSurface(surfs);
+		return new OldCompoundSurface(surfs);
 	}
 	
 	private static CacheEnabledSurface[] buildSurfs() {
@@ -118,7 +118,7 @@ public class TestSurfaceDistanceCaches {
 		Preconditions.checkState(quadSurf instanceof QuadSurface);
 		this.quadSurf = quadSurf;
 		
-		Preconditions.checkState(compoundSurf instanceof CompoundSurface);
+		Preconditions.checkState(compoundSurf instanceof OldCompoundSurface);
 		this.compoundSurf = compoundSurf;
 	}
 

@@ -10,7 +10,7 @@ import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.sha.earthquake.EqkRupture;
-import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.OldCompoundSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.GriddedSubsetSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -310,11 +310,11 @@ public class BaylessSomerville2013DirectivityModifier extends
 	
 	private static Location calcClosestLoc(EqkRupture rup, Location siteLoc, boolean fullSurf, boolean cacheDists) {
 		RuptureSurface surf = rup.getRuptureSurface();
-		if (surf instanceof CompoundSurface) {
+		if (surf instanceof OldCompoundSurface) {
 			// find the closest sub-surface to speed things up
 			double minDist = Double.POSITIVE_INFINITY;
 			RuptureSurface closest = null;
-			for (RuptureSurface subSurf : ((CompoundSurface)surf).getSurfaceList()) {
+			for (RuptureSurface subSurf : ((OldCompoundSurface)surf).getSurfaceList()) {
 				double dist;
 				if (subSurf instanceof CacheEnabledSurface && !cacheDists)
 					dist = ((CacheEnabledSurface)subSurf).calcQuickDistance(siteLoc);

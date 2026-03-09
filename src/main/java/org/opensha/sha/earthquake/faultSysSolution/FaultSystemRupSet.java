@@ -49,10 +49,11 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
-import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.OldCompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
+import org.opensha.sha.faultSurface.NewCompoundSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
 import org.opensha.sha.util.TectonicRegionType;
@@ -819,10 +820,15 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 
 	public void clearCache() {
-		rupturesForSectionCache.clear();
-		rupturesForParentSectionCache.clear();
-		fractRupsInsideRegions.clear();
-		fractSectsInsideRegions.clear();
+		if (rupturesForSectionCache != null)
+			rupturesForSectionCache.clear();
+		if (rupturesForParentSectionCache != null)
+			rupturesForParentSectionCache.clear();
+		if (fractRupsInsideRegions != null)
+			fractRupsInsideRegions.clear();
+		if (fractSectsInsideRegions != null)
+			fractSectsInsideRegions.clear();
+		surfCache.clear();
 	}
 
 	public void copyCacheFrom(FaultSystemRupSet rupSet) {
@@ -1019,11 +1025,27 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @return
 	 */
 	public List<FaultSection> getFaultSectionDataForRupture(int rupIndex) {
-		List<Integer> inds = getSectionsIndicesForRup(rupIndex);
-		ArrayList<FaultSection> datas = new ArrayList<FaultSection>(inds.size());
-		for (int ind : inds)
-			datas.add(getFaultSectionData(ind));
-		return datas;
+		return new RupSectionList(getSectionsIndicesForRup(rupIndex));
+	}
+	
+	private class RupSectionList extends AbstractList<FaultSection> {
+		
+		private List<Integer> sectIndexes;
+
+		public RupSectionList(List<Integer> sectIndexes) {
+			this.sectIndexes = sectIndexes;
+		}
+
+		@Override
+		public int size() {
+			return sectIndexes.size();
+		}
+
+		@Override
+		public FaultSection get(int index) {
+			return faultSectionData.get(sectIndexes.get(index));
+		}
+		
 	}
 
 	private class RupSurfaceCache {
@@ -1043,15 +1065,32 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			if (surf != null)
 				return surf;
 			List<FaultSection> fltDatas =  getFaultSectionDataForRupture(rupIndex);
+//			List<RuptureSurface> rupSurfs = new ArrayList<>(fltDatas.size());
+//			for (FaultSection fltData : fltDatas)
+//				rupSurfs.add(fltData.getFaultSurface(gridSpacing, false, aseisReducesArea));
+//			if (rupSurfs.size() == 1)
+//				surf = rupSurfs.get(0);
+//			else
+//				surf = new CompoundSurface(rupSurfs);
 			List<RuptureSurface> rupSurfs = new ArrayList<>(fltDatas.size());
-			for (FaultSection fltData : fltDatas)
+			boolean anyDD = false;
+			for (FaultSection fltData : fltDatas) {
+				anyDD |= fltData.getSubSectionIndexDownDip() > 0;
 				rupSurfs.add(fltData.getFaultSurface(gridSpacing, false, aseisReducesArea));
+			}
 			if (rupSurfs.size() == 1)
 				surf = rupSurfs.get(0);
+			else if (anyDD)
+				surf = new NewCompoundSurface.DownDip(rupSurfs, fltDatas);
 			else
-				surf = new CompoundSurface(rupSurfs);
+				surf = new NewCompoundSurface.Simple(rupSurfs, fltDatas);
 			rupSurfaceCache.put(rupIndex, surf);
 			return surf;
+		}
+
+		public void clear() {
+			if (rupSurfaceCache != null)
+				rupSurfaceCache.clear();
 		}
 	}
 

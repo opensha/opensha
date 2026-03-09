@@ -47,7 +47,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureConnecti
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
-import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.OldCompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.imr.attenRelImpl.ngaw2.FaultStyle;
@@ -122,7 +122,7 @@ public class RSQSimUtils {
 		if (rupSurfs.size() == 1)
 			surf = rupSurfs.get(0);
 		else
-			surf = new CompoundSurface(rupSurfs);
+			surf = new OldCompoundSurface(rupSurfs);
 		
 		SimulatorElement hypo = getHypocenterElem(event);
 

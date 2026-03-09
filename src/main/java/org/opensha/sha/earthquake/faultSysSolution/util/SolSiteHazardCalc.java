@@ -97,7 +97,7 @@ import org.opensha.sha.earthquake.param.FaultGridSpacingParam;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
-import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.OldCompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.cache.CacheEnabledSurface;
@@ -1648,8 +1648,8 @@ public class SolSiteHazardCalc {
 				ProbEqkSource source = erf.getSource(i);
 				for (ProbEqkRupture rup : source) {
 					RuptureSurface surf = rup.getRuptureSurface();
-					if (surf instanceof CompoundSurface)
-						((CompoundSurface)surf).clearCache();
+					if (surf instanceof OldCompoundSurface)
+						((OldCompoundSurface)surf).clearCache();
 				}
 			}
 			

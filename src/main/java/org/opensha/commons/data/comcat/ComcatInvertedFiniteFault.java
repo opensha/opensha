@@ -1,7 +1,7 @@
 package org.opensha.commons.data.comcat;
 
 import org.opensha.commons.geo.LocationList;
-import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.OldCompoundSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Preconditions;
@@ -46,7 +46,7 @@ public class ComcatInvertedFiniteFault {
 		Preconditions.checkState(!surfs.isEmpty(), "No surfaces found with slip >= %s", minSlip);
 		if (surfs.size() == 1)
 			return surfs.get(0);
-		return new CompoundSurface(surfs);
+		return new OldCompoundSurface(surfs);
 	}
 	
 	public LocationList[] getOutlines(double minSlip) {

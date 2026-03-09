@@ -55,7 +55,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssoc
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.earthquake.observedEarthquake.parsers.UCERF3_CatalogParser;
-import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.OldCompoundSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.PointSurface;
@@ -150,10 +150,10 @@ public class FiniteFaultSectionResetCalc {
 	}
 	
 	private double getAreaInPoly(RuptureSurface surf, Region polygon) {
-		if (surf instanceof CompoundSurface) {
+		if (surf instanceof OldCompoundSurface) {
 			// cache for FSS ruptures
 			double area = 0d;
-			for (RuptureSurface subSurf : ((CompoundSurface)surf).getSurfaceList()) {
+			for (RuptureSurface subSurf : ((OldCompoundSurface)surf).getSurfaceList()) {
 				if (subSurf instanceof EvenlyGriddedSurface) {
 					Double myArea = rupSetAreaInPolysCache.get(surf, polygon);
 					if (myArea == null) {

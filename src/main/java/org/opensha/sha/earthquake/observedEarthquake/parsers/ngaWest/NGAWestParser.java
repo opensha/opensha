@@ -24,7 +24,7 @@ import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.ApproxEvenlyGriddedSurface;
-import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.OldCompoundSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.GriddedSurfaceImpl;
@@ -183,7 +183,7 @@ public class NGAWestParser {
 			if (surfList.size() == 1) {
 				surf = surfList.get(0);
 			} else {
-				surf = new CompoundSurface(surfList);
+				surf = new OldCompoundSurface(surfList);
 			}
 
 			map.put(id, surf);

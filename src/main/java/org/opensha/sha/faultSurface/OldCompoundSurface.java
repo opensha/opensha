@@ -25,9 +25,11 @@ import com.google.common.collect.Lists;
  * handled properly (these data were analyzed externally using Igor).
  * 
  * @author field
+ * @deprecated use {@link NewCompoundSurface}
  *
  */
-public class CompoundSurface implements RuptureSurface, CacheEnabledSurface {
+@Deprecated
+public class OldCompoundSurface implements RuptureSurface, CacheEnabledSurface {
 	
 	List<? extends RuptureSurface> surfaces;
 	
@@ -41,7 +43,7 @@ public class CompoundSurface implements RuptureSurface, CacheEnabledSurface {
 	
 	private SurfaceDistanceCache cache = SurfaceCachingPolicy.build(this);
 	
-	public CompoundSurface(List<? extends RuptureSurface> surfaces) {
+	public OldCompoundSurface(List<? extends RuptureSurface> surfaces) {
 		this.surfaces = surfaces;
 		computeInitialStuff();
 	}
@@ -674,12 +676,12 @@ public class CompoundSurface implements RuptureSurface, CacheEnabledSurface {
 		List<RuptureSurface> movedSurfs = Lists.newArrayList();
 		for (RuptureSurface surf : this.surfaces)
 			movedSurfs.add(surf.getMoved(v));
-		return new CompoundSurface(movedSurfs);
+		return new OldCompoundSurface(movedSurfs);
 	}
 
 	@Override
-	public CompoundSurface copyShallow() {
-		return new CompoundSurface(surfaces);
+	public OldCompoundSurface copyShallow() {
+		return new OldCompoundSurface(surfaces);
 	}
 
 	@Override
