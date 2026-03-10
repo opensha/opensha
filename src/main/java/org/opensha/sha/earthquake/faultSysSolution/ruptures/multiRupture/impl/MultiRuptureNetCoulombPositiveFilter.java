@@ -7,7 +7,8 @@ import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
 /**
- * Version of {@link MultiRuptureCoulombFilter} that is specific to the fraction of positive Coulomb interactions
+ * Version of {@link MultiRuptureCoulombFilter} that requires the net (summed) Coulomb stress
+ * between the two ruptures to be positive. Uses SUM aggregation at all levels.
  */
 public class MultiRuptureNetCoulombPositiveFilter extends MultiRuptureCoulombFilter {
 	

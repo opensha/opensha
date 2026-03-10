@@ -5,6 +5,11 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionClust
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.faultSurface.FaultSection;
 
+/**
+ * A {@link Jump} that carries references to the full source and target {@link ClusterRupture}s,
+ * not just the connecting sections. Used as input to {@link MultiRuptureCompatibilityFilter}s
+ * and {@link MultiClusterRupture#takeSplayJump(MultiRuptureJump)}.
+ */
 public class MultiRuptureJump extends Jump {
     public final ClusterRupture fromRupture;
     public final ClusterRupture toRupture;

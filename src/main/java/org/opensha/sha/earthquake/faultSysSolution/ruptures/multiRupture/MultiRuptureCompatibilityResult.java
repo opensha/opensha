@@ -2,6 +2,10 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.multiRupture;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 
+/**
+ * Wraps a {@link PlausibilityResult} together with the {@link MultiRuptureJump} that produced it.
+ * Supports logical AND composition so that multiple filter results can be combined sequentially.
+ */
 public class MultiRuptureCompatibilityResult {
     public final PlausibilityResult plausibilityResult;
     public final MultiRuptureJump jump;

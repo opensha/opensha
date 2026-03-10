@@ -9,6 +9,15 @@ import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
 
 import java.io.*;
 
+/**
+ * Serialisable module that wraps a {@link SubSectStiffnessCalculator} and its Coulomb Failure
+ * Function (CFF) cache. Can be attached to a {@link FaultSystemRupSet} and persisted via the
+ * {@link TextBackedModule} interface, so that expensive stiffness computations survive
+ * serialisation round-trips.
+ *
+ * <p>Parameters (Lam&eacute; constants, friction coefficient, grid spacing) are written to the
+ * module text along with the full stiffness cache.
+ */
 public class StiffnessCalcModule implements TextBackedModule, SubModule<FaultSystemRupSet> {
 
     // stiffness calculation constants
@@ -81,6 +90,7 @@ public class StiffnessCalcModule implements TextBackedModule, SubModule<FaultSys
         }
     }
 
+    /** Writes the stiffness cache to disk if new values have been calculated since the last write. */
     public void checkUpdateStiffnessCache() {
         if (stiffnessCacheFile != null && stiffnessCacheSize < stiffnessCache.calcCacheSize()) {
             // we've calculated new Coulomb values, write out new cache files

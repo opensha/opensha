@@ -12,6 +12,11 @@ import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Checks self-coupling: the net Coulomb stress from all sections onto each component (crustal
+ * and subduction separately) must exceed the threshold. Also rejects crustal components with total area
+ * below 100 km&sup2;.
+ */
 public class MultiRuptureSelfStiffnessFilter implements MultiRuptureCompatibilityFilter {
 
     final private AggregatedStiffnessCalculator aggCalc;

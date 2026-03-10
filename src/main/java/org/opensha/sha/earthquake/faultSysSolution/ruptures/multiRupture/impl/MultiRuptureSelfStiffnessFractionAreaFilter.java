@@ -12,6 +12,12 @@ import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Checks that the fraction of each component's area (crustal and subduction) with positive
+ * self-stiffness meets a threshold. Unlike {@link MultiRuptureSelfStiffnessFilter} which checks
+ * aggregate stiffness, this filter ensures that a sufficient spatial proportion of each
+ * component is positively coupled.
+ */
 public class MultiRuptureSelfStiffnessFractionAreaFilter implements MultiRuptureCompatibilityFilter {
 
     final private AggregatedStiffnessCalculator aggCalc;

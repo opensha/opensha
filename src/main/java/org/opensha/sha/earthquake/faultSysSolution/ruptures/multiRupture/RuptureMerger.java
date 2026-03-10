@@ -17,6 +17,15 @@ import java.text.DecimalFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Orchestrates the creation of joint (multi-fault) ruptures by merging nucleation ruptures
+ * (typically subduction) with nearby target ruptures (typically crustal). Uses spatial indexing
+ * via {@link RuptureProximityLookup} to find candidates, then applies a chain of
+ * {@link MultiRuptureCompatibilityFilter}s (e.g. Coulomb stress checks) to validate each pair.
+ * Compatible pairs are merged into {@link MultiClusterRupture}s via splay jumps.
+ *
+ * <p>Merging is parallelised. Use {@link #setVerbose(boolean)} to control diagnostic output.
+ */
 public class RuptureMerger {
 
     static DecimalFormat oDF = new DecimalFormat("0.##");
@@ -59,6 +68,10 @@ public class RuptureMerger {
         return lookup.findNearbyRuptures(nucleationSections);
     }
 
+    /**
+     * Returns target ruptures that are spatially close to the given nucleation rupture,
+     * filtered through the configured {@link TargetRuptureSelector}.
+     */
     public List<ClusterRupture> getJumpTargets(ClusterRupture nucleationRupture) {
         Set<ClusterRupture> ruptures = new HashSet<>();
         for(FaultSection section: nucleationRupture.buildOrderedSectionList()){
@@ -131,6 +144,11 @@ public class RuptureMerger {
         return result;
     }
 
+    /**
+     * Merges all nucleation ruptures with all compatible target ruptures in parallel.
+     *
+     * @return list of newly created multi-cluster ruptures
+     */
     public List<ClusterRupture> merge() {
         return nucleationRuptures
                 .parallelStream()

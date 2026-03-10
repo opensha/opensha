@@ -4,5 +4,8 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
 @RunWith(Suite.class)
-@Suite.SuiteClasses({AreaSpreadSelectorTest.class})
-public class AreaSpreadSelectorSuite {}
+@Suite.SuiteClasses({
+        AreaSpreadSelectorTest.class,
+        RuptureProximityLookupTest.class})
+public class MultiRuptureTestSuite {
+}

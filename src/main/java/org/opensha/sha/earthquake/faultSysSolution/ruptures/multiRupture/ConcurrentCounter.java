@@ -3,6 +3,11 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.multiRupture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Thread-safe counter that maintains per-thread counts to minimise contention during parallel
+ * stream operations. Call {@link #inc()} from any thread and {@link #get()} to retrieve the
+ * aggregate total.
+ */
 public class ConcurrentCounter {
     ConcurrentHashMap<Long, AtomicInteger> counters = new ConcurrentHashMap<>();
 

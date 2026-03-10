@@ -12,6 +12,12 @@ import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Checks that a sufficient fraction of individual sections in each component pass a per-section
+ * stiffness test. Uses a normalised-by-count aggregation to evaluate each section, then requires
+ * that at least {@code threshold} fraction of sections pass. More granular than
+ * {@link MultiRuptureSelfStiffnessFilter} which only checks aggregate values.
+ */
 public class MultiRuptureSelfStiffnessSpreadFilterFilter implements MultiRuptureCompatibilityFilter {
 
     final private AggregatedStiffnessCalculator aggCalc;

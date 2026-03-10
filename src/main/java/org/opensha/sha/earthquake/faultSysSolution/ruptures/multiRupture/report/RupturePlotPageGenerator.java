@@ -80,6 +80,7 @@ public class RupturePlotPageGenerator {
         }
     }
 
+    /** Plots with a manually specified CPT range instead of auto-scaling. */
     public void plotWithFixedCPT(File outputDir, double min, double max, MultiRupturePlot... plots) throws IOException {
 
         CPT cpt = GMT_CPT_Files.DIVERGENT_RYB.instance().reverse().rescale(min, max);
@@ -93,6 +94,11 @@ public class RupturePlotPageGenerator {
         }
     }
 
+    /**
+     * Generates a full HTML report page for a single rupture, including five stiffness plots
+     * (subduction-as-source, crustal-as-source for two aggregation methods, plus everything-as-source)
+     * and metadata (section counts, rake, parent faults).
+     */
     public void makeRupturePage(MultiRuptureStiffnessPlot.RuptureProperties prop, File outputDir) throws IOException {
         String rupTitle = "Rupture " + prop.index + " ";
 

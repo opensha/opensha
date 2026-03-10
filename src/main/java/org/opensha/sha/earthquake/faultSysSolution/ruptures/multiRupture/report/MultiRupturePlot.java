@@ -24,6 +24,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+/**
+ * Generates a single colour-coded map plot for a multi-rupture, where each fault section is
+ * shaded according to a computed stiffness value. Factory methods ({@link #subductionAsSource},
+ * {@link #crustalAsSource}, {@link #everythingAsSource}, etc.) provide different perspectives
+ * on source/receiver directionality.
+ */
 public class MultiRupturePlot {
 
     protected final DecimalFormat df;
@@ -36,6 +42,7 @@ public class MultiRupturePlot {
     public final double min;
     public final double max;
 
+    /** Computes a stiffness (or other) value for a single fault section, or null if not applicable. */
     public interface ValueForSection {
         Double getValue(FaultSection section);
     }
@@ -106,6 +113,10 @@ public class MultiRupturePlot {
         return candidates.stream().filter(s -> disAzCalc.getDistance(origin, s) <= maxDistance).collect(Collectors.toList());
     }
 
+    /**
+     * Returns a value function where subduction sections act as source (stress onto crustal)
+     * and crustal sections act as receiver (stress from subduction).
+     */
     public static ValueForSection subductionAsSource(
             AggregatedStiffnessCalculator stiffnessCalculator,
             MultiRuptureStiffnessPlot.RuptureProperties prop) {
@@ -114,6 +125,10 @@ public class MultiRupturePlot {
                 stiffnessCalculator.calc(prop.subduction, List.of(s));
     }
 
+    /**
+     * Returns a value function where all sections (crustal + subduction) act as source onto
+     * each crustal section as receiver. Subduction sections return 0.
+     */
     public static ValueForSection everythingAsSource(
             AggregatedStiffnessCalculator stiffnessCalculator,
             MultiRuptureStiffnessPlot.RuptureProperties prop) {
@@ -145,6 +160,10 @@ public class MultiRupturePlot {
         };
     }
 
+    /**
+     * Returns a value function where crustal sections act as source (stress onto subduction)
+     * and subduction sections act as receiver (stress from crustal).
+     */
     public static ValueForSection crustalAsSource(
             AggregatedStiffnessCalculator stiffnessCalculator,
             MultiRuptureStiffnessPlot.RuptureProperties prop) {
@@ -153,6 +172,7 @@ public class MultiRupturePlot {
                 stiffnessCalculator.calc(List.of(s), prop.subduction);
     }
 
+    /** Distance-limited variant of {@link #crustalAsSource} that only considers sections within maxDist. */
     public static ValueForSection crustalAsSource(
             AggregatedStiffnessCalculator stiffnessCalculator,
             MultiRuptureStiffnessPlot.RuptureProperties prop,
@@ -174,6 +194,10 @@ public class MultiRupturePlot {
         };
     }
 
+    /**
+     * Returns a value function where each section acts as the sole source onto the opposite
+     * component's sections as receivers.
+     */
     public static ValueForSection sectionAsSource(
             AggregatedStiffnessCalculator stiffnessCalculator,
             MultiRuptureStiffnessPlot.RuptureProperties prop) {
@@ -182,6 +206,10 @@ public class MultiRupturePlot {
                 stiffnessCalculator.calc(List.of(s), prop.subduction);
     }
 
+    /**
+     * Returns a value function where each section acts as the sole receiver of stress from the
+     * opposite component's sections.
+     */
     public static ValueForSection sectionAsReceiver(
             AggregatedStiffnessCalculator stiffnessCalculator,
             MultiRuptureStiffnessPlot.RuptureProperties prop) {

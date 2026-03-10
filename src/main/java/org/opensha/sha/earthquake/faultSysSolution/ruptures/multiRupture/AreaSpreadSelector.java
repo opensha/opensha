@@ -8,6 +8,11 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 
+/**
+ * A {@link TargetRuptureSelector} that picks {@code count} ruptures evenly spread across the
+ * range of rupture areas. Deduplicates ruptures whose areas differ by less than
+ * {@code minDiffFraction} to avoid near-identical candidates.
+ */
 public class AreaSpreadSelector implements TargetRuptureSelector {
 
     private final SectionDistanceAzimuthCalculator distCalc;

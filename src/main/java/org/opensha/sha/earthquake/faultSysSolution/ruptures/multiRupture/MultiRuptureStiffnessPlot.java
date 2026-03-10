@@ -26,6 +26,14 @@ import java.util.*;
 import java.util.function.ToDoubleFunction;
 import java.util.stream.Collectors;
 
+/**
+ * Report plot that visualises Coulomb stiffness for multi-rupture (joint crustal+subduction)
+ * scenarios. Generates percentile-based thumbnails showing how stiffness varies across the
+ * rupture set, and categorises ruptures by whether subduction-as-source, crustal-as-source,
+ * both, or neither exceed a stiffness threshold.
+ *
+ * <p>Requires {@link ClusterRuptures} and {@link StiffnessCalcModule} modules on the rupture set.
+ */
 public class MultiRuptureStiffnessPlot extends AbstractRupSetPlot {
 
     // FIXME: get this from the rupset
@@ -62,6 +70,7 @@ public class MultiRuptureStiffnessPlot extends AbstractRupSetPlot {
 
     }
 
+    /** Pre-computed stiffness properties for a single multi-rupture, used during plotting. */
     public static class RuptureProperties {
         public ClusterRupture rupture;
         public int index;

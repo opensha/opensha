@@ -7,6 +7,11 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionClust
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
 
+/**
+ * A {@link ClusterRupture} that combines two separate ruptures (e.g. crustal and subduction)
+ * by adding the target rupture as a splay of the nucleation rupture. Created via
+ * {@link #takeSplayJump(MultiRuptureJump)}.
+ */
 public class MultiClusterRupture extends ClusterRupture {
 
     protected MultiClusterRupture(FaultSubsectionCluster[] clusters,
@@ -17,6 +22,13 @@ public class MultiClusterRupture extends ClusterRupture {
         super(clusters, internalJumps, splays, unique, internalUnique, false);
     }
 
+    /**
+     * Creates a new multi-cluster rupture by adding the target rupture from the jump as a splay
+     * of the nucleation (from) rupture.
+     *
+     * @param jump the jump connecting two ruptures
+     * @return a new rupture combining both ruptures via a splay connection
+     */
     public static ClusterRupture takeSplayJump(MultiRuptureJump jump) {
         ImmutableMap.Builder<Jump, ClusterRupture> splayBuilder = ImmutableMap.builder();
         splayBuilder.putAll(jump.fromRupture.splays);

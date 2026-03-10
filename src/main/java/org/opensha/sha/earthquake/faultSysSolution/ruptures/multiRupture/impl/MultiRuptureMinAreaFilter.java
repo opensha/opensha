@@ -10,6 +10,10 @@ import org.opensha.sha.faultSurface.FaultSection;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Rejects multi-rupture jumps where the crustal or subduction component has a total rupture
+ * area below the configured minimum thresholds (specified in km&sup2;).
+ */
 public class MultiRuptureMinAreaFilter implements MultiRuptureCompatibilityFilter {
 
     final double minCrustal;
