@@ -36,3 +36,14 @@ jobs:
 
       - name: Run standard tests with Gradle
         run: ./gradlew testVerbose
+
+      - name: Notify Slack on failure
+        if: ${{ failure() }}
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK }}
+          webhook-type: incoming-webhook
+          payload: >
+            {
+              "text": ":x: *Workflow failed*\nRepo: `${{ github.repository }}`\nWorkflow: `${{ github.workflow }}`\nRun: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"
+            }
