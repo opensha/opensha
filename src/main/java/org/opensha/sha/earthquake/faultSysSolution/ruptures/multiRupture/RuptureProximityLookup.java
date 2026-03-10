@@ -1,7 +1,6 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.multiRupture;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
@@ -32,8 +31,6 @@ public class RuptureProximityLookup {
             double maxDistKm) {
         this.maxDistKm = maxDistKm;
         this.sectionToRuptures = new HashMap<>();
-
-        listB = listB.stream().filter(cr -> cr.buildOrderedSectionList().stream().mapToDouble(s -> s.getArea(false)).sum() >= 1e8).collect(Collectors.toList());
 
         // Collect unique sections from listB and build reverse map
         Map<Integer, FaultSection> uniqueSections = new LinkedHashMap<>();
