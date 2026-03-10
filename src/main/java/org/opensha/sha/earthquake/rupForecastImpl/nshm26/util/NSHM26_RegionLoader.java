@@ -9,6 +9,7 @@ import org.opensha.commons.geo.Region;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.NSHM23_BaseRegion;
 
 public class NSHM26_RegionLoader {
+	
 	private static final String GNMI_DIR = "/data/erf/nshm26/gnmi/regions/";
 	private static final String AMSAM_DIR = "/data/erf/nshm26/amsam/regions/";
 	

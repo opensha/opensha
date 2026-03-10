@@ -303,7 +303,7 @@ public enum PRVI25_CrustalDeformationModels implements RupSetDeformationModel {
 					+") subsection slip rate standard deviations to the floor value of "+(float)STD_DEV_FLOOR+" (mm/yr)");
 	}
 	
-	static void applyCreepDefaults(List<? extends FaultSection> subSects) {
+	public static void applyCreepDefaults(List<? extends FaultSection> subSects) {
 		double creepFract = CREEP_FRACT_DEFAULT;
 		double aseis, coupling;
 		if (creepFract < ASEIS_CEILING) {

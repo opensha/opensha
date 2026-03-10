@@ -16,12 +16,12 @@ public class NSHM26_LogicTree {
 	/*
 	 * Core subduction FSS branch levels
 	 */
-	public static LogicTreeLevel<NSHM26_SubductionInterfaceFaultModels> SUB_FM =
-			LogicTreeLevel.forEnum(NSHM26_SubductionInterfaceFaultModels.class, "Interface Fault Model", "InterfaceFM");
-	public static LogicTreeLevel<NSHM26_SubductionInterfaceCouplingDepthModels> SUB_DEPTH_COUPLING =
-			LogicTreeLevel.forEnum(NSHM26_SubductionInterfaceCouplingDepthModels.class, "Interface Coupling", "InterfaceCoupling");
-	public static LogicTreeLevel<NSHM26_SubductionInterfaceDeformationModels> SUB_DM =
-			LogicTreeLevel.forEnum(NSHM26_SubductionInterfaceDeformationModels.class, "Interface Slip Partitioning", "InterfaceSlipPartic");
+	public static LogicTreeLevel<NSHM26_InterfaceFaultModels> SUB_FM =
+			LogicTreeLevel.forEnum(NSHM26_InterfaceFaultModels.class, "Interface Fault Model", "InterfaceFM");
+	public static LogicTreeLevel<NSHM26_InterfaceCouplingDepthModels> SUB_DEPTH_COUPLING =
+			LogicTreeLevel.forEnum(NSHM26_InterfaceCouplingDepthModels.class, "Interface Coupling", "InterfaceCoupling");
+	public static LogicTreeLevel<NSHM26_InterfaceDeformationModels> SUB_DM =
+			LogicTreeLevel.forEnum(NSHM26_InterfaceDeformationModels.class, "Interface Slip Partitioning", "InterfaceSlipPartic");
 	public static LogicTreeLevel<PRVI25_SubductionScalingRelationships> SUB_SCALE = 
 			LogicTreeLevel.forEnum(PRVI25_SubductionScalingRelationships.class, "Interface Scaling Relationship", "InterfaceScale");
 	public static LogicTreeLevel<PRVI25_SubductionBValues> SUB_SUPRA_B =
@@ -37,9 +37,9 @@ public class NSHM26_LogicTree {
 	 * This is the default GNMI subduction interface reference branch
 	 */
 	public static final LogicTreeBranch<LogicTreeNode> DEFAULT_GNMI_SUBDUCTION_INTERFACE = fromValues(levelsSubduction,
-			NSHM26_SubductionInterfaceFaultModels.MARIANA,
-			NSHM26_SubductionInterfaceCouplingDepthModels.DOUBLE_TAPER,
-			NSHM26_SubductionInterfaceDeformationModels.PREF_COUPLING,
+			NSHM26_InterfaceFaultModels.GNMI_V1,
+			NSHM26_InterfaceCouplingDepthModels.DOUBLE_TAPER,
+			NSHM26_InterfaceDeformationModels.PREF_COUPLING,
 			PRVI25_SubductionScalingRelationships.LOGA_C4p0,
 			PRVI25_SubductionBValues.B_0p5);
 	
@@ -47,9 +47,9 @@ public class NSHM26_LogicTree {
 	 * This is the default AmSam subduction interface reference branch
 	 */
 	public static final LogicTreeBranch<LogicTreeNode> DEFAULT_AMSAM_SUBDUCTION_INTERFACE = fromValues(levelsSubduction,
-			NSHM26_SubductionInterfaceFaultModels.TONGA,
-			NSHM26_SubductionInterfaceCouplingDepthModels.DOUBLE_TAPER,
-			NSHM26_SubductionInterfaceDeformationModels.PREF_COUPLING,
+			NSHM26_InterfaceFaultModels.AMSAM_V1,
+			NSHM26_InterfaceCouplingDepthModels.DOUBLE_TAPER,
+			NSHM26_InterfaceDeformationModels.PREF_COUPLING,
 			PRVI25_SubductionScalingRelationships.LOGA_C4p0,
 			PRVI25_SubductionBValues.B_0p5);
 	

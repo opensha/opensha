@@ -26,7 +26,7 @@ import com.google.common.collect.Range;
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM26_SubductionInterfaceCouplingDepthModels implements LogicTreeNode {
+public enum NSHM26_InterfaceCouplingDepthModels implements LogicTreeNode {
 	DOUBLE_TAPER("Double Taper", "Double", Range.closed(0d, 10d), Range.closed(40d, 60d), 1d);
 
 	private String name;
@@ -35,7 +35,7 @@ public enum NSHM26_SubductionInterfaceCouplingDepthModels implements LogicTreeNo
 	private Range<Double> lowerTaper;
 	private double weight;
 
-	NSHM26_SubductionInterfaceCouplingDepthModels(String name, String shortName, Range<Double> upperTaper,
+	NSHM26_InterfaceCouplingDepthModels(String name, String shortName, Range<Double> upperTaper,
 			Range<Double> lowerTaper, double weight) {
 		this.name = name;
 		this.shortName = shortName;

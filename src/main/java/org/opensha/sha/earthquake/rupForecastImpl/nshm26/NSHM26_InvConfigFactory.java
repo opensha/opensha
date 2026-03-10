@@ -61,7 +61,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.random.Random
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.SubSeisMoRateReduction;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.GRParticRateEstimator;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_SubductionInterfaceFaultModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_InterfaceFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionBValues;
 import org.opensha.sha.faultSurface.FaultSection;
 
@@ -105,7 +105,7 @@ public class NSHM26_InvConfigFactory implements ClusterSpecificInversionConfigur
 		RupSetSubsectioningModel ssm = branch.requireValue(RupSetSubsectioningModel.class);
 		RupturePlausibilityModels model = branch.getValue(RupturePlausibilityModels.class);
 		if (model == null) {
-			if (fm instanceof NSHM26_SubductionInterfaceFaultModels) // Subduction
+			if (fm instanceof NSHM26_InterfaceFaultModels) // Subduction
 				model = RupturePlausibilityModels.SUBDUCTION_DD_RECTANGULAR;
 			else
 				model = RupturePlausibilityModels.COULOMB;

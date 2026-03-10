@@ -152,43 +152,36 @@ public class SeismicityRateModel {
 		return branchIncr;
 	}
 	
-	public IncrementalMagFreqDist buildPreferred(EvenlyDiscretizedFunc refMFD, double mMax)
-			throws IOException {
+	public IncrementalMagFreqDist buildPreferred(EvenlyDiscretizedFunc refMFD, double mMax) {
 		return build(meanRecord, refMFD, mMax);
 	}
 	
-	public IncrementalMagFreqDist buildPreferred(EvenlyDiscretizedFunc refMFD, double mMax, double magCorner)
-			throws IOException {
+	public IncrementalMagFreqDist buildPreferred(EvenlyDiscretizedFunc refMFD, double mMax, double magCorner) {
 		return build(meanRecord, refMFD, mMax, magCorner);
 	}
 	
-	public IncrementalMagFreqDist buildLower(EvenlyDiscretizedFunc refMFD, double mMax)
-			throws IOException {
+	public IncrementalMagFreqDist buildLower(EvenlyDiscretizedFunc refMFD, double mMax) {
 		return build(lowerRecord, refMFD, mMax);
 	}
 	
-	public IncrementalMagFreqDist buildLower(EvenlyDiscretizedFunc refMFD, double mMax, double magCorner)
-			throws IOException {
+	public IncrementalMagFreqDist buildLower(EvenlyDiscretizedFunc refMFD, double mMax, double magCorner) {
 		return build(lowerRecord, refMFD, mMax, magCorner);
 	}
 	
-	public IncrementalMagFreqDist buildUpper(EvenlyDiscretizedFunc refMFD, double mMax)
-			throws IOException {
+	public IncrementalMagFreqDist buildUpper(EvenlyDiscretizedFunc refMFD, double mMax) {
 		return build(upperRecord, refMFD, mMax);
 	}
 	
-	public IncrementalMagFreqDist buildUpper(EvenlyDiscretizedFunc refMFD, double mMax, double magCorner)
-			throws IOException {
+	public IncrementalMagFreqDist buildUpper(EvenlyDiscretizedFunc refMFD, double mMax, double magCorner) {
 		return build(upperRecord, refMFD, mMax, magCorner);
 	}
 	
-	private IncrementalMagFreqDist build(RateRecord record, EvenlyDiscretizedFunc refMFD, double mMax)
-			throws IOException {
+	private IncrementalMagFreqDist build(RateRecord record, EvenlyDiscretizedFunc refMFD, double mMax) {
 		return build(record, refMFD, mMax, Double.NaN);
 	}
 	
 	private IncrementalMagFreqDist build(RateRecord record, EvenlyDiscretizedFunc refMFD, double mMax,
-			double magCorner) throws IOException {
+			double magCorner) {
 		IncrementalMagFreqDist mfd = SeismicityRateFileLoader.buildIncrementalMFD(record, refMFD, mMax, magCorner);
 		
 		boolean preferred = record.mean || record.quantile == 0.5;

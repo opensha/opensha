@@ -9,6 +9,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
+import org.opensha.sha.util.TectonicRegionType;
 
 @DoesNotAffect(FaultSystemRupSet.SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
@@ -56,6 +57,11 @@ public enum NSHM23_MaxMagOffFault implements MaxMagOffFaultBranchNode {
 	@Override
 	public double getMaxMagOffFault() {
 		return mMax;
+	}
+	
+	@Override
+	public TectonicRegionType getTectonicRegime() {
+		return TectonicRegionType.ACTIVE_SHALLOW;
 	}
 
 }

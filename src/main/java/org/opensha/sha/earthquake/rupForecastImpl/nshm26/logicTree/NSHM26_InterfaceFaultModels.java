@@ -33,17 +33,23 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM26_SubductionInterfaceFaultModels implements RupSetFaultModel, RupSetSubsectioningModel {
-	TONGA("Tonga Trench", "/data/erf/nshm26/amsam/fault_models/subduction/", 0d),
-	MARIANA("Mariana Trench", "/data/erf/nshm26/gnmi/fault_models/subduction/", 100d);
+public enum NSHM26_InterfaceFaultModels implements RupSetFaultModel, RupSetSubsectioningModel {
+	AMSAM_V1("Amarican Samoa (Interface FM v1)", "AmSam-Inter-v1",
+			"/data/erf/nshm26/amsam/fault_models/subduction/", NSHM26_SeismicityRegions.AMSAM, 0d),
+	GNMI_V1("Guam & Northern Mariana Islands (Interface FM v1)", "GNMI-Inter-v1",
+			"/data/erf/nshm26/gnmi/fault_models/subduction/", NSHM26_SeismicityRegions.GNMI, 100d);
 
 	private String name;
+	private String shortName;
 	private String dataPrefix;
 	private double slipSmoothingDist;
+	private NSHM26_SeismicityRegions seisReg;
 
-	NSHM26_SubductionInterfaceFaultModels(String name, String dataPrefix, double slipSmoothingDist) {
+	NSHM26_InterfaceFaultModels(String name, String shortName, String dataPrefix, NSHM26_SeismicityRegions seisReg, double slipSmoothingDist) {
 		this.name = name;
+		this.shortName = shortName;
 		this.dataPrefix = dataPrefix;
+		this.seisReg = seisReg;
 		this.slipSmoothingDist = slipSmoothingDist;
 	}
 
@@ -59,7 +65,7 @@ public enum NSHM26_SubductionInterfaceFaultModels implements RupSetFaultModel, R
 
 	@Override
 	public String getShortName() {
-		return name;
+		return shortName;
 	}
 
 	@Override
@@ -70,11 +76,15 @@ public enum NSHM26_SubductionInterfaceFaultModels implements RupSetFaultModel, R
 	public double getSlipSmoothingDistance() {
 		return slipSmoothingDist;
 	}
+	
+	public NSHM26_SeismicityRegions getSeisReg() {
+		return seisReg;
+	}
 
 	@Override
 	public List<? extends FaultSection> buildSubSects(RupSetFaultModel faultModel) throws IOException {
 		String path = dataPrefix+"sub_sections.geojson";
-		InputStream is = NSHM26_SubductionInterfaceFaultModels.class.getResourceAsStream(path);
+		InputStream is = NSHM26_InterfaceFaultModels.class.getResourceAsStream(path);
 		Preconditions.checkNotNull(is, "Could not load %s", path);
 		BufferedReader reader = new BufferedReader(new InputStreamReader(is));
 		return GeoJSONFaultReader.readFaultSections(reader);
@@ -93,7 +103,7 @@ public enum NSHM26_SubductionInterfaceFaultModels implements RupSetFaultModel, R
 	@Override
 	public List<? extends FaultSection> getFaultSections() throws IOException {
 		String path = dataPrefix+"full_section.geojson";
-		InputStream is = NSHM26_SubductionInterfaceFaultModels.class.getResourceAsStream(path);
+		InputStream is = NSHM26_InterfaceFaultModels.class.getResourceAsStream(path);
 		Preconditions.checkNotNull(is, "Could not load %s", path);
 		BufferedReader reader = new BufferedReader(new InputStreamReader(is));
 		FeatureCollection fullSectCollection = FeatureCollection.read(reader);
@@ -103,15 +113,15 @@ public enum NSHM26_SubductionInterfaceFaultModels implements RupSetFaultModel, R
 
 	@Override
 	public RupSetDeformationModel getDefaultDeformationModel() {
-		return NSHM26_SubductionInterfaceDeformationModels.PREF_COUPLING;
+		return NSHM26_InterfaceDeformationModels.PREF_COUPLING;
 	}
 
 	@Override
 	public void attachDefaultModules(FaultSystemRupSet rupSet) {
 		try {
-			if (this == TONGA) {
+			if (this == AMSAM_V1) {
 				rupSet.addModule(new ModelRegion(NSHM26_SeismicityRegions.AMSAM.load()));
-			} else if (this == MARIANA) {
+			} else if (this == GNMI_V1) {
 				rupSet.addModule(new ModelRegion(NSHM26_SeismicityRegions.GNMI.load()));
 			}
 		} catch (IOException e) {

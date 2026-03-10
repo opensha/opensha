@@ -9,7 +9,7 @@ b sigma,0.02
 max n sigma b,3
 delta,
 M1,5
-Mmax,
+Mmax,7
 Mc sigma,0.2
 max n sigma Mc,3
 Mc distribution is one-sided (only larger than Mc) 
