@@ -979,8 +979,8 @@ public class InterfaceSubSectionBuilder {
 		
 		double backTraceDist = 100d;
 		
-		String faultName = "Kermadec";
-		int faultID = 0;
+		String faultName = "Tonga Trench";
+		int faultID = 6700;
 		String resourcePrefix = "/data/erf/nshm26/amsam/fault_models/subduction/";
 		BufferedReader countoursIn = new BufferedReader(new InputStreamReader(
 				InterfaceSubSectionBuilder.class.getResourceAsStream(resourcePrefix+"ker_slab2_dep_10km_contours.xyz")));
@@ -998,8 +998,8 @@ public class InterfaceSubSectionBuilder {
 		boolean filterStartPerpendicular = false;
 		boolean filterEndPerpendicular = true;
 		
-//		String faultName = "Izu-Bonin";
-//		int faultID = 0;
+//		String faultName = "Mariana Trench";
+//		int faultID = 6200;
 //		String resourcePrefix = "/data/erf/nshm26/gnmi/fault_models/subduction/";
 //		BufferedReader countoursIn = new BufferedReader(new InputStreamReader(
 //				InterfaceSubSectionBuilder.class.getResourceAsStream(resourcePrefix+"izu_slab2_dep_10km_contours.xyz")));
@@ -1008,8 +1008,10 @@ public class InterfaceSubSectionBuilder {
 //		boolean smoothTraceForDDW = true;
 //		String prefix = "izu_slab2";
 //		Range<Double> depthRange = Range.closed(0d, 60d);
-//		Range<Double> lonFilter = null;
-//		Range<Double> latFilter = Range.atMost(23.123577);
+//		Range<Double> preLonFilter = null;
+//		Range<Double> preLatFilter = Range.atMost(23.123577);
+//		Range<Double> postLonFilter = null;
+//		Range<Double> postLatFilter = null;
 //		boolean filterStartPerpendicular = true;
 //		boolean filterEndPerpendicular = false;
 		

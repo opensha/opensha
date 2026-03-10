@@ -3,10 +3,10 @@
   "features": [
     {
       "type": "Feature",
-      "id": 0,
+      "id": 6700,
       "properties": {
-        "FaultID": 0,
-        "FaultName": "Kermadec",
+        "FaultID": 6700,
+        "FaultName": "Tonga Trench",
         "Rake": 90.0,
         "AseismicSlipFactor": 0.0,
         "UpDepth": 60.0,
