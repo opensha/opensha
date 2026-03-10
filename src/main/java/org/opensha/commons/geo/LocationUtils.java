@@ -74,7 +74,7 @@ public final class LocationUtils {
 		private double sumDepth = 0d;
 		private double sumWeight;
 		
-		public synchronized void add(Location loc, double weight) {
+		public synchronized LocationAverager add(Location loc, double weight) {
 			if (sumWeight == 0d) {
 				singleLoc = loc;
 			} else if (singleLoc != null && !loc.equals(singleLoc)) {
@@ -84,6 +84,7 @@ public final class LocationUtils {
 			sumLon += weight*loc.lon;
 			sumDepth += weight*loc.depth;
 			sumWeight += weight;
+			return this;
 		}
 		
 		public Location getAverage() {
