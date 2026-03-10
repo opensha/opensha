@@ -56,7 +56,12 @@ public class StiffnessCalcModule implements TextBackedModule, SubModule<FaultSys
                 1d);
         stiffnessCache = stiffnessCalc.getAggregationCache(SubSectStiffnessCalculator.StiffnessType.CFF);
 
-        if ((cacheDir != null && cacheDir.exists()) || stiffnessCacheFile != null) {
+        if(cacheDir != null && !cacheDir.exists()){
+            System.out.println("Cache dir doesn't exist, creating: " + cacheDir.getAbsolutePath());
+            cacheDir.mkdirs();
+        }
+
+        if (cacheDir != null || stiffnessCacheFile != null) {
             if (stiffnessCacheFile == null) {
                 stiffnessCacheFile = new File(cacheDir, stiffnessCache.getCacheFileName());
             } else {
@@ -128,8 +133,8 @@ public class StiffnessCalcModule implements TextBackedModule, SubModule<FaultSys
         stiffGridSpacing = Double.parseDouble(parameters[3]);
 
         try {
-            stiffnessCacheFile = File.createTempFile("cff", ".csv");
-            stiffnessCacheFile.deleteOnExit();
+            //stiffnessCacheFile = File.createTempFile("cff", ".csv");
+            //stiffnessCacheFile.deleteOnExit();
             System.out.println("Writing temporary stiffness cache to " + stiffnessCacheFile.getAbsolutePath());
             BufferedWriter writer = new BufferedWriter(new FileWriter(stiffnessCacheFile));
             for (int i = 3; i < lines.length; i++) {

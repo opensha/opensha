@@ -105,9 +105,9 @@ public class RuptureMerger {
      * @return a list of merged ruptures.
      */
     public List<ClusterRupture> merge(ClusterRupture nucleation) {
-        List<ClusterRupture> result = new ArrayList<>();
+        List<ClusterRupture> result =
 
-        for (ClusterRupture target : getJumpTargets(nucleation)) {
+        getJumpTargets(nucleation).parallelStream().map(target -> {
             MultiRuptureJump jump = makeJump(nucleation, target);
                 PlausibilityResult compatibility = PlausibilityResult.PASS;
                 for (MultiRuptureCompatibilityFilter filter : compatibilityFilters) {
@@ -117,9 +117,10 @@ public class RuptureMerger {
                     }
                 }
                 if (compatibility.isPass()) {
-                    result.add(MultiClusterRupture.takeSplayJump(jump));
+                    return MultiClusterRupture.takeSplayJump(jump);
                 }
-        }
+                return null;
+        }).filter(Objects::nonNull).toList();
 
         int counter = mergeCounter++;
         if (counter % 10 == 0) {
@@ -133,8 +134,21 @@ public class RuptureMerger {
     public List<ClusterRupture> merge() {
         return nucleationRuptures
                 .parallelStream()
-                .map(this::merge)
-                .flatMap(Collection::stream)
+                .flatMap(nucleation -> getJumpTargets(nucleation).stream().map(target -> makeJump(nucleation, target)))
+                .map(jump -> {
+                    PlausibilityResult compatibility = PlausibilityResult.PASS;
+                    for (MultiRuptureCompatibilityFilter filter : compatibilityFilters) {
+                        compatibility = compatibility.logicalAnd(filter.apply(jump, VERBOSE));
+                        if (!compatibility.canContinue()) {
+                            break;
+                        }
+                    }
+                    if (compatibility.isPass()) {
+                        return MultiClusterRupture.takeSplayJump(jump);
+                    }
+                    return null;
+                })
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
 
@@ -198,7 +212,7 @@ public class RuptureMerger {
         }
 
         List<ClusterRupture> ruptures = cRups.getAll();
-        File filterFile = resolveFile("C:\\Users\\user\\GNS\\rupture sets\\filteredRuptures.txt");
+        File filterFile = resolveFile("C:\\tmp\\filteredRuptures.txt", "C:\\Users\\user\\GNS\\rupture sets\\filteredRuptures.txt");
         if (filterFile != null) {
             int oldRupCount = ruptures.size();
             ruptures = new ArrayList<>();
@@ -221,7 +235,7 @@ public class RuptureMerger {
 
         System.out.println("Loaded " + nucleationRuptures.size() + " nucleation ruptures");
         System.out.println("Loaded " + targetRuptures.size() + " target ruptures");
-        
+
         // set up RuptureMerger
         double maxJumpDist = 15d;
         String outPrefix = "mergedRupset_"+oDF.format(maxJumpDist)+"km";
@@ -231,7 +245,6 @@ public class RuptureMerger {
         merger.setTargetSelector(targetSelector);
 
         System.out.println("possible jumps: "+merger.countPossibleJumps());
-        System.exit(0);
 
         StiffnessCalcModule stiffness = new StiffnessCalcModule(rupSet, 2, new File("C:\\tmp\\stiffnessCaches"));
 
@@ -274,11 +287,13 @@ public class RuptureMerger {
 
         stiffness.checkUpdateStiffnessCache();
 
-        // write only the merged ruptures
+        List<ClusterRupture> combinedRuptures = new ArrayList<>(cRups.getAll());
+        combinedRuptures.addAll(mergedRuptures);
+
         FaultSystemRupSet resultRupSet =
                 FaultSystemRupSet.builderForClusterRups(
                                 rupSet.getFaultSectionDataList(),
-                                mergedRuptures)
+                                combinedRuptures)
                         // magnitudes will be wrong, but this is required
                         .forScalingRelationship(ScalingRelationships.MEAN_UCERF3)
                         .addModule(stiffness)
