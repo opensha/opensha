@@ -3,10 +3,7 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.multiRupture.report
 import org.apache.commons.math3.stat.StatUtils;
 import org.jfree.chart.title.PaintScaleLegend;
 import org.jfree.chart.ui.RectangleEdge;
-import org.opensha.commons.gui.plot.GraphPanel;
-import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
-import org.opensha.commons.gui.plot.PlotLineType;
-import org.opensha.commons.gui.plot.PlotSpec;
+import org.opensha.commons.gui.plot.*;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.multiRupture.MultiRuptureStiffnessPlot;
@@ -90,8 +87,10 @@ public class MultiRupturePlot {
         PlotSpec spec = RupCartoonGenerator.buildRupturePlot(rup, title, false, true);
 
         double tickUnit = (cpt.getMaxValue() - cpt.getMinValue()) / 3.99;
-        PaintScaleLegend cptLegend = GraphPanel.getLegendForCPT(cpt, valueUnit,
-                22, 18, tickUnit, RectangleEdge.BOTTOM);
+        PlotPreferences plotPreferences = PlotPreferences.getDefaultAppPrefs();
+        plotPreferences.setTickLabelFontSize(18);
+        plotPreferences.setAxisLabelFontSize(22);
+        PaintScaleLegend cptLegend = GraphPanel.getLegendForCPT(cpt, valueUnit, plotPreferences, tickUnit, RectangleEdge.BOTTOM);
 
         spec.addSubtitle(cptLegend);
 
