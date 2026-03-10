@@ -12,6 +12,7 @@ import org.opensha.commons.param.event.ParameterChangeWarningListener;
 import org.opensha.commons.param.impl.WarningDoubleParameter;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.EqkRuptureParams.FaultTypeParam;
@@ -127,24 +128,12 @@ public class WC94_DisplMagRel extends AttenuationRelationship {
 	 * @throws InvalidRangeException    If not valid rake angle
 	 */
 	public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
-
-		magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
-		setFaultTypeFromRake(eqkRupture.getAveRake());
-		this.eqkRupture = eqkRupture;
-		setPropagationEffectParams();
-
-	}
-
-	/**
-	 * This sets the site object.
-	 *
-	 * @param  site
-	 */
-	public void setSite(Site site) {
-
-		this.site = site;
-		setPropagationEffectParams();
-
+		super.setEqkRupture(eqkRupture);
+		if (eqkRupture != null) {
+			magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
+			setFaultTypeFromRake(eqkRupture.getAveRake());
+			setPropagationEffectParams();
+		}
 	}
 
 	/**
@@ -154,8 +143,13 @@ public class WC94_DisplMagRel extends AttenuationRelationship {
 	protected void setPropagationEffectParams() {
 
 		if ( (this.site != null) && (this.eqkRupture != null)) {
-			distanceRupParam.setValue(eqkRupture, site);
+			setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
 		}
+	}
+
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		distanceRupParam.setValue(eqkRupture, site, distances);
 
 	}
 

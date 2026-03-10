@@ -21,6 +21,7 @@ import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.faultSurface.PointSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.calc.Borcherdt2004_SiteAmpCalc;
@@ -238,7 +239,7 @@ public class USGS_Combined_2004_AttenRel extends AttenuationRelationship {
 	 */
 	public void setEqkRupture(EqkRupture eqkRupture) {
 		// Set the eqkRupture
-		this.eqkRupture = eqkRupture;
+		super.setEqkRupture(eqkRupture);
 		as_1997_attenRel.setEqkRupture(eqkRupture);
 		bjf_1997_attenRel.setEqkRupture(eqkRupture);
 		scemy_1997_attenRel.setEqkRupture(eqkRupture);
@@ -256,18 +257,18 @@ public class USGS_Combined_2004_AttenRel extends AttenuationRelationship {
 	 * Wills site parameter
 	 */
 	public void setSite(Site site) throws ParameterException {
-
-		vs30Param.setValueIgnoreWarning((Double)site.getParameter(Vs30_Param.NAME).getValue());
-		this.site = site;
-
-		// set the location of the BC bounday site object
-		site_BC.setLocation(site.getLocation());
-
-		as_1997_attenRel.setSite(site_BC);
-		bjf_1997_attenRel.setSite(site_BC);
-		scemy_1997_attenRel.setSite(site_BC);
-		cb_2003_attenRel.setSite(site_BC);
-
+		super.setSite(site); // will call setPropagationEffectParams
+		if (site != null) {
+			vs30Param.setValueIgnoreWarning((Double)site.getParameter(Vs30_Param.NAME).getValue());
+			
+			// set the location of the BC bounday site object
+			site_BC.setLocation(site.getLocation());
+			
+			as_1997_attenRel.setSite(site_BC);
+			bjf_1997_attenRel.setSite(site_BC);
+			scemy_1997_attenRel.setSite(site_BC);
+			cb_2003_attenRel.setSite(site_BC);
+		}
 	}
 
 	/**
@@ -275,10 +276,7 @@ public class USGS_Combined_2004_AttenRel extends AttenuationRelationship {
 	 */
 	public void setSiteLocation(Location loc) {
 		//if site is null create a new Site
-		if (site == null) {
-			site = new Site();
-		}
-		site.setLocation(loc);
+		super.setSiteLocation(loc);
 		site_BC.setLocation(loc);
 		as_1997_attenRel.setSite(site_BC);
 		bjf_1997_attenRel.setSite(site_BC);
@@ -949,7 +947,14 @@ public class USGS_Combined_2004_AttenRel extends AttenuationRelationship {
 
 	// this method, required by the API, does nothing here (it's not needed).
 	protected void setPropagationEffectParams() {
+	}
 
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		as_1997_attenRel.setPropagationEffectParams(distances);
+		cb_2003_attenRel.setPropagationEffectParams(distances);
+		scemy_1997_attenRel.setPropagationEffectParams(distances);
+		bjf_1997_attenRel.setPropagationEffectParams(distances);
 	}
 
 	/**
@@ -1006,7 +1011,6 @@ public class USGS_Combined_2004_AttenRel extends AttenuationRelationship {
 		ar.setIntensityMeasure(PGA_Param.NAME);
 		System.out.println(ar.getMean());
 		System.out.println(ar.getStdDev());
-		System.out.println(qk.getRuptureSurface().getDistanceSeis(site.getLocation()));
 		System.out.println(ar.getMean());
 		System.out.println(ar.getStdDev());
 

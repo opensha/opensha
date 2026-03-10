@@ -36,6 +36,7 @@ import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.PropagationEffectParams.DistanceRupParameter;
@@ -247,8 +248,6 @@ implements DisaggregationCalculatorAPI {
 
 		pdf3D = new double[dist_center.length][mag_center.length][NUM_E];
 
-		DistanceRupParameter distRup = new DistanceRupParameter();
-
 		String S = C + ": disaggregate(): ";
 
 		if (D) System.out.println(S + "STARTING DISAGGREGATION");
@@ -406,9 +405,6 @@ implements DisaggregationCalculatorAPI {
 		        	continue;
 		        }
 
-				// set the rupture in the imr
-				imr.setEqkRupture(rupture);
-
 				// get the cond prob
 				condProb = imr.getExceedProbability(iml);
 				// should the following throw an exception?
@@ -417,9 +413,12 @@ implements DisaggregationCalculatorAPI {
 							"Exceedance probability is zero! (thus the NaNs below)");
 
 				// get the mean, stdDev, epsilon, dist, and mag
-				epsilon = imr.getEpsilon();
-				distRup.setValue(rupture, site);
-				dist = ( (Double) distRup.getValue()).doubleValue();
+				epsilon = imr.getEpsilon(rupture);
+				RuptureSurface surf = rupture.getRuptureSurface();
+				if (surf instanceof PointSurface.DistanceCorrectable)
+					dist = ((PointSurface.DistanceCorrectable)surf).getAverageDistances(site.getLocation()).getDistanceRup();
+				else
+					dist = surf.getDistanceRup(site.getLocation());
 				mag = rupture.getMag();
 
 				// get the equiv. Poisson rate over the time interval (not annualized)
@@ -431,7 +430,7 @@ implements DisaggregationCalculatorAPI {
 				}
 
 				if (calcSourceExceedances) {
-					imr.getExceedProbabilities(condProbFunc);
+					imr.getExceedProbabilities(rupture, condProbFunc);
 					
 					if(poissonSource) {
 						if(Math.log(1.0-qkProb) < -30.0)
@@ -551,7 +550,7 @@ implements DisaggregationCalculatorAPI {
 				String sourceDisaggInfo =
 					"Source#\t% Contribution\tTotExceedRate\tSourceName";
 				if (showDistances)
-					sourceDisaggInfo += "\tDistRup\tDistX\tDistSeis\tDistJB";
+					sourceDisaggInfo += "\tDistRup\tDistX\tDistJB";
 				sourceDisaggInfo += "\n";
 				int size = disaggSourceList.size();
 				if (size > numSourcesToShow)
@@ -570,7 +569,6 @@ implements DisaggregationCalculatorAPI {
 							RuptureSurface surf = source.getSourceSurface();
 							sourceDisaggInfo += "\t" + f2.format(surf.getDistanceRup(site.getLocation()))
 									+ "\t" + f2.format(surf.getDistanceX(site.getLocation()))
-									+ "\t" + f2.format(surf.getDistanceSeis(site.getLocation()))
 									+ "\t" + f2.format(surf.getDistanceJB(site.getLocation()));
 						} catch (Exception e) {
 							sourceDisaggInfo += "\t(no source surface information available, likely a background or consolidated source)";

@@ -349,7 +349,9 @@ public class JFreeLogarithmicAxis extends LogAxis {
 			double smallMaxX = largeBounds.getWidth() + refSmallBounds.getWidth();
 			double smallX = smallMaxX - smallBounds.getWidth();
 //			double smallY = -3-(int)(0.4*this.getTickLabelFont().getSize());
-			double smallY = -(int)(0.4*majorTickFont.getSize());
+//			double smallY = -(int)(0.4*majorTickFont.getSize());
+//			double smallY = -(0.4*majorTickFont.getSize());
+			double smallY = -(0.2*majorTickFont.getSize()+3);
 			double largeX = 0;
 			double largeY = 0; // small will actually go above the anchor, which is ok
 			largeBounds = new Rectangle2D.Double(largeX, largeY, largeBounds.getWidth(), largeBounds.getHeight());
@@ -961,13 +963,10 @@ public class JFreeLogarithmicAxis extends LogAxis {
 		if (isAxisLineVisible()) {
 			drawAxisLine(g2, cursor, dataArea, edge);
 		}
-		//		double ol = getTickMarkOutsideLength();
-		//		double il = getTickMarkInsideLength();
-		float minorOutside = (float) getTickMarkOutsideLength();
-		float minorInside  = (float) getTickMarkInsideLength();
-		// make major tick marks longer
-		float majorOutside = minorOutside * 2.5f;
-		float majorInside  = minorInside  * 2.5f;
+		float minorInside = getMinorTickMarkInsideLength();
+		float minorOutside = getMinorTickMarkOutsideLength();
+		float majorInside = getTickMarkInsideLength();
+		float majorOutside = getTickMarkOutsideLength();
 		
 		boolean verticalAxis = edge == RectangleEdge.LEFT || edge == RectangleEdge.RIGHT;
 

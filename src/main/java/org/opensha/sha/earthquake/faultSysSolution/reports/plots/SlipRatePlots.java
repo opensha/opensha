@@ -205,7 +205,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 					mapMaker.plot(resourcesDir, prefix+"_sol_ratio", " ");
 					table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_sol_ratio.png)");
 					
-					HeadlessGraphPanel gp = PlotUtils.initHeadless();
+					HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 					if (!log) {
 						table.finalizeLine().initNewLine();
 						table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+"_sol_diff.geojson")
@@ -506,7 +506,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 					mapMaker.plot(resourcesDir, prefix+"_ratio", " ");
 					table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_ratio.png)");
 					
-					HeadlessGraphPanel gp = PlotUtils.initHeadless();
+					HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 					if (!log) {
 						table.finalizeLine().initNewLine();
 						table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+"_diff.geojson")

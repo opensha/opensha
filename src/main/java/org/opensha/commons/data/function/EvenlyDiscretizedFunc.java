@@ -382,7 +382,7 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	}
 	
 	@Override
-	protected int getXIndexBefore(double x) {
+	public int getXIndexBefore(double x) {
 		return (int)Math.floor((x-minX)/delta);
 	}
 

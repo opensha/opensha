@@ -18,16 +18,18 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.earthquake.PointSource.PoissonPointSource;
 import org.opensha.sha.earthquake.ProbEqkRupture;
+import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.oldClasses.UCERF2_Final_RelativeLocation;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.FrankelGriddedSurface;
 import org.opensha.sha.faultSurface.GriddedSubsetSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
+import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
@@ -96,9 +98,8 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 	public Point2Vert_FaultPoisSource(Location loc, IncrementalMagFreqDist magFreqDist,
 			MagLengthRelationship magLengthRelationship,
 			double strike, double duration, double magCutOff,
-			double fracStrikeSlip, double fracNormal, double fracReverse,
-			WeightedList<PointSourceDistanceCorrection> distCorrs) {
-		super(loc, TECTONIC_REGION_TYPE_DEFAULT, duration, null, distCorrs); // TODO: dist corrs
+			double fracStrikeSlip, double fracNormal, double fracReverse) {
+		super(loc, duration, null);
 		this.magCutOff = magCutOff;
 
 		if(D) {
@@ -129,9 +130,8 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 	public Point2Vert_FaultPoisSource(Location loc, IncrementalMagFreqDist magFreqDist,
 			MagLengthRelationship magLengthRelationship,
 			double duration, double magCutOff,double fracStrikeSlip,
-			double fracNormal, double fracReverse, boolean isCrossHair,
-			WeightedList<PointSourceDistanceCorrection> distCorrs) {
-		super(loc, TECTONIC_REGION_TYPE_DEFAULT, duration, null, distCorrs); // TODO: dist corrs
+			double fracNormal, double fracReverse, boolean isCrossHair) {
+		super(loc, duration, null);
 		this.magCutOff = magCutOff;
 		// whether to simulate it as 2 perpendicular faults
 		this.isCrossHair = isCrossHair;
@@ -202,7 +202,7 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 		
 		SurfaceGenerator surfGen = new SurfaceGenerator();
 		
-		setData(dataForMFDs(loc, magFreqDist, mechWeights, surfGen));
+		setData(dataForMFDs(loc, TectonicRegionType.ACTIVE_SHALLOW, magFreqDist, mechWeights, surfGen));
 	}
 	
 	private class SurfaceGenerator implements FocalMechRuptureSurfaceBuilder {
@@ -229,13 +229,9 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 			double depth = magnitude <= 6.5 ? 5.0 : 1.0;
 
 			if(magnitude <= magCutOff) { // set the point surface
-				PointSurface ptSurface = new PointSurface(
-						Location.backwardsCompatible(loc.getLatitude(), loc.getLongitude(), depth));
-				ptSurface.setAveStrike(strike);
-				ptSurface.setAveDip(mech.dip());
-				double width = calcWidth(magnitude, depth, mech.dip());
-				ptSurface.setAveWidth(width);
-				return ptSurface;
+				// old model, use the old location that had a messy conversion
+				Location ptLoc = Location.backwardsCompatible(loc.getLatitude(), loc.getLongitude(), depth);
+				return PointSourceNshm.SURF_BUILDER_DEFAULT.getSurface(ptLoc, magnitude, mech, 0);
 			}
 			else { // set finite surface
 				FrankelGriddedSurface finiteFault;
@@ -433,7 +429,7 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 		//    Point2Vert_SS_FaultPoisSource src = new Point2Vert_SS_FaultPoisSource(loc, dist,
 		//                                       wc_rel,45, 1.0, 6.0, 5.0);
 		Point2Vert_FaultPoisSource src = new Point2Vert_FaultPoisSource(loc, dist,
-				wc_rel, duration, 6.0,fracStrikeSlip,fracNormal,fracReverse, false, null);
+				wc_rel, duration, 6.0,fracStrikeSlip,fracNormal,fracReverse, false);
 
 		System.out.println("num rups ="+src.getNumRuptures()+"\ttotProb="+src.computeTotalProb());
 		ProbEqkRupture rup;
@@ -469,17 +465,6 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 	
 	public Location getLocation() {
 		return loc;
-	}
-
-	/*
-	 * Returns the minimum of the aspect ratio width (based on WC94) length
-	 * and the allowable down-dip width.
-	 */
-	private double calcWidth(double mag, double depth, double dip) {
-		double length = WC94.getMedianLength(mag);
-		double aspectWidth = length / 1.5;
-		double ddWidth = (14.0 - depth) / sin(dip * GeoTools.TO_RAD);
-		return min(aspectWidth, ddWidth);
 	}
 
 }

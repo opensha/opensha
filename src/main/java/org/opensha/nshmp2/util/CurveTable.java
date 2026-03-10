@@ -136,7 +136,7 @@ public class CurveTable {
 	 * @return the populated curve table
 	 */
 	public static CurveTable create(double R, double dR, double minM,
-			double maxM, double dM, Map<ScalarIMR, Double> imrs,
+			double maxM, double dM, Map<? extends ScalarIMR, Double> imrs,
 			ArbitrarilyDiscretizedFunc model, FaultCode magConv) {
 		CurveTable table = initTable(R, dR, minM, maxM, dM);
 		table.fillCEUS(imrs, model, magConv);
@@ -236,7 +236,7 @@ public class CurveTable {
 	}
 
 	@SuppressWarnings("unchecked")
-	private void fillCEUS(Map<ScalarIMR, Double> imrs,
+	private void fillCEUS(Map<? extends ScalarIMR, Double> imrs,
 			ArbitrarilyDiscretizedFunc model, FaultCode magConv) {
 		for (ScalarIMR imr : imrs.keySet()) {
 			double imrWt = imrs.get(imr);

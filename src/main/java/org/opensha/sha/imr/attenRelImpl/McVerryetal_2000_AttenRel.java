@@ -21,6 +21,7 @@ import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.gcim.imr.param.EqkRuptureParams.FocalDepthParam;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
@@ -224,36 +225,34 @@ public class McVerryetal_2000_AttenRel extends AttenuationRelationship implement
    * @throws InvalidRangeException thrown if rake is out of bounds
    */
   public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
+	  super.setEqkRupture(eqkRupture);
+	  if (eqkRupture != null) {
+		  magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
+		  setFaultTypeFromRake(eqkRupture.getAveRake());
+		  setPropagationEffectParams();
 
-    magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
-    setFaultTypeFromRake(eqkRupture.getAveRake());
-    this.eqkRupture = eqkRupture;
-    setPropagationEffectParams();
-    
-    
-    // TODO 2026 note: this is redundent, but has always been set up this way; I assume one of these was meant to be a different regime?
-    if (tecRegType.equals(TectonicRegionType.SUBDUCTION_INTERFACE) || tecRegType.equals(TectonicRegionType.SUBDUCTION_INTERFACE)) {
-    	//Determine the focal depth
-    	// this is problematic, see ticket #438
-    	RuptureSurface surf = this.eqkRupture.getRuptureSurface();
-    	double hypoLon = 0.0;
-		double hypoLat = 0.0;
-		double hypoDep = 0.0;
-		double cnt = 0.0;
-		for(Location loc: surf.getEvenlyDiscritizedListOfLocsOnSurface()) {
-			hypoLon += loc.getLongitude();
-			hypoLat += loc.getLatitude();
-			hypoDep += loc.getDepth();
-			cnt += 1;		
-		}
-		
-		hypoLon = hypoLon / cnt;
-		hypoLat = hypoLat / cnt;
-		hypoDep = hypoDep / cnt;
-		focalDepthParam.setValueIgnoreWarning(Double.valueOf(hypoDep));
-    }
-    
+		  // TODO 2026 note: this is redundent, but has always been set up this way; I assume one of these was meant to be a different regime?
+		  if (tecRegType.equals(TectonicRegionType.SUBDUCTION_INTERFACE) || tecRegType.equals(TectonicRegionType.SUBDUCTION_INTERFACE)) {
+			  //Determine the focal depth
+			  // this is problematic, see ticket #438
+			  RuptureSurface surf = this.eqkRupture.getRuptureSurface();
+			  double hypoLon = 0.0;
+			  double hypoLat = 0.0;
+			  double hypoDep = 0.0;
+			  double cnt = 0.0;
+			  for(Location loc: surf.getEvenlyDiscritizedListOfLocsOnSurface()) {
+				  hypoLon += loc.getLongitude();
+				  hypoLat += loc.getLatitude();
+				  hypoDep += loc.getDepth();
+				  cnt += 1;		
+			  }
 
+			  hypoLon = hypoLon / cnt;
+			  hypoLat = hypoLat / cnt;
+			  hypoDep = hypoDep / cnt;
+			  focalDepthParam.setValueIgnoreWarning(Double.valueOf(hypoDep));
+		  }
+	  }
   }
 
   /**
@@ -265,11 +264,9 @@ public class McVerryetal_2000_AttenRel extends AttenuationRelationship implement
    * @param  site             The new site object
    */
   public void setSite(Site site) throws ParameterException {
-
-	    siteTypeParam.setValue((String)site.getParameter(SITE_TYPE_NAME).getValue());
-	    this.site = site;
-	    setPropagationEffectParams();
-
+	  super.setSite(site); // will call setPropagationEffectParams
+		if (site != null)
+			siteTypeParam.setValue((String)site.getParameter(SITE_TYPE_NAME).getValue());
   }
 
   /**
@@ -279,8 +276,13 @@ public class McVerryetal_2000_AttenRel extends AttenuationRelationship implement
 
     if ( (this.site != null) && (this.eqkRupture != null)) {
    
-		distanceRupParam.setValueIgnoreWarning(eqkRupture.getRuptureSurface().getDistanceRup(site.getLocation()));
-    }
+    	setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
+	}
+  }
+
+  @Override
+  public void setPropagationEffectParams(SurfaceDistances distances) {
+	  distanceRupParam.setValue(eqkRupture, site, distances);
   }
 
   /**

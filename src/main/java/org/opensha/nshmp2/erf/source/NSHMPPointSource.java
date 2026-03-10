@@ -176,7 +176,7 @@ class NSHMPPointSource extends ProbEqkSource {
 		probEqkRupture.setAveRake(rake);
 		surface.setAveDip(dip);
 		// check as this builds a new internal Location in ptSurface
-		if (surface.getDepth() != depth) surface.setDepth(depth);
+		if (surface.getAveRupTopDepth() != depth) surface.setDepth(depth);
 		probEqkRupture.setPointSurface(surface);
 	}
 

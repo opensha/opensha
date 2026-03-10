@@ -18,6 +18,9 @@ import org.opensha.sha.calc.IM_EventSet.IM_EventSetOutputWriter;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.faultSurface.PointSurface;
+import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.OtherParams.StdDevTypeParam;
 import org.opensha.sha.calc.sourceFilters.SourceFilterUtils;
@@ -122,7 +125,6 @@ public class OriginalModTxtWriter extends IM_EventSetOutputWriter {
 			for (int rupID=0; rupID<source.getNumRuptures(); rupID++) {
                 boolean shouldWriteRup = false; // Don't write if all NaN vals for all sites
 				ProbEqkRupture rup = source.getRupture(rupID);
-				attenRel.setEqkRupture(rup);
 				String line = sourceID + " " + rupID;
 				for (Site site : sites) {
                     double mean = Double.NaN, total = Double.NaN, inter = Double.NaN;
@@ -130,7 +132,7 @@ public class OriginalModTxtWriter extends IM_EventSetOutputWriter {
                         !SourceFilterUtils.canSkipRupture(calc.getSourceFilters(), rup, site)) {
                         shouldWriteRup = true;
                         attenRel.setSite(site);
-                        mean = attenRel.getMean();
+                        mean = attenRel.getMean(rup);
                         if (stdDevParam != null) {
                             if (stdDevParam.isAllowed(StdDevTypeParam.STD_DEV_TYPE_TOTAL)) {
                                 stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL);
@@ -138,10 +140,10 @@ public class OriginalModTxtWriter extends IM_EventSetOutputWriter {
                                 stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL_MAG_DEP);
                             }
                         }
-                        total = attenRel.getStdDev();
+                        total = attenRel.getStdDev(rup);
                         if (hasInterIntra) {
                             stdDevParam.setValue(StdDevTypeParam.STD_DEV_TYPE_INTER);
-                            inter = attenRel.getStdDev();
+                            inter = attenRel.getStdDev(rup);
                         }
                     }
 
@@ -199,11 +201,18 @@ public class OriginalModTxtWriter extends IM_EventSetOutputWriter {
 				String line = sourceID + " " + rupID;
 				String lineJB = line;
 				for (Site site : sites) {
-                    double rupDist = Double.NaN, distJB = Double.NaN;
+					double rupDist = Double.NaN, distJB = Double.NaN;
                     if (!SourceFilterUtils.canSkipSource(calc.getSourceFilters(), source, site) &&
                         !SourceFilterUtils.canSkipRupture(calc.getSourceFilters(), rup, site)) {
-                        rupDist = rup.getRuptureSurface().getDistanceRup(site.getLocation());
-                        distJB = rup.getRuptureSurface().getDistanceJB(site.getLocation());
+                    	RuptureSurface surf = rup.getRuptureSurface();
+                        if (surf instanceof PointSurface.DistanceCorrectable) {
+                        	SurfaceDistances dists = ((PointSurface.DistanceCorrectable)surf).getAverageDistances(site.getLocation());
+                        	rupDist = dists.getDistanceRup();
+                        	distJB = dists.getDistanceJB();
+                        } else {
+                            rupDist = surf.getDistanceRup(site.getLocation());
+                            distJB = surf.getDistanceJB(site.getLocation());
+                        }
                     }
 
                     // Track if the line contains at least one site with valid values

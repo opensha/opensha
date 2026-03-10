@@ -26,13 +26,6 @@ public interface CacheEnabledSurface extends RuptureSurface {
 	public double calcQuickDistance(Location loc);
 	
 	/**
-	 * Calculates distance X directly without any caching, used by a loading cache.
-	 * @param loc
-	 * @return
-	 */
-	public double calcDistanceX(Location loc);
-	
-	/**
 	 * Clears any cached site distances.
 	 */
 	public void clearCache();

@@ -19,6 +19,7 @@ import org.opensha.sha.earthquake.PointSource.PoissonPointSource;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.util.TectonicRegionType;
 
 /**
  * <p>Title: STEP_EqkRupForecast</p>
@@ -31,8 +32,10 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
  * @version 1.0
  */
 
-  public class STEP_AlaskanPipeForecast extends AbstractERF
+public class STEP_AlaskanPipeForecast extends AbstractERF
     implements ParameterChangeListener{
+	
+	private static final TectonicRegionType TRT = TectonicRegionType.ACTIVE_SHALLOW;
 
   //for Debug purposes
   private static String  C = new String("STEP_AlaskanPipeForecast");
@@ -168,7 +171,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
       ptSource = PointSource.poissonBuilder(new Location(lat,lon,DEPTH))
     		  .truePointSources()
     		  .duration(duration)
-    		  .forMFDAndFocalMech(magFreqDist, new FocalMechanism(Double.NaN, DIP, RAKE))
+    		  .forMFDAndFocalMech(magFreqDist, new FocalMechanism(Double.NaN, DIP, RAKE), TRT)
     		  .build();
       sources.add(ptSource);
 

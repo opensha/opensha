@@ -995,7 +995,7 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, "Thresh-Avg Probabilities", name1, name2);
 		
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 		
 		gp.drawGraphPanel(spec, true, true, range, range);
 		
@@ -1043,7 +1043,7 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 			
 			spec = new PlotSpec(funcs, chars, "Thresh-Avg Jump Probabilities", name1, name2);
 			
-			gp = PlotUtils.initHeadless();
+			gp = PlotUtils.initScreenHeadless();
 			
 			gp.drawGraphPanel(spec, true, true, range, range);
 			

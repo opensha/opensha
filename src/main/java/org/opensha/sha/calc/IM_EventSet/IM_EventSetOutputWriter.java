@@ -197,11 +197,12 @@ public abstract class IM_EventSetOutputWriter {
 	@SuppressWarnings("unchecked")
 	protected ArrayList<Parameter> getDefaultSiteParams(ScalarIMR attenRel) {
 		logger.log(Level.FINE, "Storing default IMR site related params.");
-		ListIterator<Parameter<?>> siteParamsIt = attenRel.getSiteParamsIterator();
+//		ListIterator<Parameter<?>> siteParamsIt = attenRel.getSiteParamsIterator();
 		ArrayList<Parameter> defaultSiteParams = new ArrayList<Parameter>();
 
-		while (siteParamsIt.hasNext()) {
-			defaultSiteParams.add((Parameter) siteParamsIt.next().clone());
+//		while (siteParamsIt.hasNext()) {
+		for (Parameter<?> param : attenRel.getSiteParams()) {
+			defaultSiteParams.add((Parameter) param.clone());
 		}
 
 		return defaultSiteParams;
@@ -236,9 +237,10 @@ public abstract class IM_EventSetOutputWriter {
 		ArrayList<ParameterList> sitesData = this.calc.getSitesData();
 
 		// we need to make sure that the site has parameters for this atten rel
-		ListIterator<Parameter<?>> siteParamsIt = attenRel.getSiteParamsIterator();
-		while (siteParamsIt.hasNext()) {
-			Parameter attenParam = siteParamsIt.next();
+//		ListIterator<Parameter<?>> siteParamsIt = attenRel.getSiteParamsIterator();
+//		while (siteParamsIt.hasNext()) {
+//			Parameter attenParam = siteParamsIt.next();
+		for (Parameter<?> attenParam : attenRel.getSiteParams()) {
 			for (int i=0; i<sites.size(); i++) {
 				Site site = sites.get(i);
 				ParameterList siteData = sitesData.get(i);
