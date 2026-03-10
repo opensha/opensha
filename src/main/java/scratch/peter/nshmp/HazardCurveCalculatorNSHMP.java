@@ -613,12 +613,12 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 	}
 
 	@Override
-	public int getCurrRuptures(){
+	public int getCurrentProgress(){
 		return this.currRuptures;
 	}
 
 	@Override
-	public int getTotRuptures(){
+	public int getTotalProgressCount(){
 		return this.totRuptures;
 	}
 
@@ -681,9 +681,10 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		imr.setIntensityMeasure("PGA");
 
 		Site site = new Site();
-		ListIterator<Parameter<?>> it = imr.getSiteParamsIterator();
-		while(it.hasNext())
-			site.addParameter(it.next());
+//		ListIterator<Parameter<?>> it = imr.getSiteParamsIterator();
+//		while(it.hasNext())
+//			site.addParameter(it.next());
+		site.addParameterList(imr.getSiteParams());
 		site.setLocation(new Location(34,-118));
 
 		AbstractERF eqkRupForecast = new Frankel96_EqkRupForecast();
@@ -737,19 +738,6 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 			filters.add(magDistFilter);
 		return filters;
 	}
-
-
-	@Override
-	public void setTrackProgress(boolean trackProgress) {
-		// always enabled
-	}
-
-
-	@Override
-	public boolean isTrackProgress() {
-		// always enabled
-		return true;
-	};
 
 
 }

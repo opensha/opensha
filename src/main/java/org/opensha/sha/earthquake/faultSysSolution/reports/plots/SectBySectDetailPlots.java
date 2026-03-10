@@ -764,7 +764,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			yLogs.add(logY);
 		}
 		
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 		
 		gp.drawGraphPanel(specs, List.of(false), yLogs, List.of(xRange), yRanges);
 		gp.getChartPanel().setSize(800, 1200);
@@ -1807,7 +1807,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		incrSpec.setLegendInset(true);
 		cmlSpec.setLegendInset(true);
 		
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 		gp.setTickLabelFontSize(20);
 		
 		String prefix = "sect_mfd";
@@ -2589,7 +2589,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			}
 		}
 		
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 		gp.setTickLabelFontSize(20);
 		
 		List<Boolean> xLogs = List.of(false);

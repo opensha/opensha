@@ -17,6 +17,7 @@ import org.opensha.commons.param.event.ParameterChangeWarningListener;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.EqkRuptureParams.DipParam;
@@ -375,31 +376,31 @@ public class CY_2006_AttenRel extends AttenuationRelationship implements
    * @throws InvalidRangeException thrown if rake is out of bounds
    */
   public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
-	  
-	  magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
-	  
-	  double rake = eqkRupture.getAveRake();
-	  if(rake >30 && rake <150) {
-		  fltTypeParam.setValue(FLT_TYPE_REVERSE);
+	  super.setEqkRupture(eqkRupture);
+	  if (eqkRupture != null) {
+		  magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
+
+		  double rake = eqkRupture.getAveRake();
+		  if(rake >30 && rake <150) {
+			  fltTypeParam.setValue(FLT_TYPE_REVERSE);
+		  }
+		  else if(rake >-120 && rake<-60) {
+			  fltTypeParam.setValue(FLT_TYPE_NORMAL);
+		  }
+		  else { // strike slip
+			  fltTypeParam.setValue(FLT_TYPE_STRIKE_SLIP);
+		  }    
+
+		  RuptureSurface surface = eqkRupture.getRuptureSurface();
+		  dipParam.setValue(surface.getAveDip());
+		  rupTopDepthParam.setValueIgnoreWarning(surface.getAveRupTopDepth());
+		  double rupDownDipWidth = eqkRupture.getRuptureSurface().getAveWidth();
+		  if(rupDownDipWidth ==0)
+			  rupDownDipWidth = 1;
+		  rupWidthParam.setValue(rupDownDipWidth);
+		  //	  setFaultTypeFromRake(eqkRupture.getAveRake());
+		  setPropagationEffectParams();
 	  }
-	  else if(rake >-120 && rake<-60) {
-		  fltTypeParam.setValue(FLT_TYPE_NORMAL);
-	  }
-	  else { // strike slip
-		  fltTypeParam.setValue(FLT_TYPE_STRIKE_SLIP);
-	  }    
-	  
-	  RuptureSurface surface = eqkRupture.getRuptureSurface();
-	  dipParam.setValue(surface.getAveDip());
-	  rupTopDepthParam.setValueIgnoreWarning(surface.getAveRupTopDepth());
-	  double rupDownDipWidth = eqkRupture.getRuptureSurface().getAveWidth();
-	  if(rupDownDipWidth ==0)
-		  rupDownDipWidth = 1;
-	  rupWidthParam.setValue(rupDownDipWidth);
-//	  setFaultTypeFromRake(eqkRupture.getAveRake());
-	  this.eqkRupture = eqkRupture;
-	  setPropagationEffectParams();
-	  
   }
 
   /**
@@ -413,11 +414,9 @@ public class CY_2006_AttenRel extends AttenuationRelationship implements
    * Vs30 parameter
    */
   public void setSite(Site site) throws ParameterException {
-
-    vs30Param.setValue((Double)site.getParameter(Vs30_Param.NAME).getValue());
-    this.site = site;
-    setPropagationEffectParams();
-
+	  super.setSite(site); // will call setPropagationEffectParams
+		if (site != null)
+			vs30Param.setValue((Double)site.getParameter(Vs30_Param.NAME).getValue());
   }
 
   /**
@@ -433,10 +432,15 @@ public class CY_2006_AttenRel extends AttenuationRelationship implements
 
     if ( (this.site != null) && (this.eqkRupture != null)) {
 
-      distanceRupParam.setValue(eqkRupture, site);
-      distRupMinusJB_OverRupParam.setValue(eqkRupture, site);
+    	setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
+	}
+}
 
-    }
+  @Override
+  public void setPropagationEffectParams(SurfaceDistances distances) {
+	distanceRupParam.setValue(eqkRupture, site, distances);
+    distRupMinusJB_OverRupParam.setValue(eqkRupture, site, distances);
+
   }
 
   

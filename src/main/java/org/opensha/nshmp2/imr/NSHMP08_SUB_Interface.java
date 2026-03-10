@@ -24,6 +24,7 @@ import org.opensha.nshmp2.imr.impl.ZhaoEtAl_2006_AttenRel;
 import org.opensha.nshmp2.util.Period;
 import org.opensha.nshmp2.util.Utils;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.EqkRuptureParams.MagParam;
@@ -238,19 +239,26 @@ public class NSHMP08_SUB_Interface extends AttenuationRelationship implements
 	
 	@Override
 	public void setEqkRupture(EqkRupture eqkRupture) {
-		this.eqkRupture = eqkRupture;
-		magParam.setValueIgnoreWarning(eqkRupture.getMag()); // needed at getExceedProbs()
-		for (ScalarIMR imr : imrMap.keySet()) {
-			imr.setEqkRupture(eqkRupture);
+		super.setEqkRupture(eqkRupture);
+		if (eqkRupture != null) {
+			magParam.setValueIgnoreWarning(eqkRupture.getMag()); // needed at getExceedProbs()
+			for (ScalarIMR imr : imrMap.keySet()) {
+				imr.setEqkRupture(eqkRupture);
+			}
+			setPropagationEffectParams();
 		}
-		setPropagationEffectParams();
 	}
 	
 	@Override
 	protected void setPropagationEffectParams() {
 		if (site != null && eqkRupture != null) {
-			distanceRupParam.setValue(eqkRupture, site);
+			setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
 		}
+	}
+	
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+			distanceRupParam.setValue(eqkRupture, site, distances);
 	}
 
 	@Override

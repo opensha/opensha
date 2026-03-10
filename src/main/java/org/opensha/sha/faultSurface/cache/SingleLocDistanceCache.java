@@ -29,8 +29,6 @@ public class SingleLocDistanceCache implements SurfaceDistanceCache {
 	
 	private LocDistCache<Double> quickDist;
 	
-	private LocDistCache<Double> distX;
-	
 	public SingleLocDistanceCache(CacheEnabledSurface surf) {
 		this.surf = surf;
 	}
@@ -54,16 +52,6 @@ public class SingleLocDistanceCache implements SurfaceDistanceCache {
 		}
 		return cached.value;
 	}
-
-	@Override
-	public double getDistanceX(Location loc) {
-		LocDistCache<Double> cached = distX;
-		if (cached == null || !cached.loc.equals(loc)) {
-			cached = new LocDistCache<Double>(loc, surf.calcDistanceX(loc));
-			distX = cached;
-		}
-		return cached.value;
-	}
 	
 	SurfaceDistances getSurfaceDistancesIfPresent(Location loc) {
 		LocDistCache<SurfaceDistances> cached = surfDists;
@@ -79,13 +67,6 @@ public class SingleLocDistanceCache implements SurfaceDistanceCache {
 		return null;
 	}
 	
-	Double getDistanceXIfPresent(Location loc) {
-		LocDistCache<Double> cached = distX;
-		if (cached != null && cached.loc.equals(loc))
-			return cached.value;
-		return null;
-	}
-	
 	void putSurfaceDistances(Location loc, SurfaceDistances dists) {
 		this.surfDists = new LocDistCache<>(loc, dists);
 	}
@@ -93,16 +74,11 @@ public class SingleLocDistanceCache implements SurfaceDistanceCache {
 	void putQuickDistance(Location loc, double quickDistance) {
 		this.quickDist = new LocDistCache<>(loc, quickDistance);
 	}
-	
-	void putDistanceX(Location loc, double distX) {
-		this.distX = new LocDistCache<>(loc, distX);
-	}
 
 	@Override
 	public void clearCache() {
 		this.surfDists = null;
 		this.quickDist = null;
-		this.distX = null;
 	}
 
 }

@@ -87,7 +87,7 @@ class U3CoulombVsDistance {
 		chars.add(new PlotCurveCharacterstics(PlotSymbol.BOLD_X, 2f, Color.BLACK));
 		
 		PlotSpec dSpec = new PlotSpec(funcs, chars, "DCFF vs Distance", "Distance (km)", "DCFF (bar)");
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 		gp.drawGraphPanel(dSpec, false, false, new Range(0d, 10d), new Range(0d, 10d));
 		PlotUtils.writePlots(outputDir, "dcff", gp, 800, 600, true, false, false);
 		
@@ -95,7 +95,7 @@ class U3CoulombVsDistance {
 		funcs.add(pScatter);
 		
 		PlotSpec pSpec = new PlotSpec(funcs, chars, "PDCFF vs Distance", "Distance (km)", "PDCFF");
-		gp = PlotUtils.initHeadless();
+		gp = PlotUtils.initScreenHeadless();
 		gp.drawGraphPanel(pSpec, false, false, new Range(0d, 10d), new Range(0d, 0.2d));
 		PlotUtils.writePlots(outputDir, "pdcff", gp, 800, 600, true, false, false);
 		
@@ -170,7 +170,7 @@ class U3CoulombVsDistance {
 		chars.add(new PlotCurveCharacterstics(PlotSymbol.BOLD_X, 2f, Color.BLUE));
 		
 		dSpec = new PlotSpec(funcs, chars, "DCFF vs Distance", "Distance (km)", "DCFF (bar)");
-		gp = PlotUtils.initHeadless();
+		gp = PlotUtils.initScreenHeadless();
 		gp.drawGraphPanel(dSpec, false, false, new Range(0d, 10d), new Range(0d, 10d));
 		PlotUtils.writePlots(outputDir, "dcff_new", gp, 800, 600, true, false, false);
 		
@@ -178,7 +178,7 @@ class U3CoulombVsDistance {
 		funcs.add(pScatter);
 		
 		pSpec = new PlotSpec(funcs, chars, "PDCFF vs Distance", "Distance (km)", "PDCFF");
-		gp = PlotUtils.initHeadless();
+		gp = PlotUtils.initScreenHeadless();
 		gp.drawGraphPanel(pSpec, false, false, new Range(0d, 10d), new Range(0d, 0.2d));
 		PlotUtils.writePlots(outputDir, "pdcff_new", gp, 800, 600, true, false, false);
 	}

@@ -3,6 +3,7 @@ package org.opensha.sha.faultSurface;
 import java.io.Serializable;
 import java.util.Iterator;
 import java.util.ListIterator;
+import java.util.function.Function;
 
 import org.opensha.commons.data.Container2DImpl;
 import org.opensha.commons.geo.Location;
@@ -196,9 +197,17 @@ implements EvenlyGriddedSurface, CacheEnabledSurface, Serializable {
 		return GriddedSurfaceUtils.getMinDistanceBetweenSurfaces(surface, this);
 	}
 	
+	private Function<Location, Double> distXCalcFunc = new Function<Location, Double>() {
+		
+		@Override
+		public Double apply(Location t) {
+			return GriddedSurfaceUtils.getDistanceX(getEvenlyDiscritizedUpperEdge(), t);
+		}
+	};
+	
+	@Override
 	public SurfaceDistances calcDistances(Location loc) {
-		double[] dCalc = GriddedSurfaceUtils.getPropagationDistances(this, loc);
-		return new SurfaceDistances(dCalc[0], dCalc[1], dCalc[2]);
+		return GriddedSurfaceUtils.getPropagationDistances(this, loc, distXCalcFunc);
 	}
 	
 	/**
@@ -220,30 +229,20 @@ implements EvenlyGriddedSurface, CacheEnabledSurface, Serializable {
 	public double getDistanceJB(Location siteLoc){
 		return cache.getSurfaceDistances(siteLoc).getDistanceJB();
 	}
-
-	/**
-	 * This returns "distance seis" (shortest distance in km to point on rupture 
-	 * deeper than 3 km), assuming the location has zero depth (for numerical 
-	 * expediency).
-	 * @return
-	 */
-	public double getDistanceSeis(Location siteLoc){
-		return cache.getSurfaceDistances(siteLoc).getDistanceSeis();
-	}
 	
 	@Override
 	public double getQuickDistance(Location siteLoc) {
 		return cache.getQuickDistance(siteLoc);
 	}
+	
+	@Override
+	public SurfaceDistances getDistances(Location siteLoc) {
+		return cache.getSurfaceDistances(siteLoc);
+	}
 
 	@Override
 	public double calcQuickDistance(Location siteLoc) {
 		return GriddedSurfaceUtils.getCornerMidpointDistance(this, siteLoc);
-	}
-
-	@Override
-	public double calcDistanceX(Location siteLoc) {
-		return GriddedSurfaceUtils.getDistanceX(getEvenlyDiscritizedUpperEdge(), siteLoc);
 	}
 
 	/**
@@ -254,7 +253,7 @@ implements EvenlyGriddedSurface, CacheEnabledSurface, Serializable {
 	 * @return
 	 */
 	public double getDistanceX(Location siteLoc){
-		return cache.getDistanceX(siteLoc);
+		return cache.getSurfaceDistances(siteLoc).getDistanceX();
 	}
 	
 	
@@ -316,6 +315,14 @@ implements EvenlyGriddedSurface, CacheEnabledSurface, Serializable {
 	@Override
 	public double getAveWidth() {
 		return getGridSpacingDownDip() * (getNumRows()-1);
+	}
+
+	@Override
+	public double getAveHorizontalWidth() {
+		double dip = getAveDip();
+		if (dip == 90d)
+			return 0d;
+		return getAveWidth()*Math.cos(Math.toRadians(dip));
 	}
 
 	@Override

@@ -11,6 +11,7 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,6 +25,8 @@ import org.jfree.chart.axis.TickUnit;
 import org.jfree.chart.axis.TickUnits;
 import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.block.RectangleConstraint;
+import org.jfree.chart.encoders.EncoderUtil;
+import org.jfree.chart.encoders.ImageFormat;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.CombinedRangeXYPlot;
 import org.jfree.chart.plot.Plot;
@@ -46,28 +49,16 @@ import com.itextpdf.text.pdf.PdfWriter;
 
 public class PlotUtils {
 	
-	public static PlotPreferences getDefaultAppPrefs() {
-		PlotPreferences pref = PlotPreferences.getDefault();
-		pref.setTickLabelFontSize(12);
-		pref.setAxisLabelFontSize(14);
-		pref.setPlotLabelFontSize(16);
-		pref.setLegendFontSize(14);
-		pref.setBackgroundColor(new Color( 200, 200, 230 ));
-		return pref;
+	public static HeadlessGraphPanel initHeadless(PlotPreferences prefs) {
+		return new HeadlessGraphPanel(prefs);
 	}
 	
-	public static PlotPreferences getDefaultFigurePrefs() {
-		PlotPreferences pref = PlotPreferences.getDefault();
-		pref.setTickLabelFontSize(18);
-		pref.setAxisLabelFontSize(24);
-		pref.setPlotLabelFontSize(24);
-		pref.setLegendFontSize(20);
-		pref.setBackgroundColor(Color.WHITE);
-		return pref;
+	public static HeadlessGraphPanel initScreenHeadless() {
+		return new HeadlessGraphPanel(PlotPreferences.getDefaultScreenFigurePrefs());
 	}
 	
-	public static HeadlessGraphPanel initHeadless() {
-		return new HeadlessGraphPanel(getDefaultFigurePrefs());
+	public static HeadlessGraphPanel initPrintHeadless() {
+		return new HeadlessGraphPanel(PlotPreferences.getDefaultPrintFigurePrefs());
 	}
 	
 	public static void setAxisVisible(GraphPanel gp, boolean xVisible, boolean yVisible) {
@@ -309,32 +300,88 @@ public class PlotUtils {
 //		return (int)(extraWidth + plotWidth+ 0.5);
 //	}
 	
+	/**
+	 * Print DPI, actually points per inch
+	 */
+	public static final int DEFAULT_PRINT_DPI = 72;
+	
+	/**
+	 * Assumed DPI of a standard computer monitor, used for PNG output when plot size is specified in inches
+	 */
+	public static final int DEFAULT_SCREEN_DPI = 110;
+	/**
+	 * Default usable page letter width after subtracting margins (using those for SSA journals)
+	 */
+	public static final double DEFAULT_USABLE_PAGE_WIDTH = 7.2d;
+	/**
+	 * Default usable page letter height after subtracting margins (using those for SSA journals)
+	 */
+	public static final double DEFAULT_USABLE_PAGE_HEIGHT = 9.4d;
+	
+	public static void writePrintPlots(File outputDir, String prefix, GraphPanel gp, double widthInches, boolean isLatLon,
+			boolean writePNG, boolean writePDF, boolean writeTXT) throws IOException {
+		writePrintPlots(outputDir, prefix, gp, widthInches, -1d, DEFAULT_SCREEN_DPI, isLatLon, writePNG, writePDF, writeTXT);
+	}
+	
+	public static void writePrintPlots(File outputDir, String prefix, GraphPanel gp, double widthInches, boolean isLatLon,
+			int dpi, boolean writePNG, boolean writePDF, boolean writeTXT) throws IOException {
+		writePrintPlots(outputDir, prefix, gp, widthInches, -1d, dpi, isLatLon, writePNG, writePDF, writeTXT);
+	}
+	
+	public static void writePrintPlots(File outputDir, String prefix, GraphPanel gp, double widthInches, double heightInches,
+			boolean writePNG, boolean writePDF, boolean writeTXT) throws IOException {
+		writePrintPlots(outputDir, prefix, gp, widthInches, heightInches, DEFAULT_SCREEN_DPI, false, writePNG, writePDF, writeTXT);
+	}
+	
+	public static void writePrintPlots(File outputDir, String prefix, GraphPanel gp, double widthInches, double heightInches,
+			int dpi, boolean writePNG, boolean writePDF, boolean writeTXT) throws IOException {
+		writePrintPlots(outputDir, prefix, gp, widthInches, heightInches, dpi, false, writePNG, writePDF, writeTXT);
+	}
+	
+	public static void writePrintPlots(File outputDir, String prefix, GraphPanel gp, double widthInches, double heightInches,
+			int dpi, boolean isLatLon, boolean writePNG, boolean writePDF, boolean writeTXT) throws IOException {
+		int width = (int)Math.round(widthInches*DEFAULT_PRINT_DPI);
+		int height = (int)Math.round(heightInches*DEFAULT_PRINT_DPI);
+		// write the PNG at the specified DPI
+		double pngScale = dpi == 72 ? 1d : (double)dpi/(double)DEFAULT_PRINT_DPI;
+		// PDF will be written with the exact specified dimensions
+		double pdfScale = 1d;
+		writePlots(outputDir, prefix, gp, width, height, isLatLon, writePNG, pngScale, writePDF, pdfScale, writeTXT);
+	}
+	
 	public static void writePlots(File outputDir, String prefix, GraphPanel gp, int width, int height,
 			boolean writePNG, boolean writePDF, boolean writeTXT) throws IOException {
-		writePlots(outputDir, prefix, gp, width, height, false, writePNG, writePDF, writeTXT);
+		writePlots(outputDir, prefix, gp, width, height, false, writePNG, 1d, writePDF, 1d, writeTXT);
 	}
 	
 	public static void writePlots(File outputDir, String prefix, GraphPanel gp, int width, boolean isLatLon,
 			boolean writePNG, boolean writePDF, boolean writeTXT) throws IOException {
-		writePlots(outputDir, prefix, gp, width, -1, isLatLon, writePNG, writePDF, writeTXT);
+		writePlots(outputDir, prefix, gp, width, -1, isLatLon, writePNG, 1d, writePDF, 1d, writeTXT);
 	}
 	
 	public static void writePlots(File outputDir, String prefix, GraphPanel gp, int width, int height,
-			boolean isLatLon, boolean writePNG, boolean writePDF, boolean writeTXT) throws IOException {
+			boolean isLatLon, boolean writePNG, double pngScale, boolean writePDF, double pdfScale, boolean writeTXT) throws IOException {
 		File file = new File(outputDir, prefix);
 		
 		Preconditions.checkArgument(width > 0 || height > 0, "must specify either width or height");
-		if (height <= 0)
+		if (height <= 0) {
 			fixAspectRatio(gp, width, isLatLon);
-		else if (width <= 0)
+			height = gp.getChartPanel().getHeight();
+		} else if (width <= 0) {
 			fixAspectRatio(gp, height, false, isLatLon);
-		else
+			width = gp.getChartPanel().getWidth();
+		} else {
 			gp.getChartPanel().setSize(width, height);
+		}
 		
-		if (writePNG)
-			gp.saveAsPNG(file.getAbsolutePath()+".png");
+		if (writePNG) {
+			if (pngScale != 1d)
+				gp.saveAsScaledPNG(file.getAbsolutePath()+".png", width, height, pngScale);
+			else
+				gp.saveAsPNG(file.getAbsolutePath()+".png");
+		}
 		if (writePDF)
-			gp.saveAsPDF(file.getAbsolutePath()+".pdf");
+			gp.saveAsPDF(file.getAbsolutePath()+".pdf", width, height, false, pdfScale);
 		if (writeTXT)
 			gp.saveAsTXT(file.getAbsolutePath()+".txt");
 	}
@@ -403,6 +450,23 @@ public class PlotUtils {
 	
 	public static void writeScaleLegendOnly(File outputDir, String prefix, PaintScaleLegend legend, int width,
 			boolean writePNG, boolean writePDF) throws IOException {
+		writeScaleLegendOnly(outputDir, prefix, legend, width, writePNG, 1d, writePDF, 1d);
+	}
+
+	
+	public static void writeScaleLegendOnly(File outputDir, String prefix, PaintScaleLegend legend, double widthInches,
+			int dpi, boolean writePNG, boolean writePDF) throws IOException {
+		int width = (int)Math.round(widthInches*DEFAULT_PRINT_DPI);
+		// write the PNG at the specified DPI
+		double pngScale = dpi == 72 ? 1d : (double)dpi/(double)DEFAULT_PRINT_DPI;
+		// PDF will be written with the exact specified dimensions
+		double pdfScale = 1d;
+		writeScaleLegendOnly(outputDir, prefix, legend, width, writePNG, pngScale, writePDF, pdfScale);
+		
+	}
+	
+	private static void writeScaleLegendOnly(File outputDir, String prefix, PaintScaleLegend legend, int width,
+			boolean writePNG, double pngScale, boolean writePDF, double pdfScale) throws IOException {
 		// Find the preferred height
 		Graphics2D dummyGraphics = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics();
 		RectangleConstraint constraint = new RectangleConstraint(new Range(width, width), new Range(0.05*width, width));
@@ -415,26 +479,58 @@ public class PlotUtils {
         // Clean up dummy graphics
         dummyGraphics.dispose();
 		
-		BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D g2 = image.createGraphics();
+        if (writePNG) {
+        	 BufferedImage image;
+             if (pngScale == 1d) {
+             	image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+         		Graphics2D g2 = image.createGraphics();
 
-		// Enable anti-aliasing for better quality
-		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+         		// Enable anti-aliasing for better quality
+         		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-		// Draw the PaintScaleLegend onto the Graphics2D context
-		legend.draw(g2, new Rectangle(0, 0, width, height));
-		g2.dispose();
+         		// Draw the PaintScaleLegend onto the Graphics2D context
+         		legend.draw(g2, new Rectangle(0, 0, width, height));
+         		g2.dispose();
+             } else {
+             	int W = (int)Math.round(width * pngScale);
+         		int H = (int)Math.round(height * pngScale);
 
-		if (writePNG) {
-			// Write the BufferedImage to a PNG file
-			File outputFile = new File(outputDir, prefix+".png");
-			ImageIO.write(image, "png", outputFile);
-		}
+         		image = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB);
+         		Graphics2D g2 = image.createGraphics();
+         		try {
+         			// quality hints
+         			g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+         			g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+         			g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+         			g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+
+         			// scale everything uniformly
+         			g2.scale(pngScale, pngScale);
+         			
+             		legend.draw(g2, new Rectangle(0, 0, width, height));
+         		} finally {
+         			g2.dispose();
+         		}
+//         		ImageIO.write(hi, "png", new File(fileName));
+         		// for some reason writing this way (rather than ImageIO) plays more nicely with viewers that have the file open,
+         		// e.g., eog on Linux will fail to show the updated file (switching to a different image in the same dir)
+         		// when using ImageIO
+             }
+             OutputStream out = new BufferedOutputStream(new FileOutputStream(new File(outputDir, prefix+".png")));
+     		try {
+     			EncoderUtil.writeBufferedImage(image, ImageFormat.PNG, out);
+     		} finally {
+     			out.close();
+     		}
+        }
 		
 		if (writePDF) {
+			float pdfW = (float)(width*pdfScale);
+			float pdfH = (float)(height*pdfScale);
+			
 			// step 1
 			Document metadataDocument = new Document(new com.itextpdf.text.Rectangle(
-					width, height));
+					pdfW, pdfH));
 			metadataDocument.addAuthor("OpenSHA");
 			metadataDocument.addCreationDate();
 //			HeaderFooter footer = new HeaderFooter(new Phrase("Powered by OpenSHA"), true);
@@ -449,14 +545,18 @@ public class PlotUtils {
 				metadataDocument.open();
 				// step 4
 				PdfContentByte cb = writer.getDirectContent();
-				PdfTemplate tp = cb.createTemplate(width, height);
+				PdfTemplate tp = cb.createTemplate(pdfW, pdfH);
 //				tp.creategraphics
 //				new 
 //				FontMapper fontMapper = new DefaultFontMapper();
 				FontMapper fontMapper = new PDF_UTF8_FontMapper();
-				Graphics2D g2d = new PdfGraphics2D(tp, width, height, fontMapper);
+				Graphics2D g2d = new PdfGraphics2D(tp, pdfW, pdfH, fontMapper);
 				g2d.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_NORMALIZE);
 				g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+				
+				if (pdfScale != 1d)
+					g2d.scale(pdfScale, pdfScale);
+				
 //				Graphics2D g2d = tp.createGraphics(width, height,
 //						new DefaultFontMapper());
 				Rectangle2D r2d = new Rectangle2D.Double(0, 0, width, height);

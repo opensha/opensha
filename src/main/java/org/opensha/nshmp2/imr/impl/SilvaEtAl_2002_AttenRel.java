@@ -32,6 +32,7 @@ import org.opensha.nshmp2.util.Params;
 import org.opensha.nshmp2.util.SiteType;
 import org.opensha.nshmp2.util.Utils;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.PropagationEffect;
 import org.opensha.sha.imr.param.EqkRuptureParams.MagParam;
@@ -128,24 +129,31 @@ public class SilvaEtAl_2002_AttenRel extends AttenuationRelationship implements
 	@Override
 	public void setEqkRupture(EqkRupture eqkRupture)
 			throws InvalidRangeException {
-		magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
-		this.eqkRupture = eqkRupture;
-		setPropagationEffectParams();
+		super.setEqkRupture(eqkRupture);
+		if (eqkRupture != null) {
+			magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
+			setPropagationEffectParams();
+		}
 	}
 
 	@Override
 	public void setSite(Site site) throws ParameterException {
-		siteTypeParam.setValue((SiteType) site.getParameter(
-			siteTypeParam.getName()).getValue());
-		this.site = site;
-		setPropagationEffectParams();
+		super.setSite(site); // will call setPropagationEffectParams
+		if (site != null)
+			siteTypeParam.setValue((SiteType) site.getParameter(
+					siteTypeParam.getName()).getValue());
 	}
 
 	@Override
 	protected void setPropagationEffectParams() {
 		if ((site != null) && (eqkRupture != null)) {
-			distanceJBParam.setValue(eqkRupture, site);
+			setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
 		}
+	}
+
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		distanceJBParam.setValue(eqkRupture, site, distances);
 	}
 
 	private void setCoeffIndex() throws ParameterException {

@@ -20,6 +20,7 @@ import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.param.impl.WarningDoubleParameter;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.EqkRuptureParams.FaultTypeParam;
@@ -161,12 +162,12 @@ public class Campbell_1997_AttenRel extends AttenuationRelationship {
 	 * @throws InvalidRangeException thrown if rake is out of bounds
 	 */
 	public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
-
-		magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
-		setFaultTypeFromRake(eqkRupture.getAveRake());
-		this.eqkRupture = eqkRupture;
-		setPropagationEffectParams();
-
+		super.setEqkRupture(eqkRupture);
+		if (eqkRupture != null) {
+			magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
+			setFaultTypeFromRake(eqkRupture.getAveRake());
+			setPropagationEffectParams();
+		}
 	}
 
 	/**
@@ -181,13 +182,12 @@ public class Campbell_1997_AttenRel extends AttenuationRelationship {
 	 * either of these parameters.
 	 */
 	public void setSite(Site site) throws ParameterException {
-
-		siteTypeParam.setValue((String)site.getParameter(SITE_TYPE_NAME).getValue());
-		basinDepthParam.setValueIgnoreWarning((Double)site.getParameter(BASIN_DEPTH_NAME).
-				getValue());
-		this.site = site;
-		setPropagationEffectParams();
-
+		if (site != null) {
+			siteTypeParam.setValue((String)site.getParameter(SITE_TYPE_NAME).getValue());
+			basinDepthParam.setValueIgnoreWarning((Double)site.getParameter(BASIN_DEPTH_NAME).
+					getValue());
+		}
+		super.setSite(site); // will call setPropagationEffectParams
 	}
 
 
@@ -198,8 +198,13 @@ public class Campbell_1997_AttenRel extends AttenuationRelationship {
 	protected void setPropagationEffectParams() {
 
 		if ( (this.site != null) && (this.eqkRupture != null)) {
-			distanceSeisParam.setValue(eqkRupture, site);
+			setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
 		}
+	}
+
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		distanceSeisParam.setValue(eqkRupture, site, distances);
 	}
 
 	/**

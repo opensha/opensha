@@ -43,7 +43,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.data.Event
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.data.NonCA_FaultsFetcher;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.data.finalReferenceFaultParamDb.DeformationModelSummaryFinal;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.griddedSeis.NSHMP_GridSourceGenerator;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
+import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrections;
 import org.opensha.sha.magdist.ArbIncrementalMagFreqDist;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -480,7 +480,7 @@ public class UCERF2 extends AbstractERF {
 		backSeisRupStrings.add(BACK_SEIS_RUP_CROSSHAIR);
 		backSeisRupParam = new StringParameter(BACK_SEIS_RUP_NAME, backSeisRupStrings,BACK_SEIS_RUP_DEFAULT);
 		
-		distCorrParam = new PointSourceDistanceCorrectionParam(PointSourceDistanceCorrections.NSHM_2008);
+		distCorrParam = new PointSourceDistanceCorrectionParam(PointSourceDistanceCorrections.NSHM_2013);
 
 		// back seis Mmax
 		backSeisMaxMagParam = new DoubleParameter(BACK_SEIS_MAG_NAME, BACK_SEIS_MAG_MIN, BACK_SEIS_MAG_MAX,
@@ -700,7 +700,7 @@ public class UCERF2 extends AbstractERF {
 		backSeisParam.setValue(BACK_SEIS_DEFAULT);
 		// backgroud treated as point sources/finite soource
 		backSeisRupParam.setValue(BACK_SEIS_RUP_DEFAULT);
-		distCorrParam.setValue(PointSourceDistanceCorrections.NSHM_2008);
+		distCorrParam.setValue(PointSourceDistanceCorrections.NSHM_2013);
 		// back seis Mmax
 		backSeisMaxMagParam.setValue(BACK_SEIS_MAG_DEFAULT);
 		// rup offset
@@ -2205,7 +2205,7 @@ public class UCERF2 extends AbstractERF {
 			this.updateB_FaultsFetcher = true;
 			//bFaultsFetcher.test_writeFileAfterCombiningB_Faults();
 		}  else if (paramName.equalsIgnoreCase(distCorrParam.getName())) {
-			nshmp_gridSrcGen.setDistanceCorrections(distCorrParam.getValue().get());
+			nshmp_gridSrcGen.setDistanceCorrection(distCorrParam.getValue().get());
 		}
 	}
 

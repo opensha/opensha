@@ -11,7 +11,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
+import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrections;
 
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;

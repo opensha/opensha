@@ -21,6 +21,7 @@ import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurfaceWithSubsets;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.EqkRuptureParams.FaultTypeParam;
@@ -266,11 +267,13 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 	 *             If not valid rake angle
 	 */
 	public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
-		magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));		
-		this.eqkRupture = eqkRupture;
-		setPropagationEffectParams();
-		// TODO
-		//	    setFaultTypeFromRake(eqkRupture.getAveRake());
+		super.setEqkRupture(eqkRupture);
+		if (eqkRupture != null) {
+			magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));		
+			setPropagationEffectParams();
+			// TODO
+			//	    setFaultTypeFromRake(eqkRupture.getAveRake());
+		}
 	}
 
 	/**
@@ -285,12 +288,9 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 	 *             Thrown if the Site object doesn't contain a Vs30 parameter
 	 */
 	public void setSite(Site site) throws ParameterException {	 	
-    	
-//		System.out.println("Zhao et al --->"+site.getParameter(SITE_TYPE_NAME).getValue());
-		
-		siteTypeParam.setValue((String) site.getParameter(SITE_TYPE_NAME).getValue());
-		this.site = site;
-		setPropagationEffectParams();
+		super.setSite(site); // will call setPropagationEffectParams
+		if (site != null)
+			siteTypeParam.setValue((String) site.getParameter(SITE_TYPE_NAME).getValue());
 	}
 
 	/**
@@ -307,8 +307,13 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 	public void setPropagationEffectParams() {
 		// Set the distance to rupture
 		if ( (this.site != null) && (this.eqkRupture != null)) {
-			distanceRupParam.setValue(eqkRupture,site);
+			setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
 		}
+	}
+
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		distanceRupParam.setValue(eqkRupture,site, distances);
 	}
 
 
@@ -585,7 +590,6 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 	 * @return
 	 */
 	public double getMean(int iper, double mag, double rRup) {
-
 		double hypodepth;
 		double flag_sc  = 0.0; // This is unity for crustal events - Otherwise 0
 		double flag_Fr  = 0.0; // This is unity for reverse crustal events - Otherwise 0

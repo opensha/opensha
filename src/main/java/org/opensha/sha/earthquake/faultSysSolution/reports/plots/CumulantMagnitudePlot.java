@@ -222,7 +222,7 @@ public class CumulantMagnitudePlot extends AbstractSolutionPlot implements Solid
 			anns.add(ann);
 			spec.setPlotAnnotations(anns);
 			
-			HeadlessGraphPanel gp = PlotUtils.initHeadless();
+			HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 			
 			gp.drawGraphPanel(spec, false, false, new Range(minMedian, maxMedian), new Range(minMedian, maxMedian));
 			PlotUtils.writePlots(resourcesDir, medianPrefix+"_scatter", gp, 800, 800, true, false, false);

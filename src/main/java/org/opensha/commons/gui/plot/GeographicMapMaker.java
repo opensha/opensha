@@ -58,7 +58,17 @@ public class GeographicMapMaker {
 	protected Region region;
 	protected Location regionCenter;
 	
-	public static final int PLOT_WIDTH_DEFAULT = 800;
+	public static final int PLOT_WIDTH_PIXELS_DEFAULT = 800;
+	public static final double PLOT_WIDTH_INCHES_DEFAULT = 7d;
+	public static final boolean PLOT_PRINT_SIZING_DEFRAULT = false;
+	public static PlotPreferences PLOT_PREFS_SCREEN_DEFAULT = PlotPreferences.getDefaultScreenFigurePrefs();
+	public static PlotPreferences PLOT_PREFS_PRINT_DEFAULT = PlotPreferences.getDefaultPrintFigurePrefs();
+	static {
+		PLOT_PREFS_PRINT_DEFAULT.setSizeScalar(0.5d);
+		// allowing multiline titles can mess up the dynamic lat/lon scaling step
+		PLOT_PREFS_PRINT_DEFAULT.setTitleMaxLines(1);
+		PLOT_PREFS_SCREEN_DEFAULT.setTitleMaxLines(1);
+	}
 	
 	/*
 	 * General line styles
@@ -80,11 +90,17 @@ public class GeographicMapMaker {
 	protected boolean writeGeoJSON = true;
 	protected boolean sort = true;
 	protected boolean reverseSort = false;
-	protected Boolean absoluteSort = null;
-	protected int widthDefault = PLOT_WIDTH_DEFAULT;
 	protected boolean axisLabels = true;
 	protected boolean axisTicks = true;
 	private boolean plotRegionsAboveFaults = false;
+	protected Boolean absoluteSort = null;
+	
+	protected boolean printSizing = false;
+	protected int widthPixelsDefault = PLOT_WIDTH_PIXELS_DEFAULT;
+	protected double widthInchesDefault = PLOT_WIDTH_INCHES_DEFAULT;
+	protected PlotPreferences screenPrefs = PLOT_PREFS_SCREEN_DEFAULT.clone();
+	protected PlotPreferences printPrefs = PLOT_PREFS_PRINT_DEFAULT.clone();
+	private int printDPI = 300;
 	
 	/*
 	 * Fault sections and cached surfaces/traces
@@ -1013,7 +1029,12 @@ public class GeographicMapMaker {
 		protected boolean writeGeoJSON;
 		protected List<PaintScaleLegend> cptLegend = new ArrayList<>();
 		protected boolean hasLegend = false;
+		protected PlotPreferences plotPrefs;
 		
+		public PlotBuilder(PlotPreferences plotPrefs) {
+			this.plotPrefs = plotPrefs;
+		}
+
 		protected Comparator<ComparablePairing<Double, ?>> buildComparator(CPT cpt) {
 			boolean absoluteSort;
 			if (GeographicMapMaker.this.absoluteSort != null)
@@ -1364,7 +1385,7 @@ public class GeographicMapMaker {
 				}
 				
 				if (sectScalarLabel != null && sectScalarCPT != null)
-					cptLegend.add(buildCPTLegend(sectScalarCPT, sectScalarLabel, cptEdge));
+					cptLegend.add(buildCPTLegend(sectScalarCPT, sectScalarLabel, cptEdge, plotPrefs));
 			} else if (sectColors != null || sectChars != null) {
 				List<? extends Double> comps = null;
 				boolean colors;
@@ -1453,9 +1474,9 @@ public class GeographicMapMaker {
 				}
 				
 				if (colors && sectColorsCPT != null)
-					cptLegend.add(buildCPTLegend(sectColorsCPT, sectColorsLabel, cptEdge));
+					cptLegend.add(buildCPTLegend(sectColorsCPT, sectColorsLabel, cptEdge, plotPrefs));
 				if (!colors && sectCharsCPT != null)
-					cptLegend.add(buildCPTLegend(sectCharsCPT, sectCharsLabel, cptEdge));
+					cptLegend.add(buildCPTLegend(sectCharsCPT, sectCharsLabel, cptEdge, plotPrefs));
 			}
 			
 			if (highlightSections != null && highlightTraceChar != null) {
@@ -1637,7 +1658,7 @@ public class GeographicMapMaker {
 				}
 
 				if (scalarJumpsLabel != null && scalarJumpsCPT != null)
-					cptLegend.add(buildCPTLegend(scalarJumpsCPT, scalarJumpsLabel, cptEdge));
+					cptLegend.add(buildCPTLegend(scalarJumpsCPT, scalarJumpsLabel, cptEdge, plotPrefs));
 			}
 		}
 		
@@ -1692,7 +1713,7 @@ public class GeographicMapMaker {
 				}
 				
 				if (scatterScalarLabel != null && scatterScalarCPT != null)
-					cptLegend.add(buildCPTLegend(scatterScalarCPT, scatterScalarLabel, cptEdge));
+					cptLegend.add(buildCPTLegend(scatterScalarCPT, scatterScalarLabel, cptEdge, plotPrefs));
 			} else if (scatterChars != null) {
 				for (int j=0; j<scatterLocs.size(); j++) {
 					Location loc = scatterLocs.get(j);
@@ -1725,7 +1746,7 @@ public class GeographicMapMaker {
 				}
 				
 				if (scatterScalarLabel != null && scatterScalarCPT != null)
-					cptLegend.add(buildCPTLegend(scatterScalarCPT, scatterScalarLabel, cptEdge));
+					cptLegend.add(buildCPTLegend(scatterScalarCPT, scatterScalarLabel, cptEdge, plotPrefs));
 			} else {
 				XY_DataSet outlines = scatterOutline == null ? null : new DefaultXY_DataSet();
 				Preconditions.checkNotNull(scatterColor);
@@ -1998,12 +2019,16 @@ public class GeographicMapMaker {
 		}
 	}
 	
-	protected PlotBuilder initPlotBuilder() {
-		return new PlotBuilder();
+	protected PlotBuilder initPlotBuilder(boolean printSizing) {
+		return new PlotBuilder(printSizing ? printPrefs : screenPrefs);
 	}
 	
 	public PlotSpec buildPlot(String title) {
-		PlotBuilder builder = initPlotBuilder();
+		return buildPlot(title, printSizing);
+	}
+	
+	public PlotSpec buildPlot(String title, boolean printSizing) {
+		PlotBuilder builder = initPlotBuilder(printSizing);
 		PlotSpec spec = builder.buildPlot(title);
 		this.features = builder.features;
 		
@@ -2044,11 +2069,11 @@ public class GeographicMapMaker {
 		return new Range(minLat, maxLat);
 	}
 	
-	public static PaintScaleLegend buildCPTLegend(CPT cpt, String label) {
-		return buildCPTLegend(cpt, label, RectangleEdge.BOTTOM);
+	public static PaintScaleLegend buildCPTLegend(CPT cpt, String label, PlotPreferences prefs) {
+		return buildCPTLegend(cpt, label, RectangleEdge.BOTTOM, prefs);
 	}
 	
-	public static PaintScaleLegend buildCPTLegend(CPT cpt, String label, RectangleEdge edge) {
+	public static PaintScaleLegend buildCPTLegend(CPT cpt, String label, RectangleEdge edge, PlotPreferences prefs) {
 		double cptLen = cpt.getMaxValue() - cpt.getMinValue();
 		double cptTick = cpt.getPreferredTickInterval();
 		if (!Double.isFinite(cptTick)) {
@@ -2075,16 +2100,7 @@ public class GeographicMapMaker {
 			else
 				cptTick = cptLen / 10d;
 		}
-		return GraphPanel.getLegendForCPT(cpt, label, PLOT_PREFS_DEFAULT.getAxisLabelFontSize(),
-				PLOT_PREFS_DEFAULT.getTickLabelFontSize(), cptTick, edge);
-	}
-	
-	public void setDefaultPlotWidth(int widthDefault) {
-		this.widthDefault = widthDefault;
-	}
-	
-	public int getDefaultPlotWidth() {
-		return this.widthDefault;
+		return GraphPanel.getLegendForCPT(cpt, label, prefs, cptTick, edge);
 	}
 	
 	public void setAxisLabelsVisible(boolean axisLabels) {
@@ -2116,26 +2132,37 @@ public class GeographicMapMaker {
 	}
 
 	public void plot(File outputDir, String prefix, String title) throws IOException {
-		plot(outputDir, prefix, buildPlot(title), widthDefault);
+		if (printSizing)
+			plot(outputDir, prefix, buildPlot(title, true), widthInchesDefault, printDPI);
+		else
+			plot(outputDir, prefix, buildPlot(title, false), widthPixelsDefault);
 	}
 	
 	public void plot(File outputDir, String prefix, String title, int width) throws IOException {
-		plot(outputDir, prefix, buildPlot(title), width);
+		plot(outputDir, prefix, buildPlot(title, false), width);
 	}
 	
 	public void plot(File outputDir, String prefix, PlotSpec spec) throws IOException {
-		plot(outputDir, prefix, spec, widthDefault);
+		if (printSizing)
+			plot(outputDir, prefix, spec, widthInchesDefault, printDPI);
+		else
+			plot(outputDir, prefix, spec, widthPixelsDefault);
 	}
-	
-	public static PlotPreferences PLOT_PREFS_DEFAULT = PlotUtils.getDefaultFigurePrefs();
 	
 	public void plot(File outputDir, String prefix, PlotSpec spec, int width) throws IOException {
 		plot(outputDir, prefix, spec, width, null);
 	}
 	
-	public void plot(File outputDir, String prefix, PlotSpec spec, int width, Consumer<? super HeadlessGraphPanel> customizer)
-			throws IOException {
-		HeadlessGraphPanel gp = new HeadlessGraphPanel(PLOT_PREFS_DEFAULT);
+	public void plot(File outputDir, String prefix, String title, double widthInches, int dpi) throws IOException {
+		plot(outputDir, prefix, buildPlot(title, true), widthInches, dpi);
+	}
+	
+	public void plot(File outputDir, String prefix, PlotSpec spec, double widthInches, int dpi) throws IOException {
+		plot(outputDir, prefix, spec, widthInches, dpi, null);
+	}
+	
+	private HeadlessGraphPanel buildGraphPanel(PlotSpec spec, PlotPreferences plotPrefs) {
+		HeadlessGraphPanel gp = new HeadlessGraphPanel(plotPrefs);
 		
 		Range xRange = getXRange();
 		Range yRange = getYRange();
@@ -2166,11 +2193,67 @@ public class GeographicMapMaker {
 			gp.getYAxis().setTickMarksVisible(false);
 			gp.getYAxis().setMinorTickMarksVisible(false);
 		}
+		return gp;
+	}
+	
+	public void setDefaultPlotWidthPixels(int width) {
+		this.printSizing = false;
+		this.widthPixelsDefault = width;
+	}
+	
+	public void setDefaultPlotWidthInches(double width) {
+		this.printSizing = true;
+		this.widthInchesDefault = width;
+	}
+	
+	public void setDefaultPrintDPI(int printDPI) {
+		this.printDPI = printDPI;
+	}
+	
+	public void setPrintSizingDefault(boolean printSizing) {
+		this.printSizing = printSizing;
+	}
+	
+	public void setPrintPlotPrefs(PlotPreferences printPrefs) {
+		this.printPrefs = printPrefs;
+	}
+	
+	public PlotPreferences getPrintPlotPrefs() {
+		return printPrefs;
+	}
+	
+	public void setScreenPlotPrefs(PlotPreferences screenPrefs) {
+		this.screenPrefs = screenPrefs;
+	}
+	
+	public PlotPreferences getScreenPlotPrefs() {
+		return screenPrefs;
+	}
+	
+	public void plot(File outputDir, String prefix, PlotSpec spec, int width, Consumer<? super HeadlessGraphPanel> customizer)
+			throws IOException {
+		HeadlessGraphPanel gp = buildGraphPanel(spec, screenPrefs);
 		
 		if (customizer != null)
 			customizer.accept(gp);
 		
 		PlotUtils.writePlots(outputDir, prefix, gp, width, true, true, writePDFs, false);
+		
+		if (writeGeoJSON && features != null && !features.isEmpty() && !(spec instanceof XYZPlotSpec)) {
+			FeatureCollection features = new FeatureCollection(this.features);
+			FeatureCollection.write(features, new File(outputDir, prefix+".geojson"));
+		}
+	}
+	
+	public void plot(File outputDir, String prefix, PlotSpec spec, double widthInches, int dpi,
+			Consumer<? super HeadlessGraphPanel> customizer)
+			throws IOException {
+		HeadlessGraphPanel gp = buildGraphPanel(spec, printPrefs);
+		
+		if (customizer != null)
+			customizer.accept(gp);
+		
+		PlotUtils.writePrintPlots(outputDir, prefix, gp, widthInches, true, dpi, true, writePDFs, false);
 		
 		if (writeGeoJSON && features != null && !features.isEmpty() && !(spec instanceof XYZPlotSpec)) {
 			FeatureCollection features = new FeatureCollection(this.features);

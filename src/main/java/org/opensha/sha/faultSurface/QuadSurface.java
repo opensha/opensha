@@ -1,13 +1,13 @@
 package org.opensha.sha.faultSurface;
 
-import static org.opensha.commons.geo.GeoTools.*;
-import static org.apache.commons.math3.geometry.euclidean.threed.RotationOrder.*;
+import static org.apache.commons.math3.geometry.euclidean.threed.RotationOrder.XYZ;
+import static org.opensha.commons.geo.GeoTools.PI_BY_2;
+import static org.opensha.commons.geo.GeoTools.TO_RAD;
 
 import java.awt.Color;
 import java.awt.geom.Line2D;
 import java.awt.geom.Path2D;
 import java.awt.geom.PathIterator;
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,17 +32,16 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
+import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
-import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
-import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.cache.CacheEnabledSurface;
 import org.opensha.sha.faultSurface.cache.SurfaceCachingPolicy;
+import org.opensha.sha.faultSurface.cache.SurfaceCachingPolicy.CacheTypes;
 import org.opensha.sha.faultSurface.cache.SurfaceDistanceCache;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
-import org.opensha.sha.faultSurface.cache.SurfaceCachingPolicy.CacheTypes;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 
 import com.google.common.base.Preconditions;
@@ -77,12 +76,11 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	private double dipDeg;
 	private double dipRad;
 	private double width;
+	private double horzWidth;
 	private double avgUpperDepth;
+	private double avgLowerDepth;
 	private double avgDipDirRad;
 	private double avgDipDirDeg;
-	
-	/* true if the entire trace is below 3km */
-	private boolean traceBelowSeis;
 
 	/* actual 3d values */
 	private FaultTrace trace;
@@ -92,17 +90,6 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	/* surface projection (for dist jb) */
 	private FaultTrace proj_trace;
 	private List<Path2D> proj_surfs;
-
-	/* portion of fault below seismogenic depth of 3km (for dist seis) */
-	private FaultTrace seis_trace;
-	private List<Rotation> seis_rots;
-	private List<Path2D> seis_surfs;
-
-	/* for distance X calcs */
-	private FaultTrace x_trace;
-	private List<Rotation> x_rots;
-	private List<Path2D> x_surfs;
-	private List<Vector3D> x_trace_vects;
 	
 	/*
 	 * discretization to use for evenly discretized methods
@@ -114,12 +101,6 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	
 	// create cache using default caching policy
 	private final SurfaceDistanceCache cache;
-	
-	/**
-	 * If true, distance X will use the average strike to extend the trace infinitely, as opposed
-	 * to extending the last trace segment itself indfinitely.
-	 */
-	private boolean distX_useAvgStrike = true;
 	
 	private static double calcWidth(FaultSection sect, boolean aseisReducesArea) {
 		double upperDepth;
@@ -195,6 +176,7 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 		this.dipDeg = dip;
 		this.dipRad = dip * TO_RAD;
 		this.width = width;
+		this.horzWidth = width*Math.cos(dipRad);
 		rots = new ArrayList<Rotation>();
 		surfs = new ArrayList<Path2D>();
 		
@@ -203,15 +185,16 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 		
 		initSegments(dipRad, avgDipDirRad, width, trace, rots, surfs);
 		
-		traceBelowSeis = true;
 		avgUpperDepth = 0d;
-		// TODO weight average
+		// TODO weight average?
 		for (Location loc : trace) {
-			if (loc.getDepth() <= GriddedSurfaceUtils.SEIS_DEPTH)
-				traceBelowSeis = false;
 			avgUpperDepth += loc.getDepth();
 		}
 		avgUpperDepth /= (double)trace.size();
+		if (dip < 90d)
+			avgLowerDepth = avgUpperDepth + width * Math.sin(dipRad);
+		else
+			avgLowerDepth = avgUpperDepth + width;
 	}
 
 	private static void initSegments(double dipRad, double avgDipDirRad, double width,
@@ -352,14 +335,45 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	
 	@Override
 	public SurfaceDistances calcDistances(Location loc) {
-		double distRup = calcDistanceRup(loc);
-		double distJB = calcDistanceJB(loc);
-		double distSeis;
-		if (traceBelowSeis)
-			distSeis = distRup;
-		else
-			distSeis = calcDistanceSeis(loc);
-		return new SurfaceDistances(distRup, distJB, distSeis);
+		return new LazySurfaceDistances(loc);
+	}
+	
+	private class LazySurfaceDistances implements SurfaceDistances {
+		
+		private Location siteLoc;
+		
+		private volatile Double distRup, distJB, distX;
+
+		private LazySurfaceDistances(Location siteLoc) {
+			this.siteLoc = siteLoc;
+		}
+
+		@Override
+		public Location getSiteLocation() {
+			return siteLoc;
+		}
+
+		@Override
+		public double getDistanceRup() {
+			if (distRup == null)
+				distRup = calcDistanceRup(siteLoc);
+			return distRup;
+		}
+
+		@Override
+		public double getDistanceJB() {
+			if (distJB == null)
+				distJB = calcDistanceJB(siteLoc);
+			return distJB;
+		}
+
+		@Override
+		public double getDistanceX() {
+			if (distX == null)
+				distX = GriddedSurfaceUtils.getDistanceX(trace, siteLoc);
+			return distX;
+		}
+		
 	}
 	
 	private double calcDistanceRup(Location loc) {
@@ -383,36 +397,6 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 		
 		return distance3D(proj_trace, null, proj_surfs, new Location(loc.getLatitude(), loc.getLongitude()));
 	}
-	
-	private double calcDistanceSeis(Location loc) {
-		if (seis_trace == null) {
-			synchronized(this) {
-				if (seis_trace == null) {
-					FaultTrace seis_trace;
-					if (traceBelowSeis) {
-						// it's already below the seismogenic depth, use normal trace/rots/surfs
-						seis_trace = trace;
-						seis_rots = rots;
-						seis_surfs = surfs;
-					} else {
-						seis_trace = getTraceBelowDepth(trace, GriddedSurfaceUtils.SEIS_DEPTH, dipRad, avgDipDirDeg);
-						seis_rots = new ArrayList<Rotation>();
-						seis_surfs = new ArrayList<Path2D>();
-						
-						// new width below seis
-						double widthBelowSeis;
-						if (avgUpperDepth < GriddedSurfaceUtils.SEIS_DEPTH)
-							widthBelowSeis = width - (GriddedSurfaceUtils.SEIS_DEPTH - avgUpperDepth);
-						else
-							widthBelowSeis = width;
-						initSegments(dipRad, avgDipDirRad, widthBelowSeis, seis_trace, seis_rots, seis_surfs);
-					}
-					this.seis_trace = seis_trace;
-				}
-			}
-		}
-		return distance3D(seis_trace, seis_rots, seis_surfs, new Location(loc.getLatitude(), loc.getLongitude()));
-	}
 
 	public double getDistanceRup(Location loc) {
 		return cache.getSurfaceDistances(loc).getDistanceRup();
@@ -420,10 +404,6 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 
 	public double getDistanceJB(Location loc) {
 		return cache.getSurfaceDistances(loc).getDistanceJB();
-	}
-
-	public double getDistanceSeis(Location loc) {
-		return cache.getSurfaceDistances(loc).getDistanceSeis();
 	}
 	
 	/**
@@ -612,113 +592,13 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 		return cache.getSurfaceDistances(siteLoc).getDistanceRup();
 	}
 	
-	@Override
-	public synchronized double calcDistanceX(Location siteLoc) {
-		// this is Peter's implementation, but it doesn't perform as well in tests
-//		if (1d < 2d) {
-//			if (trace.size() == 1) return 0.0;
-//			int minIdx = trace.minDistIndex(siteLoc);
-//			double rSeg = LocationUtils.distanceToLineSegmentFast(trace.get(minIdx),
-//			trace.get(minIdx + 1), siteLoc);
-//			double rFirst = LocationUtils.horzDistanceFast(trace.get(0), siteLoc);
-//			double rLast = LocationUtils.horzDistanceFast(trace.last(), siteLoc);
-//
-//			return (rSeg < Math.min(rFirst, rLast)) ? LocationUtils.distanceToLineFast(
-//			trace.get(minIdx), trace.get(minIdx + 1), siteLoc)
-//				: LocationUtils.distanceToLineFast(trace.first(), trace.last(), siteLoc);
-//		}
-		if (x_trace_vects == null) {
-			// we recalculate the rotations because don't want to consider dip
-			x_rots = Lists.newArrayList();
-			x_surfs = Lists.newArrayList();
-			if (distX_useAvgStrike) {
-				// add tiny traces spans to the ends in the direction of getAvgStrike
-				x_trace = new FaultTrace("dist x");
-				Location startPt = trace.first();
-				Location endPt = trace.last();
-				double strikeDirRad = LocationUtils.azimuthRad(startPt, endPt);
-				double reverseStrikeDirRad = LocationUtils.azimuthRad(endPt, startPt);
-				double dist_x_pad_dist = 1e-6;
-//				double dist_x_pad_dist = 1000;
-				x_trace.add(LocationUtils.location(startPt, reverseStrikeDirRad, dist_x_pad_dist));
-				x_trace.addAll(trace);
-				x_trace.add(LocationUtils.location(endPt, strikeDirRad, dist_x_pad_dist));
-			} else {
-				x_trace = trace;
-			}
-			initSegments(PI_BY_2, avgDipDirRad, width, x_trace, x_rots, x_surfs);
-			// this is a list of vectors from the origin in the trace pt local coordinate system
-			x_trace_vects = Lists.newArrayList();
-			for (int i = 0; i < x_trace.size() - 1; i++) {
-				Path2D surf = x_surfs.get(i);
-				PathIterator pit = surf.getPathIterator(null);
-				double[] c = new double[6]; // coordinate array
-				// load in origin, ensuring that it's indeed the origin
-				Preconditions.checkState(pit.currentSegment(c) == PathIterator.SEG_MOVETO);
-				pit.next();
-				Preconditions.checkState((float)c[0] == (float)0);
-				Preconditions.checkState((float)c[1] == (float)0);
-				// load in second trace point, ensuring that it's along the x axis
-				Preconditions.checkState(pit.currentSegment(c) == PathIterator.SEG_LINETO);
-				Preconditions.checkState(Math.abs(c[1]) < 1e-10);
-				x_trace_vects.add(new Vector3D(c[0], c[1], 0));
-			}
-		}
-		// TODO do it right
-//		distanceX =  GriddedSurfaceUtils.getDistanceX(getEvenlyDiscritizedUpperEdge(), siteLoc);
-//		return distanceX;
-//		return distanceX + distanceX*(0.5 - Math.random());
-		double distanceSq = Double.MAX_VALUE;
-		double distance = Double.MAX_VALUE;
-		for (int i = 0; i < x_trace.size() - 1; i++) {
-			// compute geographic vector to point
-			LocationVector vec = LocationUtils.vector(x_trace.get(i), siteLoc);
-			// convert to cartesian
-			Vector3D vp = new Vector3D(vec.getHorzDistance(), new Vector3D(
-				vec.getAzimuthRad(), 0), vec.getVertDistance(), Vector3D.PLUS_K);
-			// rotate
-			vp = x_rots.get(i).applyTo(vp);
-			double siteX = vp.getX();
-			double siteY = vp.getY();
-			double siteZ = vp.getZ();
-			// now get the trace vector
-			Vector3D traceVect = x_trace_vects.get(i);
-			double traceX = traceVect.getX();
-			double traceY = traceVect.getY();
-			// since traceVect is along the X axis, the distance to the segment can be calculated easily
-			boolean trueDist; // if true, we do an actual 3d distance to segment. otherwise just y/z dist
-			if (siteX < 0) {
-				// it's to the left in our projected trace
-				// do true distance if this isn't the leftmost trace point
-				trueDist = i > 0;
-			} else if (siteX > traceX) {
-				// it's to the right in our projected trace
-				// do true distance if this isn't the leftmost trace point
-				trueDist = i < x_trace.size()-2;
-			} else {
-				// this is directly above/below the trace
-				trueDist = false;
-			}
-			double myDistSq;
-			if (trueDist)
-				myDistSq = Line2D.ptSegDistSq(0d, 0d, traceX, 0,
-						siteX, siteZ);
-			else
-				myDistSq = siteZ * siteZ;
-			
-			if (myDistSq < distanceSq) {
-				distanceSq = myDistSq;
-				distance = Math.sqrt(myDistSq);
-				// faults dip in the positive y direction, so neg y is on foot wall
-				if (siteZ > 0)
-					distance = -distance;
-			}
-		}
-		return distance;
+	public double getDistanceX(Location siteLoc) {
+		return cache.getSurfaceDistances(siteLoc).getDistanceX();
 	}
 	
-	public double getDistanceX(Location siteLoc) {
-		return cache.getDistanceX(siteLoc);
+	@Override
+	public SurfaceDistances getDistances(Location siteLoc) {
+		return cache.getSurfaceDistances(siteLoc);
 	}
 	
 //	private EvenlyGriddedSurface getGridded() {
@@ -747,6 +627,11 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	@Override
 	public double getAveWidth() {
 		return width;
+	}
+
+	@Override
+	public double getAveHorizontalWidth() {
+		return horzWidth;
 	}
 
 	@Override
@@ -850,6 +735,11 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	@Override
 	public double getAveRupTopDepth() {
 		return avgUpperDepth;
+	}
+
+	@Override
+	public double getAveRupBottomDepth() {
+		return avgLowerDepth;
 	}
 
 	@Override
@@ -1046,7 +936,7 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 //		QuadSurface q = new QuadSurface(ft, dip, width);
 		QuadSurface q = prefData.getQuadSurface(false);
 		q.getDistanceX(distXDebug);
-		showDebugGraph(q.x_surfs.get(0), getProjectedPoint(q.trace, q.x_rots, 0, distXDebug), true, null);
+//		showDebugGraph(q.x_surfs.get(0), getProjectedPoint(q.trace, q.x_rots, 0, distXDebug), true, null);
 		EvenlyGriddedSurface gridded = prefData.getStirlingGriddedSurface(1d, false, false);
 		
 		// now plot outline
@@ -1176,7 +1066,7 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	}
 	
 	private static long[] runTest(int num_calcs, RuptureSurface surf) {
-		long[] ret = new long[5];
+		long[] ret = new long[4];
 		
 		// distance rup
 		Stopwatch watch = Stopwatch.createStarted();
@@ -1196,15 +1086,6 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 		watch.stop();
 		ret[1] = watch.elapsed(TimeUnit.MILLISECONDS);
 		
-		// distance Seis
-		watch = Stopwatch.createStarted();
-		for (int i=0; i<num_calcs; i++) {
-			Location loc = getTestLoc(true);
-			surf.getDistanceSeis(loc);
-		}
-		watch.stop();
-		ret[2] = watch.elapsed(TimeUnit.MILLISECONDS);
-		
 		// distance X
 		watch = Stopwatch.createStarted();
 		for (int i=0; i<num_calcs; i++) {
@@ -1212,7 +1093,7 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 			surf.getDistanceX(loc);
 		}
 		watch.stop();
-		ret[3] = watch.elapsed(TimeUnit.MILLISECONDS);
+		ret[2] = watch.elapsed(TimeUnit.MILLISECONDS);
 		
 		// combined
 		watch = Stopwatch.createStarted();
@@ -1220,11 +1101,10 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 			Location loc = getTestLoc(true);
 			surf.getDistanceRup(loc);
 			surf.getDistanceJB(loc);
-			surf.getDistanceSeis(loc);
 			surf.getDistanceX(loc);
 		}
 		watch.stop();
-		ret[4] = watch.elapsed(TimeUnit.MILLISECONDS);
+		ret[3] = watch.elapsed(TimeUnit.MILLISECONDS);
 		
 		return ret;
 	}

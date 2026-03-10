@@ -248,7 +248,7 @@ public class DistanceXDiagnosticMap {
 					plot.setIncludeZlabelInLegend(false);
 					plot.setLegendInset(RectangleAnchor.TOP_LEFT);
 					
-					HeadlessGraphPanel gp = PlotUtils.initHeadless();
+					HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 					
 					gp.drawGraphPanel(plot, false, false, new Range(reg.getMinLon(), reg.getMaxLon()),
 							new Range(reg.getMinLat(), reg.getMaxLat()));

@@ -17,6 +17,7 @@ import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.param.MagFreqDistParameter;
+import org.opensha.sha.util.TectonicRegionType;
 
 
 /**
@@ -34,6 +35,8 @@ public class PEER_AreaForecast extends AbstractERF{
   //for Debug purposes
   private static String  C = new String("PEER_AreaForecast");
   private boolean D = false;
+  
+  private static final TectonicRegionType TRT = TectonicRegionType.ACTIVE_SHALLOW;
 
   //name for this classs
   public final static String  NAME = "PEER Area Forecast";
@@ -229,9 +232,9 @@ private double dip;
 
 
   /**
-   * Return the earhthquake source at index i. This methos returns the reference to
+   * Return the earthquake source at index i. This method returns the reference to
    * the class variable. So, when you call this method again, result from previous
-   * method call may no longer bevalid.
+   * method call may no longer be valid.
    * this is secret, fast but dangerous method
    *
    * @param iSource : index of the source needed
@@ -243,7 +246,7 @@ private double dip;
 
 	  pointPoissonEqkSource = PointSource.poissonBuilder(locationList.get(iSource))
     		  .truePointSources()
-    		  .forMFDAndFocalMech(dist, new FocalMechanism(Double.NaN, dip, rake))
+    		  .forMFDAndFocalMech(dist, new FocalMechanism(Double.NaN, dip, rake), TRT)
     		  .duration(timeSpan.getDuration())
     		  .build();
     pointPoissonEqkSource.setDuration(timeSpan.getDuration());

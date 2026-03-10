@@ -331,7 +331,7 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, " ", "Primary "+label, "Comparison "+label);
 		
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 		
 		gp.drawGraphPanel(spec, true, true, range, range);
 		
@@ -511,7 +511,7 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 		PlotSpec spec = new PlotSpec(funcs, chars, " ", label, "Fraction");
 		spec.setPlotAnnotations(anns);
 		
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 		
 		gp.drawGraphPanel(spec, xLog, false, xRange, yRange);
 		

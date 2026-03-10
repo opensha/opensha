@@ -46,9 +46,11 @@ public class ThreadedCondLossCalc {
 			ScalarIMR imr = imrs[i];
 			// initialize the site with IMR params. location will be overridden.
 			sites[i] = new Site(new Location(34, -118));
-			Iterator<Parameter<?>> it = imr.getSiteParamsIterator();
-			while (it.hasNext())
-				sites[i].addParameter((Parameter)it.next().clone());
+//			Iterator<Parameter<?>> it = imr.getSiteParamsIterator();
+//			while (it.hasNext())
+//				sites[i].addParameter((Parameter)it.next().clone());
+			for (Parameter<?> param : imr.getSiteParams())
+				sites[i].addParameter((Parameter)param.clone());
 		}
 	}
 	

@@ -252,7 +252,7 @@ public interface SimulatedAnnealing {
 			}
 		}
 		
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 		gp.setYLog(true);
 		PlotSpec spec = new PlotSpec(funcs, chars, title, "Rank", "Rate (per year)");
 		spec.setLegendInset(true);
@@ -476,7 +476,7 @@ public interface SimulatedAnnealing {
 		String iterationsLabel = "Iterations";
 		String energyLabel = "Energy";
 		
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 		
 		// this chops off any huge energy values in the first 5% of the run so that the plots
 		// are readable at the energy levels that are actually interesting

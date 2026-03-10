@@ -195,41 +195,25 @@ public interface HazardCurveCalculatorAPI extends CalculatorAPI {
 			hazFunction,
 			Site site, ScalarIMR imr, EqkRupture rupture);
 
-
 	/**
-	 * Enables progress tracking
+	 * gets the current calculation progress that is being processed, or -1 if the calculation has not started
 	 * 
-	 * @see {@link #getCurrRuptures()}
-	 * @see {@link #getTotRuptures()}
-	 * @param trackProgress
-	 */
-	public void setTrackProgress(boolean trackProgress);
-	
-	/**
-	 * Returns the status of progress tracking
+	 * This will either be the current rupture or source index (depending on calculation type), and is relative to
+	 * the value of {@link #getTotalProgressCount()}.
 	 * 
 	 * @see {@link #setTrackProgress(boolean)}
-	 * @return true if progress tracking is enabled
-	 */
-	public boolean isTrackProgress();
-
-	/**
-	 * gets the current rupture that is being processed, or -1 if progress tracking disabled
-	 * 
-	 * @see {@link #setTrackProgress(boolean)}
-	 * @see {@link #isTrackProgress()}
+	 * @see {@link #getTotalProgressCount()}
 	 * @return current rupture that is being processed
 	 */
-	public int getCurrRuptures();
+	public int getCurrentProgress();
 
 	/**
-	 * gets the total number of ruptures, or -1 if progress tracking disabled
+	 * gets the total number of calculation steps
 	 * 
 	 * @see {@link #setTrackProgress(boolean)}
-	 * @see {@link #isTrackProgress()}
 	 * @return total number of ruptures.
 	 */
-	public int getTotRuptures();
+	public int getTotalProgressCount();
 
 	/**
 	 * This function computes an average hazard curve from a number of stochastic event sets

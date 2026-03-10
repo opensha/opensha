@@ -21,11 +21,6 @@ class DisabledDistanceCache implements SurfaceDistanceCache {
 	}
 
 	@Override
-	public synchronized double getDistanceX(Location loc) {
-		return surf.calcDistanceX(loc);
-	}
-
-	@Override
 	public void clearCache() {
 		// do nothing
 	}

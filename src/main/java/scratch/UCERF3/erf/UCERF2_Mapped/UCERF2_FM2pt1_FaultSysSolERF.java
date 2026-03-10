@@ -35,7 +35,7 @@ public class UCERF2_FM2pt1_FaultSysSolERF extends FaultSystemSolutionERF {
 	
 	public UCERF2_FM2pt1_FaultSysSolERF() {
 		super(UCERF2_ComparisonSolutionFetcher.getUCERF2Solution(FaultModels.FM2_1));
-		nshmp_gridSrcGen = new NSHMP_GridSourceGenerator(bgSettings.distanceCorrections);
+		nshmp_gridSrcGen = new NSHMP_GridSourceGenerator(bgSettings.distanceCorrection);
 //		initOtherSources(); // NOTE called by parent in updateForecast()
 		setParameter(AleatoryMagAreaStdDevParam.NAME, 0.12);
 		setParameter(IncludeBackgroundParam.NAME, IncludeBackgroundOption.INCLUDE);
@@ -46,10 +46,14 @@ public class UCERF2_FM2pt1_FaultSysSolERF extends FaultSystemSolutionERF {
 	protected ProbEqkSource getOtherSource(int iSource) {
 		
 		if(iSource < numGridSources) {
-			if(bgSettings.surfaceType.equals(BackgroundRupType.CROSSHAIR))
+			if (bgSettings.surfaceType == BackgroundRupType.POINT)
+				return nshmp_gridSrcGen.getNSHMP13_GriddedSource(iSource, timeSpan.getDuration());
+			else if (bgSettings.finiteRuptureSettings.numSurfaces == 1)
+				return nshmp_gridSrcGen.getRandomStrikeGriddedSource(iSource, timeSpan.getDuration());
+			else if (bgSettings.finiteRuptureSettings.numSurfaces == 2)
 				return nshmp_gridSrcGen.getCrosshairGriddedSource(iSource, timeSpan.getDuration());	
 			else
-				return nshmp_gridSrcGen.getRandomStrikeGriddedSource(iSource, timeSpan.getDuration());			
+				throw new IllegalStateException("Bad grid settings: "+bgSettings);
 		}
 		else {
 			return fixedStrikeSources.get(iSource - numGridSources);
@@ -86,7 +90,7 @@ public class UCERF2_FM2pt1_FaultSysSolERF extends FaultSystemSolutionERF {
 		super.parameterChange(event);
 		
 		if (event.getParameter() == bgSettingsParam)
-			nshmp_gridSrcGen.setDistanceCorrections(bgSettings.distanceCorrections);
+			nshmp_gridSrcGen.setDistanceCorrection(bgSettings.distanceCorrection);
 	}
 
 

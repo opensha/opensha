@@ -4,7 +4,7 @@ import org.opensha.commons.data.TimeSpan;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
+import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrections;
 
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 
@@ -21,7 +21,7 @@ public class FaultSystemSolutionERF_ETAS extends FaultSystemSolutionERF {
 	
 	public static final GriddedSeismicitySettings GRID_SEIS_SETTINGS =
 			GriddedSeismicitySettings.DEFAULT.forSurfaceType(BackgroundRupType.POINT)
-			.forDistanceCorrections(PointSourceDistanceCorrections.NONE)
+			.forDistanceCorrection(PointSourceDistanceCorrections.NONE.get())
 			.forMinimumMagnitude(2.55)
 			.forSupersamplingSettings(null);
 	

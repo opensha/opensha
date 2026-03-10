@@ -38,6 +38,7 @@ import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
+import org.opensha.commons.gui.plot.PlotPreferences;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.logicTree.LogicTreeBranch;
@@ -1415,10 +1416,13 @@ public class SegmentationCalculator {
 			funcs.add(marginalTakenHist);
 			chars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, Color.GREEN.darker()));
 			
+			PlotPreferences prefs = PlotPreferences.getDefaultScreenFigurePrefs();
+			prefs.setLegendFontSize(legendFontSize);
+			
 			PlotSpec marginalSpec = new PlotSpec(funcs, chars, scalar.name+" Dependence", scalar.toString(),
 					"Marginal Count");
 			marginalSpec.setLegendInset(true);
-			marginalSpec.addSubtitle(RupSetMapMaker.buildCPTLegend(rateCPT, "Log10 Rate (Denomiator)"));
+			marginalSpec.addSubtitle(RupSetMapMaker.buildCPTLegend(rateCPT, "Log10 Rate (Denomiator)", prefs));
 			specs.add(marginalSpec);
 			double maxMarginal = marginalAllHist.getMaxY();
 			if (logY)
@@ -1429,12 +1433,7 @@ public class SegmentationCalculator {
 			
 			System.out.println(getMagLabel(minMags[m])+" "+scalar+": "+scalarTrack);
 			
-			HeadlessGraphPanel gp = new HeadlessGraphPanel();
-			gp.setTickLabelFontSize(18);
-			gp.setAxisLabelFontSize(24);
-			gp.setPlotLabelFontSize(24);
-			gp.setLegendFontSize(legendFontSize);
-			gp.setBackgroundColor(Color.WHITE);
+			HeadlessGraphPanel gp = new HeadlessGraphPanel(prefs);
 			
 			int width = 1000;
 			int height = 300 + 400*specs.size();
