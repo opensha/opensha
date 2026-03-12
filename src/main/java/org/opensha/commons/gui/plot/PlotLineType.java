@@ -227,7 +227,8 @@ public enum PlotLineType {
 			} else {
 				lineShpRend.setSeriesShapesFilled(0, false);
 				lineShpRend.setDrawOutlines(true);
-				lineShpRend.setDefaultOutlineStroke(new BasicStroke(Float.min(1f, 0.1f*symWidth),
+				float strokeWidth = Float.max(0.1f, Float.min(1f, 0.1f*symWidth));
+				lineShpRend.setDefaultOutlineStroke(new BasicStroke(strokeWidth,
 						BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER));
 			}
 //			stdRend.setBaseShapesFilled(sym.isFilled());
