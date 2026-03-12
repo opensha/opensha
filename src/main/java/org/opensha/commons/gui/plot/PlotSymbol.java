@@ -60,78 +60,74 @@ public enum PlotSymbol {
 		throw new NoSuchElementException("No symbol exists for '"+desc+"'");
 	}
 	
-	private final static double SIZE = 2;
-	private final static double DELTA = SIZE / 2.0;
-	
 	public Shape buildShape(float width) {
-		return buildShape(width, PlotPreferences.DEFAULT);
+		Preconditions.checkArgument(width>0, "width must be >0");
+		if (this == X || this == BOLD_X) {
+			// supplied length is the "length of each arm"
+//			float diagonal = (float)(0.5*Math.sqrt(2d*width*width));
+			// but this actually looks to be the correct size
+			return ShapeUtils.createDiagonalCross(0.5f*width, this == BOLD_X ?
+					Float.max(0.25f, 0.25f*width) : Float.max(0.1f, 0.1f*width));
+		}
+		if (this == POLYGON || this == FILLED_POLYGON)
+			return getDefaultIrregularPolygon(width);
+		// will need half width
+		float halfW = 0.5f*width;
+		if (this == CROSS || this == BOLD_CROSS) {
+			// supplied length is the "length of each arm"
+			return ShapeUtils.createRegularCross(halfW, this == BOLD_CROSS ?
+					Float.max(0.25f, 0.25f*width) : Float.max(0.1f, 0.1f*width));
+		}
+		if (this == CIRCLE || this == FILLED_CIRCLE)
+			return new Ellipse2D.Float(-halfW, -halfW, width, width);
+		if (this == SQUARE || this == FILLED_SQUARE)
+			return new Rectangle.Float(-halfW, -halfW, width, width);
+		if (this == TRIANGLE || this == FILLED_TRIANGLE)
+			// supplied length is the "half-height of the triangle"
+			return ShapeUtils.createUpTriangle(halfW);
+		if (this == INV_TRIANGLE || this == FILLED_INV_TRIANGLE)
+			// supplied length is the "half-height of the triangle"
+			return ShapeUtils.createDownTriangle(halfW);
+		if (this == DIAMOND || this == FILLED_DIAMOND)
+			// supplied length is the "half-height of the diamond"
+			return ShapeUtils.createDiamond(halfW);
+		if (this == DASH)
+			return new Line2D.Float(-halfW, 0, halfW, 0);
+		if (this == BOLD_DASH)
+			return ShapeUtils.createLineRegion(new Line2D.Float(-halfW, 0, halfW, 0), this == BOLD_DASH ?
+					Float.max(0.5f, 0.25f*width) : Float.max(0.1f, 0.1f*width));
+		throw new UnsupportedOperationException("Can't build shape for symbol: "+toString());
 	}
 	
-	public Shape buildShape(float width, PlotPreferences prefs) {
-		Preconditions.checkArgument(width>0, "width must be >0");
-		if (prefs.isTrueSymbolSizing()) {
-			if (this == X || this == BOLD_X) {
-				// supplied length is the "length of each arm"
-//				float diagonal = (float)(0.5*Math.sqrt(2d*width*width));
-				return ShapeUtils.createDiagonalCross(0.5f*width, this == BOLD_X ?
-						Float.max(0.25f, 0.25f*width) : Float.max(0.1f, 0.1f*width));
-			}
-			if (this == POLYGON || this == FILLED_POLYGON)
-				return getDefaultIrregularPolygon(width);
-			// will need half width
-			float halfW = 0.5f*width;
-			if (this == CROSS || this == BOLD_CROSS) {
-				// supplied length is the "length of each arm"
-				return ShapeUtils.createRegularCross(halfW, this == BOLD_CROSS ?
-						Float.max(0.25f, 0.25f*width) : Float.max(0.1f, 0.1f*width));
-			}
-			if (this == CIRCLE || this == FILLED_CIRCLE)
-				return new Ellipse2D.Float(-halfW, -halfW, width, width);
-			if (this == SQUARE || this == FILLED_SQUARE)
-				return new Rectangle.Float(-halfW, -halfW, width, width);
-			if (this == TRIANGLE || this == FILLED_TRIANGLE)
-				// supplied length is the "half-height of the triangle"
-				return ShapeUtils.createUpTriangle(halfW);
-			if (this == INV_TRIANGLE || this == FILLED_INV_TRIANGLE)
-				// supplied length is the "half-height of the triangle"
-				return ShapeUtils.createDownTriangle(halfW);
-			if (this == DIAMOND || this == FILLED_DIAMOND)
-				// supplied length is the "half-height of the diamond"
-				return ShapeUtils.createDiamond(halfW);
-			if (this == DASH)
-				return new Line2D.Float(-halfW, 0, halfW, 0);
-			if (this == BOLD_DASH)
-				return ShapeUtils.createLineRegion(new Line2D.Float(-halfW, 0, halfW, 0), this == BOLD_DASH ?
-						Float.max(0.5f, 0.25f*width) : Float.max(0.1f, 0.1f*width));
-		} else {
-			if (this == CIRCLE || this == FILLED_CIRCLE)
-				return new Ellipse2D.Double(-DELTA-width/2,
-						-DELTA-width/2, SIZE+width, SIZE+width);
-			else if (this == SQUARE || this == FILLED_SQUARE)
-				return new Rectangle.Double(-DELTA-width/2,
-						-DELTA-width/2, SIZE+width, SIZE+width);
-			else if (this == TRIANGLE || this == FILLED_TRIANGLE)
-				return ShapeUtils.createUpTriangle(width);
-			else if (this == INV_TRIANGLE || this == FILLED_INV_TRIANGLE)
-				return ShapeUtils.createDownTriangle(width);
-			else if (this == DIAMOND || this == FILLED_DIAMOND)
-				return ShapeUtils.createDiamond(width);
-			else if (this == X)
-				return ShapeUtils.createDiagonalCross(width,0.1f);
-			else if (this == DASH)
-				return ShapeUtils.createLineRegion(new Line2D.Float(-width/2f, 0, width/2f, 0), 0.1f);
-			else if (this == BOLD_DASH)
-				return ShapeUtils.createLineRegion(new Line2D.Float(-width/2f, 0, width/2f, 0), 0.5f);
-			else if (this == BOLD_X)
-				return ShapeUtils.createDiagonalCross(width,width*0.25f);
-			else if (this == CROSS)
-				return ShapeUtils.createRegularCross(width,0.1f);
-			else if (this == BOLD_CROSS)
-				return ShapeUtils.createRegularCross(width,width*0.25f);
-			else if (this == POLYGON || this == FILLED_POLYGON)
-				return getDefaultIrregularPolygon(width);
-		}
-		throw new UnsupportedOperationException("Can't build shape for symbol: "+toString());
+	private final static double ORIG_SIZE = 2;
+	private final static double ORIG_DELTA = ORIG_SIZE / 2.0;
+	
+	/**
+	 * OpenSHA historically uses offset/padded/otherwise wrong symbol sizes; those are preserved
+	 * when {@link PlotPreferences#isTrueSymbolSizing()} is false. This method converts from true
+	 * symbol sizes to the originals for each symbol
+	 * @param width
+	 * @return
+	 */
+	float getOriginalSymbolSize(float width) {
+		if (this == CIRCLE || this == FILLED_CIRCLE)
+			return (float)(ORIG_SIZE+width);
+		else if (this == SQUARE || this == FILLED_SQUARE)
+			return (float)(ORIG_SIZE+width);
+		else if (this == TRIANGLE || this == FILLED_TRIANGLE)
+			return width*2f;
+		else if (this == INV_TRIANGLE || this == FILLED_INV_TRIANGLE)
+			return width*2f;
+		else if (this == DIAMOND || this == FILLED_DIAMOND)
+			return width*2f;
+		else if (this == X || this == PlotSymbol.BOLD_X)
+			return width*2f;
+		else if (this == DASH || this == BOLD_DASH)
+			return width;
+		else if (this == CROSS || this == BOLD_CROSS)
+			return width*2f;
+		else
+			return width;
 	}
 	
 	private static Path2D IRREGULAR_POLYGON;

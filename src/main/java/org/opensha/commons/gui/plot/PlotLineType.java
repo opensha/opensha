@@ -211,7 +211,9 @@ public enum PlotLineType {
 						"Renderer already exists but isn't correct type for plt="+plt+" and sym="+sym);
 			}
 			Preconditions.checkArgument(symWidth > 0, "symbol widht must be >0");
-			Shape shape = sym.buildShape(symWidth, prefs);
+			if (!prefs.isTrueSymbolSizing())
+				symWidth = sym.getOriginalSymbolSize(symWidth);
+			Shape shape = sym.buildShape(symWidth);
 			Preconditions.checkNotNull(shape, "Couldn't build shape for symbol: "+sym);
 //			renderer.setShape(shape);
 			renderer.setSeriesShape(0, shape);
