@@ -15,7 +15,7 @@ import org.opensha.commons.calc.WeightedSampler;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
-import org.opensha.commons.logicTree.LogicTreeLevel.RandomlySampledLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.RandomlyGeneratedLevel;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
@@ -356,10 +356,12 @@ public class RandomSegModelSampler implements BranchDependentSampler<RandomSegMo
 	public static class Node extends AbstractSamplingNode<RandomSegModelSampler> implements SegmentationModelBranchNode {
 		
 		@SuppressWarnings("unused") // deserialization
-		private Node() {}
+		private Node() {
+			super();
+		}
 		
-		public Node(int index, long seed, double weight) {
-			super("Segmentation Model Sample "+index, "SegSample"+index, "SegSample"+index, weight, seed);
+		public Node(String name, String shortName, String filePrefix, long seed, double weight) {
+			super(name, shortName, filePrefix, weight, seed);
 		}
 
 		@Override
@@ -412,7 +414,7 @@ public class RandomSegModelSampler implements BranchDependentSampler<RandomSegMo
 
 	}
 	
-	public static class Level extends RandomlySampledLevel<Node> {
+	public static class Level extends RandomlyGeneratedLevel<Node> {
 		
 		public Level() {
 			
@@ -438,12 +440,27 @@ public class RandomSegModelSampler implements BranchDependentSampler<RandomSegMo
 
 		@Override
 		public Node buildNodeInstance(int index, long seed, double weight) {
-			return new Node(index, seed, weight);
+			return new Node(getNodeName(index), getNodeShortName(index), getNodeFilePrefix(index), seed, weight);
 		}
 
 		@Override
 		public Class<? extends Node> getType() {
 			return Node.class;
+		}
+
+		@Override
+		protected String getNodeNamePrefix() {
+			return "Segmentation Model Sample ";
+		}
+
+		@Override
+		protected String getNodeShortNamePrefix() {
+			return "SegSample";
+		}
+
+		@Override
+		protected String getNodeFilePrefix() {
+			return "SegSample";
 		}
 		
 	}

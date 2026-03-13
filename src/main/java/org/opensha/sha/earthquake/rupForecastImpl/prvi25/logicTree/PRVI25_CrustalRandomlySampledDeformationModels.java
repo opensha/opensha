@@ -18,7 +18,7 @@ import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
-import org.opensha.commons.logicTree.LogicTreeNode.RandomlySampledNode;
+import org.opensha.commons.logicTree.LogicTreeNode.RandomlyGeneratedNode;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -39,13 +39,7 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 //@Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME) // if rate balancing enabled
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME) // if rate balancing disabled
-public class PRVI25_CrustalRandomlySampledDeformationModels implements RandomlySampledNode, RupSetDeformationModel {
-	
-	private String name;
-	private String shortName;
-	private String prefix;
-	private double weight;
-	private long seed;
+public class PRVI25_CrustalRandomlySampledDeformationModels extends RandomlyGeneratedNode implements RupSetDeformationModel {
 	
 	private static final String PATH = "/data/erf/prvi25/def_models/crustal/synth_dm_pdfs";
 	private static Map<Integer, DiscretizedFunc> pdfs = null;
@@ -54,47 +48,8 @@ public class PRVI25_CrustalRandomlySampledDeformationModels implements RandomlyS
 	@SuppressWarnings("unused") // for deserialization
 	private PRVI25_CrustalRandomlySampledDeformationModels() {}
 	
-	PRVI25_CrustalRandomlySampledDeformationModels(int index, long seed, double weight) {
-		init("Deformation Model Sample "+index, "DMSample"+index, "DMSample"+index, weight, seed);
-	}
-
-	@Override
-	public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
-		return weight;
-	}
-
-	@Override
-	public String getFilePrefix() {
-		return prefix;
-	}
-
-	@Override
-	public String getShortName() {
-		return shortName;
-	}
-
-	@Override
-	public String getName() {
-		return name;
-	}
-
-	@Override
-	public long getSeed() {
-		return seed;
-	}
-	
-	@Override
-	public String toString() {
-		return shortName;
-	}
-
-	@Override
-	public void init(String name, String shortName, String prefix, double weight, long seed) {
-		this.name = name;
-		this.shortName = shortName;
-		this.prefix = prefix;
-		this.weight = weight;
-		this.seed = seed;
+	PRVI25_CrustalRandomlySampledDeformationModels(String name, String shortName, String filePrefix, long seed, double weight) {
+		super(name, shortName, filePrefix, weight, seed);
 	}
 
 	@Override
@@ -118,7 +73,7 @@ public class PRVI25_CrustalRandomlySampledDeformationModels implements RandomlyS
 	
 	private Map<Integer, Double> drawSectSlipRates(List<? extends FaultSection> fullSects) throws IOException {
 		checkLoadPDFs(fullSects);
-		Random rand = new Random(seed);
+		Random rand = new Random(getSeed());
 		Map<Integer, Double> randSlips = new HashMap<>(fullSects.size());
 		for (FaultSection sect : fullSects) {
 			DiscretizedFunc pdf = pdfs.get(sect.getSectionId());

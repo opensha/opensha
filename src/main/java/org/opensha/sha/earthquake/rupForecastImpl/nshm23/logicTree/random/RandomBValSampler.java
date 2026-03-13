@@ -8,7 +8,7 @@ import org.opensha.commons.calc.WeightedSampler;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
-import org.opensha.commons.logicTree.LogicTreeLevel.RandomlySampledLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.RandomlyGeneratedLevel;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
@@ -70,8 +70,8 @@ public class RandomBValSampler implements BranchDependentSampler<RandomBValSampl
 		@SuppressWarnings("unused") // deserialization
 		private Node() {}
 		
-		public Node(int index, long seed, double weight) {
-			super("Section b-value Sample "+index, "bSample"+index, "bSample"+index, weight, seed);
+		public Node(String name, String shortName, String filePrefix, long seed, double weight) {
+			super(name, shortName, filePrefix, weight, seed);
 		}
 
 		@Override
@@ -84,7 +84,7 @@ public class RandomBValSampler implements BranchDependentSampler<RandomBValSampl
 
 	}
 	
-	public static class Level extends RandomlySampledLevel<Node> {
+	public static class Level extends RandomlyGeneratedLevel<Node> {
 		
 		public Level() {
 			
@@ -110,12 +110,27 @@ public class RandomBValSampler implements BranchDependentSampler<RandomBValSampl
 
 		@Override
 		public Node buildNodeInstance(int index, long seed, double weight) {
-			return new Node(index, seed, weight);
+			return new Node(getNodeName(index), getNodeShortName(index), getNodeFilePrefix(index), seed, weight);
 		}
 
 		@Override
 		public Class<? extends Node> getType() {
 			return Node.class;
+		}
+
+		@Override
+		protected String getNodeNamePrefix() {
+			return "Section b-value Sample ";
+		}
+
+		@Override
+		protected String getNodeShortNamePrefix() {
+			return "bSample";
+		}
+
+		@Override
+		protected String getNodeFilePrefix() {
+			return "bSample";
 		}
 		
 	}

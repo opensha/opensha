@@ -1,7 +1,10 @@
 package org.opensha.commons.logicTree;
 
 import java.io.Serializable;
+import java.util.Objects;
 
+import org.apache.commons.rng.simple.RandomSource;
+import org.apache.commons.statistics.distribution.ContinuousDistribution;
 import org.opensha.commons.data.ShortNamed;
 
 import com.google.gson.TypeAdapter;
@@ -120,13 +123,33 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 		public void init(String name, String shortName, String prefix, double weight);
 	}
 	
-	/**
-	 * Randomly sampled logic tree node. Must have a default constructor for deserialization, and be fully initializable
-	 * via that constructor and the {@link RandomlySampledNode#init(String, String, String, double, long)} method.
-	 */
-	public static interface RandomlySampledNode extends LogicTreeNode {
+	public static interface ValuedLogicTreeNode<E> extends LogicTreeNode {
 		
-		public long getSeed();
+		public E getValue();
+	}
+	
+	/**
+	 * Randomly-generated logic tree node that is built on the fly from its own random seed. Must have a default
+	 * constructor for deserialization, and be fully initializable via that constructor and the
+	 * {@link RandomlyGeneratedNode#init(String, String, String, double, long)} method.
+	 */
+	public static abstract class RandomlyGeneratedNode implements LogicTreeNode {
+		
+		private String name;
+		private String shortName;
+		private String prefix;
+		private double weight;
+		private long seed;
+		
+		protected RandomlyGeneratedNode() {}
+
+		public RandomlyGeneratedNode(String name, String shortName, String prefix, double weight, long seed) {
+			init(name, shortName, prefix, weight, seed);
+		}
+		
+		public long getSeed() {
+			return seed;
+		}
 		
 		/**
 		 * Initializes this node with the given properties and seed
@@ -137,7 +160,57 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 		 * @param weight
 		 * @param seed
 		 */
-		public void init(String name, String shortName, String prefix, double weight, long seed);
+		public void init(String name, String shortName, String prefix, double weight, long seed) {
+			this.name = name;
+			this.shortName = shortName;
+			this.prefix = prefix;
+			this.weight = weight;
+			this.seed = seed;
+		}
+
+		@Override
+		public String getShortName() {
+			return shortName;
+		}
+
+		@Override
+		public String getName() {
+			return name;
+		}
+
+		@Override
+		public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+			return weight;
+		}
+
+		@Override
+		public String getFilePrefix() {
+			return prefix;
+		}
+		
+		@Override
+		public String toString() {
+			return shortName;
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(name, prefix, seed, shortName, weight);
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			RandomlyGeneratedNode other = (RandomlyGeneratedNode) obj;
+			return Objects.equals(name, other.name) && Objects.equals(prefix, other.prefix) && seed == other.seed
+					&& Objects.equals(shortName, other.shortName)
+					&& Double.doubleToLongBits(weight) == Double.doubleToLongBits(other.weight);
+		}
 		
 	}
 

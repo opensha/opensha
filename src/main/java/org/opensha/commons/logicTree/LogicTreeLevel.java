@@ -8,19 +8,30 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.function.Supplier;
+import java.util.random.RandomGenerator;
 
+import org.apache.commons.rng.UniformRandomProvider;
+import org.apache.commons.rng.simple.RandomSource;
+import org.apache.commons.statistics.distribution.ContinuousDistribution;
+import org.apache.commons.statistics.distribution.ContinuousDistribution.Sampler;
 import org.opensha.commons.data.ShortNamed;
+import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.logicTree.Affects.Affected;
 import org.opensha.commons.logicTree.DoesNotAffect.NotAffected;
 import org.opensha.commons.logicTree.LogicTreeBranch.NodeTypeAdapter;
 import org.opensha.commons.logicTree.LogicTreeNode.FileBackedNode;
-import org.opensha.commons.logicTree.LogicTreeNode.RandomlySampledNode;
+import org.opensha.commons.logicTree.LogicTreeNode.RandomlyGeneratedNode;
+import org.opensha.commons.logicTree.LogicTreeNode.ValuedLogicTreeNode;
 import org.opensha.commons.util.FileNameUtils;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 
 import com.google.common.base.Preconditions;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 
 public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNamed {
@@ -480,7 +491,184 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		
 	}
 	
-	public static abstract class RandomlySampledLevel<E extends RandomlySampledNode> extends LogicTreeLevel<E> {
+	public static abstract class RandomLevel<E extends LogicTreeNode> extends LogicTreeLevel<E> {
+		
+		protected RandomLevel() {}
+		
+		protected abstract String getNodeNamePrefix();
+		protected abstract String getNodeShortNamePrefix();
+		protected abstract String getNodeFilePrefix();
+		
+		protected String getNodeName(int index) {
+			return getNodeNamePrefix()+index;
+		}
+		protected String getNodeShortName(int index) {
+			return getNodeShortNamePrefix()+index;
+		}
+		protected String getNodeFilePrefix(int index) {
+			return getNodeFilePrefix()+index;
+		}
+		
+	}
+	
+	public static abstract class RandomlySampledLevel<E> extends RandomLevel<ValuedLogicTreeNode<E>> {
+		
+		private String levelName;
+		private String levelShortName;
+		
+		private double weightEach;
+		private List<ValueNode> nodes;
+		
+		protected RandomlySampledLevel() {}
+
+		public RandomlySampledLevel(String levelName, String levelShortName) {
+			this.levelName = levelName;
+			this.levelShortName = levelShortName;
+		}
+		
+		public abstract void build(long seed, int numNodes);
+		
+		protected void build(Supplier<E> randomValueSupplier, int numNodes) {
+			nodes = new ArrayList<>(numNodes);
+			for (int i=0; i<numNodes; i++) {
+				nodes.add(new ValueNode(i, randomValueSupplier.get()));
+			}
+			weightEach = 1d/(double)numNodes;
+		}
+		
+		void setValuesUnchecked(List<Object> values) {
+			nodes = new ArrayList<>(values.size());
+			int numValues = values.size();
+			for (int i=0; i<numValues; i++) {
+				nodes.add(new ValueNode(i, (E)values.get(i)));
+			}
+			weightEach = 1d/(double)numValues;
+		}
+		
+		public void setValues(List<? extends E> values) {
+			nodes = new ArrayList<>(values.size());
+			int numValues = values.size();
+			for (int i=0; i<numValues; i++) {
+				nodes.add(new ValueNode(i, values.get(i)));
+			}
+			weightEach = 1d/(double)numValues;
+		}
+		
+		private class ValueNode implements ValuedLogicTreeNode<E> {
+			
+			private int index;
+			private E value;
+
+			private ValueNode(int index, E value) {
+				this.index = index;
+				this.value = value;
+			}
+
+			@Override
+			public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+				return weightEach;
+			}
+
+			@Override
+			public String getFilePrefix() {
+				return RandomlySampledLevel.this.getNodeFilePrefix(index);
+			}
+
+			@Override
+			public String getShortName() {
+				return RandomlySampledLevel.this.getNodeShortName(index);
+			}
+
+			@Override
+			public String getName() {
+				return RandomlySampledLevel.this.getNodeName(index);
+			}
+
+			@Override
+			public E getValue() {
+				return value;
+			}
+			
+		}
+
+		@Override
+		public String getShortName() {
+			return levelShortName;
+		}
+
+		@Override
+		public String getName() {
+			return levelName;
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public Class<? extends ValuedLogicTreeNode<E>> getType() {
+			return (Class<? extends ValuedLogicTreeNode<E>>) (Class<?>) ValueNode.class;
+		}
+
+		@Override
+		public List<? extends ValuedLogicTreeNode<E>> getNodes() {
+			Preconditions.checkNotNull(nodes, "Nodes have not yet been built/set");
+			return Collections.unmodifiableList(nodes);
+		}
+		
+		@Override
+		public boolean isMember(LogicTreeNode node) {
+			return getType().isInstance(node) && nodes.contains(node);
+		}
+		
+	}
+	
+	public static abstract class WeightedListSampledLevel<E> extends RandomlySampledLevel<E> {
+
+		private WeightedList<E> weightedValues;
+		
+		protected WeightedListSampledLevel() {}
+
+		public WeightedListSampledLevel(String levelName, String levelShortName, WeightedList<E> weightedValues) {
+			super(levelName, levelShortName);
+			this.weightedValues = weightedValues;
+		}
+
+		@Override
+		public void build(long seed, int numSamples) {
+			Random rand = new Random(seed);
+			build(()->{return weightedValues.sample(rand);}, numSamples);
+		}
+		
+	}
+	
+	public static abstract class ContinuousDistributionSampledLevel extends RandomlySampledLevel<Double> {
+
+		private ContinuousDistribution dist;
+		
+		protected ContinuousDistributionSampledLevel() {}
+
+		public ContinuousDistributionSampledLevel(String levelName, String levelShortName, ContinuousDistribution dist) {
+			super(levelName, levelShortName);
+			this.dist = dist;
+		}
+		
+		@Override
+		public void build(long seed, int numSamples) {
+			build(RandomSource.XO_RO_SHI_RO_128_PP.create(seed), numSamples);
+		}
+		
+		public void build(UniformRandomProvider rand, int numSamples) {
+			Sampler sampler = dist.createSampler(rand);
+			build(()->{return sampler.sample();}, numSamples);
+		}
+		
+		public ContinuousDistribution getDistribution() {
+			return dist;
+		}
+		
+	}
+	
+	public static abstract class RandomlyGeneratedLevel<E extends RandomlyGeneratedNode> extends RandomLevel<E> {
+		
+		protected RandomlyGeneratedLevel() {}
 		
 		private List<? extends E> nodes;
 		
@@ -513,7 +701,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		public void setNodes(List<? extends LogicTreeNode> nodes) {
 			List<E> cast = new ArrayList<>(nodes.size());
 			for (LogicTreeNode node : nodes) {
-				Preconditions.checkState(node instanceof RandomlySampledNode);
+				Preconditions.checkState(node instanceof RandomlyGeneratedNode);
 				Preconditions.checkState(getType().isInstance(node));
 				cast.add((E)node);
 			}
@@ -530,9 +718,9 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		
 		@Override
 		public boolean isMember(LogicTreeNode node) {
-			if (!(node instanceof RandomlySampledNode))
+			if (!(node instanceof RandomlyGeneratedNode))
 				return false;
-			long seed = ((RandomlySampledNode)node).getSeed();
+			long seed = ((RandomlyGeneratedNode)node).getSeed();
 			for (E nodeTest : getNodes())
 				if (node.equals(nodeTest) || seed == nodeTest.getSeed())
 					return true;
@@ -590,8 +778,44 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 				out.name("affectsAll").value(true);
 			if (level.affectsNone)
 				out.name("affectsNone").value(true);
-			if (writeNodes) {
-				out.name("nodes").beginArray();;
+			if (level instanceof RandomLevel<?>) {
+				List<? extends E> nodes = level.getNodes();
+				Preconditions.checkState(!nodes.isEmpty());
+				double weight0 = nodes.get(0).getNodeWeight(null);
+				boolean allSameWeight = true;
+				for (int i=1; allSameWeight && i<nodes.size(); i++)
+					allSameWeight = nodes.get(i).getNodeWeight(null) == weight0;
+				out.name("nodeType").value(level.getType().getName());
+				out.name("nodeNamePrefix").value(((RandomLevel<?>)level).getNodeNamePrefix());
+				out.name("nodeStringPrefix").value(((RandomLevel<?>)level).getNodeShortNamePrefix());
+				out.name("nodeFilePrefix").value(((RandomLevel<?>)level).getNodeFilePrefix());
+				if (allSameWeight) {
+					out.name("weightEach").value(weight0);
+				} else {
+					out.name("weights").beginArray();
+					for (E node : nodes)
+						out.value(node.getNodeWeight(null));
+					out.endArray();
+				}
+				if (level instanceof RandomlySampledLevel<?>) {
+					TypeAdapter adapter = JsonAdapterHelper.getTypeAdapter(level.getType(), true);
+					Preconditions.checkNotNull(adapter, "Couldn't locate adapter for class: %s", level.getType());
+					out.name("values").beginArray();
+					for (ValuedLogicTreeNode<?> node : ((RandomlySampledLevel<?>)level).getNodes()) {
+						Object value = node.getValue();
+						adapter.write(out, value);
+					}
+					out.endArray();
+				} else if (level instanceof RandomlyGeneratedLevel<?>) {
+					out.name("seeds").beginArray();
+					for (E node : nodes)
+						out.value(((RandomlyGeneratedNode)node).getSeed());
+					out.endArray();
+				} else {
+					throw new IllegalStateException("Cannot serialize level with type: "+level.getClass());
+				}
+			} else if (writeNodes) {
+				out.name("nodes").beginArray();
 				for (LogicTreeNode node : level.getNodes())
 					nodeAdapter.write(out, node);
 				out.endArray();
@@ -612,6 +836,16 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			boolean affectsNone = false;
 			List<LogicTreeNode> nodes = new ArrayList<>();
 			in.beginObject();
+			
+			// for random levels
+			String nodeClassName = null;
+			String nodeNamePrefix = null;
+			String nodeShortNamePrefix = null;
+			String nodeFilePrefix = null;
+			Double weightEach = null;
+			List<Double> weights = null;
+			List<Object> values = null;
+			List<Long> seeds = null;
 			
 			while (in.hasNext()) {
 				switch (in.nextName()) {
@@ -646,9 +880,62 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					affectsNone = in.nextBoolean();
 					break;
 				case "nodes":
+					Preconditions.checkState(nodes.isEmpty(), "Nodes already supplied?");
 					in.beginArray();
 					while (in.hasNext())
 						nodes.add(nodeAdapter.read(in));
+					in.endArray();
+					break;
+				case "nodeType":
+					nodeClassName = in.nextString();
+					break;
+				case "weightEach":
+					weightEach = in.nextDouble();
+					break;
+				case "weights":
+					weights = new ArrayList<>();
+					in.beginArray();
+					while (in.hasNext())
+						weights.add(in.nextDouble());
+					in.endArray();
+					break;
+				case "seeds":
+					seeds = new ArrayList<>();
+					in.beginArray();
+					while (in.hasNext())
+						seeds.add(in.nextLong());
+					in.endArray();
+					break;
+				case "values":
+					values = new ArrayList<>();
+					in.beginArray();
+					Preconditions.checkNotNull(nodeClassName, "Sampled values encountered by nodeType not specified");
+					TypeAdapter adapter = null;
+					try {
+						Class<?> rawClass = Class.forName(nodeClassName);
+						adapter = JsonAdapterHelper.getTypeAdapter(rawClass, true);
+						Preconditions.checkNotNull(adapter, "Couldn't locate adapter for class: %s", nodeClassName);
+					} catch (ClassNotFoundException e) {
+						System.err.println("WARNING: couldn't locate logic tree branch node class '"+nodeClassName+"', "
+								+ "loading plain/hardcoded version instead");
+					}  catch (ClassCastException e) {
+						System.err.println("WARNING: logic tree branch node class '"+nodeClassName+"' is of the wrong type, "
+								+ "loading plain/hardcoded version instead");
+					} catch (NullPointerException e) {
+						System.err.println("WARNING: adapter for logic tree branch node class '"+nodeClassName+"' could not be identified, "
+								+ "loading plain/hardcoded version instead");
+					}
+					int index = 0;
+					while (in.hasNext()) {
+						if (adapter == null) {
+							double weight = weights == null ? weightEach : weights.get(index);
+							nodes.add(new FileBackedNode(nodeNamePrefix+index, nodeShortNamePrefix+index, weight, nodeFilePrefix+index));
+						} else {
+							values.add(adapter.read(in));
+						}
+						index++;
+						
+					}
 					in.endArray();
 					break;
 
@@ -707,8 +994,25 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					
 					level = constructor.newInstance();
 					
-					if (level instanceof RandomlySampledLevel<?>)
-						((RandomlySampledLevel<?>)level).setNodes(nodes);
+					if (level instanceof RandomlyGeneratedLevel<?>) {
+						if (seeds != null) {
+							// set from seeds
+							Preconditions.checkState(nodes.isEmpty(), "Have both seeds and nodes list?");
+							for (int i=0; i<seeds.size(); i++) {
+								double weight = weights == null ? weightEach : weights.get(i);
+								nodes.add(((RandomlyGeneratedLevel<?>)level).buildNodeInstance(i, seeds.get(i), weight));
+							}
+						} else {
+							// legacy, load from nodes
+							Preconditions.checkNotNull(nodes);
+						}
+						((RandomlyGeneratedLevel<?>)level).setNodes(nodes);
+					} else if (level instanceof RandomlySampledLevel<?>) {
+						Preconditions.checkState(nodes.isEmpty(), "Have both seeds and nodes list?");
+						Preconditions.checkNotNull(values, "Have no values for sampled level");
+						Preconditions.checkNotNull(weightEach, "Sampled values currently require equal weights");
+						((RandomlySampledLevel<?>)level).setValuesUnchecked(values);
+					}
 					if (affectsAll)
 						level.setAffectsAll();
 					else if (affectsNone)
@@ -737,16 +1041,22 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 				else
 					fileLevel.setAffected(affected, notAffected, false);
 				level = (LogicTreeLevel<E>) fileLevel;
-				if (nodes != null) {
-					for (LogicTreeNode node : nodes) {
-						FileBackedNode fileNode;
-						if (node instanceof FileBackedNode)
-							fileNode = (FileBackedNode)node;
-						else
-							fileNode = new FileBackedNode(node.getName(), node.getShortName(),
-									node.getNodeWeight(null), node.getFilePrefix());
-						fileLevel.addChoice(fileNode);
+				if (nodes.isEmpty() && (seeds != null || values != null)) {
+					// failed random load
+					int num = seeds != null ? seeds.size() : values.size();
+					for (int i=0; i<num; i++) {
+						double weight = weights == null ? weightEach : weights.get(i);
+						nodes.add(new FileBackedNode(nodeNamePrefix+i, nodeShortNamePrefix+i, weight, nodeFilePrefix+i));
 					}
+				}
+				for (LogicTreeNode node : nodes) {
+					FileBackedNode fileNode;
+					if (node instanceof FileBackedNode)
+						fileNode = (FileBackedNode)node;
+					else
+						fileNode = new FileBackedNode(node.getName(), node.getShortName(),
+								node.getNodeWeight(null), node.getFilePrefix());
+					fileLevel.addChoice(fileNode);
 				}
 			}
 			

@@ -80,7 +80,7 @@ import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.FileBackedLevel;
-import org.opensha.commons.logicTree.LogicTreeLevel.RandomlySampledLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.RandomlyGeneratedLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils;
@@ -2031,7 +2031,7 @@ public class LogicTreeHazardCompare {
 					boolean firstVaryingLevel = true;
 					for (int l=0; l<numLevels; l++) {
 						LogicTreeLevel<?> level = tree.getLevels().get(l);
-						if (level instanceof RandomlySampledLevel<?> || level instanceof FileBackedLevel) {
+						if (level instanceof RandomlyGeneratedLevel<?> || level instanceof FileBackedLevel) {
 							// either a random sampling level, or could have been (maybe deserialization failed is now is file backed)
 							// we want to detect the case where the random sampling is across the whole tree, i.e., values
 							// are never reused

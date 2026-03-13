@@ -1,6 +1,8 @@
 package org.opensha.commons.logicTree;
 
 import com.google.common.base.Preconditions;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.TypeAdapter;
 import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.stream.JsonReader;
@@ -29,13 +31,32 @@ public class JsonAdapterHelper {
     }
 
     protected static TypeAdapter getTypeAdapter(Object o) {
+       return getTypeAdapter(o, false);
+    }
+    
+    private static Gson defaultGson;
+
+    protected static TypeAdapter getTypeAdapter(Object o, boolean revertToGsonDefault) {
         Class c = getTypeAdapterClass(o);
+        return getTypeAdapter(c, revertToGsonDefault);
+    }
+
+    protected static TypeAdapter getTypeAdapter(Class c, boolean revertToGsonDefault) {
         if (c != null) {
             try {
                 return (TypeAdapter) c.getDeclaredConstructor().newInstance();
             } catch (IllegalAccessException | NoSuchMethodException | InvocationTargetException | InstantiationException e) {
+            	if (revertToGsonDefault) {
+                	if (defaultGson == null)
+                		defaultGson = new GsonBuilder().create();
+                	return defaultGson.getAdapter(c);
+            	}
                 return null;
             }
+        } else if (revertToGsonDefault) {
+        	if (defaultGson == null)
+        		defaultGson = new GsonBuilder().create();
+        	return defaultGson.getAdapter(c);
         } else {
             return null;
         }

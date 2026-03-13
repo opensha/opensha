@@ -7,10 +7,10 @@ import java.util.Random;
 import org.opensha.commons.calc.WeightedSampler;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
-import org.opensha.commons.logicTree.LogicTreeNode.RandomlySampledNode;
+import org.opensha.commons.logicTree.LogicTreeNode.RandomlyGeneratedNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 
-abstract class AbstractSamplingNode<E extends BranchDependentSampler<E>> implements RandomlySampledNode {
+abstract class AbstractSamplingNode<E extends BranchDependentSampler<E>> extends RandomlyGeneratedNode {
 	
 	private String name;
 	private String shortName;
@@ -18,10 +18,12 @@ abstract class AbstractSamplingNode<E extends BranchDependentSampler<E>> impleme
 	private double weight;
 	private long seed;
 
-	protected AbstractSamplingNode() {};
+	protected AbstractSamplingNode() {
+		super();
+	}
 	
-	protected AbstractSamplingNode(String name, String shortName, String prefix, double weight, long seed) {
-		init(name, shortName, prefix, weight, seed);
+	public AbstractSamplingNode(String name, String shortName, String prefix, double weight, long seed) {
+		super(name, shortName, prefix, weight, seed);
 	}
 
 	@Override
