@@ -39,6 +39,7 @@ import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.modules.OpenSHA_Module;
+import org.opensha.refFaultParamDb.vo.Fault;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
@@ -1123,6 +1124,38 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 	private static double[] example_fractiles_default =  { 0d, 0.5, 0.9, 0.95, 0.975, 0.99, 0.999, 1d };
 	
 	public enum HistScalar {
+		MULTI_PROPORTIONS("Multi Rupture Proportions",
+				"crustal area/subduction area",
+		"Area of crustal component / area of subduction component.") {
+			@Override
+			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
+				double min = Math.floor(Math.log(scalarTrack.getMin()));
+				double max = Math.ceil(Math.log(scalarTrack.getMax()));
+				int num = (int)Math.max(5, Math.max(20, max - min + 2));
+				return new HistogramFunction(min, max, num);
+			}
+
+			@Override
+			public double getValue(int index, FaultSystemRupSet rupSet, ClusterRupture rup,
+								   SectionDistanceAzimuthCalculator distAzCalc) {
+				List<FaultSection> sections = rup.buildOrderedSectionList();
+				double subduction = sections.stream().filter(s -> s.getSectionName().contains("row:")).mapToDouble(s -> s.getArea(false)).sum();
+				double crustal = sections.stream().filter(s -> !s.getSectionName().contains("row:")).mapToDouble(s -> s.getArea(false)).sum();
+				if(subduction == 0) {
+					return 1;
+				}
+				return crustal/subduction;
+			}
+			public boolean isLogX() {
+				return true;
+			}
+
+
+			@Override
+			public double[] getExampleRupPlotFractiles() {
+				return example_fractiles_default;
+			}
+		},
 		LENGTH("Rupture Length", "Length (km)",
 				"Total length (km) of the rupture, not including jumps or gaps.") {
 			@Override
