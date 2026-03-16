@@ -558,8 +558,8 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 			Point2D point = (Point2D)it2.next();
 			double x = point.getX();
 			double y = point.getY();
-//			b.append((float) x + "\t  " + (float) y + '\n');
-			b.append(x + "\t  " + y + '\n');
+			b.append((float) x + "\t  " + (float) y + '\n');
+//			b.append(x + "\t  " + y + '\n');
 		}
 		return b.toString();
 	}
