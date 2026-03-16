@@ -27,19 +27,19 @@ import com.google.common.base.Preconditions;
  * test for your purposes using the GUI or by generating plots (as exemplified below).
  * 
  * This class was updated in 2026 to provide numerical stability for Weibull and Lognormal (generalizing previous 
- * BPT-specific methods).
+ * BPT-specific methods and tests (now deleted)).
  * 
  * Numerical precision is specified by the NUMERICAL_PRECISION, and the safeTimeSinceLast is defined as the point where
  * 1.0-CDF = NUMERICAL_PRECISION (survivor function).  NUMERICAL_PRECISION is used a few other places as well.
  * 
  * The "extrapolate" option on some methods extends the last numerically safe conditional probability out to higher
- * times since last event.
+ * times since last event; otherwise Double.NaN is returned.
  * 
  * The above safety measures were evaluated by generating and reviewing an extensive set of plots for parameter 
  * values used in 2026 NSHM TD calculations 
  * (see scratch.ned.longTermTD2026.LongTermTD_2026_Analyses.generateRenewalModelPlots(boolean).
  * 
- * A method could/should be added for sampling random values.
+ * A method could/should be added for sampling random values?
  * 
  <p>
  *
