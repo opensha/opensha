@@ -7,7 +7,8 @@ import org.opensha.sha.faultSurface.cache.TestSurfaceDistanceCaches;
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
 	TestSurfaceDistanceCaches.class,
-	GeoJSONFaultSectionTest.class
+	GeoJSONFaultSectionTest.class,
+	FaultSectionTectonicRegionTest.class
 	})
 
 // TODO add quad surface when finalized
