@@ -53,10 +53,8 @@ public final class LognormalDistCalc extends EqkProbDistCalc implements Paramete
 	 */
 	protected void computeDistributions() {
 		pdf = new EvenlyDiscretizedFunc(0,numPoints,deltaX);
-		cdf = new EvenlyDiscretizedFunc(0,numPoints,deltaX);
-		// set first y-values to zero
+		// set first y-value to zero
 		pdf.set(0,0);
-		cdf.set(0,0);
 		
 		// convert mean and aperiodicity to mu and sigma
 		double sigma = Math.sqrt(Math.log(aperiodicity*aperiodicity+1));
@@ -65,18 +63,18 @@ public final class LognormalDistCalc extends EqkProbDistCalc implements Paramete
 		
 		double temp1 = sigma*Math.sqrt(2.0*Math.PI);
 		double temp2 = 2.0*sigma*sigma;
-		double t,pd,cd=0;
+		double t,pd;
 		for(int i=1; i< pdf.size(); i++) { // skip first point because it's NaN
-			t = cdf.getX(i);
+			t = pdf.getX(i);
 			pd = Math.exp(-(Math.log(t)-mu)*(Math.log(t)-mu)/temp2)/(temp1*t);
 			if(Double.isNaN(pd)){
 				pd=0;
 				System.out.println("pd=0 for i="+i);
 			}
-			cd += deltaX*(pd+pdf.getY(i-1))/2;  // Trapizoidal integration
 			pdf.set(i,pd);
-			cdf.set(i,cd);
 		}
+		cdf = computeCDFfromPDF(pdf);
+
 	}
 
 	

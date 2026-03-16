@@ -82,7 +82,7 @@ public class ProbabilityDistGUI extends JFrame implements ParameterChangeListene
 
 	public final static String DURATION_PARAM_NAME = "Duration";
 	protected final static String DURATION_PARAM_INFO = "Duration of the forecast";
-	protected final static Double DEFAULT_DURATION_PARAM_VAL = Double.valueOf(30);
+	protected final static Double DEFAULT_DURATION_PARAM_VAL = Double.valueOf(5e-5);
 	private DoubleParameter durationParam;
 
 	public final static String HIST_OPEN_INTERVAL_PARAM_NAME = "Historic Open Interval";

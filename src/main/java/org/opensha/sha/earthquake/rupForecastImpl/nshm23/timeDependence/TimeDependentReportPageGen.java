@@ -4,13 +4,17 @@ import java.awt.Color;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
 import org.jfree.chart.ui.RectangleAnchor;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
@@ -21,15 +25,26 @@ import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.cpt.CPTVal;
+import org.opensha.sha.earthquake.ProbEqkRupture;
+import org.opensha.sha.earthquake.calc.ERF_Calculator;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.erf.td.AperiodicityModels;
+import org.opensha.sha.earthquake.faultSysSolution.erf.td.FSS_ProbabilityModel;
+import org.opensha.sha.earthquake.faultSysSolution.erf.td.FSS_ProbabilityModels;
+import org.opensha.sha.earthquake.faultSysSolution.erf.td.TimeDepFaultSystemSolutionERF;
+import org.opensha.sha.earthquake.faultSysSolution.erf.td.UCERF3_ProbabilityModel;
+import org.opensha.sha.earthquake.faultSysSolution.erf.td.WG02_ProbabilityModel;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.param.HistoricOpenIntervalParam;
+import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
+import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 import org.opensha.sha.earthquake.param.MagDependentAperiodicityOptions;
 import org.opensha.sha.earthquake.param.MagDependentAperiodicityParam;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
@@ -44,6 +59,8 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.timeDependence.DOLE_Sub
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
+import com.google.common.io.Files;
 
 import scratch.UCERF3.analysis.FaultSysSolutionERF_Calc;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
@@ -99,24 +116,21 @@ public class TimeDependentReportPageGen {
 		return ntsCPT;
 	}
 	
-	public static String getExplanationText(PaleoMappingAlgorithm mappingAlg, DataToInclude dataToInclude) {
+	public static String getExplanationText(PaleoMappingAlgorithm mappingAlg, DataToInclude dataToInclude, FSS_ProbabilityModel probModel) {
 		String line = "";
 		
 //		String doleString = "date-of-last-event [DOLE, Hatem et al., 2025] (https://data.usgs.gov/datacatalog/data/USGS:65c64fc9d34ef4b119cb28e9)";
 		String doleString = "date-of-last-event data <a href=\"https://data.usgs.gov/datacatalog/data/USGS:65c64fc9d34ef4b119cb28e9\">(DOLE, Hatem et al., 2025)</a>"; //[DOLE, Hatem et al., 2025] (https://data.usgs.gov/datacatalog/data/USGS:65c64fc9d34ef4b119cb28e9)";
 		
-//		"Here: [subSectDataMgt6pt7.csv](subSectDataMgt6pt7.csv)";
-		// <a href="//google.com">Google</a>
-		
 		switch (dataToInclude) {
 		case ALL_DATA:
-			line += "This model includes both historic ruptures and paleoseismic "+doleString+", where the former supersedes the latter if there is a conflict. ";
+			line += "This includes both historic ruptures and paleoseismic "+doleString+", where the former supersedes the latter if there is a conflict. ";
 			break;
 		case PALEO_ONLY:
-			line += "This model includes only paleoseismic "+doleString+" to show the influence of excluding historic ruptures. ";
+			line += "This includes only paleoseismic "+doleString+" to show the influence of excluding historic ruptures. ";
 			break;
 		case HIST_RUPS_ONLY:
-			line += "This model includes only historic rupture "+doleString+" to show the influence of excluding paleoseismic constraints. ";
+			line += "This includes only historic rupture "+doleString+". ";
 			break;
 		default:
 			throw new IllegalStateException();
@@ -139,17 +153,36 @@ public class TimeDependentReportPageGen {
 			}
 		}
 
-		line+= "The time-dependent probabilities are calculated as defined in the <a href=\"https://doi.org/10.1785/0120140093\">UCERF3-TD model</a> (branch averaged Probability model).  "
-				+ "Clicking on the \"View GeoJSON\" links below will launch a browser based map from which you can click on faults to get "
-				+ "associated values. A data file is provided at the bottom of this page  (the last item in the table of contents).";
+		if (probModel == null || probModel instanceof UCERF3_ProbabilityModel) {			// U3 calculation type
+			line += "The time-dependent probabilities are calculated as defined in the <a href=\"https://doi.org/10.1785/0120140093\">UCERF3-TD model</a>.  ";
+		} else if (probModel instanceof WG02_ProbabilityModel) {
+			line += "The time-dependent probabilities are calculated as defined in the WG02 & UCERF2 efforts, as described in equation (5) <a href=\"https://doi.org/10.1785/0120140094\">here</a>.  ";
+		}
+		else if (probModel instanceof FSS_ProbabilityModel.Poisson) {
+			line += "The time-dependent probabilities are calculated using a Poisson model. ";
+		}
+
 		
-		//
+		line+= "Clicking on the \"View GeoJSON\" links below will launch a browser based map from which you can click on faults to get "
+				+ "associated values. Data files are provided at the bottom of this page (the last item in the table of contents), which "+
+				"can be used for reproducibility tests.";
 		
 		return line;
 	}
-
 	
-	public static void generatePage(File outputDir, FaultSystemSolution sol, PaleoMappingAlgorithm mappingAlg, DataToInclude dataToInclude) throws IOException {
+	
+
+	/**
+	 * This is the method used before switching to the new TD framework (TimeDepFaultSystemSolutionERF).
+	 * This creates an old UCERF3 ERF in computing probabilities.
+	 *  
+	 * @param outputDir
+	 * @param sol
+	 * @param mappingAlg
+	 * @param dataToInclude
+	 * @throws IOException
+	 */
+	public static void generateOldPage(File outputDir, FaultSystemSolution sol, PaleoMappingAlgorithm mappingAlg, DataToInclude dataToInclude) throws IOException {
 		if(!outputDir.exists()) outputDir.mkdir();
 		
 		File resourcesDir = new File(outputDir, "resources");
@@ -434,7 +467,7 @@ public class TimeDependentReportPageGen {
 			lines.add("# Time-Dependence Report, Historic Ruptures Only");
 		else
 			lines.add("# Time-Dependence Report, All DOLE Data, "+mappingAlg);
-		lines.add(getExplanationText(mappingAlg, dataToInclude));
+		lines.add(getExplanationText(mappingAlg, dataToInclude, null));
 		lines.add("");
 		
 		int tocIndex = lines.size();
@@ -527,35 +560,124 @@ public class TimeDependentReportPageGen {
 		MarkdownUtils.writeReadmeAndHTML(lines, outputDir);
 	}
 	
+	/**
+	 * This assumes TD probability is in 5th column and that there is 1 header row
+	 * @param file
+	 * @return
+	 */
+	private static double[] readSectProbFromFile(File file) {
+		
+		double[] sectGain = null;
+		try {
+			List<String> fileLines = Files.readLines(file, Charset.defaultCharset());
+			sectGain = new double[fileLines.size()-1];
+			int s=-1;
+			for (String line:fileLines) {
+				s+=1;
+				if(s==0)
+					continue; // skip header line
+				String[] st = StringUtils.split(line,",");
+				sectGain[s-1] = Double.valueOf(st[5]);
+			}
+		} catch (Exception e) {
+			ExceptionUtils.throwAsRuntimeException(e);
+		}
+		return sectGain;
+	}
+
 	
-	public static void old_generatePage(File outputDir, FaultSystemSolution sol, PaleoMappingAlgorithm mappingAlg) throws IOException {
-		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+	
+	/**
+	 * This assumes start time is at the beginning of the year in the timespan.
+	 *  
+	 * @param outputDir
+	 * @param erf
+	 * @param mappingAlg
+	 * @param dataToInclude
+	 * @throws IOException
+	 */
+	public static void generatePage(File outputDir, TimeDepFaultSystemSolutionERF erf, PaleoMappingAlgorithm mappingAlg, 
+			DataToInclude dataToInclude, File comparisonDir, String titleString, String infoString) throws IOException {
+
+		//	get comparison dir name
+        String comparisonDirName = Paths.get(comparisonDir.toString()).getFileName().toString();
+
+		
+		if(!outputDir.exists()) outputDir.mkdir();
 		
 		File resourcesDir = new File(outputDir, "resources");
-		Preconditions.checkState(resourcesDir.exists() || resourcesDir.mkdir());
+		if(!resourcesDir.exists()) resourcesDir.mkdir();
 		
+		FSS_ProbabilityModel probModel = erf.getProbabilityModel();
+		boolean isPoisson = false;
+		
+		boolean aveRecurIntervals=true;
+		boolean aveNormTimeSinceLast=true;
+		if (probModel instanceof UCERF3_ProbabilityModel) {			// U3 calculation type
+			UCERF3_ProbabilityModel u3ProbModel = (UCERF3_ProbabilityModel)probModel;
+			aveRecurIntervals = u3ProbModel.getAveragingTypeChoice().isAveRI();
+			aveNormTimeSinceLast = u3ProbModel.getAveragingTypeChoice().isAveNTS();
+			u3ProbModel.setSaveDebugInfo(false); // ??????????????
+		} else if (probModel instanceof WG02_ProbabilityModel) {
+//			WG02_ProbabilityModel wgProbModel = (WG02_ProbabilityModel)probModel; // not needed
+			aveRecurIntervals = true; 		// default value applied by WG02
+			aveNormTimeSinceLast = true;
+		}
+		else if (probModel instanceof FSS_ProbabilityModel.Poisson) {
+			isPoisson = true;
+		}
+		else
+			throw new RuntimeException("Unsupported type of FSS_ProbabilityModel: "+probModel.getName());
+
+		int startYear = 0;
+		if(!isPoisson)
+			startYear = erf.getTimeSpan().getStartTimeYear();
+		double duration = erf.getTimeSpan().getDuration();
+
+		// make ERF parameter values string
+		probModel.getAdjustableParameters().getParameterListMetadataString("\n\t");
+//		String tempString1 = "\t"+erf.getAdjustableParameterList().getParameterListMetadataString();
+//		String tempString2 = "\n\t"+erf.getAdjustableParameterList().getParameter(
+//				TimeDepFaultSystemSolutionERF.PROB_MODEL_PARAM_NAME).getValue().toString();
+//		String erfParamMetadataString = "\tStartYear = "+startYear+"\n\tDuration = "+duration+" years\n"+tempString2.replace(";", "\n\t\t");
+		String erfParamMetadataString = 
+				"\tStart Year = "+startYear+
+				"\n\tDuration = "+duration+" years";
+		
+		if(dataToInclude == DataToInclude.PALEO_ONLY)
+			erfParamMetadataString += "\n\tDOLE Model = Paleo Data Only, "+mappingAlg;
+		else if(dataToInclude == DataToInclude.HIST_RUPS_ONLY)
+			erfParamMetadataString += "\n\tDOLE Model = Historic Ruptures Only";
+		else
+			erfParamMetadataString += "\n\tDOLE Model = All DOLE Data, "+mappingAlg;
+		
+		erfParamMetadataString += "\n\t"+TimeDepFaultSystemSolutionERF.PROB_MODEL_PARAM_NAME+" = "+probModel.getName()+":"+
+				"\n\t\t"+probModel.getAdjustableParameters().getParameterListMetadataString("\n\t\t");
+				
+		FaultSystemSolution sol = erf.getSolution();
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
 		
-		System.out.println("Loading DOLE data");
-		List<PaleoDOLE_Data> doleData = DOLE_SubsectionMapper.loadPaleoDOLE();
-		System.out.println("Loading Historical Rupture data");
-		List<HistoricalRupture> histRupData = DOLE_SubsectionMapper.loadHistRups();
+		List<PaleoDOLE_Data> paleoDataList = new ArrayList<PaleoDOLE_Data>();
+		if(dataToInclude == DataToInclude.PALEO_ONLY || dataToInclude == DataToInclude.ALL_DATA) {
+			System.out.println("Loading Paleo data");
+			paleoDataList = DOLE_SubsectionMapper.loadPaleoDOLE();			
+		}
+		List<HistoricalRupture> histRupDataList = new ArrayList<HistoricalRupture>();
+		if(dataToInclude == DataToInclude.HIST_RUPS_ONLY || dataToInclude == DataToInclude.ALL_DATA) {
+			System.out.println("Loading Historical Rupture data");
+			histRupDataList = DOLE_SubsectionMapper.loadHistRups();			
+		}
 		System.out.println("Mapping DOLE data");
-		String dole_ReportString = DOLE_SubsectionMapper.mapDOLE(subSects, histRupData, doleData, mappingAlg, false);
+		String dole_ReportString = DOLE_SubsectionMapper.mapDOLE(subSects, histRupDataList, paleoDataList, mappingAlg, false);
+		
+		// need to do this so the ERF updates the cached DOLE values:
+		erf.resetSectDOLE();
 		
 		// write out the DOLE mapping report
 		FileWriter fw = new FileWriter(new File(outputDir+"/dole_ReportString.txt"));
 		fw.write(dole_ReportString); 
 		fw.close();
-		
-		List<String> lines = new ArrayList<>();
-		
-		lines.add("# Time-Dependence Report, "+mappingAlg);
-		lines.add("");
-		
-		int tocIndex = lines.size();
-		String topLink = "_[(top)](#table-of-contents)_";
 		
 		MappingType[] sectMappingTypes = new MappingType[subSects.size()];
 		AbstractDOLE_Data[] sectMappings = new AbstractDOLE_Data[subSects.size()];
@@ -564,8 +686,8 @@ public class TimeDependentReportPageGen {
 		for (int s=0; s<sectYears.length; s++)
 			sectYears[s] = Double.NaN;
 		List<AbstractDOLE_Data> allDatas = new ArrayList<>();
-		allDatas.addAll(histRupData);
-		allDatas.addAll(doleData);
+		allDatas.addAll(histRupDataList);
+		allDatas.addAll(paleoDataList);
 		Color closestColor = Color.RED;
 		Color neiborColor = Color.ORANGE;
 		Color historicalColor = Color.MAGENTA;
@@ -601,7 +723,7 @@ public class TimeDependentReportPageGen {
 		
 		double minYear = -10000;
 		double maxYear = 2024;
-		CPT yearCPT = GMT_CPT_Files.SEQUENTIAL_BATLOW_UNIFORM.instance().rescale(minYear, maxYear);
+		CPT yearCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().reverse().rescale(minYear, maxYear);
 		yearCPT.setPreferredTickInterval(2000);
 		mapMaker.plotSectScalars(sectYears, yearCPT, "Year of Last Event");
 		mapMaker.setSkipNaNs(true);
@@ -609,15 +731,22 @@ public class TimeDependentReportPageGen {
 		mapMaker.setSectOutlineChar(null);
 		mapMaker.plot(resourcesDir, "dole_year_map", " ");
 		
-		yearCPT = yearCPT.rescale(1000d, maxYear);
-		yearCPT.setPreferredTickInterval(100);
-		mapMaker.plotSectScalars(sectYears, yearCPT, "Year of Last Event");
-		mapMaker.plot(resourcesDir, "dole_year_map_since_1000", " ");
+		// alternative start years
+//		yearCPT = yearCPT.rescale(1000d, maxYear);
+//		yearCPT.setPreferredTickInterval(100);
+//		mapMaker.plotSectScalars(sectYears, yearCPT, "Year of Last Event");
+//		mapMaker.plot(resourcesDir, "dole_year_map_since_1000", " ");
+//		
+//		yearCPT = yearCPT.rescale(1800d, maxYear);
+//		yearCPT.setPreferredTickInterval(20);
+//		mapMaker.plotSectScalars(sectYears, yearCPT, "Year of Last Event");
+//		mapMaker.plot(resourcesDir, "dole_year_map_since_1800", " ");
 		
-		yearCPT = yearCPT.rescale(1800d, maxYear);
-		yearCPT.setPreferredTickInterval(20);
+		yearCPT = yearCPT.rescale(1875d, 1925);
+		yearCPT.setPreferredTickInterval(25);
 		mapMaker.plotSectScalars(sectYears, yearCPT, "Year of Last Event");
-		mapMaker.plot(resourcesDir, "dole_year_map_since_1800", " ");
+		mapMaker.plot(resourcesDir, "dole_year_map_recent", " ");
+
 		
 		mapMaker.clearSectScalars();
 		List<Color> sectTypeColorsList = new ArrayList<>();
@@ -640,7 +769,7 @@ public class TimeDependentReportPageGen {
 		mapMaker.setLegendInset(RectangleAnchor.TOP_RIGHT);
 		List<Location> doleLocs = new ArrayList<>();
 		List<FeatureProperties> scatterProps = new ArrayList<>();
-		for (PaleoDOLE_Data data : doleData) {
+		for (PaleoDOLE_Data data : paleoDataList) {
 			doleLocs.add(data.location);
 			scatterProps.add(data.feature.properties);
 		}
@@ -679,7 +808,7 @@ public class TimeDependentReportPageGen {
 		}
 		// add historical rupture traces
 		PlotCurveCharacterstics histTraceChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1.f, Color.BLACK);
-		for (HistoricalRupture rup : histRupData) {
+		for (HistoricalRupture rup : histRupDataList) {
 			debugLines.add(rup.trace);
 			debugLineChars.add(histTraceChar);
 		}
@@ -699,53 +828,28 @@ public class TimeDependentReportPageGen {
 		mapMaker.setSectNaNChar(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, new Color(180, 180, 180)));
 
 		
-		lines.add("## Date of Last Event");
-		lines.add(topLink); lines.add("");
 		
-		TableBuilder table = MarkdownUtils.tableBuilder();
-		
-		String relPath = resourcesDir.getName();
-		table.initNewLine();
-		table.addColumn("![DOLE Map 1]("+relPath+"/dole_year_map.png)");
-		table.addColumn("![DOLE Map 2]("+relPath+"/dole_year_map_since_1000.png)");
-		table.finalizeLine().initNewLine();
-		table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPath+"/dole_year_map.geojson"));
-		table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPath+"/dole_year_map_since_1000.geojson"));
-		table.finalizeLine().initNewLine();
-		table.addColumn("![DOLE Map 2]("+resourcesDir.getName()+"/dole_year_map_since_1800.png)");
-		table.addColumn("![DOLE Map 2]("+resourcesDir.getName()+"/dole_mapping_type.png)");
-		table.finalizeLine().initNewLine();
-		table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPath+"/dole_year_map_since_1800.geojson"));
-		table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPath+"/dole_mapping_type.geojson")
-				+" "+RupSetMapMaker.getGeoJSONViewerRelativeLink("View Mapping Debug GeoJSON", relPath+"/dole_mapping_debug.geojson"));
-		table.finalizeLine();
-		
-		lines.addAll(table.build());
-		lines.add("");
-		
-		lines.add("## Time Since Last Event");
-		lines.add(topLink); lines.add("");
-		
-		GregorianCalendar cal = new GregorianCalendar();
-		cal.setTime(new Date());
-		int curYear = cal.get(GregorianCalendar.YEAR);
+//		GregorianCalendar cal = new GregorianCalendar();
+//		cal.setTime(new Date());
+//		int curYear = cal.get(GregorianCalendar.YEAR);
 		
 		double[] timeSince = new double[subSects.size()];
-		double[] normTimeSince = new double[subSects.size()];
 		double[] logTimeSince = new double[subSects.size()];
-		double[] logNormTimeSince = new double[subSects.size()];
+		double[] normTimeSince = new double[subSects.size()];
 		double[] recurInt = new double[subSects.size()];
-		
+		double[] logRecurInt = new double[subSects.size()];
+
 		
 		List<Integer> parentIDs = new ArrayList<>();
 		Map<Integer, List<FaultSection>> parentSectsMap = new HashMap<>();
 		for (int s=0; s<subSects.size(); s++) {
 			recurInt[s] = 1d/sol.calcTotParticRateForSect(s);
+			logRecurInt[s] = Math.log10(recurInt[s]);
+
 			if (sectMappings[s] == null) {
 				timeSince[s] = Double.NaN;
-				normTimeSince[s] = Double.NaN;
 				logTimeSince[s] = Double.NaN;
-				logNormTimeSince[s] = Double.NaN;
+				normTimeSince[s] = Double.NaN;
 				continue;
 			}
 			FaultSection sect = subSects.get(s);
@@ -755,118 +859,293 @@ public class TimeDependentReportPageGen {
 				parentIDs.add(parentID);
 			}
 			parentSectsMap.get(parentID).add(sect);
-			timeSince[s] = Math.max(0, curYear - sectMappings[s].year);
-			normTimeSince[s] = timeSince[s]/recurInt[s];
+			timeSince[s] = Math.max(0, startYear - sectMappings[s].year);
 			logTimeSince[s] = Math.log10(timeSince[s]);
-			logNormTimeSince[s] = Math.log10(timeSince[s]/recurInt[s]);
+			normTimeSince[s] = timeSince[s]/recurInt[s];
 		}
 		
-		double[] bpt_Mgt6pt7_prob = new double[subSects.size()];
+		
+		double[] td_Mgt6pt7_prob = new double[subSects.size()];
+		double[] log_Mgt6pt7_prob = new double[subSects.size()];
 		double[] pois_Mgt6pt7_prob = new double[subSects.size()];
 		double[] probGain_Mgt6pt7 = new double[subSects.size()];
-		FaultSystemSolutionERF erf = new FaultSystemSolutionERF(sol);
-		// prob gain
-// System.out.println("Starting ERF stuff)");
-		erf.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.U3_PREF_BLEND);
-//		erf.setParameter(MagDependentAperiodicityParam.NAME,MagDependentAperiodicityOptions.MID_VALUES);
-		erf.setParameter(HistoricOpenIntervalParam.NAME, 0d); // curYear-1875d); // or whatever
-		erf.getTimeSpan().setStartTime(curYear);
-		erf.getTimeSpan().setDuration(50d);
+
 		erf.updateForecast();
 		for (int s=0; s<subSects.size(); s++) {
-			bpt_Mgt6pt7_prob[s] = FaultSysSolutionERF_Calc.calcParticipationProbForSect(erf, 6.7, s);
+			td_Mgt6pt7_prob[s] = ERF_Calculator.calcParticipationProbForSect(erf, 6.7, s);
+			log_Mgt6pt7_prob[s] = Math.log10(td_Mgt6pt7_prob[s]);
 		}
-		erf.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
-		erf.getTimeSpan().setDuration(50d);
+		
+		// temporarily set the forecast as Poisson, to get long-term rates, & no background 
+//		IncludeBackgroundOption includeBackgroundOption = (IncludeBackgroundOption)erf.getParameter(IncludeBackgroundParam.NAME).getValue();
+//		erf.getParameter(IncludeBackgroundParam.NAME).setValue(IncludeBackgroundOption.EXCLUDE);
+		erf.setProbabilityModelChoice(FSS_ProbabilityModels.POISSON);
+		erf.getTimeSpan().setDuration(duration); // THIS IS NEEDED
 		erf.updateForecast();
-		String csv_dataSring = "subSect,yrLast,yrsSince,normTimeSince,supraRI,BPT_Prob_Mgt6pt7,Pois_Prob_Mgt6pt7,ProbGain_Mgt6pt7,ParID,ParName\n";
+
+		String csv_dataSring = "subSect,yrLast,yrsSince,normTimeSince,supraRI,BPT_Prob_Mgt6pt7,Pois_Prob_Mgt6pt7,ProbGain_Mgt6pt7,ParID,SubsectName,ParentName,DOLE_MappingType\n";
 		for (int s=0; s<subSects.size(); s++) {
-			pois_Mgt6pt7_prob[s] = FaultSysSolutionERF_Calc.calcParticipationProbForSect(erf, 6.7, s);
-			probGain_Mgt6pt7[s] = bpt_Mgt6pt7_prob[s]/pois_Mgt6pt7_prob[s];
+			pois_Mgt6pt7_prob[s] = ERF_Calculator.calcParticipationProbForSect(erf, 6.7, s);
+			probGain_Mgt6pt7[s] = td_Mgt6pt7_prob[s]/pois_Mgt6pt7_prob[s];
+			String sectName = subSects.get(s).getSectionName();
+			String modName = sectName.replace(",","_");
 			String parentName = subSects.get(s).getParentSectionName();
 			String modParentName=null;
 			if(parentName != null)
 				modParentName = parentName.replace(",","_");
-			csv_dataSring += s+","+(curYear-timeSince[s])+","+timeSince[s]+","+normTimeSince[s]+","+recurInt[s]+","+
-					bpt_Mgt6pt7_prob[s]+","+pois_Mgt6pt7_prob[s]+","+probGain_Mgt6pt7[s]+","+
-					subSects.get(s).getParentSectionId()+","+modParentName+"\n";
+			csv_dataSring += s+","+(startYear-timeSince[s])+","+timeSince[s]+","+normTimeSince[s]+","+recurInt[s]+","+
+					td_Mgt6pt7_prob[s]+","+pois_Mgt6pt7_prob[s]+","+probGain_Mgt6pt7[s]+","+
+					subSects.get(s).getParentSectionId()+","+modName+","+modParentName+","+sectMappingTypes[s]+"\n";
 		}
+		
+		// reset ERF to original state
+		erf.setCustomProbabilityModel(probModel);
+//		erf.getParameter(IncludeBackgroundParam.NAME).setValue(includeBackgroundOption);
+		erf.updateForecast();
+
 		// write out the DOLE mapping report
 		FileWriter fw2 = new FileWriter(new File(outputDir+"/subSectDataMgt6pt7.csv"));
 		fw2.write(csv_dataSring); 
 		fw2.close();
 
-		mapMaker.plotSectScalars(probGain_Mgt6pt7, GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, 3d), "M≥6.7 Prob. Gain");
-		mapMaker.plot(resourcesDir, "mGT6pt7_ProbGain", " ");
-//System.out.println("Done with ERF stuff)");
+		
+		// Get prob ratio with respect to reference dir
+		double[] td_Mgt6pt7_prob_reference = readSectProbFromFile(new File(comparisonDir,"/subSectDataMgt6pt7.csv"));
+		if(td_Mgt6pt7_prob_reference.length != td_Mgt6pt7_prob.length)
+			throw new RuntimeException("problem with comparison array length");
+		double[] Mgt6pt7_prob_ratioToReference = new double[td_Mgt6pt7_prob.length];
+		for(int s=0;s<td_Mgt6pt7_prob.length;s++) {
+			Mgt6pt7_prob_ratioToReference[s] = td_Mgt6pt7_prob[s]/td_Mgt6pt7_prob_reference[s];
+		}
+
+//		System.out.println("COMP HERE: "+td_Mgt6pt7_prob[0]+"\t"+td_Mgt6pt7_prob_reference[0]+"\t"+(td_Mgt6pt7_prob[0]/td_Mgt6pt7_prob_reference[0]));
+
+// System.out.println("Done with ERF stuff)");
 		
 		mapMaker.clearSectColors();
-		CPT tsCPT = GMT_CPT_Files.SEQUENTIAL_BATLOW_UNIFORM.instance().rescale(0d, 1000);
-		CPT logTSCPT = GMT_CPT_Files.SEQUENTIAL_BATLOW_UNIFORM.instance().rescale(0d, 4);
-		CPT ntsCPT1 = GMT_CPT_Files.DIVERGING_VIK_UNIFORM.instance().rescale(0d, 2);
-		CPT ntsCPT2 = GMT_CPT_Files.DIVERGING_VIK_UNIFORM.instance().rescale(-1, 3);
-		CPT ntsCPT = new CPT();
-		for (CPTVal val : ntsCPT1) {
-			ntsCPT.add(val);
-			if (val.end >= 1f)
-				break;
-		}
-		for (CPTVal val : ntsCPT2) {
-			if (val.start <= 1f)
-				continue;
-			ntsCPT.add(val);
-		}
-		CPT logNTSCPT = GMT_CPT_Files.DIVERGING_VIK_UNIFORM.instance().rescale(-1d, 1);
+		CPT riCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(1,6).reverse();
+		CPT logTS_CPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(1,6);
+		CPT normTimeSince_CPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0,3);
+		CPT probGainCPT = getProbGainCPT();
+		// System.out.println("HERE probGainCPT\n"+probGainCPT.toString());
+		CPT logProbCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(-6,1);
+
 		
-		table = MarkdownUtils.tableBuilder();
+		String logriPrefix = "log_recurrence_interval";
+		String ntsPrefix = "norm_time_since";
+		String log_tsPrefix = "log_time_since";
+		String probGainPrefix = "mGT6pt7_ProbGain";
+		String log_probPrefix = "mGT6pt7_logProb";
+		String probReferenceRatioPrefix = "mGT6pt7_ProbRatioToReference";
 		
-		for (boolean log : new boolean[] {false, true}) {
-			String tsLabel = "Time Since Last Event (years)";
-			String tsPrefix = "time_since";
-			String ntsLabel = "Normalized Time Since Last Event";
-			String ntsPrefix = "norm_time_since";
-			double[] tsData, ntsData;
-			CPT myTScpt, myNTScpt;
-			if (log) {
-				tsLabel = "Log10 "+tsLabel;
-				tsPrefix += "_log";
-				ntsLabel = "Log10 "+ntsLabel;
-				ntsPrefix += "_log";
-				myTScpt = logTSCPT;
-				myNTScpt = logNTSCPT;
-				tsData = logTimeSince;
-				ntsData = logNormTimeSince;
-			} else {
-				myTScpt = tsCPT;
-//				myNTScpt = ntsCPT;
-				myNTScpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, 3d);
-				tsData = timeSince;
-				ntsData = normTimeSince;
-			}
-			mapMaker.plotSectScalars(tsData, myTScpt, tsLabel);
-			mapMaker.plot(resourcesDir, tsPrefix, " ");
-			mapMaker.plotSectScalars(ntsData, myNTScpt, ntsLabel);
-			mapMaker.plot(resourcesDir, ntsPrefix, " ");
+		mapMaker.plotSectScalars(logRecurInt, riCPT, "Log10 Recurrence Interval (years)");
+		mapMaker.plot(resourcesDir, logriPrefix, " ");
+		mapMaker.plotSectScalars(normTimeSince, normTimeSince_CPT, "Normalized Time Since Last Event");
+		mapMaker.plot(resourcesDir, ntsPrefix, " ");
+		mapMaker.plotSectScalars(logTimeSince, logTS_CPT, "Log10 Time Since Last Event (from "+startYear+")");
+		mapMaker.plot(resourcesDir, log_tsPrefix, " ");
+		mapMaker.plotSectScalars(probGain_Mgt6pt7, probGainCPT, "M≥6.7 Prob. Gain");
+		mapMaker.plot(resourcesDir, probGainPrefix, " ");
+		mapMaker.plotSectScalars(log_Mgt6pt7_prob, logProbCPT, "log10 M≥6.7 Prob.");
+		mapMaker.plot(resourcesDir, log_probPrefix, " ");
+		mapMaker.plotSectScalars(Mgt6pt7_prob_ratioToReference, probGainCPT, "M≥6.7 Prob. Ratio to Reference");
+		mapMaker.plot(resourcesDir, probReferenceRatioPrefix, " ");
+
+		
+		
+		// make the rupture data file (e.g., for verification) if U3 methodology (WG02 does not yet have getDebugString())
+		if (probModel instanceof UCERF3_ProbabilityModel) {
+			String headerString = "";
+			headerString += "srcIndex,";	// added here
+			headerString += "longTermRate,";	// added here
+			headerString += "gainTest,";	// added here
+			headerString += "numRup,";	// added here
+			// from ProbabilityModelsCalc
+			headerString += "fltSysRupIndex,";
+			headerString += "probGain,";
+			headerString += "condProb,";
+			headerString += "rupMag,";
+			headerString += "aveCondRecurInterval,";
+			headerString += "aveCondRecurIntervalWhereUnknown,";		
+			headerString += "aveTimeSinceLastWhereKnownYears,";
+			headerString += "aveNormTimeSinceLastEventWhereKnown,";
+			headerString += "totRupArea,";
+			headerString += "totRupAreaWithDateOfLast,";
+			headerString += "fractRupAreaWithDateOfLast,";
+			headerString += "aper,";
+			headerString += "numSubsectForRup,";
 			
-			table.initNewLine();
-			table.addColumn("![Time Since Last Event]("+relPath+"/"+tsPrefix+".png)");
-			table.addColumn("![Time Since Last Event]("+relPath+"/"+ntsPrefix+".png)");
-			table.finalizeLine().initNewLine();
-			table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPath+"/"+tsPrefix+".geojson"));
-			table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPath+"/"+ntsPrefix+".geojson"));
-			table.finalizeLine();
+			FileWriter fw_rups;
+			try {
+				fw_rups = new FileWriter(new File(outputDir+"/ruptureDataFile.csv"));
+				fw_rups.write(headerString+"\n"); 
+				((UCERF3_ProbabilityModel)probModel).setSaveDebugInfo(true);
+				for(int s=0;s<erf.getNumFaultSystemSources();s++) {
+					if(erf.getSource(s).isSourcePoissonian())
+						throw new RuntimeException("source is poissonian: "+s+"\t"+erf.getSource(s).getName());
+					int fsrIndex = erf.getFltSysRupIndexForSource(s);
+					double probGainTest = probModel.getProbabilityGain(fsrIndex, erf.getTimeSpan().getStartTimeInMillis(), duration);		
+					double testRate=0;  // this should equal fss rate time gain
+					for(int r=0;r<erf.getSource(s).getNumRuptures();r++) {
+						double prob = erf.getSource(s).getRupture(r).getProbability();
+						testRate+=prob/duration;
+					}
+					testRate /= probGainTest;
+					if((float)testRate != (float)sol.getRateForRup(fsrIndex))
+						throw new RuntimeException("long-term rate discrepancy for srcID="+s);
+					String line = s+","+testRate+","+probGainTest+","+erf.getSource(s).getNumRuptures()+
+							","+((UCERF3_ProbabilityModel)probModel).getDebugString()+"\n";
+					fw_rups.write(line); 
+				}
+				fw_rups.close();
+				
+				// write section data
+				((UCERF3_ProbabilityModel)probModel).writeCurrentSectDataToCSV_File(outputDir, "sectionDataFile.csv");
+				
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
+
 		
+		// Make solution report
+		
+		String relPath = resourcesDir.getName();
+		List<String> lines = new ArrayList<>();
+		lines.add("# "+titleString);
+		lines.add(infoString);
+		lines.add(getExplanationText(mappingAlg, dataToInclude, probModel));
+		lines.add("");
+		
+		lines.add("ERF TD Parameter Values:\n");
+		lines.add(erfParamMetadataString);
+		lines.add("");
+		
+		int tocIndex = lines.size();
+		String topLink = "_[(top)](#table-of-contents)_";
+		
+		lines.add("## DOLE Mapping Type");
+		lines.add(topLink); lines.add("");
+		TableBuilder table = MarkdownUtils.tableBuilder();
+		table.initNewLine();
+		table.addColumn("![DOLE Mapping Type]("+relPath+"/dole_mapping_type.png)");
+		table.finalizeLine();
+		table.initNewLine();
+		table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPath+"/dole_mapping_type.geojson"));
+		table.finalizeLine();
+
 		lines.addAll(table.build());
 		lines.add("");
+
+		
+		lines.add("## Year of Last Event");
+		lines.add(topLink); lines.add("");
+//		lines.add("bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,bla,");
+		table = MarkdownUtils.tableBuilder();
+		table.initNewLine();
+		table.addColumn("![Year of Last Event]("+relPath+"/dole_year_map.png)");
+		table.finalizeLine();
+		table.initNewLine();
+		table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPath+"/dole_year_map.geojson"));
+		table.finalizeLine();
+		lines.addAll(table.build());
+		lines.add("");
+		
+		lines.add("## Log10 Recurrence Interval");
+		lines.add(topLink); lines.add("");
+		table = MarkdownUtils.tableBuilder();
+		table.initNewLine();
+		table.addColumn("![Log10 Recurrence Interval]("+relPath+"/"+logriPrefix+".png)");
+		table.finalizeLine().initNewLine();
+		table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPath+"/"+logriPrefix+".geojson"));
+		table.finalizeLine();
+		lines.addAll(table.build());
+		lines.add("");
+		
+		lines.add("## Normalized Time Since Last Event");
+		lines.add(topLink); lines.add("");
+		table = MarkdownUtils.tableBuilder();
+		table.initNewLine();
+		table.addColumn("![Normalized Time Since Last Event]("+relPath+"/"+ntsPrefix+".png)");
+		table.finalizeLine().initNewLine();
+		table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPath+"/"+ntsPrefix+".geojson"));
+		table.finalizeLine();
+		lines.addAll(table.build());
+		lines.add("");
+		
+		lines.add("## Log10 Probability for M&ge;6.7");  
+		lines.add(topLink); lines.add("");
+		table = MarkdownUtils.tableBuilder();
+		table.initNewLine();
+		table.addColumn("![Log10 Probability for M&ge;6.7]("+relPath+"/"+log_probPrefix+".png)");
+		table.finalizeLine().initNewLine();
+		table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPath+"/"+log_probPrefix+".geojson"));
+		table.finalizeLine();
+		lines.addAll(table.build());
+		lines.add("");
+		
+		lines.add("## Probability Gain for M&ge;6.7");  
+		lines.add(topLink); lines.add("");
+		table = MarkdownUtils.tableBuilder();
+		table.initNewLine();
+		table.addColumn("![Probability Gain for M&ge;6.7]("+relPath+"/"+probGainPrefix+".png)");
+		table.finalizeLine().initNewLine();
+		table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPath+"/"+probGainPrefix+".geojson"));
+		table.finalizeLine();
+		lines.addAll(table.build());
+		lines.add("");
+		
+		
+		lines.add("## Ratio of M&ge;6.7 Probability to that of "+comparisonDirName);  
+		lines.add(topLink); lines.add("");
+		String compLinkString = "[../"+comparisonDirName+"](../"+comparisonDirName+")";
+		lines.add("Comparison model is in the directory: "+compLinkString); lines.add("");
+//		lines.add("Comparison model is in the directory: ../"+comparisonDirName); lines.add("");
+		table = MarkdownUtils.tableBuilder();
+		table.initNewLine();
+		table.addColumn("![M&ge;6.7 Probability Reference Ratio]("+relPath+"/"+probReferenceRatioPrefix+".png)");
+		table.finalizeLine().initNewLine();
+		table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPath+"/"+probReferenceRatioPrefix+".geojson"));
+		table.finalizeLine();
+		lines.addAll(table.build());
+		lines.add("");
+
+
+		lines.add("## Data Files");  
+		lines.add(topLink); lines.add("");
+//		lines.add(outputDir.getName()+"/subSectDataMgt6pt7.csv");
+//		String downloadLine = "Data plotted above: [subSectDataMgt6pt7.csv](subSectDataMgt6pt7.csv)";
+		lines.add("Data plotted above: [subSectDataMgt6pt7.csv](subSectDataMgt6pt7.csv)");
+		lines.add("");
+//		lines.add("Fault system solution file:   ../fullPrefUS_FSS.zip");
+		lines.add("Fault system solution file: [../fullPrefUS_FSS.zip](../fullPrefUS_FSS.zip)");
+
+//		String fssFileString = "<a href=\"../fullPrefUS_FSS.zip\">(fullPrefUS_FSS.zip)</a>"; 
+//		lines.add(fssFileString);
+
+
+		if (probModel instanceof UCERF3_ProbabilityModel) {
+			lines.add("");
+			lines.add("Fault sections data: [sectionDataFile.csv](sectionDataFile.csv)");
+			lines.add("");
+			lines.add("Fault ruptures data: [ruptureDataFile.csv](ruptureDataFile.csv)");
+			lines.add("");
+			lines.add("The sectionDataFile.csv and ruptureDataFile.csv can be used to verify rupture probabilities.  "+
+					"Note that each rupture in ruptureDataFile.csv represents a fault-system-solution rupture, "+
+					"or a fault based source in the ERF (not a rupture within the latter). The OpenSHA probability calculation "+
+					"can be found here: org.opensha.sha.earthquake.faultSysSolution.erf.td.UCERF3_ProbabilityModel.getProbability()");
+		}
 		
 		// add TOC
 		lines.addAll(tocIndex, MarkdownUtils.buildTOC(lines, 2, 4));
 		lines.add(tocIndex, "## Table Of Contents");
+		lines.add("");
 		
 		// write markdown
 		MarkdownUtils.writeReadmeAndHTML(lines, outputDir);
 	}
+
+	
 
 
 	public static void main(String[] args) throws IOException {
@@ -874,9 +1153,9 @@ public class TimeDependentReportPageGen {
 				+ "2024_02_02-nshm23_branches-WUS_FM_v3/results_WUS_FM_v3_branch_averaged_gridded.zip"));
 		File tdMainDir = new File("/home/kevin/markdown/nshm23-misc/time_dependence");
 		
-		generatePage(new File(tdMainDir, "td_dole_full_parent"), sol, PaleoMappingAlgorithm.FULL_PARENT, DataToInclude.ALL_DATA);
-		generatePage(new File(tdMainDir, "td_dole_neighbors"), sol, PaleoMappingAlgorithm.NEIGHBORING_SECTS, DataToInclude.ALL_DATA);
-		generatePage(new File(tdMainDir, "td_dole_single"), sol, PaleoMappingAlgorithm.CLOSEST_SECT, DataToInclude.ALL_DATA);
+		generateOldPage(new File(tdMainDir, "td_dole_full_parent"), sol, PaleoMappingAlgorithm.FULL_PARENT, DataToInclude.ALL_DATA);
+		generateOldPage(new File(tdMainDir, "td_dole_neighbors"), sol, PaleoMappingAlgorithm.NEIGHBORING_SECTS, DataToInclude.ALL_DATA);
+		generateOldPage(new File(tdMainDir, "td_dole_single"), sol, PaleoMappingAlgorithm.CLOSEST_SECT, DataToInclude.ALL_DATA);
 	}
 
 }

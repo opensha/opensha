@@ -18,13 +18,19 @@ import org.opensha.commons.geo.RegionUtils;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
+import org.opensha.sha.earthquake.faultSysSolution.erf.td.TimeDepFaultSystemSolutionERF;
 import org.opensha.sha.faultSurface.RupInRegionCache;
 import org.opensha.sha.faultSurface.RupNodesCache;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
+import com.google.common.collect.Lists;
 import com.google.common.primitives.Ints;
+
+import scratch.UCERF3.erf.FaultSystemSolutionERF;
 
 
 /**
@@ -610,6 +616,37 @@ public class ERF_Calculator {
 			e.printStackTrace();
 		}
 	}
+	
+	public static double calcParticipationProbForSect(BaseFaultSystemSolutionERF erf, double minMag, int sectionIndex) {
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		
+		HashSet<Integer> rupIndexes = new HashSet<Integer>(rupSet.getRupturesForSection(sectionIndex));
+		
+		List<Double> probs = Lists.newArrayList();
+
+		for(int s=0; s<erf.getNumFaultSystemSources();s++) {
+			int fssRupIndex = erf.getFltSysRupIndexForSource(s);
+			if (!rupIndexes.contains(fssRupIndex))
+				continue;
+			for (ProbEqkRupture rup : erf.getSource(s)) {
+				if (rup.getMag() >= minMag)
+					probs.add(rup.getProbability());
+			}
+		}
+		return calcSummedProbs(probs);
+	}
+	
+	public static double calcSummedProbs(List<Double> probs) {
+		double totOneMinus = 1;
+		for (double prob : probs) {
+			totOneMinus *= (1-prob);
+		}
+		double totProb = 1 - totOneMinus;
+		
+		return totProb;
+	}
+
+
 
 
 

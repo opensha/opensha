@@ -2145,7 +2145,9 @@ public class GeographicMapMaker {
 		if (axisTicks) {
 			double maxSpan = Math.max(xRange.getLength(), yRange.getLength());
 			double tick;
-			if (maxSpan > 20)
+			if (maxSpan > 50)
+				tick = 10d;
+			else if (maxSpan > 20)
 				tick = 5d;
 			else if (maxSpan > 8)
 				tick = 2d;

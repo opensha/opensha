@@ -13,7 +13,6 @@ import com.google.common.base.Preconditions;
  * <b>Title:</b> BPT_DistCalc.java <p>
  * <b>Description:</p>.
  * This represents the Brownian Passage Time renewal model as described by Matthews et al. (2002, BSSA, vol 92, pp. 2223-2250).
- * This adds several "Safe" methods are also supplied to avoid numerical artifacts; see description for each method for more details
  <p>
  *
  * @author Edward Field
@@ -29,15 +28,11 @@ public final class BPT_DistCalc extends EqkProbDistCalc implements ParameterChan
 	final static double MIN_NORM_DURATION = 0.01;
 	// use this one in the if/else test to avoid roundoff errors that cause infinite loop
 	final static double TEST_MIN_NORM_DURATION = MIN_NORM_DURATION*0.9999;
-	
-	double safeTimeSinceLast=Double.NaN;
-	
+		
 	public BPT_DistCalc() {
 		NAME = "BPT";
 		super.initAdjParams();
 	}
-	
-	
 	
 	
 	/*
@@ -47,32 +42,25 @@ public final class BPT_DistCalc extends EqkProbDistCalc implements ParameterChan
 	@Override
 	protected void computeDistributions() {
 		pdf = new EvenlyDiscretizedFunc(0,numPoints,deltaX);
-		cdf = new EvenlyDiscretizedFunc(0,numPoints,deltaX);
-		// set first y-values to zero
+		// set first y-value to zero
 		pdf.set(0,0);
-		cdf.set(0,0);
 		
 		double temp1 = mean/(2.*Math.PI*(aperiodicity*aperiodicity));
 		double temp2 = 2.*mean*(aperiodicity*aperiodicity);
-		double t,pd,cd=0;
+		double t,pd;
 		for(int i=1; i< pdf.size(); i++) { // skip first point because it's NaN
-			t = cdf.getX(i);
+			t = pdf.getX(i);
 			pd = Math.sqrt(temp1/(t*t*t)) * Math.exp(-(t-mean)*(t-mean)/(temp2*t));
 			if(Double.isNaN(pd)){
 				pd=0;
-				System.out.println("pd=0 for i="+i);
-			}
-			cd += deltaX*(pd+pdf.getY(i-1))/2;  // Trapizoidal integration
-			if (cd > 1d) {
-//				Preconditions.checkState(cd < 1.0001,
-//						"CDF=%s > 1, mean=%s, aperiodicity=%s, t=%s, pd=%s, numPoints=%s, deltaX=%s\"", cd, mean, aperiodicity, t, pd, numPoints,deltaX);
-				cd = 1;
+//				System.out.println("pd=0 for i="+i);
 			}
 			pdf.set(i,pd);
-			cdf.set(i,cd);
 		}
-		computeSafeTimeSinceLastCutoff();
+		cdf = computeCDFfromPDF(pdf);
 	}
+	
+
 
 	/**
 	 * This computed the conditional probability using Trapezoidal integration (slightly more
@@ -162,12 +150,11 @@ public final class BPT_DistCalc extends EqkProbDistCalc implements ParameterChan
 	 * @param duration
 	 * @return
 	 */
-	@Override
-	public double getCondProb(double timeSinceLast, double duration) {
+//	@Override
+	public double OLDgetCondProb(double timeSinceLast, double duration) {
 		validateTimeSinceLast(timeSinceLast);
 		validateDuration(duration);
 		ensureUpToDate(false);
-		
 		double normDuration = duration/mean;
 		
 		// TEST_MIN_NORM_DURATION = MIN_NORM_DURATION*0.9999 to avoid infinite loops
@@ -196,6 +183,7 @@ public final class BPT_DistCalc extends EqkProbDistCalc implements ParameterChan
 		double condProbAtInfTime = 1-Math.exp(-normDuration/(aperiodicity*aperiodicity*2d));
 		if (endTime > cdf.getMaxX())
 			return condProbAtInfTime;
+// System.out.println("condProbAtInfTime = "+condProbAtInfTime);	
 
 		// linear interpolate assuming inf time is mean*10
 		// result = condProbAtSafeTime + (condProbAtInfTime-condProbAtSafeTime)*(timeSinceLast-(safeTimeSinceLast-duration))
@@ -224,8 +212,8 @@ public final class BPT_DistCalc extends EqkProbDistCalc implements ParameterChan
 	 * Overrides name and info assigned in parent
 	 * @return
 	 */
-	@Override
-	public EvenlyDiscretizedFunc getCondProbFunc(double duration) {
+//	@Override
+	public EvenlyDiscretizedFunc OLDgetCondProbFunc(double duration) {
 		EvenlyDiscretizedFunc func = super.getCondProbFunc(duration);
 		func.setName(NAME+" Safe Conditional Probability Function");
 		func.setInfo(adjustableParams.toString()+"\n"+"safeTimeSinceLast="+safeTimeSinceLast);
@@ -250,8 +238,8 @@ public final class BPT_DistCalc extends EqkProbDistCalc implements ParameterChan
 	 * 
 	 * @return
 	 */
-	@Override
-	public double getCondProbForUnknownTimeSinceLastEvent(double duration, double histOpenInterval) {
+//	@Override
+	public double OLDgetCondProbForUnknownTimeSinceLastEvent(double duration, double histOpenInterval) {
 		validateDuration(duration);
 		validateHistOpenInterval(histOpenInterval);
 		// ensures we're up to date (indlucing integrated versions) and that interpolators are built
@@ -326,34 +314,10 @@ public final class BPT_DistCalc extends EqkProbDistCalc implements ParameterChan
 	 * 0.1 and 1.0 (using the GUI).
 	 * @return
 	 */
-	public double getSafeTimeSinceLastCutoff() {
+	public double OLDgetSafeTimeSinceLastCutoff() {
 		ensureUpToDate(false);
 		return safeTimeSinceLast;
 	}
-	
-	/**
-	 * This finds the largest x-axis value such that (1.0-cdf.getY(x)) >= SAFE_ONE_MINUS_CDF
-	 * (not too close to zero, as this is the denominator of the conditional probability calculation)
-	 */
-	private void computeSafeTimeSinceLastCutoff() {
-		Preconditions.checkState(!isUnmodifiable(), "%s is already set to be unmodifiable", NAME);
-		safeTimeSinceLast = Double.NaN;
-		for(int x=0;x<cdf.size();x++) {
-			if(1.0-cdf.getY(x) < SAFE_ONE_MINUS_CDF) {	// when cdf gets too close to 1, keep last safeTimeSinceLast
-				break;
-			}
-			else {
-				safeTimeSinceLast = cdf.getX(x);
-			}
-		}
-		
-		if(Double.isNaN(safeTimeSinceLast)) {
-			throw new RuntimeException ("CDF never gets close to 1.0; need to increase numPoints?");
-		}
-		
-//		System.out.println("safeTimeSinceLast="+safeTimeSinceLast);
-	}
-	
 	
 	/**
 	 * This tests the difference between values obtained using the local and parent
@@ -362,7 +326,7 @@ public final class BPT_DistCalc extends EqkProbDistCalc implements ParameterChan
 	 * cases that differ by more than 0.1%.  All those printed are indeed the problems
 	 * we sought to avoid, and are very rare circumstances anyway.
 	 */
-	public void testSafeCalcs() {
+	public void OLDtestSafeCalcs() {
 		
 		double[] durations = {1,0.1,0.01,0.001,0.0001};
 		double[] aperiodicities = {0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0};
@@ -372,7 +336,7 @@ public final class BPT_DistCalc extends EqkProbDistCalc implements ParameterChan
 		for(double aper: aperiodicities) {
 			for(double dur:durations) {
 				setAll(1.0, aper, 0.01, 1000);
-				double safeDist = getSafeTimeSinceLastCutoff();
+				double safeDist = OLDgetSafeTimeSinceLastCutoff();
 //				EvenlyDiscretizedFunc safeCondProbFunc = getCondProbFunc();	// these two lines don't work because the both call local method
 //				EvenlyDiscretizedFunc condProbFunc = super.getCondProbFunc();
 //				System.out.println(safeCondProbFunc.getName());
@@ -431,7 +395,7 @@ public final class BPT_DistCalc extends EqkProbDistCalc implements ParameterChan
 //		calcBPT.setAll(1.0, 0.2, 0.005, 1800, 0.1384514094960294, 3.754790330104713);
 //		System.out.println(calcBPT.getCondProbForUnknownTimeSinceLastEvent());
 		
-		calcBPT.testSafeCalcs();
+		calcBPT.OLDtestSafeCalcs();
 		System.exit(0);
 
 		// test data from WGCEP-2002 code run (single branch for SAF) done by Ned Field

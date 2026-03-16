@@ -75,6 +75,16 @@ public final class WeibullDistCalc extends EqkProbDistCalc implements ParameterC
 		}
 	}
 	
+    /**
+     * Override TEST (this is no better than interpolation)
+     */
+	public double getCondProbTest(double timeSinceLast, double duration) {
+		WeibullDistribution weibullDist = new WeibullDistribution(k,lambda);
+		double p1 = weibullDist.cumulativeProbability(timeSinceLast);
+		double p2 = weibullDist.cumulativeProbability(timeSinceLast+duration);
+		return (p2-p1)/(1.0-p1);
+	}
+
 	
 	protected void computeDistributions() {
 		pdf = new EvenlyDiscretizedFunc(0,numPoints,deltaX);
@@ -281,6 +291,7 @@ public final class WeibullDistCalc extends EqkProbDistCalc implements ParameterC
     /**
      * Override this to avoid numerical problems
      */
+    @Override
 	public EvenlyDiscretizedFunc getHazFunc() {
 		ensureUpToDate(false);
 		EvenlyDiscretizedFunc hazFunc = new EvenlyDiscretizedFunc(0, pdf.getMaxX(), pdf.size());
@@ -375,6 +386,18 @@ public final class WeibullDistCalc extends EqkProbDistCalc implements ParameterC
 //				System.out.println((float)cov+"\t"+(float)mean +"\t"+(float)(mean/mean2));
 //			}
 //		}
+	}
+	
+    /**
+     * Override this to avoid numerical problems on tail
+     */
+//    @Override
+	public double getCondProb(double timeSinceLast, double duration) {
+		validateTimeSinceLast(timeSinceLast);
+		validateDuration(duration);
+		double temp = (Math.pow(timeSinceLast+duration,k) - Math.pow(timeSinceLast,k))/Math.pow(lambda, k);
+//		return 1.0 - Math.exp(-temp); 
+		return - Math.expm1(-temp); // this a version of Math.exp()-1.0 that works at very small values
 	}
 }
 

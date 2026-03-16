@@ -17,18 +17,27 @@ import com.google.common.base.Preconditions;
  * <b>Description:</p>.
  * This abstract class represents the core functionality for computing earthquake probabilities for various renewal models 
  * from the mean, aperiodicity, and other parameters.  Each subclass (one for each renewal model) simply computes the pdf 
- * and cdf in their respective implementations of the computeDistributions() method defined here.  All other calculations 
- * are performed here from the pdf and cdf.
+ * and cdf in their respective implementations of the computeDistributions() method defined here.  Most other calculations 
+ * are performed here from the pdf and cdf (except where there are analytical functions for specific renewal models that
+ * avoid numerical artifacts; see Weibull).
  * 
  * The units of time are arbitrary (they just need to be consistent among parameters)
  * 
- * These classes have not been fully tested in terms of numerical accuracy, so make sure the number of points is high (so 
- * the cdf gets close to 1.0), and that the time discretization is very small compared to both the mean and the duration.
- * No checks for these are currently made.
+ * These classes have not been fully tested in terms of numerical accuracy (beyond that described below), so be sure to
+ * test for your purposes using the GUI or by generating plots (as exemplified below).
  * 
- * Some subclasses implement a getSafeCondProb(*) method that checks and corrects for numerical errors when the denominator of the
- * conditional probability calculation (1.0-cdf.getInterpolatedY(timeSinceLast+duration)) approaches zero at high timeSinceLast.
- * See BPT_DistCalc for an example; that implementation could be moved here?
+ * This class was updated in 2026 to provide numerical stability for Weibull and Lognormal (generalizing previous 
+ * BPT-specific methods).
+ * 
+ * Numerical precision is specified by the NUMERICAL_PRECISION, and the safeTimeSinceLast is defined as the point where
+ * 1.0-CDF = NUMERICAL_PRECISION (survivor function).  NUMERICAL_PRECISION is used a few other places as well.
+ * 
+ * The "extrapolate" option on some methods extends the last numerically safe conditional probability out to higher
+ * times since last event.
+ * 
+ * The above safety measures were evaluated by generating and reviewing an extensive set of plots for parameter 
+ * values used in 2026 NSHM TD calculations 
+ * (see scratch.ned.longTermTD2026.LongTermTD_2026_Analyses.generateRenewalModelPlots(boolean).
  * 
  * A method could/should be added for sampling random values.
  * 
@@ -42,6 +51,14 @@ import com.google.common.base.Preconditions;
 public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	
 	final static boolean D = false;	// debugging flag
+	
+	// this was verified
+	final static double NUMERICAL_PRECISION = 1e-10;  // Preferred minimum survival value
+//	final static double NUMERICAL_PRECISION = 1e-11;  // minimum survival value
+//	final static double NUMERICAL_PRECISION = 1e-12;  // minimum survival value
+	double safeTimeSinceLast=Double.NaN;
+	int safeTimeSinceLastIndex=-1;
+
 	
 	// distributions
 	protected EvenlyDiscretizedFunc pdf, cdf, integratedCDF, integratedOneMinusCDF;
@@ -78,10 +95,10 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	protected final static String NUM_POINTS_PARAM_INFO = "The number of points for the distribution";
 	
 	// default param values
-	protected final static Double DEFAULT_MEAN_PARAM_VAL = Double.valueOf(100);
-	protected final static Double DEFAULT_APERIODICITY_PARAM_VAL = Double.valueOf(0.5);
-	protected final static Double DEFAULT_DELTAX_PARAM_VAL = Double.valueOf(1);
-	protected final static Integer DEFAULT_NUMPOINTS_PARAM_VAL = Integer.valueOf(500);
+	protected final static Double DEFAULT_MEAN_PARAM_VAL = Double.valueOf(1);
+	protected final static Double DEFAULT_APERIODICITY_PARAM_VAL = Double.valueOf(0.4);
+	protected final static Double DEFAULT_DELTAX_PARAM_VAL = Double.valueOf(5e-5);
+	protected final static Integer DEFAULT_NUMPOINTS_PARAM_VAL = Integer.valueOf(200001);
 	
 	// various adjustable params
 	protected DoubleParameter meanParam, aperiodicityParam, deltaX_Param;
@@ -100,6 +117,8 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 		interpCDF = null;
 		interpIntegratedCDF = null;
 		interpIntegratedOneMinusCDF = null;
+		safeTimeSinceLast=Double.NaN;
+		safeTimeSinceLastIndex=-1;
 	}
 
 	/**
@@ -122,6 +141,7 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 							"%s is set to be unmodifiable, can't rebuild distributions", NAME);
 					clearCachedDistributions();
 					computeDistributions();
+					computeSafeTimeSinceLastCutoff();
 					upToDate = true;
 				}
 				if (integrated && (integratedCDF == null || integratedOneMinusCDF == null)) {
@@ -187,6 +207,14 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 		}
 	}
 	
+//	public EvenlyDiscretizedFunc getIntegratedCDF() {
+//		return integratedCDF;
+//	}
+//	
+//	public EvenlyDiscretizedFunc getIntegratedOneMinusCDF() {
+//		return integratedOneMinusCDF;
+//	}
+	
 	/**
 	 * @return the current CDF, cloned to prevent modification
 	 */
@@ -197,6 +225,36 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 		cdf.setInfo(adjustableParams.toString());
 		return cdf;
 	}
+	
+	/**
+	 * Compute CDF from PDF using Trapizoidal integration
+	 * @param null
+	 * @return
+	 */
+	protected EvenlyDiscretizedFunc computeCDFfromPDF(EvenlyDiscretizedFunc pdf) {
+		cdf = new EvenlyDiscretizedFunc(0,numPoints,deltaX);
+		cdf.set(0,0);
+		double cd=0;
+		for(int i=1; i< pdf.size(); i++) { // skip first point because it's NaN
+			cd += deltaX*(pdf.getY(i)+pdf.getY(i-1))/2;  // Trapizoidal integration
+			if (cd > 1d) { // if it goes slightly over
+				cd = 1;
+			}
+			cdf.set(i,cd);
+		}
+		
+		// Ensure 
+		if(pdf.getY(pdf.size()-1)<1e-15) {// CDF should go to 1.0
+			double maxCDF = cdf.getY(cdf.size()-1);
+//			System.out.println("maxCDF = "+maxCDF);
+			if(maxCDF != 1.0) {
+				pdf.scale(1.0/maxCDF);
+				cdf = computeCDFfromPDF(pdf); // this could get into an infinite loop?
+			}
+		}
+		return cdf;
+	}
+
 	
 	/**
 	 * @return efficient interpolator of the current CDF
@@ -233,8 +291,10 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 		EvenlyDiscretizedFunc hazFunc = new EvenlyDiscretizedFunc(0, pdf.getMaxX(), pdf.size());
 		double haz;
 		for(int i=0;i<hazFunc.size();i++) {
-			haz = pdf.getY(i)/(1.0-cdf.getY(i));
-			if(Double.isInfinite(haz) || Double.isInfinite(-haz)) haz = Double.NaN;
+			double s = 1.0-cdf.getY(i); // survival
+			haz = pdf.getY(i)/s;
+			if(Double.isInfinite(haz) || Double.isInfinite(-haz) || i>safeTimeSinceLastIndex) 
+				haz = Double.NaN;
 			hazFunc.set(i,haz);
 		}
 		hazFunc.setName(NAME+" Hazard Function");
@@ -258,42 +318,79 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	}
 	
 	/*
-	 * This gives a function of the probability of an event occurring between time T
+	 * This returns a function of the probability of an event occurring between time T
 	 * (on the x-axis) and T+duration, conditioned that it has not occurred before T.
+	 * No extrapolation beyond the last numerically sound value is applied.
+	 * 
+	 * @param duration
+	 * @return
 	 */
 	public EvenlyDiscretizedFunc getCondProbFunc(double duration) {
+		return getCondProbFunc(duration, false);
+	}
+
+	
+	/*
+	 * This returns a function of the probability of an event occurring between time T
+	 * (on the x-axis) and T+duration, conditioned that it has not occurred before T.
+	 * The extrapolate boolean indicates whether the last numerically safe conditional 
+	 * probability is used for the remainder of the function (a constant value, which 
+	 * is not necessarily the correct behavior)
+	 * 
+	 * @param duration
+	 * @param extrapolate
+	 * @return
+	 */
+	public EvenlyDiscretizedFunc getCondProbFunc(double duration, boolean extrapolate) {
 		validateDuration(duration);
 		ensureUpToDate(false);
-//		int numPts = numPoints - (int)(duration/deltaX+1);
-////System.out.println("numPts="+numPts+"\t"+duration);
-//		EvenlyDiscretizedFunc condFunc = new EvenlyDiscretizedFunc(0.0, numPts , deltaX);
 		int durBins = (int)Math.ceil(duration / deltaX);
 		int maxStartIndex = (numPoints - 1) - durBins;
-		Preconditions.checkState(maxStartIndex >= 0,
+		Preconditions.checkState(maxStartIndex > 0,
 				"Duration too large for distributions: duration=%s, deltaX=%s, numPoints=%s",
 				duration, deltaX, numPoints);
 
-		int numStartPoints = maxStartIndex + 1;
+		int numStartPoints = maxStartIndex;
 		EvenlyDiscretizedFunc condFunc = new EvenlyDiscretizedFunc(0.0, numStartPoints, deltaX);
+		double lastGoodCondProb = Double.NaN;
+		double lastGoodXaxisValue = Double.NaN;
 		for(int i=0;i<condFunc.size();i++) {
-			condFunc.set(i,getCondProb(condFunc.getX(i), duration));
+			double condProb = getCondProb(condFunc.getX(i), duration);
+			if(Double.isNaN(condProb) && extrapolate) {
+				if(Double.isNaN(lastGoodCondProb)) { // compute once and apply the rest of the way out
+					lastGoodXaxisValue = condFunc.getX(i-1);
+					// the following isn't really needed here because it will find condFunc.getY(i-1)
+					lastGoodCondProb = findLastGoodCondProb(condFunc.getX(i), duration);
+				}
+				condProb = lastGoodCondProb;
+			}
+			condFunc.set(i,condProb);
 		}
-		condFunc.setName(NAME+" Conditional Probability Function");
+		if(extrapolate)
+			condFunc.setName(NAME+" Conditional Probability Function, extrapolated from X = "+(float)lastGoodXaxisValue);
+		else
+			condFunc.setName(NAME+" Conditional Probability Function");
 		condFunc.setInfo(adjustableParams.toString());
 		return condFunc;
 	}
 	
+	
 	public EvenlyDiscretizedFunc getCondProbGainFunc(double duration) {
-		EvenlyDiscretizedFunc func = getCondProbFunc(duration);
-//		double poisProb = 1.0-Math.exp(-duration/mean);
-//		func.scale(1.0/poisProb);
-//		func.setName(NAME+" Conditional Probability Gain Function");
-//		func.setInfo("Relative to Poisson probability of one or more events.\n"+adjustableParams.toString());
+		return getCondProbGainFunc(duration,false);
+	}
 
-		func.scale(mean/duration);
+	
+	public EvenlyDiscretizedFunc getCondProbGainFunc(double duration, boolean extrapolate) {
+		EvenlyDiscretizedFunc func = getCondProbFunc(duration, extrapolate);
+		double poisProb = 1.0-Math.exp(-duration/mean);
+		func.scale(1.0/poisProb);
 		func.setName(NAME+" Conditional Probability Gain Function");
-		func.setInfo("Defined as cond prob divided by expected number (duration/mean="+(float)(duration/mean)+").\n"+adjustableParams.toString());
-		
+		func.setInfo("Relative to Poisson probability of one or more events.\n"+adjustableParams.toString());
+
+		// This is for the U3 rate gains
+//		func.scale(mean/duration);
+//		func.setName(NAME+" Conditional Probability Gain Function");
+//		func.setInfo("Defined as cond prob divided by expected number (duration/mean="+(float)(duration/mean)+").\n"+adjustableParams.toString());
 		return func;
 	}
 	
@@ -309,6 +406,10 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	 * @return
 	 */
 	public double getCondProb(double timeSinceLast, double duration) {
+		
+		if(timeSinceLast+duration>safeTimeSinceLast) {
+			return Double.NaN;
+		}
 		validateTimeSinceLast(timeSinceLast);
 		validateDuration(duration);
 		boolean doInterp = this.interpolate;
@@ -332,19 +433,44 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 			p2 = cdf.getY(index2);
 			p1 = cdf.getY(index1);
 		}
-		double denom = 1d - p1;
+		double denom = 1.0 - p1;
 		if (D) {
 			System.out.println("index1="+index1+", index2="+index2+" for timeSinceLast="+timeSinceLast
 					+" and duration="+duration+", deltaX="+deltaX
 					+", CDF x[0]"+cdf.getX(0)+", x[1]="+cdf.getX(1)+", ..., x["+(cdf.size()-1)+"]="+cdf.getMaxX());
 			System.out.println("("+p1+" - "+p2+")/(1 - "+p1+") = "+((p2 - p1)/denom));
 		}
-		if(denom > 1e-14)
-			// large enough to be numerically stable
+//if(timeSinceLast>1.6 && timeSinceLast<1.8)
+//	System.out.println(timeSinceLast+"\t"+p1+"\t"+p2+"\t"+(p2-p1));
+		// first test below ensure we our out on the tail (p2-p1=0 at low RI)
+		// second test avoids unstable results
+		if(denom < 0.25 && p2-p1<NUMERICAL_PRECISION*0.01)	
+			return Double.NaN;		
+		else
 			return (p2-p1)/denom;
-		// numerical issue
-		return Double.NaN;
 	}	
+	
+	
+	/**
+	 * This finds the last numerically sound conditional probability when
+	 * too far out on the tail (where getCondProb() returns NaN).
+	 * 
+	 * @param timeSinceLast
+	 * @param duration
+	 * @return
+	 */
+	public double findLastGoodCondProb(double timeSinceLast, double duration) {
+		int testStartIndex = cdf.getClosestXIndex(timeSinceLast);
+		double condProb = Double.NaN;
+		while(Double.isNaN(condProb)) {
+			testStartIndex -= 1;
+			condProb = getCondProb(cdf.getX(testStartIndex), duration);
+		}
+			return condProb;
+	}
+
+
+	
 
 	/**
 	 * Initialize adjustable parameters
@@ -449,9 +575,37 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	
 	
 	/**
+	 * This gives the probability as a function of the Open Interval (x-axis). Note that values can be biased
+	 * upward out on the tail if the survivor function (1-CDF) does not get close enough to zero at the
+	 * max x-axis value.  (the denominator in equation 8 of Field and Jordan (2015, doi: 10.1785/0120140096)
+	 * is biased low because the integration does not go to infinity.
+	 * @param duration
+	 * @param maxHistOpenIntervalYrs
+	 * @return
+	 */
+	public EvenlyDiscretizedFunc getCondProbForUnknownTimeSinceLastEventFunc(double duration, double maxHistOpenIntervalYrs) {
+		validateDuration(duration);
+		ensureUpToDate(false);
+		int durBins = (int)Math.ceil(duration / deltaX);
+		int numBins = (numPoints - 1) - durBins;
+//		int numBins = (int)Math.round(maxHistOpenIntervalYrs) - durBins; // discretize by 1 year
+		EvenlyDiscretizedFunc condFunc = new EvenlyDiscretizedFunc(0.0, numBins, deltaX);
+		for(int i=0;i<condFunc.size();i++) {
+			double condProb = getCondProbForUnknownTimeSinceLastEvent(duration, condFunc.getX(i));
+			condFunc.set(i,condProb);
+		}
+		condFunc.setName(NAME+" Prob vs OpenInterval");
+		condFunc.setInfo(adjustableParams.toString());
+		return condFunc;
+	}
+	
+	/**
 	 * This computes the probability of an event over the specified duration for the case where the 
 	 * date of last event is unknown (looping over all possible values), but where the historic open 
-	 * interval is applied (the latter defaults to zero if never set).
+	 * interval is applied (the latter defaults to zero if never set).  Note that values can be biased
+	 * upward out on the tail if the survivor function (1-CDF) does not get close enough to zero at the
+	 * max x-axis value.  (the denominator in equation 8 of Field and Jordan (2015, doi: 10.1785/0120140096)
+	 * is biased low because the integration does not go to infinity. 
 	 * @return
 	 */
 	public double getCondProbForUnknownTimeSinceLastEvent(double duration, double histOpenInterval) {
@@ -459,14 +613,44 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 		validateHistOpenInterval(histOpenInterval);
 		// ensures that we're up to date including integrated versions, and the interpolator have been built
 		ensureInterpolators(true);
-		
-//		if(integratedCDF==null) 
-//			makeIntegratedCDFs();
 //		double numer = duration - (integratedCDF.getInterpolatedY(histOpenInterval+duration)-integratedCDF.getInterpolatedY(histOpenInterval));
 //		double denom = (integratedOneMinusCDF.getY(numPoints-1)-integratedOneMinusCDF.getInterpolatedY(histOpenInterval));
-		double numer = duration - (interpCDF.findY(histOpenInterval+duration)-interpIntegratedCDF.findY(histOpenInterval));
+		double numer = duration - (interpIntegratedCDF.findY(histOpenInterval+duration)-interpIntegratedCDF.findY(histOpenInterval));
 		double denom = (integratedOneMinusCDF.getY(numPoints-1)-interpIntegratedOneMinusCDF.findY(histOpenInterval));
+
+		if(denom < NUMERICAL_PRECISION || numer<NUMERICAL_PRECISION)	
+			return Double.NaN;
+
+//		if(histOpenInterval>7.9); // && histOpenInterval<8.1)
+//			System.out.println((float)histOpenInterval+"\t"+duration+"\t"+numer+"\t"+denom+"\t"+(1-interpCDF.findY(histOpenInterval)));
+//		
 		double result = numer/denom;
+		
+//
+//	System.out.println("cdf.getInterpolatedY(histOpenInterval) = "+cdf.getInterpolatedY(histOpenInterval));
+//
+//	System.out.println("normHistOpenInterval = "+histOpenInterval);
+//	System.out.println("normDuration = "+ duration);
+//	System.out.println("normHistOpenInterval+normDuration = "+(histOpenInterval+duration));
+//	
+//	System.out.println("\ninterpIntegratedCDF.findY(histOpenInterval+duration) = "+interpIntegratedCDF.findY(histOpenInterval+duration));
+//	System.out.println("interpIntegratedCDF.findY(histOpenInterval) = "+interpIntegratedCDF.findY(histOpenInterval));
+//	
+//	System.out.println("\nintegratedOneMinusCDF.getY(numPoints-1) = "+integratedOneMinusCDF.getY(numPoints-1));
+//	System.out.println("interpIntegratedOneMinusCDF.findY(histOpenInterval) = "+interpIntegratedOneMinusCDF.findY(histOpenInterval));
+//
+//	
+//	System.out.println("\nintegratedOneMinusCDF.getY(numPoints-1) = "+integratedOneMinusCDF.getY(numPoints-1));
+//	System.out.println("integratedOneMinusCDF.getInterpolatedY(histOpenInterval) = "+integratedOneMinusCDF.getInterpolatedY(histOpenInterval));
+//	
+//	System.out.println("\nnumer = "+numer+"\ndenom = "+denom+"\nresult = "+result+
+//			"\nduration = "+duration+"\nhistOpenInterval = "+histOpenInterval);
+//	double numer2 = duration - (integratedCDF.getInterpolatedY(histOpenInterval+duration)-integratedCDF.getInterpolatedY(histOpenInterval));
+//	double denom2 = (integratedOneMinusCDF.getY(numPoints-1)-integratedOneMinusCDF.getInterpolatedY(histOpenInterval));
+//	double result2 = numer2/denom2;
+//	System.out.println("numer2 = "+numer2+"\ndenom2 = "+denom2+"\nresult2 = "+result2);
+//
+//}
 		
 		
 		// this tests other ways of computing the same thing
@@ -566,7 +750,7 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	 * This provides the mean date of last event when only the historic open interval is known.
 	 * @return
 	 */
-	public double getMeanTimeSinceLastEventPDF(double histOpenInterval) {
+	public double setAllParameters(double histOpenInterval) {
 		return computeMeanFromPDF(getTimeSinceLastEventPDF(histOpenInterval));
 	}
 	
@@ -675,6 +859,36 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	}
 	
 	
+	/**
+	 * This finds the largest x-axis value such that survival (1.0-cdf.getY(x)) >= NUMERICAL_PRECISION
+	 * (not too close to zero, as this is the denominator of the hazard & conditional probability calculation)
+	 */
+	protected void computeSafeTimeSinceLastCutoff() {
+		Preconditions.checkState(!isUnmodifiable(), "%s is already set to be unmodifiable", NAME);
+		safeTimeSinceLast = Double.NaN;
+		safeTimeSinceLastIndex = -1;
+		for(int x=0;x<cdf.size();x++) {
+			if(1.0-cdf.getY(x) < NUMERICAL_PRECISION) {	// when cdf gets too close to 1, keep last safeTimeSinceLast
+				break;
+			}
+			else {
+				safeTimeSinceLast = cdf.getX(x);
+				safeTimeSinceLastIndex = x;
+			}
+		}
+		
+		if(Double.isNaN(safeTimeSinceLast)) {
+			safeTimeSinceLastIndex = cdf.size()-1;
+			safeTimeSinceLast = cdf.getX(safeTimeSinceLastIndex);
+//			throw new RuntimeException ("CDF never gets close to 1.0; need to increase numPoints?");
+		}
+		
+//		System.out.println("safeTimeSinceLast="+safeTimeSinceLast);
+	}
+	
+	public static double getPrecision() {
+		return NUMERICAL_PRECISION;
+	}
 
 
 }
