@@ -308,9 +308,7 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 	 *
 	 * @param tectonicRegionType the tectonic region type, or null to clear
 	 */
-	public default void setTectonicRegionType(TectonicRegionType tectonicRegionType) {
-		// no-op by default
-	}
+	public void setTectonicRegionType(TectonicRegionType tectonicRegionType);
 	
 	public Element toXMLMetadata(Element root, String name);
 	

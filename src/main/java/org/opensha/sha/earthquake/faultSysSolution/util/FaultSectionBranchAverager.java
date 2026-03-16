@@ -348,6 +348,10 @@ public class FaultSectionBranchAverager {
 			return refSect.getTectonicRegionType();
 		}
 
+		@Override
+		public void setTectonicRegionType(TectonicRegionType tectonicRegionType){
+			throw new UnsupportedOperationException();
+		}
 	}
 
 }
