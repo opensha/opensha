@@ -68,11 +68,10 @@ public enum PlotLineType {
 		Preconditions.checkArgument(lineWidth>0, "Line width must be >0");
 		float lenScalar = (float)prefs.getSizeScalar();
 		if (this == SOLID)
-			// 2026 note: this uses cap square; it overshoots for large thickness, but often better than undershooting
-			// when separate lines meet at sharp angles. It's been the OpenSHA default for ages
+			// 2026 note: this uses cap square by default; it overshoots for large thickness, but often better than
+			// undershooting when separate lines meet at sharp angles. It's been the OpenSHA default for ages.
 			return new BasicStroke(lineWidth, prefs.getSolidLineCap(), prefs.getSolidLineJoin());
-			// we could use cap butt instead or maybe make this a user choice
-//			return new BasicStroke(lineWidth, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL);
+//			return new BasicStroke(lineWidth);
 		else if (this == DOTTED)
 			return new BasicStroke(lineWidth, prefs.getDashedLineCap(), prefs.getDashedLineJoin(),
 					0,new float[] {Float.min(6, Float.max(lineWidth*0.7f, 1))*lenScalar},0);
@@ -211,7 +210,9 @@ public enum PlotLineType {
 						"Renderer already exists but isn't correct type for plt="+plt+" and sym="+sym);
 			}
 			Preconditions.checkArgument(symWidth > 0, "symbol widht must be >0");
-			Shape shape = sym.buildShape(symWidth, prefs);
+			if (!prefs.isTrueSymbolSizing())
+				symWidth = sym.getOriginalSymbolSize(symWidth);
+			Shape shape = sym.buildShape(symWidth);
 			Preconditions.checkNotNull(shape, "Couldn't build shape for symbol: "+sym);
 //			renderer.setShape(shape);
 			renderer.setSeriesShape(0, shape);
@@ -225,7 +226,8 @@ public enum PlotLineType {
 			} else {
 				lineShpRend.setSeriesShapesFilled(0, false);
 				lineShpRend.setDrawOutlines(true);
-				lineShpRend.setDefaultOutlineStroke(new BasicStroke(Float.min(1f, 0.1f*symWidth),
+				float strokeWidth = Float.max(0.1f, Float.min(1f, 0.1f*symWidth));
+				lineShpRend.setDefaultOutlineStroke(new BasicStroke(strokeWidth,
 						BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER));
 			}
 //			stdRend.setBaseShapesFilled(sym.isFilled());

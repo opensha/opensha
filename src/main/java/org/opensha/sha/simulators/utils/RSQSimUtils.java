@@ -122,7 +122,7 @@ public class RSQSimUtils {
 		if (rupSurfs.size() == 1)
 			surf = rupSurfs.get(0);
 		else
-			surf = new CompoundSurface(rupSurfs);
+			surf = CompoundSurface.get(rupSurfs);
 		
 		SimulatorElement hypo = getHypocenterElem(event);
 

@@ -224,7 +224,7 @@ SplittableRuptureModule<ClusterRuptures> {
 		return new Precomputed(rupSet, clusterRuptures);
 	}
 	
-	public static ClusterRuptures singleStranged(FaultSystemRupSet rupSet) {
+	public static ClusterRuptures singleStranded(FaultSystemRupSet rupSet) {
 		return new SingleStranded(rupSet, null);
 	}
 

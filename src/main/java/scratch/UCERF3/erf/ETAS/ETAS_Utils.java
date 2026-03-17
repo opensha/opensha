@@ -1774,7 +1774,7 @@ public class ETAS_Utils {
 		if (rupSurfs.size() == 1)
 			return rupSurfs.get(0);
 		else
-			return new CompoundSurface(rupSurfs);
+			return CompoundSurface.get(rupSurfs);
 	}
 	
 	/**

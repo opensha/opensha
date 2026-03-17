@@ -1131,8 +1131,8 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		GeographicMapMaker plotter = new RupSetMapMaker(rupSet, region) {
 
 			@Override
-			protected Feature surfFeature(FaultSection sect, PlotCurveCharacterstics pChar) {
-				return setClusterProps(super.surfFeature(sect, pChar), sect);
+			protected Feature surfFeature(FaultSection sect, PlotCurveCharacterstics pChar, double opacity) {
+				return setClusterProps(super.surfFeature(sect, pChar, opacity), sect);
 			}
 
 			@Override

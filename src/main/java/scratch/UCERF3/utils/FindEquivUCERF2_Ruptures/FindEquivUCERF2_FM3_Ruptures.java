@@ -876,7 +876,7 @@ public class FindEquivUCERF2_FM3_Ruptures extends FindEquivUCERF2_Ruptures {
 				for(FaultSection fltData: faultSysRupSet.getFaultSectionDataForRupture(ir)) {
 					surfaces.add(fltData.getFaultSurface(1.0, false, true));
 				}
-				CompoundSurface compSurf = new CompoundSurface(surfaces);
+				CompoundSurface compSurf = CompoundSurface.get(surfaces);
 				LocationList surfLocs = compSurf.getEvenlyDiscritizedListOfLocsOnSurface();
 				double ptRate = rateOfUCERF2_Rup[ur]/surfLocs.size();
 				for(Location loc: surfLocs) {
@@ -907,7 +907,7 @@ public class FindEquivUCERF2_FM3_Ruptures extends FindEquivUCERF2_Ruptures {
 				for(FaultSection fltData: faultSysRupSet.getFaultSectionDataForRupture(ir)) {
 					surfaces.add(fltData.getFaultSurface(1.0, false, true));
 				}
-				CompoundSurface compSurf = new CompoundSurface(surfaces);
+				CompoundSurface compSurf = CompoundSurface.get(surfaces);
 				LocationList surfLocs = compSurf.getEvenlyDiscritizedListOfLocsOnSurface();
 				HashSet<Integer> locIndices = new HashSet<Integer>();	// this will prevent duplicate entries
 				for(Location loc: surfLocs) {

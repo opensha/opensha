@@ -453,6 +453,18 @@ class ArbitrarilyDiscretizedSurface implements RuptureSurface, CacheEnabledSurfa
 	}
 
 	@Override
+	public Location getFirstLocOnLowerEdge() {
+		calcUpperLower();
+		return lowerEdge.first();
+	}
+
+	@Override
+	public Location getLastLocOnLowerEdge() {
+		calcUpperLower();
+		return lowerEdge.last();
+	}
+
+	@Override
 	public double getFractionOfSurfaceInRegion(Region region) {
 		double numInside=0;
 		for(Location loc: this) {

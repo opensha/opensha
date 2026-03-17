@@ -426,6 +426,16 @@ public class LineSurface implements RuptureSurface, CacheEnabledSurface {
 	}
 
 	@Override
+	public Location getFirstLocOnLowerEdge() {
+		return trace.get(0);
+	}
+
+	@Override
+	public Location getLastLocOnLowerEdge() {
+		return trace.last();
+	}
+
+	@Override
 	public double getFractionOfSurfaceInRegion(Region region) {
 		// TODO Auto-generated method stub
 		throw new RuntimeException("not yet implemented");

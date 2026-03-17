@@ -1,0 +1,18 @@
+{
+  "type": "Feature",
+  "properties": {
+    "title": "GNMI Catalog Extent",
+    "fill": "#1DAD45",
+    "stroke": "#1DAD45"
+  },
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [[
+      [141.0,  9.5],
+      [149.5,  9.5],
+      [149.5, 23.0],
+      [141.0, 23.0],
+      [141.0,  9.5]
+    ]]
+  }
+}

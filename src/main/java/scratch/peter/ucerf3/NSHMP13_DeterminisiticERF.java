@@ -300,7 +300,7 @@ public class NSHMP13_DeterminisiticERF extends AbstractERF {
 				surfs.add(sect.getFaultSurface(SPACING, false, true));
 			}
 			surfaceMap.put(id, (surfs.size() == 1) ? surfs.get(0)
-				: new CompoundSurface(surfs));
+				: CompoundSurface.get(surfs));
 		}
 	}
 	

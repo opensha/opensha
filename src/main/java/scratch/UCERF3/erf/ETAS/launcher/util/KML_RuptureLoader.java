@@ -257,7 +257,7 @@ public class KML_RuptureLoader {
 		}
 		if (surfs.size() == 1)
 			return surfs.get(0);
-		return new CompoundSurface(surfs);
+		return CompoundSurface.get(surfs);
 	}
 
 	public static void main(String[] args) throws IOException, DocumentException {

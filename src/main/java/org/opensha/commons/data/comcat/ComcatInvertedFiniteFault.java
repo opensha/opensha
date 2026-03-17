@@ -46,7 +46,7 @@ public class ComcatInvertedFiniteFault {
 		Preconditions.checkState(!surfs.isEmpty(), "No surfaces found with slip >= %s", minSlip);
 		if (surfs.size() == 1)
 			return surfs.get(0);
-		return new CompoundSurface(surfs);
+		return CompoundSurface.get(surfs);
 	}
 	
 	public LocationList[] getOutlines(double minSlip) {
