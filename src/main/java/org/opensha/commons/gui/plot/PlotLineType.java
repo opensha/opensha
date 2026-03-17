@@ -68,11 +68,10 @@ public enum PlotLineType {
 		Preconditions.checkArgument(lineWidth>0, "Line width must be >0");
 		float lenScalar = (float)prefs.getSizeScalar();
 		if (this == SOLID)
-			// 2026 note: this uses cap square; it overshoots for large thickness, but often better than undershooting
-			// when separate lines meet at sharp angles. It's been the OpenSHA default for ages
+			// 2026 note: this uses cap square by default; it overshoots for large thickness, but often better than
+			// undershooting when separate lines meet at sharp angles. It's been the OpenSHA default for ages.
 			return new BasicStroke(lineWidth, prefs.getSolidLineCap(), prefs.getSolidLineJoin());
-			// we could use cap butt instead or maybe make this a user choice
-//			return new BasicStroke(lineWidth, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL);
+//			return new BasicStroke(lineWidth);
 		else if (this == DOTTED)
 			return new BasicStroke(lineWidth, prefs.getDashedLineCap(), prefs.getDashedLineJoin(),
 					0,new float[] {Float.min(6, Float.max(lineWidth*0.7f, 1))*lenScalar},0);

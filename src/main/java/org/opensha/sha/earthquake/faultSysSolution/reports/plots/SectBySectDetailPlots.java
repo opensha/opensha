@@ -159,9 +159,9 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		}
 		
 		if (!rupSet.hasModule(ClusterRuptures.class))
-			rupSet.addModule(ClusterRuptures.singleStranged(rupSet));
+			rupSet.addModule(ClusterRuptures.singleStranded(rupSet));
 		if (meta.comparisonHasSameSects && !meta.comparison.rupSet.hasModule(ClusterRuptures.class))
-			meta.comparison.rupSet.addModule(ClusterRuptures.singleStranged(meta.comparison.rupSet));
+			meta.comparison.rupSet.addModule(ClusterRuptures.singleStranded(meta.comparison.rupSet));
 		
 		Map<Integer, List<FaultSection>> sectsByParent = rupSet.getFaultSectionDataList().stream().collect(
 				Collectors.groupingBy(S -> S.getParentSectionId()));
@@ -244,8 +244,8 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		GeographicMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region) {
 
 			@Override
-			protected Feature surfFeature(FaultSection sect, PlotCurveCharacterstics pChar) {
-				return featureLink(super.surfFeature(sect, pChar), sect);
+			protected Feature surfFeature(FaultSection sect, PlotCurveCharacterstics pChar, double opacity) {
+				return featureLink(super.surfFeature(sect, pChar, opacity), sect);
 			}
 
 			@Override
@@ -316,9 +316,9 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		}
 		
 		if (!rupSet.hasModule(ClusterRuptures.class))
-			rupSet.addModule(ClusterRuptures.singleStranged(rupSet));
+			rupSet.addModule(ClusterRuptures.singleStranded(rupSet));
 		if (meta.comparisonHasSameSects && !meta.comparison.rupSet.hasModule(ClusterRuptures.class))
-			meta.comparison.rupSet.addModule(ClusterRuptures.singleStranged(meta.comparison.rupSet));
+			meta.comparison.rupSet.addModule(ClusterRuptures.singleStranded(meta.comparison.rupSet));
 		
 		Map<Integer, List<FaultSection>> sectsByParent = rupSet.getFaultSectionDataList().stream().collect(
 				Collectors.groupingBy(S -> S.getParentSectionId()));

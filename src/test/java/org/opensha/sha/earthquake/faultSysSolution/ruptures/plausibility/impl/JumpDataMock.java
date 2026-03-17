@@ -48,15 +48,23 @@ public class JumpDataMock {
         int id = parentId * 1000;
         List<FaultSection> sections = new ArrayList<>();
         FaultSection previous = mock(FaultSection.class);
+        int subID = 0;
         when(previous.getParentSectionId()).thenReturn(parentId);
         when(previous.getSectionId()).thenReturn(id++);
+        when(previous.getSubSectionIndex()).thenReturn(subID);
+        when(previous.getSubSectionIndexAlong()).thenReturn(subID);
+        when(previous.getSubSectionIndexDownDip()).thenReturn(-1);
         sections.add(previous);
         for (Double azimuth : azimuths) {
             FaultSection section = mock(FaultSection.class);
             when(section.getParentSectionId()).thenReturn(parentId);
-            when(section.getSectionId()).thenReturn(id++);
+            when(section.getSectionId()).thenReturn(id+subID);
             sections.add(section);
             when(calc.calcAzimuth(previous, section)).thenReturn(azimuth);
+            when(section.getSubSectionIndex()).thenReturn(subID);
+            when(section.getSubSectionIndexAlong()).thenReturn(subID);
+            when(section.getSubSectionIndexDownDip()).thenReturn(-1);
+            subID++;
             previous = section;
         }
         return new FaultSubsectionCluster(sections);

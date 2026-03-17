@@ -344,6 +344,21 @@ public class FaultSectionBranchAverager {
 		}
 
 		@Override
+		public int getSubSectionIndex() {
+			return refSect.getSubSectionIndex();
+		}
+
+		@Override
+		public int getSubSectionIndexAlong() {
+			return refSect.getSubSectionIndexAlong();
+		}
+
+		@Override
+		public int getSubSectionIndexDownDip() {
+			return refSect.getSubSectionIndexDownDip();
+		}
+
+		@Override
 		public TectonicRegionType getTectonicRegionType() {
 			return refSect.getTectonicRegionType();
 		}
@@ -352,6 +367,7 @@ public class FaultSectionBranchAverager {
 		public void setTectonicRegionType(TectonicRegionType tectonicRegionType){
 			throw new UnsupportedOperationException();
 		}
+		
 	}
 
 }

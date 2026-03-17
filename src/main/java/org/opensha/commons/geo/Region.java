@@ -686,6 +686,10 @@ public class Region implements Serializable, XMLSaveable, Named {
 	private static final boolean SUBTRACT_DEBUG = false;
 
 	private BorderType type;
+	
+	public BorderType getBorderType() {
+		return type;
+	}
 
 	/**
 	 * Returns the first {@code Region} subtracted by the second, or null if no they don't intersect.

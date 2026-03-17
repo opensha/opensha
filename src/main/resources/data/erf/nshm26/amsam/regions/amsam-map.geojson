@@ -1,0 +1,26 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "fill": "#AA0078",
+        "stroke": "#AA0078",
+        "title": "NSHM American Samoa Map Extents",
+        "spacing": 0.1
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-174.0, -13.0],
+            [-174.0, -16.0],
+            [-168.0, -16.0],
+            [-168.0, -13.0],
+            [-174.0, -13.0]
+          ]
+        ]
+      }
+    }
+  ]
+}
