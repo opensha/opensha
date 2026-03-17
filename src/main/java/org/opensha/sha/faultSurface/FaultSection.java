@@ -8,6 +8,7 @@ import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.Named;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.metadata.XMLSaveable;
+import org.opensha.sha.util.TectonicRegionType;
 
 /**
  * Top level interface for a fault section. This was extracted from the FaultSectionPrefData
@@ -290,8 +291,24 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 	public boolean isProxyFault();
 
 	public Region getZonePolygon();
-	
+
 	public void setZonePolygon(Region zonePolygon);
+
+	/**
+	 * Returns the tectonic region type for this fault section, or null if not set.
+	 *
+	 * @return the tectonic region type, or null
+	 */
+	public default TectonicRegionType getTectonicRegionType() {
+		return null;
+	}
+
+	/**
+	 * Sets the tectonic region type for this fault section.
+	 *
+	 * @param tectonicRegionType the tectonic region type, or null to clear
+	 */
+	public void setTectonicRegionType(TectonicRegionType tectonicRegionType);
 	
 	public Element toXMLMetadata(Element root, String name);
 	

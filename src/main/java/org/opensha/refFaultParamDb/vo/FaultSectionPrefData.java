@@ -21,6 +21,7 @@ import org.opensha.sha.faultSurface.QuadSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.sha.faultSurface.SimpleFaultData;
+import org.opensha.sha.util.TectonicRegionType;
 
 /**
  * This class contains preferred fault section data (rather than the estimates) from  FaultSectionData. It
@@ -77,9 +78,20 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 	private QuadSurfaceCache quadCache;
 	
 	private boolean proxyFault = false;
+	private TectonicRegionType tectonicRegionType;
 
 	public String getShortName() {
 		return this.shortName;
+	}
+
+	@Override
+	public TectonicRegionType getTectonicRegionType() {
+		return tectonicRegionType;
+	}
+
+	@Override
+	public void setTectonicRegionType(TectonicRegionType tectonicRegionType) {
+		this.tectonicRegionType = tectonicRegionType;
 	}
 
 	public void setFaultSectionPrefData(FaultSection faultSection) {
@@ -107,6 +119,7 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 		connector = faultSection.isConnector();
 		zonePolygon = faultSection.getZonePolygon();
 		proxyFault = faultSection.isProxyFault();
+		tectonicRegionType = faultSection.getTectonicRegionType();
 	}
 
 	public String toString() {
@@ -577,6 +590,8 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 			el.addAttribute("dateOfLastEventMillis", getDateOfLastEvent()+"");
 		if (!Double.isNaN(getSlipInLastEvent()))
 			el.addAttribute("slipInLastEvent", getSlipInLastEvent()+"");
+		if (tectonicRegionType != null)
+			el.addAttribute("tectonicRegionType", tectonicRegionType.name());
 
 		FaultTrace trace = this.getFaultTrace();
 
@@ -681,6 +696,9 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 		Attribute lastSlipAtt = el.attribute("slipInLastEvent");
 		if (lastSlipAtt != null)
 			data.setSlipInLastEvent(Double.parseDouble(lastSlipAtt.getStringValue()));
+		Attribute trtAtt = el.attribute("tectonicRegionType");
+		if (trtAtt != null)
+			data.setTectonicRegionType(TectonicRegionType.valueOf(trtAtt.getStringValue()));
 
 		return data;
 	}

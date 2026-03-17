@@ -18,6 +18,7 @@ import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.commons.geo.json.Geometry;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -121,6 +122,7 @@ public class GeoJSONFaultSectionTest {
 		doubleTest("Creep reduced area", orig.getArea(true), test.getArea(true));
 		doubleTest("Orig area", orig.getArea(false), test.getArea(false));
 		doubleTest("Trace length", orig.getTraceLength(), test.getTraceLength());
+		assertEquals("TectonicRegion mismatch", orig.getTectonicRegionType(), test.getTectonicRegionType());
 		
 		FaultTrace origTrace = orig.getFaultTrace();
 		FaultTrace testTrace = test.getFaultTrace();
@@ -174,6 +176,9 @@ public class GeoJSONFaultSectionTest {
 			((FaultSectionPrefData)sect).setConnector(connector);
 			String randParentName = "Fake parent "+r.nextFloat();
 			sect.setParentSectionName(randParentName);
+			TectonicRegionType[] trts = TectonicRegionType.values();
+			TectonicRegionType trt = trts[r.nextInt(trts.length)];
+			sect.setTectonicRegionType(trt);
 			String json = toJSON(sect);
 			
 //			System.out.println(json);
@@ -188,6 +193,8 @@ public class GeoJSONFaultSectionTest {
 			testDoubleProperty(GeoJSONFaultSection.SLIP_LAST, deser, randSlipInLast);
 			
 			testBooleanProperty(GeoJSONFaultSection.CONNECTOR, deser, connector, false);
+
+			testStringProperty(GeoJSONFaultSection.TECTONIC_REGION, deser, trt.name());
 		}
 	}
 	

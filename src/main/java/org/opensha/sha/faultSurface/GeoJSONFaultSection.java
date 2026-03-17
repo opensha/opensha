@@ -21,6 +21,7 @@ import org.opensha.commons.geo.json.Geometry.Polygon;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionPolygonBuilder;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
@@ -73,6 +74,7 @@ public class GeoJSONFaultSection implements FaultSection {
 	public static final String CONNECTOR = "Connector";
 	public static final String CREEP_RATE = "CreepRate";
 	public static final String PROXY = "Proxy";
+	public static final String TECTONIC_REGION = "TectonicRegion";
 	// use MultiLineString instead
 	@Deprecated private static final String LOWER_TRACE = "LowerTrace";
 	
@@ -131,7 +133,19 @@ public class GeoJSONFaultSection implements FaultSection {
 			props.set(SLIP_STD_DEV, slipRateStdDev);
 			return this;
 		}
-		
+
+		/**
+		 * Sets the tectonic region type for the fault section being built.
+		 *
+		 * @param trt the tectonic region type
+		 * @return this builder
+		 */
+		public Builder tectonicRegion(TectonicRegionType trt) {
+			if (trt != null)
+				props.set(TECTONIC_REGION, trt.name());
+			return this;
+		}
+
 		public Feature getFeature() {
 			return feature;
 		}
@@ -429,6 +443,8 @@ public class GeoJSONFaultSection implements FaultSection {
 				properties.set(CONNECTOR, true);
 			if (sect.isProxyFault())
 				properties.set(PROXY, true);
+			if (sect.getTectonicRegionType() != null)
+				setTectonicRegionType(sect.getTectonicRegionType());
 			setZonePolygon(sect.getZonePolygon());
 		}
 		cacheCommonValues();
@@ -1067,6 +1083,22 @@ public class GeoJSONFaultSection implements FaultSection {
 
 	public void setZonePolygon(Region zonePolygon) {
 		this.zonePolygon = zonePolygon;
+	}
+
+	@Override
+	public TectonicRegionType getTectonicRegionType() {
+		String value = properties.get(TECTONIC_REGION, null);
+		if (value == null)
+			return null;
+		return TectonicRegionType.valueOf(value);
+	}
+
+	@Override
+	public void setTectonicRegionType(TectonicRegionType tectonicRegionType) {
+		if (tectonicRegionType != null)
+			properties.set(TECTONIC_REGION, tectonicRegionType.name());
+		else
+			properties.remove(TECTONIC_REGION);
 	}
 
 	@Override
