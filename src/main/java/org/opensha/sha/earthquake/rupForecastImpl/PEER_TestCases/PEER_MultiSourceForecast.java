@@ -24,6 +24,7 @@ import org.opensha.sha.faultSurface.FrankelGriddedSurface;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.YC_1985_CharMagFreqDist;
+import org.opensha.sha.util.TectonicRegionType;
 
 /**
  * <p>Title: PEER_MultiSourceForecast</p>
@@ -43,6 +44,8 @@ public class PEER_MultiSourceForecast extends AbstractERF{
   //for Debug purposes
   private static String  C = new String("PEER_MultiSourceForecast");
   private boolean D = false;
+  
+  private static final TectonicRegionType TRT = TectonicRegionType.ACTIVE_SHALLOW;
 
   //name for this classs
   public final static String  NAME = "PEER Multi Source";
@@ -289,7 +292,7 @@ DoubleParameter offsetParam = new DoubleParameter(OFFSET_PARAM_NAME,OFFSET_PARAM
     if(iSource < numSrc-2 && iSource >= 0) {
     	PoissonPointSource pointPoissonEqkSource = PointSource.poissonBuilder(locationList.get(iSource))
       		  .truePointSources()
-      		  .forMFDAndFocalMech(dist_GR, new FocalMechanism(Double.NaN, DIP, RAKE))
+      		  .forMFDAndFocalMech(dist_GR, new FocalMechanism(Double.NaN, DIP, RAKE), TRT)
       		  .duration(timeSpan.getDuration())
       		  .build();
       return pointPoissonEqkSource;

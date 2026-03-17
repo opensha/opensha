@@ -3,10 +3,12 @@ package org.opensha.sha.earthquake;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.EventObject;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Set;
 
 import org.dom4j.Element;
 import org.opensha.commons.data.Site;
@@ -20,7 +22,7 @@ import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.param.event.TimeSpanChangeListener;
-import org.opensha.sha.calc.params.filters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilter;
 import org.opensha.sha.util.TectonicRegionType;
 
 /**
@@ -46,12 +48,6 @@ public abstract class AbstractERF implements
 
 	/** Flag indiacting whether any parameter has changed. */
 	protected boolean parameterChangeFlag = true;
-	
-	/** fields for nth rupture info */
-	protected int totNumRups=-1;
-	protected ArrayList<int[]> nthRupIndicesForSource;	// this gives the nth indices for a given source
-	protected int[] srcIndexForNthRup;
-	protected int[] rupIndexForNthRup;
 
 
 	/**
@@ -304,12 +300,10 @@ public abstract class AbstractERF implements
 	 * This specifies what types of Tectonic Regions are included in the ERF.
 	 * This default implementation includes only ACTIVE_SHALLOW, so it should 
 	 * be overridden in subclasses if other types are used
-	 * @return : ArrayList<TectonicRegionType>
+	 * @return : Set<TectonicRegionType>
 	 */
-	public ArrayList<TectonicRegionType> getIncludedTectonicRegionTypes(){
-		ArrayList<TectonicRegionType> list = new ArrayList<TectonicRegionType>();
-		list.add(TectonicRegionType.ACTIVE_SHALLOW);
-		return list;
+	public Set<TectonicRegionType> getIncludedTectonicRegionTypes(){
+		return EnumSet.of(TectonicRegionType.ACTIVE_SHALLOW);
 	}
 
 	@Override

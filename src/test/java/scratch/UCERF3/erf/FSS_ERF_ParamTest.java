@@ -571,11 +571,11 @@ public class FSS_ERF_ParamTest {
 								source instanceof Point2Vert_FaultPoisSource);
 						assertFalse(applyMessage, ((Point2Vert_FaultPoisSource)source).isCrossHair());
 						break;
-					case CROSSHAIR:
-						assertTrue(applyMessage+". instance: "+source.getClass().getName(),
-								source instanceof Point2Vert_FaultPoisSource);
-						assertTrue(applyMessage, ((Point2Vert_FaultPoisSource)source).isCrossHair());
-						break;
+//					case CROSSHAIR:
+//						assertTrue(applyMessage+". instance: "+source.getClass().getName(),
+//								source instanceof Point2Vert_FaultPoisSource);
+//						assertTrue(applyMessage, ((Point2Vert_FaultPoisSource)source).isCrossHair());
+//						break;
 
 					default:
 						fail("unknown bg source type");

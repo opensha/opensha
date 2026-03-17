@@ -234,6 +234,11 @@ extends AbstractEvenlyGriddedSurfaceWithSubsets{
 	}
 
 	@Override
+	public double getAveRupBottomDepth() {
+		return lowerSeismogenicDepth;
+	}
+
+	@Override
 	public double getAveStrike() {
 		return faultTrace.getAveStrike();
 	}

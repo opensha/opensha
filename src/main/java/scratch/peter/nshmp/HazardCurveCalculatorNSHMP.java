@@ -16,18 +16,18 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.event.ParameterChangeWarningEvent;
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
+import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.nshmp2.tmp.JordanMadridHazardCalc;
 import org.opensha.sha.calc.HazardCurveCalculatorAPI;
-import org.opensha.sha.calc.params.IncludeMagDistFilterParam;
-import org.opensha.sha.calc.params.MagDistCutoffParam;
-import org.opensha.sha.calc.params.MaxDistanceParam;
 import org.opensha.sha.calc.params.NonSupportedTRT_OptionsParam;
 import org.opensha.sha.calc.params.NumStochasticEventSetsParam;
 import org.opensha.sha.calc.params.SetTRTinIMR_FromSourceParam;
-import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
-import org.opensha.sha.calc.params.filters.MagDependentDistCutoffFilter;
-import org.opensha.sha.calc.params.filters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.FixedDistanceCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.MagDependentDistCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.params.MagDistCutoffParam;
+import org.opensha.sha.calc.sourceFilters.params.MaxDistanceParam;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EqkRupture;
@@ -71,7 +71,8 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 	private MaxDistanceParam maxDistanceParam;
 
 	//Info for parameter tells whether to apply a magnitude-dependent distance cutoff
-	private IncludeMagDistFilterParam includeMagDistFilterParam;
+	private static final String INCLUDE_MAG_DIST_PARAM_NAME = "Use Mag-Distance Filter?";
+	private BooleanParameter includeMagDistFilterParam;
 	
 	//Info for parameter that specifies a magnitude-dependent distance cutoff
 	// (distance on x-axis and mag on y-axis)
@@ -110,7 +111,7 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		maxDistanceParam.setValue(300.0);
 
 		// Include Mag-Distance Filter Parameter
-		includeMagDistFilterParam = new IncludeMagDistFilterParam();
+		includeMagDistFilterParam = new BooleanParameter(INCLUDE_MAG_DIST_PARAM_NAME, false);
 
 		magDistFilter = new MagDependentDistCutoffFilter();
 		magDistCutoffParam = magDistFilter.getParam();
@@ -612,12 +613,12 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 	}
 
 	@Override
-	public int getCurrRuptures(){
+	public int getCurrentProgress(){
 		return this.currRuptures;
 	}
 
 	@Override
-	public int getTotRuptures(){
+	public int getTotalProgressCount(){
 		return this.totRuptures;
 	}
 
@@ -651,7 +652,7 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		this.numStochEventSetRealizationsParam =
 			(NumStochasticEventSetsParam)paramList.getParameter(NumStochasticEventSetsParam.NAME);
 		this.includeMagDistFilterParam =
-			(IncludeMagDistFilterParam)paramList.getParameter(IncludeMagDistFilterParam.NAME);
+			(BooleanParameter)paramList.getParameter(INCLUDE_MAG_DIST_PARAM_NAME);
 		this.magDistCutoffParam = (MagDistCutoffParam)paramList.getParameter(MagDistCutoffParam.NAME);
 		this.setTRTinIMR_FromSourceParam =
 			(SetTRTinIMR_FromSourceParam)paramList.getParameter(SetTRTinIMR_FromSourceParam.NAME);
@@ -680,9 +681,10 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		imr.setIntensityMeasure("PGA");
 
 		Site site = new Site();
-		ListIterator<Parameter<?>> it = imr.getSiteParamsIterator();
-		while(it.hasNext())
-			site.addParameter(it.next());
+//		ListIterator<Parameter<?>> it = imr.getSiteParamsIterator();
+//		while(it.hasNext())
+//			site.addParameter(it.next());
+		site.addParameterList(imr.getSiteParams());
 		site.setLocation(new Location(34,-118));
 
 		AbstractERF eqkRupForecast = new Frankel96_EqkRupForecast();
@@ -736,19 +738,6 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 			filters.add(magDistFilter);
 		return filters;
 	}
-
-
-	@Override
-	public void setTrackProgress(boolean trackProgress) {
-		// always enabled
-	}
-
-
-	@Override
-	public boolean isTrackProgress() {
-		// always enabled
-		return true;
-	};
 
 
 }

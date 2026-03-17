@@ -29,7 +29,6 @@ import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.attenRelImpl.ngaw2.IMT;
 import org.opensha.sha.imr.attenRelImpl.ngaw2.NGAW2_GMM;
-import org.opensha.sha.imr.attenRelImpl.ngaw2.NGAW2_Wrapper;
 import org.opensha.sha.imr.attenRelImpl.ngaw2.ScalarGroundMotion;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
 import org.opensha.sha.imr.param.SiteParams.DepthTo1pt0kmPerSecParam;
@@ -65,8 +64,6 @@ public class NGAW2_WrapperTest {
 		wrapper.setParamDefaults();
 		if (wrapper instanceof NGAW2_WrapperFullParam)
 			gmpe = ((NGAW2_WrapperFullParam)wrapper).getGMPE();
-		else if (wrapper instanceof NGAW2_Wrapper)
-			gmpe = ((NGAW2_Wrapper)wrapper).getGMPE();
 		else
 			throw new IllegalStateException("Unknown wrapper type");
 		
@@ -90,8 +87,7 @@ public class NGAW2_WrapperTest {
 	public static Collection<AttenRelRef[]> data() {
 		ArrayList<AttenRelRef[]> ret = new ArrayList<AttenRelRef[]>();
 		for (AttenRelRef imr : AttenRelRef.values()) {
-			if (imr.getAttenRelClass() == null || !NGAW2_Wrapper.class.isAssignableFrom(imr.getAttenRelClass())
-					&& !NGAW2_WrapperFullParam.class.isAssignableFrom(imr.getAttenRelClass()))
+			if (imr.getAttenRelClass() == null || !NGAW2_WrapperFullParam.class.isAssignableFrom(imr.getAttenRelClass()))
 				continue;
 			AttenRelRef[] array = { imr };
 			ret.add(array);
@@ -200,7 +196,7 @@ public class NGAW2_WrapperTest {
 				else
 					gmpe.set_z1p0(z10/1000d);
 				
-				gmpe.set_fault(NGAW2_Wrapper.getFaultStyle(gmpe_rup.getAveRake()));
+				gmpe.set_fault(NGAW2_WrapperFullParam.getFaultStyle(gmpe_rup.getAveRake()));
 				
 				ScalarGroundMotion gm = gmpe.calc();
 				

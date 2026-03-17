@@ -22,6 +22,7 @@ import org.jfree.chart.title.LegendTitle;
 import org.jfree.chart.title.Title;
 import org.jfree.chart.ui.RectangleAnchor;
 import org.jfree.chart.ui.RectangleEdge;
+import org.jfree.chart.ui.RectangleInsets;
 import org.jfree.data.Range;
 import org.opensha.commons.data.function.DiscretizedFunc;
 
@@ -364,8 +365,13 @@ public class PlotSpec implements Serializable {
 		Font legendFont = lt.getItemFont();
 		lt.setItemFont(new Font(legendFont.getName(), legendFont.getStyle(), plotPrefs.getLegendFontSize()));
 		lt.setBackgroundPaint(plotPrefs.getInsetLegendBackground());
-		if (plotPrefs.getInsetLegendBorder() != null)
-			lt.setFrame(new BlockBorder(plotPrefs.getInsetLegendBorder()));
+		if (plotPrefs.getInsetLegendBorder() != null) {
+			double thickness = plotPrefs.getLegendBorderThickness();
+			lt.setFrame(new BlockBorder(thickness, thickness, thickness, thickness, plotPrefs.getInsetLegendBorder()));
+		}
+		lt.setPadding(plotPrefs.getLegendPadding());
+		lt.setItemLabelPadding(plotPrefs.getLegendItemLabelPadding());
+		lt.setLegendItemGraphicPadding(plotPrefs.getLegendItemGraphicPadding());
 		RectangleEdge edge;
 		if (insetLegendLocation == RectangleAnchor.BOTTOM
 				|| insetLegendLocation == RectangleAnchor.BOTTOM_LEFT

@@ -52,7 +52,7 @@ import org.opensha.commons.util.bugReports.BugReportDialog;
 import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.HazardCurveCalculatorAPI;
-import org.opensha.sha.calc.params.MaxDistanceParam;
+import org.opensha.sha.calc.sourceFilters.params.MaxDistanceParam;
 import org.opensha.sha.earthquake.BaseERF;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ERF_Ref;
@@ -478,7 +478,6 @@ IMR_GuiBeanAPI{
 	protected void createCalcInstance(){
 		try{
 			calc = new HazardCurveCalculator();
-			calc.setTrackProgress(true);
 		}
 		catch (Exception ex) {
 			ex.printStackTrace();
@@ -512,16 +511,12 @@ IMR_GuiBeanAPI{
 			timer = new Timer(200, new ActionListener() {
 				public void actionPerformed(ActionEvent evt) {
 					try{
-
-						int totRupture = calc.getTotRuptures();
-						int currRupture = calc.getCurrRuptures();
-						boolean totCurCalculated = true;
-						if(currRupture ==-1){
-							progressClass.setProgressMessage("Please wait, calculating total rutures ....");
-							totCurCalculated = false;
-						}
-						if(!isHazardCalcDone && totCurCalculated)
-							progressClass.updateProgress(currRupture, totRupture);
+						int totProgress = calc.getTotalProgressCount();
+						int currProgress = calc.getCurrentProgress();
+						boolean totCurCalculated = currProgress >= 0 && currProgress > 0;
+						if (!isHazardCalcDone && totCurCalculated)
+							progressClass.updateProgress(currProgress,
+									totProgress);
 
 
 						if (isHazardCalcDone) {
@@ -583,7 +578,7 @@ IMR_GuiBeanAPI{
 		// if IMR selection changed, update the site parameter list and supported IMT
 		if ( name1.equalsIgnoreCase(imrGuiBean.IMR_PARAM_NAME)) {
 			ScalarIMR imr = imrGuiBean.getSelectedIMR_Instance();
-			siteGuiBean.replaceSiteParams(imr.getSiteParamsIterator());
+			siteGuiBean.replaceSiteParams(imr.getSiteParams());
 			siteGuiBean.validate();
 			siteGuiBean.repaint();
 		}
@@ -603,7 +598,7 @@ IMR_GuiBeanAPI{
 
 			imrGuiBean.setIMRParamListAndEditor(currentIMT, newIMT, currentPeriod, newPeriod);
 			ScalarIMR imr = imrGuiBean.getSelectedIMR_Instance();
-			siteGuiBean.replaceSiteParams(imr.getSiteParamsIterator());
+			siteGuiBean.replaceSiteParams(imr.getSiteParams());
 			siteGuiBean.validate();
 			siteGuiBean.repaint();
 		}
@@ -848,7 +843,7 @@ IMR_GuiBeanAPI{
 		ScalarIMR imr = imrGuiBean.getSelectedIMR_Instance();
 		// create the IMT Gui Bean object
 		siteGuiBean = new Site_GuiBean();
-		siteGuiBean.addSiteParams(imr.getSiteParamsIterator());
+		siteGuiBean.addSiteParams(imr.getSiteParams());
 		siteLocPanel.setLayout(gridBagLayout8);
 		siteLocPanel.add(siteGuiBean, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
 				GridBagConstraints.CENTER,
@@ -1132,7 +1127,7 @@ IMR_GuiBeanAPI{
 	public void updateSiteParams() {
 		//get the selected IMR
 		ScalarIMR imr = imrGuiBean.getSelectedIMR_Instance();
-		siteGuiBean.replaceSiteParams(imr.getSiteParamsIterator());
+		siteGuiBean.replaceSiteParams(imr.getSiteParams());
 		siteGuiBean.validate();
 		siteGuiBean.repaint();
 	}

@@ -8,12 +8,18 @@ import org.opensha.commons.calc.GaussianDistCalc;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.exceptions.IMRException;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.impl.WarningDoubleParameter;
+import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.PointSurface;
+import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.PointSurface.SiteSpecificDistanceCorrected;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.gcim.imr.param.EqkRuptureParams.FocalDepthParam;
 import org.opensha.sha.gcim.imr.param.IntensityMeasureParams.CAV_Param;
 import org.opensha.sha.gcim.imr.param.IntensityMeasureParams.Ds575_Param;
@@ -194,7 +200,7 @@ import org.opensha.sha.util.TectonicRegionType;
  */
 
 public abstract class AttenuationRelationship
-extends AbstractIMR implements ScalarIMR {
+extends AbstractIMR implements ScalarIMR, ErgodicIMR {
 
 	/**
 	 *  Classname constant used for debugging statements
@@ -365,18 +371,35 @@ extends AbstractIMR implements ScalarIMR {
 	 * of setting the site once and changing the location of the site to do the
 	 * calculations.
 	 */
+	@Override
 	public void setSiteLocation(Location loc) {
 		//if site is null create a new Site
 		if (site == null) {
 			site = new Site();
 		}
 		site.setLocation(loc);
+		if (this.eqkRupture != null && this.eqkRupture.getRuptureSurface() instanceof PointSurface.SiteSpecificDistanceCorrected)
+			// we already have a point surface, and it's distance has been corrected for the prior site
+			// clear the rupture because, if non-null, the propagation effect calculation will attempt to
+			// retrieve distances for this surface which will throw an exception
+			this.eqkRupture = null;
+		setPropagationEffectParams();
+	}
+
+	@Override
+	public void setSite(Site site) {
+		if (this.eqkRupture != null && this.eqkRupture.getRuptureSurface() instanceof PointSurface.SiteSpecificDistanceCorrected)
+			// we already have a point surface, and it's distance has been corrected for the prior site
+			// clear the rupture because, if non-null, the propagation effect calculation will attempt to
+			// retrieve distances for this surface which will throw an exception
+			this.eqkRupture = null;
+		super.setSite(site);
 		setPropagationEffectParams();
 	}
 
 	/**
 	 *  Calculates the value of each propagation effect parameter from the
-	 *  current Site and ProbEqkRupture objects.
+	 *  current Site and EqkRupture objects.
 	 */
 	protected abstract void setPropagationEffectParams();
 
@@ -434,15 +457,17 @@ extends AbstractIMR implements ScalarIMR {
 	IMRException {
 		this.setIntensityMeasure(SA_Param.NAME);
 		setIntensityMeasureLevel(Double.valueOf(iml));
-		DiscretizedFunc exeedProbFunction =  new ArbitrarilyDiscretizedFunc();
-		List allowedSA_Periods = saPeriodParam.getAllowedDoubles();
+		List<Double> allowedSA_Periods = saPeriodParam.getAllowedDoubles();
 		int size = allowedSA_Periods.size();
+		double[] periods = new double[size];
+		double[] probs = new double[size];
 		for(int i=0;i<size;++i){
-			Double saPeriod = (Double)allowedSA_Periods.get(i);
-			getParameter(PeriodParam.NAME).setValue(saPeriod);
-			exeedProbFunction.set(saPeriod.doubleValue(),getExceedProbability());
+			Double saPeriod = allowedSA_Periods.get(i);
+			saPeriodParam.setValue(saPeriod);
+			periods[i] = saPeriod;
+			probs[i] = getExceedProbability();
 		}
-		return exeedProbFunction;
+		return new LightFixedXFunc(periods, probs);
 	}
 
 
@@ -458,16 +483,18 @@ extends AbstractIMR implements ScalarIMR {
 		this.setIntensityMeasure(SA_Param.NAME);
 		//sets the value of the exceedProb Param.
 		exceedProbParam.setValue(exceedProb);
-		DiscretizedFunc imlFunction =  new ArbitrarilyDiscretizedFunc();
-		List allowedSA_Periods = saPeriodParam.getAllowedDoubles();
+		List<Double> allowedSA_Periods = saPeriodParam.getAllowedDoubles();
 		int size = allowedSA_Periods.size();
+		double[] periods = new double[size];
+		double[] imls = new double[size];
 		for(int i=0;i<size;++i){
-			Double saPeriod = (Double)allowedSA_Periods.get(i);
-			getParameter(PeriodParam.NAME).setValue(saPeriod);
-			imlFunction.set(saPeriod.doubleValue(),getIML_AtExceedProb());
+			Double saPeriod = allowedSA_Periods.get(i);
+			saPeriodParam.setValue(saPeriod);
+			periods[i] = saPeriod;
+			imls[i] = getIML_AtExceedProb();
 		}
 
-		return imlFunction;
+		return new LightFixedXFunc(periods, imls);
 	}
 
 
@@ -833,19 +860,10 @@ extends AbstractIMR implements ScalarIMR {
 	 * @param tectRegionName
 	 * @return
 	 */
-	public boolean isTectonicRegionSupported(String tectRegionName) {
+	public boolean isTectonicRegionSupported(TectonicRegionType trt) {
 		if (tectonicRegionTypeParam == null)
 			return false;
-		return tectonicRegionTypeParam.isAllowed(tectRegionName);
-	}
-	
-	/**
-	 * Tells whether the given tectonic region is supported
-	 * @param tectRegion
-	 * @return
-	 */
-	public boolean isTectonicRegionSupported(TectonicRegionType tectRegion) {
-		return isTectonicRegionSupported(tectRegion.toString());
+		return tectonicRegionTypeParam.isAllowed(trt);
 	}
 
 }

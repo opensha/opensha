@@ -290,7 +290,7 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel, RupSetSu
 		List<GeoJSONFaultSection> modSects = new ArrayList<>();
 		int numNonZero = 0;
 		for (FaultSection sect : origSects) {
-			GeoJSONFaultSection modSect = new GeoJSONFaultSection(sect);
+			GeoJSONFaultSection modSect = GeoJSONFaultSection.fromFaultSection(sect);
 			DefModelRecord rec = recordMap.get(sect.getSectionId());
 			if (rec == null) {
 				System.err.println("WARNING: no matching deformation model record for id="
@@ -442,7 +442,7 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel, RupSetSu
 		funcs.add(scatter);
 		chars.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 2f, Color.BLACK));
 		
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, "M-L comparison", "Deformation Model JSON Characteristic Magnitude", ml.getName());
 		gp.drawGraphPanel(spec, false, false, range, range);

@@ -107,6 +107,11 @@ public class EvenlyGridCenteredSurface extends AbstractEvenlyGriddedSurfaceWithS
 		return origSurface.getAveRupTopDepth()+gridSpacingDown/2;
 	}
 
+	@Override
+	public double getAveRupBottomDepth() {
+		return origSurface.getAveRupBottomDepth()-gridSpacingDown/2;
+	}
+
 
 	@Override
 	protected AbstractEvenlyGriddedSurface getNewInstance() {

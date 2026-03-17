@@ -5,9 +5,11 @@ import static org.opensha.sha.earthquake.param.IncludeBackgroundOption.ONLY;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.EventObject;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.UnaryOperator;
 
 import javax.swing.event.ChangeEvent;
@@ -44,7 +46,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
 import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
+import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrections;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -81,7 +83,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	public static final GridCellSupersamplingSettings GRID_SUPERSAMPLE_DEFAULT = null;
 	public static final GriddedSeismicitySettings GRID_SETTINGS_DEFAULT = GriddedSeismicitySettings.DEFAULT
 			.forSurfaceType(BG_RUP_TYPE_DEFAULT)
-			.forDistanceCorrections(DIST_CORR_TYPE_DEFAULT)
+			.forDistanceCorrection(DIST_CORR_TYPE_DEFAULT.get())
 			.forSupersamplingSettings(GRID_SUPERSAMPLE_DEFAULT);
 	public static final boolean ASEIS_REDUCES_AREA_DEAFULT = true;
 	public static final boolean USE_RUP_MFDS_DEAFULT = true;
@@ -116,6 +118,8 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	protected Optional<RupMFDsModule> mfdsModuleOptional; // rupture MFDs (if available); null until first load is tried
 	protected Optional<ProxyFaultSectionInstances> proxySectsModuleOptional;					// proxy sects (if available); null until first load is tried
 	protected Optional<ModSectMinMags> modSectMinMagsOptional;
+	protected Optional<RupSetTectonicRegimes> trtsModuleOptional;		// rupture-specific TRTs module
+	protected Set<TectonicRegionType> erfTRTs;			// TRTs from the rupture set and gridded seismicity
 	protected boolean cacheGridSources = false;			// if true, grid sources are cached instead of built on the fly
 	protected ProbEqkSource[] gridSourceCache = null;
 	protected int numNonZeroFaultSystemSources;			// this is the number of faultSystemRups with non-zero rates (each is a source here)
@@ -124,7 +128,6 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	protected int numOtherSources=0; 					// the non fault system sources
 	protected int[] fltSysRupIndexForSource;  			// used to keep only inv rups with non-zero rates
 	protected int[] srcIndexForFltSysRup;				// this stores the src index for the fault system source (-1 if there is no mapping)
-	protected int[] fltSysRupIndexForNthRup;			// the fault system rupture index for the nth rup
 	protected double[] longTermRateOfFltSysRupInERF;	// this holds the long-term rate of FSS rups as used by this ERF
 	
 	// these help keep track of what's changed
@@ -381,9 +384,9 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 			makeAllFaultSystemSources();	// overrides all fault-based source objects; created even if not fault sources aren't wanted
 		}
 		
-		// update the following ERF rup-related fields: totNumRups, totNumRupsFromFaultSystem, nthRupIndicesForSource, srcIndexForNthRup[], rupIndexForNthRup[], fltSysRupIndexForNthRup[]
+		// clear the upstream nth rupture data (will be lazily initialized if/when needed)
 		if(numOtherRupsChanged || numFaultRupsChanged) {
-			setAllNthRupRelatedArrays();
+			sourceRupIndexesChanged();
 		}
 
 		// reset change flags (that haven't already been done so)
@@ -403,7 +406,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 			System.out.println("Done updating forecast (took "+runTime+" seconds)");
 			System.out.println("numFaultSystemSources="+numNonZeroFaultSystemSources);
 			System.out.println("totNumRupsFromFaultSystem="+totNumRupsFromFaultSystem);
-			System.out.println("totNumRups="+totNumRups);
+//			System.out.println("totNumRups="+totNumRups);
 			System.out.println("numOtherSources="+this.numOtherSources);
 			System.out.println("getNumSources()="+this.getNumSources());
 		}
@@ -536,6 +539,8 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		// clear out any cached values
 		mfdsModuleOptional = null;
 		proxySectsModuleOptional = null;
+		trtsModuleOptional = null;
+		erfTRTs = null;
 		modSectMinMagsOptional = null;
 		gridSourceCache = null;
 		
@@ -694,6 +699,20 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 			// no MFD for this rupture, or it only has 1 value
 			return null;
 		return rupMFD;
+	}
+	
+	protected RupSetTectonicRegimes getRupSetTectonicRegimes() {
+		if (trtsModuleOptional == null) {
+			synchronized (this) {
+				if (trtsModuleOptional == null) {
+					trtsModuleOptional = faultSysSolution.getRupSet().getOptionalModule(RupSetTectonicRegimes.class);
+				}
+			}
+		}
+		if (trtsModuleOptional.isEmpty())
+			// don't have TRTs
+			return null;
+		return trtsModuleOptional.get();
 	}
 	
 	/**
@@ -925,72 +944,17 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	public void timeSpanChange(EventObject event) {
 		timeSpanChangeFlag = true;
 	}
-	
-	/**
-	 * This sets the following: totNumRups, nthRupIndicesForSource, srcIndexForNthRup[], 
-	 * rupIndexForNthRup[], fltSysRupIndexForNthRup[], and totNumRupsFromFaultSystem.  
-	 * The latter two are how this differs from the parent method.
-	 * 
-	 */
-	@Override
-	protected void setAllNthRupRelatedArrays() {
-		
-		if(D) System.out.println("Running setAllNthRupRelatedArrays()");
-		
-		totNumRups=0;
-		totNumRupsFromFaultSystem=0;
-		nthRupIndicesForSource = new ArrayList<int[]>();
 
-		// make temp array lists to avoid making each source twice
-		int numSources = getNumSources();
-		ArrayList<Integer> tempSrcIndexForNthRup = new ArrayList<Integer>(numSources);
-		ArrayList<Integer> tempRupIndexForNthRup = new ArrayList<Integer>(numSources);
-		ArrayList<Integer> tempFltSysRupIndexForNthRup = new ArrayList<Integer>(numSources);
-		int n=0;
-		
-		for(int s=0; s<numSources; s++) {	// this includes gridded sources
-			int numRups = getSource(s).getNumRuptures();
-			totNumRups += numRups;
-			if(s<numNonZeroFaultSystemSources) {
-				totNumRupsFromFaultSystem += numRups;
-			}
-			int[] nthRupsForSrc = new int[numRups];
-			for(int r=0; r<numRups; r++) {
-				tempSrcIndexForNthRup.add(s);
-				tempRupIndexForNthRup.add(r);
-				if(s<numNonZeroFaultSystemSources)
-					tempFltSysRupIndexForNthRup.add(fltSysRupIndexForSource[s]);
-				nthRupsForSrc[r]=n;
-				n++;
-			}
-			nthRupIndicesForSource.add(nthRupsForSrc);
-		}
-		// now make final int[] arrays
-		srcIndexForNthRup = new int[tempSrcIndexForNthRup.size()];
-		rupIndexForNthRup = new int[tempRupIndexForNthRup.size()];
-		fltSysRupIndexForNthRup = new int[tempFltSysRupIndexForNthRup.size()];
-		for(n=0; n<totNumRups;n++)
-		{
-			srcIndexForNthRup[n]=tempSrcIndexForNthRup.get(n);
-			rupIndexForNthRup[n]=tempRupIndexForNthRup.get(n);
-			if(n<tempFltSysRupIndexForNthRup.size())
-				fltSysRupIndexForNthRup[n] = tempFltSysRupIndexForNthRup.get(n);
-		}
-				
-		if (D) {
-			System.out.println("   getNumSources() = "+getNumSources());
-			System.out.println("   totNumRupsFromFaultSystem = "+totNumRupsFromFaultSystem);
-			System.out.println("   totNumRups = "+totNumRups);
-		}
-	}
-	
 	/**
 	 * This returns the fault system rupture index for the Nth rupture
 	 * @param nthRup
 	 * @return
 	 */
 	public int getFltSysRupIndexForNthRup(int nthRup) {
-		return fltSysRupIndexForNthRup[nthRup];
+		int srcIndex = getSrcIndexForFltSysRup(nthRup);
+		if (srcIndex >= numNonZeroFaultSystemSources)
+			return -1;
+		return fltSysRupIndexForSource[srcIndex];
 	}
 
 	/**
@@ -1018,6 +982,31 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		if (disaggSourceConsolidator == null)
 			disaggSourceConsolidator = new SolutionDisaggConsolidator(this);
 		return disaggSourceConsolidator;
+	}
+
+	@Override
+	public Set<TectonicRegionType> getIncludedTectonicRegionTypes() {
+		if (erfTRTs == null) {
+			if (faultSysSolution == null)
+				return EnumSet.of(TectonicRegionType.ACTIVE_SHALLOW);
+			synchronized (this) {
+				if (erfTRTs == null) {
+					EnumSet<TectonicRegionType> trts = EnumSet.noneOf(TectonicRegionType.class);
+					
+					// add in those from the rupture set
+					RupSetTectonicRegimes rupSetTRTs = getRupSetTectonicRegimes();
+					if (rupSetTRTs != null)
+						trts.addAll(rupSetTRTs.getSet());
+					
+					// add in those from the gridded seismicity
+					GridSourceProvider gridProv = getGridSourceProvider();
+					if (gridProv != null)
+						trts.addAll(gridProv.getTectonicRegionTypes());
+					erfTRTs = trts;
+				}
+			}
+		}
+		return erfTRTs;
 	}
 	
 }

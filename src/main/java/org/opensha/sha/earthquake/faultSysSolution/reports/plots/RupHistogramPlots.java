@@ -880,7 +880,7 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 		return pngFile;
 	}
 	
-	public static PlotPreferences PLOT_PREFS_DEFAULT = PlotUtils.getDefaultFigurePrefs();
+	public static PlotPreferences PLOT_PREFS_DEFAULT = PlotPreferences.getDefaultScreenFigurePrefs();
 	public static boolean TITLES = true;
 	
 	private static HistogramFunction getCumulativeFractionalHist(HistogramFunction hist) {

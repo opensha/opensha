@@ -265,7 +265,7 @@ public class RupCartoonGenerator {
 		Range xRange = new Range(minLon, maxLon);
 		Range yRange = new Range(minLat, maxLat);
 		
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 		
 		gp.drawGraphPanel(spec, false, false, xRange, yRange);
 		PlotUtils.setAxisVisible(gp, axisLabels, axisLabels);
@@ -729,7 +729,7 @@ public class RupCartoonGenerator {
 			
 			System.out.println("Plotting frame "+(count++));
 			
-			HeadlessGraphPanel gp = PlotUtils.initHeadless();
+			HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 			
 			gp.drawGraphPanel(spec, false, false, xRange, yRange);
 			PlotUtils.setAxisVisible(gp, axisLabels, axisLabels);
@@ -1429,7 +1429,7 @@ public class RupCartoonGenerator {
 		combSpec.setLegendVisible(true);
 		combSpec.setPlotAnnotations(anns);
 		
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 		
 		if (titles != null && titles.size() >= 10)
 			gp.setLegendFontSize(26);

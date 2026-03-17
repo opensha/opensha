@@ -1190,7 +1190,7 @@ public class ComcatDataPlotter {
 	}
 	
 	private static HeadlessGraphPanel buildGraphPanel() {
-		PlotPreferences plotPrefs = PlotPreferences.getDefault();
+		PlotPreferences plotPrefs = PlotPreferences.getDefaultAppPrefs();
 		plotPrefs.setTickLabelFontSize(20);
 		plotPrefs.setAxisLabelFontSize(22);
 		plotPrefs.setPlotLabelFontSize(24);

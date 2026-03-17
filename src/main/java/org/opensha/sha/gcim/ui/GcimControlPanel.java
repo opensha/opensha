@@ -11,6 +11,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.swing.BoxLayout;
@@ -738,7 +739,7 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 	/** 
 	 * This method gets the included tectonic region type, which is needed by the GcimEditIMi panel
 	 */
-	public ArrayList<TectonicRegionType> getIncludedTectonicRegionTypes() {
+	public Set<TectonicRegionType> getIncludedTectonicRegionTypes() {
 		return parent.getIncludedTectonicRegionTypes();
 	}
 	

@@ -15,7 +15,7 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.calc.AbstractCalculator;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculator;
-import org.opensha.sha.calc.params.filters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilter;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
@@ -274,13 +274,10 @@ implements GcimCalculatorAPI {
 		        	numRupRejected+=1;
 		        	continue;
 		        }
-				
-				// set the rupture in the imr
-				imri.setEqkRupture(rupture);
 
 				// get the unconditional mean, stdDev of lnIMi for the given rupture
-				mulnIMi_Rup = imri.getMean();
-				stdlnIMi_Rup = imri.getStdDev();
+				mulnIMi_Rup = imri.getMean(rupture);
+				stdlnIMi_Rup = imri.getStdDev(rupture);
 				
 				// get the conditional mean, stdDev of lnIMi for the given rupture
 				mulnIMi_RupIMj[i][j] = mulnIMi_Rup + stdlnIMi_Rup * rho_lnIMilnIMj *epsilonIMj[i][j];
@@ -389,12 +386,9 @@ implements GcimCalculatorAPI {
 				//compute the correlation coefficient between lnIMi and lnIMj for the given source  
 				rho_lnIMilnIMj[i] = imijCorrRel.getImCorrelation();
 							
-				// set the rupture in the imr
-				imri.setEqkRupture(rupture);
-
 				// get the unconditional mean, stdDev of lnIMi for the given rupture
-				mulnIMi_RandRup[i] = imri.getMean();
-				stdlnIMi_RandRup[i] = imri.getStdDev();
+				mulnIMi_RandRup[i] = imri.getMean(rupture);
+				stdlnIMi_RandRup[i] = imri.getStdDev(rupture);
 						
 				// get the conditional mean, stdDev of lnIMi for the given rupture
 				mulnIMi_RandRupIMj[i] = mulnIMi_RandRup[i] + stdlnIMi_RandRup[i] * rho_lnIMilnIMj[i] *epsilonIMj[randSourceId][randRupId];

@@ -11,7 +11,7 @@ public class HeadlessGraphPanel extends GraphPanel {
 	private Range xRange, yRange;
 	
 	public HeadlessGraphPanel() {
-		this(PlotPreferences.getDefault());
+		this(PlotPreferences.getDefaultAppPrefs());
 	}
 	
 	public HeadlessGraphPanel(PlotPreferences plotPrefs) {

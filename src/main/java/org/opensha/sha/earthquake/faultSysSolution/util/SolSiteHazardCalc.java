@@ -66,17 +66,19 @@ import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.ReturnPeriodUtils;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.calc.HazardCurveCalculator;
+import org.opensha.sha.calc.PointSourceOptimizedExceedProbCalc;
+import org.opensha.sha.calc.RuptureExceedProbCalculator;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculator;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculator.EpsilonCategories;
 import org.opensha.sha.calc.disaggregation.DisaggregationPlotData;
 import org.opensha.sha.calc.disaggregation.DisaggregationSourceRuptureInfo;
 import org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter;
-import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
-import org.opensha.sha.calc.params.filters.SourceFilter;
-import org.opensha.sha.calc.params.filters.SourceFilterManager;
-import org.opensha.sha.calc.params.filters.SourceFilters;
-import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter;
-import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
+import org.opensha.sha.calc.sourceFilters.FixedDistanceCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
+import org.opensha.sha.calc.sourceFilters.SourceFilters;
+import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.DistCachedERFWrapper;
 import org.opensha.sha.earthquake.ProbEqkRupture;
@@ -538,10 +540,18 @@ public class SolSiteHazardCalc {
 		}
 		FaultSystemSolutionERF erf = buildERF(sol, mainGridOp, griddedSettings, duration);
 		
+		RuptureExceedProbCalculator exceedCalc;
+		if (FaultSysHazardCalcSettings.arePointSourceOptimizationsEnabled(cmd))
+			exceedCalc = new PointSourceOptimizedExceedProbCalc();
+		else
+			exceedCalc = RuptureExceedProbCalculator.BASIC_IMPLEMENTATION;
+		
 		List<HazardCalcThread> calcThreads = new ArrayList<>(threads);		
 		for (int i=0; i<threads; i++) {
 			HazardCurveCalculator calc = new HazardCurveCalculator(sourceFilters);
-			calcThreads.add(new HazardCalcThread(calc, i == 0 ? gmms0 : FaultSysHazardCalcSettings.getGmmInstances(gmmSuppliers)));
+			calcThreads.add(new HazardCalcThread(calc,
+					i == 0 ? gmms0 : FaultSysHazardCalcSettings.getGmmInstances(gmmSuppliers),
+							exceedCalc, periods));
 		}
 		
 		List<DiscretizedFunc[]> curves = calcHazardCurves(calcThreads, sites, erf, periods, periodXVals);
@@ -573,7 +583,8 @@ public class SolSiteHazardCalc {
 			// can't re-use threads, but can copy over previous curve calc and gmm
 			ArrayList<HazardCalcThread> compCalcThreads = new ArrayList<>(threads);		
 			for (int i=0; i<threads; i++)
-				compCalcThreads.add(new HazardCalcThread(calcThreads.get(i).calc, calcThreads.get(i).gmms));
+				compCalcThreads.add(new HazardCalcThread(calcThreads.get(i).calc, calcThreads.get(i).gmms,
+						exceedCalc, periods));
 			
 			compCurves = calcHazardCurves(compCalcThreads, sites, compERF, periods, periodXVals);
 			
@@ -1828,10 +1839,15 @@ public class SolSiteHazardCalc {
 		private Map<TectonicRegionType, ScalarIMR> gmms;
 		private SiteHazardTaskDistributor tasks;
 		private ProgressTrack track;
+		private RuptureExceedProbCalculator exceedCalc;
+		private double[] periods;
 
-		public HazardCalcThread(HazardCurveCalculator calc, Map<TectonicRegionType, ScalarIMR> gmms) {
+		public HazardCalcThread(HazardCurveCalculator calc, Map<TectonicRegionType, ScalarIMR> gmms,
+				RuptureExceedProbCalculator exceedCalc, double[] periods) {
 			this.calc = calc;
 			this.gmms = gmms;
+			this.exceedCalc = exceedCalc;
+			this.periods = periods;
 		}
 		
 		public void init(AbstractERF erf, SiteHazardTaskDistributor tasks) {
@@ -1858,7 +1874,7 @@ public class SolSiteHazardCalc {
 				
 				FaultSysHazardCalcSettings.setIMforPeriod(gmms, task.period);
 				
-				calc.getHazardCurve(logCurve, task.site, gmms, erf);
+				calc.getHazardCurve(logCurve, task.site, gmms, erf, exceedCalc);
 				
 				LightFixedXFunc linearCurve = new LightFixedXFunc(linearXVals, logCurve.getYVals());
 				task.setResult(linearCurve);
@@ -2082,7 +2098,7 @@ public class SolSiteHazardCalc {
 			
 			@Override
 			public void run() {
-				HeadlessGraphPanel gp = PlotUtils.initHeadless();
+				HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 				
 				gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
 				
@@ -2137,7 +2153,7 @@ public class SolSiteHazardCalc {
 			
 			@Override
 			public void run() {
-				HeadlessGraphPanel gp = PlotUtils.initHeadless();
+				HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 				
 				gp.drawGraphPanel(spec, true, true, xRange, yRange);
 				
@@ -2240,7 +2256,7 @@ public class SolSiteHazardCalc {
 			
 			@Override
 			public void run() {
-				HeadlessGraphPanel gp = PlotUtils.initHeadless();
+				HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 				
 				gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
 				
@@ -2820,7 +2836,7 @@ public class SolSiteHazardCalc {
 					yRange = mapMaker.getYRange();
 				}
 				
-				HeadlessGraphPanel gp = new HeadlessGraphPanel(GeographicMapMaker.PLOT_PREFS_DEFAULT);
+				HeadlessGraphPanel gp = new HeadlessGraphPanel(GeographicMapMaker.PLOT_PREFS_SCREEN_DEFAULT);
 				
 				gp.drawGraphPanel(spec, false, false, xRange, yRange);
 				double maxSpan = Math.max(xRange.getLength(), yRange.getLength());

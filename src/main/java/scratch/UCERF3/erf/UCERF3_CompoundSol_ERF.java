@@ -46,6 +46,7 @@ import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import scratch.UCERF3.utils.UCERF3_Downloader;
 
 /**
  * This is a Single Branch UCERF3 ERF which loads solutions from a compound fault system solution.
@@ -74,7 +75,7 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 	private CompletableFuture<U3FaultSystemSolutionFetcher> fetchFuture;
 	
 	private static CompletableFuture<U3FaultSystemSolutionFetcher> loadFetcher() throws ZipException, IOException {
-		File storeDir = MeanUCERF3.getStoreDir();
+		File storeDir = UCERF3_Downloader.getStoreDir();
 		return MeanUCERF3.checkDownload(new File(storeDir, COMPOUND_FILE_NAME))
 			.thenApply(compoundFile -> {
 			if (compoundFile == null || !compoundFile.exists()) {
@@ -108,7 +109,7 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 	/**
 	 * Constructor for already loaded fault system solution fetcher (usually a CompoundFaultSystemSolution)
 	 * 
-	 * @param fetch
+	 * @param fetchFuture
 	 * @param initial
 	 */
 	public UCERF3_CompoundSol_ERF(CompletableFuture<U3FaultSystemSolutionFetcher> fetchFuture, U3LogicTreeBranch initial) {

@@ -32,7 +32,7 @@ import javax.swing.border.MatteBorder;
  * @version 1.0
  */
 
-public class LabeledBoxPanel extends JPanel{
+public class LabeledBoxPanel extends JPanel {
 
     protected final static String C = "LabeledBoxPanel";
     protected final static boolean D = false;

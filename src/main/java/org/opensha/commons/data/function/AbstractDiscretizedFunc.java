@@ -166,6 +166,7 @@ Named,java.io.Serializable{
 		return getFirstInterpolatedX(y, true, true);
 	}
 	
+	@Override
 	public double getFirstInterpolatedX_inLogYDomain(double y) {
 		return getFirstInterpolatedX(y, false, true);
 	}

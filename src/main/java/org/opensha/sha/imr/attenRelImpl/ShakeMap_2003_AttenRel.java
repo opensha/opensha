@@ -22,6 +22,7 @@ import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.calc.Wald_MMI_Calc;
@@ -207,12 +208,12 @@ public class ShakeMap_2003_AttenRel extends AttenuationRelationship {
 	 * @throws InvalidRangeException thrown if rake is out of bounds
 	 */
 	public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
-
-		magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
-		setFaultTypeFromRake(eqkRupture.getAveRake());
-		this.eqkRupture = eqkRupture;
-		setPropagationEffectParams();
-
+		super.setEqkRupture(eqkRupture);
+		if (eqkRupture != null) {
+			magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
+			setFaultTypeFromRake(eqkRupture.getAveRake());
+			setPropagationEffectParams();
+		}
 	}
 
 	/**
@@ -226,11 +227,9 @@ public class ShakeMap_2003_AttenRel extends AttenuationRelationship {
 	 * Wills site parameter
 	 */
 	public void setSite(Site site) throws ParameterException {
-
-		willsSiteParam.setValue((String)site.getParameter(WILLS_SITE_NAME).getValue());
-		this.site = site;
-		setPropagationEffectParams();
-
+		super.setSite(site); // will call setPropagationEffectParams
+		if (site != null)
+			willsSiteParam.setValue((String)site.getParameter(WILLS_SITE_NAME).getValue());
 	}
 
 	/**
@@ -240,8 +239,13 @@ public class ShakeMap_2003_AttenRel extends AttenuationRelationship {
 	protected void setPropagationEffectParams() {
 
 		if ( (this.site != null) && (this.eqkRupture != null)) {
-			distanceJBParam.setValue(eqkRupture, site);
+			setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
 		}
+	}
+
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		distanceJBParam.setValue(eqkRupture, site, distances);
 	}
 
 	/**

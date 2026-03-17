@@ -113,6 +113,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2_TimeDependentEpistemicList;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2_TimeIndependentEpistemicList;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.MeanUCERF2.MeanUCERF2;
+import org.opensha.sha.earthquake.util.GriddedFiniteRuptureSettings;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.commons.gui.plot.GraphWindow;
@@ -455,7 +456,9 @@ public class FaultSysSolutionERF_Calc {
 			erf.getParameter(AleatoryMagAreaStdDevParam.NAME).setValue(0.12);
 			erf.getParameter(ApplyGardnerKnopoffAftershockFilterParam.NAME).setValue(false);
 			erf.getParameter(IncludeBackgroundParam.NAME).setValue(IncludeBackgroundOption.ONLY);	// don't include fault based sources here
-			erf.getParameter("Treat Background Seismicity As").setValue(BackgroundRupType.CROSSHAIR);	// this creates some faint cross artifacts due to tighter smoothing
+			// set to finite crosshairs
+			// this creates some faint cross artifacts due to tighter smoothing
+			erf.setGriddedSeismicitySettings(erf.getGriddedSeismicitySettings().forSurfaceType(BackgroundRupType.FINITE).forFiniteRuptureSettings(GriddedFiniteRuptureSettings.DEFAULT_CROSSHAIR));
 			erf.updateForecast();
 			String fileName = "COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL";
 			
@@ -2351,7 +2354,7 @@ public class FaultSysSolutionERF_Calc {
 		Range xRange = new Range(xyz.getMinX()-0.5*xyz.getGridSpacingX(), xyz.getMaxX()+0.5*xyz.getGridSpacingX());
 		Range yRange = new Range(xyz.getMinY()-0.5*xyz.getGridSpacingY(), xyz.getMaxY()+0.5*xyz.getGridSpacingY());
 		
-		HeadlessGraphPanel gp = new PlotUtils().initHeadless();
+		HeadlessGraphPanel gp = new PlotUtils().initScreenHeadless();
 		gp.drawGraphPanel(spec, false, false, xRange, yRange);
 		
 		File file = new File(saveDir, prefix);

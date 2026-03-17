@@ -61,14 +61,13 @@ public class ERF_TestFileWriter {
 		public final Location firstSurfLoc;
 		public final float rJB_100;
 		public final float rRup_100;
-		public final float rSeis_100;
 		public final float rX_100;
 		
 		public static final List<String> header = List.of("Source ID", "Rupture ID", "Magnitude", "Probability", "Rake",
 				"Surface Type", "Surface Length", "Surface Width", "Surface Top Depth",
 				"Surface Strike", "Surface Dip",
 				"First Location Lat", "First Location Lon", "First Location Depth",
-				"rJB at 100km", "rRup at 100km", "rSeis at 100km", "rX at 100km");
+				"rJB at 100km", "rRup at 100km", "rX at 100km");
 		
 		public RuptureRecord(int sourceID, int rupID, ProbEqkRupture rup) {
 			this.sourceID = sourceID;
@@ -91,7 +90,6 @@ public class ERF_TestFileWriter {
 			Location testLoc = LocationUtils.location(firstSurfLoc, Math.toRadians(strike+45), 100d);
 			this.rJB_100 = (float)surf.getDistanceJB(testLoc);
 			this.rRup_100 = (float)surf.getDistanceRup(testLoc);
-			this.rSeis_100 = (float)surf.getDistanceSeis(testLoc);
 			this.rX_100 = (float)surf.getDistanceX(testLoc);
 		}
 		
@@ -115,7 +113,6 @@ public class ERF_TestFileWriter {
 					Double.parseDouble(line.get(index++)));
 			rJB_100 = Float.parseFloat(line.get(index++));
 			rRup_100 = Float.parseFloat(line.get(index++));
-			rSeis_100 = Float.parseFloat(line.get(index++));
 			rX_100 = Float.parseFloat(line.get(index++));
 			Preconditions.checkState(index == line.size());
 		}
@@ -139,7 +136,6 @@ public class ERF_TestFileWriter {
 			line.add((float)firstSurfLoc.depth+"");
 			line.add(rJB_100+"");
 			line.add(rRup_100+"");
-			line.add(rSeis_100+"");
 			line.add(rX_100+"");
 			
 			return line;
@@ -176,7 +172,7 @@ public class ERF_TestFileWriter {
 					+ ", length=" + length + ", width=" + width + ", topDepth=" + topDepth + ", strike=" + strike
 					+ ", dip=" + dip + ", firstSurfLat=" + (float)firstSurfLoc.lat + ", firstSurfLon=" + (float)firstSurfLoc.lon
 					+ ", firstSurfDepth=" + (float)firstSurfLoc.depth + ", rJB_100=" + rJB_100 + ", rRup_100=" + rRup_100
-					+ ", rSeis_100=" + rSeis_100 + ", rX_100=" + rX_100;
+					+ ", rX_100=" + rX_100;
 		}
 	}
 	
@@ -197,7 +193,6 @@ public class ERF_TestFileWriter {
 		public final boolean firstSurfDepth;
 		public final boolean rJB_100;
 		public final boolean rRup_100;
-		public final boolean rSeis_100;
 		public final boolean rX_100;
 		
 		public RuptureComparison(RuptureRecord r1, RuptureRecord r2) {
@@ -217,7 +212,6 @@ public class ERF_TestFileWriter {
 			firstSurfDepth = equals((float)r1.firstSurfLoc.depth, (float)r2.firstSurfLoc.depth, 1e-3);
 			rJB_100 = distEquals(r1.rJB_100, r2.rJB_100);
 			rRup_100 = distEquals(r1.rRup_100, r2.rRup_100);
-			rSeis_100 = distEquals(r1.rSeis_100, r2.rSeis_100);
 			rX_100 = distEquals(r1.rX_100, r2.rX_100);
 		}
 		
@@ -236,7 +230,7 @@ public class ERF_TestFileWriter {
 		
 		public boolean basicEquals() {
 			return mag && prob && rake && length && width && topDepth && dip && firstSurfDepth
-					&& rJB_100 && rRup_100 && rSeis_100;
+					&& rJB_100 && rRup_100;
 		}
 		
 		public boolean strikeDependentEquals() {
@@ -275,7 +269,6 @@ public class ERF_TestFileWriter {
 			str.append(newLineTabs).append(numericMismatchStr("L0 Depth", (float)r1.firstSurfLoc.depth,  (float)r1.firstSurfLoc.depth, firstSurfDepth));
 			str.append(newLineTabs).append(numericMismatchStr("rJB 100", r1.rJB_100, r2.rJB_100, rJB_100));
 			str.append(newLineTabs).append(numericMismatchStr("rRup 100", r1.rRup_100, r2.rRup_100, rRup_100));
-			str.append(newLineTabs).append(numericMismatchStr("rSeis 100", r1.rSeis_100, r2.rSeis_100, rSeis_100));
 			str.append(newLineTabs).append(numericMismatchStr("rX 100", r1.rX_100, r2.rX_100, rX_100));
 			return str.toString();
 		}
@@ -330,7 +323,6 @@ public class ERF_TestFileWriter {
 			if (!comp.firstSurfDepth) firstSurfDepthCount++;
 			if (!comp.rJB_100) rJB_100Count++;
 			if (!comp.rRup_100) rRup_100Count++;
-			if (!comp.rSeis_100) rSeis_100Count++;
 			if (!comp.rX_100) rX_100Count++;
 		}
 

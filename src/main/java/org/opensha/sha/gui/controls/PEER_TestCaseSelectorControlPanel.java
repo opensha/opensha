@@ -8,6 +8,7 @@ import java.awt.Insets;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
@@ -19,8 +20,12 @@ import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.gui.ControlPanel;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.calc.HazardCurveCalculator;
-import org.opensha.sha.calc.params.IncludeMagDistFilterParam;
-import org.opensha.sha.calc.params.MaxDistanceParam;
+import org.opensha.sha.calc.sourceFilters.FixedDistanceCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
+import org.opensha.sha.calc.sourceFilters.SourceFilters;
+import org.opensha.sha.calc.sourceFilters.params.MaxDistanceParam;
+import org.opensha.sha.calc.sourceFilters.params.SourceFiltersParam;
 import org.opensha.sha.earthquake.rupForecastImpl.FloatingPoissonFaultERF;
 import org.opensha.sha.earthquake.rupForecastImpl.PEER_TestCases.PEER_AreaForecast;
 import org.opensha.sha.earthquake.rupForecastImpl.PEER_TestCases.PEER_LogicTreeERF_List;
@@ -292,8 +297,19 @@ public class PEER_TestCaseSelectorControlPanel extends ControlPanel {
 		ParameterList siteParams = siteGuiBean.getParameterListEditor().getParameterList();
 
 		// set the distance in control panel
-		application.getCalcAdjustableParams().getParameter(MaxDistanceParam.NAME).setValue(MAX_DISTANCE);
-		application.getCalcAdjustableParams().getParameter(IncludeMagDistFilterParam.NAME).setValue(false);
+		SourceFiltersParam filtersParam = (SourceFiltersParam) application.getCalcAdjustableParams()
+				.getParameter(SourceFiltersParam.NAME);
+		SourceFilterManager filterManager = filtersParam.getValue();
+		filterManager.setEnabled(SourceFilters.FIXED_DIST_CUTOFF, true);
+		FixedDistanceCutoffFilter distFilter = filterManager.getFilterInstance(FixedDistanceCutoffFilter.class);
+		distFilter.setMaxDistance(MAX_DISTANCE);
+		// disable any other source filters
+		for (SourceFilter filter : filterManager.getEnabledFilters())
+			if (filter != distFilter)
+				filterManager.setEnabled(filter, false);
+		// refresh the filters GUI
+		filtersParam.getEditor().refreshParamEditor();
+//		System.out.println("Updated filters: "+filterManager);
 
 		//if set-1 PEER test case is selected
 		if(selectedSet.equalsIgnoreCase(PEER_TESTS_SET_ONE))

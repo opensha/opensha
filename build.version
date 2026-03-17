@@ -1,7 +1,7 @@
 # OpenSHA version file.
 # Mon May  5 15:53:05 PDT 2025
 
-build.number=2
-major.version=25
-minor.version=4
+build.number=0
+major.version=26
+minor.version=1
 

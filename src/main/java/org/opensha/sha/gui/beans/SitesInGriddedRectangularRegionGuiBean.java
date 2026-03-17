@@ -170,11 +170,12 @@ ParameterChangeFailListener, ParameterChangeListener, Serializable {
 	 *
 	 * @param it : Iterator over the site params in the IMR
 	 */
-	public void addSiteParams(Iterator it) {
-		AbstractParameter tempParam;
+	public void addSiteParams(Iterable<Parameter<?>> it) {
+//		AbstractParameter tempParam;
 		ArrayList siteTempVector= new ArrayList();
-		while(it.hasNext()) {
-			tempParam = (AbstractParameter)it.next();
+//		while(it.hasNext()) {
+//			tempParam = (AbstractParameter)it.next();
+		for (Parameter<?> tempParam : it) {
 			if(!parameterList.containsParameter(tempParam)) { // if this does not exist already
 				parameterList.addParameter(tempParam);
 				//adding the parameter to the vector,
@@ -216,7 +217,7 @@ ParameterChangeFailListener, ParameterChangeListener, Serializable {
 	 *
 	 * @param it
 	 */
-	public void replaceSiteParams(Iterator it) {
+	public void replaceSiteParams(Iterable<Parameter<?>> it) {
 		// first remove all the parameters except latitude and longitude
 		Iterator siteIt = parameterList.getParameterNamesIterator();
 		while(siteIt.hasNext()) { // remove all the parameters except latitude and longitude and gridSpacing

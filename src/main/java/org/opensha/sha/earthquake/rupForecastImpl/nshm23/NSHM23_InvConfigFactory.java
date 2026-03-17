@@ -1089,7 +1089,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	}
 	
 	@Override
-	public GridSourceProvider buildGridSourceProvider(FaultSystemSolution sol, LogicTreeBranch<?> branch) throws IOException {
+	public GridSourceList buildGridSourceProvider(FaultSystemSolution sol, LogicTreeBranch<?> branch) throws IOException {
 		NSHM23_AbstractGridSourceProvider prov = buildGridSourceProv(sol, branch);
 		
 		double minMag = 2.55d;
@@ -1237,7 +1237,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	
 	private static EnumMap<TectonicRegionType, Region> trtRegions = null;
 	
-	private static synchronized EnumMap<TectonicRegionType, Region> getTRT_Regions() throws IOException {
+	public static synchronized EnumMap<TectonicRegionType, Region> getTRT_Regions() throws IOException {
 		if (trtRegions == null) {
 			trtRegions = new EnumMap<>(TectonicRegionType.class);
 			trtRegions.put(TectonicRegionType.ACTIVE_SHALLOW, NSHM23_RegionLoader.GridSystemRegions.WUS_ACTIVE.load());
@@ -2002,7 +2002,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				if (sect instanceof GeoJSONFaultSection)
 					geoSect = (GeoJSONFaultSection)sect;
 				else
-					geoSect = new GeoJSONFaultSection(sect);
+					geoSect = GeoJSONFaultSection.fromFaultSection(sect);
 				Feature feature = geoSect.toFeature();
 				FeatureProperties props = feature.properties;
 				double curLowDepth = props.getDouble(GeoJSONFaultSection.LOW_DEPTH, Double.NaN);
@@ -2411,7 +2411,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 					double newLower = 7d + (origLower - origUpper);
 					
 					GeoJSONFaultSection origSect = (sect instanceof GeoJSONFaultSection) ?
-							(GeoJSONFaultSection)sect : new GeoJSONFaultSection(sect);
+							(GeoJSONFaultSection)sect : GeoJSONFaultSection.fromFaultSection(sect);
 					Feature feature = origSect.toFeature();
 					feature.properties.set(GeoJSONFaultSection.UPPER_DEPTH, newUpper);
 					feature.properties.set(GeoJSONFaultSection.LOW_DEPTH, newLower);

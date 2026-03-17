@@ -9,12 +9,14 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.exceptions.IMRException;
 import org.opensha.commons.exceptions.InvalidRangeException;
 import org.opensha.commons.exceptions.ParameterException;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.AbstractParameter;
 import org.opensha.commons.param.constraint.impl.DoubleConstraint;
 import org.opensha.commons.param.constraint.impl.StringConstraint;
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
@@ -159,11 +161,13 @@ public class BC_2004_AttenRel extends AttenuationRelationship {
 
 	}
 
-	/**
-	 * This does nothing, but is needed.
-	 */
 	protected void setPropagationEffectParams() {
+		as_1997_attenRel.setPropagationEffectParams();
+	}
 
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		as_1997_attenRel.setPropagationEffectParams(distances);
 	}
 
 	/**
@@ -173,8 +177,8 @@ public class BC_2004_AttenRel extends AttenuationRelationship {
 	 * @throws InvalidRangeException thrown if rake is out of bounds
 	 */
 	public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
+		super.setEqkRupture(eqkRupture);
 		this.as_1997_attenRel.setEqkRupture(eqkRupture);
-		this.eqkRupture = eqkRupture;
 	}
 
 	/**
@@ -186,14 +190,21 @@ public class BC_2004_AttenRel extends AttenuationRelationship {
 	 * Vs30 parameter
 	 */
 	public void setSite(Site site) throws ParameterException {
+		if (site != null) {
+			AF_InterceptParam.setValue((Double)site.getParameter(AF_INTERCEPT_PARAM_NAME).getValue());
+			AF_AddRefAccParam.setValue((Double)site.getParameter(AF_ADDITIVE_REF_ACCELERATION_PARAM_NAME).getValue());
+			AF_SlopeParam.setValue((Double)site.getParameter(AF_SLOPE_PARAM_NAME).getValue());
+			AF_StdDevParam.setValue((Double)site.getParameter(AF_STD_DEV_PARAM_NAME).getValue());
+			// set the location in as_1997_attenRel
+			as_1997_attenRel.setSiteLocation(site.getLocation());
+		}
+		super.setSite(site);
+	}
 
-		AF_InterceptParam.setValue((Double)site.getParameter(AF_INTERCEPT_PARAM_NAME).getValue());
-		AF_AddRefAccParam.setValue((Double)site.getParameter(AF_ADDITIVE_REF_ACCELERATION_PARAM_NAME).getValue());
-		AF_SlopeParam.setValue((Double)site.getParameter(AF_SLOPE_PARAM_NAME).getValue());
-		AF_StdDevParam.setValue((Double)site.getParameter(AF_STD_DEV_PARAM_NAME).getValue());  
-		this.site = site;
-		// set the location in as_1997_attenRel
-		as_1997_attenRel.setSiteLocation(site.getLocation());
+	@Override
+	public void setSiteLocation(Location loc) {
+		as_1997_attenRel.setSiteLocation(loc);
+		super.setSiteLocation(loc);
 	}
 
 	/**

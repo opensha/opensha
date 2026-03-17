@@ -172,9 +172,10 @@ public class SetSiteParamsFromWebServicesControlPanel extends JFrame {
    */
   private void setSiteParamsInIMR(ScalarIMR imr, String willsClass, double basinDepth) {
 
-    Iterator it = imr.getSiteParamsIterator(); // get site params for this IMR
-    while(it.hasNext()) {
-      Parameter tempParam = (Parameter)it.next();
+	  for (Parameter<?> tempParam : imr.getSiteParams()) {
+//    Iterator it = imr.getSiteParamsIterator(); // get site params for this IMR
+//    while(it.hasNext()) {
+//      Parameter tempParam = (Parameter)it.next();
       System.out.println("Param:"+tempParam.getName());
       //adding the site Params from the CVM, if site is out the range of CVM then it
       //sets the site with whatever site Parameter Value user has choosen in the application

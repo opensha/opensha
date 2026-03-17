@@ -24,6 +24,7 @@ import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.FrankelGriddedSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
+import org.opensha.sha.util.TectonicRegionType;
 
 
 /**
@@ -433,7 +434,7 @@ public class Frankel96_EqkRupForecast extends AbstractERF{
 //            grDist2, timeDuration, aveRake,aveDip);
         pointPoissonSource = PointSource.poissonBuilder(new Location(lat, lon))
         		.truePointSources(0d)
-        		.forMFDAndFocalMech(grDist2, new FocalMechanism(Double.NaN, aveDip, aveRake))
+        		.forMFDAndFocalMech(grDist2, new FocalMechanism(Double.NaN, aveDip, aveRake), TectonicRegionType.ACTIVE_SHALLOW)
         		.duration(timeDuration)
         		.build();
 

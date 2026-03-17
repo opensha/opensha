@@ -3,8 +3,10 @@ package org.opensha.sha.earthquake;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.EventObject;
 import java.util.ListIterator;
+import java.util.Set;
 
 import org.dom4j.Attribute;
 import org.dom4j.Element;
@@ -227,10 +229,8 @@ TimeSpanChangeListener,ParameterChangeListener, XMLSaveable {
 	 * be overridden in subclasses if other types are used
 	 * @return : ArrayList<TectonicRegionType>
 	 */
-	public ArrayList<TectonicRegionType> getIncludedTectonicRegionTypes(){
-		ArrayList<TectonicRegionType> list = new ArrayList<TectonicRegionType>();
-		list.add(TectonicRegionType.ACTIVE_SHALLOW);
-		return list;
+	public Set<TectonicRegionType> getIncludedTectonicRegionTypes(){
+		return EnumSet.of(TectonicRegionType.ACTIVE_SHALLOW); 
 	}
 
 	@Override

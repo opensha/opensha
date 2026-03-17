@@ -127,23 +127,25 @@ createAppTask("appJarAR", "AttenuationRelationshipGUI"+appSuffix, "org.opensha.s
 createAppTask("appJarSM", "ShakeMapGUI"+appSuffix, "org.opensha.sha.gui.ScenarioShakeMapApp")
 createAppTask("appJarSD", "SiteDataGUI"+appSuffix, "org.opensha.commons.data.siteData.gui.SiteDataCombinedApp")
 createAppTask("appJarGMT", "GMTMapApp"+appSuffix, "org.opensha.commons.mapping.gmt.gui.GMT_MapGeneratorApplet")
-createAppTask("appJarIM", "IMEventSetAppV3"+appSuffix, "org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetCalc_v3_0_ASCII")
+createAppTask("appJarIM-CLT", "IMEventSetCalculatorCLT"+appSuffix, "org.opensha.sha.calc.IM_EventSet.IMEventSetCalculatorCLT")
+createAppTask("appJarIM-GUI", "IMEventSetCalculatorGUI"+appSuffix, "org.opensha.sha.calc.IM_EventSet.gui.IMEventSetCalculatorGUI")
 
 task appZipIM(type: Zip) {
-    dependsOn 'appJarIM'
+    dependsOn 'appJarIM-CLT'
     from ('build/libs/') {
-        include 'IMEventSetAppV3-'+getDate()+'-'+getGitHash()+'.jar'
-        rename (('IMEventSetAppV3-'+getDate()+'-'+getGitHash()+'.jar'), 'IM_EventSetCalc_v3_0_ASCII.jar')
+        include 'IMEventSetCalculatorCLT-'+getDate()+'-'+getGitHash()+'.jar'
+        rename (('IMEventSetCalculatorCLT-'+getDate()+'-'+getGitHash()+'.jar'), 'IMEventSetCalculatorCLT.jar')
     }
-    from ('src/main/java/org/opensha/sha/calc/IM_EventSet/v03/') {
+    from ('src/main/java/org/opensha/sha/calc/IM_EventSet/') {
         include '*.txt'
+        include '*.csv'
     }
-    archiveFileName = 'IM_EventSetCalc_v3_0_ASCII.zip'
+    archiveFileName = 'IMEventSetCalculatorCLT.zip'
     doFirst {
-        System.out.println("Assembling IM Event Set zip file: ./build/distributions/IM_EventSetCalc_v3_0_ASCII.zip")
+        System.out.println("Assembling IM Event Set zip file: ./build/distributions/IMEventSetCalculatorCLT.zip")
     }
 }
 
 task appJars(type: GradleBuild) {
-     tasks = ['appJarHC', 'appJarHS', 'appJarAR', 'appJarSM', 'appJarSD', 'appJarGMT']
+     tasks = ['appJarHC', 'appJarHS', 'appJarAR', 'appJarSM', 'appJarSD', 'appJarGMT', 'appZipIM', 'appJarIM-GUI']
 }

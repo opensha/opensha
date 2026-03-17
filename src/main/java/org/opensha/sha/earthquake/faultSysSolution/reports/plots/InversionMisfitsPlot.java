@@ -244,7 +244,7 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 						PlotSpec scatterSpec = new PlotSpec(funcs, chars, "Primary vs Comparison",
 								"Primary Misfit", "Comparison Misfit");
 
-						GraphPanel gp = PlotUtils.initHeadless();
+						GraphPanel gp = PlotUtils.initScreenHeadless();
 						
 						gp.drawGraphPanel(scatterSpec, false, false, scatterRange, scatterRange);
 						
@@ -387,7 +387,7 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 		PlotSpec spec = new PlotSpec(funcs, chars, title, xAxisLabel, "Count");
 		spec.setLegendVisible(true);
 		
-		GraphPanel gp = PlotUtils.initHeadless();
+		GraphPanel gp = PlotUtils.initScreenHeadless();
 		
 		gp.drawGraphPanel(spec, false, false, xRange, yRange);
 		

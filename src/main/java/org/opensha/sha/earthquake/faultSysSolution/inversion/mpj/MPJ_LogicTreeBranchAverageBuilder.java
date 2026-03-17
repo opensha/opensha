@@ -416,7 +416,7 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 				
 				String plotPrefix = level.getFilePrefix()+"_mfds";
 				
-				HeadlessGraphPanel gp = PlotUtils.initHeadless();
+				HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 
 				plotTable.initNewLine();
 				

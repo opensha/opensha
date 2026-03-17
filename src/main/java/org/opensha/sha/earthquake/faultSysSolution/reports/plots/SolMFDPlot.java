@@ -401,7 +401,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 			
 			String prefix = "mfd_plot_"+getFileSafe(plot.name);
 			
-			HeadlessGraphPanel gp = PlotUtils.initHeadless();
+			HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 			gp.setTickLabelFontSize(20);
 			
 			double tick;

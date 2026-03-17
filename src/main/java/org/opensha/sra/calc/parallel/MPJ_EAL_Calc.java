@@ -18,7 +18,7 @@ import org.dom4j.Element;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.XMLUtils;
-import org.opensha.sha.calc.params.MagDistCutoffParam;
+import org.opensha.sha.calc.sourceFilters.params.MagDistCutoffParam;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.AbstractEpistemicListERF;
 import org.opensha.sha.earthquake.ERF;

@@ -12,6 +12,7 @@ import org.opensha.commons.param.event.ParameterChangeWarningListener;
 import org.opensha.commons.param.impl.EnumParameter;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.attenRelImpl.ngaw2.FaultStyle;
 import org.opensha.sha.imr.param.EqkRuptureParams.MagParam;
@@ -359,13 +360,16 @@ public class AfshariStewart_2016_AttenRel extends AttenuationRelationship {
 
 	@Override
 	public void setEqkRupture(EqkRupture eqkRupture) {
-		this.eqkRupture = eqkRupture;
-		magParam.setValueIgnoreWarning(eqkRupture.getMag());
-		faultStyleParam.setValue(getFaultStyle(eqkRupture.getAveRake()));
-		setPropagationEffectParams();
+		super.setEqkRupture(eqkRupture);
+		if (eqkRupture != null) {
+			magParam.setValueIgnoreWarning(eqkRupture.getMag());
+			faultStyleParam.setValue(getFaultStyle(eqkRupture.getAveRake()));
+			setPropagationEffectParams();
+		}
 	}
-	
-	private void propEffectUpdate() {
+
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
 		distanceRupParam.setValueIgnoreWarning(eqkRupture.getRuptureSurface().getDistanceRup(site.getLocation()));
 	}
 
@@ -387,18 +391,19 @@ public class AfshariStewart_2016_AttenRel extends AttenuationRelationship {
 
 	@Override
 	public void setSite(Site site) throws ParameterException {
-		this.site = site;
-		vs30Param.setValueIgnoreWarning((Double) site.getParameter(Vs30_Param.NAME)
-			.getValue());
-		depthTo1pt0kmPerSecParam.setValueIgnoreWarning((Double) site.getParameter(
-			DepthTo1pt0kmPerSecParam.NAME).getValue());
-		setPropagationEffectParams();
+		if (site != null) {
+			vs30Param.setValueIgnoreWarning((Double) site.getParameter(Vs30_Param.NAME)
+					.getValue());
+			depthTo1pt0kmPerSecParam.setValueIgnoreWarning((Double) site.getParameter(
+					DepthTo1pt0kmPerSecParam.NAME).getValue());
+		}
+		super.setSite(site); // will call setPropagationEffectParams
 	}
 
 	@Override
 	protected void setPropagationEffectParams() {
 		if (site != null && eqkRupture != null) {
-			propEffectUpdate();
+			setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
 		}
 	}
 

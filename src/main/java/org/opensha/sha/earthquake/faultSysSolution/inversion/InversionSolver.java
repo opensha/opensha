@@ -41,6 +41,8 @@ public interface InversionSolver {
 	
 	public FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfiguration config, String info);
 	
+	public FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfiguration config, InversionInputGenerator inputs, String info);
+	
 	public static class Default implements InversionSolver {
 
 		@Override

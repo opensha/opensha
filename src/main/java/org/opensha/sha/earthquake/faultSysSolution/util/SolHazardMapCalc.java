@@ -55,12 +55,15 @@ import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.ReturnPeriodUtils;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.calc.HazardCurveCalculator;
-import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
-import org.opensha.sha.calc.params.filters.SourceFilter;
-import org.opensha.sha.calc.params.filters.SourceFilterManager;
-import org.opensha.sha.calc.params.filters.SourceFilters;
-import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter;
-import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
+import org.opensha.sha.calc.PointSourceOptimizedExceedProbCalc;
+import org.opensha.sha.calc.RuptureExceedProbCalculator;
+import org.opensha.sha.calc.sourceFilters.FixedDistanceCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
+import org.opensha.sha.calc.sourceFilters.SourceFilterUtils;
+import org.opensha.sha.calc.sourceFilters.SourceFilters;
+import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.DistCachedERFWrapper;
 import org.opensha.sha.earthquake.ProbEqkSource;
@@ -82,9 +85,10 @@ import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.earthquake.param.UseProxySectionsParam;
 import org.opensha.sha.earthquake.param.UseRupMFDsParam;
 import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
+import org.opensha.sha.earthquake.util.GriddedFiniteRuptureSettings;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
+import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrections;
 import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.ScalarIMR;
@@ -129,6 +133,8 @@ public class SolHazardMapCalc {
 	
 	private List<XY_DataSet> extraFuncs;
 	private List<PlotCurveCharacterstics> extraChars;
+	
+	private boolean pointSourceOptimizations = true;
 
 	private SourceFilterManager sourceFilter = FaultSysHazardCalcSettings.SOURCE_FILTER_DEFAULT;
 	
@@ -146,7 +152,7 @@ public class SolHazardMapCalc {
 	// ERF params
 	private IncludeBackgroundOption backSeisOption;
 	private GriddedSeismicitySettings backSeisSettings = BaseFaultSystemSolutionERF.GRID_SETTINGS_DEFAULT;
-	private boolean cacheGridSources = true;
+	private Boolean cacheGridSources = null; // if left null, will be determined by rupture type
 	private boolean applyAftershockFilter;
 	private boolean aseisReducesArea = BaseFaultSystemSolutionERF.ASEIS_REDUCES_AREA_DEAFULT;
 	private boolean noMFDs = !BaseFaultSystemSolutionERF.USE_RUP_MFDS_DEAFULT;
@@ -230,7 +236,7 @@ public class SolHazardMapCalc {
 	}
 	
 	public void setPointSourceDistanceCorrection(PointSourceDistanceCorrections distCorrType) {
-		setGriddedSeismicitySettings(backSeisSettings.forDistanceCorrections(distCorrType));
+		setGriddedSeismicitySettings(backSeisSettings.forDistanceCorrection(distCorrType.get()));
 	}
 	
 	public void setSupersamplingSettings(GridCellSupersamplingSettings supersamplingSettings) {
@@ -288,6 +294,16 @@ public class SolHazardMapCalc {
 			fssERF.setParameter(IncludeBackgroundParam.NAME, backSeisOption);
 			if (backSeisOption != IncludeBackgroundOption.EXCLUDE) {
 				fssERF.setGriddedSeismicitySettings(backSeisSettings);
+				if (cacheGridSources == null) {
+					// cacheGridSources hasn't been explicitly set
+					if (backSeisSettings.surfaceType == BackgroundRupType.POINT)
+						// always enable caching for point sources
+						cacheGridSources = true;
+					else
+						// enable caching for finite if 1 or 2 representations, otherwise we might hit
+						// memory limits for higher counts
+						cacheGridSources = backSeisSettings.finiteRuptureSettings.numSurfaces <= 2;
+				}
 				fssERF.setCacheGridSources(cacheGridSources);
 			}
 			
@@ -309,6 +325,10 @@ public class SolHazardMapCalc {
 			this.xVals[p] = xVals;
 			this.logXVals[p] = logXVals;
 		}
+	}
+	
+	public void setPointSourceOptimizations(boolean pointSourceOptimizations) {
+		this.pointSourceOptimizations = pointSourceOptimizations;
 	}
 	
 	public void setSourceFilter(SourceFilterManager sourceFilter) {
@@ -467,6 +487,8 @@ public class SolHazardMapCalc {
 				gmpeMap.put(trt, gmpeRefMap.get(trt).get());
 			
 			HazardCurveCalculator calc = new HazardCurveCalculator(sourceFilter);
+			RuptureExceedProbCalculator exceedCalc = pointSourceOptimizations ?
+					new PointSourceOptimizedExceedProbCalc() : RuptureExceedProbCalculator.BASIC_IMPLEMENTATION;
 			while (true) {
 				Integer index = calcIndexes.pollFirst();
 				if (index == null)
@@ -496,7 +518,7 @@ public class SolHazardMapCalc {
 					}
 				}
 				
-				List<DiscretizedFunc> curves = calcSiteCurves(calc, erf, gmpeMap, site, combineWith, index);
+				List<DiscretizedFunc> curves = calcSiteCurves(calc, erf, gmpeMap, site, exceedCalc, combineWith, index);
 				
 				for (int p=0; p<periods.length; p++)
 					curvesList.get(p)[index] = curves.get(p);
@@ -546,7 +568,7 @@ public class SolHazardMapCalc {
 		
 		for (int sourceID=0; !hasSourceWithin && sourceID<numFaultSysSources; sourceID++) {
 			ProbEqkSource source = erf.getSource(sourceID);
-			if (!HazardCurveCalculator.canSkipSource(fitlers, source, site)) {
+			if (!SourceFilterUtils.canSkipSource(fitlers, source, site)) {
 				hasSourceWithin = true;
 				break;
 			}
@@ -557,6 +579,7 @@ public class SolHazardMapCalc {
 	
 	private List<DiscretizedFunc> calcSiteCurves(HazardCurveCalculator calc, AbstractERF erf,
 			EnumMap<TectonicRegionType, ScalarIMR> gmpeMap, Site site,
+			RuptureExceedProbCalculator exceedCalc,
 			SolHazardMapCalc combineWith, int index) {
 		checkInitXVals();
 		List<DiscretizedFunc> ret = new ArrayList<>(periods.length);
@@ -564,7 +587,7 @@ public class SolHazardMapCalc {
 		for (int p=0; p<periods.length; p++) {
 			FaultSysHazardCalcSettings.setIMforPeriod(gmpeMap, periods[p]);
 			DiscretizedFunc logCurve = logXVals[p].deepClone();
-			calc.getHazardCurve(logCurve, site, gmpeMap, erf);
+			calc.getHazardCurve(logCurve, site, gmpeMap, erf, exceedCalc);
 			DiscretizedFunc curve = xVals[p].deepClone();
 			for (int i=0; i<curve.size(); i++)
 				curve.set(i, logCurve.getY(i));
@@ -749,7 +772,7 @@ public class SolHazardMapCalc {
 		double lonSpan = lonRange.getLength();
 		double maxSpan = Math.max(latSpan, lonSpan);
 		checkInitExtraFuncs(maxSpan);
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 		
 		XYZPlotSpec spec = new XYZPlotSpec(xyz, cpt, title, "Longitude", "Latitude", zLabel);
 		spec.setCPTPosition(RectangleEdge.BOTTOM);
@@ -902,7 +925,7 @@ public class SolHazardMapCalc {
 		double lonSpan = lonRange.getLength();
 		double maxSpan = Math.max(latSpan, lonSpan);
 		checkInitExtraFuncs(maxSpan);
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 		
 		gp.getPlotPrefs().setPlotLabelFontSize(titleFontSize);
 		
@@ -977,7 +1000,7 @@ public class SolHazardMapCalc {
 			height = -1;
 		}
 		
-		PlotUtils.writePlots(outputDir, prefix, gp, width, height, true, true, PDFS, false);
+		PlotUtils.writePlots(outputDir, prefix, gp, width, height, true, true, 1d, PDFS, 1d, false);
 	}
 	
 	public static class MapPlot {

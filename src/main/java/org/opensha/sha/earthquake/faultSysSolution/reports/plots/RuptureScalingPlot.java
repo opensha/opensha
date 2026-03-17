@@ -281,7 +281,7 @@ public class RuptureScalingPlot extends AbstractRupSetPlot {
 			
 			@Override
 			public void run() {
-				HeadlessGraphPanel gp = PlotUtils.initHeadless();
+				HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 				
 				// primary on top
 				gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);

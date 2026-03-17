@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.TreeMap;
 import java.util.Arrays;
 import java.time.format.DateTimeFormatter;
 import java.time.ZoneOffset;
@@ -208,6 +209,10 @@ public class ComcatAccessor {
 	// Parameter name for the event code.
 
 	public static final String PARAM_NAME_CODE = "code";
+
+	// Parameter name for the magnitude type.
+
+	public static final String PARAM_NAME_MAGTYPE = "magtype";
 
 	// Maximum depth allowed in Comcat searches, in kilometers.
 
@@ -517,6 +522,41 @@ public class ComcatAccessor {
 		String exclude_id = mainshock.getEventId();
 
 		boolean extendedInfo = false;
+
+		return fetchEventList (exclude_id, startTime, endTime,
+								minDepth, maxDepth, region, wrapLon, extendedInfo,
+								minMag, COMCAT_MAX_LIMIT, COMCAT_MAX_CALLS);
+	}
+
+
+
+	
+	/**
+	 * Fetch all aftershocks of the given event. Returned list will not contain the mainshock
+	 * even if it matches the query.
+	 * @param mainshock = Mainshock.
+	 * @param minDays = Start of time interval, in days after the mainshock.
+	 * @param maxDays = End of time interval, in days after the mainshock.
+	 * @param minDepth = Minimum depth, in km.  Comcat requires a value from -100 to +1000.
+	 * @param maxDepth = Minimum depth, in km.  Comcat requires a value from -100 to +1000.
+	 * @param region = Region to search.  Events not in this region are filtered out.
+	 * @param wrapLon = Desired longitude range: false = -180 to 180; true = 0 to 360.
+	 * @param minMag = Minimum magnitude, or -10.0 for no minimum.
+	 * @param extendedInfo = True to return extended information, see eventToObsRup below.
+	 * @return
+	 * Note: The mainshock parameter must be a return value from fetchEvent() above.
+	 * Note: As a special case, if maxDays == minDays, then the end time is the current time.
+	 * Note: This function can retrieve a maximum of about 150,000 earthquakes.  Comcat will
+	 * time out if the query matches too many earthquakes, typically with HTTP status 504.
+	 */
+	public ObsEqkRupList fetchAftershocks(ObsEqkRupture mainshock, double minDays, double maxDays,
+			double minDepth, double maxDepth, ComcatRegion region, boolean wrapLon, double minMag, boolean extendedInfo) {
+
+		long eventTime = mainshock.getOriginTime();
+		long startTime = eventTime + (long)(minDays*day_millis);
+		long endTime = eventTime + (long)(maxDays*day_millis);
+
+		String exclude_id = mainshock.getEventId();
 
 		return fetchEventList (exclude_id, startTime, endTime,
 								minDepth, maxDepth, region, wrapLon, extendedInfo,
@@ -1192,6 +1232,8 @@ public class ComcatAccessor {
 			rup.addParameter(new StringParameter(PARAM_NAME_NETWORK, event.getNet()));
 			// adds the event code, which is needed for reporting to PDL
 			rup.addParameter(new StringParameter(PARAM_NAME_CODE, event.getCode()));
+			// adds the magnitude type, which is needed for OAF
+			rup.addParameter(new StringParameter(PARAM_NAME_MAGTYPE, event.getMagType()));
 		}
 		
 		return rup;
@@ -1504,9 +1546,10 @@ public class ComcatAccessor {
 	 * Returns a Map whose keys are the the names of parameters (PARAM_NAME_XXXXX as
 	 * defined above), and whose values are the strings returned by Comcat.
 	 * Any non-string parameters are converted to strings.
+	 * Note: Changed HashMap to TreeMap to have predictable ordering of parameters.
 	 */
 	public static Map<String, String> extendedInfoToMap (ObsEqkRupture rup, int option) {
-		HashMap<String, String> eimap = new HashMap<String, String>();
+		TreeMap<String, String> eimap = new TreeMap<String, String>();
 
 		// Loop over parameters containing extended info
 

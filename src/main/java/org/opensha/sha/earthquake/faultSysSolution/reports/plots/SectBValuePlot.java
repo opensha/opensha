@@ -699,7 +699,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, " ", xAxisLabel, "Count");
 		
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 		
 		Range xRange = new Range(minB, maxB);
 		gp.drawGraphPanel(spec, false, false, xRange, null);
@@ -730,7 +730,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, " ", "Supra-Seismogenic Rate", "B-Value");
 		
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 		
 		Range xRange = new Range(1e-6, 1e0);
 		Range yRange = new Range(minB, maxB);
@@ -760,7 +760,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, " ", "Primary B-Value", compName+" B-Value");
 		
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 		
 		Range range = new Range(minB, maxB);
 		gp.drawGraphPanel(spec, false, false, range, range);

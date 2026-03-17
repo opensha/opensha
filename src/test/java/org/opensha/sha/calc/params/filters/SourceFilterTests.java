@@ -15,7 +15,14 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.sha.calc.HazardCurveCalculator;
-import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
+import org.opensha.sha.calc.sourceFilters.FixedDistanceCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.MagDependentDistCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.MinMagFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
+import org.opensha.sha.calc.sourceFilters.SourceFilters;
+import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.FocalMechanism;
@@ -131,7 +138,7 @@ public class SourceFilterTests {
 //			source = new PointEqkSource(loc, magFreqDist, duration, aveRake, aveDip);
 			source = PointSource.poissonBuilder(loc)
 					.truePointSources()
-					.forMFDAndFocalMech(magFreqDist, new FocalMechanism(Double.NaN, aveDip, aveRake))
+					.forMFDAndFocalMech(magFreqDist, new FocalMechanism(Double.NaN, aveDip, aveRake), TECTONIC_REGION_TYPE_DEFAULT)
 					.duration(duration)
 					.build();
 			rups = new ArrayList<>(source.getNumRuptures());
