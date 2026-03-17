@@ -1,6 +1,5 @@
 package org.opensha.sha.faultSurface;
 
-import java.awt.geom.Area;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -142,7 +141,8 @@ public class GeoJSONFaultSection implements FaultSection {
 	public static final String PROXY = "Proxy";
 	/**
 	 * Tectonic region type enum name
-	*?
+	 * @see TectonicRegionType
+	*/
 	public static final String TECTONIC_REGION = "TectonicRegion";
 	// use MultiLineString instead
 	@Deprecated private static final String LOWER_TRACE = "LowerTrace";
