@@ -674,10 +674,22 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			}
 			out.endArray();
 			
-			out.name("origWeights").beginArray();
-			for (LogicTreeBranch<E> branch : value.branches)
-				out.value(branch.getOrigBranchWeight());
-			out.endArray();
+			double[] weights = new double[value.branches.size()];
+			boolean allSameWeight = true;
+			for (int i=0; i<weights.length; i++) {
+				double weight = value.branches.get(i).getOrigBranchWeight();
+				weights[i] = weight;
+				if (i > 0)
+					allSameWeight &= weight == weights[0];
+			}
+			if (allSameWeight && weights.length > 1) {
+				out.name("origWeightEach").value(weights[0]);
+			} else {
+				out.name("origWeights").beginArray();
+				for (double weight : weights)
+					out.value(weight);
+				out.endArray();
+			}
 			
 			out.endObject();
 		}
@@ -691,6 +703,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			List<LogicTreeLevel<? extends E>> levels = null;
 			List<LogicTreeBranch<E>> branches = null;
 			List<Double> origWeights = null;
+			Double origWeightEach = null;
 			BranchWeightProvider weightProvider = null;
 			
 			List<Map<String, E>> nodeMatchCache = null;
@@ -803,6 +816,9 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 					}
 					in.endArray();
 					break;
+				case "origWeightEach":
+					origWeightEach = in.nextDouble();
+					break;
 				case "origWeights":
 					origWeights = new ArrayList<>();
 					in.beginArray();
@@ -827,6 +843,9 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 						"branch orig weights size does not match branch count");
 				for (int i=0; i<branches.size(); i++)
 					branches.get(i).setOrigBranchWeight(origWeights.get(i));
+			} else if (origWeightEach != null) {
+				for (int i=0; i<branches.size(); i++)
+					branches.get(i).setOrigBranchWeight(origWeightEach);
 			}
 			return new LogicTree<>(levels, branches, weightProvider);
 		}

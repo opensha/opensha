@@ -35,9 +35,22 @@ public class JsonAdapterHelper {
     }
     
     private static Gson defaultGson;
+    
+    private static void checkInitDefaultGson() {
+    	if (defaultGson == null) {
+    		synchronized (JsonAdapterHelper.class) {
+    			if (defaultGson == null)
+    				defaultGson = new GsonBuilder().serializeSpecialFloatingPointValues().create();
+    		}
+    	}
+    }
 
     protected static TypeAdapter getTypeAdapter(Object o, boolean revertToGsonDefault) {
         Class c = getTypeAdapterClass(o);
+        if (c == null && revertToGsonDefault) {
+        	checkInitDefaultGson();
+        	return defaultGson.getAdapter(o.getClass());
+        }
         return getTypeAdapter(c, revertToGsonDefault);
     }
 
@@ -47,16 +60,11 @@ public class JsonAdapterHelper {
                 return (TypeAdapter) c.getDeclaredConstructor().newInstance();
             } catch (IllegalAccessException | NoSuchMethodException | InvocationTargetException | InstantiationException e) {
             	if (revertToGsonDefault) {
-                	if (defaultGson == null)
-                		defaultGson = new GsonBuilder().create();
+            		checkInitDefaultGson();
                 	return defaultGson.getAdapter(c);
             	}
                 return null;
             }
-        } else if (revertToGsonDefault) {
-        	if (defaultGson == null)
-        		defaultGson = new GsonBuilder().create();
-        	return defaultGson.getAdapter(c);
         } else {
             return null;
         }

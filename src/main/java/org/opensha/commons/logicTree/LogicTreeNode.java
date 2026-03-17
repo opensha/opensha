@@ -6,7 +6,9 @@ import java.util.Objects;
 import org.apache.commons.rng.simple.RandomSource;
 import org.apache.commons.statistics.distribution.ContinuousDistribution;
 import org.opensha.commons.data.ShortNamed;
+import org.opensha.commons.logicTree.LogicTreeNode.ValuedLogicTreeNode;
 
+import com.google.common.base.Preconditions;
 import com.google.gson.TypeAdapter;
 import com.google.gson.annotations.JsonAdapter;
 
@@ -123,9 +125,104 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 		public void init(String name, String shortName, String prefix, double weight);
 	}
 	
+	/**
+	 * Interface for LogicTreeNode backed by a single parameterized value. For serialization, the value class itself should
+	 * support either standard Gson serialization or have a {@link JsonAdapter} annotation and must have a no-arg
+	 * constructor (can be private).
+	 * @param <E>
+	 */
 	public static interface ValuedLogicTreeNode<E> extends LogicTreeNode {
 		
 		public E getValue();
+		
+		public Class<? extends E> getValueType();
+		
+		public void init(E value, Class<? extends E> valueClass, double weight,
+				String name, String shortName, String filePrefix);
+	}
+	
+	public static final class SimpleValuedNode<E> implements ValuedLogicTreeNode<E> {
+		
+		private E value;
+		private Class<? extends E> valueClass;
+		private double weight;
+		private String name;
+		private String shortName;
+		private String filePrefix;
+		
+		@SuppressWarnings("unused") // for deserialization
+		private SimpleValuedNode() {};
+
+		public SimpleValuedNode(E value, Class<? extends E> valueClass, double weight,
+				String name, String shortName, String filePrefix) {
+			init(value, valueClass, weight, name, shortName, filePrefix);
+		}
+
+		public void init(E value, Class<? extends E> valueClass, double weight,
+				String name, String shortName, String filePrefix) {
+			Preconditions.checkState(!(value instanceof SimpleValuedNode<?>), "recursive values? %s %s", value, value.getClass());
+			this.value = value;
+			this.valueClass = valueClass;
+			this.weight = weight;
+			this.name = name;
+			this.shortName = shortName;
+			this.filePrefix = filePrefix;
+		}
+
+		@Override
+		public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+			return weight;
+		}
+
+		@Override
+		public String getFilePrefix() {
+			return filePrefix;
+		}
+
+		@Override
+		public String getShortName() {
+			return shortName;
+		}
+
+		@Override
+		public String getName() {
+			return name;
+		}
+
+		@Override
+		public E getValue() {
+			return value;
+		}
+
+		@Override
+		public Class<? extends E> getValueType() {
+			return valueClass;
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(filePrefix, name, shortName, value, weight);
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			SimpleValuedNode other = (SimpleValuedNode) obj;
+			return Objects.equals(filePrefix, other.filePrefix) && Objects.equals(name, other.name)
+					&& Objects.equals(shortName, other.shortName) && Objects.equals(value, other.value)
+					&& Double.doubleToLongBits(weight) == Double.doubleToLongBits(other.weight);
+		}
+
+		@Override
+		public String toString() {
+			return "SimpleValuedNode [value=" + value + ", shortName=" + shortName + "]";
+		}
+		
 	}
 	
 	/**

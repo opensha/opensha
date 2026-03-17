@@ -421,11 +421,11 @@ public class RandomSegModelSampler implements BranchDependentSampler<RandomSegMo
 		}
 		
 		public Level(int numSamples) {
-			this(numSamples, new Random());
+			this(numSamples, new Random().nextLong());
 		}
 		
-		public Level(int numSamples, Random rand) {
-			buildNodes(rand, numSamples);
+		public Level(int numSamples, long seed) {
+			build(seed, numSamples);
 		}
 
 		@Override

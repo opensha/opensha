@@ -13,11 +13,11 @@ public class PRVI25_CrustalRandomlySampledDeformationModelLevel extends Randomly
 	}
 	
 	public PRVI25_CrustalRandomlySampledDeformationModelLevel(int numSamples) {
-		this(numSamples, new Random());
+		this(numSamples, new Random().nextLong());
 	}
 	
-	public PRVI25_CrustalRandomlySampledDeformationModelLevel(int numSamples, Random r) {
-		buildNodes(r, numSamples);
+	public PRVI25_CrustalRandomlySampledDeformationModelLevel(int numSamples, long seed) {
+		build(seed, numSamples);
 	}
 	
 	@Override

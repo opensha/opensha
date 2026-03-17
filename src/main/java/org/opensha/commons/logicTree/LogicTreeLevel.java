@@ -22,8 +22,10 @@ import org.opensha.commons.logicTree.DoesNotAffect.NotAffected;
 import org.opensha.commons.logicTree.LogicTreeBranch.NodeTypeAdapter;
 import org.opensha.commons.logicTree.LogicTreeNode.FileBackedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.RandomlyGeneratedNode;
+import org.opensha.commons.logicTree.LogicTreeNode.SimpleValuedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.ValuedLogicTreeNode;
 import org.opensha.commons.util.FileNameUtils;
+import org.opensha.commons.util.json.ContinuousDistributionTypeAdapter;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 
 import com.google.common.base.Preconditions;
@@ -344,6 +346,9 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		
 	}
 
+	/**
+	 * This is a LogicTreeLevel where the nodes have a custom adapter
+	 */
 	public static abstract class AdapterBackedLevel extends LogicTreeLevel<LogicTreeNode>{
 		String name;
 		String shortName;
@@ -493,7 +498,24 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 	
 	public static abstract class RandomLevel<E extends LogicTreeNode> extends LogicTreeLevel<E> {
 		
+		private long origSeed = -1l;
+		
 		protected RandomLevel() {}
+		
+		public final void build(long seed, int numNodes) {
+			build(seed, numNodes, 1d/(double)numNodes);
+		}
+		
+		public final void build(long seed, int numNodes, double weightEach) {
+			this.origSeed = seed;
+			doBuild(seed, numNodes, weightEach);
+		}
+		
+		protected abstract void doBuild(long seed, int numNodes, double weightEach);
+		
+		public final long getOriginalSeed() {
+			return origSeed;
+		}
 		
 		protected abstract String getNodeNamePrefix();
 		protected abstract String getNodeShortNamePrefix();
@@ -511,13 +533,13 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		
 	}
 	
-	public static abstract class RandomlySampledLevel<E> extends RandomLevel<ValuedLogicTreeNode<E>> {
+	public static abstract class RandomlySampledLevel<E> extends RandomLevel<SimpleValuedNode<E>> {
 		
 		private String levelName;
 		private String levelShortName;
 		
 		private double weightEach;
-		private List<ValueNode> nodes;
+		private List<SimpleValuedNode<E>> nodes;
 		
 		protected RandomlySampledLevel() {}
 
@@ -526,69 +548,35 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			this.levelShortName = levelShortName;
 		}
 		
-		public abstract void build(long seed, int numNodes);
-		
-		protected void build(Supplier<E> randomValueSupplier, int numNodes) {
-			nodes = new ArrayList<>(numNodes);
-			for (int i=0; i<numNodes; i++) {
-				nodes.add(new ValueNode(i, randomValueSupplier.get()));
+		protected void build(Supplier<E> randomValueSupplier, int numValues, double weightEach) {
+			nodes = new ArrayList<>(numValues);
+			this.weightEach = weightEach;
+			for (int i=0; i<numValues; i++) {
+				nodes.add(build(i, randomValueSupplier.get()));
 			}
-			weightEach = 1d/(double)numNodes;
 		}
 		
-		void setValuesUnchecked(List<Object> values) {
+		void setValuesUnchecked(List<Object> values, double weightEach) {
+			this.weightEach = weightEach;
 			nodes = new ArrayList<>(values.size());
 			int numValues = values.size();
 			for (int i=0; i<numValues; i++) {
-				nodes.add(new ValueNode(i, (E)values.get(i)));
+				nodes.add(build(i, (E)values.get(i)));
 			}
-			weightEach = 1d/(double)numValues;
 		}
 		
-		public void setValues(List<? extends E> values) {
+		public void setValues(List<? extends E> values, double weightEach) {
+			this.weightEach = weightEach;
 			nodes = new ArrayList<>(values.size());
 			int numValues = values.size();
 			for (int i=0; i<numValues; i++) {
-				nodes.add(new ValueNode(i, values.get(i)));
+				nodes.add(build(i, values.get(i)));
 			}
-			weightEach = 1d/(double)numValues;
 		}
 		
-		private class ValueNode implements ValuedLogicTreeNode<E> {
-			
-			private int index;
-			private E value;
-
-			private ValueNode(int index, E value) {
-				this.index = index;
-				this.value = value;
-			}
-
-			@Override
-			public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
-				return weightEach;
-			}
-
-			@Override
-			public String getFilePrefix() {
-				return RandomlySampledLevel.this.getNodeFilePrefix(index);
-			}
-
-			@Override
-			public String getShortName() {
-				return RandomlySampledLevel.this.getNodeShortName(index);
-			}
-
-			@Override
-			public String getName() {
-				return RandomlySampledLevel.this.getNodeName(index);
-			}
-
-			@Override
-			public E getValue() {
-				return value;
-			}
-			
+		private SimpleValuedNode<E> build(int index, E value) {
+			return new SimpleValuedNode<E>(value, getValueType(), weightEach,
+					getNodeName(index), getNodeShortName(index), getNodeFilePrefix(index));
 		}
 
 		@Override
@@ -603,12 +591,12 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public Class<? extends ValuedLogicTreeNode<E>> getType() {
-			return (Class<? extends ValuedLogicTreeNode<E>>) (Class<?>) ValueNode.class;
+		public Class<? extends SimpleValuedNode<E>> getType() {
+			return (Class<? extends SimpleValuedNode<E>>) (Class<?>) SimpleValuedNode.class;
 		}
 
 		@Override
-		public List<? extends ValuedLogicTreeNode<E>> getNodes() {
+		public List<? extends SimpleValuedNode<E>> getNodes() {
 			Preconditions.checkNotNull(nodes, "Nodes have not yet been built/set");
 			return Collections.unmodifiableList(nodes);
 		}
@@ -616,6 +604,13 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		@Override
 		public boolean isMember(LogicTreeNode node) {
 			return getType().isInstance(node) && nodes.contains(node);
+		}
+		
+		public abstract Class<? extends E> getValueType();
+		
+		@SuppressWarnings("unchecked")
+		public TypeAdapter<E> getValueTypeAdapter() {
+			return JsonAdapterHelper.getTypeAdapter(getValueType(), true);
 		}
 		
 	}
@@ -632,9 +627,9 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		}
 
 		@Override
-		public void build(long seed, int numSamples) {
+		protected void doBuild(long seed, int numSamples, double weightEach) {
 			Random rand = new Random(seed);
-			build(()->{return weightedValues.sample(rand);}, numSamples);
+			build(()->{return weightedValues.sample(rand);}, numSamples, weightEach);
 		}
 		
 	}
@@ -651,17 +646,22 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		}
 		
 		@Override
-		public void build(long seed, int numSamples) {
-			build(RandomSource.XO_RO_SHI_RO_128_PP.create(seed), numSamples);
+		protected void doBuild(long seed, int numSamples, double weightEach) {
+			build(RandomSource.XO_RO_SHI_RO_128_PP.create(seed), numSamples, weightEach);
 		}
 		
-		public void build(UniformRandomProvider rand, int numSamples) {
+		protected void build(UniformRandomProvider rand, int numSamples, double weightEach) {
 			Sampler sampler = dist.createSampler(rand);
-			build(()->{return sampler.sample();}, numSamples);
+			build(()->{return sampler.sample();}, numSamples, weightEach);
 		}
 		
 		public ContinuousDistribution getDistribution() {
 			return dist;
+		}
+
+		@Override
+		public Class<? extends Double> getValueType() {
+			return Double.class;
 		}
 		
 	}
@@ -672,12 +672,12 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		
 		private List<? extends E> nodes;
 		
-		public void buildNodes(Random rand, int num) {
-			double weightEach = 1d/(double)num;
-			buildNodes(rand, num, weightEach);
+		@Override
+		protected void doBuild(long seed, int num, double weightEach) {
+			buildNodes(new Random(seed), num, weightEach);
 		}
 		
-		public void buildNodes(Random rand, int num, double weightEach) {
+		protected void buildNodes(Random rand, int num, double weightEach) {
 			List<E> nodes = new ArrayList<>(num);
 			
 			Preconditions.checkState(num >= 1);
@@ -687,7 +687,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			this.nodes = nodes;
 		}
 		
-		public void buildNodes(List<Long> seeds, double weightEach) {
+		protected void buildNodes(List<Long> seeds, double weightEach) {
 			List<E> nodes = new ArrayList<>(seeds.size());
 			
 			Preconditions.checkState(seeds.size() >= 1);
@@ -733,6 +733,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		private boolean writeNodes;
 		private NodeTypeAdapter nodeAdapter;
 		private boolean forceFileBacked;
+		private ContinuousDistributionTypeAdapter distAdapter;
 
 		public Adapter() {
 			this(true);
@@ -786,9 +787,13 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 				for (int i=1; allSameWeight && i<nodes.size(); i++)
 					allSameWeight = nodes.get(i).getNodeWeight(null) == weight0;
 				out.name("nodeType").value(level.getType().getName());
-				out.name("nodeNamePrefix").value(((RandomLevel<?>)level).getNodeNamePrefix());
-				out.name("nodeStringPrefix").value(((RandomLevel<?>)level).getNodeShortNamePrefix());
-				out.name("nodeFilePrefix").value(((RandomLevel<?>)level).getNodeFilePrefix());
+				RandomLevel<?> randLevel = (RandomLevel<?>)level;
+				out.name("nodeNamePrefix").value(randLevel.getNodeNamePrefix());
+				out.name("nodeStringPrefix").value(randLevel.getNodeShortNamePrefix());
+				out.name("nodeFilePrefix").value(randLevel.getNodeFilePrefix());
+				long seed = randLevel.getOriginalSeed();
+				if (seed != -1l)
+					out.name("originalSeed").value(seed);
 				if (allSameWeight) {
 					out.name("weightEach").value(weight0);
 				} else {
@@ -798,12 +803,30 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					out.endArray();
 				}
 				if (level instanceof RandomlySampledLevel<?>) {
-					TypeAdapter adapter = JsonAdapterHelper.getTypeAdapter(level.getType(), true);
+					RandomlySampledLevel<?> sampledLevel = (RandomlySampledLevel<?>)level;
+					TypeAdapter adapter = sampledLevel.getValueTypeAdapter();
 					Preconditions.checkNotNull(adapter, "Couldn't locate adapter for class: %s", level.getType());
+					if (level instanceof ContinuousDistributionSampledLevel) {
+						ContinuousDistributionSampledLevel distLevel = (ContinuousDistributionSampledLevel)level;
+						if (distLevel.dist != null) {
+							out.name("distribution");
+							if (distAdapter == null)
+								distAdapter = new ContinuousDistributionTypeAdapter();
+							distAdapter.write(out, distLevel.dist);
+						}
+					}
+//					System.out.println("Level is "+level.getClass());
+//					System.out.println("Level type is "+level.getType());
+					out.name("valueClass").value(sampledLevel.getValueType().getName());
 					out.name("values").beginArray();
-					for (ValuedLogicTreeNode<?> node : ((RandomlySampledLevel<?>)level).getNodes()) {
+					for (ValuedLogicTreeNode<?> node : sampledLevel.getNodes()) {
+//						System.out.println("Node class is "+node.getClass());
 						Object value = node.getValue();
-						adapter.write(out, value);
+//						System.out.println("Node value class is "+value.getClass());
+						if (value == null)
+							out.nullValue();
+						else
+							adapter.write(out, value);
 					}
 					out.endArray();
 				} else if (level instanceof RandomlyGeneratedLevel<?>) {
@@ -842,10 +865,13 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			String nodeNamePrefix = null;
 			String nodeShortNamePrefix = null;
 			String nodeFilePrefix = null;
+			String valueClass = null;
 			Double weightEach = null;
+			Long originalSeed = null;
 			List<Double> weights = null;
 			List<Object> values = null;
 			List<Long> seeds = null;
+			ContinuousDistribution dist = null;
 			
 			while (in.hasNext()) {
 				switch (in.nextName()) {
@@ -906,13 +932,16 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 						seeds.add(in.nextLong());
 					in.endArray();
 					break;
+				case "valueClass":
+					valueClass = in.nextString();
+					break;
 				case "values":
 					values = new ArrayList<>();
 					in.beginArray();
-					Preconditions.checkNotNull(nodeClassName, "Sampled values encountered by nodeType not specified");
+					Preconditions.checkNotNull(valueClass, "Sampled values encountered by valueClass not specified");
 					TypeAdapter adapter = null;
 					try {
-						Class<?> rawClass = Class.forName(nodeClassName);
+						Class<?> rawClass = Class.forName(valueClass);
 						adapter = JsonAdapterHelper.getTypeAdapter(rawClass, true);
 						Preconditions.checkNotNull(adapter, "Couldn't locate adapter for class: %s", nodeClassName);
 					} catch (ClassNotFoundException e) {
@@ -937,6 +966,14 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 						
 					}
 					in.endArray();
+					break;
+				case "distribution":
+					if (distAdapter == null)
+						distAdapter = new ContinuousDistributionTypeAdapter();
+					dist = distAdapter.read(in);
+					break;
+				case "originalSeed":
+					originalSeed = in.nextLong();
 					break;
 
 				default:
@@ -994,24 +1031,31 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					
 					level = constructor.newInstance();
 					
-					if (level instanceof RandomlyGeneratedLevel<?>) {
-						if (seeds != null) {
-							// set from seeds
-							Preconditions.checkState(nodes.isEmpty(), "Have both seeds and nodes list?");
-							for (int i=0; i<seeds.size(); i++) {
-								double weight = weights == null ? weightEach : weights.get(i);
-								nodes.add(((RandomlyGeneratedLevel<?>)level).buildNodeInstance(i, seeds.get(i), weight));
+					if (level instanceof RandomLevel<?>) {
+						if (originalSeed != null)
+							((RandomLevel<?>)level).origSeed = originalSeed;
+						if (level instanceof RandomlyGeneratedLevel<?>) {
+							if (seeds != null) {
+								// set from seeds
+								Preconditions.checkState(nodes.isEmpty(), "Have both seeds and nodes list?");
+								for (int i=0; i<seeds.size(); i++) {
+									double weight = weights == null ? weightEach : weights.get(i);
+									nodes.add(((RandomlyGeneratedLevel<?>)level).buildNodeInstance(i, seeds.get(i), weight));
+								}
+							} else {
+								// legacy, load from nodes
+								Preconditions.checkNotNull(nodes);
 							}
-						} else {
-							// legacy, load from nodes
-							Preconditions.checkNotNull(nodes);
+							((RandomlyGeneratedLevel<?>)level).setNodes(nodes);
+						} else if (level instanceof RandomlySampledLevel<?>) {
+							Preconditions.checkState(nodes.isEmpty(), "Have both seeds and nodes list?");
+							Preconditions.checkNotNull(values, "Have no values for sampled level");
+							Preconditions.checkNotNull(weightEach, "Sampled values currently require equal weights");
+							((RandomlySampledLevel<?>)level).setValuesUnchecked(values, weightEach);
+//							((RandomlySampledLevel<?>)level).i
+							if (level instanceof ContinuousDistributionSampledLevel)
+								((ContinuousDistributionSampledLevel)level).dist = dist;
 						}
-						((RandomlyGeneratedLevel<?>)level).setNodes(nodes);
-					} else if (level instanceof RandomlySampledLevel<?>) {
-						Preconditions.checkState(nodes.isEmpty(), "Have both seeds and nodes list?");
-						Preconditions.checkNotNull(values, "Have no values for sampled level");
-						Preconditions.checkNotNull(weightEach, "Sampled values currently require equal weights");
-						((RandomlySampledLevel<?>)level).setValuesUnchecked(values);
 					}
 					if (affectsAll)
 						level.setAffectsAll();
@@ -1027,8 +1071,9 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					System.err.println("WARNING: logic tree branch node class '"+className+"' is of the wrong type, "
 							+ "loading plain/hardcoded version instead");
 				} catch (Exception e) {
+					e.printStackTrace();
 					System.err.println("Couldn't instantiate default no-arg constructor of declared logic tree node class, "
-								+ "loading plain/hardcoded version instead");
+								+ "loading plain/hardcoded version instead: "+e.getMessage());
 				}
 			}
 			if (level == null) {

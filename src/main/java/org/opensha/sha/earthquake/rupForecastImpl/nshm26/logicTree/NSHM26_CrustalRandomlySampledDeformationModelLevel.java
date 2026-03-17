@@ -13,11 +13,11 @@ public class NSHM26_CrustalRandomlySampledDeformationModelLevel extends Randomly
 	}
 	
 	public NSHM26_CrustalRandomlySampledDeformationModelLevel(int numSamples) {
-		this(numSamples, new Random());
+		this(numSamples, new Random().nextLong());
 	}
 	
-	public NSHM26_CrustalRandomlySampledDeformationModelLevel(int numSamples, Random r) {
-		buildNodes(r, numSamples);
+	public NSHM26_CrustalRandomlySampledDeformationModelLevel(int numSamples, long seed) {
+		build(seed, numSamples);
 	}
 	
 	@Override

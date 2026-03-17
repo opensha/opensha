@@ -1,9 +1,16 @@
 package org.opensha.commons.logicTree;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.Reader;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
+import java.nio.Buffer;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -12,9 +19,11 @@ import java.util.Objects;
 
 import org.opensha.commons.logicTree.LogicTreeLevel.FileBackedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomlyGeneratedLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.RandomlySampledLevel;
 import org.opensha.commons.logicTree.LogicTreeNode.AdapterBackedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.FileBackedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.RandomlyGeneratedNode;
+import org.opensha.commons.logicTree.LogicTreeNode.SimpleValuedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.ValuedLogicTreeNode;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
@@ -29,6 +38,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.TypeAdapter;
 import com.google.gson.annotations.JsonAdapter;
+import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
@@ -104,8 +114,8 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 					Class<?> type = level.getType();
 					Preconditions.checkState(type.isAssignableFrom(value.getClass()),
 							"Value '%s' is not the correct type for '%s'", value.getName(), level.getName());
-					Preconditions.checkState(level.isMember(value), "Value '%s' is not a member of '%s'",
-							value.getName(), level.getName());
+					Preconditions.checkState(level.isMember(value), "Value '%s' of type '%s' is not a member of '%s'",
+							value.getName(), value.getClass(), level.getName());
 				}
 			}
 			this.values = new ArrayList<>(values);
@@ -737,12 +747,16 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 							Preconditions.checkState(randLevel.isMember(value),
 									"Random level '%s' has node list, but our node ('%s' with seed %s) isn't a member",
 									level.getName(), value.getName(), ((RandomlyGeneratedNode)value).getSeed());
+					} else if (value instanceof SimpleValuedNode<?> && level instanceof RandomlySampledLevel<?>) {
+						RandomlySampledLevel<?> sampleLevel = (RandomlySampledLevel<?>)level;
+						Object theValue = ((SimpleValuedNode<?>)value).getValue();
+						sampleLevel.setValuesUnchecked(List.of(theValue), value.getNodeWeight(null));
 					}
 				}
 				levels.add(level);
 				values.add(value);
-//				System.out.println("Loaded level: "+level);
-//				System.out.println("Loaded value: "+value);
+				System.out.println("Loaded level: "+level);
+				System.out.println("Loaded value: "+value);
 				
 				in.endObject();
 			}
@@ -756,7 +770,6 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 		
 		private LogicTreeBranch<?> branch;
 		private boolean forceFileBacked;
-		private Gson gson;
 
 		public NodeTypeAdapter(LogicTreeBranch<?> branch) {
 			this(branch, false);
@@ -791,10 +804,20 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 				out.name("adapterValue");
 				JsonAdapterHelper.writeAdapterValue(out, value);
 			} else if (value instanceof ValuedLogicTreeNode<?>) {
+				out.name("class").value(value.getClass().getName());
+				out.name("valueClass").value(((ValuedLogicTreeNode<?>)value).getValueType().getName());
 				Object theValue = ((ValuedLogicTreeNode<?>)value).getValue();
-				TypeAdapter adapter = JsonAdapterHelper.getTypeAdapter(theValue, true);
-				adapter.write(out, theValue);
-				// TODO: how to read?
+//				System.out.println("serializing ValuedLogicTreeNode with class="+value.getClass().getName());
+//				System.out.println("declared value class: "+((ValuedLogicTreeNode<?>)value).getValueType().getName());
+//				System.out.println("value: "+theValue);
+//				System.out.println("value class: "+theValue.getClass());
+				if (theValue == null) {
+					out.nullValue();
+				} else {
+					TypeAdapter adapter = JsonAdapterHelper.getTypeAdapter(theValue, true);
+					out.name("value");
+					adapter.write(out, theValue);
+				}
 			} else if (!(value instanceof FileBackedNode)) {
 				out.name("class").value(value.getClass().getName());
 			}
@@ -810,10 +833,12 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 			String prefix = null;
 			double weight = 0d;
 			Class<? extends LogicTreeNode> clazz = null;
+			Class<?> valueClass = null;
 			Class<? extends Enum<? extends LogicTreeNode>> enumClass = null;
 			String enumName = null;
 			Long randomSeed = null;
 			LogicTreeNode adapterNode = null;
+			Object value = null;
 			
 			in.beginObject();
 			while (in.hasNext()) {
@@ -857,6 +882,19 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 								+ "loading plain/hardcoded version instead");
 					}
 					break;
+				case "valueClass":
+					String valueClassName = in.nextString();
+					try {
+						Class<?> rawClass = Class.forName(valueClassName);
+						valueClass = (Class<? extends LogicTreeNode>)rawClass;
+					} catch (ClassNotFoundException e) {
+						System.err.println("WARNING: couldn't locate logic tree branch node class '"+valueClassName+"', "
+								+ "loading plain/hardcoded version instead");
+					} catch (ClassCastException e) {
+						System.err.println("WARNING: logic tree branch node class '"+valueClassName+"' is of the wrong type, "
+								+ "loading plain/hardcoded version instead");
+					}
+					break;
 				case "enumName":
 					enumName = in.nextString();
 					break;
@@ -865,6 +903,15 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 					break;
 				case "adapterValue":
 					adapterNode = (LogicTreeNode) JsonAdapterHelper.readAdapterValue(in);
+					break;
+				case "value":
+					if (valueClass == null) {
+						System.err.println("WARNING: logic tree node value encountered but no valueClass, loading as plain/hardcoded instead");
+					} else {
+						if (in.peek() != null) {
+							value = JsonAdapterHelper.getTypeAdapter(valueClass, true).read(in);
+						}
+					}
 					break;
 				default:
 					System.err.println("WARNING: unexpected JSON field named '"+jsonName+"' in LogicTreeNode, skipping");
@@ -912,10 +959,15 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 								"Found a random seed but instance is not a RandomlySampledNode. Instance class: %s", clazz);
 					}
 					
+					if (instance instanceof ValuedLogicTreeNode<?>) {
+						ValuedLogicTreeNode<Object> valued = ((ValuedLogicTreeNode<Object>)instance);
+						valued.init(value, valueClass, weight, name, shortName, prefix);
+					}
+					
 					return instance;
 				} catch (Exception e) {
 					System.err.println("Couldn't instantiate default no-arg constructor of declared logic tree node class, "
-								+ "loading plain/hardcoded version instead");
+								+ "loading plain/hardcoded version instead: "+e.getMessage());
 				}
 			}
 			
@@ -966,6 +1018,22 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 		}
 		
 		init(ImmutableList.copyOf(levels), values);
+	}
+	
+	public static LogicTreeBranch<LogicTreeNode> read(File jsonFile) throws IOException {
+		return read(new FileInputStream(jsonFile));
+	}
+	
+	public static LogicTreeBranch<LogicTreeNode> read(InputStream is) throws IOException {
+		LogicTreeBranch<LogicTreeNode> branch = new LogicTreeBranch<>();
+		Gson gson = branch.buildGson();
+		BufferedInputStream bin;
+		if (is instanceof BufferedInputStream)
+			bin = (BufferedInputStream)is;
+		else
+			bin = new BufferedInputStream(is);
+		branch.initFromStream(bin);
+		return branch;
 	}
 	
 	public static void main(String[] args) throws IOException {

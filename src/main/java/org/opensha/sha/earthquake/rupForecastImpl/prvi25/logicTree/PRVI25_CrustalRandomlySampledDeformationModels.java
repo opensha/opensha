@@ -190,10 +190,9 @@ public class PRVI25_CrustalRandomlySampledDeformationModels extends RandomlyGene
 	public static void main(String[] args) throws IOException {
 		int numSamples = 750;
 		long randSeed = 12345678l;
-		Random rand = new Random(randSeed);
 		
 //		PRVI25_CrustalRandomlySampledDeformationModelLevel level = new PRVI25_CrustalRandomlySampledDeformationModelLevel(numSamples);
-		PRVI25_CrustalRandomlySampledDeformationModelLevel level = new PRVI25_CrustalRandomlySampledDeformationModelLevel(numSamples, rand);
+		PRVI25_CrustalRandomlySampledDeformationModelLevel level = new PRVI25_CrustalRandomlySampledDeformationModelLevel(numSamples, randSeed);
 		List<PRVI25_CrustalRandomlySampledDeformationModels> nodes = level.getNodes();
 		PRVI25_CrustalFaultModels fm = PRVI25_CrustalFaultModels.PRVI_CRUSTAL_FM_V1p1;
 		List<? extends FaultSection> fullSects = fm.getFaultSections(true);
