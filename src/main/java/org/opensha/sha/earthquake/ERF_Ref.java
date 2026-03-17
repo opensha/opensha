@@ -12,6 +12,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.opensha.commons.util.DevStatus;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.ServerPrefs;
+import org.opensha.sha.earthquake.faultSysSolution.erf.td.TimeDepFaultSystemSolutionERF;
 import org.opensha.sha.earthquake.rupForecastImpl.FloatingPoissonFaultERF;
 import org.opensha.sha.earthquake.rupForecastImpl.PointSourceERF;
 import org.opensha.sha.earthquake.rupForecastImpl.PoissonFaultERF;
