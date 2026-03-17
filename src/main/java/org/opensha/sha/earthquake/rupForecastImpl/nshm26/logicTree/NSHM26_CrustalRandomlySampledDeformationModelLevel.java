@@ -5,11 +5,12 @@ import java.util.Random;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomlyGeneratedLevel;
 
 public class NSHM26_CrustalRandomlySampledDeformationModelLevel extends RandomlyGeneratedLevel<NSHM26_CrustalRandomlySampledDeformationModels> {
-	
+
 	public static String NAME = "NSHM26 Crustal Def Model Sample";
+	public static String SHORT_NAME = "DMSample";
 
 	public NSHM26_CrustalRandomlySampledDeformationModelLevel() {
-		
+		super(NAME, SHORT_NAME);
 	}
 	
 	public NSHM26_CrustalRandomlySampledDeformationModelLevel(int numSamples) {
@@ -17,17 +18,8 @@ public class NSHM26_CrustalRandomlySampledDeformationModelLevel extends Randomly
 	}
 	
 	public NSHM26_CrustalRandomlySampledDeformationModelLevel(int numSamples, long seed) {
+		super(NAME, SHORT_NAME);
 		build(seed, numSamples);
-	}
-	
-	@Override
-	public String getShortName() {
-		return "DMSample";
-	}
-
-	@Override
-	public String getName() {
-		return NAME;
 	}
 
 	@Override

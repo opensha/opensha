@@ -21,7 +21,7 @@ public class NSHM26_BranchConfiguration {
 	public static final ContinuousDistribution INTERFACE_B_DISTRIBUTION = TruncatedNormalDistribution.of(1d, 0.1, 0.7, 1.3);
 	public final double interfaceB;
 	public final int interfaceMinNumSubSects;
-	public final NSHM26_InterfaceSubSeisAdjustment interfaceSubSeisAdjust;
+	public final NSHM26_InterfaceObsSeisDMAdjustment interfaceSubSeisAdjust;
 
 	// interface gridded
 	public final NSHM26_SeisRateModel interfaceGridRateModel;
@@ -86,7 +86,7 @@ public class NSHM26_BranchConfiguration {
 		private PRVI25_SubductionScalingRelationships interfaceScale;
 		private Double interfaceB;
 		private Integer interfaceMinNumSubSects;
-		private NSHM26_InterfaceSubSeisAdjustment interfaceSubSeisAdjust;
+		private NSHM26_InterfaceObsSeisDMAdjustment interfaceSubSeisAdjust;
 
 		private NSHM26_SeisRateModel interfaceGridRateModel;
 		private NSHM26_DeclusteringAlgorithms interfaceDecluster;
@@ -131,7 +131,7 @@ public class NSHM26_BranchConfiguration {
 				NSHM26_InterfaceDeformationModels dm,
 				PRVI25_SubductionScalingRelationships scale,
 				double b, int minNumSubSects,
-				NSHM26_InterfaceSubSeisAdjustment subSeisAdjust) {
+				NSHM26_InterfaceObsSeisDMAdjustment subSeisAdjust) {
 			Preconditions.checkNotNull(fm, "interfaceFM is required");
 			Preconditions.checkNotNull(dm, "interfaceDM is required");
 			Preconditions.checkNotNull(scale, "interfaceScale is required");

@@ -7,6 +7,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.NSHM23_BaseRegion;
+import org.opensha.sha.util.TectonicRegionType;
 
 public class NSHM26_RegionLoader {
 	
@@ -63,6 +64,19 @@ public class NSHM26_RegionLoader {
 			return new Region(modBorder, region.getBorderType());
 		}
 		return region;
+	}
+
+	public static String getNameForTRT(TectonicRegionType trt) {
+		return switch(trt) {
+		case ACTIVE_SHALLOW:
+			yield "Crustal";
+		case SUBDUCTION_INTERFACE:
+			yield "Interface";
+		case SUBDUCTION_SLAB:
+			yield "Intraslab";
+		default:
+			throw new IllegalStateException("Unexpected TRT: "+trt);
+		};
 	}
 
 }

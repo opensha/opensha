@@ -1,4 +1,4 @@
-package org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded;
+package gov.usgs.earthquake.nshmp.erf.seismicity;
 
 import java.io.File;
 import java.io.IOException;
@@ -9,13 +9,12 @@ import java.util.List;
 
 import org.apache.commons.math3.util.Precision;
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.CSVReader.Row;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
-import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalSeismicityRate;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SeismicityRateEpoch;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionCaribbeanSeismicityRate;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionMuertosSeismicityRate;
-import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.TaperedGR_MagFreqDist;
@@ -49,7 +48,7 @@ public class SeismicityRateFileLoader {
 		public final double quantile;
 		public final boolean mean;
 		
-		private RateRecord(RateType type, double M1, double rateAboveM1, double quantile, boolean mean) {
+		public RateRecord(RateType type, double M1, double rateAboveM1, double quantile, boolean mean) {
 			super();
 			this.type = type;
 			this.M1 = M1;
@@ -66,7 +65,7 @@ public class SeismicityRateFileLoader {
 		public final double Mmax;
 		public final double b;
 		
-		private PureGR(RateType type, double M1, double Mmax, double rateAboveM1, double b, double quantile, boolean mean) {
+		public PureGR(RateType type, double M1, double Mmax, double rateAboveM1, double b, double quantile, boolean mean) {
 			super(type, M1, rateAboveM1, quantile, mean);
 			this.Mmax = Mmax;
 			this.b = b;
@@ -87,7 +86,7 @@ public class SeismicityRateFileLoader {
 	public static class Exact extends RateRecord {
 		public final EvenlyDiscretizedFunc cumulativeDist;
 		
-		private Exact(double M1, EvenlyDiscretizedFunc cumulativeDist, double quantile, boolean mean) {
+		public Exact(double M1, EvenlyDiscretizedFunc cumulativeDist, double quantile, boolean mean) {
 			super(RateType.EXACT, M1, cumulativeDist.getY(cumulativeDist.getClosestXIndex(M1)), quantile, mean);
 			this.cumulativeDist = cumulativeDist;
 		}
@@ -105,7 +104,7 @@ public class SeismicityRateFileLoader {
 		public final EvenlyDiscretizedFunc cumulativeDist;
 		public final double maxObsIncrMag, maxObsCmlMag, nObs;
 		
-		private Direct(double M1, EvenlyDiscretizedFunc incrementalDist, EvenlyDiscretizedFunc cumulativeDist,
+		public Direct(double M1, EvenlyDiscretizedFunc incrementalDist, EvenlyDiscretizedFunc cumulativeDist,
 				double maxObsIncrMag, double maxObsCmlMag, double nObs, double quantile, boolean mean) {
 			super(RateType.DIRECT, M1, cumulativeDist.getY(cumulativeDist.getClosestXIndex(M1)), quantile, mean);
 			this.incrementalDist = incrementalDist;
@@ -523,6 +522,38 @@ public class SeismicityRateFileLoader {
 			if (record.mean)
 				return record;
 		throw new IllegalStateException("No mean record found");
+	}
+	
+	public static List<PureGR> loadSamplesCSV(CSVFile<String> csv) {
+		List<PureGR> ret = null;
+		int numRows = csv.getNumRows();
+		Double M1 = null;
+		boolean reading = false;
+		for (int r=0; r<numRows; r++) {
+			Row row = csv.getRow(r);
+			if (row.columns() == 0)
+				continue;
+			if (reading) {
+				double b = row.getDouble(0);
+				Preconditions.checkState(Double.isFinite(b));
+				double rate = row.getDouble(1);
+				Preconditions.checkState(Double.isFinite(rate) && rate > 0d);
+				ret.add(new PureGR(RateType.M1, M1, Double.POSITIVE_INFINITY, rate, b, Double.NaN, true));
+			} else {
+				String row0 = row.get(0);
+				if (M1 == null && row0.equals(M1_FIELD_NAME)) {
+					M1 = row.getDouble(1);
+				} else if (row0.startsWith("Number of b and rate pairs")) {
+					ret = new ArrayList<>(row.getInt(1));
+				} else if (row0.equals("b") && row.get(1).equals("rate")) {
+					reading = true;
+					if (ret == null)
+						ret = new ArrayList<>(numRows-(r+1));
+				}
+			}
+		}
+		Preconditions.checkState(ret != null && !ret.isEmpty(), "No samples found");
+		return ret;
 	}
 
 	public static void main(String[] args) throws IOException {

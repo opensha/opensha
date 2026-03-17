@@ -141,7 +141,7 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 				String name, String shortName, String filePrefix);
 	}
 	
-	public static final class SimpleValuedNode<E> implements ValuedLogicTreeNode<E> {
+	public static class SimpleValuedNode<E> implements ValuedLogicTreeNode<E> {
 		
 		private E value;
 		private Class<? extends E> valueClass;
@@ -151,7 +151,7 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 		private String filePrefix;
 		
 		@SuppressWarnings("unused") // for deserialization
-		private SimpleValuedNode() {};
+		protected SimpleValuedNode() {};
 
 		public SimpleValuedNode(E value, Class<? extends E> valueClass, double weight,
 				String name, String shortName, String filePrefix) {

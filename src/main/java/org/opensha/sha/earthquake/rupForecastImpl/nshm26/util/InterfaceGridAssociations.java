@@ -35,6 +35,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoade
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
@@ -45,8 +46,8 @@ public class InterfaceGridAssociations implements FaultGridAssociations, Archiva
 //	}
 
 	public static void main(String[] args) throws IOException {
-//		LogicTreeBranch<LogicTreeNode> branch = NSHM26_LogicTree.DEFAULT_GNMI_SUBDUCTION_INTERFACE;
-		LogicTreeBranch<LogicTreeNode> branch = NSHM26_LogicTree.DEFAULT_AMSAM_SUBDUCTION_INTERFACE;
+		LogicTreeBranch<LogicTreeNode> branch = NSHM26_LogicTree.buildInterfaceDefault(
+				NSHM26_SeismicityRegions.AMSAM, TectonicRegionType.SUBDUCTION_INTERFACE, false);
 		NSHM26_InterfaceFaultModels fm = branch.requireValue(NSHM26_InterfaceFaultModels.class);
 		NSHM26_InterfaceDeformationModels dm = branch.requireValue(NSHM26_InterfaceDeformationModels.class);
 

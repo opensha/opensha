@@ -72,6 +72,17 @@ import com.google.common.collect.Table;
 
 public class NSHM26_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory {
 	
+	private static final File[] POSSIBLE_DATA_DIRS = {
+			new File("/home/kevin/OpenSHA/nshm26/data/"),
+			new File("/project2/scec_608/kmilner/nshms/nshm26/data")
+	};
+	public static File locateDataDirectory() {
+		for (File dir : POSSIBLE_DATA_DIRS)
+			if (dir.exists())
+				return dir;
+		throw new IllegalStateException("No data directory located");
+	}
+	
 	protected transient RuptureSets.Cache rupSetCache = new RuptureSets.Cache();
 	protected transient Map<RupSetFaultModel, SectionDistanceAzimuthCalculator> distAzCache = new HashMap<>();
 	protected transient File cacheDir;

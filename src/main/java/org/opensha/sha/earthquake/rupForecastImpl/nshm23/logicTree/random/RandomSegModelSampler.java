@@ -425,17 +425,8 @@ public class RandomSegModelSampler implements BranchDependentSampler<RandomSegMo
 		}
 		
 		public Level(int numSamples, long seed) {
+			super("Segmentation Model Samples", "SegSamples");
 			build(seed, numSamples);
-		}
-
-		@Override
-		public String getShortName() {
-			return "SegSamples";
-		}
-
-		@Override
-		public String getName() {
-			return "Segmentation Model Samples";
 		}
 
 		@Override

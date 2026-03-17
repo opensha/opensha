@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
+import org.opensha.commons.data.CSVReader.Row;
 import org.opensha.commons.util.FileUtils;
 
 import com.google.common.base.Joiner;
@@ -181,6 +182,19 @@ public class CSVFile<E> implements Iterable<List<E>> {
 					" same number of values as columns (expected "+cols+", got "+line.size()+")");
 			}
 		}
+	}
+	
+	public Row getRow(int row) {
+		List<E> line = getLine(row);
+		List<String> lineStr = new ArrayList<>(line.size());
+		for (int i=0; i<line.size(); i++) {
+			E value = line.get(i);
+			if (value == null)
+				lineStr.add(NULL_STR);
+			else
+				lineStr.add(value.toString());
+		}
+		return new Row(lineStr);
 	}
 	
 	public E get(int row, int col) {

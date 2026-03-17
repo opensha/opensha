@@ -18,14 +18,15 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
-import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.SeismicityRateFileLoader.RateType;
-import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.SeismicityRateModel;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
+
+import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateModel;
+import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateType;
 
 //TODO: this might end up affecting slip rates, setting to affects
 @Affects(FaultSystemRupSet.SECTS_FILE_NAME)
@@ -80,10 +81,42 @@ public enum NSHM26_SeisRateModelBranch implements LogicTreeNode, NSHM26_SeisRate
 		
 	};
 	
-	private static final Map<NSHM26_SeismicityRegions, String> PATHS = Map.of(
-			NSHM26_SeismicityRegions.GNMI, "/data/erf/nshm26/gnmi/seismicity/rates/2026_02_27-v1/",
-			NSHM26_SeismicityRegions.AMSAM, "/data/erf/nshm26/amsam/seismicity/rates/2026_02_27-v1/"
-			);
+	public static final String getRateModelDate(NSHM26_SeismicityRegions region) {
+		return switch (region) {
+			case AMSAM:
+				yield "2026_02_27-v1";
+			case GNMI:
+				yield "2026_02_27-v1";
+			default:
+				throw new IllegalArgumentException("Unexpected region: "+region);
+		};
+	}
+	
+	public static final String getRateModelPath(NSHM26_SeismicityRegions region) {
+		String date = getRateModelDate(region);
+		return switch (region) {
+			case AMSAM:
+				yield "/data/erf/nshm26/amsam/seismicity/rates/"+date+"/";
+			case GNMI:
+				yield "/data/erf/nshm26/gnmi/seismicity/rates/"+date+"/";
+			default:
+				throw new IllegalArgumentException("Unexpected region: "+region);
+		};
+	}
+	
+	public static final String getRateModelCSVName(TectonicRegionType trt) {
+		return switch (trt) {
+		case ACTIVE_SHALLOW:
+			yield "CRUSTAL.csv";
+		case SUBDUCTION_INTERFACE:
+			yield "INTERFACE.csv";
+		case SUBDUCTION_SLAB:
+			yield "INTRASLAB.csv";
+		default:
+			throw new IllegalArgumentException("Unexpected TRT: "+trt);
+		};
+	}
+	
 	public static RateType TYPE = RateType.M1_TO_MMAX;
 	
 	/*
@@ -158,23 +191,7 @@ public enum NSHM26_SeisRateModelBranch implements LogicTreeNode, NSHM26_SeisRate
 		CSVFile<String> csv = csvsCache.get(region, trt);
 		if (csv != null)
 			return csv;
-		String resourceName = PATHS.get(region);
-		switch (trt) {
-		case ACTIVE_SHALLOW: {
-			resourceName += "CRUSTAL.csv";
-			break;
-		}
-		case SUBDUCTION_INTERFACE: {
-			resourceName += "INTERFACE.csv";
-			break;
-		}
-		case SUBDUCTION_SLAB: {
-			resourceName += "INTRASLAB.csv";
-			break;
-		}
-		default:
-			throw new IllegalArgumentException("Unexpected value: " + trt);
-		}
+		String resourceName = getRateModelPath(region)+getRateModelCSVName(trt);
 		
 		InputStream stream = NSHM26_SeisRateModelBranch.class.getResourceAsStream(resourceName);
 		Preconditions.checkNotNull(stream, "Error loading stream for '%s'", resourceName);

@@ -95,17 +95,8 @@ public class RandomBValSampler implements BranchDependentSampler<RandomBValSampl
 		}
 		
 		public Level(int numSamples, long seed) {
+			super("Section b-value Samples", "b Samples");
 			build(seed, numSamples);
-		}
-
-		@Override
-		public String getShortName() {
-			return "b Samples";
-		}
-
-		@Override
-		public String getName() {
-			return "Section b-value Samples";
 		}
 
 		@Override

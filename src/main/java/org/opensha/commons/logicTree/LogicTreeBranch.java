@@ -19,7 +19,7 @@ import java.util.Objects;
 
 import org.opensha.commons.logicTree.LogicTreeLevel.FileBackedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomlyGeneratedLevel;
-import org.opensha.commons.logicTree.LogicTreeLevel.RandomlySampledLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.AbstractRandomlySampledLevel;
 import org.opensha.commons.logicTree.LogicTreeNode.AdapterBackedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.FileBackedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.RandomlyGeneratedNode;
@@ -747,16 +747,16 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 							Preconditions.checkState(randLevel.isMember(value),
 									"Random level '%s' has node list, but our node ('%s' with seed %s) isn't a member",
 									level.getName(), value.getName(), ((RandomlyGeneratedNode)value).getSeed());
-					} else if (value instanceof SimpleValuedNode<?> && level instanceof RandomlySampledLevel<?>) {
-						RandomlySampledLevel<?> sampleLevel = (RandomlySampledLevel<?>)level;
-						Object theValue = ((SimpleValuedNode<?>)value).getValue();
+					} else if (value instanceof SimpleValuedNode<?> && level instanceof AbstractRandomlySampledLevel<?,?>) {
+						AbstractRandomlySampledLevel<?,?> sampleLevel = (AbstractRandomlySampledLevel<?,?>)level;
+						Object theValue = ((ValuedLogicTreeNode<?>)value).getValue();
 						sampleLevel.setValuesUnchecked(List.of(theValue), value.getNodeWeight(null));
 					}
 				}
 				levels.add(level);
 				values.add(value);
-				System.out.println("Loaded level: "+level);
-				System.out.println("Loaded value: "+value);
+//				System.out.println("Loaded level: "+level);
+//				System.out.println("Loaded value: "+value);
 				
 				in.endObject();
 			}

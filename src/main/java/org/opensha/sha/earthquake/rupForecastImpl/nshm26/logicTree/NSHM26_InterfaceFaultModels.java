@@ -38,6 +38,13 @@ public enum NSHM26_InterfaceFaultModels implements RupSetFaultModel, RupSetSubse
 			"/data/erf/nshm26/amsam/fault_models/subduction/", NSHM26_SeismicityRegions.AMSAM, 0d),
 	GNMI_V1("Guam & Northern Mariana Islands (Interface FM v1)", "GNMI-Inter-v1",
 			"/data/erf/nshm26/gnmi/fault_models/subduction/", NSHM26_SeismicityRegions.GNMI, 100d);
+	
+	public static NSHM26_InterfaceFaultModels regionDefault(NSHM26_SeismicityRegions region) {
+		for (NSHM26_InterfaceFaultModels fm : values())
+			if (fm.seisReg == region && fm.getNodeWeight(null) > 0)
+				return fm;
+		throw new IllegalStateException("No FMs found for "+region);
+	}
 
 	private String name;
 	private String shortName;
