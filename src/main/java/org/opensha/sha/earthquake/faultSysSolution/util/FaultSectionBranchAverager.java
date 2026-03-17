@@ -12,6 +12,7 @@ import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
@@ -355,6 +356,16 @@ public class FaultSectionBranchAverager {
 		@Override
 		public int getSubSectionIndexDownDip() {
 			return refSect.getSubSectionIndexDownDip();
+		}
+
+		@Override
+		public TectonicRegionType getTectonicRegionType() {
+			return refSect.getTectonicRegionType();
+		}
+
+		@Override
+		public void setTectonicRegionType(TectonicRegionType tectonicRegionType){
+			throw new UnsupportedOperationException();
 		}
 		
 	}
