@@ -210,7 +210,9 @@ public enum PlotLineType {
 						"Renderer already exists but isn't correct type for plt="+plt+" and sym="+sym);
 			}
 			Preconditions.checkArgument(symWidth > 0, "symbol widht must be >0");
-			Shape shape = sym.buildShape(symWidth, prefs);
+			if (!prefs.isTrueSymbolSizing())
+				symWidth = sym.getOriginalSymbolSize(symWidth);
+			Shape shape = sym.buildShape(symWidth);
 			Preconditions.checkNotNull(shape, "Couldn't build shape for symbol: "+sym);
 //			renderer.setShape(shape);
 			renderer.setSeriesShape(0, shape);
@@ -224,7 +226,8 @@ public enum PlotLineType {
 			} else {
 				lineShpRend.setSeriesShapesFilled(0, false);
 				lineShpRend.setDrawOutlines(true);
-				lineShpRend.setDefaultOutlineStroke(new BasicStroke(Float.min(1f, 0.1f*symWidth),
+				float strokeWidth = Float.max(0.1f, Float.min(1f, 0.1f*symWidth));
+				lineShpRend.setDefaultOutlineStroke(new BasicStroke(strokeWidth,
 						BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER));
 			}
 //			stdRend.setBaseShapesFilled(sym.isFilled());
