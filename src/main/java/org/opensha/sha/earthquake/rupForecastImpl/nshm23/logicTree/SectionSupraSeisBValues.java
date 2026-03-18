@@ -22,7 +22,7 @@ public interface SectionSupraSeisBValues extends LogicTreeNode {
 	 */
 	public double getB();
 	
-	public static interface Constant extends SectionSupraSeisBValues {
+	public static interface Constant extends SectionSupraSeisBValues, ValuedLogicTreeNode<Double> {
 		
 		/**
 		 * @param rupSet
@@ -30,6 +30,23 @@ public interface SectionSupraSeisBValues extends LogicTreeNode {
 		 */
 		public default double[] getSectBValues(FaultSystemRupSet rupSet) {
 			return null;
+		}
+
+		@Override
+		default Double getValue() {
+			return getB();
+		}
+
+		@Override
+		default Class<? extends Double> getValueType() {
+			return Double.class;
+		}
+
+		@Override
+		default void init(Double value, Class<? extends Double> valueClass, double weight, String name,
+				String shortName, String filePrefix) {
+			// do nothing
+			Preconditions.checkState(value.doubleValue() == getB(), "Init called with b=%s but we have b=%s", value, getB());
 		}
 	}
 	

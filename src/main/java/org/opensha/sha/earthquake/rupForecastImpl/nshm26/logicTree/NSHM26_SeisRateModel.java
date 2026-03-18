@@ -18,48 +18,28 @@ public interface NSHM26_SeisRateModel {
 	
 	public abstract IncrementalMagFreqDist build(NSHM26_SeismicityRegions region, TectonicRegionType trt, EvenlyDiscretizedFunc refMFD, double mMax);
 	
-	public static class NSHM26_SiesRateModelSampleData {
-		public final NSHM26_SeismicityRegions region;
-		public final TectonicRegionType trt;
-		public final double M1;
-		public final double rate;
-		public final double b;
+	public static class NSHM26_SiesRateModelSample extends SimpleValuedNode<PureGR> implements NSHM26_SeisRateModel {
 		
-		public NSHM26_SiesRateModelSampleData(NSHM26_SeismicityRegions region, TectonicRegionType trt, PureGR gr) {
-			this(region, trt, gr.M1, gr.rateAboveM1, gr.b);
-		}
-		
-		public NSHM26_SiesRateModelSampleData(NSHM26_SeismicityRegions region, TectonicRegionType trt, double m1,
-				double rate, double b) {
-			this.region = region;
-			this.trt = trt;
-			M1 = m1;
-			this.rate = rate;
-			this.b = b;
-		}
-		
-		public PureGR toPureGR() {
-			return new PureGR(RateType.M1, M1, Double.NaN, rate, b, Double.NaN, true);
-		}
-	}
-	
-	public static class NSHM26_SiesRateModelSample extends SimpleValuedNode<NSHM26_SiesRateModelSampleData> implements NSHM26_SeisRateModel {
-		
+		private NSHM26_SeismicityRegions region;
+		private TectonicRegionType trt;
+
 		@SuppressWarnings("unused") // deserialization
 		private NSHM26_SiesRateModelSample() {}
 
-		public NSHM26_SiesRateModelSample(NSHM26_SiesRateModelSampleData value, double weight, String name,
+		public NSHM26_SiesRateModelSample(PureGR value, NSHM26_SeismicityRegions region, TectonicRegionType trt, double weight, String name,
 				String shortName, String filePrefix) {
-			super(value, NSHM26_SiesRateModelSampleData.class, weight, name, shortName, filePrefix);
+			super(value, PureGR.class, weight, name, shortName, filePrefix);
+			this.region = region;
+			this.trt = trt;
 		}
 
 		@Override
 		public IncrementalMagFreqDist build(NSHM26_SeismicityRegions region, TectonicRegionType trt,
 				EvenlyDiscretizedFunc refMFD, double mMax) {
-			NSHM26_SiesRateModelSampleData value = getValue();
-			Preconditions.checkState(region == value.region, "Region mismatch: %s != %s", region, value.region);
-			Preconditions.checkState(trt == value.trt, "TRT mismatch: %s != %s", trt, value.trt);
-			return SeismicityRateFileLoader.buildIncrementalMFD(value.toPureGR(), refMFD, mMax, Double.NaN);
+			PureGR value = getValue();
+			Preconditions.checkState(this.region == null || region == this.region, "Region mismatch: %s != %s", region, this.region);
+			Preconditions.checkState(this.trt == null || trt == this.trt, "TRT mismatch: %s != %s", trt, this.trt);
+			return SeismicityRateFileLoader.buildIncrementalMFD(value, refMFD, mMax, Double.NaN);
 		}
 		
 	}

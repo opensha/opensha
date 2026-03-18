@@ -19,6 +19,7 @@ import java.util.Objects;
 
 import org.opensha.commons.logicTree.LogicTreeLevel.FileBackedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomlyGeneratedLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.ValueBackedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.AbstractRandomlySampledLevel;
 import org.opensha.commons.logicTree.LogicTreeNode.AdapterBackedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.FileBackedNode;
@@ -55,6 +56,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 	private ImmutableList<LogicTreeLevel<? extends E>> levels;
 	private List<E> values;
 	private Double originalWeight;
+	private String customFileName;
 	
 	@SuppressWarnings("unused") // used by Gson
 	protected LogicTreeBranch() {
@@ -421,9 +423,15 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 	/**
 	 * Builds a file name using the encodeChoiceString method on each branch value, separated by undercores.
 	 * Can be parsed with fromFileName(String).
-	 * @return
+	 * <p>
+	 * If a custom file name has been set via {@link #setCustomFileName(String)}, that will be returned instaed
+	 * @return file name prefix
+	 * @see LogicTreeBranch#setCustomFileName(String)
+	 * @see LogicTreeBranch#hasCustomFileName()
 	 */
 	public String buildFileName() {
+		if (hasCustomFileName())
+			return customFileName;
 		StringBuilder fileName = new StringBuilder();
 		for (int i=0; i<size(); i++) {
 			LogicTreeNode value = values.get(i);
@@ -435,6 +443,14 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 			fileName.append(value.getFilePrefix());
 		}
 		return fileName.toString();
+	}
+	
+	public void setCustomFileName(String customFileName) {
+		this.customFileName = customFileName;
+	}
+	
+	public boolean hasCustomFileName() {
+		return customFileName != null && !customFileName.isBlank();
 	}
 	
 	private static final int NAME_LENGTH_LIMIT = 255;
@@ -633,6 +649,9 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 			if (Double.isFinite(origWeight))
 				out.name("origWeight").value(origWeight);
 			
+			if (branch.hasCustomFileName())
+				out.name("filePrefix").value(branch.customFileName);
+			
 			out.name("values").beginArray();
 			
 			for (int i=0; i<branch.size(); i++) {
@@ -671,11 +690,15 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 				in.beginObject();
 				
 				Double origWeight = null;
+				String customFilePrefix = null;
 				
 				while (in.hasNext()) {
 					switch (in.nextName()) {
 					case "origWeight":
 						origWeight = in.nextDouble();
+						break;
+					case "filePrefix":
+						customFilePrefix = in.nextString();
 						break;
 					case "values":
 						loadValueArray(in, levels, values);
@@ -691,6 +714,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 				
 				LogicTreeBranch<? extends LogicTreeNode> branch = new LogicTreeBranch<>(levels, values);
 				branch.originalWeight = origWeight;
+				branch.customFileName = customFilePrefix;
 				return branch;
 			} else if (in.peek() == JsonToken.BEGIN_ARRAY) {
 				// raw array
@@ -748,10 +772,15 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 							Preconditions.checkState(randLevel.isMember(value),
 									"Random level '%s' has node list, but our node ('%s' with seed %s) isn't a member",
 									level.getName(), value.getName(), ((RandomlyGeneratedNode)value).getSeed());
-					} else if (value instanceof SimpleValuedNode<?> && level instanceof AbstractRandomlySampledLevel<?,?>) {
+					} else if (value instanceof ValuedLogicTreeNode<?> && level instanceof AbstractRandomlySampledLevel<?,?>) {
 						AbstractRandomlySampledLevel<?,?> sampleLevel = (AbstractRandomlySampledLevel<?,?>)level;
 						Object theValue = ((ValuedLogicTreeNode<?>)value).getValue();
 						sampleLevel.setValuesUnchecked(List.of(theValue), value.getNodeWeight(null));
+					} else if (value instanceof ValuedLogicTreeNode<?> && level instanceof ValueBackedLevel<?,?>) {
+						// replace with version built by the level because it might attach additional data
+						Object theValue = ((ValuedLogicTreeNode<?>)value).getValue();
+						value = ((ValueBackedLevel<?,?>)level).buildUnchecked(theValue, value.getNodeWeight(null),
+								value.getName(), value.getShortName(), value.getFilePrefix());
 					}
 				}
 				levels.add(level);

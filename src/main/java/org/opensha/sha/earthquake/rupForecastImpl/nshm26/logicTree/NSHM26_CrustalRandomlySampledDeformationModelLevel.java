@@ -10,15 +10,16 @@ public class NSHM26_CrustalRandomlySampledDeformationModelLevel extends Randomly
 	public static String SHORT_NAME = "DMSample";
 
 	public NSHM26_CrustalRandomlySampledDeformationModelLevel() {
-		super();
+		super(NAME, SHORT_NAME, "Deformation Model Sample ", "DMSample", "DMSample");
 	}
 	
 	public NSHM26_CrustalRandomlySampledDeformationModelLevel(int numSamples) {
-		this(numSamples, new Random().nextLong());
+		this();
+		build(new Random().nextLong(), numSamples);
 	}
 	
 	public NSHM26_CrustalRandomlySampledDeformationModelLevel(int numSamples, long seed) {
-		super(NAME, SHORT_NAME, "Deformation Model Sample ", "DMSample", "DMSample");
+		this();
 		build(seed, numSamples);
 	}
 

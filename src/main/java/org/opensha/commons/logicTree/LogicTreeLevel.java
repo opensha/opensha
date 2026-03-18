@@ -9,7 +9,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
-import java.util.random.RandomGenerator;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.rng.UniformRandomProvider;
@@ -32,8 +31,6 @@ import org.opensha.commons.util.json.JsonObjectSerializable;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 
 import com.google.common.base.Preconditions;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
@@ -405,13 +402,6 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			}
 		}
 	}
-	
-	public static interface JsonDataAttachedLevel {
-		
-		public void initJsonData(JsonReader in);
-		
-		public void writeJsonData(JsonWriter out);
-	}
 
 	public static <E extends Enum<E> & LogicTreeNode> EnumBackedLevel<E> forEnum(
 			Class<E> type, String name, String shortName) {
@@ -532,6 +522,15 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		@Override
 		public final String getName() {
 			return levelName;
+		}
+	}
+	
+	public static interface ValueBackedLevel<E, N extends ValuedLogicTreeNode<E>> {
+		
+		public N build(E value, double weight, String name, String shortName, String filePrefix);
+		
+		public default N buildUnchecked(Object value, double weight, String name, String shortName, String filePrefix) {
+			return build((E)value, weight, name, shortName, filePrefix);
 		}
 	}
 	
@@ -1174,11 +1173,18 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 							constructor.setAccessible(true);
 							
 							level = constructor.newInstance(name, shortName);
+							Preconditions.checkState(name == null || level.getName().equals(name));
+							Preconditions.checkState(shortName == null || level.getShortName().equals(shortName));
 						} catch (NoSuchMethodException e) {
+							// fall back to no arg constructor
 							Constructor<? extends LogicTreeLevel<E>> constructor = clazz.getDeclaredConstructor();
 							constructor.setAccessible(true);
 							
 							level = constructor.newInstance();
+							if (name != null)
+								((DataBackedLevel<?>)level).levelName = name;
+							if (shortName != null)
+								((DataBackedLevel<?>)level).levelShortName = shortName;
 						}
 					} else {
 						Constructor<? extends LogicTreeLevel<E>> constructor = clazz.getDeclaredConstructor();

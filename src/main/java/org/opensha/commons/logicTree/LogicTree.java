@@ -22,6 +22,7 @@ import java.util.Random;
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.logicTree.BranchWeightProvider.OriginalWeights;
 import org.opensha.commons.logicTree.LogicTreeLevel.FileBackedLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
 import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 
@@ -600,7 +601,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	}
 	
 	public void write(File jsonFile) throws IOException {
-		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		Gson gson = new GsonBuilder().setPrettyPrinting().serializeSpecialFloatingPointValues().create();
 		BufferedWriter writer = new BufferedWriter(new FileWriter(jsonFile));
 		gson.toJson(this, LogicTree.class, writer);
 		writer.close();
@@ -659,9 +660,18 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			
 			out.name("weightProvider");
 			weightAdapter.write(out, value.weightProvider);
-			
+
+			double[] weights = new double[value.branches.size()];
+			boolean allSameWeight = true;
+			boolean hasCustomFileNames = false;
 			out.name("branches").beginArray();
-			for (LogicTreeBranch<E> branch : value.branches) {
+			for (int b=0; b<weights.length; b++) {
+				LogicTreeBranch<E> branch = value.branches.get(b);
+				hasCustomFileNames |= branch.hasCustomFileName();
+				double weight = value.branches.get(b).getOrigBranchWeight();
+				weights[b] = weight;
+				if (b > 0)
+					allSameWeight &= weight == weights[0];
 				out.beginArray();
 				for (int i=0; i<branch.size(); i++) {
 					E node = branch.getValue(i);
@@ -674,14 +684,15 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			}
 			out.endArray();
 			
-			double[] weights = new double[value.branches.size()];
-			boolean allSameWeight = true;
-			for (int i=0; i<weights.length; i++) {
-				double weight = value.branches.get(i).getOrigBranchWeight();
-				weights[i] = weight;
-				if (i > 0)
-					allSameWeight &= weight == weights[0];
+			if (hasCustomFileNames) {
+				out.name("filePrefixes").beginArray();
+				
+				for (LogicTreeBranch<E> branch : value.branches)
+					out.value(branch.buildFileName());
+				
+				out.endArray();
 			}
+			
 			if (allSameWeight && weights.length > 1) {
 				out.name("origWeightEach").value(weights[0]);
 			} else {
@@ -705,6 +716,8 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			List<Double> origWeights = null;
 			Double origWeightEach = null;
 			BranchWeightProvider weightProvider = null;
+			
+			List<String> customFilePrefixes = null;
 			
 			List<Map<String, E>> nodeMatchCache = null;
 			
@@ -816,6 +829,13 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 					}
 					in.endArray();
 					break;
+				case "filePrefixes":
+					customFilePrefixes = branches == null ? new ArrayList<>() : new ArrayList<>(branches.size());
+					in.beginArray();
+					while (in.hasNext())
+						customFilePrefixes.add(in.nextString());
+					in.endArray();
+					break;
 				case "origWeightEach":
 					origWeightEach = in.nextDouble();
 					break;
@@ -837,6 +857,17 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			
 			if (weightProvider == null)
 				weightProvider = DEFAULT_WEIGHTS;
+			
+			if (customFilePrefixes != null) {
+				Preconditions.checkState(customFilePrefixes.size() == branches.size(),
+						"branch custom file prefixes size does not match branch count");
+				for (int i=0; i<branches.size(); i++) {
+					LogicTreeBranch<E> branch = branches.get(i);
+					String prefix = customFilePrefixes.get(i);
+					if (prefix != null && !prefix.equals(branch.buildFileName()))
+						branch.setCustomFileName(prefix);
+				}
+			}
 			
 			if (origWeights != null) {
 				Preconditions.checkState(origWeights.size() == branches.size(),

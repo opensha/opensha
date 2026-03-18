@@ -10,23 +10,30 @@ import java.util.Random;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.logicTree.LogicTreeLevel.AbstractRandomlySampledLevel;
+import org.opensha.commons.util.json.JsonAdapterHelper;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.NSHM26_InvConfigFactory;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_SeisRateModel.NSHM26_SiesRateModelSample;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_SeisRateModel.NSHM26_SiesRateModelSampleData;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.PureGR;
+import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateType;
 
-public class NSHM26_SeisRateModelSamples extends AbstractRandomlySampledLevel<NSHM26_SiesRateModelSampleData, NSHM26_SiesRateModelSample> {
+public class NSHM26_SeisRateModelSamples extends AbstractRandomlySampledLevel<PureGR, NSHM26_SiesRateModelSample> {
 	
 	private NSHM26_SeismicityRegions region;
 	private TectonicRegionType trt;
 	
+	@SuppressWarnings("unused") // deserialization
 	private NSHM26_SeisRateModelSamples() {}
 	
 	public NSHM26_SeisRateModelSamples(NSHM26_SeismicityRegions region, TectonicRegionType trt) {
@@ -38,8 +45,8 @@ public class NSHM26_SeisRateModelSamples extends AbstractRandomlySampledLevel<NS
 	}
 	
 	@Override
-	public Class<? extends NSHM26_SiesRateModelSampleData> getValueType() {
-		return NSHM26_SiesRateModelSampleData.class;
+	public Class<? extends PureGR> getValueType() {
+		return PureGR.class;
 	}
 	
 	protected CSVFile<String> loadCSV() throws IOException {
@@ -74,22 +81,65 @@ public class NSHM26_SeisRateModelSamples extends AbstractRandomlySampledLevel<NS
 				Collections.shuffle(samplesList, rand);
 			samples.addLast(samplesList.get(sampleIndex));
 		}
-		build(()->{
-			PureGR gr = samples.pop();
-			return new NSHM26_SiesRateModelSampleData(region, trt, gr);
-		}, numNodes, weightEach);
+		build(()->{ return samples.pop(); }, numNodes, weightEach);
 	}
 
 	@Override
-	protected NSHM26_SiesRateModelSample build(int index, NSHM26_SiesRateModelSampleData value, double weightEach) {
-		// TODO Auto-generated method stub
-		return null;
+	protected NSHM26_SiesRateModelSample build(int index, PureGR value, double weightEach) {
+		return new NSHM26_SiesRateModelSample(value, region, trt, weightEach,
+				getNodeName(index), getNodeShortName(index), getNodeFilePrefix(index));
 	}
 
 	@Override
 	public Class<? extends NSHM26_SiesRateModelSample> getType() {
-		// TODO Auto-generated method stub
-		return null;
+		return NSHM26_SiesRateModelSample.class;
+	}
+
+	@Override
+	public JsonObject toJsonObject() {
+		JsonObject json = super.toJsonObject();
+
+		json.add("region", new JsonPrimitive(region.name()));
+		json.add("tectonicRegime", new JsonPrimitive(trt.name()));
+		
+		return json;
+	}
+	
+	@Override
+	public TypeAdapter<PureGR> getValueTypeAdapter() {
+		return GR_TYPE_ADAPTER;
+	}
+	
+	private static TypeAdapter<PureGR> GR_TYPE_ADAPTER = new TypeAdapter<PureGR>() {
+
+		@Override
+		public void write(JsonWriter out, PureGR value) throws IOException {
+			out.beginArray();
+			out.value(value.M1);
+			out.value(value.rateAboveM1);
+			out.value(value.b);
+			out.endArray();
+		}
+
+		@Override
+		public PureGR read(JsonReader in) throws IOException {
+			in.beginArray();
+			double[] vals = new double[3];
+			for (int i=0; i<3; i++)
+				vals[i] = in.nextDouble();
+			Preconditions.checkState(!in.hasNext());
+			in.endArray();
+			return new PureGR(RateType.M1, vals[0], Double.POSITIVE_INFINITY, vals[1], vals[2], Double.NaN, true);
+		}
+		
+	};
+
+	@Override
+	public void initFromJsonObject(JsonObject jsonObj) {
+		region = NSHM26_SeismicityRegions.valueOf(jsonObj.get("region").getAsString());
+		trt = TectonicRegionType.valueOf(jsonObj.get("tectonicRegime").getAsString());
+		
+		super.initFromJsonObject(jsonObj);
 	}
 
 }
