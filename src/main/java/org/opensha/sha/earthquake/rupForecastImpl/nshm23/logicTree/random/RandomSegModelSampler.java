@@ -425,7 +425,8 @@ public class RandomSegModelSampler implements BranchDependentSampler<RandomSegMo
 		}
 		
 		public Level(int numSamples, long seed) {
-			super("Segmentation Model Samples", "SegSamples");
+			super("Segmentation Model Samples", "SegSamples",
+					"Segmentation Model Sample ", "SegSample", "SegSample");
 			build(seed, numSamples);
 		}
 
@@ -437,21 +438,6 @@ public class RandomSegModelSampler implements BranchDependentSampler<RandomSegMo
 		@Override
 		public Class<? extends Node> getType() {
 			return Node.class;
-		}
-
-		@Override
-		protected String getNodeNamePrefix() {
-			return "Segmentation Model Sample ";
-		}
-
-		@Override
-		protected String getNodeShortNamePrefix() {
-			return "SegSample";
-		}
-
-		@Override
-		protected String getNodeFilePrefix() {
-			return "SegSample";
 		}
 		
 	}

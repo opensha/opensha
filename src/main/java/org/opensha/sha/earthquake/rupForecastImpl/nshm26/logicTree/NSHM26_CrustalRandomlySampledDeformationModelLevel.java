@@ -10,7 +10,7 @@ public class NSHM26_CrustalRandomlySampledDeformationModelLevel extends Randomly
 	public static String SHORT_NAME = "DMSample";
 
 	public NSHM26_CrustalRandomlySampledDeformationModelLevel() {
-		super(NAME, SHORT_NAME);
+		super();
 	}
 	
 	public NSHM26_CrustalRandomlySampledDeformationModelLevel(int numSamples) {
@@ -18,7 +18,7 @@ public class NSHM26_CrustalRandomlySampledDeformationModelLevel extends Randomly
 	}
 	
 	public NSHM26_CrustalRandomlySampledDeformationModelLevel(int numSamples, long seed) {
-		super(NAME, SHORT_NAME);
+		super(NAME, SHORT_NAME, "Deformation Model Sample ", "DMSample", "DMSample");
 		build(seed, numSamples);
 	}
 
@@ -31,21 +31,6 @@ public class NSHM26_CrustalRandomlySampledDeformationModelLevel extends Randomly
 	@Override
 	public Class<? extends NSHM26_CrustalRandomlySampledDeformationModels> getType() {
 		return NSHM26_CrustalRandomlySampledDeformationModels.class;
-	}
-
-	@Override
-	protected String getNodeNamePrefix() {
-		return "Deformation Model Sample ";
-	}
-
-	@Override
-	protected String getNodeShortNamePrefix() {
-		return "DMSample";
-	}
-
-	@Override
-	protected String getNodeFilePrefix() {
-		return "DMSample";
 	}
 
 }

@@ -36,6 +36,20 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
 public class ContinuousDistributionTypeAdapter extends TypeAdapter<ContinuousDistribution> {
+	
+	private static ContinuousDistributionTypeAdapter INSTANCE = null;
+	
+	public static ContinuousDistributionTypeAdapter get() {
+		if (INSTANCE == null) {
+			synchronized (ContinuousDistributionTypeAdapter.class) {
+				if (INSTANCE == null)
+					INSTANCE = new ContinuousDistributionTypeAdapter();
+			}
+		}
+		return INSTANCE;
+	}
+	
+	private ContinuousDistributionTypeAdapter() {}
 
 	private static final String TYPE = "type";
 

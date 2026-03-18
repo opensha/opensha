@@ -1,4 +1,4 @@
-package org.opensha.commons.logicTree;
+package org.opensha.commons.util.json;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
@@ -13,13 +13,19 @@ import java.lang.reflect.InvocationTargetException;
 
 
 /**
- * Helper class to serialize and deserialize instances of classes that have a TypeAdapter.
- * Classes must be annotated with @JsonAdapter(TypeAdapter)
+ * Helper class to serialize and deserialize instances of classes that have a TypeAdapter (and are annotated with
+ * @JsonAdapter(TypeAdapter), or to fetch default Gson TypeAdapter instances.
  */
 @SuppressWarnings("unchecked")
 public class JsonAdapterHelper {
 
-    protected static Class getTypeAdapterClass(Object o) {
+	/**
+	 * Returns the {@link TypeAdapter} class declared via {@link JsonAdapter} on the supplied object's runtime class.
+	 *
+	 * @param o object whose class should be inspected
+	 * @return adapter class if present and assignable to {@link TypeAdapter}, otherwise {@code null}
+	 */
+    public static Class getTypeAdapterClass(Object o) {
         JsonAdapter annotation = o.getClass().getAnnotation(JsonAdapter.class);
         if (annotation != null) {
             Class c = annotation.value();
@@ -30,7 +36,13 @@ public class JsonAdapterHelper {
         return null;
     }
 
-    protected static TypeAdapter getTypeAdapter(Object o) {
+    /**
+     * Initializes and returns the {@link TypeAdapter} declared via {@link JsonAdapter} on the supplied object.
+     *
+     * @param o object whose class should be inspected
+     * @return initialized adapter instance, or {@code null} if no adapter annotation exists or initialization fails
+     */
+    public static TypeAdapter getTypeAdapter(Object o) {
        return getTypeAdapter(o, false);
     }
     
@@ -45,16 +57,32 @@ public class JsonAdapterHelper {
     	}
     }
 
-    protected static TypeAdapter getTypeAdapter(Object o, boolean revertToGsonDefault) {
+    /**
+     * Initializes and returns the {@link TypeAdapter} for the supplied object.
+     *
+     * @param o object whose class should be inspected
+     * @param revertToGsonDefault if {@code true}, return Gson's default adapter for the runtime class when no
+     *        {@link JsonAdapter} annotation is present (or initialization fails)
+     * @return initialized adapter instance, or {@code null} if none can be determined
+     */
+    public static TypeAdapter getTypeAdapter(Object o, boolean revertToGsonDefault) {
         Class c = getTypeAdapterClass(o);
         if (c == null && revertToGsonDefault) {
         	checkInitDefaultGson();
         	return defaultGson.getAdapter(o.getClass());
         }
-        return getTypeAdapter(c, revertToGsonDefault);
+        return initTypeAdapter(c, revertToGsonDefault);
     }
 
-    protected static TypeAdapter getTypeAdapter(Class c, boolean revertToGsonDefault) {
+    /**
+     * Initializes a {@link TypeAdapter} instance from the supplied adapter class.
+     *
+     * @param c adapter class
+     * @param revertToGsonDefault if {@code true}, return Gson's default adapter for {@code c} when adapter
+     *        initialization fails
+     * @return initialized adapter instance, or {@code null} if {@code c} is {@code null} or initialization fails
+     */
+    public static TypeAdapter initTypeAdapter(Class c, boolean revertToGsonDefault) {
         if (c != null) {
             try {
                 return (TypeAdapter) c.getDeclaredConstructor().newInstance();
@@ -70,8 +98,26 @@ public class JsonAdapterHelper {
         }
     }
 
+    /**
+     * Returns {@code true} if the supplied object has an initializable {@link TypeAdapter} declared via
+     * {@link JsonAdapter}.
+     *
+     * @param o object whose class should be inspected
+     * @return {@code true} if an adapter can be initialized, otherwise {@code false}
+     */
     public static boolean hasTypeAdapter(Object o) {
-        return getTypeAdapter(o) != null;
+        return hasTypeAdapter(o, false);
+    }
+
+    /**
+     * Returns {@code true} if the supplied object has a usable adapter.
+     *
+     * @param o object whose class should be inspected
+     * @param revertToGsonDefault if {@code true}, treat Gson's default adapter as a valid fallback
+     * @return {@code true} if an adapter can be initialized, otherwise {@code false}
+     */
+    public static boolean hasTypeAdapter(Object o, boolean revertToGsonDefault) {
+        return getTypeAdapter(o, revertToGsonDefault) != null;
     }
 
     /**

@@ -26,6 +26,7 @@ import org.opensha.commons.logicTree.LogicTreeNode.RandomlyGeneratedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.SimpleValuedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.ValuedLogicTreeNode;
 import org.opensha.commons.util.ClassUtils;
+import org.opensha.commons.util.json.JsonAdapterHelper;
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSetSplitMappings;
@@ -909,7 +910,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 						System.err.println("WARNING: logic tree node value encountered but no valueClass, loading as plain/hardcoded instead");
 					} else {
 						if (in.peek() != null) {
-							value = JsonAdapterHelper.getTypeAdapter(valueClass, true).read(in);
+							value = JsonAdapterHelper.initTypeAdapter(valueClass, true).read(in);
 						}
 					}
 					break;

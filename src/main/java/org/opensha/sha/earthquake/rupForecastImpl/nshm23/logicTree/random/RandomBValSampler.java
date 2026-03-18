@@ -95,7 +95,8 @@ public class RandomBValSampler implements BranchDependentSampler<RandomBValSampl
 		}
 		
 		public Level(int numSamples, long seed) {
-			super("Section b-value Samples", "b Samples");
+			super("Section b-value Samples", "b Samples",
+					"Section b-value Sample ", "bSample", "bSample");
 			build(seed, numSamples);
 		}
 
@@ -107,21 +108,6 @@ public class RandomBValSampler implements BranchDependentSampler<RandomBValSampl
 		@Override
 		public Class<? extends Node> getType() {
 			return Node.class;
-		}
-
-		@Override
-		protected String getNodeNamePrefix() {
-			return "Section b-value Sample ";
-		}
-
-		@Override
-		protected String getNodeShortNamePrefix() {
-			return "bSample";
-		}
-
-		@Override
-		protected String getNodeFilePrefix() {
-			return "bSample";
 		}
 		
 	}
