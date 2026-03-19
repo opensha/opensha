@@ -24,14 +24,14 @@ public class NSHM26_CrustalRandomlySampledDeformationModelLevel extends Randomly
 	}
 
 	@Override
-	public NSHM26_CrustalRandomlySampledDeformationModels buildNodeInstance(int index, long seed, double weight) {
-		return new NSHM26_CrustalRandomlySampledDeformationModels(
-				getNodeName(index), getNodeShortName(index), getNodeFilePrefix(index), seed, weight);
+	public Class<? extends NSHM26_CrustalRandomlySampledDeformationModels> getType() {
+		return NSHM26_CrustalRandomlySampledDeformationModels.class;
 	}
 
 	@Override
-	public Class<? extends NSHM26_CrustalRandomlySampledDeformationModels> getType() {
-		return NSHM26_CrustalRandomlySampledDeformationModels.class;
+	public NSHM26_CrustalRandomlySampledDeformationModels build(Long seed, double weight, String name,
+			String shortName, String filePrefix) {
+		return new NSHM26_CrustalRandomlySampledDeformationModels(name, shortName, filePrefix, seed, weight);
 	}
 
 }

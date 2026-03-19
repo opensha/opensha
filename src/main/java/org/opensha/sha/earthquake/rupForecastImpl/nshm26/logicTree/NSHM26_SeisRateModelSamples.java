@@ -34,7 +34,9 @@ public class NSHM26_SeisRateModelSamples extends AbstractRandomlySampledLevel<Pu
 	private TectonicRegionType trt;
 	
 	@SuppressWarnings("unused") // deserialization
-	private NSHM26_SeisRateModelSamples() {}
+	private NSHM26_SeisRateModelSamples(String name, String shortName) {
+		super(name, shortName);
+	}
 	
 	public NSHM26_SeisRateModelSamples(NSHM26_SeismicityRegions region, TectonicRegionType trt) {
 		super(region.getShortName()+" Rate Model Samples ("+NSHM26_RegionLoader.getNameForTRT(trt)+")",
@@ -85,9 +87,9 @@ public class NSHM26_SeisRateModelSamples extends AbstractRandomlySampledLevel<Pu
 	}
 
 	@Override
-	protected NSHM26_SiesRateModelSample build(int index, PureGR value, double weightEach) {
-		return new NSHM26_SiesRateModelSample(value, region, trt, weightEach,
-				getNodeName(index), getNodeShortName(index), getNodeFilePrefix(index));
+	public NSHM26_SiesRateModelSample build(PureGR value, double weight, String name, String shortName,
+			String filePrefix) {
+		return new NSHM26_SiesRateModelSample(value, region, trt, weight, name, shortName, filePrefix);
 	}
 
 	@Override

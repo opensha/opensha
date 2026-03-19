@@ -86,8 +86,8 @@ public class RandomBValSampler implements BranchDependentSampler<RandomBValSampl
 	
 	public static class Level extends RandomlyGeneratedLevel<Node> {
 		
-		public Level() {
-			
+		public Level(String name, String shortName) {
+			super(name, shortName);
 		}
 		
 		public Level(int numSamples) {
@@ -101,13 +101,13 @@ public class RandomBValSampler implements BranchDependentSampler<RandomBValSampl
 		}
 
 		@Override
-		public Node buildNodeInstance(int index, long seed, double weight) {
-			return new Node(getNodeName(index), getNodeShortName(index), getNodeFilePrefix(index), seed, weight);
+		public Class<? extends Node> getType() {
+			return Node.class;
 		}
 
 		@Override
-		public Class<? extends Node> getType() {
-			return Node.class;
+		public Node build(Long seed, double weight, String name, String shortName, String filePrefix) {
+			return new Node(name, shortName, filePrefix, seed, weight);
 		}
 		
 	}

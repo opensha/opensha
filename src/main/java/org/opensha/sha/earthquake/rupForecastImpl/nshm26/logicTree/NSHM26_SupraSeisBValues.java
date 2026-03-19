@@ -4,10 +4,7 @@ import java.text.DecimalFormat;
 import java.util.List;
 
 import org.apache.commons.statistics.distribution.ContinuousDistribution;
-import org.opensha.commons.logicTree.LogicTreeBranch;
-import org.opensha.commons.logicTree.LogicTreeLevel.AbstractContinuousDistributionSampledLevel;
-import org.opensha.commons.logicTree.LogicTreeLevel.DataBackedLevel;
-import org.opensha.commons.logicTree.LogicTreeLevel.ValueBackedLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader;
@@ -44,7 +41,7 @@ public class NSHM26_SupraSeisBValues implements SectionSupraSeisBValues.Constant
 	}
 
 	@Override
-	public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+	public double getNodeWeight() {
 		return weight;
 	}
 
@@ -77,13 +74,13 @@ public class NSHM26_SupraSeisBValues implements SectionSupraSeisBValues.Constant
 		this.filePrefix = filePrefix;
 	}
 	
-	public static class DistributionSamplingLevel extends AbstractContinuousDistributionSampledLevel<NSHM26_SupraSeisBValues> {
+	public static class DistributionSamplingLevel extends LogicTreeLevel.AbstractContinuousDistributionSampledLevel<NSHM26_SupraSeisBValues> {
 		
 		protected TectonicRegionType trt;
 
 		@SuppressWarnings("unused") // deserialization
-		private DistributionSamplingLevel() {
-			
+		private DistributionSamplingLevel(String name, String shortName) {
+			super(name, shortName);
 		}
 
 		protected DistributionSamplingLevel(TectonicRegionType trt, ContinuousDistribution dist) {
@@ -93,9 +90,9 @@ public class NSHM26_SupraSeisBValues implements SectionSupraSeisBValues.Constant
 		}
 
 		@Override
-		protected NSHM26_SupraSeisBValues build(int index, Double value, double weightEach) {
-			return new NSHM26_SupraSeisBValues(trt, value, weightEach,
-					getNodeName(index), getNodeShortName(index), getNodeFilePrefix(index));
+		public NSHM26_SupraSeisBValues build(Double value, double weight, String name, String shortName,
+				String filePrefix) {
+			return new NSHM26_SupraSeisBValues(trt, value, weight, name, shortName, filePrefix);
 		}
 
 		@Override
@@ -120,7 +117,8 @@ public class NSHM26_SupraSeisBValues implements SectionSupraSeisBValues.Constant
 		
 	}
 	
-	public static class FixedValueLevel extends DataBackedLevel<NSHM26_SupraSeisBValues> implements ValueBackedLevel<Double, NSHM26_SupraSeisBValues> {
+	public static class FixedValueLevel extends LogicTreeLevel.DataBackedLevel<NSHM26_SupraSeisBValues>
+	implements LogicTreeLevel.ValueBackedLevel<Double, NSHM26_SupraSeisBValues> {
 		
 		protected TectonicRegionType trt;
 		private double b = Double.NaN;
@@ -192,6 +190,11 @@ public class NSHM26_SupraSeisBValues implements SectionSupraSeisBValues.Constant
 				Preconditions.checkState(weight == node.getNodeWeight(null));
 			}
 			return node;
+		}
+
+		@Override
+		public Class<? extends Double> getValueType() {
+			return Double.class;
 		}
 		
 	}

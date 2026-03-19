@@ -2,15 +2,11 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree;
 
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
-import org.opensha.commons.logicTree.LogicTreeBranch;
-import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.logicTree.LogicTreeNode.ValuedLogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
-
-import com.google.common.base.Preconditions;
 
 @Affects(FaultSystemRupSet.SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
@@ -46,11 +42,6 @@ public enum NSHM26_InterfaceMinSubSects implements ValuedLogicTreeNode<Integer> 
 	}
 
 	@Override
-	public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
-		return weight;
-	}
-
-	@Override
 	public String getFilePrefix() {
 		return name();
 	}
@@ -69,6 +60,11 @@ public enum NSHM26_InterfaceMinSubSects implements ValuedLogicTreeNode<Integer> 
 	public void init(Integer value, Class<? extends Integer> valueClass, double weight, String name, String shortName,
 			String filePrefix) {
 		throw new UnsupportedOperationException("Enum version cannot be initialized");
+	}
+
+	@Override
+	public double getNodeWeight() {
+		return weight;
 	}
 
 }

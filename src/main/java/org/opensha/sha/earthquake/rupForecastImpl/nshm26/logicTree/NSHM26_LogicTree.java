@@ -28,6 +28,8 @@ import org.opensha.sha.util.TectonicRegionType;
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
 
+import gov.usgs.earthquake.nshmp.erf.logicTree.TectonicRegionBranchTreeNode;
+
 public class NSHM26_LogicTree {
 	
 	/*
@@ -169,7 +171,7 @@ public class NSHM26_LogicTree {
 			LogicTreeNode value = branch.getValue(i);
 			if (value == null) {
 				LogicTreeLevel<?> level = levels.get(i);
-				if (!(level instanceof RandomLevel<?>))
+				if (!(level instanceof RandomLevel<?,?>))
 					branch.setValue(level.getNodes().get(0));
 			}
 		}
@@ -205,9 +207,9 @@ public class NSHM26_LogicTree {
 		List<List<? extends LogicTreeNode>> levelSamples = new ArrayList<>(levels.size());
 		for (LogicTreeLevel<?> level : levels) {
 			List<? extends LogicTreeNode> samples;
-			if (level instanceof RandomLevel<?>) {
-				((RandomLevel<?>)level).build(r.nextLong(), numSamples);
-				samples = ((RandomLevel<?>)level).getNodes();
+			if (level instanceof RandomLevel<?,?>) {
+				((RandomLevel<?,?>)level).build(r.nextLong(), numSamples);
+				samples = ((RandomLevel<?,?>)level).getNodes();
 				Preconditions.checkState(samples.size() == numSamples);
 			} else {
 				List<? extends LogicTreeNode> nodes = level.getNodes();
@@ -235,7 +237,7 @@ public class NSHM26_LogicTree {
 			}
 			levelSamples.add(samples);
 		}
-		String branchPrefix = seisReg.name()+"_"+NSHM26_RegionLoader.getNameForTRT(trt)+"Sample";
+//		String branchPrefix = seisReg.name()+"_"+NSHM26_RegionLoader.getNameForTRT(trt)+"Sample";
 		double weightEach = 1d/(double)numSamples;
 		List<LogicTreeBranch<LogicTreeNode>> branches = new ArrayList<>(numSamples);
 		for (int i=0; i<numSamples; i++) {
@@ -244,24 +246,79 @@ public class NSHM26_LogicTree {
 				values.add(levelSamples.get(l).get(i));
 			LogicTreeBranch<LogicTreeNode> branch = new LogicTreeBranch<>(levels, values);
 			branch.setOrigBranchWeight(weightEach);
-			branch.setCustomFileName(branchPrefix+i);
+//			branch.setCustomFileName(branchPrefix+i);
 			branches.add(branch);
 		}
 		
 		return LogicTree.fromExisting(levels, branches);
 	}
 	
+	public static LogicTree<TectonicRegionBranchTreeNode> buildMultiRegimeTree(NSHM26_SeismicityRegions seisReg,
+			int numSamples, long seed) {
+		Random rand = new Random(seed);
+		
+		LogicTree<LogicTreeNode> interfaceTree = buildLogicTree(seisReg, TectonicRegionType.SUBDUCTION_INTERFACE, numSamples, rand.nextLong());
+		LogicTree<LogicTreeNode> intraslabTree = buildLogicTree(seisReg, TectonicRegionType.SUBDUCTION_SLAB, numSamples, rand.nextLong());
+		LogicTree<LogicTreeNode> crustalTree = buildLogicTree(seisReg, TectonicRegionType.ACTIVE_SHALLOW, numSamples, rand.nextLong());
+		
+		return buildMultiRegimeTree(seisReg, interfaceTree, intraslabTree, crustalTree);
+	}
+	
+	public static LogicTree<TectonicRegionBranchTreeNode> buildMultiRegimeTree(NSHM26_SeismicityRegions seisReg,
+			LogicTree<LogicTreeNode> interfaceTree, LogicTree<LogicTreeNode> intraslabTree, LogicTree<LogicTreeNode> crustalTree) {
+		Preconditions.checkState(interfaceTree.size() == intraslabTree.size());
+		Preconditions.checkState(interfaceTree.size() == crustalTree.size());
+		int numEach = interfaceTree.size();
+		List<LogicTreeLevel<? extends TectonicRegionBranchTreeNode>> levels = new ArrayList<>(3);
+		levels.add(new TectonicRegionBranchTreeNode.Level(TectonicRegionType.SUBDUCTION_INTERFACE, interfaceTree,
+				seisReg.getName()+" Interface Branches", seisReg.name()+"-Interface",
+				seisReg.name()+"-Interface Branch", "InterfaceBranch", "InterfaceBranch"));
+		levels.add(new TectonicRegionBranchTreeNode.Level(TectonicRegionType.SUBDUCTION_SLAB, intraslabTree,
+				seisReg.getName()+" Intraslab Branches", seisReg.name()+"-Intraslab",
+				seisReg.name()+"-Intraslab Branch", "IntraslabBranch", "IntraslabBranch"));
+		levels.add(new TectonicRegionBranchTreeNode.Level(TectonicRegionType.ACTIVE_SHALLOW, crustalTree,
+				seisReg.getName()+" Crustal Branches", seisReg.name()+"-Crustal",
+				seisReg.name()+"-Crustal Branch", "CrustalBranch", "CrustalBranch"));
+		List<LogicTreeBranch<TectonicRegionBranchTreeNode>> branches = new ArrayList<>(numEach);
+		for (int i=0; i<numEach; i++) {
+			List<TectonicRegionBranchTreeNode> values = new ArrayList<>(3);
+			double weight0 = -1d;
+			for (LogicTreeLevel<? extends TectonicRegionBranchTreeNode> level : levels) {
+				TectonicRegionBranchTreeNode value = level.getNodes().get(i);
+				if (weight0 == -1)
+					weight0 = value.getNodeWeight(null);
+				else
+					Preconditions.checkState(weight0 == value.getNodeWeight(null));
+				values.add(value);
+			}
+			LogicTreeBranch<TectonicRegionBranchTreeNode> branch = new LogicTreeBranch<>(levels, values);
+			branches.add(branch);
+		}
+		return LogicTree.fromExisting(levels, branches);
+	}
+	
 	public static void main(String[] args) throws IOException {
 		TectonicRegionType[] trts = {TectonicRegionType.SUBDUCTION_INTERFACE, TectonicRegionType.SUBDUCTION_SLAB, TectonicRegionType.ACTIVE_SHALLOW};
 		for (NSHM26_SeismicityRegions seisReg : NSHM26_SeismicityRegions.values()) {
+			List<LogicTree<LogicTreeNode>> trees = new ArrayList<>(3);
 			for (TectonicRegionType trt : trts) {
 				System.out.println("Building for "+seisReg+", "+trt);
 				System.out.println("\tRegular:\t"+buildDefault(seisReg, trt, false));
 				System.out.println("\tSampled:\t"+buildDefault(seisReg, trt, true));
 				System.out.println("\tBuilding sampled tree");
 				LogicTree<LogicTreeNode> tree = buildLogicTree(seisReg, trt, 100, true);
-				tree.write(new File("/tmp/nshm26_tree_test_"+seisReg.name()+"_"+trt.name()+".json"));
+				trees.add(tree);
+				File treeFile = new File("/tmp/nshm26_tree_test_"+seisReg.name()+"_"+trt.name()+".json");
+				tree.write(treeFile);
+				LogicTree<LogicTreeNode> tree2 = LogicTree.read(treeFile);
+				tree2.write(new File(treeFile.getParentFile(), treeFile.getName()+".rerpo"));
 			}
+			System.out.println("\tBuilding multi-regime");
+			LogicTree<TectonicRegionBranchTreeNode> multiTree = buildMultiRegimeTree(seisReg, trees.get(0), trees.get(1), trees.get(2));
+			File treeFile = new File("/tmp/nshm26_tree_test_"+seisReg.name()+"_multi.json");
+			multiTree.write(treeFile);
+			LogicTree<LogicTreeNode> tree2 = LogicTree.read(treeFile);
+			tree2.write(new File(treeFile.getParentFile(), treeFile.getName()+".rerpo"));
 		}
 	}
 

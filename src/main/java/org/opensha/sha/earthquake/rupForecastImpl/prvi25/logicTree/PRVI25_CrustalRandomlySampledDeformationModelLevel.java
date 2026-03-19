@@ -10,7 +10,7 @@ public class PRVI25_CrustalRandomlySampledDeformationModelLevel extends Randomly
 	public static String SHORT_NAME = "DMSample";
 
 	public PRVI25_CrustalRandomlySampledDeformationModelLevel() {
-		super();
+		super(NAME, SHORT_NAME);
 	}
 	
 	public PRVI25_CrustalRandomlySampledDeformationModelLevel(int numSamples) {
@@ -23,14 +23,14 @@ public class PRVI25_CrustalRandomlySampledDeformationModelLevel extends Randomly
 	}
 
 	@Override
-	public PRVI25_CrustalRandomlySampledDeformationModels buildNodeInstance(int index, long seed, double weight) {
-		return new PRVI25_CrustalRandomlySampledDeformationModels(getNodeName(index), getNodeShortName(index), getNodeFilePrefix(index), seed, weight);
+	public Class<? extends PRVI25_CrustalRandomlySampledDeformationModels> getType() {
+		return PRVI25_CrustalRandomlySampledDeformationModels.class;
 	}
 
 	@Override
-	public Class<? extends PRVI25_CrustalRandomlySampledDeformationModels> getType() {
-		return PRVI25_CrustalRandomlySampledDeformationModels.class;
-		//+index,+index, +index
+	public PRVI25_CrustalRandomlySampledDeformationModels build(Long value, double weight, String name,
+			String shortName, String filePrefix) {
+		return new PRVI25_CrustalRandomlySampledDeformationModels(name, shortName, filePrefix, value, weight);
 	}
 
 }

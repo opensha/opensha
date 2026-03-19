@@ -12,20 +12,16 @@ import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.nio.Buffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
-import org.opensha.commons.logicTree.LogicTreeLevel.FileBackedLevel;
-import org.opensha.commons.logicTree.LogicTreeLevel.RandomlyGeneratedLevel;
-import org.opensha.commons.logicTree.LogicTreeLevel.ValueBackedLevel;
-import org.opensha.commons.logicTree.LogicTreeLevel.AbstractRandomlySampledLevel;
-import org.opensha.commons.logicTree.LogicTreeNode.AdapterBackedNode;
-import org.opensha.commons.logicTree.LogicTreeNode.FileBackedNode;
-import org.opensha.commons.logicTree.LogicTreeNode.RandomlyGeneratedNode;
-import org.opensha.commons.logicTree.LogicTreeNode.SimpleValuedNode;
-import org.opensha.commons.logicTree.LogicTreeNode.ValuedLogicTreeNode;
+import org.opensha.commons.logicTree.LogicTreeLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.*;
+import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.logicTree.LogicTreeNode.*;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.json.JsonAdapterHelper;
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
@@ -38,6 +34,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.google.gson.TypeAdapter;
 import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.reflect.TypeToken;
@@ -746,7 +744,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 //						level = gson.fromJson(in, LogicTreeLevel.class);
 						break;
 					case "value":
-						value = nodeAdapter.read(in);
+						value = nodeAdapter.read(in, level);
 //						value = gson.fromJson(in, LogicTreeNode.class);
 						break;
 
@@ -764,23 +762,15 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 							level = new FileBackedLevel(
 									level.getName(), level.getShortName(), (FileBackedNode)value);
 						}
-					} else if (value instanceof RandomlyGeneratedNode && level instanceof RandomlyGeneratedLevel<?>) {
-						RandomlyGeneratedLevel<?> randLevel = (RandomlyGeneratedLevel<?>)level;
-						if (randLevel.getNodes().isEmpty())
-							randLevel.setNodes(List.of(value));
-						else
-							Preconditions.checkState(randLevel.isMember(value),
-									"Random level '%s' has node list, but our node ('%s' with seed %s) isn't a member",
-									level.getName(), value.getName(), ((RandomlyGeneratedNode)value).getSeed());
-					} else if (value instanceof ValuedLogicTreeNode<?> && level instanceof AbstractRandomlySampledLevel<?,?>) {
-						AbstractRandomlySampledLevel<?,?> sampleLevel = (AbstractRandomlySampledLevel<?,?>)level;
-						Object theValue = ((ValuedLogicTreeNode<?>)value).getValue();
-						sampleLevel.setValuesUnchecked(List.of(theValue), value.getNodeWeight(null));
 					} else if (value instanceof ValuedLogicTreeNode<?> && level instanceof ValueBackedLevel<?,?>) {
-						// replace with version built by the level because it might attach additional data
 						Object theValue = ((ValuedLogicTreeNode<?>)value).getValue();
+						// replace with version built by the level because it might attach additional data
 						value = ((ValueBackedLevel<?,?>)level).buildUnchecked(theValue, value.getNodeWeight(null),
 								value.getName(), value.getShortName(), value.getFilePrefix());
+						if (level instanceof RandomLevel<?,?>) {
+							RandomLevel<?,?> sampleLevel = (RandomLevel<?,?>)level;
+							sampleLevel.setNodesUnchecked(List.of(value));
+						}
 					}
 				}
 				levels.add(level);
@@ -827,9 +817,6 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 				Preconditions.checkState(enumClass.isEnum(), "Enum enclosing class not an enum?");
 				out.name("enumClass").value(enumClass.getName());
 				out.name("enumName").value(((Enum<?>)value).name());
-			} else if (value instanceof RandomlyGeneratedNode) {
-				out.name("class").value(value.getClass().getName());
-				out.name("randomSeed").value(((RandomlyGeneratedNode)value).getSeed());
 			} else if (JsonAdapterHelper.hasTypeAdapter(value)) {
 				out.name("adapterValue");
 				JsonAdapterHelper.writeAdapterValue(out, value);
@@ -855,9 +842,15 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 			out.endObject();
 		}
 
-		@SuppressWarnings("unchecked")
 		@Override
 		public LogicTreeNode read(JsonReader in) throws IOException {
+			return read(in, null);
+		}
+		
+		private HashSet<String> skipWarned = null;
+
+		@SuppressWarnings("unchecked")
+		public LogicTreeNode read(JsonReader in, LogicTreeLevel<?> level) throws IOException {
 			String name = null;
 			String shortName = null;
 			String prefix = null;
@@ -866,9 +859,10 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 			Class<?> valueClass = null;
 			Class<? extends Enum<? extends LogicTreeNode>> enumClass = null;
 			String enumName = null;
-			Long randomSeed = null;
 			LogicTreeNode adapterNode = null;
 			Object value = null;
+			
+			JsonObject skippedData = null;
 			
 			in.beginObject();
 			while (in.hasNext()) {
@@ -928,9 +922,6 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 				case "enumName":
 					enumName = in.nextString();
 					break;
-				case "randomSeed":
-					randomSeed = in.nextLong();
-					break;
 				case "adapterValue":
 					adapterNode = (LogicTreeNode) JsonAdapterHelper.readAdapterValue(in);
 					break;
@@ -939,13 +930,27 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 						System.err.println("WARNING: logic tree node value encountered but no valueClass, loading as plain/hardcoded instead");
 					} else {
 						if (in.peek() != null) {
-							value = JsonAdapterHelper.initTypeAdapter(valueClass, true).read(in);
+							TypeAdapter adapter;
+							if (level != null && level instanceof LogicTreeLevel.ValueBackedLevel)
+								adapter = ((LogicTreeLevel.ValueBackedLevel)level).getValueTypeAdapter();
+							else
+								adapter = JsonAdapterHelper.initTypeAdapter(valueClass, true);
+							value = adapter.read(in);
 						}
 					}
 					break;
 				default:
-					System.err.println("WARNING: unexpected JSON field named '"+jsonName+"' in LogicTreeNode, skipping");
-					in.skipValue();
+					synchronized (this) {
+						if (skipWarned == null)
+							skipWarned = new HashSet<>();
+						if (!skipWarned.contains(jsonName)) {
+							System.err.println("WARNING: unexpected JSON field named '"+jsonName+"' in LogicTreeNode, skipping");
+							skipWarned.add(jsonName);
+						}
+					}
+					if (skippedData == null)
+						skippedData = new JsonObject();
+					skippedData.add(jsonName, JsonParser.parseReader(in));
 					break;
 				}
 			}
@@ -965,7 +970,9 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 						return (LogicTreeNode) option;
 			}
 			
-			if (!forceFileBacked && clazz != null) {
+			if (!forceFileBacked && value != null && level != null && level instanceof ValueBackedLevel<?,?>) {
+				return ((ValueBackedLevel<?,?>)level).buildUnchecked(value, weight, name, shortName, prefix);
+			} else if (!forceFileBacked && clazz != null) {
 				// try to load it as a class via default constructor
 				try {
 					Constructor<? extends LogicTreeNode> constructor = clazz.getDeclaredConstructor();
@@ -973,26 +980,20 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 					
 					LogicTreeNode instance = constructor.newInstance();
 					
-					if (instance instanceof RandomlyGeneratedNode) {
-						Preconditions.checkState(randomSeed != null, "Have a randomly sampled node instance but no seed?");
-						RandomlyGeneratedNode sample = (RandomlyGeneratedNode)instance;
-						Preconditions.checkState(shortName != null || name != null, "Must supply either name or short name");
-						if (name == null)
-							name = shortName;
-						else if (shortName == null)
-							shortName = name;
-						if (prefix == null)
-							prefix = shortName;
-						sample.init(name, shortName, prefix, weight, randomSeed);
-					} else {
-						Preconditions.checkState(randomSeed == null,
-								"Found a random seed but instance is not a RandomlySampledNode. Instance class: %s", clazz);
-					}
-					
 					if (instance instanceof ValuedLogicTreeNode<?>) {
 						ValuedLogicTreeNode<Object> valued = ((ValuedLogicTreeNode<Object>)instance);
-						valued.init(value, valueClass, weight, name, shortName, prefix);
+						if (value == null && instance instanceof RandomlyGeneratedNode) {
+							// probably a legacy randomly generated one with an explicity seed entry
+							Preconditions.checkState(skippedData != null && skippedData.has("randomSeed"),
+									"Encountered a RandomlyGeneratedNode with no value & no legacy randomSeed");
+							long randomSeed = skippedData.get("randomSeed").getAsLong();
+							((RandomlyGeneratedNode)instance).init(randomSeed, Long.class, weight, name, shortName, prefix);
+						} else {
+							valued.init(value, valueClass, weight, name, shortName, prefix);
+						}
 					}
+//					System.out.println("Loaded instance name="+instance.getName()
+//							+", shortName="+instance.getShortName()+", prefix="+instance.getFilePrefix());
 					
 					return instance;
 				} catch (Exception e) {

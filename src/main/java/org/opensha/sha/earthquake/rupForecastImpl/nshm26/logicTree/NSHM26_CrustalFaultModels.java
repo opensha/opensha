@@ -16,6 +16,7 @@ import org.opensha.sha.earthquake.faultSysSolution.RupSetSubsectioningModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
+import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
@@ -65,12 +66,16 @@ public enum NSHM26_CrustalFaultModels implements RupSetFaultModel, RupSetSubsect
 	public String getName() {
 		return name;
 	}
+	
+	static final double DOWN_DIP_FRACT_DEFAULT = 0.5;
+	static final double MAX_LEN_DEFAULT = Double.NaN;
+	static final int MIN_SUB_SECTS_PER_FAULT_DEFAULT = 2;
 
 	@Override
 	public List<? extends FaultSection> buildSubSects(RupSetFaultModel faultModel,
 			List<? extends FaultSection> fullSections) {
-		// TODO Auto-generated method stub
-		return null;
+		return SubSectionBuilder.buildSubSects(fullSections,
+				MIN_SUB_SECTS_PER_FAULT_DEFAULT, DOWN_DIP_FRACT_DEFAULT, MAX_LEN_DEFAULT);
 	}
 
 	@Override
@@ -82,8 +87,7 @@ public enum NSHM26_CrustalFaultModels implements RupSetFaultModel, RupSetSubsect
 
 	@Override
 	public RupSetDeformationModel getDefaultDeformationModel() {
-		// TODO Auto-generated method stub
-		return null;
+		return NSHM26_CrustalAggregatedDeformationModels.AVERAGE;
 	}
 
 }

@@ -3,10 +3,7 @@ package org.opensha.commons.logicTree;
 import java.io.Serializable;
 import java.util.Objects;
 
-import org.apache.commons.rng.simple.RandomSource;
-import org.apache.commons.statistics.distribution.ContinuousDistribution;
 import org.opensha.commons.data.ShortNamed;
-import org.opensha.commons.logicTree.LogicTreeNode.ValuedLogicTreeNode;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.TypeAdapter;
@@ -30,7 +27,24 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 	 */
 	public String getFilePrefix();
 	
-	public static class FileBackedNode implements LogicTreeNode {
+	public static interface FixedWeightNode extends LogicTreeNode {
+		
+		/**
+		 * This returns the relative weight assigned to this branch node, which doesn't depend on any other choices
+		 * in the logic tree.
+		 * 
+		 * @return the relative weight assigned to this branch choice
+		 */
+		public double getNodeWeight();
+		
+		@Override
+		public default double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+			return getNodeWeight();
+		}
+		
+	}
+	
+	public static class FileBackedNode implements FixedWeightNode {
 		
 		private String name;
 		private String shortName;
@@ -55,7 +69,7 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 		}
 
 		@Override
-		public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+		public double getNodeWeight() {
 			return weight;
 		}
 
@@ -131,7 +145,7 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 	 * constructor (can be private).
 	 * @param <E>
 	 */
-	public static interface ValuedLogicTreeNode<E> extends LogicTreeNode {
+	public static interface ValuedLogicTreeNode<E> extends FixedWeightNode {
 		
 		public E getValue();
 		
@@ -170,7 +184,7 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 		}
 
 		@Override
-		public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+		public double getNodeWeight() {
 			return weight;
 		}
 
@@ -230,7 +244,7 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 	 * constructor for deserialization, and be fully initializable via that constructor and the
 	 * {@link RandomlyGeneratedNode#init(String, String, String, double, long)} method.
 	 */
-	public static abstract class RandomlyGeneratedNode implements LogicTreeNode {
+	public static abstract class RandomlyGeneratedNode implements ValuedLogicTreeNode<Long> {
 		
 		private String name;
 		private String shortName;
@@ -248,6 +262,22 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 			return seed;
 		}
 		
+		@Override
+		public Long getValue() {
+			return seed;
+		}
+
+		@Override
+		public Class<? extends Long> getValueType() {
+			return Long.class;
+		}
+
+		@Override
+		public void init(Long value, Class<? extends Long> valueClass, double weight, String name, String shortName,
+				String filePrefix) {
+			init(name, shortName, filePrefix, weight, value);
+		}
+
 		/**
 		 * Initializes this node with the given properties and seed
 		 * 
@@ -276,7 +306,7 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 		}
 
 		@Override
-		public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+		public double getNodeWeight() {
 			return weight;
 		}
 

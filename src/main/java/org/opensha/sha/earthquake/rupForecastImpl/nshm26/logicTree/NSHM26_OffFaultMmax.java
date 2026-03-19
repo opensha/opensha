@@ -4,9 +4,7 @@ import java.text.DecimalFormat;
 import java.util.List;
 
 import org.apache.commons.statistics.distribution.ContinuousDistribution;
-import org.opensha.commons.logicTree.LogicTreeLevel.AbstractContinuousDistributionSampledLevel;
-import org.opensha.commons.logicTree.LogicTreeLevel.DataBackedLevel;
-import org.opensha.commons.logicTree.LogicTreeLevel.ValueBackedLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.logicTree.LogicTreeNode.SimpleValuedNode;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
@@ -39,13 +37,13 @@ public class NSHM26_OffFaultMmax extends SimpleValuedNode<Double> implements Max
 		return trt;
 	}
 	
-	public static class DistributionSamplingLevel extends AbstractContinuousDistributionSampledLevel<NSHM26_OffFaultMmax> {
+	public static class DistributionSamplingLevel extends LogicTreeLevel.AbstractContinuousDistributionSampledLevel<NSHM26_OffFaultMmax> {
 		
 		protected TectonicRegionType trt;
 
 		@SuppressWarnings("unused") // deserialization
-		private DistributionSamplingLevel() {
-			
+		private DistributionSamplingLevel(String name, String shortName) {
+			super(name, shortName);
 		}
 
 		protected DistributionSamplingLevel(TectonicRegionType trt, ContinuousDistribution dist) {
@@ -55,9 +53,9 @@ public class NSHM26_OffFaultMmax extends SimpleValuedNode<Double> implements Max
 		}
 
 		@Override
-		protected NSHM26_OffFaultMmax build(int index, Double value, double weightEach) {
-			return new NSHM26_OffFaultMmax(trt, value, weightEach,
-					getNodeName(index), getNodeShortName(index), getNodeFilePrefix(index));
+		public NSHM26_OffFaultMmax build(Double value, double weight, String name, String shortName,
+				String filePrefix) {
+			return new NSHM26_OffFaultMmax(trt, value, weight, name, shortName, filePrefix);
 		}
 
 		@Override
@@ -82,7 +80,8 @@ public class NSHM26_OffFaultMmax extends SimpleValuedNode<Double> implements Max
 		
 	}
 	
-	public static class FixedValueLevel extends DataBackedLevel<NSHM26_OffFaultMmax> implements ValueBackedLevel<Double, NSHM26_OffFaultMmax> {
+	public static class FixedValueLevel extends LogicTreeLevel.DataBackedLevel<NSHM26_OffFaultMmax>
+	implements LogicTreeLevel.ValueBackedLevel<Double, NSHM26_OffFaultMmax> {
 		
 		protected TectonicRegionType trt;
 		private double mmax = Double.NaN;
@@ -153,6 +152,11 @@ public class NSHM26_OffFaultMmax extends SimpleValuedNode<Double> implements Max
 				Preconditions.checkState(weight == node.getNodeWeight(null));
 			}
 			return node;
+		}
+
+		@Override
+		public Class<? extends Double> getValueType() {
+			return Double.class;
 		}
 		
 	}
