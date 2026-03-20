@@ -282,7 +282,7 @@ public class Inversions {
 				+ "location will be mapped automatically. CSV File columns: "
 				+ "Site Name, Subsection Index, Latitude, Longitude, Rate, Rate Std Dev");
 		
-		ops.addOption(null, "paleo-prob-model", false, "Paleoseismic probability of detection model, one of: "
+		ops.addOption(null, "paleo-prob-model", true, "Paleoseismic probability of detection model, one of: "
 				+FaultSysTools.enumOptions(PaleoProbabilityModels.class)+", default: "+PaleoProbabilityModels.DEFAULT.name());
 
 		ops.addOption(null, "paleo-weight", true, "Sets weight for the paleoseismic datat constraint.");
