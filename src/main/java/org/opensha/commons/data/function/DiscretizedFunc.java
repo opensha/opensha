@@ -57,6 +57,23 @@ public interface DiscretizedFunc extends XY_DataSet {
 	/** returns the y-value given an x-value - within tolerance */
 	public double getY(double x);
 	
+	/**
+	 * Returns the largest x index that is at or before the given X value.
+	 * <p>
+	 * Return value is undefined if x < minX or x > maxX, error checking should be done externally.
+	 * @param x
+	 * @return
+	 */
+	public int getXIndexBefore(double x);
+	
+	/**
+	 * Returns the index of the closest point to this x value. If x < {@link #getMinX()} this will return 0, and if
+	 * x > {@link #getMaxX()} this will return size-1.
+	 * @param x
+	 * @return
+	 */
+	public int getClosestXIndex( double x);
+	
 
 	/* ***************/
 	/* INTERPOLATION */
