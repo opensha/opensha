@@ -31,9 +31,9 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum NSHM26_InterfaceDeformationModels implements RupSetDeformationModel {
-	LOW_COUPLING("Low Interface Coupling", "Low", 1d/3d),
-	PREF_COUPLING("Preferred Interface Coupling", "Preferred", 1d/3d),
-	HIGH_COUPLING("High Interface Coupling", "High", 1d/3d);
+	LOW_COUPLING("Low Interface Coupling", "Low", 1d),
+	PREF_COUPLING("Preferred Interface Coupling", "Preferred", 1d),
+	HIGH_COUPLING("High Interface Coupling", "High", 1d);
 	
 	private String name;
 	private String shortName;

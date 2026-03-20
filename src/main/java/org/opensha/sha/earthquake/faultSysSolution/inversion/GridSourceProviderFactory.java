@@ -43,4 +43,15 @@ public interface GridSourceProviderFactory {
 	public default void preGridBuildHook(FaultSystemSolution sol, LogicTreeBranch<?> faultBranch) throws IOException {
 		// do nothing
 	}
+	
+	/**
+	 * Interface for a GridSourceProviderFactory for which there is a single GridSourceProvider for each fault branch
+	 * and {@link #getGridSourceTree(LogicTree)} returns null.
+	 */
+	public static interface Single extends GridSourceProviderFactory {
+		
+		public default LogicTree<?> getGridSourceTree(LogicTree<?> faultTree) {
+			return null;
+		}
+	}
 }

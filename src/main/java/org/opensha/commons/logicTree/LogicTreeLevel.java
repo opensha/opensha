@@ -11,6 +11,7 @@ import java.util.Random;
 import java.util.function.Supplier;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.numbers.core.Precision;
 import org.apache.commons.rng.UniformRandomProvider;
 import org.apache.commons.rng.simple.RandomSource;
 import org.apache.commons.statistics.distribution.ContinuousDistribution;
@@ -854,15 +855,23 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 	extends AbstractRandomlySampledLevel<Double, N> {
 
 		private ContinuousDistribution dist;
+		private int precisionScale;
 		
 		protected AbstractContinuousDistributionSampledLevel(String levelName, String levelShortName) {
 			super(levelName, levelShortName);
 		}
+		
+		public AbstractContinuousDistributionSampledLevel(String levelName, String levelShortName,
+				ContinuousDistribution dist, String nodeNamePrefix, String nodeShortNamePrefix, String nodeFilePrefix) {
+			this(levelName, levelShortName, dist, -1, nodeNamePrefix, nodeShortNamePrefix, nodeFilePrefix);
+		}
 
-		public AbstractContinuousDistributionSampledLevel(String levelName, String levelShortName, ContinuousDistribution dist,
+		public AbstractContinuousDistributionSampledLevel(String levelName, String levelShortName,
+				ContinuousDistribution dist, int precisionScale,
 				String nodeNamePrefix, String nodeShortNamePrefix, String nodeFilePrefix) {
 			super(levelName, levelShortName, nodeNamePrefix, nodeShortNamePrefix, nodeFilePrefix);
 			this.dist = dist;
+			this.precisionScale = precisionScale;
 		}
 		
 		@Override
@@ -872,7 +881,12 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		
 		protected void build(UniformRandomProvider rand, int numSamples, double weightEach) {
 			Sampler sampler = dist.createSampler(rand);
-			build(()->{return sampler.sample();}, numSamples, weightEach);
+			build(()->{
+				double sample = sampler.sample();
+				if (precisionScale > 0)
+					sample = Precision.round(sample, precisionScale);
+				return sample;
+			}, numSamples, weightEach);
 		}
 		
 		public ContinuousDistribution getDistribution() {
@@ -892,9 +906,10 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		public JsonObject toJsonObject() {
 			JsonObject json = super.toJsonObject();
 			
-			if (dist != null) {
+			if (dist != null)
 				json.add("distribution", ContinuousDistributionTypeAdapter.get().toJsonTree(dist));
-			}
+			if (precisionScale > 0)
+				json.add("precisionScale", new JsonPrimitive(precisionScale));
 			
 			return json;
 		}
@@ -905,6 +920,10 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			
 			if (jsonObj.has("distribution"))
 				dist = ContinuousDistributionTypeAdapter.get().fromJsonTree(jsonObj.get("distribution"));
+			if (jsonObj.has("precisionScale"))
+				precisionScale = jsonObj.get("precisionScale").getAsInt();
+			else
+				precisionScale = -1;
 		}
 		
 	}
@@ -921,6 +940,12 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			super(levelName, levelShortName, dist, nodeNamePrefix, nodeShortNamePrefix, nodeFilePrefix);
 		}
 
+		public ContinuousDistributionSampledLevel(String levelName, String levelShortName,
+				ContinuousDistribution dist, int precisionScale,
+				String nodeNamePrefix, String nodeShortNamePrefix, String nodeFilePrefix) {
+			super(levelName, levelShortName, dist, precisionScale, nodeNamePrefix, nodeShortNamePrefix, nodeFilePrefix);
+		}
+
 		@Override
 		public SimpleValuedNode<Double> build(Double value, double weight, String name, String shortName,
 				String filePrefix) {
@@ -930,7 +955,8 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		@SuppressWarnings("unchecked")
 		@Override
 		public Class<? extends SimpleValuedNode<Double>> getType() {
-			return (Class<? extends SimpleValuedNode<Double>>) SimpleValuedNode.class;
+			// this extra cast to Class<?> resolves compile errors that don't show up in eclipse, which is annoying
+			return (Class<? extends SimpleValuedNode<Double>>) (Class<?>) SimpleValuedNode.class;
 		}
 		
 	}

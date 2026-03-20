@@ -37,7 +37,7 @@ import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateTyp
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM26_SeisRateModelBranch implements LogicTreeNode, NSHM26_SeisRateModel {
+public enum NSHM26_SeisRateModelBranch implements NSHM26_SeisRateModel {
 	LOW("Lower Seismicity Bound (p2.5)", "Low", 0.13d) {
 		@Override
 		public IncrementalMagFreqDist build(NSHM26_SeismicityRegions region, TectonicRegionType trt, EvenlyDiscretizedFunc refMFD, double mMax) {
@@ -80,6 +80,19 @@ public enum NSHM26_SeisRateModelBranch implements LogicTreeNode, NSHM26_SeisRate
 		}
 		
 	};
+	
+	public static double getPlotMmax(TectonicRegionType trt) {
+		return switch (trt) {
+		case ACTIVE_SHALLOW:
+			yield 7.6;
+		case SUBDUCTION_INTERFACE:
+			yield 8d;
+		case SUBDUCTION_SLAB:
+			yield 8d;
+		default:
+			throw new IllegalArgumentException("Unexpected value: " + trt);
+		};
+	}
 	
 	public static final String getRateModelDate(NSHM26_SeismicityRegions region) {
 		return switch (region) {

@@ -22,6 +22,7 @@ import org.opensha.sha.earthquake.faultSysSolution.RuptureSets;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RectangularDownDipSubductionRupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionConfigurationFactory;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.GridSourceProviderFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.JumpProbabilityConstraint;
@@ -31,6 +32,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.Generatio
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
@@ -41,13 +43,13 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilde
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.BinaryJumpProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.ExclusionaryLogicTreeNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SlipAlongRuptureModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues;
@@ -55,14 +57,13 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationM
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationModelBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSeisMoRateReductions;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SupraSeisBValues;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.random.BranchSamplingManager;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.random.RandomBValSampler;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.SubSeisMoRateReduction;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.GRParticRateEstimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_InterfaceFaultModels;
-import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionBValues;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_InterfaceObsSeisDMAdjustment;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -70,7 +71,7 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Range;
 import com.google.common.collect.Table;
 
-public class NSHM26_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory {
+public class NSHM26_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory, GridSourceProviderFactory.Single {
 	
 	private static final File[] POSSIBLE_DATA_DIRS = {
 			new File("/home/kevin/OpenSHA/nshm26/data/"),
@@ -313,26 +314,36 @@ public class NSHM26_InvConfigFactory implements ClusterSpecificInversionConfigur
 		}
 		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal, sectSpecificBValues);
 		
-		SubSeisMoRateReduction reduction = SupraSeisBValInversionTargetMFDs.SUB_SEIS_MO_RATE_REDUCTION_DEFAULT;
-		if (branch.hasValue(SubSeisMoRateReductions.class))
-			reduction = branch.getValue(SubSeisMoRateReductions.class).getChoice();
-		
-		constrBuilder.subSeisMoRateReduction(reduction);
+		if (branch.hasValue(NSHM26_InterfaceObsSeisDMAdjustment.class)) {
+			NSHM26_InterfaceObsSeisDMAdjustment adjustment = branch.requireValue(NSHM26_InterfaceObsSeisDMAdjustment.class);
+			if (adjustment == NSHM26_InterfaceObsSeisDMAdjustment.NONE) {
+				constrBuilder.subSeisMoRateReduction(SubSeisMoRateReduction.NONE);
+			} else {
+				constrBuilder.subSeisMoRateReduction(SubSeisMoRateReduction.FROM_INPUT_SLIP_RATES);
+				try {
+					adjustment.adjustSlipRates(rupSet, branch);
+				} catch (IOException e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+			}
+		} else {
+			constrBuilder.subSeisMoRateReduction(SubSeisMoRateReduction.NONE);
+		}
 		
 		constrBuilder.magDepRelStdDev(M->MFD_MIN_FRACT_UNCERT*Math.max(1, Math.pow(10, bVal*0.5*(M-6))));
 		
 		constrBuilder.adjustForActualRupSlips(NSHM23_ConstraintBuilder.ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT,
 				NSHM23_ConstraintBuilder.ADJ_FOR_SLIP_ALONG_DEFAULT);
 		
+		BinaryRuptureProbabilityCalc rupExclusionModel = getExclusionModel(
+				rupSet, branch, rupSet.requireModule(ClusterRuptures.class));
+		
+		if (rupExclusionModel != null)
+			constrBuilder.excludeRuptures(rupExclusionModel);
+		
 		// apply any segmentation adjustments
 		if (hasJumps(rupSet)) {
 			// this handles creeping section, binary segmentation, and max dist models
-			BinaryRuptureProbabilityCalc rupExclusionModel = getExclusionModel(
-					rupSet, branch, rupSet.requireModule(ClusterRuptures.class));
-			
-			if (rupExclusionModel != null)
-				constrBuilder.excludeRuptures(rupExclusionModel);
-			
 			JumpProbabilityCalc targetSegModel = buildSegModel(rupSet, branch);
 			
 			if (targetSegModel != null) {
@@ -459,11 +470,10 @@ public class NSHM26_InvConfigFactory implements ClusterSpecificInversionConfigur
 	
 	public static BinaryRuptureProbabilityCalc getExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
 			ClusterRuptures cRups) {
-		// segmentation model
+		// segmentation model, Lmax
 		List<BinaryRuptureProbabilityCalc> exclusionModels = new ArrayList<>();
-		SegmentationModelBranchNode segChoice = branch.getValue(SegmentationModelBranchNode.class);
-		if (segChoice != null) {
-			BinaryRuptureProbabilityCalc exclusionModel = segChoice.getExclusionModel(rupSet, branch);
+		for (ExclusionaryLogicTreeNode exclusionNode : branch.getValues(ExclusionaryLogicTreeNode.class)) {
+			BinaryRuptureProbabilityCalc exclusionModel = exclusionNode.getExclusionModel(rupSet, branch);
 			if (exclusionModel != null)
 				exclusionModels.add(exclusionModel);
 		}
@@ -662,6 +672,18 @@ public class NSHM26_InvConfigFactory implements ClusterSpecificInversionConfigur
 			return sol;
 		}
 		
+	}
+
+	@Override
+	public GridSourceProvider buildGridSourceProvider(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch)
+			throws IOException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public void preGridBuildHook(FaultSystemSolution sol, LogicTreeBranch<?> faultBranch) throws IOException {
+		NSHM26_GridSourceBuilder.doPreGridBuildHook(sol, faultBranch);
 	}
 
 }

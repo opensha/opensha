@@ -52,7 +52,9 @@ public class NSHM26_RegionLoader {
 
 		@Override
 		public Region load() throws IOException {
-			return checkConvertLon(NSHM23_BaseRegion.super.load());
+			Region reg = checkConvertLon(NSHM23_BaseRegion.super.load());
+			reg.setName(name);
+			return reg;
 		}
 	}
 	

@@ -55,9 +55,11 @@ public class TectonicRegionBranchTreeNode implements LogicTreeNode.ValuedLogicTr
 		return branch;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public Class<? extends LogicTreeBranch<?>> getValueType() {
-		return (Class<? extends LogicTreeBranch<?>>) LogicTreeBranch.class;
+		// this extra cast to Class<?> resolves compile errors that don't show up in eclipse, which is annoying
+		return (Class<? extends LogicTreeBranch<?>>) (Class<?>) LogicTreeBranch.class;
 	}
 	
 	public TectonicRegionType getTectonicRegime() {
@@ -98,9 +100,11 @@ public class TectonicRegionBranchTreeNode implements LogicTreeNode.ValuedLogicTr
 			return trt;
 		}
 
+		@SuppressWarnings("unchecked")
 		@Override
 		public Class<? extends LogicTreeBranch<?>> getValueType() {
-			return (Class<? extends LogicTreeBranch<?>>) LogicTreeBranch.class;
+			// this extra cast to Class<?> resolves compile errors that don't show up in eclipse, which is annoying
+			return (Class<? extends LogicTreeBranch<?>>) (Class<?>) LogicTreeBranch.class;
 		}
 
 		@Override

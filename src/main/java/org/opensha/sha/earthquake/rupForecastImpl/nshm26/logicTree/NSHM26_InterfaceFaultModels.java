@@ -4,9 +4,13 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
@@ -19,10 +23,16 @@ import org.opensha.sha.earthquake.faultSysSolution.RupSetSubsectioningModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
+import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
@@ -94,7 +104,10 @@ public enum NSHM26_InterfaceFaultModels implements RupSetFaultModel, RupSetSubse
 		InputStream is = NSHM26_InterfaceFaultModels.class.getResourceAsStream(path);
 		Preconditions.checkNotNull(is, "Could not load %s", path);
 		BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-		return GeoJSONFaultReader.readFaultSections(reader);
+		List<GeoJSONFaultSection> sects = GeoJSONFaultReader.readFaultSections(reader);
+		for (GeoJSONFaultSection sect : sects)
+			sect.setTectonicRegionType(TectonicRegionType.SUBDUCTION_INTERFACE);
+		return sects;
 	}
 
 	@Override
@@ -115,7 +128,9 @@ public enum NSHM26_InterfaceFaultModels implements RupSetFaultModel, RupSetSubse
 		BufferedReader reader = new BufferedReader(new InputStreamReader(is));
 		FeatureCollection fullSectCollection = FeatureCollection.read(reader);
 		Preconditions.checkState(fullSectCollection.features.size() == 1);
-		return List.of(GeoJSONFaultSection.fromFeature(fullSectCollection.features.get(0)));
+		GeoJSONFaultSection sect = GeoJSONFaultSection.fromFeature(fullSectCollection.features.get(0));
+		sect.setTectonicRegionType(TectonicRegionType.SUBDUCTION_INTERFACE);
+		return List.of(sect);
 	}
 
 	@Override
@@ -125,15 +140,36 @@ public enum NSHM26_InterfaceFaultModels implements RupSetFaultModel, RupSetSubse
 
 	@Override
 	public void attachDefaultModules(FaultSystemRupSet rupSet) {
-		try {
-			if (this == AMSAM_V1) {
-				rupSet.addModule(new ModelRegion(NSHM26_SeismicityRegions.AMSAM.load()));
-			} else if (this == GNMI_V1) {
-				rupSet.addModule(new ModelRegion(NSHM26_SeismicityRegions.GNMI.load()));
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
+		rupSet.addAvailableModule(() -> {
+			return buildROI(seisReg);
+		}, RegionsOfInterest.class);
+		rupSet.addAvailableModule(() -> {
+			return new ModelRegion(seisReg.load());
+		}, ModelRegion.class);
+		rupSet.addAvailableModule(() -> {
+			return RupSetTectonicRegimes.constant(rupSet, TectonicRegionType.SUBDUCTION_INTERFACE);
+		}, RupSetTectonicRegimes.class);
+	}
+	
+	public static RegionsOfInterest buildROI(NSHM26_SeismicityRegions seisReg) throws IOException {
+		List<TectonicRegionType> trts = List.of(TectonicRegionType.SUBDUCTION_INTERFACE,
+				TectonicRegionType.SUBDUCTION_SLAB,TectonicRegionType.ACTIVE_SHALLOW);
+		List<Region> trtRegions = new ArrayList<>(trts.size());
+		List<IncrementalMagFreqDist> trtMFDs = new ArrayList<>(trts.size());
+		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(5.01, 9.01);
+		for (TectonicRegionType trt : trts) {
+			trtRegions.add(cloneForTRT(seisReg.load(), trt));
+			double mMax = NSHM26_SeisRateModelBranch.getPlotMmax(trt);
+			trtMFDs.add(NSHM26_SeisRateModelBranch.loadRateModel(seisReg, trt).getBounded(refMFD, mMax));
 		}
+		RegionsOfInterest roi = new RegionsOfInterest(trtRegions, trtMFDs, trts);
+		return roi;
+	}
+	
+	private static Region cloneForTRT(Region reg, TectonicRegionType trt) {
+		reg = reg.clone();
+		reg.setName(reg.getName()+" ("+NSHM26_RegionLoader.getNameForTRT(trt)+")");
+		return reg;
 	}
 
 }

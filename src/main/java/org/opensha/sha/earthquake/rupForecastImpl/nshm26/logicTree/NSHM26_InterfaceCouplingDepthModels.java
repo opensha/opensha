@@ -27,7 +27,9 @@ import com.google.common.collect.Range;
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum NSHM26_InterfaceCouplingDepthModels implements LogicTreeNode {
-	DOUBLE_TAPER("Double Taper", "Double", Range.closed(0d, 10d), Range.closed(40d, 60d), 1d);
+	DEEP("Deep Taper", "Deep", Range.closed(0d, 10d), Range.closed(40d, 60d), 1d),
+	DOUBLE_TAPER("Double Taper", "Double", Range.closed(10d, 20d), Range.closed(40d, 60d), 1d),
+	NONE("None", "None", null, null, 1d);
 
 	private String name;
 	private String shortName;
@@ -65,16 +67,22 @@ public enum NSHM26_InterfaceCouplingDepthModels implements LogicTreeNode {
 	}
 	
 	public void apply(List<? extends FaultSection> subSects) {
-		for (FaultSection sect : subSects) {
-			RuptureSurface surf = sect.getFaultSurface(1d);
-			LocationList surfLocs = surf.getEvenlyDiscritizedListOfLocsOnSurface();
-			
-			double coupling = 1d;
-			if (upperTaper != null)
-				coupling *= getTaperedCoupling(surfLocs, upperTaper, true);
-			if (lowerTaper != null)
-				coupling *= getTaperedCoupling(surfLocs, lowerTaper, false);
-			sect.setCouplingCoeff(coupling);
+		if (upperTaper == null && lowerTaper == null) {
+			// shortcut
+			for (FaultSection sect : subSects)
+				sect.setCouplingCoeff(1d);
+		} else {
+			for (FaultSection sect : subSects) {
+				RuptureSurface surf = sect.getFaultSurface(1d);
+				LocationList surfLocs = surf.getEvenlyDiscritizedListOfLocsOnSurface();
+				
+				double coupling = 1d;
+				if (upperTaper != null)
+					coupling *= getTaperedCoupling(surfLocs, upperTaper, true);
+				if (lowerTaper != null)
+					coupling *= getTaperedCoupling(surfLocs, lowerTaper, false);
+				sect.setCouplingCoeff(coupling);
+			}
 		}
 	}
 	

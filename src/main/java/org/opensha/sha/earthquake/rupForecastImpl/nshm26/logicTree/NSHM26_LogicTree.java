@@ -16,9 +16,12 @@ import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.RandomSeedUtils;
+import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
+import org.opensha.sha.earthquake.faultSysSolution.util.MaxRuptureLengthBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionBValues;
@@ -57,13 +60,15 @@ public class NSHM26_LogicTree {
 			new NSHM26_SeisRateModelSamples(NSHM26_SeismicityRegions.AMSAM, TectonicRegionType.SUBDUCTION_INTERFACE);
 	public static final double INTERFACE_B_SINGLE_DEFAULT = 1d;
 	public static final ContinuousDistribution INTERFACE_B_DIST = UniformContinuousDistribution.of(0.5d, 1d); // TODO
+	public static final double INTERFACE_MAX_LEN_SINGLE_DEFAULT = 1300;
+	public static final ContinuousDistribution INTERFACE_MAX_LEN_DIST = UniformContinuousDistribution.of(1000d, 1500d); // TODO
 	
 	/*
 	 * Subduction intraslab branch levels (gridded)
 	 * missing/TODO:
 	 */
 	public static final double INTRASLAB_MMAX_OFF_SINGLE_DEFAULT = 8;
-	public static final ContinuousDistribution INTRASLAB_MMAX_OFF_DIST = CorrTruncatedNormalDistribution.of(8, 0.2, 7.4, 8.6);
+	public static final ContinuousDistribution INTRASLAB_MMAX_OFF_DIST = CorrTruncatedNormalDistribution.of(8, 0.2, 7.45, 8.55);
 	
 	/*
 	 * Crustal branch levels (FSS & gridded)
@@ -78,24 +83,34 @@ public class NSHM26_LogicTree {
 	public static final double CRUSTAL_B_SINGLE_DEFAULT = 0.5d;
 	public static final ContinuousDistribution CRUSTAL_B_DIST = UniformContinuousDistribution.of(0d, 1d);
 	public static final double CRUSTAL_MMAX_OFF_SINGLE_DEFAULT = 7.6;
-	public static final ContinuousDistribution CRUSTAL_MMAX_OFF_DIST = CorrTruncatedNormalDistribution.of(7.6, 0.134, 7, 8);
+	public static final ContinuousDistribution CRUSTAL_MMAX_OFF_DIST = CorrTruncatedNormalDistribution.of(7.6, 0.134, 7.05, 8.05);
 	
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> buildLevels(NSHM26_SeismicityRegions seisReg,
 			TectonicRegionType trt, boolean sampled) {
 		List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
 		
+		String trtName = NSHM26_RegionLoader.getNameForTRT(trt);
+		
 		// inversion
+		String supraBname = sampled ? trtName+" b-value Samples" : trtName+" Fixed b-value";
+		String supraBshortName = sampled ? trtName+"-bSamples" : trtName+"-FixedB";
 		if (trt == TectonicRegionType.SUBDUCTION_INTERFACE) {
 			levels.add(INTERFACE_FM);
 			levels.add(INTERFACE_DEPTH_COUPLING);
 			levels.add(INTERFACE_DM);
 			levels.add(INTERFACE_SCALE);
 			if (sampled)
-				levels.add(new NSHM26_SupraSeisBValues.DistributionSamplingLevel(trt, INTERFACE_B_DIST));
+				levels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(supraBname, supraBshortName, INTERFACE_B_DIST));
 			else
-				levels.add(new NSHM26_SupraSeisBValues.FixedValueLevel(trt, INTERFACE_B_SINGLE_DEFAULT));
+				levels.add(new SectionSupraSeisBValues.FixedValueLevel(supraBname, supraBshortName, INTERFACE_B_SINGLE_DEFAULT));
 			levels.add(INTERFACE_OBS_SEIS_DM_ADJ);
 			levels.add(INTERFACE_MIN_SUB_SECTS);
+			if (sampled)
+				levels.add(new MaxRuptureLengthBranchNode.DistributionSamplingLevel(
+						"Interface Maximum Rupture Length", "Interface Max. Len.", INTERFACE_MAX_LEN_DIST));
+			else
+				levels.add(new MaxRuptureLengthBranchNode.FixedValueLevel(
+						"Interface Maximum Rupture Length", "Interface Max. Len.", INTERFACE_MAX_LEN_SINGLE_DEFAULT));
 		} else if (trt == TectonicRegionType.ACTIVE_SHALLOW && seisReg == NSHM26_SeismicityRegions.GNMI) {
 			// have crustal on-fault
 			levels.add(CRUSTAL_FM);
@@ -105,9 +120,9 @@ public class NSHM26_LogicTree {
 				levels.add(CRUSTAL_AGG_DM);
 			levels.add(CRUSTAL_SCALE);
 			if (sampled)
-				levels.add(new NSHM26_SupraSeisBValues.DistributionSamplingLevel(trt, CRUSTAL_B_DIST));
+				levels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(supraBname, supraBshortName, CRUSTAL_B_DIST));
 			else
-				levels.add(new NSHM26_SupraSeisBValues.FixedValueLevel(trt, CRUSTAL_B_SINGLE_DEFAULT));
+				levels.add(new SectionSupraSeisBValues.FixedValueLevel(supraBname, supraBshortName, CRUSTAL_B_SINGLE_DEFAULT));
 			levels.add(SEG);
 		}
 		
@@ -125,16 +140,19 @@ public class NSHM26_LogicTree {
 				seisReg.getShortName()+" Smoothing Kernel ("+NSHM26_RegionLoader.getNameForTRT(trt)+")",
 				seisReg.name()+"-"+NSHM26_RegionLoader.getNameForTRT(trt)+"-Smooth"));
 		
+
+		String mMaxName = sampled ? trtName+" Off Fault Mmax Samples" : trtName+" Fixed Off Fault Mmax";
+		String mMaxShortName = sampled ? trtName+"-MmaxOffSamples" : trtName+"-FixedMmaxOff";
 		if (trt == TectonicRegionType.ACTIVE_SHALLOW) {
 			if (sampled)
-				levels.add(new NSHM26_OffFaultMmax.DistributionSamplingLevel(trt, CRUSTAL_MMAX_OFF_DIST));
+				levels.add(new MaxMagOffFaultBranchNode.DistributionSamplingLevel(mMaxName, mMaxShortName, trt, CRUSTAL_MMAX_OFF_DIST));
 			else
-				levels.add(new NSHM26_OffFaultMmax.FixedValueLevel(trt, CRUSTAL_MMAX_OFF_SINGLE_DEFAULT));
+				levels.add(new MaxMagOffFaultBranchNode.FixedValueLevel(mMaxName, mMaxShortName, trt, CRUSTAL_MMAX_OFF_SINGLE_DEFAULT));
 		} else if (trt == TectonicRegionType.SUBDUCTION_SLAB) {
 			if (sampled)
-				levels.add(new NSHM26_OffFaultMmax.DistributionSamplingLevel(trt, INTRASLAB_MMAX_OFF_DIST));
+				levels.add(new MaxMagOffFaultBranchNode.DistributionSamplingLevel(mMaxName, mMaxShortName, trt, INTRASLAB_MMAX_OFF_DIST));
 			else
-				levels.add(new NSHM26_OffFaultMmax.FixedValueLevel(trt, INTRASLAB_MMAX_OFF_SINGLE_DEFAULT));
+				levels.add(new MaxMagOffFaultBranchNode.FixedValueLevel(mMaxName, mMaxShortName, trt, INTRASLAB_MMAX_OFF_SINGLE_DEFAULT));
 		}
 		return levels;
 	}

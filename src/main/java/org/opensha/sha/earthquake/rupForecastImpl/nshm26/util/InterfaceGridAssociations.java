@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.numbers.core.Precision;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.BorderType;
 import org.opensha.commons.geo.GriddedRegion;
@@ -143,8 +144,18 @@ public class InterfaceGridAssociations implements FaultGridAssociations, Archiva
 							mappedExtents = new HashMap<>();
 						double extent = intersection.getExtent();
 						mappedExtentSum += extent;
+						double fract = extent/fullExtent;
+						Preconditions.checkState(fract < 1.02,
+								"Bad intersection? %s > %s, f=%s", extent, fullExtent, fract);
+						if (fract > 1)
+							extent = fullExtent;
 						mappedExtents.put(s, extent/fullExtent);
-						sectsToNodes.get(s).put(n, extent/sectExtents[s]);
+						double sectFract = extent/sectExtents[s];
+						Preconditions.checkState(sectFract < 1.02,
+								"Bad intersection? %s > %s, f=%s", extent, sectExtents[s], sectFract);
+						if (sectFract > 1)
+							sectFract = 1;
+						sectsToNodes.get(s).put(n, sectFract);
 						sectsMapped.add(s);
 					}
 				}

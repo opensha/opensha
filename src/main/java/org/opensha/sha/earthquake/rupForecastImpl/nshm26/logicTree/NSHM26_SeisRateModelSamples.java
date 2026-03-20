@@ -10,7 +10,6 @@ import java.util.Random;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.logicTree.LogicTreeLevel.AbstractRandomlySampledLevel;
-import org.opensha.commons.util.json.JsonAdapterHelper;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.NSHM26_InvConfigFactory;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_SeisRateModel.NSHM26_SiesRateModelSample;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader;
@@ -41,7 +40,7 @@ public class NSHM26_SeisRateModelSamples extends AbstractRandomlySampledLevel<Pu
 	public NSHM26_SeisRateModelSamples(NSHM26_SeismicityRegions region, TectonicRegionType trt) {
 		super(region.getShortName()+" Rate Model Samples ("+NSHM26_RegionLoader.getNameForTRT(trt)+")",
 				region.name()+"-"+NSHM26_RegionLoader.getNameForTRT(trt)+"Samples",
-				"Rate sample ", "Sample", "Sample");
+				"Rate sample ", "RateSample", "RateSample");
 		this.region = region;
 		this.trt = trt;
 	}

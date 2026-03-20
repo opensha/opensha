@@ -15,11 +15,15 @@ import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetSubsectioningModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
+import org.opensha.sha.util.TectonicRegionType;
 
 @Affects(FaultSystemRupSet.SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
@@ -45,6 +49,10 @@ public enum NSHM26_CrustalFaultModels implements RupSetFaultModel, RupSetSubsect
 		this.seisReg = seisReg;
 		this.weight = weight;
 		this.jsonPath = jsonPath;
+	}
+	
+	public NSHM26_SeismicityRegions getSeisReg() {
+		return seisReg;
 	}
 
 	@Override
@@ -82,12 +90,27 @@ public enum NSHM26_CrustalFaultModels implements RupSetFaultModel, RupSetSubsect
 	public List<? extends FaultSection> getFaultSections() throws IOException {
 		BufferedReader reader = new BufferedReader(new InputStreamReader(NSHM26_CrustalFaultModels.class.getResourceAsStream(jsonPath)));
 		List<GeoJSONFaultSection> sects = GeoJSONFaultReader.readFaultSections(reader);
+		for (GeoJSONFaultSection sect : sects)
+			sect.setTectonicRegionType(TectonicRegionType.ACTIVE_SHALLOW);
 		return sects;
 	}
 
 	@Override
 	public RupSetDeformationModel getDefaultDeformationModel() {
 		return NSHM26_CrustalAggregatedDeformationModels.AVERAGE;
+	}
+
+	@Override
+	public void attachDefaultModules(FaultSystemRupSet rupSet) {
+		rupSet.addAvailableModule(() -> {
+			return NSHM26_InterfaceFaultModels.buildROI(seisReg);
+		}, RegionsOfInterest.class);
+		rupSet.addAvailableModule(() -> {
+			return new ModelRegion(seisReg.load());
+		}, ModelRegion.class);
+		rupSet.addAvailableModule(() -> {
+			return RupSetTectonicRegimes.constant(rupSet, TectonicRegionType.ACTIVE_SHALLOW);
+		}, RupSetTectonicRegimes.class);
 	}
 
 }
