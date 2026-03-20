@@ -7,7 +7,7 @@ Catalog type,Prob
 b mean,1.19
 b sigma,0.02
 max n sigma b,3
-delta,
+delta,0.1
 M1,5
 Mmax,7
 Mc sigma,0.2
