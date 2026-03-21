@@ -657,7 +657,8 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 				
 				// branch level
 				out.name("level");
-				levelAdapter.write(out, branch.levels.get(i));
+				LogicTreeLevel<?> level = branch.levels.get(i);
+				levelAdapter.write(out, level);
 				
 				// node value
 				LogicTreeNode node = branch.values.get(i);
@@ -666,7 +667,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 					out.name("value");
 					
 //					gson.toJson(node, LogicTreeNode.class, out);
-					nodeAdapter.write(out, node);
+					nodeAdapter.write(out, node, level);
 				}
 				
 				out.endObject();
@@ -802,6 +803,10 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 
 		@Override
 		public void write(JsonWriter out, LogicTreeNode value) throws IOException {
+			write(out, value, null);
+		}
+
+		public void write(JsonWriter out, LogicTreeNode value, LogicTreeLevel<?> level) throws IOException {
 			out.beginObject();
 			
 			out.name("name").value(value.getName());
@@ -831,7 +836,12 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 				if (theValue == null) {
 					out.nullValue();
 				} else {
-					TypeAdapter adapter = JsonAdapterHelper.getTypeAdapter(theValue, true);
+					TypeAdapter adapter;
+					if (level != null && level instanceof LogicTreeLevel.ValueBackedLevel)
+						adapter = ((LogicTreeLevel.ValueBackedLevel)level).getValueTypeAdapter();
+					else
+						adapter = JsonAdapterHelper.getTypeAdapter(theValue, true);
+//					System.out.println("adapter class: "+adapter.getClass());
 					out.name("value");
 					adapter.write(out, theValue);
 				}
@@ -1049,6 +1059,8 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 		}
 		
 		init(ImmutableList.copyOf(levels), values);
+		
+		this.originalWeight = unchecked.originalWeight;
 	}
 	
 	public static LogicTreeBranch<LogicTreeNode> read(File jsonFile) throws IOException {
@@ -1057,7 +1069,6 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 	
 	public static LogicTreeBranch<LogicTreeNode> read(InputStream is) throws IOException {
 		LogicTreeBranch<LogicTreeNode> branch = new LogicTreeBranch<>();
-		Gson gson = branch.buildGson();
 		BufferedInputStream bin;
 		if (is instanceof BufferedInputStream)
 			bin = (BufferedInputStream)is;
