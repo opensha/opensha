@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.numbers.core.Precision;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.BorderType;
 import org.opensha.commons.geo.GriddedRegion;
@@ -47,8 +46,10 @@ public class InterfaceGridAssociations implements FaultGridAssociations, Archiva
 //	}
 
 	public static void main(String[] args) throws IOException {
+//		LogicTreeBranch<LogicTreeNode> branch = NSHM26_LogicTree.buildDefault(
+//				NSHM26_SeismicityRegions.AMSAM, TectonicRegionType.SUBDUCTION_INTERFACE, false);
 		LogicTreeBranch<LogicTreeNode> branch = NSHM26_LogicTree.buildDefault(
-				NSHM26_SeismicityRegions.AMSAM, TectonicRegionType.SUBDUCTION_INTERFACE, false);
+				NSHM26_SeismicityRegions.GNMI, TectonicRegionType.SUBDUCTION_INTERFACE, false);
 		NSHM26_InterfaceFaultModels fm = branch.requireValue(NSHM26_InterfaceFaultModels.class);
 		NSHM26_InterfaceDeformationModels dm = branch.requireValue(NSHM26_InterfaceDeformationModels.class);
 
@@ -87,9 +88,11 @@ public class InterfaceGridAssociations implements FaultGridAssociations, Archiva
 		mapMaker.plot(new File("/tmp"), "assoc_"+reg.name()+"_sects", " ");
 	}
 
-	private List<Map<Integer, Double>> nodesToSects;
+	private List<Map<Integer, Double>> scaledNodesToSects;
 	private double[] nodeFractMapped;
+	private List<Map<Integer, Double>> scaledSectsToNodes;
 	private List<Map<Integer, Double>> sectsToNodes;
+	private List<Map<Integer, Double>> nodesToSectFracts;
 	private double[] sectFractMapped;
 	private Set<Integer> sectsMapped;
 	private GriddedRegion gridReg;
@@ -120,12 +123,15 @@ public class InterfaceGridAssociations implements FaultGridAssociations, Archiva
 		double halfSpacing = gridReg.getSpacing()*0.5;
 		MinMaxAveTracker mappedExtentFractTrack = new MinMaxAveTracker();
 		int numMapped = 0;
-		nodesToSects = new ArrayList<>(gridReg.getNodeCount());
+		scaledNodesToSects = new ArrayList<>(gridReg.getNodeCount());
 		nodeFractMapped = new double[gridReg.getNodeCount()];
+		scaledSectsToNodes = new ArrayList<>(sects.size());
 		sectsToNodes = new ArrayList<>(sects.size());
 		sectsMapped = new HashSet<>(sects.size());
-		for (int i=0; i<sects.size(); i++)
+		for (int i=0; i<sects.size(); i++) {
+			scaledSectsToNodes.add(new HashMap<>());
 			sectsToNodes.add(new HashMap<>());
+		}
 		for (int n=0; n<gridReg.getNodeCount(); n++) {
 			Location center = gridReg.getLocation(n);
 			Region cell = new Region(new Location(center.lat-halfSpacing, center.lon-halfSpacing),
@@ -143,13 +149,15 @@ public class InterfaceGridAssociations implements FaultGridAssociations, Archiva
 						if (mappedExtents == null)
 							mappedExtents = new HashMap<>();
 						double extent = intersection.getExtent();
-						mappedExtentSum += extent;
 						double fract = extent/fullExtent;
 						Preconditions.checkState(fract < 1.02,
 								"Bad intersection? %s > %s, f=%s", extent, fullExtent, fract);
 						if (fract > 1)
 							extent = fullExtent;
-						mappedExtents.put(s, extent/fullExtent);
+						mappedExtentSum += extent;
+						double scaledNodeFract = extent/fullExtent;
+						mappedExtents.put(s, scaledNodeFract);
+						scaledSectsToNodes.get(s).put(n, scaledNodeFract);
 						double sectFract = extent/sectExtents[s];
 						Preconditions.checkState(sectFract < 1.02,
 								"Bad intersection? %s > %s, f=%s", extent, sectExtents[s], sectFract);
@@ -164,12 +172,16 @@ public class InterfaceGridAssociations implements FaultGridAssociations, Archiva
 			mappedExtentFractTrack.addValue(mappedFract);
 			if (mappedFract > 1) {
 				Preconditions.checkState(mappedFract < 1.02);
-				for (Integer id : List.copyOf(mappedExtents.keySet()))
-					mappedExtents.put(id, mappedExtents.get(id)/mappedFract);
+				for (Integer id : List.copyOf(mappedExtents.keySet())) {
+					double scaledNodeFract = mappedExtents.get(id)/mappedFract;
+					mappedExtents.put(id, scaledNodeFract);
+					scaledSectsToNodes.get(id).put(n, scaledNodeFract);
+				}
 				mappedFract = 1d;
 			}
-			numMapped++;
-			nodesToSects.add(mappedExtents);
+			if (mappedExtents != null)
+				numMapped++;
+			scaledNodesToSects.add(mappedExtents);
 			nodeFractMapped[n] = mappedFract;
 		}
 		System.out.println("Mapped "+numMapped+"/"+gridReg.getNodeCount()+" grid nodes");
@@ -186,10 +198,11 @@ public class InterfaceGridAssociations implements FaultGridAssociations, Archiva
 					// rounding error, rescale down to one
 					for (Integer key : List.copyOf(mappings.keySet()))
 						mappings.put(key, mappings.get(key)/sum);
+					sum = 1d;
 				} else if (sum > 0.99) {
 					// rounding error, rescale up to one
 					for (Integer key : List.copyOf(mappings.keySet()))
-						mappings.put(key, sum/mappings.get(key));
+						mappings.put(key, mappings.get(key)/sum);
 					sum = 1d;
 				}
 				sectFractMapped[s] = sum;
@@ -198,6 +211,21 @@ public class InterfaceGridAssociations implements FaultGridAssociations, Archiva
 			}
 		}
 		System.out.println("Raw section intersection mapping stats:\n\t"+mappedExtentFractTrack);
+		
+		nodesToSectFracts = new ArrayList<>(gridReg.getNodeCount());
+		for (int n=0; n<gridReg.getNodeCount(); n++)
+			nodesToSectFracts.add(null);
+		for (int s=0; s<sects.size(); s++) {
+			for (Map.Entry<Integer, Double> entry : sectsToNodes.get(s).entrySet()) {
+				int nodeIdx = entry.getKey();
+				Map<Integer, Double> nodeMappings = nodesToSectFracts.get(nodeIdx);
+				if (nodeMappings == null) {
+					nodeMappings = new HashMap<>();
+					nodesToSectFracts.set(nodeIdx, nodeMappings);
+				}
+				nodeMappings.put(s, entry.getValue());
+			}
+		}
 	}
 
 	@Override
@@ -233,14 +261,15 @@ public class InterfaceGridAssociations implements FaultGridAssociations, Archiva
 
 	@Override
 	public Map<Integer, Double> getScaledNodeFractions(int sectIdx) {
-		// no overlapping sections here
-		return getNodeFractions(sectIdx);
+		return scaledSectsToNodes.get(sectIdx);
 	}
 
 	@Override
 	public Map<Integer, Double> getScaledSectFracsOnNode(int nodeIdx) {
-		// no overlapping sections here
-		return getSectionFracsOnNode(nodeIdx);
+		Map<Integer, Double> ret = scaledNodesToSects.get(nodeIdx);
+		if (ret == null)
+			return Map.of();
+		return ret;
 	}
 
 	@Override
@@ -250,7 +279,7 @@ public class InterfaceGridAssociations implements FaultGridAssociations, Archiva
 
 	@Override
 	public Map<Integer, Double> getSectionFracsOnNode(int nodeIdx) {
-		Map<Integer, Double> ret = nodesToSects.get(nodeIdx);
+		Map<Integer, Double> ret = nodesToSectFracts.get(nodeIdx);
 		if (ret == null)
 			return Map.of();
 		return ret;

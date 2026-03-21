@@ -180,7 +180,7 @@ public class NSHM26_LogicTree {
 		
 		// gridded seismicity
 		if (!sampled)
-			branch.setValue(NSHM26_SeisRateModelBranch.AVERAGE);
+			branch.setValue(NSHM26_SeisRateModelBranch.PREFFERRED);
 		branch.setValue(NSHM26_DeclusteringAlgorithms.AVERAGE);
 		branch.setValue(NSHM26_SeisSmoothingAlgorithms.AVERAGE);
 		

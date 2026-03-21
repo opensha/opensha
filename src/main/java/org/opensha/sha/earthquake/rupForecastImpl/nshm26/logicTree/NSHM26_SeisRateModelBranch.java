@@ -26,6 +26,7 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateModel;
+import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateRecord;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateType;
 
 //TODO: this might end up affecting slip rates, setting to affects
@@ -43,17 +44,32 @@ public enum NSHM26_SeisRateModelBranch implements NSHM26_SeisRateModel {
 		public IncrementalMagFreqDist build(NSHM26_SeismicityRegions region, TectonicRegionType trt, EvenlyDiscretizedFunc refMFD, double mMax) {
 			return loadRateModel(region, trt, TYPE).buildLower(refMFD, mMax);
 		}
+
+		@Override
+		public RateRecord getRateRecord(NSHM26_SeismicityRegions region, TectonicRegionType trt) {
+			return loadRateModel(region, trt, TYPE).getLowerRecord();
+		}
 	},
 	PREFFERRED("Preffered Seismicity Rate", "Preferred", 0.74d) {
 		@Override
 		public IncrementalMagFreqDist build(NSHM26_SeismicityRegions region, TectonicRegionType trt, EvenlyDiscretizedFunc refMFD, double mMax) {
 			return loadRateModel(region, trt, TYPE).buildPreferred(refMFD, mMax);
 		}
+
+		@Override
+		public RateRecord getRateRecord(NSHM26_SeismicityRegions region, TectonicRegionType trt) {
+			return loadRateModel(region, trt, TYPE).getMeanRecord();
+		}
 	},
 	HIGH("Upper Seismicity Bound (p97.5)", "High", 0.13d) {
 		@Override
 		public IncrementalMagFreqDist build(NSHM26_SeismicityRegions region, TectonicRegionType trt, EvenlyDiscretizedFunc refMFD, double mMax) {
 			return loadRateModel(region, trt, TYPE).buildUpper(refMFD, mMax);
+		}
+
+		@Override
+		public RateRecord getRateRecord(NSHM26_SeismicityRegions region, TectonicRegionType trt) {
+			return loadRateModel(region, trt, TYPE).getUpperRecord();
 		}
 	},
 	AVERAGE("Average Seismicity Rate", "Average", 0d) {
@@ -78,13 +94,19 @@ public enum NSHM26_SeisRateModelBranch implements NSHM26_SeisRateModel {
 				ret.scale(1d/weightSum);
 			return ret;
 		}
+
+		@Override
+		public RateRecord getRateRecord(NSHM26_SeismicityRegions region, TectonicRegionType trt) {
+			return PREFFERRED.getRateRecord(region, trt);
+		}
 		
 	};
 	
 	public static double getPlotMmax(TectonicRegionType trt) {
 		return switch (trt) {
 		case ACTIVE_SHALLOW:
-			yield 7.6;
+//			yield 7.6;
+			yield 8d;
 		case SUBDUCTION_INTERFACE:
 			yield 8d;
 		case SUBDUCTION_SLAB:

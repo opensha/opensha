@@ -64,12 +64,18 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBVa
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.GRParticRateEstimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_InterfaceFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_InterfaceObsSeisDMAdjustment;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_SeisRateModel;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Range;
 import com.google.common.collect.Table;
+
+import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.PureGR;
+import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateRecord;
 
 public class NSHM26_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory, GridSourceProviderFactory.Single {
 	
@@ -103,8 +109,12 @@ public class NSHM26_InvConfigFactory implements ClusterSpecificInversionConfigur
 	
 	public static SubSectConstraintModels SUB_SECT_CONSTR_DEFAULT = SubSectConstraintModels.TOT_NUCL_RATE;
 	
-	public static Range<Double> INTERFACE_MIN_SUPRA_SEIS_DEPTH_RANGE_DEFAULT = Range.closed(0d, 40d);
+	// allow non-rectangular ruptures once they hit this depth range
+	public static Range<Double> INTERFACE_MIN_SUPRA_SEIS_DEPTH_RANGE_DEFAULT = Range.closed(20d, 40d);
 	private Range<Double> interfaceMinSupraSeisDepthRange = INTERFACE_MIN_SUPRA_SEIS_DEPTH_RANGE_DEFAULT;
+	// ..but ensure their aspect ratio doesn't exceed this
+	private static double MAX_PARTIAL_SEISMOGENIC_ASPECT_RATIO_DEFAULT = 4d;
+	private double maxPartialSeismogenicAspectRatio = MAX_PARTIAL_SEISMOGENIC_ASPECT_RATIO_DEFAULT;
 
 	@Override
 	public FaultSystemRupSet buildRuptureSet(LogicTreeBranch<?> branch, int threads) throws IOException {
@@ -140,7 +150,8 @@ public class NSHM26_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		RupSetConfig config = model.getConfig(subSects, scale);
 		if (config instanceof RectangularDownDipSubductionRupSetConfig) {
-			((RectangularDownDipSubductionRupSetConfig)config).setMinSeismogenicDepthRange(interfaceMinSupraSeisDepthRange);
+			((RectangularDownDipSubductionRupSetConfig)config).setMinSeismogenicDepthRange(
+					interfaceMinSupraSeisDepthRange, maxPartialSeismogenicAspectRatio);
 		}
 		
 		File cachedRupSetFile = null;
@@ -314,6 +325,8 @@ public class NSHM26_InvConfigFactory implements ClusterSpecificInversionConfigur
 		}
 		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal, sectSpecificBValues);
 		
+		
+		
 		if (branch.hasValue(NSHM26_InterfaceObsSeisDMAdjustment.class)) {
 			NSHM26_InterfaceObsSeisDMAdjustment adjustment = branch.requireValue(NSHM26_InterfaceObsSeisDMAdjustment.class);
 			if (adjustment == NSHM26_InterfaceObsSeisDMAdjustment.NONE) {
@@ -324,6 +337,15 @@ public class NSHM26_InvConfigFactory implements ClusterSpecificInversionConfigur
 					adjustment.adjustSlipRates(rupSet, branch);
 				} catch (IOException e) {
 					throw ExceptionUtils.asRuntimeException(e);
+				}
+				NSHM26_InterfaceFaultModels fm = branch.getValue(NSHM26_InterfaceFaultModels.class);
+				if (fm != null && branch.hasValue(NSHM26_SeisRateModel.class)) {
+					NSHM26_SeisRateModel rateModel = branch.requireValue(NSHM26_SeisRateModel.class);
+					RateRecord record = rateModel.getRateRecord(fm.getSeisReg(), TectonicRegionType.SUBDUCTION_INTERFACE);
+					if (record instanceof PureGR)
+						constrBuilder.subSeisBOverride(((PureGR)record).b);
+					else
+						constrBuilder.subSeisBOverride(Double.NaN);
 				}
 			}
 		} else {

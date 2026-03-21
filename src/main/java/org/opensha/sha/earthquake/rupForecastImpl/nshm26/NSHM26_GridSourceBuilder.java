@@ -114,9 +114,12 @@ public class NSHM26_GridSourceBuilder {
 	}
 	
 	public static void doPreGridBuildHook(FaultSystemSolution sol, LogicTreeBranch<?> faultBranch) throws IOException {
+		doPreGridBuildHook(sol.getRupSet(), faultBranch);
+	}
+	
+	public static void doPreGridBuildHook(FaultSystemRupSet rupSet, LogicTreeBranch<?> faultBranch) throws IOException {
 		if (faultBranch.hasValue(NSHM26_CrustalFaultModels.class)) {
 			// add fault cube associations and seismicity regions
-			FaultSystemRupSet rupSet = sol.getRupSet();
 			
 			NSHM26_SeismicityRegions seisReg = faultBranch.requireValue(NSHM26_CrustalFaultModels.class).getSeisReg();
 			if (!rupSet.hasModule(ModelRegion.class))
@@ -133,7 +136,6 @@ public class NSHM26_GridSourceBuilder {
 			}
 			Preconditions.checkNotNull(cubeAssociations, "Cube associations is null");
 		} else if (faultBranch.hasValue(NSHM26_InterfaceFaultModels.class)) {
-			FaultSystemRupSet rupSet = sol.getRupSet();
 			
 			NSHM26_SeismicityRegions seisReg = faultBranch.requireValue(NSHM26_InterfaceFaultModels.class).getSeisReg();
 			if (!rupSet.hasModule(ModelRegion.class))
@@ -307,13 +309,16 @@ public class NSHM26_GridSourceBuilder {
 	
 	public static GridSourceList buildInterfaceGridSourceList(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch,
 			NSHM26_SeismicityRegions seisRegion) throws IOException {
+		return buildInterfaceGridSourceList(sol.getRupSet(), fullBranch, seisRegion);
+	}
+	
+	public static GridSourceList buildInterfaceGridSourceList(FaultSystemRupSet rupSet, LogicTreeBranch<?> fullBranch,
+			NSHM26_SeismicityRegions seisRegion) throws IOException {
 		MagAreaRelationship scale = fullBranch.requireValue(PRVI25_SubductionScalingRelationships.class).getMagAreaRelationship();
 		
 //		final boolean D = false;
 		
 		System.out.println("Building interface GridSourceList for "+seisRegion);
-		
-		FaultSystemRupSet rupSet = sol.getRupSet();
 		
 		double[] sectMinMags = getInterfaceSectMinMag(rupSet, fullBranch);
 		double avgMinMag = StatUtils.mean(sectMinMags);
@@ -355,7 +360,7 @@ public class NSHM26_GridSourceBuilder {
 		}
 		if (skipped > 0) {
 			System.err.println("WARNING: clipped out "+skipped+" PDF locations with "+(float)skippedWeight+" for "+fullBranch);
-			clippedPDF.scale(1d/clippedPDF.size());
+			clippedPDF.scale(1d/clippedPDF.getSumZ());
 		}
 		
 		FaultGridAssociations assoc = rupSet.requireModule(FaultGridAssociations.class);
@@ -375,7 +380,7 @@ public class NSHM26_GridSourceBuilder {
 			double depth = depths.get(n);
 			Location loc = clippedPDF.getLocation(n);
 			
-			Map<Integer, Double> sectFracts = assoc.getSectionFracsOnNode(n);
+			Map<Integer, Double> sectFracts = assoc.getScaledSectFracsOnNode(n);
 			
 			int[] assocIDs = null;
 			double[] assocFracts = null;
@@ -401,6 +406,7 @@ public class NSHM26_GridSourceBuilder {
 			IncrementalMagFreqDist mfd = mMaxMFDCache.get(mMax);
 			if (mfd == null) {
 				mfd = mfdBuilderFunc.apply(mMax);
+//				System.out.println("MFD with mMax="+mMax+":\n"+mfd);
 				mMaxMFDCache.put(mMax, mfd);
 			}
 			mfd = mfd.deepClone();
@@ -479,7 +485,7 @@ public class NSHM26_GridSourceBuilder {
 		
 		IncrementalMagFreqDist refMFD = FaultSysTools.initEmptyMFD(OVERALL_MMIN, mMax+0.1);
 		
-		IncrementalMagFreqDist totalGR = rateBranch.build(seisRegion, TectonicRegionType.SUBDUCTION_INTERFACE,
+		IncrementalMagFreqDist totalGR = rateBranch.build(seisRegion, TectonicRegionType.SUBDUCTION_SLAB,
 				refMFD, refMFD.getX(refMFD.getClosestXIndex(mMax-0.001)));
 		double totalRate = totalGR.calcSumOfY_Vals();
 		
@@ -527,6 +533,7 @@ public class NSHM26_GridSourceBuilder {
 				pdf.scale(1d/pdf.getSumValues());
 			}
 		}
+		Preconditions.checkState((float)pdf.getSumValues() == 1f);
 		
 		GriddedRegion gridReg = pdf.getRegion();
 		
@@ -773,18 +780,19 @@ public class NSHM26_GridSourceBuilder {
 		
 		File invDir = new File("/home/kevin/markdown/inversions/");
 		
-//		FaultSystemSolution interfaceSol = FaultSystemSolution.load(new File(invDir,
-//				"2026_03_09-nshm26-gnmi-MARIANA_PREF_COUPLING_LogA_C4p0_B1.0/solution.zip"));
-//		NSHM26_SeismicityRegions seisReg = NSHM26_SeismicityRegions.GNMI;
-//		FaultSystemSolution crustalSol = FaultSystemSolution.load(new File(invDir,
-//				"2026_03_18-nshm26-gnmi-AVERAGE_LogA_C4p2_Middle_Average_AVERAGE_AVERAGE/solution.zip"));
-		
 		FaultSystemSolution interfaceSol = FaultSystemSolution.load(new File(invDir,
-				"2026_03_09-nshm26-amsam-TONGA_PREF_COUPLING_LogA_C4p0_B1.0/solution.zip"));
-		NSHM26_SeismicityRegions seisReg = NSHM26_SeismicityRegions.AMSAM;
-		FaultSystemSolution crustalSol = null;
+				"2026_03_20-nshm26-gnmi-GNMI_V1_DOUBLE_TAPER_LOW_COUPLING_LogA_C4p0_SECTION_SPECIFIC_ONE_High_AVERAGE_AVERAGE/solution.zip"));
+		NSHM26_SeismicityRegions seisReg = NSHM26_SeismicityRegions.GNMI;
+		FaultSystemSolution crustalSol = FaultSystemSolution.load(new File(invDir,
+				"2026_03_20-nshm26-gnmi-AVERAGE_LogA_C4p2_Middle_Average_AVERAGE_AVERAGE/solution.zip"));
 		
-		LogicTreeBranch<LogicTreeNode> branch = NSHM26_LogicTree.buildDefault(seisReg, TectonicRegionType.SUBDUCTION_INTERFACE, false);
+//		FaultSystemSolution interfaceSol = FaultSystemSolution.load(new File(invDir,
+//				"2026_03_20-nshm26-amsam-AMSAM_V1_DOUBLE_TAPER_LOW_COUPLING_LogA_C4p0_SECTION_SPECIFIC_ONE_High_AVERAGE_AVERAGE/solution.zip"));
+//		NSHM26_SeismicityRegions seisReg = NSHM26_SeismicityRegions.AMSAM;
+//		FaultSystemSolution crustalSol = null;
+		
+//		LogicTreeBranch<LogicTreeNode> branch = NSHM26_LogicTree.buildDefault(seisReg, TectonicRegionType.SUBDUCTION_INTERFACE, false);
+		LogicTreeBranch<LogicTreeNode> branch = interfaceSol.requireModule(LogicTreeBranch.class);
 		doPreGridBuildHook(interfaceSol, branch);
 		NSHM26_InterfaceFaultModels fm = branch.requireValue(NSHM26_InterfaceFaultModels.class);
 		GridSourceList interfaceProv = buildInterfaceGridSourceList(interfaceSol, branch, seisReg);
@@ -792,9 +800,12 @@ public class NSHM26_GridSourceBuilder {
 		branch = NSHM26_LogicTree.buildDefault(seisReg, TectonicRegionType.SUBDUCTION_SLAB, false);
 		GridSourceList intraslabProv = buildIntraslabGridSourceList(branch, seisReg);
 		
-		branch = NSHM26_LogicTree.buildDefault(seisReg, TectonicRegionType.ACTIVE_SHALLOW, false);
-		if (crustalSol != null)
+		if (crustalSol != null) {
+			branch = crustalSol.requireModule(LogicTreeBranch.class);
 			doPreGridBuildHook(crustalSol, branch);
+		} else {
+			branch = NSHM26_LogicTree.buildDefault(seisReg, TectonicRegionType.ACTIVE_SHALLOW, false);
+		}
 		GridSourceList crustalProv = buildCrustalGridSourceProv(crustalSol, branch, seisReg);
 		
 		GridSourceList combProv = buildCombinedGridSourceProv(interfaceProv, intraslabProv, crustalProv);

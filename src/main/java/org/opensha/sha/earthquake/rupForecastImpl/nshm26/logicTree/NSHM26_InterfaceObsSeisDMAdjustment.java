@@ -16,6 +16,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList.GriddedRupture;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
@@ -23,6 +24,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm26.NSHM26_GridSourceBuilde
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.InterfaceGridAssociations;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_SeisPDF_Loader;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -75,87 +77,129 @@ public enum NSHM26_InterfaceObsSeisDMAdjustment implements LogicTreeNode {
 			return;
 		NSHM26_InterfaceFaultModels fm = branch.requireValue(NSHM26_InterfaceFaultModels.class);
 		NSHM26_SeismicityRegions seisReg = fm.getSeisReg();
-		NSHM26_SeisRateModel rateModel = branch.requireValue(NSHM26_SeisRateModel.class);
-		NSHM26_DeclusteringAlgorithms decluster = branch.requireValue(NSHM26_DeclusteringAlgorithms.class);
-		NSHM26_SeisSmoothingAlgorithms smooth = branch.requireValue(NSHM26_SeisSmoothingAlgorithms.class);
-		
-		GriddedGeoDataSet pdf = NSHM26_SeisPDF_Loader.load2D(seisReg, TectonicRegionType.SUBDUCTION_INTERFACE, decluster, smooth);
+		NSHM26_GridSourceBuilder.doPreGridBuildHook(rupSet, branch);
+		GridSourceList gridList = NSHM26_GridSourceBuilder.buildInterfaceGridSourceList(rupSet, branch, seisReg);
 		
 		SectSlipRates origSlipRates = SectSlipRates.fromFaultSectData(rupSet);
-		FaultGridAssociations assoc = rupSet.getModule(FaultGridAssociations.class);
-		if (assoc == null) {
-			assoc = new InterfaceGridAssociations(rupSet.getFaultSectionDataList(), pdf.getRegion());
-			rupSet.addModule(assoc);
-		} else {
-			Preconditions.checkState(assoc.getRegion().equals(pdf.getRegion()));
-		}
-		int minNumSects = 1;
-		if (branch.hasValue(NSHM26_InterfaceMinSubSects.class))
-			minNumSects = branch.requireValue(NSHM26_InterfaceMinSubSects.class).getValue();
+		FaultGridAssociations assoc = rupSet.requireModule(FaultGridAssociations.class);
 		
 		// just go off of average mMin
 		double[] sectMmins = NSHM26_GridSourceBuilder.getInterfaceSectMinMag(rupSet, branch);
 		double[] moments = new double[sectMmins.length];
+		double[] slipSDs = new double[sectMmins.length];
+		
+		System.out.println("Applying interface sub-seis ajustment="+this.name);
 	
-		for (int s=0; s<sectMmins.length; s++)
-			moments[s] = rupSet.getFaultSectionData(s).calcMomentRate(true);
-		double sectMmin = StatUtils.mean(sectMmins);
+		double sectTotalMoment = 0d;
+		double sectAssocTotalMoment = 0d;
+		for (int s=0; s<sectMmins.length; s++) {
+			FaultSection sect = rupSet.getFaultSectionData(s);
+			moments[s] = sect.calcMomentRate(true);
+			// grab the original slip std dev; the default SectSlipRates below will use the reduced version
+			slipSDs[s] = sect.getOrigSlipRateStdDev()*1e-3; // mm -> m
+			sectTotalMoment += moments[s];
+			sectAssocTotalMoment += moments[s] * assoc.getSectionFractInRegion(s);
+		}
 		
-		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(NSHM26_GridSourceBuilder.OVERALL_MMIN, sectMmin);
-		
-		IncrementalMagFreqDist seisMFD = rateModel.build(seisReg, TectonicRegionType.SUBDUCTION_INTERFACE, refMFD,
-				refMFD.getX(refMFD.getClosestXIndex(sectMmin-0.1)));
 //		System.out.println("Seis MFD for interface Mmin="+mMin+":\n"+seisMFD);
 		double[] impliedMoments = new double[rupSet.getNumSections()];
-		for (int i=0; i<pdf.size(); i++) {
-			double moSum = 0d;
-			for (int j=0; j<seisMFD.size(); j++)
-				moSum += MagUtils.magToMoment(seisMFD.getX(j))*seisMFD.getY(j)*pdf.get(i);
-			Map<Integer, Double> mappings = assoc.getSectionFracsOnNode(i);
-			for (int s : mappings.keySet())
-				impliedMoments[s] += moSum*mappings.get(s);
+		double impliedTotalMoment = 0d;
+		double impliedAssocTotalMoment = 0d;
+		for (int l=0; l<gridList.getNumLocations(); l++) {
+			for (GriddedRupture gridRup : gridList.getRuptures(TectonicRegionType.SUBDUCTION_INTERFACE, l)) {
+				double mo = MagUtils.magToMoment(gridRup.properties.magnitude) * gridRup.rate;
+				impliedTotalMoment += mo;
+				if (gridRup.associatedSections != null) {
+					for (int i=0; i<gridRup.associatedSections.length; i++) {
+						double assocMo = mo*gridRup.associatedSectionFracts[i];
+						impliedMoments[gridRup.associatedSections[i]] += assocMo;
+						impliedAssocTotalMoment += assocMo;
+					}
+				}
+			}
 		}
+		
+		System.out.println("\tSection moment:\tassoc="+(float)sectAssocTotalMoment+"\ttot="+(float)sectTotalMoment);
+		System.out.println("\tGridded moment:\tassoc="+(float)impliedAssocTotalMoment+"\ttot="+(float)impliedTotalMoment);
+		System.out.println("\tGridded fractions:\tassoc="+(float)(impliedAssocTotalMoment/sectAssocTotalMoment)
+				+"\t"+(float)(impliedTotalMoment/sectTotalMoment));
+		
+		// calculate average reduction where associated
+		double assocGridMoment = 0d;
+		double assocFaultMoment = 0d;
+		MinMaxAveTracker sectAssocTrack = new MinMaxAveTracker();
+		for (int s=0; s<moments.length; s++) {
+			assocGridMoment += impliedMoments[s];
+			double assocFract = assoc.getSectionFractInRegion(s);
+			sectAssocTrack.addValue(assocFract);
+			assocFaultMoment += moments[s]*assocFract;
+		}
+		System.out.println("\tSection associations:\t"+sectAssocTrack);
+		double avgReduction = assocGridMoment / assocFaultMoment;
+		System.out.println("\tAverage associated reduction:\t"+(float)avgReduction);
 		
 		SectSlipRates slips =  switch (this) {
 		case AVERAGE: {
-			double assocGridMoment = 0d;
-			double assocFaultMoment = 0d;
-			for (int s=0; s<moments.length; s++) {
-				assocGridMoment += impliedMoments[s];
-				assocFaultMoment += moments[s]*assoc.getSectionFractInRegion(s);
-			}
-			double reduction = assocGridMoment / assocFaultMoment;
-			if (reduction >= 1d) {
+			if (avgReduction >= 1d) {
 				System.err.println("WARNING: associated interface moment ("+(float)assocFaultMoment+") is less than "
 						+ "associated gridded moment (%s) for branch "+branch+", setting all slip rates to 0");
-				yield SectSlipRates.precomputed(rupSet, new double[moments.length], origSlipRates.getSlipRateStdDevs());
+				yield SectSlipRates.precomputed(rupSet, new double[moments.length], slipSDs);
 			}
 			double[] reducedSlipRates = new double[moments.length];
-			for (int i=0; i<reducedSlipRates.length; i++)
-				reducedSlipRates[i] = origSlipRates.getSlipRate(i) * (1d-reduction);
-			yield SectSlipRates.precomputed(rupSet, reducedSlipRates, origSlipRates.getSlipRateStdDevs());
+			for (int i=0; i<reducedSlipRates.length; i++) {
+				double orig = origSlipRates.getSlipRate(i);
+				reducedSlipRates[i] = orig * (1d-avgReduction);
+				Preconditions.checkState(orig >= reducedSlipRates[i]);
+			}
+			System.out.println("Interface average seis reduction for branch "+branch+": "+avgReduction);
+			yield SectSlipRates.precomputed(rupSet, reducedSlipRates, slipSDs);
 		}
 		case SECTION_SPECIFIC: {
-			MinMaxAveTracker track = new MinMaxAveTracker();
+			MinMaxAveTracker rawTrack = new MinMaxAveTracker();
+			MinMaxAveTracker finalTrack = new MinMaxAveTracker();
+			double sectWtSum = 0d;
+			double gridWtSum = 0d;
 			int numAbove = 0;
 			double[] reducedSlipRates = new double[moments.length];
-			for (int i=0; i<impliedMoments.length; i++) {
-				double reduction = impliedMoments[i] / moments[i];
+			for (int s=0; s<impliedMoments.length; s++) {
+				double reduction = impliedMoments[s] / moments[s];
+				rawTrack.addValue(Math.min(1d, reduction));
+				double assocFract = assoc.getSectionFractInRegion(s);
+				// add in the average reduction for any un-assocated portion of the subsection
+				reduction = assocFract*reduction + (1d-assocFract)*avgReduction;
 				if (reduction >= 1) {
-					reducedSlipRates[i] = 0d;
+					reducedSlipRates[s] = 0d;
 					numAbove++;
 					reduction = 1d;
 				} else {
-					reducedSlipRates[i] = origSlipRates.getSlipRate(i) * (1d-reduction);
+					reducedSlipRates[s] = origSlipRates.getSlipRate(s) * (1d-reduction);
 				}
-				track.addValue(reduction);
+				sectWtSum += reduction*moments[s];
+				gridWtSum += reduction*impliedMoments[s];
+				finalTrack.addValue(reduction);
 			}
-			System.out.println("Interface obs seis reductions for branch "+branch+": "+track+"; "+numAbove+" fully reduced");
-			yield SectSlipRates.precomputed(rupSet, reducedSlipRates, origSlipRates.getSlipRateStdDevs());
+			System.out.println("\tWeighted final average reductions:\tsecWtd="+(float)(sectWtSum/sectTotalMoment)
+					+"\tgridWtd="+(float)(gridWtSum/impliedAssocTotalMoment));
+			System.out.println("Interface obs seis reductions for branch "+branch+":\n\traw="+rawTrack
+					+"\n\tfinal="+finalTrack+" w/ avgReduction="+(float)avgReduction+" applied to unassociated; "
+					+numAbove+"/"+moments.length+" fully reduced");
+			yield SectSlipRates.precomputed(rupSet, reducedSlipRates, slipSDs);
 		}
 		default:
 			throw new IllegalArgumentException("Unexpected value: " + this);
 		};
+		double modSectTotalMoment = 0d;
+		double modSectAssocTotalMoment = 0d;
+		for (int s=0; s<sectMmins.length; s++) {
+			double moment = slips.calcMomentRate(s);
+			modSectTotalMoment += moment;
+			modSectAssocTotalMoment += moment * assoc.getSectionFractInRegion(s);
+		}
+		// note for the future: these will be < gridded total moment if clipping occurs (i.e., sections are fully reduced)
+		// because you can't reduce beyond the original slip rate
+		System.out.println("\tSection reduced moment:\tassoc="+(float)modSectAssocTotalMoment+"\ttot="+(float)modSectTotalMoment);
+		System.out.println("\tTotal reductions:\tassoc="+(float)(sectAssocTotalMoment - modSectAssocTotalMoment)
+				+"\ttot="+(float)(sectTotalMoment - modSectTotalMoment));
 		rupSet.addModule(slips);
 	}
 

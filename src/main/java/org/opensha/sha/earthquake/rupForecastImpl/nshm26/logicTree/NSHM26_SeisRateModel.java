@@ -13,11 +13,14 @@ import com.google.common.base.Preconditions;
 
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.PureGR;
+import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateRecord;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateType;
 
 public interface NSHM26_SeisRateModel extends LogicTreeNode {
 	
 	public abstract IncrementalMagFreqDist build(NSHM26_SeismicityRegions region, TectonicRegionType trt, EvenlyDiscretizedFunc refMFD, double mMax);
+	
+	public abstract RateRecord getRateRecord(NSHM26_SeismicityRegions region, TectonicRegionType trt);
 	
 	public static class NSHM26_SiesRateModelSample extends SimpleValuedNode<PureGR> implements NSHM26_SeisRateModel {
 		
@@ -41,6 +44,13 @@ public interface NSHM26_SeisRateModel extends LogicTreeNode {
 			Preconditions.checkState(this.region == null || region == this.region, "Region mismatch: %s != %s", region, this.region);
 			Preconditions.checkState(this.trt == null || trt == this.trt, "TRT mismatch: %s != %s", trt, this.trt);
 			return SeismicityRateFileLoader.buildIncrementalMFD(value, refMFD, mMax, Double.NaN);
+		}
+
+		@Override
+		public RateRecord getRateRecord(NSHM26_SeismicityRegions region, TectonicRegionType trt) {
+			Preconditions.checkState(this.region == null || region == this.region, "Region mismatch: %s != %s", region, this.region);
+			Preconditions.checkState(this.trt == null || trt == this.trt, "TRT mismatch: %s != %s", trt, this.trt);
+			return getValue();
 		}
 		
 	}
