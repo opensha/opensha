@@ -686,6 +686,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 			
 			if (hasSubSeis) {
 				CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, 1d);
+				cpt.setNanColor(Color.GRAY);
 				
 				String prefix = rawPrefix+"_sub_seis_red";
 				
@@ -912,6 +913,8 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 			if (nonReduced > 0d) {
 				double subSeisReduced = 1e3*slipRates.getSlipRate(s);
 				subSeisRed[s] = (nonReduced - subSeisReduced)/nonReduced;
+			} else {
+				subSeisRed[s] = Double.NaN;
 			}
 		}
 		return subSeisRed;
