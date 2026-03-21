@@ -452,6 +452,7 @@ public class RuptureSets {
 		// maximum individual jump distance
 		@Expose	private double maxJumpDist = 5d;
 		private Range<Double> minSeismogenicDepthRange;
+		private double maxPartialSeismogenicAspectRatio = Double.POSITIVE_INFINITY;
 
 		public RectangularDownDipSubductionRupSetConfig(List<? extends FaultSection> subSects,
 				RupSetScalingRelationship scale) {
@@ -501,8 +502,13 @@ public class RuptureSets {
 			return minSeismogenicDepthRange;
 		}
 
-		public void setMinSeismogenicDepthRange(Range<Double> minSeismogenicDepthRange) {
+		public double getMaxPartialSeismogenicAspectRatio() {
+			return maxPartialSeismogenicAspectRatio;
+		}
+
+		public void setMinSeismogenicDepthRange(Range<Double> minSeismogenicDepthRange, double maxPartialSeismogenicAspectRatio) {
 			this.minSeismogenicDepthRange = minSeismogenicDepthRange;
+			this.maxPartialSeismogenicAspectRatio = maxPartialSeismogenicAspectRatio;
 		}
 
 		@Override
@@ -546,7 +552,9 @@ public class RuptureSets {
 		@Override
 		public RuptureGrowingStrategy getGrowingStrategy() {
 			if (growingStrategy == null)
-				growingStrategy = new RectangularDownDipGrowingStrategy(neighborThreshold, requireFullWidthAfterJumps, minSeismogenicDepthRange);
+				growingStrategy = new RectangularDownDipGrowingStrategy(
+						neighborThreshold, requireFullWidthAfterJumps,
+						minSeismogenicDepthRange, maxPartialSeismogenicAspectRatio);
 			return growingStrategy;
 		}
 
