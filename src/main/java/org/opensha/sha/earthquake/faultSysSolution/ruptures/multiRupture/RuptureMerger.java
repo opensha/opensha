@@ -10,6 +10,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupCartoonGener
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 
+import org.opensha.sha.util.TectonicRegionType;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 
 import java.io.*;
@@ -227,7 +228,7 @@ public class RuptureMerger {
         ClusterRuptures cRups = rupSet.getModule(ClusterRuptures.class);
         if (cRups == null) {
             // assume single stranded for our purposes here
-            cRups = ClusterRuptures.singleStranged(rupSet);
+            cRups = ClusterRuptures.singleStranded(rupSet);
         }
 
         List<ClusterRupture> ruptures = cRups.getAll();
