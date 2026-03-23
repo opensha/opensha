@@ -7,6 +7,7 @@ import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.data.function.UnmodifiableDiscrFunc;
+import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
@@ -510,5 +511,16 @@ public class GriddedGeoDepthValueDataSet implements GeoXYZW_DataSet {
 		for (int i=0; i<values.length; i++)
 			for (int j=0; j<values[i].length; j++)
 				values[i][j] += value;
+	}
+	
+	public GriddedGeoDataSet sum2D() {
+		GriddedGeoDataSet sum = new GriddedGeoDataSet(griddedRegion);
+		for (int l=0; l<sum.size(); l++) {
+			double depthSum = 0d;
+			for (int d=0; d<depthCount; d++)
+				depthSum += get(l, d);
+			sum.set(l, depthSum);
+		}
+		return sum;
 	}
 }
