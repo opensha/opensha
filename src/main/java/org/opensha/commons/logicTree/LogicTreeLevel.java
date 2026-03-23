@@ -237,6 +237,21 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		}
 	}
 	
+	public void overrideIndividualAffected(String name, boolean toAffected) {
+		checkParseAnnotations();
+		Preconditions.checkState(!affectsAll, "Can't override an individual affected when affectsAll=true");
+		Preconditions.checkState(!affectsNone, "Can't override an individual affected when affectsNone=true");
+		if (toAffected) {
+			this.notAffected.remove(name);
+			if (!this.affected.contains(name))
+				this.affected.add(name);
+		} else {
+			this.affected.remove(name);
+			if (!this.notAffected.contains(name))
+				this.notAffected.add(name);
+		}
+	}
+	
 	public void setAffectsAll() {
 		this.affected = List.of();
 		this.notAffected = List.of();
