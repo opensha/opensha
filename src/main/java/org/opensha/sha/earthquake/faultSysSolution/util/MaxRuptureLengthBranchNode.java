@@ -4,9 +4,15 @@ import java.text.DecimalFormat;
 import java.util.List;
 
 import org.apache.commons.statistics.distribution.ContinuousDistribution;
+import org.opensha.commons.logicTree.Affects;
+import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.logicTree.LogicTreeNode.ValuedLogicTreeNode;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.JsonObject;
@@ -14,6 +20,13 @@ import com.google.gson.JsonPrimitive;
 
 public interface MaxRuptureLengthBranchNode extends ValuedLogicTreeNode<Double> {
 	
+	@DoesNotAffect(FaultSystemRupSet.SECTS_FILE_NAME)
+	@DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
+	@DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
+	@Affects(FaultSystemSolution.RATES_FILE_NAME)
+	@DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
+	@DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
+	@Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 	public static class Default implements MaxRuptureLengthBranchNode {
 		
 		private Double maxLen;
