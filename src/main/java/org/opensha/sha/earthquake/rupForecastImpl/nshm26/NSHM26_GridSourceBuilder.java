@@ -552,12 +552,6 @@ public class NSHM26_GridSourceBuilder {
 		
 		int rupCount = 0;
 		for (int gridIndex=0; gridIndex<gridReg.getNodeCount(); gridIndex++) {
-			double nodeFract = pdf.get(gridIndex);
-			if (nodeFract == 0d) {
-				ruptureLists.add(null);
-				continue;
-			}
-			
 			List<GriddedRupture> ruptureList = new ArrayList<>();
 			ruptureLists.add(ruptureList);
 			
@@ -587,7 +581,7 @@ public class NSHM26_GridSourceBuilder {
 		
 		System.out.println("Built "+rupCount+" ruptures");
 		
-		return new GridSourceList.Precomputed(pdf.getRegion(), TectonicRegionType.SUBDUCTION_SLAB, ruptureLists);
+		return new GridSourceList.Precomputed(gridReg, TectonicRegionType.SUBDUCTION_SLAB, ruptureLists);
 	}
 	
 	public static GridSourceList buildCrustalGridSourceProv(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch,
