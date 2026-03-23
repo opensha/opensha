@@ -2,6 +2,7 @@ package org.opensha.sha.earthquake.faultSysSolution.inversion.mpj;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -10,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import org.opensha.commons.logicTree.BranchWeightProvider;
 import org.opensha.commons.logicTree.LogicTree;
@@ -21,6 +23,9 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.SolutionProcessor;
 import org.opensha.sha.earthquake.faultSysSolution.util.BranchAverageSolutionCreator;
+
+import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 
 import edu.usc.kmilner.mpj.taskDispatch.AsyncPostBatchHook;
 
@@ -38,16 +43,27 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 	
 	private boolean[] dones;
 	private LogicTree<?> tree;
+	
+	private Map<String, double[]> rankWeights;
+	private int numProcesses;
 
-	public AbstractAsyncLogicTreeWriter(File outputDir, SolutionProcessor processor, LogicTree<?> tree) {
+	private Stopwatch processWatch = Stopwatch.createUnstarted();
+	private Stopwatch loadWatch = Stopwatch.createUnstarted();
+	private Stopwatch sltWatch = Stopwatch.createUnstarted();
+	private Stopwatch baWatch = Stopwatch.createUnstarted();
+
+	public AbstractAsyncLogicTreeWriter(File outputDir, SolutionProcessor processor, LogicTree<?> tree,
+			boolean buildBA, int numProcesses) {
 		super(1);
 		this.outputDir = outputDir;
 		this.processor = processor;
 		this.tree = tree;
+		this.numProcesses = numProcesses;
 		this.weightProv = tree.getWeightProvider();
-		this.baCreators = new HashMap<>();
+		this.baCreators = buildBA ? new HashMap<>() : null;
 		
 		dones = new boolean[getNumTasks()];
+		rankWeights = new HashMap<>();
 	}
 	
 	public File getOutputFile(File resultsDir) {
@@ -83,7 +99,7 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 				for (int index : batch) {
 					dones[index] = true;
 					
-					doProcessIndex(index);
+					doProcessIndex(index, processIndex);
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -94,59 +110,112 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 		memoryDebug("AsyncLogicTree: exiting async process, stats: "+getCountsString());
 	}
 
-	protected void doProcessIndex(int index) throws IOException {
+	protected void doProcessIndex(int index, int processIndex) throws IOException {
+		processWatch.start();
 		LogicTreeBranch<?> branch = getBranch(index);
 		
 		debug("AsyncLogicTree: calcDone "+index+" = branch "+branch);
 		
+		loadWatch.start();
 		FaultSystemSolution sol = getSolution(branch, index);
-		if (sol == null)
+		loadWatch.stop();
+		if (sol == null) {
+			processWatch.stop();
 			return;
+		}
 		
 		// do this part asynchronously so that we can start loading the next one
-		if (writingLoadedFuture != null)
+		if (writingLoadedFuture != null) {
+			sltWatch.start();
 			// wait until we're done writing the previous one
 			writingLoadedFuture.join();
+			sltWatch.stop();
+		}
 		// launch write asynchronously
-		writingLoadedFuture = CompletableFuture.runAsync(new Runnable() {
-			
-			@Override
-			public void run() {
-				try {
-					sltBuilder.solution(sol, branch);
-				} catch (Exception e) {
-					throw ExceptionUtils.asRuntimeException(e);
-				}
+		writingLoadedFuture = CompletableFuture.runAsync(() -> {
+			try {
+				sltBuilder.solution(sol, branch);
+			} catch (Exception e) {
+				throw ExceptionUtils.asRuntimeException(e);
 			}
 		});
 		if (baCreators != null) {
+			baWatch.start();
 			if (processingLoadedFuture != null)
 				// wait until we're done processing the previous one
 				processingLoadedFuture.join();
 			// launch processing asynchronously
-			processingLoadedFuture = CompletableFuture.runAsync(new Runnable() {
-				
-				@Override
-				public void run() {
-					String baPrefix = getBA_prefix(branch);
-					
-					if (baPrefix == null) {
-						debug("AsyncLogicTree won't branch average, all levels affect "+FaultSystemRupSet.RUP_PROPS_FILE_NAME);
-					} else {
-						if (!baCreators.containsKey(baPrefix))
-							baCreators.put(baPrefix, new BranchAverageSolutionCreator(weightProv));
-						BranchAverageSolutionCreator baCreator = baCreators.get(baPrefix);
-						try {
-							baCreator.addSolution(sol, branch);
-						} catch (Exception e) {
-							e.printStackTrace();
-							System.err.flush();
-							debug("AsyncLogicTree: Branch averaging failed for branch "+branch+", disabling averaging");
-							baCreators = null;
-						}
-					}
+			processingLoadedFuture = CompletableFuture.runAsync(() -> {
+				if (!processBA(baCreators, sol, branch, weightProv)) {
+					debug("AsyncLogicTree won't branch average; failed or all levels affect "+FaultSystemRupSet.RUP_SECTS_FILE_NAME);
+					baCreators = null;
 				}
 			});
+			baWatch.stop();
+		}
+		
+		String baPrefix = AbstractAsyncLogicTreeWriter.getBA_prefix(branch);
+		Preconditions.checkNotNull(baPrefix);
+		
+		double[] baRankWeights = rankWeights.get(baPrefix);
+		if (baRankWeights == null) {
+			baRankWeights = new double[numProcesses];
+			rankWeights.put(baPrefix, baRankWeights);
+		}
+		
+		baRankWeights[processIndex] += tree.getBranchWeight(branch);
+
+		processWatch.stop();
+		
+		debug("AsyncLogicTree: finished "+index+"; load time: "+timeStr(loadWatch)
+				+"; SLT blocking time: "+timeStr(sltWatch)+"; ba blocking time: "+timeStr(baWatch));
+	}
+	
+	private static DecimalFormat pDF = new DecimalFormat("0.0%");
+	
+	private String timeStr(Stopwatch watch) {
+		double totSecs = processWatch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+		double secs = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+		String pStr = " ("+pDF.format(secs/totSecs)+")";
+		String timeStr;
+		if (secs < 90d)
+			return (float)secs+" s"+pStr;
+		double mins = secs/60d;
+		if (mins < 90d)
+			return (float) mins + " m"+pStr;
+		double hours = mins/60d;
+		return (float) hours + " hr"+pStr;
+	}
+	
+	public Map<String, double[]> getRankWeights() {
+		return rankWeights;
+	}
+	
+	public static boolean processBA(Map<String, BranchAverageSolutionCreator> baCreators, FaultSystemSolution sol,
+			LogicTreeBranch<?> branch, BranchWeightProvider weightProv) {
+		return processBA(baCreators, sol, branch, weightProv, null);
+	}
+	
+	public static boolean processBA(Map<String, BranchAverageSolutionCreator> baCreators, FaultSystemSolution sol,
+			LogicTreeBranch<?> branch, BranchWeightProvider weightProv, String baSuffix) {
+		String baPrefix = getBA_prefix(branch);
+		
+		if (baPrefix == null) {
+			return false;
+		} else {
+			if (baSuffix != null)
+				baPrefix += baSuffix;
+			if (!baCreators.containsKey(baPrefix))
+				baCreators.put(baPrefix, new BranchAverageSolutionCreator(weightProv));
+			BranchAverageSolutionCreator baCreator = baCreators.get(baPrefix);
+			try {
+				baCreator.addSolution(sol, branch);
+				return true;
+			} catch (Exception e) {
+				e.printStackTrace();
+				System.err.flush();
+				return false;
+			}
 		}
 	}
 	
@@ -209,7 +278,7 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 		return ret;
 	}
 	
-	private static File baFile(File resultsDir, String baPrefix) {
+	public static File baFile(File resultsDir, String baPrefix) {
 		String prefix = resultsDir.getName();
 		if (!baPrefix.isBlank())
 			prefix += "_"+baPrefix;

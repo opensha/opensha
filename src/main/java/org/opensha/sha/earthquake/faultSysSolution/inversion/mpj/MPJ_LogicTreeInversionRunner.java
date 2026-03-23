@@ -3,7 +3,11 @@ package org.opensha.sha.earthquake.faultSysSolution.inversion.mpj;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -12,10 +16,14 @@ import java.util.concurrent.Future;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
+import org.opensha.commons.logicTree.BranchWeightProvider;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeLevel.FileBackedLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.logicTree.LogicTreeNode.FileBackedNode;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.io.archive.ArchiveInput;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -27,10 +35,9 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfigurat
 import org.opensha.sha.earthquake.faultSysSolution.inversion.Inversions;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
-import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
-import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.SolutionProcessor;
 import org.opensha.sha.earthquake.faultSysSolution.util.AverageSolutionCreator;
+import org.opensha.sha.earthquake.faultSysSolution.util.BranchAverageSolutionCreator;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.MergedSolutionCreator;
 import org.opensha.sha.util.TectonicRegionType;
@@ -39,6 +46,7 @@ import com.google.common.base.Preconditions;
 
 import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
 import gov.usgs.earthquake.nshmp.erf.logicTree.TectonicRegionBranchTreeNode;
+import mpi.MPI;
 
 /**
  * Class for running a full logic tree of inversions with a single job in an MPI environment
@@ -63,6 +71,13 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 
 	private boolean reprocess = false;
 	private boolean reprocessOnly = false;
+	
+	private boolean parallelBA = false;
+	private File nodesBADir;
+	private File myNodeBADir;
+	
+	private Map<String, BranchAverageSolutionCreator> nodeBACreators = null;
+	private static BranchWeightProvider ORIGINAL_WEIGHTS = new BranchWeightProvider.OriginalWeights();
 
 	public MPJ_LogicTreeInversionRunner(CommandLine cmd) throws IOException {
 		super(cmd);
@@ -105,6 +120,28 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 			reprocess = factory.getSolutionLogicTreeProcessor() != null && cmd.hasOption("reprocess-existing");
 		}
 		
+		parallelBA = cmd.hasOption("parallel-ba");
+		if (parallelBA) {
+			nodeBACreators = new HashMap<>();
+			
+			nodesBADir = new File(outputDir, "node_branch_averages");
+			if (rank == 0) {
+				if (nodesBADir.exists()) {
+					// delete anything preexisting
+					for (File file : nodesBADir.listFiles()) {
+						debug("Deleting previous data in "+nodesBADir.getName()+"/"+file.getName());
+						if (file.isDirectory())
+							Preconditions.checkState(FileUtils.deleteRecursive(file));
+						else
+							file.delete();
+					}
+				} else {
+					Preconditions.checkState(nodesBADir.mkdir());
+				}
+			}
+			myNodeBADir = new File(nodesBADir, "rank_"+rank);
+		}
+		
 		File cacheDir = FaultSysTools.getCacheDir(cmd);
 		if (cacheDir != null) {
 			if (rank == 0)
@@ -125,7 +162,7 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 		private boolean[] dones;
 		
 		public AsyncLogicTreeWriter(SolutionProcessor processor) {
-			super(outputDir, processor, tree);
+			super(outputDir, processor, tree, !parallelBA, size);
 			dones = new boolean[getNumTasks()];
 		}
 
@@ -184,6 +221,7 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 			} else {
 				sol = FaultSystemSolution.load(new ArchiveInput.ApacheZipFileInput(solFiles.get(0)));
 			}
+			
 			return sol;
 		}
 
@@ -353,7 +391,22 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 				List<TectonicRegionBranchTreeNode> trtNodes = branch.getValues(TectonicRegionBranchTreeNode.class);
 				if (trtNodes.size() == 1) {
 					// just one, simple
-					doCalculate(branchIndex, trtNodes.get(0).getValue(), solFile);
+					LogicTreeBranch<?> trtBranch = trtNodes.get(0).getValue();
+					FaultSystemSolution sol = doCalculate(branchIndex, trtBranch, solFile);
+					if (nodeBACreators != null) {
+						if (sol == null) {
+							// already existed, load it
+							try {
+								sol = FaultSystemSolution.load(solFile);
+							} catch (IOException e) {
+								e.printStackTrace();
+								nodeBACreators = null;
+							}
+						}
+						if (sol != null && nodeBACreators != null && !AbstractAsyncLogicTreeWriter.processBA(nodeBACreators, sol, branch,
+								tree.getWeightProvider()))
+							nodeBACreators = null;
+					}
 				} else {
 					// multiple
 					try {
@@ -392,6 +445,12 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 									// already existed, load it
 									sol = FaultSystemSolution.load(trtSolFile);
 								}
+								if (nodeBACreators != null) {
+									trtBranch.setOrigBranchWeight(tree.getBranchWeight(branch));
+									if (!AbstractAsyncLogicTreeWriter.processBA(nodeBACreators, sol, trtBranch,
+											ORIGINAL_WEIGHTS, "_"+trt.name()))
+										nodeBACreators = null;
+								}
 								sols.add(sol);
 							} else {
 								debug("Skipping inversion for index "+index+" is for trt="+trt.name()+" (no RupSetFaultModel)");
@@ -428,6 +487,11 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 							}
 						}
 						mergedSol.write(solFile);
+						if (nodeBACreators != null) {
+							if (!AbstractAsyncLogicTreeWriter.processBA(nodeBACreators, mergedSol, branch,
+									tree.getWeightProvider()))
+								nodeBACreators = null;
+						}
 						memoryDebug("DONE combined "+index);
 					} catch (IOException e) {
 						abortAndExit(e);
@@ -435,7 +499,21 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 				}
 			} else {
 				// simple
-				doCalculate(branchIndex, branch, solFile);
+				FaultSystemSolution sol = doCalculate(branchIndex, branch, solFile);
+				if (nodeBACreators != null) {
+					if (sol == null) {
+						// already existed, load it
+						try {
+							sol = FaultSystemSolution.load(solFile);
+						} catch (IOException e) {
+							e.printStackTrace();
+							nodeBACreators = null;
+						}
+					}
+					if (sol != null && nodeBACreators != null && !AbstractAsyncLogicTreeWriter.processBA(nodeBACreators, sol, branch,
+							tree.getWeightProvider()))
+						nodeBACreators = null;
+				}
 			}
 		}
 	}
@@ -519,9 +597,106 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 
 	@Override
 	protected void doFinalAssembly() throws Exception {
+		if (parallelBA) {
+			System.gc();
+			Preconditions.checkState(myNodeBADir.exists() || myNodeBADir.mkdir());
+			// write out node averages
+			if (nodeBACreators != null) {
+				// this means we processed at least some
+				for (String baPrefix : nodeBACreators.keySet()) {
+					
+					// need to write out even if we're rank=0, as the serialized type can be different than the
+					// in memory (which can mess up the averaging step that follows)
+					debug("Building BA sol for "+baPrefix);
+					FaultSystemSolution nodeBASol = nodeBACreators.get(baPrefix).build();
+					File outFile = new File(myNodeBADir, AbstractAsyncLogicTreeWriter.baFile(outputDir, baPrefix).getName());
+					debug("Writing BA sol to "+outFile.getAbsolutePath());
+					nodeBASol.write(outFile);
+				}
+			}
+			nodeBACreators = null;
+			
+			// wait for everyone to write them out
+			if (!SINGLE_NODE_NO_MPJ)
+				MPI.COMM_WORLD.Barrier();
+		}
 		if (rank == 0) {
 			memoryDebug("waiting for any post batch hook operations to finish");
 			((AsyncLogicTreeWriter)postBatchHook).shutdown();
+			
+			if (parallelBA) {
+				// merge in parallel BAs
+				Map<String, double[]> rankWeights = ((AsyncLogicTreeWriter)postBatchHook).getRankWeights();
+				
+				if (!rankWeights.isEmpty()) {
+					// see if we have TRT branches
+					EnumSet<TectonicRegionType> trts = EnumSet.noneOf(TectonicRegionType.class);
+					for (LogicTreeBranch<LogicTreeNode> branch : tree) {
+						List<TectonicRegionBranchTreeNode> trtBranches = branch.getValues(TectonicRegionBranchTreeNode.class);
+						if (trtBranches != null) {
+							for (TectonicRegionBranchTreeNode trtBranch : trtBranches) {
+								if (trtBranch.getValue().hasValue(RupSetFaultModel.class))
+									trts.add(trtBranch.getTectonicRegime());
+							}
+						}
+					}
+					
+					if (!trts.isEmpty()) {
+						// add in trt prefixes
+						for (String baPrefix : List.copyOf(rankWeights.keySet())) {
+							double[] weights = rankWeights.get(baPrefix);
+							for (TectonicRegionType trt : trts)
+								rankWeights.put(baPrefix+"_"+trt.name(), weights);
+						}
+					}
+					Map<String, CompletableFuture<Void>> baProcessFutures = new HashMap<>(rankWeights.size());
+					List<FileBackedNode> rankNodes = new ArrayList<>(size);
+					for (int i=0; i<size; i++)
+						rankNodes.add(new FileBackedNode("Rank "+i, "Rank"+i, Double.NaN, "Rank"+i));
+					FileBackedLevel rankLevel = new FileBackedLevel("Rank", "Rank", rankNodes);
+					for (String baPrefix : rankWeights.keySet()) {
+						double[] baRankWeights = rankWeights.get(baPrefix);
+						
+						BranchAverageSolutionCreator creator = new BranchAverageSolutionCreator(ORIGINAL_WEIGHTS);
+						creator.setMergeMode(true);
+						File baOutFile = AbstractAsyncLogicTreeWriter.baFile(outputDir, baPrefix);
+						
+						for (int r=0; r<size; r++) {
+							if (baRankWeights[r] > 0) {
+								File rankDir = new File(nodesBADir, "rank_"+r);
+								Preconditions.checkState(rankDir.exists(), "Dir doesn't exist: %s", rankDir.getAbsolutePath());
+								// that rank processed this ba prefix
+								File rankBAFile = new File(rankDir, AbstractAsyncLogicTreeWriter.baFile(outputDir, baPrefix).getName());
+								if (!rankBAFile.exists()) {
+									debug("Couldn't locate "+rankBAFile.getAbsolutePath()+", skipping BA for "+baPrefix);
+									baOutFile = null;
+									break;
+								}
+								FaultSystemSolution baSol = FaultSystemSolution.load(rankBAFile);
+								LogicTreeBranch<LogicTreeNode> rankBranch = new LogicTreeBranch<>(List.of(rankLevel));
+								rankBranch.setValue(rankNodes.get(r));
+								rankBranch.setOrigBranchWeight(baRankWeights[r]);
+								CompletableFuture<Void> prevFuture = baProcessFutures.get(baPrefix);
+								if (prevFuture != null)
+									prevFuture.join();
+								baProcessFutures.put(baPrefix, CompletableFuture.runAsync(() -> {
+									creator.addSolution(baSol, rankBranch);
+								}));
+							}
+						}
+						if (baOutFile != null) {
+							CompletableFuture<Void> prevFuture = baProcessFutures.get(baPrefix);
+							if (prevFuture == null)
+								// none encountered
+								continue;
+							prevFuture.join();
+							debug("Writing combined BA to "+baOutFile.getAbsolutePath());
+							creator.build().write(baOutFile);
+						}
+					}
+				}
+			}
+			
 			memoryDebug("post batch hook done");
 		}
 	}
@@ -540,6 +715,10 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 				+ "with the factory's SolutionProcessor before branch averaging");
 		ops.addOption(null, "reprocess-only", false, "Flag to only re-process already completed solutions "
 				+ "with the factory's SolutionProcessor before branch averaging, ensuring that all inversions are already completed");
+		ops.addOption(null, "parallel-ba", false, "Flag to enable branch-averaging in parallel on each individual compute "
+				+ "node, rather than on the main node. Use this if inversion are short and you spend a lot of time "
+				+ "at the end waiting on merging, or if the logic tree contains tectonic-regime-specific solutions "
+				+ "and you also want to branch-average those.");
 		
 		for (Option op : InversionConfiguration.createSAOptions().getOptions())
 			ops.addOption(op);
