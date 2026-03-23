@@ -16,6 +16,7 @@ import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.WeightedValue;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.data.xyzw.GriddedGeoDepthValueDataSet;
+import org.opensha.commons.data.xyzw.GriddedGeoDepthValueDataSet.DepthRediscretizationMethod;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
@@ -23,6 +24,8 @@ import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
+import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
+import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.NSHM26_GridSourceBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.NSHM26_InvConfigFactory;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_DeclusteringAlgorithms;
@@ -264,17 +267,39 @@ public class NSHM26_SeisPDF_Loader {
 
 	public static void main(String[] args) throws IOException {
 		boolean twoD = false;
-		NSHM26_SeismicityRegions region = NSHM26_SeismicityRegions.GNMI;
+//		NSHM26_SeismicityRegions region = NSHM26_SeismicityRegions.GNMI;
+		NSHM26_SeismicityRegions region = NSHM26_SeismicityRegions.AMSAM;
+		File plotDir = new File("/tmp/pdf_plots");
+		Preconditions.checkArgument(plotDir.exists() || plotDir.mkdir());
 		
-		File dir = new File("/home/kevin/OpenSHA/nshm26/data/spatial_seis_pdfs/gnmi/2026_03_09-v1_"+(twoD ? "2D" : "3D"));
+		GeographicMapMaker mapMaker = new GeographicMapMaker(region.load());
+		mapMaker.setWriteGeoJSON(false);
+		mapMaker.setWritePDFs(false);
+		
+		CPT pdfCPT = GMT_CPT_Files.SEQUENTIAL_LAJOLLA_UNIFORM.instance().reverse().rescale(-6d, 0d);
+		pdfCPT.setLog10(true);
+		pdfCPT.setNanColor(new Color(255, 255, 255, 0));
+		
+		File dir = new File("/home/kevin/OpenSHA/nshm26/data/spatial_seis_pdfs/"+region.name().toLowerCase()+"/2026_03_09-v1_"+(twoD ? "2D" : "3D"));
 		for (File subdir : dir.listFiles()) {
 			for (File file : subdir.listFiles()) {
 				if (file.getName().endsWith(".csv")) {
 					System.out.println("Reading:\t"+file.getAbsolutePath());
-					if (twoD)
-						load2D(region, file, true);
-					else
-						load3D(region, file);
+					String plotPrefix = file.getName();
+					plotPrefix = plotPrefix.substring(0, plotPrefix.indexOf(".csv"));
+					if (twoD) {
+						GriddedGeoDataSet pdf = load2D(region, file, true);
+						mapMaker.plotXYZData(pdf, pdfCPT, "PDF");
+						mapMaker.plot(subdir, plotPrefix, " ");
+					} else {
+						GriddedGeoDepthValueDataSet pdf3D = load3D(region, file);
+						mapMaker.plotXYZData(pdf3D.sum2D(), pdfCPT, "PDF");
+						mapMaker.plot(subdir, plotPrefix, " ");
+						
+						pdf3D = pdf3D.rediscretizeDepths(NSHM26_GridSourceBuilder.SLAB_DEPTH_REDISCRETIZATION, DepthRediscretizationMethod.PRESERVE_SUM);
+						mapMaker.plotXYZData(pdf3D.sum2D(), pdfCPT, "PDF (rediscretized)");
+						mapMaker.plot(subdir, plotPrefix+"_rediscr", " ");
+					}
 				}
 			}
 		}
