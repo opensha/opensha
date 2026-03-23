@@ -10,6 +10,7 @@ import org.opensha.commons.util.XMLUtils;
 
 public class CPTVal implements Comparable<CPTVal>, Serializable, Cloneable, XMLSaveable {
 	public static final String XML_METADATA_NAME = "CPTVal";
+    private static final long serialVersionUID = -5043502130615306253L;
 	
 	/*
 	 * In general this information determines the indicator color associated
