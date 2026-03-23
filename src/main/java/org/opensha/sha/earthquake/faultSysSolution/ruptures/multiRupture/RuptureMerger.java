@@ -181,7 +181,8 @@ public class RuptureMerger {
     }
 
     public static boolean isSubduction(ClusterRupture rupture) {
-        return rupture.clusters[0].startSect.getSectionName().contains("row:");
+        TectonicRegionType tectonicRegionType = rupture.clusters[0].startSect.getTectonicRegionType();
+        return tectonicRegionType == TectonicRegionType.SUBDUCTION_INTERFACE || tectonicRegionType == TectonicRegionType.SUBDUCTION_SLAB;
     }
 
     public String setUpKevinsFilters(RuptureMerger merger, StiffnessCalcModule stiffness) {

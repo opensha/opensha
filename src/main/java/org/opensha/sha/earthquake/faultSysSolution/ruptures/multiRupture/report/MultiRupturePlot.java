@@ -11,6 +11,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupCartoonGener
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
+import org.opensha.sha.util.TectonicRegionType;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,6 +44,11 @@ public class MultiRupturePlot {
     public interface ValueForSection {
         Double getValue(FaultSection section);
     }
+    
+    public static boolean isSubduction(FaultSection section){
+        TectonicRegionType tectonicRegionType =section.getTectonicRegionType();
+        return tectonicRegionType == TectonicRegionType.SUBDUCTION_INTERFACE || tectonicRegionType == TectonicRegionType.SUBDUCTION_SLAB;
+    }
 
     public MultiRupturePlot(String prefix, ClusterRupture rup, String title, ValueForSection valueForSection, String valueUnit) {
         this.prefix = prefix;
@@ -71,7 +77,7 @@ public class MultiRupturePlot {
         RupCartoonGenerator.sectCharFun = (section, traceChar, outlineChar) -> {
             List<PlotCurveCharacterstics> chars = new ArrayList<>();
             chars.add(traceChar);
-            if (section.getSectionName().contains("row:")) {
+            if (isSubduction(section)) {
                 chars.add(null);
             } else {
                 chars.add(outlineChar);
@@ -119,7 +125,7 @@ public class MultiRupturePlot {
     public static ValueForSection subductionAsSource(
             AggregatedStiffnessCalculator stiffnessCalculator,
             MultiRuptureStiffnessPlot.RuptureProperties prop) {
-        return s -> s.getSectionName().contains("row:") ?
+        return s ->isSubduction(s) ?
                 stiffnessCalculator.calc(List.of(s), prop.crustal) :
                 stiffnessCalculator.calc(prop.subduction, List.of(s));
     }
@@ -133,7 +139,7 @@ public class MultiRupturePlot {
             MultiRuptureStiffnessPlot.RuptureProperties prop) {
         List<FaultSection> source = new ArrayList<>(prop.crustal);
         source.addAll(prop.subduction);
-        return s -> s.getSectionName().contains("row:") ?
+        return s ->isSubduction(s) ?
                 0 :
                 stiffnessCalculator.calc(source, List.of(s));
     }
@@ -144,7 +150,7 @@ public class MultiRupturePlot {
             double maxDist,
             SectionDistanceAzimuthCalculator disAzCalc) {
         return s -> {
-            if (s.getSectionName().contains("row:")) {
+            if (isSubduction(s)) {
                 List<FaultSection> receivers = filterNear(s, prop.crustal, maxDist, disAzCalc);
                 if (receivers.isEmpty()) {
                     return null;
@@ -166,7 +172,7 @@ public class MultiRupturePlot {
     public static ValueForSection crustalAsSource(
             AggregatedStiffnessCalculator stiffnessCalculator,
             MultiRuptureStiffnessPlot.RuptureProperties prop) {
-        return s -> s.getSectionName().contains("row:") ?
+        return s ->isSubduction(s) ?
                 stiffnessCalculator.calc(prop.crustal, List.of(s)) :
                 stiffnessCalculator.calc(List.of(s), prop.subduction);
     }
@@ -178,7 +184,7 @@ public class MultiRupturePlot {
             double maxDist,
             SectionDistanceAzimuthCalculator disAzCalc) {
         return s -> {
-            if (s.getSectionName().contains("row:")) {
+            if (isSubduction(s)) {
                 List<FaultSection> sources = filterNear(s, prop.crustal, maxDist, disAzCalc);
                 if (sources.isEmpty()) {
                     return null;
@@ -200,7 +206,7 @@ public class MultiRupturePlot {
     public static ValueForSection sectionAsSource(
             AggregatedStiffnessCalculator stiffnessCalculator,
             MultiRuptureStiffnessPlot.RuptureProperties prop) {
-        return s -> s.getSectionName().contains("row:") ?
+        return s ->isSubduction(s) ?
                 stiffnessCalculator.calc(List.of(s), prop.crustal) :
                 stiffnessCalculator.calc(List.of(s), prop.subduction);
     }
@@ -212,7 +218,7 @@ public class MultiRupturePlot {
     public static ValueForSection sectionAsReceiver(
             AggregatedStiffnessCalculator stiffnessCalculator,
             MultiRuptureStiffnessPlot.RuptureProperties prop) {
-        return s -> s.getSectionName().contains("row:") ?
+        return s ->isSubduction(s) ?
                 stiffnessCalculator.calc(prop.crustal, List.of(s)) :
                 stiffnessCalculator.calc(prop.subduction, List.of(s));
     }
