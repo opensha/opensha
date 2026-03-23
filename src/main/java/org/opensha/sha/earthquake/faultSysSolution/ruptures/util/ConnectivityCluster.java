@@ -28,11 +28,11 @@ public class ConnectivityCluster implements Comparable<ConnectivityCluster> {
 	
 	private int numSections;
 	private int numRuptures;
-	private HashSet<Integer> sectIDs;
-	private HashSet<Integer> parentSectIDs;
+	private Set<Integer> sectIDs;
+	private Set<Integer> parentSectIDs;
 	
-	public ConnectivityCluster(int numSections, int numRuptures, HashSet<Integer> sectIDs,
-			HashSet<Integer> parentSectIDs) {
+	public ConnectivityCluster(int numSections, int numRuptures, Set<Integer> sectIDs,
+			Set<Integer> parentSectIDs) {
 		this.numSections = numSections;
 		this.numRuptures = numRuptures;
 		this.sectIDs = sectIDs;

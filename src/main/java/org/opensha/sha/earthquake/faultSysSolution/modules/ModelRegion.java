@@ -11,7 +11,8 @@ import com.google.common.base.Preconditions;
 import com.google.gson.GsonBuilder;
 
 public class ModelRegion implements JSON_TypeAdapterBackedModule<Feature>,
-AverageableModule.ConstantAverageable<ModelRegion>, BranchAverageableModule<ModelRegion>  {
+AverageableModule.ConstantAverageable<ModelRegion>, BranchAverageableModule<ModelRegion>,
+MergeableRuptureModule.ConstantMergeable<ModelRegion> {
 	
 	private Region region;
 	

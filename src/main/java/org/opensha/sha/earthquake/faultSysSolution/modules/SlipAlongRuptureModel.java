@@ -21,6 +21,7 @@ import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.helpers.LargeCSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MergeableRuptureModule.ConstantMergeable;
 import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
 
 import com.google.common.base.Preconditions;
@@ -114,7 +115,8 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module {
 			int rthRup, double[] sectArea, double aveSlip);
 	
 	public static abstract class NamedSlipAlongRuptureModel extends SlipAlongRuptureModel implements ArchivableModule,
-		ConstantAverageable<NamedSlipAlongRuptureModel>, SplittableRuptureModule<NamedSlipAlongRuptureModel>{
+		ConstantAverageable<NamedSlipAlongRuptureModel>, SplittableRuptureModule<NamedSlipAlongRuptureModel>,
+		ConstantMergeable<NamedSlipAlongRuptureModel> {
 		
 		@Override
 		public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {

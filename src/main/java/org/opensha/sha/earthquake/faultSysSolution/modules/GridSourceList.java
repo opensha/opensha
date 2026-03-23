@@ -42,6 +42,8 @@ import org.opensha.sha.earthquake.PointSource.PoissonPointSource;
 import org.opensha.sha.earthquake.PointSource.PoissonPointSourceData;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.aftershocks.MagnitudeDependentAftershockFilter;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.util.MergedSolutionCreator.MergedRupSetMappings;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.PointSurface;
@@ -59,7 +61,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import com.google.common.primitives.Ints;
 
-public abstract class GridSourceList implements GridSourceProvider, ArchivableModule {
+public abstract class GridSourceList implements GridSourceProvider, ArchivableModule, MergeableSolutionModule<GridSourceList> {
 	
 	private LocationList locs;
 	private GriddedRegion gridReg; // can be null
@@ -2369,6 +2371,22 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 			return assoc.keySet();
 		}
 		
+	}
+
+	@Override
+	public GridSourceList getForMergedSolution(FaultSystemSolution mergedSolution, MergedRupSetMappings mappings,
+			List<GridSourceList> originalModules) {
+		List<GridSourceList> remapped = new ArrayList<>(originalModules.size());
+		for (int i=0; i<originalModules.size(); i++) {
+			GridSourceList orig = originalModules.get(i);
+			if (orig != null)
+				remapped.add(remapAssociations(orig, mappings.getSectMappingsOldToNew(i)));
+		}
+		if (remapped.isEmpty())
+			return null;
+		if (remapped.size() == 1)
+			return remapped.get(0);
+		return combine(remapped.toArray(new GridSourceList[remapped.size()]));
 	}
 
 }

@@ -1,6 +1,8 @@
 package org.opensha.sha.earthquake.faultSysSolution.modules;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
@@ -13,6 +15,7 @@ import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
+import org.opensha.sha.earthquake.faultSysSolution.util.MergedSolutionCreator.MergedRupSetMappings;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -20,7 +23,7 @@ import com.google.common.base.Preconditions;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 
 public abstract class AveSlipModule implements SubModule<FaultSystemRupSet>, BranchAverageableModule<AveSlipModule>,
-SplittableRuptureModule<AveSlipModule> {
+SplittableRuptureModule<AveSlipModule>, MergeableRuptureModule<AveSlipModule> {
 	
 	FaultSystemRupSet rupSet;
 
@@ -162,6 +165,18 @@ SplittableRuptureModule<AveSlipModule> {
 		public ModelBased getForSplitRuptureSet(FaultSystemRupSet splitRupSet, RuptureSetSplitMappings mappings) {
 			return new ModelBased(splitRupSet, scale);
 		}
+
+		@Override
+		public AveSlipModule getForMergedRuptureSet(FaultSystemRupSet mergedRupSet, MergedRupSetMappings mappings,
+				List<AveSlipModule> originalModules) {
+			for (AveSlipModule orig : originalModules) {
+				if (orig == null)
+					return null;
+				if (!(orig instanceof ModelBased) || ((ModelBased)orig).scale != scale)
+					return new Precomputed().getForMergedRuptureSet(mergedRupSet, mappings, originalModules);
+			}
+			return new ModelBased(mergedRupSet, scale);
+		}
 		
 	}
 	
@@ -301,6 +316,21 @@ SplittableRuptureModule<AveSlipModule> {
 				splitAveSlips[r] = aveSlips[origID] * mappings.getNewRupWeight(r);
 			}
 			return new Precomputed(splitRupSet, splitAveSlips);
+		}
+
+		@Override
+		public AveSlipModule getForMergedRuptureSet(FaultSystemRupSet mergedRupSet, MergedRupSetMappings mappings,
+				List<AveSlipModule> originalModules) {
+			double[] aveSlips = new double[mergedRupSet.getNumRuptures()];
+			for (int i=0; i<originalModules.size(); i++) {
+				AveSlipModule orig = originalModules.get(i);
+				if (orig == null)
+					return null;
+				Map<Integer, Integer> rupMappings = mappings.getRuptureMappingsOldToNew(i);
+				for (int origRupIndex : rupMappings.keySet())
+					aveSlips[rupMappings.get(origRupIndex)] = orig.getAveSlip(origRupIndex);
+			}
+			return new Precomputed(mergedRupSet, aveSlips);
 		}
 
 	}
