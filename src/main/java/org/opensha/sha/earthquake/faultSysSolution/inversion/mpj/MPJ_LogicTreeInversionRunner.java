@@ -219,6 +219,7 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 					sol.write(avgFile);
 				}
 			} else {
+				// load as ApacheZipFileInput to support direct copy
 				sol = FaultSystemSolution.load(new ArchiveInput.ApacheZipFileInput(solFiles.get(0)));
 			}
 			

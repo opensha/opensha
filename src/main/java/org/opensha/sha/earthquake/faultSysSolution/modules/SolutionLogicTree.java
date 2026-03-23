@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -1000,7 +1001,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		// will use rup-sect indicies file as mappings for a few levels
 		List<? extends LogicTreeLevel<?>> rupSectLevels = getLevelsAffectingFile(
 				FaultSystemRupSet.RUP_SECTS_FILE_NAME, true);
-		if (rupSet.hasModule(RupSetTectonicRegimes.class)) {
+		if (rupSet.hasAvailableModule(RupSetTectonicRegimes.class)) {
 			String trtsFile = getRecordBranchFileName(branch, prefix, RupSetTectonicRegimes.DATA_FILE_NAME, rupSectLevels, mappings);
 			if (!writtenFiles.contains(trtsFile)) {
 				if (!directCopy(input, output, rsPrefix+RupSetTectonicRegimes.DATA_FILE_NAME, trtsFile, inputIsSolArchive)) {
@@ -1019,7 +1020,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			writtenFiles.add(ratesFile);
 		}
 		
-		if (sol.hasModule(RupMFDsModule.class)) {
+		if (sol.hasAvailableModule(RupMFDsModule.class)) {
 			String mfdsFile = getRecordBranchFileName(branch, prefix, RupMFDsModule.FILE_NAME, true, mappings);
 			if (!writtenFiles.contains(mfdsFile)) {
 				if (!directCopy(input, output, solPrefix+RupMFDsModule.FILE_NAME, mfdsFile, inputIsSolArchive)) {
@@ -1032,47 +1033,44 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		if (constantGridProv != null) {
 			mappings.putAll(writeGridProvToArchive(constantGridProv, output, prefix, null, writtenFiles));
-		} else if (serializeGridded && sol.hasModule(GridSourceProvider.class)) {
+		} else if (serializeGridded && sol.hasAvailableModule(GridSourceProvider.class)) {
 			GridSourceProvider prov = sol.getModule(GridSourceProvider.class);
-			// TODO direct
-			mappings.putAll(writeGridProvToArchive(prov, output, prefix, branch, writtenFiles));
+			mappings.putAll(writeGridProvToArchive(prov, output, prefix, branch, writtenFiles, input, inputIsSolArchive));
 		}
 		
-		InversionMisfitStats misfitStats = sol.getModule(InversionMisfitStats.class);
-		if (misfitStats == null && sol.hasModule(InversionMisfits.class))
-			misfitStats = sol.requireModule(InversionMisfits.class).getMisfitStats();
-		
-		if (misfitStats != null) {
+		if (sol.hasAvailableModule(InversionMisfitStats.class) || sol.hasModule(InversionMisfits.class)) {
 			String statsFile = getRecordBranchFileName(branch, prefix,
 					InversionMisfitStats.MISFIT_STATS_FILE_NAME, true, mappings);
 			if (!writtenFiles.contains(statsFile)) {
 				if (!directCopy(input, output, solPrefix+InversionMisfitStats.MISFIT_STATS_FILE_NAME, statsFile, inputIsSolArchive)) {
+					InversionMisfitStats misfitStats = sol.getModule(InversionMisfitStats.class);
+					if (misfitStats == null && sol.hasModule(InversionMisfits.class))
+						misfitStats = sol.requireModule(InversionMisfits.class).getMisfitStats();
 					CSV_BackedModule.writeToArchive(misfitStats.getCSV(), output, entryPrefix, statsFile);
 				}
 				writtenFiles.add(statsFile);
 			}
 		}
 		
-		AnnealingProgress progress = sol.getModule(AnnealingProgress.class);
 		
-		if (progress != null) {
+		if (sol.hasAvailableModule(AnnealingProgress.class)) {
 			String progressFile = getRecordBranchFileName(branch, prefix,
 					AnnealingProgress.PROGRESS_FILE_NAME, true, mappings);
 			if (!writtenFiles.contains(progressFile)) {
 				if (!directCopy(input, output, solPrefix+AnnealingProgress.PROGRESS_FILE_NAME, progressFile, inputIsSolArchive)) {
+					AnnealingProgress progress = sol.getModule(AnnealingProgress.class);
 					CSV_BackedModule.writeToArchive(progress.getCSV(), output, entryPrefix, progressFile);
 				}
 				writtenFiles.add(progressFile);
 			}
 		}
 		
-		InversionMisfitProgress misfitProgress = sol.getModule(InversionMisfitProgress.class);
-		
-		if (misfitProgress != null) {
+		if (sol.hasAvailableModule(InversionMisfitProgress.class)) {
 			String progressFile = getRecordBranchFileName(branch, prefix,
 					InversionMisfitProgress.MISFIT_PROGRESS_FILE_NAME, true, mappings);
 			if (!writtenFiles.contains(progressFile)) {
 				if (!directCopy(input, output, solPrefix+InversionMisfitProgress.MISFIT_PROGRESS_FILE_NAME, progressFile, inputIsSolArchive)) {
+					InversionMisfitProgress misfitProgress = sol.getModule(InversionMisfitProgress.class);
 					CSV_BackedModule.writeToArchive(misfitProgress.getCSV(), output, entryPrefix, progressFile);
 				}
 				writtenFiles.add(progressFile);
@@ -1083,11 +1081,11 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		String plausibilityFile = getBranchFileName(branch, prefix,
 				PlausibilityConfiguration.JSON_FILE_NAME, rupSectLevels);
 		if (!writtenFiles.contains(plausibilityFile)) {
-			PlausibilityConfiguration plausibility = rupSet.getModule(PlausibilityConfiguration.class);
 			
-			if (plausibility != null) {
+			if (rupSet.hasAvailableModule(PlausibilityConfiguration.class)) {
 				if (!writtenFiles.contains(plausibilityFile)) {
 					if (!directCopy(input, output, rsPrefix+PlausibilityConfiguration.JSON_FILE_NAME, plausibilityFile, inputIsSolArchive)) {
+						PlausibilityConfiguration plausibility = rupSet.getModule(PlausibilityConfiguration.class);
 						plausibility.writeToArchive(output, entryPrefix, plausibilityFile);
 					}
 					writtenFiles.add(plausibilityFile);
@@ -1225,6 +1223,44 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		return mappings;
 	}
 	
+//	protected Map<String, String> writeGridListToArchive(Supplier<GridSourceList> gridListSupplier, ArchiveOutput output, String prefix,
+//			LogicTreeBranch<?> branch, HashSet<String> writtenFiles, ArchiveInput input, boolean inputIsSolArchive) throws IOException {
+//		GridSourceList gridSources = (GridSourceList)prov;
+//		
+//		if (gridSources.getGriddedRegion() != null) {
+//			String gridRegFile = getRecordBranchFileName(branch, prefix,
+//					GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, false, mappings);
+//			if (gridRegFile != null && !writtenFiles.contains(gridRegFile)) {
+//				if (!directCopy(input, output, solPrefix+GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, gridRegFile, inputIsSolArchive)) {
+//					FileBackedModule.initEntry(output, null, gridRegFile);
+//					Feature regFeature = gridSources.getGriddedRegion().toFeature();
+//					OutputStreamWriter writer = new OutputStreamWriter(output.getOutputStream());
+//					Feature.write(regFeature, writer);
+//					writer.flush();
+//					output.closeEntry();
+//				}
+//				writtenFiles.add(gridRegFile);
+//			}
+//		}
+//
+//		String locsFile = getRecordBranchFileName(branch, prefix,
+//				GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME, false, mappings);
+//		if (locsFile != null && !writtenFiles.contains(locsFile)) {
+//			if (!directCopy(input, output, solPrefix+GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME, locsFile, inputIsSolArchive)) {
+//				CSV_BackedModule.writeToArchive(gridSources.buildGridLocsCSV(), output, null, locsFile);
+//			}
+//			writtenFiles.add(locsFile);
+//		}
+//		String sourcesFile = getRecordBranchFileName(branch, prefix,
+//				GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME, true, mappings);
+//		if (sourcesFile != null && !writtenFiles.contains(sourcesFile)) {
+//			if (!directCopy(input, output, solPrefix+GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME, sourcesFile, inputIsSolArchive)) {
+//				gridSources.writeGridSourcesCSV(output, sourcesFile);
+//			}
+//			writtenFiles.add(sourcesFile);
+//		}
+//	}
+	
 	protected boolean directCopy(ArchiveInput input, ArchiveOutput output, String origFileName,
 			String outputFileName, boolean useOrigFileName) throws IOException {
 		if (input == null)
@@ -1236,8 +1272,10 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 				"directCopy name mismatch, probably a typo? origFileName='%s'; outputFileName='%s'",
 				origFileName, outputFileName);
 		String inputName = useOrigFileName ? origFileName : outputFileName;
-		if (!input.hasEntry(inputName))
+		if (!input.hasEntry(inputName)) {
+			System.out.println("DIRECTCOPY DEBUG: don't have '"+inputName+"' with origName='"+origFileName+"'to copy to '"+outputFileName+"'");
 			return false;
+		}
 		output.transferFrom(input, inputName, outputFileName);
 		return true;
 	}
