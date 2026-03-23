@@ -850,6 +850,22 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	}
 
 	@Override
+	public Location getFirstLocOnLowerEdge() {
+		double hDistance = width * Math.cos( dipRad );
+		double vDistance = width * Math.sin(dipRad);
+		LocationVector dir = new LocationVector(avgDipDirDeg, hDistance, vDistance);
+		return LocationUtils.location(getFirstLocOnUpperEdge(), dir);
+	}
+
+	@Override
+	public Location getLastLocOnLowerEdge() {
+		double hDistance = width * Math.cos( dipRad );
+		double vDistance = width * Math.sin(dipRad);
+		LocationVector dir = new LocationVector(avgDipDirDeg, hDistance, vDistance);
+		return LocationUtils.location(getLastLocOnUpperEdge(), dir);
+	}
+
+	@Override
 	public double getFractionOfSurfaceInRegion(Region region) {
 		// TODO Auto-generated method stub
 		throw new RuntimeException("not yet implemented");

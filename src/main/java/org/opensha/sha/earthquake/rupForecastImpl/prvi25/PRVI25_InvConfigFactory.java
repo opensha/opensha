@@ -357,7 +357,7 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 					.forScalingRelationship(scale).build();
 			if (plausibility != null)
 				rupSet.addModule(plausibility);
-			rupSet.addModule(ClusterRuptures.singleStranged(rupSet));
+			rupSet.addModule(ClusterRuptures.singleStranded(rupSet));
 		} else {
 			rupSet = ClusterRuptureBuilder.buildClusterRupSet(scale, subSects, plausibility, cRups.getAll());
 		}
@@ -477,7 +477,7 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 
 				@Override
 				public ClusterRuptures call() throws Exception {
-					return ClusterRuptures.singleStranged(rupSet);
+					return ClusterRuptures.singleStranded(rupSet);
 				}
 			}, ClusterRuptures.class);
 			

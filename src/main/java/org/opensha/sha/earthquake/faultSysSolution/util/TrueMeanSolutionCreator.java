@@ -469,7 +469,7 @@ public class TrueMeanSolutionCreator {
 		
 		FaultSystemRupSet avgRupSet = new FaultSystemRupSet(uniqueSects, globalSectsForRups, avgMags, rakes, areas, lengths);
 		if (allSingleStranded)
-			avgRupSet.addModule(ClusterRuptures.singleStranged(avgRupSet));
+			avgRupSet.addModule(ClusterRuptures.singleStranded(avgRupSet));
 		
 		if (rupTRTs != null)
 			avgRupSet.addModule(new RupSetTectonicRegimes(avgRupSet, rupTRTs.toArray(new TectonicRegionType[0])));
@@ -540,7 +540,7 @@ public class TrueMeanSolutionCreator {
 				cRups = sol.getRupSet().getModule(ClusterRuptures.class);
 				if (cRups == null) {
 					System.err.println("WARNING: Building ClusterRuptures and assuming single-stranded");
-					cRups = ClusterRuptures.singleStranged(sol.getRupSet());
+					cRups = ClusterRuptures.singleStranded(sol.getRupSet());
 					sol.getRupSet().addModule(cRups);
 				}
 			} else {

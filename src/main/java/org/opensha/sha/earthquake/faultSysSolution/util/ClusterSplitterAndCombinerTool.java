@@ -279,7 +279,7 @@ public class ClusterSplitterAndCombinerTool {
 						.build();
 				
 				if (allSingleStranded)
-					fullRupSet.addModule(ClusterRuptures.singleStranged(fullRupSet));
+					fullRupSet.addModule(ClusterRuptures.singleStranded(fullRupSet));
 			} else {
 				Preconditions.checkState(allHaveMappings, "A full rupture set was passed in, but the input cluster-specific "
 						+ "rupture sets don't contain the RuptureSubSetMappings needed to map them back to the original "

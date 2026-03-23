@@ -61,7 +61,7 @@ public class RupSetMetadata {
 		ClusterRuptures cRups = rupSet.getModule(ClusterRuptures.class);
 		if (cRups == null)
 			// assume single stranded for our purposes here
-			cRups = ClusterRuptures.singleStranged(rupSet);
+			cRups = ClusterRuptures.singleStranded(rupSet);
 		jumpRates = sol == null ? null : new HashMap<>();
 		jumpRupsMap = new HashMap<>();
 		int numSingleStrandRuptures = 0;

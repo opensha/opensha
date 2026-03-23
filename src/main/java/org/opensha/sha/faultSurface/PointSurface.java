@@ -527,6 +527,16 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	}
 
 	@Override
+	public Location getFirstLocOnLowerEdge() {
+		return pointLocation;
+	}
+
+	@Override
+	public Location getLastLocOnLowerEdge() {
+		return pointLocation;
+	}
+
+	@Override
 	public double getFractionOfSurfaceInRegion(Region region) {
 		if(region.contains(pointLocation))
 			return 1.0;

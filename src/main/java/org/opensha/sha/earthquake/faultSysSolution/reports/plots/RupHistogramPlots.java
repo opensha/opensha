@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import org.jfree.chart.ui.RectangleEdge;
 import org.jfree.data.Range;
@@ -1071,10 +1072,22 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			this.sol = sol;
 			this.rups = rups;
 			
-			values = new ArrayList<>();
+			
 			System.out.println("Calculating "+scalar.getName()+" for "+rups.size()+" ruptures");
-			for (int r=0; r<rups.size(); r++)
-				values.add(scalar.getValue(r, rupSet, rups.get(r), distAzCalc));
+			if (scalar.isParallel()) {
+				List<CompletableFuture<Double>> futures = new ArrayList<>(rups.size());
+				for (int r=0; r<rups.size(); r++) {
+					int rupIndex = r;
+					futures.add(CompletableFuture.supplyAsync(() -> (Double)scalar.getValue(rupIndex, rupSet, rups.get(rupIndex), distAzCalc)));
+				}
+				values = new ArrayList<>(rups.size());
+				for (CompletableFuture<Double> future : futures)
+					values.add(future.join());
+			} else {
+				values = new ArrayList<>(rups.size());
+				for (int r=0; r<rups.size(); r++)
+					values.add(scalar.getValue(r, rupSet, rups.get(r), distAzCalc));
+			}
 		}
 
 		/**
@@ -1308,6 +1321,11 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			public double[] getExampleRupPlotFractiles() {
 				return example_fractiles_default;
 			}
+			
+			@Override
+			public boolean isParallel() {
+				return true;
+			}
 		},
 		IDEAL_LEN_DIFF("Ideal Length Difference", "Ideal Length Difference",
 				"The difference between the total length of this rupture and the 'idealized length,' which we "
@@ -1335,6 +1353,11 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			@Override
 			public double[] getExampleRupPlotFractiles() {
 				return example_fractiles_default;
+			}
+			
+			@Override
+			public boolean isParallel() {
+				return true;
 			}
 		},
 		RAKE("Rake", "Rake (degrees)",
@@ -1465,6 +1488,11 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			public double[] getExampleRupPlotFractiles() {
 				return new double[] { 1d, 0.5, 0.1, 0.05, 0.025, 0.01, 0.001, 0 };
 			}
+			
+			@Override
+			public boolean isParallel() {
+				return true;
+			}
 		},
 		MAX_SLIP_DIFF("Max Slip Rate Difference", "Section Max - Min Slip Rate in Rupture (mm/yr)",
 				"The difference between the slip rate of the sections with the highest and lowest "
@@ -1497,6 +1525,11 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			public double[] getExampleRupPlotFractiles() {
 				return example_fractiles_default;
 			}
+			
+			@Override
+			public boolean isParallel() {
+				return true;
+			}
 		};
 		
 		private String name;
@@ -1510,6 +1543,10 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 		}
 		
 		public boolean isLogX() {
+			return false;
+		}
+		
+		public boolean isParallel() {
 			return false;
 		}
 		

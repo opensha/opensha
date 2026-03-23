@@ -427,7 +427,7 @@ public class SlipRateSegmentationConstraint extends InversionConstraint {
 			Preconditions.checkState(rupSet.hasModule(SectSlipRates.class),
 					"Rupture set does not have slip rate data");
 			if (!rupSet.hasModule(ClusterRuptures.class))
-				rupSet.addModule(ClusterRuptures.singleStranged(rupSet));
+				rupSet.addModule(ClusterRuptures.singleStranded(rupSet));
 		}
 	}
 

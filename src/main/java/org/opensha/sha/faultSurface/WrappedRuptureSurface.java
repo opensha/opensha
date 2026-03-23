@@ -173,6 +173,18 @@ public abstract class WrappedRuptureSurface implements RuptureSurface {
 	}
 
 	@Override
+	public Location getFirstLocOnLowerEdge() {
+		// passthrough
+		return surf.getFirstLocOnLowerEdge();
+	}
+
+	@Override
+	public Location getLastLocOnLowerEdge() {
+		// passthrough
+		return surf.getLastLocOnLowerEdge();
+	}
+
+	@Override
 	public double getFractionOfSurfaceInRegion(Region region) {
 		// passthrough
 		return surf.getFractionOfSurfaceInRegion(region);

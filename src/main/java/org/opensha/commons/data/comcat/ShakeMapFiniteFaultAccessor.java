@@ -228,7 +228,7 @@ public class ShakeMapFiniteFaultAccessor {
 			surfs.add(EdgeRuptureSurface.build(outline, MAX_GRID_SPACING));
 		if (surfs.size() == 1)
 			return surfs.get(0);
-		return new CompoundSurface(surfs);
+		return CompoundSurface.get(surfs);
 	}
 	
 	private static LocationList[] parseFaultTextFile(URL url) throws IOException {
