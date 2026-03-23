@@ -30,10 +30,9 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.SolutionProcessor;
-import org.opensha.sha.earthquake.faultSysSolution.treeCombiners.SolutionLogicTreeCombinationProcessor;
-import org.opensha.sha.earthquake.faultSysSolution.treeCombiners.SolutionLogicTreeCombinationProcessor.CombinedRupSetMappings;
 import org.opensha.sha.earthquake.faultSysSolution.util.AverageSolutionCreator;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.earthquake.faultSysSolution.util.MergedSolutionCreator;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -380,9 +379,8 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 							debug("will reprocess combined "+index);
 						}
 						File parentDir = solFile.getParentFile();
-						FaultSystemSolution curCombSol = null;
-						int numCombinations = 0;
-						List<GridSourceList> gridProvs = new ArrayList<>(trtNodes.size());
+						List<FaultSystemSolution> sols = new ArrayList<>(trtNodes.size());
+						List<GridSourceProvider> individualGridProvs = new ArrayList<>(trtNodes.size());
 						for (int i=0; i<trtNodes.size(); i++) {
 							LogicTreeBranch<?> trtBranch = trtNodes.get(i).getValue();
 							TectonicRegionType trt = trtNodes.get(i).getTectonicRegime();
@@ -394,63 +392,42 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 									// already existed, load it
 									sol = FaultSystemSolution.load(trtSolFile);
 								}
-								GridSourceProvider gridProv = sol.getGridSourceProvider();
-								if (curCombSol == null) {
-									curCombSol = sol;
-								} else {
-									// need to combine them
-									numCombinations++;
-									FaultSystemSolution prevComb = curCombSol;
-									curCombSol = SolutionLogicTreeCombinationProcessor.combineSols(curCombSol, sol, true);
-									
-									// TODO temporary
-									System.err.println("TODO: implement combinable modules; manually copying over select modules");
-									FaultSystemRupSet prevRupSet = prevComb.getRupSet();
-									FaultSystemRupSet curRupSet = curCombSol.getRupSet();
-									if (prevRupSet.hasModule(ModelRegion.class))
-										curRupSet.addModule(prevRupSet.getModule(ModelRegion.class));
-									if (prevRupSet.hasModule(RegionsOfInterest.class))
-										curRupSet.addModule(prevRupSet.getModule(RegionsOfInterest.class));
-									
-									CombinedRupSetMappings mappings = curCombSol.getRupSet().requireModule(CombinedRupSetMappings.class);
-									if (gridProv != null) {
-										// remap associations
-										Preconditions.checkState(gridProv instanceof GridSourceList,
-												"Only GridSourceList supported for TRT combination of gridProvs");
-										GridSourceList gridList = (GridSourceList)gridProv;
-										gridProv = GridSourceList.remapAssociations(gridList, mappings.getInnerSectMappings());
-									}
-									if (numCombinations > 1) {
-										// we've done this multiple times, section mappings are now useless, remove
-										curCombSol.getRupSet().removeModuleInstances(CombinedRupSetMappings.class);
-									}
-								}
-								if (gridProv != null) {
-									// combining below will *not* combine grid provs, do it separately
-									Preconditions.checkState(gridProv instanceof GridSourceList,
-											"Only GridSourceList supported for TRT combination of gridProvs");
-									gridProvs.add((GridSourceList)gridProv);
-								}
+								sols.add(sol);
 							} else {
 								debug("Skipping inversion for index "+index+" is for trt="+trt.name()+" (no RupSetFaultModel)");
 								// still might need to build a grid prov
 								GridSourceProvider gridProv = checkBuildSingleGridProv(index, null, trtBranch);
-								if (gridProv != null) {
-									Preconditions.checkState(gridProv instanceof GridSourceList,
-											"Only GridSourceList supported for TRT combination of gridProvs");
-									gridProvs.add((GridSourceList)gridProv);
-								}
+								if (gridProv != null)
+									individualGridProvs.add((GridSourceList)gridProv);
 							}
 						}
-						Preconditions.checkNotNull(curCombSol, "Have no combined solution?");
-						if (gridProvs.size() == 1) {
-							curCombSol.setGridSourceProvider(gridProvs.get(0));
-						} else if (gridProvs.size() > 1) {
-							// combine them
-							debug("combining "+gridProvs.size()+" gridProvs for "+index);
-							curCombSol.setGridSourceProvider(GridSourceList.combine(gridProvs.toArray(new GridSourceList[gridProvs.size()])));
+						FaultSystemSolution mergedSol = null;
+						Preconditions.checkState(!sols.isEmpty(), "No TRTs produced solutions");
+						if (sols.size() == 1) {
+							mergedSol = sols.get(0);
+						} else {
+							mergedSol = MergedSolutionCreator.merge(sols);
 						}
-						curCombSol.write(solFile);
+						if (!individualGridProvs.isEmpty()) {
+							GridSourceProvider solGridProv = mergedSol.getGridSourceProvider();
+							if (solGridProv != null)
+								individualGridProvs.add(solGridProv);
+							// merge it/them in
+							if (individualGridProvs.size() == 1) {
+								// just 1, no merging necessary
+								mergedSol.setGridSourceProvider(individualGridProvs.get(0));
+							} else {
+								GridSourceList[] combArray = new GridSourceList[individualGridProvs.size()];
+								for (int i=0; i<individualGridProvs.size(); i++) {
+									GridSourceProvider indvProv = individualGridProvs.get(i);
+									Preconditions.checkState(indvProv instanceof GridSourceList,
+											"Only GridSourceList supported for TRT combination of gridProvs");
+									combArray[i] = (GridSourceList)indvProv;
+								}
+								mergedSol.setGridSourceProvider(GridSourceList.combine(combArray));
+							}
+						}
+						mergedSol.write(solFile);
 						memoryDebug("DONE combined "+index);
 					} catch (IOException e) {
 						abortAndExit(e);
