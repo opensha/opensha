@@ -4,13 +4,17 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MergeableRuptureModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MergeableSolutionModule;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -118,8 +122,56 @@ public class MergedSolutionCreator {
 		}
 
 		FaultSystemRupSet mergedRupSet = new FaultSystemRupSet(mergedSects, sectionForRups, mags, rakes, rupAreas, rupLengths);
-		mergedRupSet.addModule(new MergedRupSetMappings(sectMappingsOldToNew, rupMappingsOldToNew));
-		return new FaultSystemSolution(mergedRupSet, rates);
+		MergedRupSetMappings mappings = new MergedRupSetMappings(sectMappingsOldToNew, rupMappingsOldToNew);
+		mergedRupSet.addModule(mappings);
+		for (OpenSHA_Module module : getMergeableRuptureModules(sols).values()) {
+			OpenSHA_Module mergedModule = mergeRuptureModule(module, mergedRupSet, mappings, sols);
+			if (mergedModule != null)
+				mergedRupSet.addModule(mergedModule);
+		}
+		FaultSystemSolution mergedSol = new FaultSystemSolution(mergedRupSet, rates);
+		for (OpenSHA_Module module : getMergeableSolutionModules(sols).values()) {
+			OpenSHA_Module mergedModule = mergeSolutionModule(module, mergedSol, mappings, sols);
+			if (mergedModule != null)
+				mergedSol.addModule(mergedModule);
+		}
+		return mergedSol;
+	}
+	
+	private static Map<Class<? extends OpenSHA_Module>, OpenSHA_Module> getMergeableRuptureModules(FaultSystemSolution... sols) {
+		Map<Class<? extends OpenSHA_Module>, OpenSHA_Module> ret = new LinkedHashMap<>();
+		for (FaultSystemSolution sol : sols)
+			for (OpenSHA_Module module : sol.getRupSet().getModulesAssignableTo(MergeableRuptureModule.class, true))
+				ret.putIfAbsent(module.getClass(), module);
+		return ret;
+	}
+	
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private static OpenSHA_Module mergeRuptureModule(OpenSHA_Module module, FaultSystemRupSet mergedRupSet,
+			MergedRupSetMappings mappings, FaultSystemSolution... sols) {
+		Class moduleClass = module.getClass();
+		List<OpenSHA_Module> originalModules = new ArrayList<>(sols.length);
+		for (FaultSystemSolution sol : sols)
+			originalModules.add(sol.getRupSet().getModule(moduleClass));
+		return ((MergeableRuptureModule)module).getForMergedRuptureSet(mergedRupSet, mappings, originalModules);
+	}
+	
+	private static Map<Class<? extends OpenSHA_Module>, OpenSHA_Module> getMergeableSolutionModules(FaultSystemSolution... sols) {
+		Map<Class<? extends OpenSHA_Module>, OpenSHA_Module> ret = new LinkedHashMap<>();
+		for (FaultSystemSolution sol : sols)
+			for (OpenSHA_Module module : sol.getModulesAssignableTo(MergeableSolutionModule.class, true))
+				ret.putIfAbsent(module.getClass(), module);
+		return ret;
+	}
+	
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private static OpenSHA_Module mergeSolutionModule(OpenSHA_Module module, FaultSystemSolution mergedSol,
+			MergedRupSetMappings mappings, FaultSystemSolution... sols) {
+		Class moduleClass = module.getClass();
+		List<OpenSHA_Module> originalModules = new ArrayList<>(sols.length);
+		for (FaultSystemSolution sol : sols)
+			originalModules.add(sol.getModule(moduleClass));
+		return ((MergeableSolutionModule)module).getForMergedSolution(mergedSol, mappings, originalModules);
 	}
 
 	public static class MergedRupSetMappings implements JSON_BackedModule {
