@@ -47,6 +47,11 @@ public class BranchSectNuclMFDs extends AbstractBranchMFDs {
 			return sol.calcNucleationMFD_forSect(
 					sectID, refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
 		}
+
+		@Override
+		public Class<? extends BranchSectNuclMFDs> getBuiltType() {
+			return BranchSectNuclMFDs.class;
+		}
 	}
 	
 	public static void combine(List<BranchSectNuclMFDs> mfdsList, List<Double> weights) {

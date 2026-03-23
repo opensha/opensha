@@ -202,6 +202,67 @@ abstract class AbstractBranchMFDs implements FileBackedModule {
 		
 		protected abstract E init();
 		
+		@Override
+		public void process(E other) {
+			int numSects;
+			if (branchSectMFDs == null) {
+				// first time, initialize lists
+				branchSectMFDs = new ArrayList<>();
+				branchSectMinMagIndexes = new ArrayList<>();
+				weights = new ArrayList<>();
+				
+				parents = other.isParentSections();
+				if (parents) {
+					Preconditions.checkNotNull(other.parentIDtoIndexMap);
+					parentIDs = new ArrayList<>(other.parentIDtoIndexMap.size());
+					for (int i=0; i<other.parentIDtoIndexMap.size(); i++)
+						parentIDs.add(other.parentIDtoIndexMap.inverse().get(i));
+					Preconditions.checkState(!parentIDs.isEmpty());
+					numSects = parentIDs.size();
+				} else {
+					numSects = other.branchSectMFDs[0].length;
+				}
+			} else {
+				Preconditions.checkState(parents == other.isParentSections());
+				if (parents) {
+					numSects = branchSectMFDs.get(0).length;
+					Preconditions.checkNotNull(other.parentIDtoIndexMap);
+					Preconditions.checkState(numSects == other.parentIDtoIndexMap.size());
+					for (int i=0; i<numSects; i++)
+						Preconditions.checkState(parentIDs.get(i).intValue() == other.parentIDtoIndexMap.inverse().get(i).intValue());
+				} else {
+					numSects = branchSectMFDs.get(0).length;
+					Preconditions.checkState(numSects == other.branchSectMFDs[0].length);
+				}
+			}
+			
+			Preconditions.checkState((float)other.refMFD.getDelta() == (float)refMFD.getDelta());
+			int refStartIndex = refMFD.getClosestXIndex(other.refMFD.getMinX());
+			Preconditions.checkState((float)refMFD.getX(refStartIndex) == (float)other.refMFD.getMinX());
+			
+			for (int b=0; b<other.weights.length; b++) {
+				float[][] sectMFDs = other.branchSectMFDs[b];
+				Preconditions.checkState(sectMFDs.length == numSects);
+				short[] minMagIndexes = new short[numSects];
+				int branchMinIndex = Integer.MAX_VALUE;
+				int branchMaxIndex = 0;
+				for (int s=0; s<numSects; s++) {
+					float[] mfdVals = sectMFDs[s];
+					if (mfdVals == null || mfdVals.length == 0)
+						continue;
+					int origMinMagIndex = refStartIndex + other.branchSectMinMagIndexes[b][s];
+					minMagIndexes[s] = (short)origMinMagIndex;
+					branchMinIndex = Integer.min(branchMinIndex, origMinMagIndex);
+					branchMaxIndex = Integer.max(branchMaxIndex, origMinMagIndex + mfdVals.length - 1);
+				}
+				minMagIndex = Integer.min(minMagIndex, branchMinIndex);
+				maxMagIndex = Integer.max(maxMagIndex, branchMaxIndex);
+				branchSectMFDs.add(sectMFDs);
+				branchSectMinMagIndexes.add(minMagIndexes);
+				weights.add(other.weights[b]);
+			}
+		}
+		
 		public E build() {
 			E ret = init();
 			

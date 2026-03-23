@@ -171,6 +171,7 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 			return weights == null ? 0 : weights.size();
 		}
 
+		@Override
 		public synchronized void process(BranchRegionalMFDs mfds) {
 			int numROI = mfds.supraRegionalBranchMFDs == null ? 0 : mfds.supraRegionalBranchMFDs.size();
 			processInitCheck(numROI, mfds.hasGridded());
@@ -306,6 +307,11 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 			for (int i=0; i<mfd.size(); i++)
 				ret.set(i+offset, mfd.getY(i));
 			return ret;
+		}
+
+		@Override
+		public Class<? extends BranchRegionalMFDs> getBuiltType() {
+			return BranchRegionalMFDs.class;
 		}
 	}
 	

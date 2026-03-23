@@ -104,6 +104,8 @@ public class BranchAverageSolutionCreator {
 	
 	private LogicTreeRateStatistics.Builder rateStatsBuilder;
 	
+	// if true, we're merging previously-built branch-averaged solutions and should merge any builders un-weighted
+	private boolean mergeMode = false;
 	private List<BranchModuleBuilder<FaultSystemSolution, ?>> solBranchModuleBuilders;
 	
 	private ExecutorService exec;
@@ -120,6 +122,15 @@ public class BranchAverageSolutionCreator {
 		skipModules.add(clazz);
 		if (SolutionSlipRates.class.isAssignableFrom(clazz))
 			accumulatingSlipRates = false;
+	}
+	
+	/**
+	 * If true, assume that we're merging previously-built branch-averaged solutions and thus should merge any
+	 * solution branch accumulators as is and without weighting
+	 * @param mergeMode
+	 */
+	public void setMergeMode(boolean mergeMode) {
+		this.mergeMode = mergeMode;
 	}
 
 	public synchronized void addSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
@@ -403,7 +414,22 @@ public class BranchAverageSolutionCreator {
 		@Override
 		public void run() {
 			try {
-				builder.process(source, branch, weight);
+				if (mergeMode) {
+					// we're merging
+					OpenSHA_Module prev = source.getModule(builder.getBuiltType());
+					if (prev == null) {
+						synchronized (builders) {
+							System.err.println("Couldn't merge branch module builder (missing "+builder.getBuiltType()
+									+", will no longer process "+builder.getClass().getName());
+							System.err.flush();
+							builders.remove(builder);
+						}
+					} else {
+						processPreviouslyBuiltUnchecked(builder, prev);
+					}
+				} else {
+					builder.process(source, branch, weight);
+				}
 			} catch (Exception e) {
 				synchronized (builders) {
 //					e.printStackTrace();
@@ -416,6 +442,11 @@ public class BranchAverageSolutionCreator {
 			}
 		}
 		
+	}
+	
+	@SuppressWarnings("unchecked")
+	private <M extends OpenSHA_Module> void processPreviouslyBuiltUnchecked(BranchModuleBuilder<?, M> builder, Object built) {
+		builder.process((M)built);
 	}
 	
 	private static <E extends ModuleContainer<OpenSHA_Module>> void buildBranchModules(List<BranchModuleBuilder<E, ?>> builders, 
