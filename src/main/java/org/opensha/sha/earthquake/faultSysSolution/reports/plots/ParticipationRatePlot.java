@@ -32,7 +32,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 
 public class ParticipationRatePlot extends AbstractSolutionPlot implements SolidFillPlot {
 
-	boolean fillSurfaces = false;
+	Boolean fillSurfaces = null;
 
 	@Override
 	public void setFillSurfaces(boolean fillSurfaces){
@@ -96,13 +96,38 @@ public class ParticipationRatePlot extends AbstractSolutionPlot implements Solid
 			magLabels.add("M≥9");
 			magPrefixes.add("m9");
 		}
-		
-		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(-8, -1);
+
+		double minNonZeroRate = Double.POSITIVE_INFINITY;
+		double maxRate = 0d;
+		for (double rate : sol.calcTotParticRateForAllSects()) {
+			if (rate > 0d) {
+				minNonZeroRate = Math.min(minNonZeroRate, rate);
+				maxRate = Math.max(maxRate, rate);
+			}
+		}
+		double cptLower;
+		if (minNonZeroRate >= 1e-4)
+			cptLower = -5;
+		else
+			cptLower = Math.max(-8, Math.floor(Math.log10(minNonZeroRate))-1);
+		double cptUpper;
+		if (maxRate > 0.2) {
+			double logMax = Math.log10(maxRate);
+			if (logMax - Math.floor(logMax) > 0.2)
+				cptUpper = Math.ceil(logMax);
+			else
+				cptUpper = Math.floor(logMax);
+		} else {
+			cptUpper = -1;
+		}
+		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(cptLower, cptUpper);
+		cpt.setLog10(true);
 		cpt.setNanColor(Color.GRAY);
 		
 		GeographicMapMaker mapMaker = new RupSetMapMaker(sol.getRupSet(), meta.region);
 		mapMaker.setWriteGeoJSON(true);
-		mapMaker.setFillSurfaces(fillSurfaces);
+		if (fillSurfaces != null)
+			mapMaker.setFillSurfaces(fillSurfaces);
 		
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		CPT ratioCPT = null;
@@ -147,8 +172,8 @@ public class ParticipationRatePlot extends AbstractSolutionPlot implements Solid
 			List<String> prefixes = new ArrayList<>();
 			
 			String mainPrefix = "sol_partic_"+magPrefix;
-			double[] plotRates = log10(maskSectsOutsideMagRange(rates, sol.getRupSet(), myMinMag, Double.POSITIVE_INFINITY));
-			mapMaker.plotSectScalars(plotRates, cpt, "Log10 "+myLabel+" Participation Rate (events/yr)");
+			double[] plotRates = maskSectsOutsideMagRange(rates, sol.getRupSet(), myMinMag, Double.POSITIVE_INFINITY);
+			mapMaker.plotSectScalars(plotRates, cpt, myLabel+" Participation Rate (events/yr)");
 			mapMaker.plot(resourcesDir, mainPrefix, " ");
 			prefixes.add(mainPrefix);
 
@@ -159,14 +184,14 @@ public class ParticipationRatePlot extends AbstractSolutionPlot implements Solid
 				double upperMag = minMags.get(m+1);
 				double[] range = sol.calcParticRateForAllSects(myMinMag, upperMag);
 				String rangePrefix = "sol_partic_"+magPrefix+"_to_"+magPrefixes.get(m+1);
-				String label = "Log10 ";
+				String label = "";
 				if (myMinMag == 0d)
 					label += myLabel+" -> M"+optionalDigitDF.format(upperMag);
 				else
 					label += "M"+optionalDigitDF.format(myMinMag)+" -> "+optionalDigitDF.format(upperMag);
 				label += " Participation Rate (events/yr)";
 				
-				double[] plotRange = log10(maskSectsOutsideMagRange(range, sol.getRupSet(), myMinMag, upperMag));
+				double[] plotRange = maskSectsOutsideMagRange(range, sol.getRupSet(), myMinMag, upperMag);
 				mapMaker.plotSectScalars(plotRange, cpt, label);
 				mapMaker.plot(resourcesDir, rangePrefix, " ");
 				
@@ -231,13 +256,6 @@ public class ParticipationRatePlot extends AbstractSolutionPlot implements Solid
 		lines.addAll(table.build());
 		
 		return lines;
-	}
-	
-	private double[] log10(double[] vals) {
-		double[] ret = new double[vals.length];
-		for (int i=0; i<ret.length; i++)
-			ret[i] = Math.log10(vals[i]);
-		return ret;
 	}
 	
 	private double[] maskSectsOutsideMagRange(double[] values, FaultSystemRupSet rupSet, double minMag, double maxMag) {

@@ -10,8 +10,9 @@ import java.awt.geom.Line2D;
 import java.util.Collection;
 
 import org.apache.commons.math3.util.Precision;
-import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+
+import com.google.common.base.Preconditions;
 
 /**
  * This class contains static utility methods to operate on geographic
@@ -63,6 +64,35 @@ public final class LocationUtils {
 		LEFT,
 		/** Indicates a point is on the a line. */
 		ON;
+	}
+
+	public static class LocationAverager {
+	
+		private Location singleLoc = null;
+		private double sumLat = 0d;
+		private double sumLon = 0d;
+		private double sumDepth = 0d;
+		private double sumWeight;
+		
+		public synchronized void add(Location loc, double weight) {
+			if (sumWeight == 0d) {
+				singleLoc = loc;
+			} else if (singleLoc != null && !loc.equals(singleLoc)) {
+				singleLoc = null;
+			}
+			sumLat += weight*loc.lat;
+			sumLon += weight*loc.lon;
+			sumDepth += weight*loc.depth;
+			sumWeight += weight;
+		}
+		
+		public Location getAverage() {
+			Preconditions.checkState(sumWeight > 0d, "No locations added");
+			if (singleLoc != null)
+				return singleLoc;
+			return new Location(sumLat/sumWeight, sumLon/sumWeight, sumDepth/sumWeight);
+		}
+		
 	}
 
 	/**

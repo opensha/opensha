@@ -5,6 +5,7 @@ package org.opensha.refFaultParamDb.vo;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
 
 import org.dom4j.Attribute;
@@ -21,6 +22,7 @@ import org.opensha.sha.faultSurface.QuadSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.sha.faultSurface.SimpleFaultData;
+import org.opensha.sha.util.TectonicRegionType;
 
 /**
  * This class contains preferred fault section data (rather than the estimates) from  FaultSectionData. It
@@ -77,9 +79,20 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 	private QuadSurfaceCache quadCache;
 	
 	private boolean proxyFault = false;
+	private TectonicRegionType tectonicRegionType;
 
 	public String getShortName() {
 		return this.shortName;
+	}
+
+	@Override
+	public TectonicRegionType getTectonicRegionType() {
+		return tectonicRegionType;
+	}
+
+	@Override
+	public void setTectonicRegionType(TectonicRegionType tectonicRegionType) {
+		this.tectonicRegionType = tectonicRegionType;
 	}
 
 	public void setFaultSectionPrefData(FaultSection faultSection) {
@@ -107,6 +120,7 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 		connector = faultSection.isConnector();
 		zonePolygon = faultSection.getZonePolygon();
 		proxyFault = faultSection.isProxyFault();
+		tectonicRegionType = faultSection.getTectonicRegionType();
 	}
 
 	public String toString() {
@@ -389,7 +403,7 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 	 * @param maxSubSectionLen
 	 * @return
 	 */
-	public ArrayList<FaultSectionPrefData> getSubSectionsList(double maxSubSectionLen) {
+	public List<FaultSectionPrefData> getSubSectionsList(double maxSubSectionLen) {
 		return getSubSectionsList(maxSubSectionLen, 1000*sectionId);
 	}
 	
@@ -401,7 +415,7 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 	 * @param startId - the index of the first subsection
 	 * @return
 	 */
-	public ArrayList<FaultSectionPrefData> getSubSectionsList(double maxSubSectionLen, int startId) {
+	public List<FaultSectionPrefData> getSubSectionsList(double maxSubSectionLen, int startId) {
 		return getSubSectionsList(maxSubSectionLen, startId, 1);
 	}
 	
@@ -414,8 +428,8 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 	 * @param minSubSections minimum number of sub sections to generate
 	 * @return
 	 */
-	public ArrayList<FaultSectionPrefData> getSubSectionsList(double maxSubSectionLen, int startId, int minSubSections) {
-		ArrayList<FaultTrace> equalLengthSubsTrace =
+	public List<FaultSectionPrefData> getSubSectionsList(double maxSubSectionLen, int startId, int minSubSections) {
+		List<FaultTrace> equalLengthSubsTrace =
 			FaultUtils.getEqualLengthSubsectionTraces(this.faultTrace, maxSubSectionLen, minSubSections);
 		ArrayList<FaultSectionPrefData> subSectionList = new ArrayList<FaultSectionPrefData>();
 		for(int i=0; i<equalLengthSubsTrace.size(); ++i) {
@@ -577,6 +591,8 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 			el.addAttribute("dateOfLastEventMillis", getDateOfLastEvent()+"");
 		if (!Double.isNaN(getSlipInLastEvent()))
 			el.addAttribute("slipInLastEvent", getSlipInLastEvent()+"");
+		if (tectonicRegionType != null)
+			el.addAttribute("tectonicRegionType", tectonicRegionType.name());
 
 		FaultTrace trace = this.getFaultTrace();
 
@@ -681,6 +697,9 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 		Attribute lastSlipAtt = el.attribute("slipInLastEvent");
 		if (lastSlipAtt != null)
 			data.setSlipInLastEvent(Double.parseDouble(lastSlipAtt.getStringValue()));
+		Attribute trtAtt = el.attribute("tectonicRegionType");
+		if (trtAtt != null)
+			data.setTectonicRegionType(TectonicRegionType.valueOf(trtAtt.getStringValue()));
 
 		return data;
 	}
@@ -707,5 +726,19 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 	@Override
 	public boolean isProxyFault() {
 		return proxyFault;
+	}
+	
+	private static final String STANDARD_SUBSECTION_PREFIX = ", Subsection ";
+
+	@Override
+	public int getSubSectionIndex() {
+		if (parentSectionId >= 0 && sectionName != null && sectionName.contains(STANDARD_SUBSECTION_PREFIX)) {
+			// this is a subsection that was created before we added the subsection index field
+			try {
+				String suffix = sectionName.substring(sectionName.indexOf(STANDARD_SUBSECTION_PREFIX)+STANDARD_SUBSECTION_PREFIX.length()).trim();
+				return Integer.parseInt(suffix);
+			} catch (NumberFormatException e) {}
+		}
+		return -1;
 	}
 }

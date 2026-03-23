@@ -59,7 +59,7 @@ public class ProxyRupsFaultRuptureSource extends ProbEqkSource {
 			if (rupSurfs.size() == 1)
 				surf = rupSurfs.get(0);
 			else
-				surf = new CompoundSurface(rupSurfs);
+				surf = CompoundSurface.get(rupSurfs);
 			for (Point2D mfdPt : rupMFD) {
 				double mag = mfdPt.getX();
 				double origRate = mfdPt.getY();

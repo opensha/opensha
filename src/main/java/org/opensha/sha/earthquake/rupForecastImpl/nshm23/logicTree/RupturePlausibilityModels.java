@@ -73,6 +73,13 @@ public enum RupturePlausibilityModels implements LogicTreeNode {
 			SimpleSubductionRupSetConfig config = new SimpleSubductionRupSetConfig(subSects, scale);
 			return config;
 		}
+	},
+	SUBDUCTION_DD_RECTANGULAR("Subduction Down-Dip Rectangular", "SubductionDD", 0d) {
+		@Override
+		public RupSetConfig getConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
+			RectangularDownDipSubductionRupSetConfig config = new RectangularDownDipSubductionRupSetConfig(subSects, scale);
+			return config;
+		}
 	};
 	
 	private String name;

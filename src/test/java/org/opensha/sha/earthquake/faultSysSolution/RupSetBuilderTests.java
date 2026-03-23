@@ -34,7 +34,8 @@ public class RupSetBuilderTests {
 
 	@Test
 	public void testReproduceU3Mags() {
-		testExactlyEqual(u3Default.getMagForAllRups(), reproduced.getMagForAllRups(), "Magnitude");
+		// now diverges a tiny bit due to length summation changes
+		testEqual(u3Default.getMagForAllRups(), reproduced.getMagForAllRups(), 1e-8, "Magnitude");
 	}
 	
 	@Test
@@ -69,12 +70,13 @@ public class RupSetBuilderTests {
 		double[] actual = new double[reproduced.getNumRuptures()];
 		for (int r=0; r<actual.length; r++)
 			actual[r] = aveSlips.getAveSlip(r);
-		testExactlyEqual(u3Default.getAveSlipForAllRups(), actual, "Average Slips");
+		testEqual(u3Default.getAveSlipForAllRups(), actual, 1e-8, "Average Slips");
 	}
 	
 	@Test
 	public void testReproduceU3Lengths() {
-		testExactlyEqual(u3Default.getLengthForAllRups(), reproduced.getLengthForAllRups(), "Rupture Lengths");
+		// now diverges a tiny due to km->m once at the end instead of in the inner loop
+		testEqual(u3Default.getLengthForAllRups(), reproduced.getLengthForAllRups(), 1e-8, "Rupture Lengths");
 	}
 	
 	@Test
@@ -85,14 +87,33 @@ public class RupSetBuilderTests {
 		for (int r=0; r<reproduced.getNumRuptures(); r++) {
 			if (reproduced.getNumRuptures() > 50000 && Math.random() > 0.1)
 				continue;
-			testExactlyEqual(u3Default.getSlipOnSectionsForRup(r),
-					slipModule.calcSlipOnSectionsForRup(reproduced, aveSlipModule, r), "Rupture "+r+" Dsr");
+			testEqual(u3Default.getSlipOnSectionsForRup(r),
+					slipModule.calcSlipOnSectionsForRup(reproduced, aveSlipModule, r), 1e-8, "Rupture "+r+" Dsr");
 		}
 	}
 	
 	@Test
 	public void testReproduceU3Slips() {
 		testExactlyEqual(u3Default.getSlipRateForAllSections(), reproduced.getSlipRateForAllSections(), "Section Slip Rates");
+	}
+	
+	private static void testEqual(double[] expected, double[] actual, double tol, String name) {
+		if (expected == null) {
+			assertNull(name+": null was expected but we have values", actual);
+			return;
+		} else {
+			assertNotNull(name+": we should have values, but it's null", actual);
+		}
+		assertEquals(name+": length mismatch", expected.length, actual.length);
+		if (expected == actual)
+			throw new IllegalStateException("expected and actual are the same object!");
+		for (int i=0; i<expected.length; i++) {
+			if (Double.isNaN(expected[i]))
+				assertTrue(name+"["+i+"]: NaN expected, have "+actual[i], Double.isNaN(actual[i]));
+			else
+				assertEquals(name+"["+i+"]: values not identical. Expected "+expected[i]+", have "+actual[i]
+						+". Difference: "+Math.abs(expected[i]-actual[i]), expected[i], actual[i], tol);
+		}
 	}
 	
 	private static void testExactlyEqual(double[] expected, double[] actual, String name) {

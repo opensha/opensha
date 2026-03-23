@@ -295,7 +295,7 @@ implements EvenlyGriddedSurface, CacheEnabledSurface, Serializable {
 	 */
 	@Override
 	public Location getFirstLocOnUpperEdge() {
-		return get(0,0);
+		return get(0, 0);
 	}
 	
 	/**
@@ -304,7 +304,17 @@ implements EvenlyGriddedSurface, CacheEnabledSurface, Serializable {
 	 */
 	@Override
 	public Location getLastLocOnUpperEdge() {
-		return get(0,getNumCols()-1);
+		return get(0, getNumCols()-1);
+	}
+	
+	@Override
+	public Location getFirstLocOnLowerEdge() {
+		return get(getNumRows()-1, 0);
+	}
+	
+	@Override
+	public Location getLastLocOnLowerEdge() {
+		return get(getNumRows()-1, getNumCols()-1);
 	}
 
 	@Override

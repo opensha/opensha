@@ -37,7 +37,7 @@ public class GeneralInfoPlot extends AbstractRupSetPlot {
 		String inputName = null;
 		if (sol != null && sol.getArchive().getInput() != null)
 			inputName = sol.getArchive().getInput().getName();
-		else
+		else if (rupSet.getArchive().getInput() != null)
 			inputName = rupSet.getArchive().getInput().getName();
 		
 		BuildInfoModule buildInfo = null;

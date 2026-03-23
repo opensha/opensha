@@ -8,6 +8,7 @@ import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.Named;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.metadata.XMLSaveable;
+import org.opensha.sha.util.TectonicRegionType;
 
 /**
  * Top level interface for a fault section. This was extracted from the FaultSectionPrefData
@@ -199,6 +200,39 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 	public void setParentSectionName(String parentSectionName);
 	
 	/**
+	 * If this fault is a subsection of larger parent fault section (usually with id={@link #getParentSectionId()}),
+	 * this gives the subsection index within that parent fault section. Indexes are 0-based, meaning that 0 represents
+	 * the first subsection for this parent.
+	 * 
+	 * @return subsection index (0-based), or -1 if unknown or not a subsection
+	 */
+	public int getSubSectionIndex();
+	
+	/**
+	 * Along-strike subsection (column) index (0-based) for faults that have subsections both in the along-strike and
+	 * down-dip directions. An index of 0 means the first subsection in the along-strike direction.
+	 * <p>
+	 * Default implementation returns {@link #getSubSectionIndex()} assuming a single subsection down-dip
+	 * 
+	 * @return subsection column index along strike (0-based), or -1 if unknown or not a subsection
+	 */
+	public default int getSubSectionIndexAlong() {
+		return getSubSectionIndex();
+	}
+	
+	/**
+	 * Down-dip subsection (row) index (0-based) for faults that have subsections both in the along-strike and
+	 * down-dip directions. An index of 0 means that this subsection is in the uppermost row of the original fault.
+	 * <p>
+	 * Default implementation returns -1.
+	 * 
+	 * @return subsection row index down dip (0-based), or -1 if unknown or not a subsection
+	 */
+	public default int getSubSectionIndexDownDip() {
+		return -1;
+	}
+	
+	/**
 	 * this returns the length of the upper trace in km.
 	 * TODO: should this return the average trace length if a lower trace is supplied?
 	 * @return
@@ -290,8 +324,24 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 	public boolean isProxyFault();
 
 	public Region getZonePolygon();
-	
+
 	public void setZonePolygon(Region zonePolygon);
+
+	/**
+	 * Returns the tectonic region type for this fault section, or null if not set.
+	 *
+	 * @return the tectonic region type, or null
+	 */
+	public default TectonicRegionType getTectonicRegionType() {
+		return null;
+	}
+
+	/**
+	 * Sets the tectonic region type for this fault section.
+	 *
+	 * @param tectonicRegionType the tectonic region type, or null to clear
+	 */
+	public void setTectonicRegionType(TectonicRegionType tectonicRegionType);
 	
 	public Element toXMLMetadata(Element root, String name);
 	
@@ -302,9 +352,12 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 	 */
 	public default double getArea(boolean creepReduced) {
 		double ddw = creepReduced ? getReducedDownDipWidth() : getOrigDownDipWidth();
-		double len = getTraceLength();
-		if (getLowerFaultTrace() != null)
-			len = 0.5*len + 0.5*getLowerFaultTrace().getTraceLength();
+		FaultTrace lower = getLowerFaultTrace();
+		double len;
+		if (lower == null)
+			len = getFaultTrace().getTraceLength();
+		else
+			len = 0.5*(getFaultTrace().getTraceLength() + lower.getTraceLength());
 		return ddw * len * 1e6;
 	}
 	

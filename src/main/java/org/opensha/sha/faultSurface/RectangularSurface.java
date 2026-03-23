@@ -331,11 +331,13 @@ public class RectangularSurface implements CacheEnabledSurface {
 		return endLoc;
 	}
 
+	@Override
 	public Location getFirstLocOnLowerEdge() {
 		LocationVector dir = new LocationVector(dipDir, horzWidth, zBot-zTop);
 		return LocationUtils.location(startLoc, dir);
 	}
 
+	@Override
 	public Location getLastLocOnLowerEdge() {
 		LocationVector dir = new LocationVector(dipDir, horzWidth, zBot-zTop);
 		return LocationUtils.location(endLoc, dir);

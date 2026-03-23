@@ -227,8 +227,19 @@ public class GriddedSubsetSurface extends ContainerSubset2D<Location>  implement
 
 	@Override
 	public Location getLastLocOnUpperEdge() {
-		// TODO Auto-generated method stub
 		return get(0,getNumCols()-1);
+	}
+
+
+	@Override
+	public Location getFirstLocOnLowerEdge() {
+		return get(getNumRows()-1,0);
+	}
+
+
+	@Override
+	public Location getLastLocOnLowerEdge() {
+		return get(getNumRows()-1,getNumCols()-1);
 	}
 
 

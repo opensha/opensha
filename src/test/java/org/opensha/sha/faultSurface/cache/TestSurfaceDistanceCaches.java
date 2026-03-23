@@ -71,7 +71,7 @@ public class TestSurfaceDistanceCaches {
 		sfd2.setFaultTrace(trace);
 		surfs.add(new StirlingGriddedSurface(sfd2, 1d));
 		
-		return new CompoundSurface(surfs);
+		return CompoundSurface.get(surfs);
 	}
 	
 	private static CacheEnabledSurface[] buildSurfs() {

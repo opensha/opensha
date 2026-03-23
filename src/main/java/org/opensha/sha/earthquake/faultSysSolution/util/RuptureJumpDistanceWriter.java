@@ -25,7 +25,7 @@ public class RuptureJumpDistanceWriter {
 		if (cRups == null) {
 			// assume single stranded
 			System.out.println("Building rupture representation assuming single-stranded ruptures (no splays)");
-			cRups = ClusterRuptures.singleStranged(rupSet);
+			cRups = ClusterRuptures.singleStranded(rupSet);
 		}
 		
 		CSVFile<String> csv = new CSVFile<>(false);

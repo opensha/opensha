@@ -1,0 +1,18 @@
+{
+  "type": "Feature",
+  "properties": {
+    "title": "American Samoa Catalog Extent",
+    "fill": "#1DAD45",
+    "stroke": "#1DAD45"
+},
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [[
+      [-177.0, -10.5],
+      [-165.5, -10.5],
+      [-165.5, -20.0],
+      [-177.0, -20.0],
+      [-177.0, -10.5]
+    ]]
+  }
+}
