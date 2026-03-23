@@ -24,7 +24,6 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_Segmen
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
-import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionBValues;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionScalingRelationships;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -141,7 +140,6 @@ public class NSHM26_LogicTree {
 		levels.add(LogicTreeLevel.forEnum(NSHM26_SeisSmoothingAlgorithms.class,
 				seisReg.getShortName()+" Smoothing Kernel ("+NSHM26_RegionLoader.getNameForTRT(trt)+")",
 				seisReg.name()+"-"+NSHM26_RegionLoader.getNameForTRT(trt)+"-Smooth"));
-		
 
 		String mMaxName = sampled ? trtName+" Off Fault Mmax Samples" : trtName+" Fixed Off Fault Mmax";
 		String mMaxShortName = sampled ? trtName+"-MmaxOffSamples" : trtName+"-FixedMmaxOff";
