@@ -548,6 +548,9 @@ public class GeoJSONFaultSection implements FaultSection {
 			setAveSlipRate(sect.getOrigAveSlipRate());
 			setParentSectionId(sect.getParentSectionId());
 			setParentSectionName(sect.getParentSectionName());
+			setSubSectionIndex(sect.getSubSectionIndex());
+			setSubSectionIndexAlong(sect.getSubSectionIndexAlong());
+			setSubSectionIndexDownDip(sect.getSubSectionIndexDownDip());
 			setSlipRateStdDev(sect.getOrigSlipRateStdDev());
 			if (sect.isConnector())
 				properties.set(CONNECTOR, true);
@@ -877,6 +880,7 @@ public class GeoJSONFaultSection implements FaultSection {
 	
 	public void setSubSectionIndex(int subSectionIndex) {
 		this.subSectionIndex = subSectionIndex;
+		properties.set(SUB_SECT_INDEX, subSectionIndex);
 	}
 
 	@Override
@@ -886,6 +890,7 @@ public class GeoJSONFaultSection implements FaultSection {
 	
 	public void setSubSectionIndexAlong(int subSectionIndexAlong) {
 		this.subSectionIndexAlong = subSectionIndexAlong;
+		properties.set(SUB_SECT_INDEX_ALONG, subSectionIndexAlong);
 	}
 
 	@Override
@@ -895,6 +900,7 @@ public class GeoJSONFaultSection implements FaultSection {
 	
 	public void setSubSectionIndexDownDip(int subSectionIndexDownDip) {
 		this.subSectionIndexDownDip = subSectionIndexDownDip;
+		properties.set(SUB_SECT_INDEX_DOWN, subSectionIndexDownDip);
 	}
 
 	@Override
