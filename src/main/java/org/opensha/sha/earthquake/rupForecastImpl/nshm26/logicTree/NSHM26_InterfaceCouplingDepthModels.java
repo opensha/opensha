@@ -36,7 +36,7 @@ import com.google.common.collect.Range;
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum NSHM26_InterfaceCouplingDepthModels implements LogicTreeNode {
-	DEEP("Deep Taper", "Deep", Range.closed(0d, 10d), Range.closed(40d, 60d), 1d),
+	DEEP_TAPER("Deep Taper", "Deep", Range.closed(0d, 10d), Range.closed(40d, 60d), 1d),
 	DOUBLE_TAPER("Double Taper", "Double", Range.closed(10d, 20d), Range.closed(40d, 60d), 1d),
 	NONE("None", "None", null, null, 1d);
 

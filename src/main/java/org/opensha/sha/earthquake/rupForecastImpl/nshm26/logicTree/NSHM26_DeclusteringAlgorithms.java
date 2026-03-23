@@ -9,11 +9,11 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 
-// TODO: this might end up affecting slip rates, setting to affects
+// this affects interface slip rates
 @Affects(FaultSystemRupSet.SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
-// TODO: this might end up affecting slip rates, setting to affects
+//this affects interface slip rates
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)

@@ -32,6 +32,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.Generatio
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
@@ -64,6 +65,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBVa
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.GRParticRateEstimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_InterfaceFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_InterfaceObsSeisDMAdjustment;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_ModelRegimeNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_SeisRateModel;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -699,8 +701,22 @@ public class NSHM26_InvConfigFactory implements ClusterSpecificInversionConfigur
 	@Override
 	public GridSourceProvider buildGridSourceProvider(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch)
 			throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+		NSHM26_ModelRegimeNode modelRegime = fullBranch.requireValue(NSHM26_ModelRegimeNode.class);
+		NSHM26_SeismicityRegions seisReg = modelRegime.getRegion();
+		TectonicRegionType trt = modelRegime.getTectonicRegime();
+		Preconditions.checkNotNull(seisReg, "Model regime node must have seismicity region");
+		Preconditions.checkNotNull(trt, "Model regime node must have tectonic regime");
+		preGridBuildHook(sol, fullBranch);
+		return switch (trt){
+		case SUBDUCTION_INTERFACE:
+			yield NSHM26_GridSourceBuilder.buildInterfaceGridSourceList(sol, fullBranch, seisReg);
+		case SUBDUCTION_SLAB:
+			yield NSHM26_GridSourceBuilder.buildIntraslabGridSourceList(fullBranch, seisReg);
+		case ACTIVE_SHALLOW:
+			yield NSHM26_GridSourceBuilder.buildCrustalGridSourceProv(sol, fullBranch, seisReg);
+		default:
+			throw new IllegalArgumentException("Unexpected TRT: "+trt);
+		};
 	}
 
 	@Override

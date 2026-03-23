@@ -1,16 +1,22 @@
 package org.opensha.sha.earthquake.faultSysSolution.util;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.opensha.commons.util.modules.OpenSHA_Module;
+import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
+import com.google.gson.Gson;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
 public class MergedSolutionCreator {
 	
@@ -96,7 +102,7 @@ public class MergedSolutionCreator {
 				mags[rupIndex] = rupSet.getMagForRup(r);
 				rakes[rupIndex] = rupSet.getAveRakeForRup(r);
 				rupAreas[rupIndex] = rupSet.getAreaForRup(r);
-				rupAreas[rupIndex] = rupSet.getLengthForRup(r);
+				rupLengths[rupIndex] = rupSet.getLengthForRup(r);
 				rates[rupIndex] = sol.getRateForRup(r);
 				
 				rupIndex++;
@@ -105,6 +111,56 @@ public class MergedSolutionCreator {
 		
 		FaultSystemRupSet mergedRupSet = new FaultSystemRupSet(mergedSects, sectionForRups, mags, rakes, rupAreas, rupLengths);
 		return new FaultSystemSolution(mergedRupSet, rates);
+	}
+	
+	public static class MergedRupSetMappings implements JSON_BackedModule {
+		
+		private List<Map<Integer, Integer>> sectMappingsOldToNew;
+		private List<Map<Integer, Integer>> rupMappingsOldToNew;
+		
+		public int getNumInputRupSets() {
+			// TODO
+			return -1;
+		}
+		
+		public Map<Integer, Integer> getSectMappingsOldToNew(int rupSetIndex) {
+			// TODO
+			return null;
+		}
+		
+		public Map<Integer, Integer> getRuptureMappingsOldToNew(int rupSetIndex) {
+			// TODO
+			return null;
+		}
+		
+		public int getNewSectIndex(int rupSetIndex, int origSectIndex) {
+			// TODO
+			return -1;
+		}
+		
+		public int getNewRuptureIndex(int rupSetIndex, int origRuptureIndex) {
+			// TODO
+			return -1;
+		}
+		
+		@Override
+		public String getFileName() {
+			return "merged_rup_set_mappings.json";
+		}
+		@Override
+		public String getName() {
+			return "Merged RuptureSet Mappings";
+		}
+		@Override
+		public void writeToJSON(JsonWriter out, Gson gson) throws IOException {
+			// TODO Auto-generated method stub
+			
+		}
+		@Override
+		public void initFromJSON(JsonReader in, Gson gson) throws IOException {
+			// TODO Auto-generated method stub
+			
+		}
 	}
 
 }

@@ -29,11 +29,11 @@ import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateModel;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateRecord;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateType;
 
-//TODO: this might end up affecting slip rates, setting to affects
+// this affects interface slip rates
 @Affects(FaultSystemRupSet.SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
-//TODO: this might end up affecting slip rates, setting to affects
+// this affects interface slip rates
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)

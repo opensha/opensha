@@ -185,14 +185,14 @@ public class SolutionLogicTreeCombinationProcessor implements LogicTreeCombinati
 		}, ioExec);
 	}
 	
-	public static FaultSystemSolution combineSols(FaultSystemSolution innerSol, FaultSystemSolution outerSol) {
-		return combineSols(innerSol, outerSol, false);
+	public static FaultSystemSolution combineSols(FaultSystemSolution outerSol, FaultSystemSolution innerSol) {
+		return combineSols(outerSol, innerSol, false);
 	}
 	
-	public static FaultSystemSolution combineSols(FaultSystemSolution innerSol, FaultSystemSolution outerSol, boolean clusterRups) {
+	public static FaultSystemSolution combineSols(FaultSystemSolution outerSol, FaultSystemSolution innerSol, boolean clusterRups) {
 		int totNumSects = 0;
 		int totNumRups = 0;
-		for (boolean outer : new boolean[] {false, true}) {
+		for (boolean outer : new boolean[] {true, false}) {
 			FaultSystemSolution sol = outer ? outerSol : innerSol;
 			FaultSystemRupSet rupSet = sol.getRupSet();
 //			System.out.println("RupSet "+i+" has "+rupSet.getNumSections()+" sects, "+rupSet.getNumRuptures()+" rups");
@@ -220,7 +220,7 @@ public class SolutionLogicTreeCombinationProcessor implements LogicTreeCombinati
 		Map<Integer, Integer> outerRupMappings = new HashMap<>();
 		Map<Integer, Integer> innerRupMappings = new HashMap<>();
 		
-		for (boolean outer : new boolean[] {false, true}) {
+		for (boolean outer : new boolean[] {true, false}) {
 			FaultSystemSolution sol = outer ? outerSol : innerSol;
 			FaultSystemRupSet rupSet = sol.getRupSet();
 			int[] sectMappings = new int[rupSet.getNumSections()];

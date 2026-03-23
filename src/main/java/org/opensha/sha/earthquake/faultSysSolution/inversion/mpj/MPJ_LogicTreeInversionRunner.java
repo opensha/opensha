@@ -20,16 +20,26 @@ import org.opensha.commons.util.io.archive.ArchiveInput;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.GridSourceProviderFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfigurationFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.Inversions;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.SolutionProcessor;
+import org.opensha.sha.earthquake.faultSysSolution.treeCombiners.SolutionLogicTreeCombinationProcessor;
+import org.opensha.sha.earthquake.faultSysSolution.treeCombiners.SolutionLogicTreeCombinationProcessor.CombinedRupSetMappings;
 import org.opensha.sha.earthquake.faultSysSolution.util.AverageSolutionCreator;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
 import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
+import gov.usgs.earthquake.nshmp.erf.logicTree.TectonicRegionBranchTreeNode;
 
 /**
  * Class for running a full logic tree of inversions with a single job in an MPI environment
@@ -275,28 +285,47 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 				int run = runForCalcIndex(index);
 				if (run == runsPerBranch - 1) {
 					// it's the last one for this branch, lets see if all of the previous ones are done
-					boolean allDone = true;
 					LogicTreeBranch<LogicTreeNode> branch = tree.getBranch(branchIndex);
-					List<File> solFiles = new ArrayList<>();
-					for (int oRun=0; oRun<runsPerBranch; oRun++) {
-						File solFile = getSolFile(branch, oRun);
-						if (solFile.exists()) {
-							solFiles.add(solFile);
-						} else {
-							allDone = false;
-							break;
+					if (!isTRTSpecificBranch(branch)) {
+						boolean allDone = true;
+						List<File> solFiles = new ArrayList<>();
+						for (int oRun=0; oRun<runsPerBranch; oRun++) {
+							File solFile = getSolFile(branch, oRun);
+							if (solFile.exists()) {
+								solFiles.add(solFile);
+							} else {
+								allDone = false;
+								break;
+							}
 						}
-					}
-					if (allDone) {
-						Preconditions.checkState(solFiles.size() == runsPerBranch);
-						debug("Branch index "+branchIndex+" is all done, doing a compute node average for "+branch);
-						File runDir = branch.getBranchDirectory(outputDir, true);
-						File outputFile = new File(runDir, "average_solution.zip");
-						AverageSolutionCreator.average(outputFile, solFiles);
+						if (allDone) {
+							Preconditions.checkState(solFiles.size() == runsPerBranch);
+							debug("Branch index "+branchIndex+" is all done, doing a compute node average for "+branch);
+							File runDir = branch.getBranchDirectory(outputDir, true);
+							File outputFile = new File(runDir, "average_solution.zip");
+							AverageSolutionCreator.average(outputFile, solFiles);
+						}
 					}
 				}
 			}
 		}
+	}
+	
+	/**
+	 * Returns true if this branch has TectonicRegionBranchTreeNode nodes, and if so, throws an IllegalStateException
+	 * if it contains other nodes that are not a TectonicRegionBranchTreeNode
+	 * @param branch
+	 * @return
+	 */
+	private static boolean isTRTSpecificBranch(LogicTreeBranch<LogicTreeNode> branch) {
+		if (branch.hasValue(TectonicRegionBranchTreeNode.class)) {
+			for (int i=0; i<branch.size(); i++)
+				Preconditions.checkState(branch.getValue(i) instanceof TectonicRegionBranchTreeNode,
+						"TODO: In TRT-specific branch mode, all top level branch nodes must currently be of type "
+						+ "TectonicRegionBranchTreeNode; %s", branch);
+			return true;
+		}
+		return false;
 	}
 
 	private class CalcRunnable implements Runnable {
@@ -318,62 +347,197 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 			
 			File solFile = getSolFile(branch, run);
 			
-			boolean exists = solFile.exists();
-			Preconditions.checkState(!reprocessOnly || exists,
-					"--reprocess-only was supplied but no solution exists for breanch %s: %s", branch, solFile.getAbsolutePath());
-			
-			if (exists) {
-				debug(solFile.getAbsolutePath()+" exists, testing loading...");
-				try {
-					FaultSystemSolution sol = FaultSystemSolution.load(solFile);
-					debug("skipping "+index+" (already done)");
-					if (reprocess) {
-						FaultSystemRupSet origRupSet = sol.getRupSet();
+			if (isTRTSpecificBranch(branch)) {
+				// TRT-specific
+				debug("index "+index+" is TRT-specific");
+				// make sure only TRT branch nodes
+				List<TectonicRegionBranchTreeNode> trtNodes = branch.getValues(TectonicRegionBranchTreeNode.class);
+				if (trtNodes.size() == 1) {
+					// just one, simple
+					doCalculate(branchIndex, trtNodes.get(0).getValue(), solFile);
+				} else {
+					// multiple
+					try {
+						boolean exists = solFile.exists();
+						Preconditions.checkState(!reprocessOnly || exists,
+								"--reprocess-only was supplied but no solution exists for breanch %s: %s", branch, solFile.getAbsolutePath());
 						
-						SolutionProcessor processor = factory.getSolutionLogicTreeProcessor();
-						// process the rupture set
-						FaultSystemRupSet rpRupSet = factory.updateRuptureSetForBranch(origRupSet, branch);
-						// build an inversion configuration so that any adjustments at that stage are processed
-						factory.buildInversionConfig(rpRupSet, branch, 8);
-						if (rpRupSet != origRupSet) {
-							// replaced the rupture set, need to copy the solution over to use the new rup set
-							for (OpenSHA_Module module : origRupSet.getModules()) {
-								if (!rpRupSet.hasModuleSuperclass(module.getClass())) {
-//									System.out.println("Adding module to replacement rupture set: "+module.getName()+" ("+module.getClass()+")");
-									// this is a module not present in the reproduction and won't evict anything, add it
-									rpRupSet.addModule(module);
+						if (exists) {
+							debug(solFile.getAbsolutePath()+" exists, testing loading...");
+							try {
+								FaultSystemSolution.load(solFile);
+								if (!reprocess) {
+									debug("skipping "+index+" (already done)");
+									return;
+								}
+							} catch (Exception e) {
+								if (reprocessOnly) {
+									debug("Failed to reprocess "+index+", and --reprocess-only is enabled: "+e.getMessage());
+									abortAndExit(e);
+								}
+								debug("Failed to load, re-inverting: "+e.getMessage());
+							}
+							debug("will reprocess combined "+index);
+						}
+						File parentDir = solFile.getParentFile();
+						FaultSystemSolution curCombSol = null;
+						int numCombinations = 0;
+						List<GridSourceList> gridProvs = new ArrayList<>(trtNodes.size());
+						for (int i=0; i<trtNodes.size(); i++) {
+							LogicTreeBranch<?> trtBranch = trtNodes.get(i).getValue();
+							TectonicRegionType trt = trtNodes.get(i).getTectonicRegime();
+							debug("Processing index "+index+" is for trt="+trt.name()+": "+trtBranch);
+							if (trtBranch.hasValue(RupSetFaultModel.class)) {
+								File trtSolFile = new File(parentDir, trt.name()+".zip");
+								FaultSystemSolution sol = doCalculate(branchIndex, trtBranch, trtSolFile);
+								if (sol == null) {
+									// already existed, load it
+									sol = FaultSystemSolution.load(trtSolFile);
+								}
+								GridSourceProvider gridProv = sol.getGridSourceProvider();
+								if (curCombSol == null) {
+									curCombSol = sol;
+								} else {
+									// need to combine them
+									numCombinations++;
+									FaultSystemSolution prevComb = curCombSol;
+									curCombSol = SolutionLogicTreeCombinationProcessor.combineSols(curCombSol, sol, true);
+									
+									// TODO temporary
+									System.err.println("TODO: implement combinable modules; manually copying over select modules");
+									FaultSystemRupSet prevRupSet = prevComb.getRupSet();
+									FaultSystemRupSet curRupSet = curCombSol.getRupSet();
+									if (prevRupSet.hasModule(ModelRegion.class))
+										curRupSet.addModule(prevRupSet.getModule(ModelRegion.class));
+									if (prevRupSet.hasModule(RegionsOfInterest.class))
+										curRupSet.addModule(prevRupSet.getModule(RegionsOfInterest.class));
+									
+									CombinedRupSetMappings mappings = curCombSol.getRupSet().requireModule(CombinedRupSetMappings.class);
+									if (gridProv != null) {
+										// remap associations
+										Preconditions.checkState(gridProv instanceof GridSourceList,
+												"Only GridSourceList supported for TRT combination of gridProvs");
+										GridSourceList gridList = (GridSourceList)gridProv;
+										gridProv = GridSourceList.remapAssociations(gridList, mappings.getInnerSectMappings());
+									}
+									if (numCombinations > 1) {
+										// we've done this multiple times, section mappings are now useless, remove
+										curCombSol.getRupSet().removeModuleInstances(CombinedRupSetMappings.class);
+									}
+								}
+								if (gridProv != null) {
+									// combining below will *not* combine grid provs, do it separately
+									Preconditions.checkState(gridProv instanceof GridSourceList,
+											"Only GridSourceList supported for TRT combination of gridProvs");
+									gridProvs.add((GridSourceList)gridProv);
+								}
+							} else {
+								debug("Skipping inversion for index "+index+" is for trt="+trt.name()+" (no RupSetFaultModel)");
+								// still might need to build a grid prov
+								GridSourceProvider gridProv = checkBuildSingleGridProv(index, null, trtBranch);
+								if (gridProv != null) {
+									Preconditions.checkState(gridProv instanceof GridSourceList,
+											"Only GridSourceList supported for TRT combination of gridProvs");
+									gridProvs.add((GridSourceList)gridProv);
 								}
 							}
-							sol = sol.copy(rpRupSet.getArchive());
 						}
-						// process the solution
-						sol = processor.processSolution(sol, branch);
-						// write out the reprocessed solution
-						sol.write(solFile);
-					}
-					return;
-				} catch (Exception e) {
-					if (reprocessOnly) {
-						debug("Failed to reprocess "+index+", and --reprocess-only is enabled: "+e.getMessage());
+						Preconditions.checkNotNull(curCombSol, "Have no combined solution?");
+						if (gridProvs.size() == 1) {
+							curCombSol.setGridSourceProvider(gridProvs.get(0));
+						} else if (gridProvs.size() > 1) {
+							// combine them
+							debug("combining "+gridProvs.size()+" gridProvs for "+index);
+							curCombSol.setGridSourceProvider(GridSourceList.combine(gridProvs.toArray(new GridSourceList[gridProvs.size()])));
+						}
+						curCombSol.write(solFile);
+						memoryDebug("DONE combined "+index);
+					} catch (IOException e) {
 						abortAndExit(e);
 					}
-					debug("Failed to load, re-inverting: "+e.getMessage());
 				}
+			} else {
+				// simple
+				doCalculate(branchIndex, branch, solFile);
 			}
-			
-			memoryDebug("Beginning config for "+index);
-			
-			FaultSystemSolution sol;
-			
-			try {
-				sol = Inversions.run(factory, branch, annealingThreads, cmd);
-				sol.write(solFile);
-			} catch (IOException e) {
-				throw ExceptionUtils.asRuntimeException(e);
-			}
-			sol = null;
-			memoryDebug("DONE "+index);
 		}
+	}
+	
+	private FaultSystemSolution doCalculate(int index, LogicTreeBranch<?> branch, File solFile) {
+		boolean exists = solFile.exists();
+		Preconditions.checkState(!reprocessOnly || exists,
+				"--reprocess-only was supplied but no solution exists for breanch %s: %s", branch, solFile.getAbsolutePath());
+		
+		if (exists) {
+			debug(solFile.getAbsolutePath()+" exists, testing loading...");
+			try {
+				FaultSystemSolution sol = FaultSystemSolution.load(solFile);
+				debug("skipping "+index+" (already done)");
+				if (reprocess) {
+					FaultSystemRupSet origRupSet = sol.getRupSet();
+					
+					SolutionProcessor processor = factory.getSolutionLogicTreeProcessor();
+					// process the rupture set
+					FaultSystemRupSet rpRupSet = factory.updateRuptureSetForBranch(origRupSet, branch);
+					// build an inversion configuration so that any adjustments at that stage are processed
+					factory.buildInversionConfig(rpRupSet, branch, 8);
+					if (rpRupSet != origRupSet) {
+						// replaced the rupture set, need to copy the solution over to use the new rup set
+						for (OpenSHA_Module module : origRupSet.getModules()) {
+							if (!rpRupSet.hasModuleSuperclass(module.getClass())) {
+//								System.out.println("Adding module to replacement rupture set: "+module.getName()+" ("+module.getClass()+")");
+								// this is a module not present in the reproduction and won't evict anything, add it
+								rpRupSet.addModule(module);
+							}
+						}
+						sol = sol.copy(rpRupSet.getArchive());
+					}
+					// process the solution
+					sol = processor.processSolution(sol, branch);
+					// see if we need to build a grid prov
+					GridSourceProvider gridProv = checkBuildSingleGridProv(index, sol, branch);
+					if (gridProv != null)
+						sol.setGridSourceProvider(gridProv);
+					// write out the reprocessed solution
+					sol.write(solFile);
+				}
+				return sol;
+			} catch (Exception e) {
+				if (reprocessOnly) {
+					debug("Failed to reprocess "+index+", and --reprocess-only is enabled: "+e.getMessage());
+					abortAndExit(e);
+				}
+				debug("Failed to load, re-inverting: "+e.getMessage());
+			}
+		}
+		
+		memoryDebug("Beginning config for "+index);
+		
+		FaultSystemSolution sol;
+		
+		try {
+			sol = Inversions.run(factory, branch, annealingThreads, cmd);
+			
+			GridSourceProvider gridProv = checkBuildSingleGridProv(index, sol, branch);
+			if (gridProv != null)
+				sol.setGridSourceProvider(gridProv);
+			
+			sol.write(solFile);
+		} catch (IOException e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
+		memoryDebug("DONE "+index);
+		return sol;
+	}
+	
+	private GridSourceProvider checkBuildSingleGridProv(int index, FaultSystemSolution sol, LogicTreeBranch<?> branch) throws IOException {
+		if (factory instanceof GridSourceProviderFactory.Single) {
+			debug("Building single GridSourceProvider for index "+index+": "+branch);
+			GridSourceProviderFactory.Single gridFactory = (GridSourceProviderFactory.Single)factory;
+			gridFactory.preGridBuildHook(sol, branch);
+			return gridFactory.buildGridSourceProvider(sol, branch);
+		}
+		return null;
 	}
 
 	@Override

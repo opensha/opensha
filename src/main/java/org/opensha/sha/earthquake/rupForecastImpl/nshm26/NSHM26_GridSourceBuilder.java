@@ -114,7 +114,7 @@ public class NSHM26_GridSourceBuilder {
 	}
 	
 	public static void doPreGridBuildHook(FaultSystemSolution sol, LogicTreeBranch<?> faultBranch) throws IOException {
-		doPreGridBuildHook(sol.getRupSet(), faultBranch);
+		doPreGridBuildHook(sol == null ? null : sol.getRupSet(), faultBranch);
 	}
 	
 	public static void doPreGridBuildHook(FaultSystemRupSet rupSet, LogicTreeBranch<?> faultBranch) throws IOException {
