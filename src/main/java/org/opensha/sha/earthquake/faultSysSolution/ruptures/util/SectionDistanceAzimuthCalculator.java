@@ -52,8 +52,12 @@ public class SectionDistanceAzimuthCalculator implements OpenSHA_Module {
 		sectSurfs.clear();
 		this.surfDiscretization = surfDicretization;
 	}
+
+	public RuptureSurface getSurface(FaultSection sect) {
+		return getSurface(sect.getSectionId());
+	}
 	
-	private RuptureSurface getSurface(int id) {
+	public RuptureSurface getSurface(int id) {
 		RuptureSurface surf = sectSurfs.get(id);
 		if (surf == null) {
 			FaultSection sect = subSects.get(id);
