@@ -489,6 +489,8 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 	}
 	
 	public String getBranchZipPath() {
+		if (hasCustomFileName())
+			return customFileName;
 		StringBuilder fileName = new StringBuilder();
 		int length = 0;
 		for (int i=0; i<size(); i++) {
