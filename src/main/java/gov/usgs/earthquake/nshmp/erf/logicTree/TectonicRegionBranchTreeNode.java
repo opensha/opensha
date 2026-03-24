@@ -207,5 +207,37 @@ public class TectonicRegionBranchTreeNode implements LogicTreeNode.ValuedLogicTr
 		}
 		
 	}
+	
+	public static boolean isTRTBranch(LogicTreeBranch<?> branch) {
+		return branch.hasValue(TectonicRegionBranchTreeNode.class);
+	}
+	
+	public static LogicTreeBranch<LogicTreeNode> unfoldTRTBranches(LogicTreeBranch<?> branch) {
+		List<LogicTreeLevel<? extends LogicTreeNode>> unfoldedLevels = new ArrayList<>();
+		List<LogicTreeNode> unfoldedValues = new ArrayList<>();
+		
+		int numOrigLevels = branch.getLevels().size();
+		for (int l=0; l<numOrigLevels; l++) {
+			LogicTreeLevel<?> level = branch.getLevel(l);
+			LogicTreeNode node = branch.getValue(l);
+			if (node == null || !(node instanceof TectonicRegionBranchTreeNode)) {
+				unfoldedLevels.add(level);
+				unfoldedValues.add(node);
+			} else {
+				TectonicRegionBranchTreeNode trtNode = (TectonicRegionBranchTreeNode)node;
+				LogicTreeBranch<?> trtBranch = trtNode.getValue();
+				int numTRTLevels = trtBranch.size();
+				for (int i=0; i<numTRTLevels; i++) {
+					unfoldedLevels.add(trtBranch.getLevel(i));
+					unfoldedValues.add(trtBranch.getValue(i));
+				}
+			}
+		}
+		
+		LogicTreeBranch<LogicTreeNode> ret = new LogicTreeBranch<>(unfoldedLevels, unfoldedValues);
+		ret.setOrigBranchWeight(branch.getOrigBranchWeight());
+		ret.setCustomFileName(branch.buildFileName());
+		return ret;
+	}
 
 }
