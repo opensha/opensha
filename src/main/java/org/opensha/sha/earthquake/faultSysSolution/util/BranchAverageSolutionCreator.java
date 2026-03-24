@@ -81,8 +81,8 @@ public class BranchAverageSolutionCreator {
 	
 	private List<Double> weights = new ArrayList<>();
 
-	private Map<LogicTreeNode, Integer> nodeCounts = new HashMap<>();
-	private Map<LogicTreeNode, Double> nodeWeights = new HashMap<>();
+	private List<Map<LogicTreeNode, Integer>> nodeCounts = new ArrayList<>();
+	private List<Map<LogicTreeNode, Double>> nodeWeights = new ArrayList<>();
 	
 	/**
 	 * If true and branch solutions have a ModSectMinMags module, then ruptures will be skipped (i.e., their rate ignored)
@@ -102,9 +102,9 @@ public class BranchAverageSolutionCreator {
 	
 	private BranchWeightProvider weightProv;
 	
+	// TODO could make this mergable
 	private LogicTreeRateStatistics.Builder rateStatsBuilder;
 	
-	// if true, we're merging previously-built branch-averaged solutions and should merge any builders un-weighted
 	private boolean mergeMode = false;
 	private List<BranchModuleBuilder<FaultSystemSolution, ?>> solBranchModuleBuilders;
 	
@@ -124,23 +124,29 @@ public class BranchAverageSolutionCreator {
 			accumulatingSlipRates = false;
 	}
 	
-	/**
-	 * If true, assume that we're merging previously-built branch-averaged solutions and thus should merge any
-	 * solution branch accumulators as is and without weighting
-	 * @param mergeMode
-	 */
-	public void setMergeMode(boolean mergeMode) {
-		this.mergeMode = mergeMode;
+	public void addSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
+		addSolution(sol, branch, weightProv.getWeight(branch));
 	}
 
-	public synchronized void addSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
-		double weight = weightProv.getWeight(branch);
+	public void addSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch, double weight) {
+		doAddSolution(sol, branch, weight, null);
+	}
+	
+	public void mergeBranchAveragedSolution(FaultSystemSolution baSol, double weight, List<LogicTreeBranch<?>> branches) {
+		doAddSolution(baSol, null, weight, branches);
+	}
+
+	private synchronized void doAddSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch,
+			double weight, List<LogicTreeBranch<?>> mergeBranches) {
 		Preconditions.checkState(weight > 0d, "Can't average in branch with weight=%s: %s", weight, branch);
 		weights.add(weight);
 		totWeight += weight;
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		
 		ModSectMinMags modMinMags = rupSet.getModule(ModSectMinMags.class);
+
+		Preconditions.checkState(branch != null || (mergeBranches != null && !mergeBranches.isEmpty()));
+		Preconditions.checkState(branch == null || mergeBranches == null);
 		
 		if (accumulatingSlipRates && !sol.hasModule(SolutionSlipRates.class)) {
 			if (rupSet.hasModule(AveSlipModule.class) && rupSet.hasModule(SlipAlongRuptureModel.class))
@@ -172,13 +178,22 @@ public class BranchAverageSolutionCreator {
 			rupSetAvgAccumulators = initAccumulators(rupSet);
 			solAvgAccumulators = initAccumulators(sol);
 			
-			combBranch = (LogicTreeBranch<LogicTreeNode>)branch.copy();
+			if (branch == null) {
+				combBranch = (LogicTreeBranch<LogicTreeNode>)mergeBranches.get(0).copy();
+				mergeMode = true;
+			} else {
+				combBranch = (LogicTreeBranch<LogicTreeNode>)branch.copy();
+				mergeMode = false;
+			}
 			sectIndices = rupSet.getSectionIndicesForAllRups();
 			rupMFDs = new ArrayList<>();
 			for (int r=0; r<avgRates.length; r++)
 				rupMFDs.add(new ArbitrarilyDiscretizedFunc());
 			
-			rateStatsBuilder = new LogicTreeRateStatistics.Builder();
+			if (mergeMode)
+				rateStatsBuilder = null;
+			else
+				rateStatsBuilder = new LogicTreeRateStatistics.Builder();
 			
 			solBranchModuleBuilders = new ArrayList<>();
 			solBranchModuleBuilders.add(new BranchAveragingOrder.Builder());
@@ -188,10 +203,12 @@ public class BranchAverageSolutionCreator {
 			solBranchModuleBuilders.add(new BranchParentSectParticMFDs.Builder());
 			solBranchModuleBuilders.add(new BranchSectBVals.Builder());
 		} else {
+			Preconditions.checkState(mergeMode || branch != null);
 			Preconditions.checkState(refRupSet.isEquivalentTo(rupSet), "Rupture sets are not equivalent");
 		}
 		
-		rateStatsBuilder.process(branch, sol.getRateForAllRups());
+		if (!mergeMode)
+			rateStatsBuilder.process(branch, sol.getRateForAllRups());
 		
 		// start work on modules and module builders in parallel, as they often take the longest
 		List<Future<?>> futures = new ArrayList<>();
@@ -199,19 +216,41 @@ public class BranchAverageSolutionCreator {
 			exec = Executors.newFixedThreadPool(Integer.min(8, FaultSysTools.defaultNumThreads()));
 		
 		try {
+			// these only use branch if !mergeMode
 			futures.addAll(processBuilders(solBranchModuleBuilders, sol, branch, weight));
 			futures.addAll(processAccumulators(rupSetAvgAccumulators, rupSet, branch, weight));
 			futures.addAll(processAccumulators(solAvgAccumulators, sol, branch, weight));
 			
+			List<LogicTreeBranch<?>> processBranches;
+			List<Double> processWeights;
+			
+			if (mergeMode) {
+				processBranches = mergeBranches;
+				processWeights = new ArrayList<>(mergeBranches.size());
+				for (int i=0; i<mergeBranches.size(); i++)
+					processWeights.add(weightProv.getWeight(mergeBranches.get(i)));
+			} else {
+				processBranches = List.of(branch);
+				processWeights = List.of(weight);
+			}
+			
 			for (int i=0; i<combBranch.size(); i++) {
 				LogicTreeNode combVal = combBranch.getValue(i);
-				LogicTreeNode branchVal = branch.getValue(i);
-				if (combVal != null && !combVal.equals(branchVal))
-					combBranch.clearValue(i);
-				int prevCount = nodeCounts.containsKey(branchVal) ? nodeCounts.get(branchVal) : 0;
-				nodeCounts.put(branchVal, prevCount+1);
-				double prevWeight = nodeWeights.containsKey(branchVal) ? nodeWeights.get(branchVal) : 0d;
-				nodeWeights.put(branchVal, prevWeight + weight);
+				while (nodeCounts.size() < combBranch.size()) {
+					nodeCounts.add(new HashMap<>());
+					nodeWeights.add(new HashMap<>());
+				}
+				Map<LogicTreeNode, Integer> levelNodeCounts = nodeCounts.get(i);
+				Map<LogicTreeNode, Double> levelNodeWeights = nodeWeights.get(i);
+				for (int b=0; b<processBranches.size(); b++) {
+					LogicTreeNode branchVal = processBranches.get(b).getValue(i);
+					if (combVal != null && !combVal.equals(branchVal))
+						combBranch.clearValue(i);
+					int prevCount = levelNodeCounts.containsKey(branchVal) ? levelNodeCounts.get(branchVal) : 0;
+					levelNodeCounts.put(branchVal, prevCount+1);
+					double prevWeight = levelNodeWeights.containsKey(branchVal) ? levelNodeWeights.get(branchVal) : 0d;
+					levelNodeWeights.put(branchVal, prevWeight + processWeights.get(b));
+				}
 			}
 			
 			for (int r=0; r<avgRates.length; r++) {
@@ -562,7 +601,8 @@ public class BranchAverageSolutionCreator {
 		
 		sol.addModule(combBranch);
 		sol.addModule(new RupMFDsModule(sol, rupMFDs.toArray(new DiscretizedFunc[0])));
-		sol.addModule(rateStatsBuilder.build());
+		if (rateStatsBuilder != null)
+			sol.addModule(rateStatsBuilder.build());
 		
 		buildBranchModules(solBranchModuleBuilders, sol);
 		
@@ -579,10 +619,10 @@ public class BranchAverageSolutionCreator {
 			int totalSkippedCount = 0;
 			LogicTreeNode lastSkipped = null;
 			for (LogicTreeNode choice : level.getNodes()) {
-				Integer count = nodeCounts.get(choice);
+				Integer count = nodeCounts.get(i).get(choice);
 				if (count != null) {
 					if (numIncluded < 15) {
-						double weight = nodeWeights.get(choice);
+						double weight = nodeWeights.get(i).get(choice);
 						info += "\t"+choice.getName()+" ("+count+"; "+weightDF.format(weight/totWeight)+")\n";
 						numIncluded++;
 					} else {
@@ -596,7 +636,7 @@ public class BranchAverageSolutionCreator {
 			if (lastSkipped != null) {
 				if (numSkipped > 1)
 					info += "\t...(skipping "+(numSkipped-1)+" branches used "+(totalSkippedCount-lastSkippedCount)+" times)...\n";
-				double weight = nodeWeights.get(lastSkipped);
+				double weight = nodeWeights.get(i).get(lastSkipped);
 				info += "\t"+lastSkipped.getName()+" ("+lastSkippedCount+"; "+weightDF.format(weight/totWeight)+")\n";
 			}
 		}
@@ -609,15 +649,20 @@ public class BranchAverageSolutionCreator {
 		return sol;
 	}
 	
-	private boolean hasAllEqually(Map<LogicTreeNode, Integer> nodeCounts, LogicTreeNode... nodes) {
+	private boolean hasAllEqually(List<Map<LogicTreeNode, Integer>> nodeCountsList, LogicTreeNode... nodes) {
 		Integer commonCount = null;
 		for (LogicTreeNode node : nodes) {
-			Integer count = nodeCounts.get(node);
-			if (count == null)
+			int count = 0;
+			for (Map<LogicTreeNode, Integer> nodeCounts : nodeCountsList) {
+				Integer subCount = nodeCounts.get(node);
+				if (subCount != null)
+					count += subCount;
+			}
+			if (count == 0)
 				return false;
 			if (commonCount == null)
 				commonCount = count;
-			else if (commonCount.intValue() != count.intValue())
+			else if (commonCount.intValue() != count)
 				return false;
 		}
 		return true;

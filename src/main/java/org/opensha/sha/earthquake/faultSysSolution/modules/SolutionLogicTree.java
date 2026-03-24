@@ -1034,8 +1034,15 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		if (constantGridProv != null) {
 			mappings.putAll(writeGridProvToArchive(constantGridProv, output, prefix, null, writtenFiles));
 		} else if (serializeGridded && sol.hasAvailableModule(GridSourceProvider.class)) {
-			GridSourceProvider prov = sol.getModule(GridSourceProvider.class);
-			mappings.putAll(writeGridProvToArchive(prov, output, prefix, branch, writtenFiles, input, inputIsSolArchive));
+			if (sol.hasAvailableModule(GridSourceList.class)) {
+				// shortcut that allows direct-copy without ever loading it
+				mappings.putAll(writeGridListToArchive(()->sol.requireModule(GridSourceList.class),
+						output, prefix, branch, writtenFiles, input, inputIsSolArchive));
+			} else {
+				// need to load it
+				GridSourceProvider prov = sol.getModule(GridSourceProvider.class);
+				mappings.putAll(writeGridProvToArchive(prov, output, prefix, branch, writtenFiles, input, inputIsSolArchive));
+			}
 		}
 		
 		if (sol.hasAvailableModule(InversionMisfitStats.class) || sol.hasModule(InversionMisfits.class)) {
@@ -1183,38 +1190,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		} else if (prov instanceof GridSourceList) {
 			GridSourceList gridSources = (GridSourceList)prov;
 			
-			if (gridSources.getGriddedRegion() != null) {
-				String gridRegFile = getRecordBranchFileName(branch, prefix,
-						GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, false, mappings);
-				if (gridRegFile != null && !writtenFiles.contains(gridRegFile)) {
-					if (!directCopy(input, output, solPrefix+GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, gridRegFile, inputIsSolArchive)) {
-						FileBackedModule.initEntry(output, null, gridRegFile);
-						Feature regFeature = gridSources.getGriddedRegion().toFeature();
-						OutputStreamWriter writer = new OutputStreamWriter(output.getOutputStream());
-						Feature.write(regFeature, writer);
-						writer.flush();
-						output.closeEntry();
-					}
-					writtenFiles.add(gridRegFile);
-				}
-			}
-
-			String locsFile = getRecordBranchFileName(branch, prefix,
-					GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME, false, mappings);
-			if (locsFile != null && !writtenFiles.contains(locsFile)) {
-				if (!directCopy(input, output, solPrefix+GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME, locsFile, inputIsSolArchive)) {
-					CSV_BackedModule.writeToArchive(gridSources.buildGridLocsCSV(), output, null, locsFile);
-				}
-				writtenFiles.add(locsFile);
-			}
-			String sourcesFile = getRecordBranchFileName(branch, prefix,
-					GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME, true, mappings);
-			if (sourcesFile != null && !writtenFiles.contains(sourcesFile)) {
-				if (!directCopy(input, output, solPrefix+GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME, sourcesFile, inputIsSolArchive)) {
-					gridSources.writeGridSourcesCSV(output, sourcesFile);
-				}
-				writtenFiles.add(sourcesFile);
-			}
+			mappings.putAll(writeGridListToArchive(() -> gridSources, output, prefix, branch, writtenFiles, input, inputIsSolArchive));
 		} else {
 			throw new UnsupportedOperationException("Don't yet support writing grid source provider of type: "+prov.getClass().getName());
 		}
@@ -1223,43 +1199,57 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		return mappings;
 	}
 	
-//	protected Map<String, String> writeGridListToArchive(Supplier<GridSourceList> gridListSupplier, ArchiveOutput output, String prefix,
-//			LogicTreeBranch<?> branch, HashSet<String> writtenFiles, ArchiveInput input, boolean inputIsSolArchive) throws IOException {
-//		GridSourceList gridSources = (GridSourceList)prov;
-//		
-//		if (gridSources.getGriddedRegion() != null) {
-//			String gridRegFile = getRecordBranchFileName(branch, prefix,
-//					GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, false, mappings);
-//			if (gridRegFile != null && !writtenFiles.contains(gridRegFile)) {
-//				if (!directCopy(input, output, solPrefix+GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, gridRegFile, inputIsSolArchive)) {
-//					FileBackedModule.initEntry(output, null, gridRegFile);
-//					Feature regFeature = gridSources.getGriddedRegion().toFeature();
-//					OutputStreamWriter writer = new OutputStreamWriter(output.getOutputStream());
-//					Feature.write(regFeature, writer);
-//					writer.flush();
-//					output.closeEntry();
-//				}
-//				writtenFiles.add(gridRegFile);
-//			}
-//		}
-//
-//		String locsFile = getRecordBranchFileName(branch, prefix,
-//				GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME, false, mappings);
-//		if (locsFile != null && !writtenFiles.contains(locsFile)) {
-//			if (!directCopy(input, output, solPrefix+GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME, locsFile, inputIsSolArchive)) {
-//				CSV_BackedModule.writeToArchive(gridSources.buildGridLocsCSV(), output, null, locsFile);
-//			}
-//			writtenFiles.add(locsFile);
-//		}
-//		String sourcesFile = getRecordBranchFileName(branch, prefix,
-//				GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME, true, mappings);
-//		if (sourcesFile != null && !writtenFiles.contains(sourcesFile)) {
-//			if (!directCopy(input, output, solPrefix+GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME, sourcesFile, inputIsSolArchive)) {
-//				gridSources.writeGridSourcesCSV(output, sourcesFile);
-//			}
-//			writtenFiles.add(sourcesFile);
-//		}
-//	}
+	protected Map<String, String> writeGridListToArchive(Supplier<GridSourceList> gridListSupplier, ArchiveOutput output, String prefix,
+			LogicTreeBranch<?> branch, HashSet<String> writtenFiles, ArchiveInput input, boolean inputIsSolArchive) throws IOException {
+		String solPrefix = FaultSystemSolution.NESTING_PREFIX;
+		Map<String, String> mappings = new LinkedHashMap<>();
+		
+		String gridRegFile = getRecordBranchFileName(branch, prefix,
+				GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, false, mappings);
+		
+		if (gridRegFile != null && !writtenFiles.contains(gridRegFile)) {
+			if (input != null) {
+				if (directCopy(input, output, solPrefix+GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, gridRegFile, inputIsSolArchive))
+					writtenFiles.add(gridRegFile);
+				// else assume this doens't have that file and don't read in
+			} else {
+				// need to load it
+				GridSourceList gridList = gridListSupplier.get();
+				if (gridList.getGriddedRegion() != null) {
+					FileBackedModule.initEntry(output, null, gridRegFile);
+					Feature regFeature = gridList.getGriddedRegion().toFeature();
+					OutputStreamWriter writer = new OutputStreamWriter(output.getOutputStream());
+					Feature.write(regFeature, writer);
+					writer.flush();
+					output.closeEntry();
+					writtenFiles.add(gridRegFile);
+				}
+			}
+		}
+		
+		String locsFile = getRecordBranchFileName(branch, prefix,
+				GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME, false, mappings);
+		if (locsFile != null && !writtenFiles.contains(locsFile)) {
+			if (!directCopy(input, output, solPrefix+GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME, locsFile, inputIsSolArchive)) {
+				// need to load it
+				GridSourceList gridList = gridListSupplier.get();
+				CSV_BackedModule.writeToArchive(gridList.buildGridLocsCSV(), output, null, locsFile);
+			}
+			writtenFiles.add(locsFile);
+		}
+		
+		String sourcesFile = getRecordBranchFileName(branch, prefix,
+				GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME, true, mappings);
+		if (sourcesFile != null && !writtenFiles.contains(sourcesFile)) {
+			if (!directCopy(input, output, solPrefix+GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME, sourcesFile, inputIsSolArchive)) {
+				// need to load it
+				GridSourceList gridList = gridListSupplier.get();
+				gridList.writeGridSourcesCSV(output, sourcesFile);
+			}
+			writtenFiles.add(sourcesFile);
+		}
+		return mappings;
+	}
 	
 	protected boolean directCopy(ArchiveInput input, ArchiveOutput output, String origFileName,
 			String outputFileName, boolean useOrigFileName) throws IOException {
@@ -1273,7 +1263,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 				origFileName, outputFileName);
 		String inputName = useOrigFileName ? origFileName : outputFileName;
 		if (!input.hasEntry(inputName)) {
-			System.out.println("DIRECTCOPY DEBUG: don't have '"+inputName+"' with origName='"+origFileName+"'to copy to '"+outputFileName+"'");
+//			System.out.println("DIRECTCOPY DEBUG: don't have '"+inputName
+//					+"' with origName='"+origFileName+"'to copy to '"+outputFileName+"'");
 			return false;
 		}
 		output.transferFrom(input, inputName, outputFileName);

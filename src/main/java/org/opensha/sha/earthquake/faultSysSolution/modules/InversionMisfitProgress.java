@@ -36,11 +36,12 @@ public class InversionMisfitProgress implements CSV_BackedModule, BranchAveragea
 		this.iterations = iterations;
 		this.times = times;
 		this.stats = stats;
-		if (targetQuantity == null || targetVals == null) {
-			Preconditions.checkState(targetVals == null && targetQuantity == null,
+		if (targetQuantity == null || (targetVals == null || targetVals.isEmpty())) {
+			Preconditions.checkState((targetVals == null || targetVals.isEmpty()) && targetQuantity == null,
 					"Should specify both target quantity and values, or neither");
 		} else {
-			Preconditions.checkState(targetVals.size() == iterations.size());
+			Preconditions.checkState(targetVals.size() == iterations.size(), "%s != %s",
+					targetVals.size(), iterations.size());
 			this.targetQuantity = targetQuantity;
 			this.targetVals = targetVals;
 		}
@@ -249,7 +250,7 @@ public class InversionMisfitProgress implements CSV_BackedModule, BranchAveragea
 					avgIters.add(longAvg(iters, weights));
 					avgTimes.add(longAvg(times, weights));
 					if (targetVals != null)
-						targetVals.add(doubleAvg(targetVals, weights));
+						avgTargetVals.add(doubleAvg(targetVals, weights));
 					avgStats.add(statsAccumulator.getAverage());
 				}
 				return new InversionMisfitProgress(avgIters, avgTimes, avgStats, targetQuantity, avgTargetVals);
@@ -290,7 +291,7 @@ public class InversionMisfitProgress implements CSV_BackedModule, BranchAveragea
 		}
 		if (allSame)
 			return val1;
-		return (avgSum/weightSum + 0.5);
+		return avgSum/weightSum;
 	}
 
 }

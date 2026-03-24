@@ -281,7 +281,7 @@ abstract class AbstractBranchMFDs implements FileBackedModule {
 			for (int b=0; b<numBranches; b++) {
 				ret.branchSectMFDs[b] = branchSectMFDs.get(b);
 				for (int s=0; s<numSects; s++) {
-					if (ret.branchSectMFDs[b][s] == null)
+					if (ret.branchSectMFDs[b][s] == null || ret.branchSectMFDs[b][s].length == 0)
 						continue;
 					int origMinMagIndex = branchSectMinMagIndexes.get(b)[s];
 					int modMinMagIndex = origMinMagIndex - minMagIndex;

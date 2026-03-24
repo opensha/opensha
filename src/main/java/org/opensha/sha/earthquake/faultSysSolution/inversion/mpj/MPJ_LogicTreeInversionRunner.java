@@ -5,8 +5,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -19,9 +21,7 @@ import org.apache.commons.cli.Options;
 import org.opensha.commons.logicTree.BranchWeightProvider;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
-import org.opensha.commons.logicTree.LogicTreeLevel.FileBackedLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
-import org.opensha.commons.logicTree.LogicTreeNode.FileBackedNode;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.io.archive.ArchiveInput;
@@ -122,6 +122,7 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 		
 		parallelBA = cmd.hasOption("parallel-ba");
 		if (parallelBA) {
+			Preconditions.checkState(runsPerBranch == 1, "Don't yet support parallel-BA (esp TRT-specific) with multiple runs per branch");
 			nodeBACreators = new HashMap<>();
 			
 			nodesBADir = new File(outputDir, "node_branch_averages");
@@ -404,8 +405,8 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 								nodeBACreators = null;
 							}
 						}
-						if (sol != null && nodeBACreators != null && !AbstractAsyncLogicTreeWriter.processBA(nodeBACreators, sol, branch,
-								tree.getWeightProvider()))
+						if (sol != null && nodeBACreators != null &&
+								!AbstractAsyncLogicTreeWriter.processBA(nodeBACreators, sol, branch, tree.getWeightProvider()))
 							nodeBACreators = null;
 					}
 				} else {
@@ -415,7 +416,8 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 						Preconditions.checkState(!reprocessOnly || exists,
 								"--reprocess-only was supplied but no solution exists for breanch %s: %s", branch, solFile.getAbsolutePath());
 						
-						if (exists) {
+						if (exists && nodeBACreators == null) {
+							// TODO could skip reprocessing and just load if nodeBACreators != null
 							debug(solFile.getAbsolutePath()+" exists, testing loading...");
 							try {
 								FaultSystemSolution.load(solFile);
@@ -608,10 +610,10 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 					
 					// need to write out even if we're rank=0, as the serialized type can be different than the
 					// in memory (which can mess up the averaging step that follows)
-					debug("Building BA sol for "+baPrefix);
+					memoryDebug("Building BA sol for "+baPrefix);
 					FaultSystemSolution nodeBASol = nodeBACreators.get(baPrefix).build();
 					File outFile = new File(myNodeBADir, AbstractAsyncLogicTreeWriter.baFile(outputDir, baPrefix).getName());
-					debug("Writing BA sol to "+outFile.getAbsolutePath());
+					memoryDebug("Writing BA sol to "+outFile.getAbsolutePath());
 					nodeBASol.write(outFile);
 				}
 			}
@@ -628,39 +630,59 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 			if (parallelBA) {
 				// merge in parallel BAs
 				Map<String, double[]> rankWeights = ((AsyncLogicTreeWriter)postBatchHook).getRankWeights();
+				Map<String, List<List<LogicTreeBranch<?>>>> rankBranches = ((AsyncLogicTreeWriter)postBatchHook).getRankBranches();
+				
+				List<CompletableFuture<Void>> cleanupFutures = new ArrayList<>();
 				
 				if (!rankWeights.isEmpty()) {
 					// see if we have TRT branches
-					EnumSet<TectonicRegionType> trts = EnumSet.noneOf(TectonicRegionType.class);
+					Map<String, Set<String>> trtBAPrefixes = null;
 					for (LogicTreeBranch<LogicTreeNode> branch : tree) {
+						String topLevelPrefix = AbstractAsyncLogicTreeWriter.getBA_prefix(branch);
+						if (topLevelPrefix == null)
+							continue;
+						Preconditions.checkState(rankWeights.keySet().contains(topLevelPrefix));
 						List<TectonicRegionBranchTreeNode> trtBranches = branch.getValues(TectonicRegionBranchTreeNode.class);
 						if (trtBranches != null) {
 							for (TectonicRegionBranchTreeNode trtBranch : trtBranches) {
-								if (trtBranch.getValue().hasValue(RupSetFaultModel.class))
-									trts.add(trtBranch.getTectonicRegime());
+								if (trtBranch.getValue().hasValue(RupSetFaultModel.class)) {
+									LogicTreeBranch<?> theBranch = trtBranch.getValue();
+									String trtPrefix = AbstractAsyncLogicTreeWriter.getBA_prefix(theBranch);
+									if (trtPrefix == null)
+										continue;
+									if (!trtPrefix.isBlank())
+										trtPrefix+= "_";
+									trtPrefix += trtBranch.getTectonicRegime().name();
+									if (trtBAPrefixes == null)
+										trtBAPrefixes = new HashMap<>();
+									if (!trtBAPrefixes.containsKey(topLevelPrefix))
+										trtBAPrefixes.put(topLevelPrefix, new HashSet<>());
+									trtBAPrefixes.get(topLevelPrefix).add(trtPrefix);
+								}
 							}
 						}
 					}
 					
-					if (!trts.isEmpty()) {
+					if (trtBAPrefixes != null) {
 						// add in trt prefixes
-						for (String baPrefix : List.copyOf(rankWeights.keySet())) {
+						for (String baPrefix : trtBAPrefixes.keySet()) {
 							double[] weights = rankWeights.get(baPrefix);
-							for (TectonicRegionType trt : trts)
-								rankWeights.put(baPrefix+"_"+trt.name(), weights);
+							List<List<LogicTreeBranch<?>>> branches = rankBranches.get(baPrefix);
+							for (String trtPrefix : trtBAPrefixes.get(baPrefix)) {
+								rankWeights.put(trtPrefix, weights);
+								rankBranches.put(trtPrefix, branches);
+							}
 						}
 					}
 					Map<String, CompletableFuture<Void>> baProcessFutures = new HashMap<>(rankWeights.size());
-					List<FileBackedNode> rankNodes = new ArrayList<>(size);
-					for (int i=0; i<size; i++)
-						rankNodes.add(new FileBackedNode("Rank "+i, "Rank"+i, Double.NaN, "Rank"+i));
-					FileBackedLevel rankLevel = new FileBackedLevel("Rank", "Rank", rankNodes);
 					for (String baPrefix : rankWeights.keySet()) {
 						double[] baRankWeights = rankWeights.get(baPrefix);
+						List<List<LogicTreeBranch<?>>> branches = rankBranches.get(baPrefix);
 						
 						BranchAverageSolutionCreator creator = new BranchAverageSolutionCreator(ORIGINAL_WEIGHTS);
-						creator.setMergeMode(true);
 						File baOutFile = AbstractAsyncLogicTreeWriter.baFile(outputDir, baPrefix);
+						
+						memoryDebug("Merging BA sols for baPrefix='"+baPrefix+"', will write to "+baOutFile.getAbsolutePath());
 						
 						for (int r=0; r<size; r++) {
 							if (baRankWeights[r] > 0) {
@@ -673,15 +695,21 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 									baOutFile = null;
 									break;
 								}
+								memoryDebug("Merging in "+rankBAFile.getAbsolutePath());
 								FaultSystemSolution baSol = FaultSystemSolution.load(rankBAFile);
-								LogicTreeBranch<LogicTreeNode> rankBranch = new LogicTreeBranch<>(List.of(rankLevel));
-								rankBranch.setValue(rankNodes.get(r));
-								rankBranch.setOrigBranchWeight(baRankWeights[r]);
 								CompletableFuture<Void> prevFuture = baProcessFutures.get(baPrefix);
 								if (prevFuture != null)
 									prevFuture.join();
-								baProcessFutures.put(baPrefix, CompletableFuture.runAsync(() -> {
-									creator.addSolution(baSol, rankBranch);
+								List<LogicTreeBranch<?>> myBranches = branches.get(r);
+								double myWeight = baRankWeights[r];
+								CompletableFuture<Void> processFuture = CompletableFuture.runAsync(() -> {
+									creator.mergeBranchAveragedSolution(baSol, myWeight, myBranches);
+								});
+								baProcessFutures.put(baPrefix, processFuture);
+								cleanupFutures.add(processFuture.thenRun(() -> {
+									try {
+										rankBAFile.delete();
+									} catch (Exception e) {}
 								}));
 							}
 						}
@@ -691,11 +719,16 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 								// none encountered
 								continue;
 							prevFuture.join();
-							debug("Writing combined BA to "+baOutFile.getAbsolutePath());
-							creator.build().write(baOutFile);
+							memoryDebug("Building combined BA for baPrefix='"+baPrefix+"'");
+							FaultSystemSolution baSol = creator.build();
+							memoryDebug("Writing combined BA to "+baOutFile.getAbsolutePath());
+							baSol.write(baOutFile);
 						}
 					}
 				}
+				
+				for (CompletableFuture<Void> cleanup : cleanupFutures)
+					cleanup.join();
 			}
 			
 			memoryDebug("post batch hook done");

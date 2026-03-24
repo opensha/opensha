@@ -28,6 +28,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 
 import edu.usc.kmilner.mpj.taskDispatch.AsyncPostBatchHook;
+import gov.usgs.earthquake.nshmp.erf.logicTree.TectonicRegionBranchTreeNode;
 
 public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 
@@ -43,8 +44,9 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 	
 	private boolean[] dones;
 	private LogicTree<?> tree;
-	
+
 	private Map<String, double[]> rankWeights;
+	private Map<String, List<List<LogicTreeBranch<?>>>> rankBranches;
 	private int numProcesses;
 
 	private Stopwatch processWatch = Stopwatch.createUnstarted();
@@ -64,6 +66,7 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 		
 		dones = new boolean[getNumTasks()];
 		rankWeights = new HashMap<>();
+		rankBranches = new HashMap<>();
 	}
 	
 	public File getOutputFile(File resultsDir) {
@@ -139,6 +142,7 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
 		});
+		
 		if (baCreators != null) {
 			baWatch.start();
 			if (processingLoadedFuture != null)
@@ -154,6 +158,8 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 			baWatch.stop();
 		}
 		
+
+		
 		String baPrefix = AbstractAsyncLogicTreeWriter.getBA_prefix(branch);
 		Preconditions.checkNotNull(baPrefix);
 		
@@ -161,9 +167,14 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 		if (baRankWeights == null) {
 			baRankWeights = new double[numProcesses];
 			rankWeights.put(baPrefix, baRankWeights);
+			List<List<LogicTreeBranch<?>>> branches = new ArrayList<>(numProcesses);
+			for (int i=0; i<numProcesses; i++)
+				branches.add(new ArrayList<>());
+			rankBranches.put(baPrefix, branches);
 		}
 		
 		baRankWeights[processIndex] += tree.getBranchWeight(branch);
+		rankBranches.get(baPrefix).get(processIndex).add(getBranchForBA(branch));
 
 		processWatch.stop();
 		
@@ -191,6 +202,22 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 		return rankWeights;
 	}
 	
+	public Map<String, List<List<LogicTreeBranch<?>>>> getRankBranches() {
+		return rankBranches;
+	}
+	
+	/**
+	 * This returns the branch that should be given to the BA creator. If it contains TectonicRegionBranchTreeNodes,
+	 * they will be unfolded to show their underlying values
+	 * @param branch
+	 * @return
+	 */
+	public static LogicTreeBranch<?> getBranchForBA(LogicTreeBranch<?> branch) {
+		if (TectonicRegionBranchTreeNode.isTRTBranch(branch))
+			return TectonicRegionBranchTreeNode.unfoldTRTBranches(branch);
+		return branch;
+	}
+	
 	public static boolean processBA(Map<String, BranchAverageSolutionCreator> baCreators, FaultSystemSolution sol,
 			LogicTreeBranch<?> branch, BranchWeightProvider weightProv) {
 		return processBA(baCreators, sol, branch, weightProv, null);
@@ -209,7 +236,7 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 				baCreators.put(baPrefix, new BranchAverageSolutionCreator(weightProv));
 			BranchAverageSolutionCreator baCreator = baCreators.get(baPrefix);
 			try {
-				baCreator.addSolution(sol, branch);
+				baCreator.addSolution(sol, getBranchForBA(branch), weightProv.getWeight(branch));
 				return true;
 			} catch (Exception e) {
 				e.printStackTrace();
