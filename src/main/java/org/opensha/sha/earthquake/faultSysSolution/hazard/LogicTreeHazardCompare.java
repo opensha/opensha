@@ -79,9 +79,11 @@ import org.opensha.commons.logicTree.BranchWeightProvider;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.ContinuousDistributionBinnedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.FileBackedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomlyGeneratedLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.logicTree.LogicTreeNode.ValuedLogicTreeNode;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
@@ -95,6 +97,7 @@ import org.opensha.commons.util.io.archive.ArchiveInput;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.AbstractLTVarianceDecomposition.VarianceContributionResult;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_LogicTreeHazardCalc;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.mpj.AbstractAsyncLogicTreeWriter;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
@@ -288,6 +291,13 @@ public class LogicTreeHazardCompare {
 			mapper = new LogicTreeHazardCompare(solTree, tree,
 					hazardFile, rps, periods, spacing);
 			
+			boolean remapTRTs = cmd.hasOption("remap-trt-branches") || cmd.hasOption("remap");
+			boolean remapRandDists = cmd.hasOption("remap-rand-dist-branches") || cmd.hasOption("remap");
+			if (remapTRTs || remapRandDists)
+				ignorePrecomputed = true;
+			mapper.remapTRTs = remapTRTs;
+			mapper.remapRandDists = remapRandDists;
+			
 			mapper.skipLogicTree = cmd.hasOption("skip-logic-tree") || tree == null;
 			if (ignorePrecomputed)
 				System.out.println("Ignoring any pre-computed mean maps");
@@ -423,6 +433,12 @@ public class LogicTreeHazardCompare {
 		ops.addOption(null, "force-sparse-lt-var", false, "Flag to force using the sparse logic tree variance algorithm");
 		ops.addOption(null, "force-file-backed-lt", false, "Flag to force loading the logic tree exactly as registered "
 				+ "in the tree file and ignoring matching enums or classes");
+		ops.addOption(null, "remap-trt-branches", false,
+				"Flag to ramap/expand any TRT branches. Implies --ignore-precomputed-maps");
+		ops.addOption(null, "remap-rand-dist-branches", false,
+				"Flag to remap/bin any randomly-sampled continuous distribution. Implies --ignore-precomputed-maps");
+		ops.addOption(null, "remap", false,
+				"Flag to enable all remapping options. Implies --ignore-precomputed-maps");
 		
 		return ops;
 	}
@@ -452,7 +468,9 @@ public class LogicTreeHazardCompare {
 	private boolean forceSparseLTVar = false;
 	
 	private ZipFile zip;
-	private List<? extends LogicTreeBranch<?>> branches;
+	private List<? extends LogicTreeLevel<? extends LogicTreeNode>> levels;
+	private List<LogicTreeBranch<?>> branches;
+	private LogicTreeBranch<?> branch0;
 	private List<Double> weights;
 	private double totWeight;
 	private GriddedRegion gridReg;
@@ -479,13 +497,14 @@ public class LogicTreeHazardCompare {
 	private GriddedRegion forceRemapRegion;
 	
 	private SolutionLogicTree solLogicTree;
-	private LogicTree<?> tree;
 	
 	private boolean floatMaps = false;
 	
 	// command line options
 	private boolean skipLogicTree = false;
 	private boolean ignorePrecomputed = false;
+	private boolean remapTRTs = false;
+	private boolean remapRandDists = false;
 
 	public LogicTreeHazardCompare(SolutionLogicTree solLogicTree, File mapsZipFile,
 			ReturnPeriods[] rps, double[] periods, double spacing) throws IOException {
@@ -495,7 +514,6 @@ public class LogicTreeHazardCompare {
 	public LogicTreeHazardCompare(SolutionLogicTree solLogicTree, LogicTree<?> tree, File mapsZipFile,
 			ReturnPeriods[] rps, double[] periods, double spacing) throws IOException {
 		this.solLogicTree = solLogicTree;
-		this.tree = tree;
 		this.rps = rps;
 		this.periods = periods;
 		this.spacing = spacing;
@@ -543,6 +561,7 @@ public class LogicTreeHazardCompare {
 		
 		if (tree == null) {
 			// assume external
+			levels = null;
 			branches = new ArrayList<>();
 			weights = new ArrayList<>();
 			
@@ -552,20 +571,103 @@ public class LogicTreeHazardCompare {
 			
 			Preconditions.checkNotNull(gridReg, "Must supply gridded region in zip file if external");
 		} else {
-			branches = tree.getBranches();
-			weights = new ArrayList<>();
+			List<? extends LogicTreeBranch<?>> inputBranches = tree.getBranches();
+			branch0 = inputBranches.get(0);
+			levels = tree.getLevels();
+			branches = new ArrayList<>(inputBranches.size());
+			weights = new ArrayList<>(inputBranches.size());
 			
 			BranchWeightProvider weightProv = tree.getWeightProvider();
 			
-			for (int i=0; i<branches.size(); i++) {
-				LogicTreeBranch<?> branch = branches.get(i);
+			List<? extends LogicTreeLevel<?>> branchLevels = null;
+			boolean revertToInput = false;
+			
+			for (int i=0; i<inputBranches.size(); i++) {
+				LogicTreeBranch<?> branch = inputBranches.get(i);
 				double weight = weightProv.getWeight(branch);
 				Preconditions.checkState(weight >= 0, "Bad weight=%s for branch %s, weightProv=%s",
 						weight, branch, weightProv.getClass().getName());
 				if (weight == 0d)
 					System.err.println("WARNING: zero weight for branch: "+branch);
+				if (remapTRTs) {
+					// this will unfold any TRTs
+					LogicTreeBranch<?> theBranch = AbstractAsyncLogicTreeWriter.getBranchForBA(branch);
+					if (theBranch != branch) {
+						// it was unfolded
+						if (i == 0) {
+							branchLevels = theBranch.getLevels();
+						} else if (branchLevels == null || branchLevels.size() != theBranch.size()) {
+							branchLevels = null;
+							revertToInput = true;
+						}
+					}
+					branches.add(theBranch);
+				} else {
+					branches.add(branch);
+				}
 				weights.add(weight);
 				totWeight += weight;
+			}
+			if (revertToInput) {
+				// they unfloded non-uniformly, can't unfold
+				branches.clear();
+				branches.addAll(inputBranches);
+			} else if (branchLevels != null) {
+				// they were unfolded
+				levels = branchLevels;
+			}
+			
+			if (remapRandDists) {
+				List<Integer> binnedLevelIndexes = null;
+				List<ContinuousDistributionBinnedLevel> binnedLevels = null;
+				
+				for (int l=0; l<levels.size(); l++) {
+					LogicTreeLevel<?> level = levels.get(l);
+					if (level instanceof LogicTreeLevel.AbstractContinuousDistributionSampledLevel<?>) {
+						ContinuousDistributionBinnedLevel binned =
+								((LogicTreeLevel.AbstractContinuousDistributionSampledLevel<?>)level).toBinnedLevel(3);
+						if (binnedLevelIndexes == null) {
+							binnedLevelIndexes = new ArrayList<>();
+							binnedLevels = new ArrayList<>();
+						}
+						binnedLevelIndexes.add(l);
+						binnedLevels.add(binned);
+						System.out.println("Binning "+level.getName()+":");
+						for (LogicTreeNode node : binned.getNodes())
+							System.out.println("\t"+node.getName());
+						
+					}
+				}
+				if (binnedLevelIndexes != null) {
+					List<LogicTreeBranch<? extends LogicTreeNode>> modBranches = new ArrayList<>(branches.size());
+					List<LogicTreeLevel<? extends LogicTreeNode>> modLevels = new ArrayList<>(levels.size());
+					
+					for (int l=0; l<levels.size(); l++)
+						modLevels.add(levels.get(l));
+					for (int i=0; i<binnedLevelIndexes.size(); i++)
+						modLevels.set(binnedLevelIndexes.get(i), binnedLevels.get(i));
+					
+					for (LogicTreeBranch<?> branch : branches) {
+						List<LogicTreeNode> values = new ArrayList<>();
+						
+						for (int l=0; l<levels.size(); l++)
+							values.add(branch.getValue(l));
+						for (int i=0; i<binnedLevelIndexes.size(); i++) {
+							int l = binnedLevelIndexes.get(i);
+							double value = ((ValuedLogicTreeNode<Double>)values.get(l)).getValue();
+							values.set(l, binnedLevels.get(i).getBin(value));
+						}
+						
+						LogicTreeBranch<LogicTreeNode> modBranch = new LogicTreeBranch<>(modLevels, values);
+						modBranch.setCustomFileName(branch.buildFileName());
+						modBranch.setOrigBranchWeight(branch.getOrigBranchWeight());
+						
+						modBranches.add(modBranch);
+					}
+					
+					this.branches = modBranches;
+					this.levels = modLevels;
+				}
 			}
 		}
 		
@@ -608,7 +710,6 @@ public class LogicTreeHazardCompare {
 		LinkedList<Future<?>> processFutures = new LinkedList<>();
 		CompletableFuture<Runnable> readFuture = null;
 		
-		LogicTreeBranch<?> branch0 = branches.get(0);
 		if (branch0 != null) {
 			FaultSystemSolution sol = null;
 			if (mapper == null && solLogicTree != null)
@@ -675,7 +776,7 @@ public class LogicTreeHazardCompare {
 		if (mapper == null) {
 			// if we're here, the primary is an external (branch is null)
 			
-			if (solLogicTree != null && solLogicTree instanceof SolutionLogicTree.InMemory && tree == null) {
+			if (solLogicTree != null && solLogicTree instanceof SolutionLogicTree.InMemory && levels == null) {
 				// single in memory, keyed with null branch, fetch the solution
 				FaultSystemSolution sol = solLogicTree.forBranch(null);
 				mapper = new SolHazardMapCalc(sol, null, gridReg, periods);
@@ -2018,7 +2119,7 @@ public class LogicTreeHazardCompare {
 				
 				int combinedMapIndex = lines.size();
 				
-				int numLevels = tree.getLevels().size();
+				int numLevels = levels.size();
 				
 				if (canDecomposeVariance == null) {
 					System.out.println("Seeing if the logic tree is structured in a way that supports variance decomposition");
@@ -2030,13 +2131,13 @@ public class LogicTreeHazardCompare {
 							+ "across upstream branches) for exclusion in variance calculations");
 					boolean firstVaryingLevel = true;
 					for (int l=0; l<numLevels; l++) {
-						LogicTreeLevel<?> level = tree.getLevels().get(l);
+						LogicTreeLevel<?> level = levels.get(l);
 						if (level instanceof RandomlyGeneratedLevel<?> || level instanceof FileBackedLevel) {
 							// either a random sampling level, or could have been (maybe deserialization failed is now is file backed)
 							// we want to detect the case where the random sampling is across the whole tree, i.e., values
 							// are never reused
 							
-							if (level.getNodes().size() == tree.size()) {
+							if (level.getNodes().size() == branches.size()) {
 								// full tree random sampling
 								System.out.println("\tDetected that "+level.getName()+" is a randomly sampled level "
 										+ "because it has a unique value for each tree branch");
@@ -2051,10 +2152,10 @@ public class LogicTreeHazardCompare {
 								// 
 								// we can only do this check for levels downstream of the first varying level, however
 								
-								List<LogicTreeLevel<? extends LogicTreeNode>> levelsAbove = new ArrayList<>(tree.getLevels().subList(0, l));
+								List<LogicTreeLevel<? extends LogicTreeNode>> levelsAbove = new ArrayList<>(levels.subList(0, l));
 								Map<LogicTreeNode, LogicTreeBranch<?>> prevBranchesAbove = new HashMap<>();
 								boolean match = true;
-								for (LogicTreeBranch<?> branch : tree) {
+								for (LogicTreeBranch<?> branch : branches) {
 									LogicTreeNode node = branch.getValue(l);
 									LogicTreeBranch<LogicTreeNode> branchAbove = new LogicTreeBranch<>(levelsAbove);
 									for (int i=0; i<l; i++)
@@ -2071,15 +2172,15 @@ public class LogicTreeHazardCompare {
 								if (match) {
 									System.out.println("\tDetected that "+level.getName()+" is a randomly sampled level "
 											+ "because no unique upstream branches re-use it, even though it only has "
-											+level.getNodes().size()+" nodes for "+tree.size()+" total branches");
+											+level.getNodes().size()+" nodes for "+branches.size()+" total branches");
 									uniqueSamplingLevels.add(level);
 								}
 							}
 						}
 						if (firstVaryingLevel) {
 							// see if this node varies
-							LogicTreeNode firstVal = tree.getBranch(0).getValue(l);
-							for (LogicTreeBranch<?> branch : tree) {
+							LogicTreeNode firstVal = branches.get(0).getValue(l);
+							for (LogicTreeBranch<?> branch : branches) {
 								if (!branch.getValue(l).equals(firstVal)) {
 									// there are multiple values for this level
 									firstVaryingLevel = false;
@@ -2101,14 +2202,14 @@ public class LogicTreeHazardCompare {
 					List<Integer> levelMappings = new ArrayList<>();
 					List<HashSet<LogicTreeNode>> encounteredConcreteNodes = new ArrayList<>();
 					for (int l=0; l<numLevels; l++) {
-						LogicTreeLevel<?> level = tree.getLevels().get(l);
+						LogicTreeLevel<?> level = levels.get(l);
 						if (!uniqueSamplingLevels.contains(level)) {
 							concreteLevels.add(level);
 							levelMappings.add(l);
 							encounteredConcreteNodes.add(new HashSet<>());
 						}
 					}
-					for (LogicTreeBranch<?> branch : tree) {
+					for (LogicTreeBranch<?> branch : branches) {
 						LogicTreeBranch<LogicTreeNode> concreteBranch = new LogicTreeBranch<>(concreteLevels);
 						for (int i=0; i<concreteLevels.size(); i++) {
 							LogicTreeNode node = branch.getValue(levelMappings.get(i));
@@ -2125,10 +2226,10 @@ public class LogicTreeHazardCompare {
 					} else if (completeTreeCount != concreteBranches.size() || forceSparseLTVar) {
 						System.out.println("Have to use sparse variance decomposition approach because the logic tree is downsampled");
 						canDecomposeVariance = true;
-						varDecomposer = new SparseLTVarianceDecomposition(tree, uniqueSamplingLevels, exec);
+						varDecomposer = new SparseLTVarianceDecomposition(levels, branches, uniqueSamplingLevels, exec);
 					} else {
 						canDecomposeVariance = true;
-						varDecomposer = new MarginalAveragingLTVarianceDecomposition(tree, uniqueSamplingLevels, exec);
+						varDecomposer = new MarginalAveragingLTVarianceDecomposition(levels, branches, uniqueSamplingLevels, exec);
 					}
 				}
 				
@@ -2175,7 +2276,7 @@ public class LogicTreeHazardCompare {
 				// do mean map calculations first so that we can clear out the full NormCDFs from memory
 				
 				for (int l=0; l<numLevels; l++) {
-					LogicTreeLevel<?> level = tree.getLevels().get(l);
+					LogicTreeLevel<?> level = levels.get(l);
 					HashMap<LogicTreeNode, List<GriddedGeoDataSet>> choiceMaps = new HashMap<>();
 					HashMap<LogicTreeNode, List<Double>> choiceWeights = new HashMap<>();
 					for (int i=0; i<branches.size(); i++) {
@@ -2314,7 +2415,7 @@ public class LogicTreeHazardCompare {
 				
 				boolean levelNameOverlap = false;
 				List<String> levelPrefixes = new ArrayList<>();
-				for (LogicTreeLevel<?> level : tree.getLevels()) {
+				for (LogicTreeLevel<?> level : levels) {
 					String ltPrefix = level.getFilePrefix();
 					levelNameOverlap |= levelPrefixes.contains(ltPrefix);
 					levelPrefixes.add(ltPrefix);
@@ -2324,7 +2425,7 @@ public class LogicTreeHazardCompare {
 						levelPrefixes.set(i, i+"_"+levelPrefixes.get(i));
 				
 				for (int l=0; l<choiceMapsList.size(); l++) {
-					LogicTreeLevel<?> level = tree.getLevels().get(l);
+					LogicTreeLevel<?> level = levels.get(l);
 					String levelPrefix = prefix+"_"+levelPrefixes.get(l);
 					HashMap<LogicTreeNode, List<GriddedGeoDataSet>> choiceMaps = choiceMapsList.get(l);
 					if (choiceMaps != null) {

@@ -23,8 +23,9 @@ public class MarginalAveragingLTVarianceDecomposition extends AbstractLTVariance
 	private GriddedGeoDataSet varAveragingOverSampling;
 	private boolean anyNegativeLTCOVs;
 
-	public MarginalAveragingLTVarianceDecomposition(LogicTree<?> tree, List<LogicTreeLevel<?>> uniqueSamplingLevels, ExecutorService exec) {
-		super(tree, uniqueSamplingLevels, exec);
+	public MarginalAveragingLTVarianceDecomposition(List<? extends LogicTreeLevel<?>> levels, List<? extends LogicTreeBranch<?>> branches,
+			List<LogicTreeLevel<?>> uniqueSamplingLevels, ExecutorService exec) {
+		super(levels, branches, uniqueSamplingLevels, exec);
 		// TODO make sure not downsampled
 	}
 
@@ -128,10 +129,10 @@ public class MarginalAveragingLTVarianceDecomposition extends AbstractLTVariance
 			clearIndexes.add(levelIndex);
 		// now see if there are any random sampling branches where there are unique samples for every branch in the
 		// tree (as opposed to N samples at that lavel). In that case, we need to clear them as well.
-		int numLevels = tree.getLevels().size();
+		int numLevels = levels.size();
 		for (int l=0; l<numLevels; l++) {
 			if (l != levelIndex) {
-				LogicTreeLevel<?> testLevel = tree.getLevels().get(l);
+				LogicTreeLevel<?> testLevel = levels.get(l);
 				if (uniqueSamplingLevels.contains(testLevel)) {
 					System.out.println("\tWill also clear out sampling values from level '"+testLevel.getName()+"'");
 					clearIndexes.add(l);
@@ -141,9 +142,9 @@ public class MarginalAveragingLTVarianceDecomposition extends AbstractLTVariance
 		if (clearIndexes.isEmpty())
 			return null;
 		
-		for (int b=0; b<tree.size(); b++) {
+		for (int b=0; b<branches.size(); b++) {
 			// copy it so we can clear the value
-			LogicTreeBranch<?> branch = tree.getBranch(b).copy();
+			LogicTreeBranch<?> branch = branches.get(b).copy();
 			for (int l : clearIndexes)
 				branch.clearValue(l);
 			
@@ -157,8 +158,8 @@ public class MarginalAveragingLTVarianceDecomposition extends AbstractLTVariance
 			indexes.add(b);
 		}
 		
-		System.out.println("\treduced from "+tree.size()+" to "+uniqueOtherBranches.size()+" branches");
-		if (tree.size() == uniqueOtherBranches.size() || uniqueOtherBranches.size() == 1)
+		System.out.println("\treduced from "+branches.size()+" to "+uniqueOtherBranches.size()+" branches");
+		if (branches.size() == uniqueOtherBranches.size() || uniqueOtherBranches.size() == 1)
 			return null;
 		
 		GriddedGeoDataSet[] mapsExcludingLevel = new GriddedGeoDataSet[uniqueOtherBranches.size()];
@@ -169,7 +170,7 @@ public class MarginalAveragingLTVarianceDecomposition extends AbstractLTVariance
 			double weightSum = 0d;
 			GriddedGeoDataSet map = new GriddedGeoDataSet(allMaps[0].getRegion());
 			for (int index : indexes) {
-				double subWeight = tree.getBranchWeight(index);
+				double subWeight = allWeights.get(index);
 				weightSum += subWeight;
 				GriddedGeoDataSet subMap = allMaps[index];
 				for (int i=0; i<map.size(); i++)
@@ -240,7 +241,7 @@ public class MarginalAveragingLTVarianceDecomposition extends AbstractLTVariance
 				"Maximum Variance Contribution", "Maximum COV Contribution");
 		table.addLine("Full model", "100%", LogicTreeHazardCompare.threeDigits.format(fullCOV),
 				"100%", LogicTreeHazardCompare.threeDigits.format(fullCOVmax));
-		int numLevels = tree.getLevels().size();
+		int numLevels = levels.size();
 		Preconditions.checkState(results.size() == numLevels);
 		int numWithResults = 0;
 		for (int l=0; l<numLevels; l++) {
@@ -249,7 +250,7 @@ public class MarginalAveragingLTVarianceDecomposition extends AbstractLTVariance
 				continue;
 			numWithResults++;
 			
-			LogicTreeLevel<?> level = tree.getLevels().get(l);
+			LogicTreeLevel<?> level = levels.get(l);
 			
 			String levelName = level.getName();
 			if (uniqueSamplingLevels.size() > 1 && uniqueSamplingLevels.get(0) == level) {
