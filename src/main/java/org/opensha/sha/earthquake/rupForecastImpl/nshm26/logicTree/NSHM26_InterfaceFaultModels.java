@@ -28,6 +28,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader.NSHM26_MapRegions;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
@@ -152,17 +153,28 @@ public enum NSHM26_InterfaceFaultModels implements RupSetFaultModel, RupSetSubse
 	}
 	
 	public static RegionsOfInterest buildROI(NSHM26_SeismicityRegions seisReg) throws IOException {
-		List<TectonicRegionType> trts = List.of(TectonicRegionType.SUBDUCTION_INTERFACE,
-				TectonicRegionType.SUBDUCTION_SLAB,TectonicRegionType.ACTIVE_SHALLOW);
-		List<Region> trtRegions = new ArrayList<>(trts.size());
-		List<IncrementalMagFreqDist> trtMFDs = new ArrayList<>(trts.size());
+		TectonicRegionType[] trts = {TectonicRegionType.SUBDUCTION_INTERFACE,
+				TectonicRegionType.SUBDUCTION_SLAB,TectonicRegionType.ACTIVE_SHALLOW};
+		List<Region> trtRegions = new ArrayList<>(trts.length*2);
+		List<IncrementalMagFreqDist> trtMFDs = new ArrayList<>(trts.length*2);
+		List<TectonicRegionType> regionTRTs = new ArrayList<>(trts.length*2);
 		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(5.01, 9.01);
 		for (TectonicRegionType trt : trts) {
 			trtRegions.add(cloneForTRT(seisReg.load(), trt));
 			double mMax = NSHM26_SeisRateModelBranch.getPlotMmax(trt);
 			trtMFDs.add(NSHM26_SeisRateModelBranch.loadRateModel(seisReg, trt).getBounded(refMFD, mMax));
+			regionTRTs.add(trt);
 		}
-		RegionsOfInterest roi = new RegionsOfInterest(trtRegions, trtMFDs, trts);
+		NSHM26_MapRegions mapRegion = NSHM26_MapRegions.valueOf(seisReg.name());
+		for (TectonicRegionType trt : trts) {
+			trtRegions.add(cloneForTRT(mapRegion.load(), trt));
+//			double mMax = NSHM26_SeisRateModelBranch.getPlotMmax(trt);
+//			trtMFDs.add(NSHM26_SeisRateModelBranch.loadRateModel(seisReg, trt).getBounded(refMFD, mMax));
+			// TODO remapped
+			trtMFDs.add(null);
+			regionTRTs.add(trt);
+		}
+		RegionsOfInterest roi = new RegionsOfInterest(trtRegions, trtMFDs, regionTRTs);
 		return roi;
 	}
 	

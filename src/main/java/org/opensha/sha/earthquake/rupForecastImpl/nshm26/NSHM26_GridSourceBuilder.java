@@ -97,16 +97,28 @@ public class NSHM26_GridSourceBuilder {
 		List<Double> depths = new ArrayList<>();
 		for (int i=0; i<NSHM26_SeisPDF_Loader.DEPTH_DISCR_3D.size(); i++) {
 			double x = NSHM26_SeisPDF_Loader.DEPTH_DISCR_3D.getX(i);
-			if (x <= 100.01) {
-				depths.add(x);
-			} else if (x <= 200.01) {
-				if (Math.abs(x % 20) < 0.1)
-					depths.add(x);
-//			} else if (x <= 00.01) {
+//			if (x <= 100.01) {
+//				depths.add(x);
+//			} else if (x <= 200.01) {
 //				if (Math.abs(x % 20) < 0.1)
 //					depths.add(x);
-			} else {
+////			} else if (x <= 00.01) {
+////				if (Math.abs(x % 20) < 0.1)
+////					depths.add(x);
+//			} else {
+//				if (Math.abs(x % 50) < 0.1)
+//					depths.add(x);
+//			}
+			if (x <= 50.01) {
+				depths.add(x);
+			} else if (x <= 100.01) {
+				if (Math.abs(x % 20) < 0.1)
+					depths.add(x);
+			} else if (x <= 300.01) {
 				if (Math.abs(x % 50) < 0.1)
+					depths.add(x);
+			} else {
+				if (Math.abs(x % 100) < 0.1)
 					depths.add(x);
 			}
 		}
@@ -772,6 +784,8 @@ public class NSHM26_GridSourceBuilder {
 //		plotInterfaceDepthStrikeData(NSHM26_SeismicityRegions.AMSAM, new File("/tmp"));
 //		plotInterfaceDepthStrikeData(NSHM26_SeismicityRegions.GNMI, new File("/tmp"));
 		
+		System.out.println("Rediscr depths:");
+		
 		File invDir = new File("/home/kevin/markdown/inversions/");
 		
 		FaultSystemSolution interfaceSol = FaultSystemSolution.load(new File(invDir,
@@ -794,18 +808,18 @@ public class NSHM26_GridSourceBuilder {
 		branch = NSHM26_LogicTree.buildDefault(seisReg, TectonicRegionType.SUBDUCTION_SLAB, false);
 		GridSourceList intraslabProv = buildIntraslabGridSourceList(branch, seisReg);
 		
-		if (crustalSol != null) {
-			branch = crustalSol.requireModule(LogicTreeBranch.class);
-			doPreGridBuildHook(crustalSol, branch);
-		} else {
-			branch = NSHM26_LogicTree.buildDefault(seisReg, TectonicRegionType.ACTIVE_SHALLOW, false);
-		}
-		GridSourceList crustalProv = buildCrustalGridSourceProv(crustalSol, branch, seisReg);
-		
-		GridSourceList combProv = buildCombinedGridSourceProv(interfaceProv, intraslabProv, crustalProv);
-		interfaceSol.setGridSourceProvider(combProv);
-		
-		fm.attachDefaultModules(interfaceSol.getRupSet());
-		interfaceSol.write(new File("/tmp/"+seisReg.name()+"_test_gridded_sol.zip"));
+//		if (crustalSol != null) {
+//			branch = crustalSol.requireModule(LogicTreeBranch.class);
+//			doPreGridBuildHook(crustalSol, branch);
+//		} else {
+//			branch = NSHM26_LogicTree.buildDefault(seisReg, TectonicRegionType.ACTIVE_SHALLOW, false);
+//		}
+//		GridSourceList crustalProv = buildCrustalGridSourceProv(crustalSol, branch, seisReg);
+//		
+//		GridSourceList combProv = buildCombinedGridSourceProv(interfaceProv, intraslabProv, crustalProv);
+//		interfaceSol.setGridSourceProvider(combProv);
+//		
+//		fm.attachDefaultModules(interfaceSol.getRupSet());
+//		interfaceSol.write(new File("/tmp/"+seisReg.name()+"_test_gridded_sol.zip"));
 	}
 }

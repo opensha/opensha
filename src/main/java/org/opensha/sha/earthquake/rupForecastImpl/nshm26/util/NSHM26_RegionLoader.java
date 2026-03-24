@@ -58,6 +58,50 @@ public class NSHM26_RegionLoader {
 		}
 	}
 	
+	/**
+	 * Regions within which seismicity constraints and spatial seismicity PDFs are determined
+	 * 
+	 * @author kevin
+	 * @see NSHM23_RegionalSeismicity
+	 * @see NSHM23_SeisSmoothingAlgorithms
+	 * 
+	 */
+	public enum NSHM26_MapRegions implements NSHM23_BaseRegion, ShortNamed {
+		GNMI(GNMI_DIR+"gnmi-map.geojson", "Guam & Northern Mariana Islands Map Region", "GNMI Map Region"),
+		AMSAM(AMSAM_DIR+"amsam-map.geojson", "American Samoa Map Region", "AmSam Map Region");
+		
+		private String path;
+		private String name;
+		private String shortName;
+
+		private NSHM26_MapRegions(String path, String name, String shortName) {
+			this.path = path;
+			this.name = name;
+			this.shortName = shortName;
+		}
+		
+		public String getResourcePath() {
+			return path;
+		}
+		
+		@Override
+		public String getName() {
+			return name;
+		}
+
+		@Override
+		public String getShortName() {
+			return shortName;
+		}
+
+		@Override
+		public Region load() throws IOException {
+			Region reg = checkConvertLon(NSHM23_BaseRegion.super.load());
+			reg.setName(name);
+			return reg;
+		}
+	}
+	
 	private static Region checkConvertLon(Region region) {
 		if (region.getMinLon() < 0) {
 			LocationList modBorder = new LocationList();
