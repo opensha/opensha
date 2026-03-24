@@ -3,6 +3,7 @@ package org.opensha.commons.logicTree;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -10,7 +11,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
 
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.numbers.core.Precision;
 import org.apache.commons.rng.UniformRandomProvider;
 import org.apache.commons.rng.simple.RandomSource;
@@ -32,6 +32,7 @@ import org.opensha.commons.util.json.JsonObjectSerializable;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Range;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
@@ -939,6 +940,163 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 				precisionScale = jsonObj.get("precisionScale").getAsInt();
 			else
 				precisionScale = -1;
+		}
+		
+		private static DecimalFormat oDF = new DecimalFormat("0.##");
+		
+		public ContinuousDistributionBinnedLevel toBinnedLevel(int numBins) {
+			Preconditions.checkState(numBins > 0);
+			List<Double> binEdges = new ArrayList<>(numBins+1);
+			List<String> names = new ArrayList<>(numBins);
+			
+			binEdges.add(dist.getSupportLowerBound());
+			double probEach = 1d/(double)numBins;
+			double startP = 0d;
+			for (int i=0; i<numBins; i++) {
+				double lower = binEdges.get(i);
+				double upper;
+				double endP;
+				if (i == numBins-1) {
+					// last
+					endP = 1d;
+					upper = dist.getSupportUpperBound();
+				} else {
+					// intermediate
+					endP = startP + probEach;
+					upper = dist.inverseCumulativeProbability(endP);
+				}
+				
+				binEdges.add(upper);
+				
+				String binStr;
+				if (Double.isInfinite(lower) && Double.isInfinite(upper))
+					binStr = "["+Double.POSITIVE_INFINITY+"]";
+				else if (Double.isInfinite(lower))
+					binStr = "<"+formatVal(upper);
+				else if (Double.isInfinite(upper))
+					binStr = ">"+formatVal(lower);
+				else
+					binStr = "["+formatVal(lower)+", "+formatVal(upper)+"]";
+				
+				String name;
+				if (numBins == 1 || numBins > 3) {
+					name = binStr;
+				} else if (i == 0) {
+					name = "Low: "+binStr;
+				} else if (i == numBins-1) {
+					name = "High: "+binStr;
+				} else {
+					name = "Middle: "+binStr;
+				}
+				names.add(name);
+				
+				startP = endP;
+			}
+			
+			
+			return toBinnedLevel(binEdges, names);
+		}
+		
+		private static String formatVal(double val) {
+			if (Double.isInfinite(val))
+				return val+"";
+			if (Math.abs(val) < 1e-1)
+				return (float)val+"";
+			if (val >= 999.9) {
+				if (val > 1e5)
+					return (float)val+"";
+				return (int)val+"";
+			}
+			return oDF.format(val);
+		}
+		
+		public ContinuousDistributionBinnedLevel toBinnedLevel(List<Double> binEdges, List<String> names) {
+			Preconditions.checkState(binEdges.size() > 1);
+			int numBins = binEdges.size()-1;
+			Preconditions.checkState(names.size() == numBins);
+			List<SimpleValuedNode<Range<Double>>> nodes = new ArrayList<>();
+			Class<? extends Range<Double>> valueType = (Class<? extends Range<Double>>) (Class<?>) Range.class;
+			for (int i=0; i<numBins; i++) {
+				double lower = binEdges.get(i);
+				double upper = binEdges.get(i+1);
+				Range<Double> range;
+				if (numBins == 1 || i == numBins -1)
+					range = Range.closed(lower, upper);
+				else
+					range = Range.closedOpen(lower, upper);
+				String name = names.get(i);
+				double cdf0;
+				if (Double.isInfinite(lower) || lower <= dist.getSupportLowerBound())
+					cdf0 = 0;
+				else
+					cdf0 = dist.cumulativeProbability(lower);
+				double cdf1;
+				if (Double.isInfinite(upper) || upper >= dist.getSupportUpperBound())
+					cdf1 = 1d;
+				else
+					cdf1 = dist.cumulativeProbability(upper);
+				double weight = cdf1 - cdf0;
+				new SimpleValuedNode<>(range, null, weight, name, name, "Bin"+i);
+				SimpleValuedNode<Range<Double>> node = new SimpleValuedNode<Range<Double>>(
+						range, valueType, weight, name, name, "Bin"+i);
+				nodes.add(node);
+			}
+			
+			return new ContinuousDistributionBinnedLevel(this, nodes);
+		}
+		
+	}
+	
+	public static class ContinuousDistributionBinnedLevel extends LogicTreeLevel<SimpleValuedNode<Range<Double>>> {
+		
+		private AbstractContinuousDistributionSampledLevel<? extends ValuedLogicTreeNode<Double>> samplingLevel;
+		private List<SimpleValuedNode<Range<Double>>> nodes;
+		
+		// this extra cast to Class<?> resolves compile errors that don't show up in eclipse, which is annoying
+		private static Class<? extends SimpleValuedNode<Range<Double>>> TYPE =
+				(Class<SimpleValuedNode<Range<Double>>>) (Class<?>) SimpleValuedNode.class;
+		
+		public ContinuousDistributionBinnedLevel(
+				AbstractContinuousDistributionSampledLevel<? extends ValuedLogicTreeNode<Double>> samplingLevel,
+				List<SimpleValuedNode<Range<Double>>> nodes) {
+			this.samplingLevel = samplingLevel;
+			this.nodes = nodes;
+		}
+
+		@Override
+		public String getShortName() {
+			return samplingLevel.getShortName();
+		}
+
+		@Override
+		public String getName() {
+			return samplingLevel.getShortName();
+		}
+
+		@Override
+		public Class<? extends SimpleValuedNode<Range<Double>>> getType() {
+			return TYPE;
+		}
+
+		@Override
+		public List<? extends SimpleValuedNode<Range<Double>>> getNodes() {
+			return nodes;
+		}
+
+		@Override
+		public boolean isMember(LogicTreeNode node) {
+			return nodes.contains(node);
+		}
+		
+		public SimpleValuedNode<Range<Double>> getBin(ValuedLogicTreeNode<Double> node) {
+			return getBin(node.getValue());
+		}
+		
+		public SimpleValuedNode<Range<Double>> getBin(double value) {
+			for (SimpleValuedNode<Range<Double>> bin : nodes)
+				if (bin.getValue().contains(value))
+					return bin;
+			return null;
 		}
 		
 	}
