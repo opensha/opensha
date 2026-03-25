@@ -79,6 +79,7 @@ import org.opensha.commons.logicTree.BranchWeightProvider;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.BinnedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.ContinuousDistributionBinnedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.FileBackedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomlyGeneratedLevel;
@@ -289,12 +290,12 @@ public class LogicTreeHazardCompare {
 		int exit = 0;
 		try {
 			boolean remapTRTs = cmd.hasOption("remap-trt-branches") || cmd.hasOption("remap");
-			boolean remapRandDists = cmd.hasOption("remap-rand-dist-branches") || cmd.hasOption("remap");
+			boolean remapBinnable = cmd.hasOption("remap-binnable-branches") || cmd.hasOption("remap");
 			
-			if (remapTRTs || remapRandDists)
+			if (remapTRTs || remapBinnable)
 				ignorePrecomputed = true;
 			mapper = new LogicTreeHazardCompare(solTree, tree,
-					hazardFile, rps, periods, spacing, remapTRTs, remapRandDists);
+					hazardFile, rps, periods, spacing, remapTRTs, remapBinnable);
 			
 			mapper.skipLogicTree = cmd.hasOption("skip-logic-tree") || tree == null;
 			if (ignorePrecomputed)
@@ -359,7 +360,7 @@ public class LogicTreeHazardCompare {
 						compTree.setWeightProvider(new BranchWeightProvider.CurrentWeights());
 				}
 				comp = new LogicTreeHazardCompare(compSolTree, compTree,
-						compHazardFile, rps, periods, spacing, remapTRTs, remapRandDists);
+						compHazardFile, rps, periods, spacing, remapTRTs, remapBinnable);
 				mapper.ignorePrecomputed = ignorePrecomputed;
 			}
 			
@@ -433,8 +434,8 @@ public class LogicTreeHazardCompare {
 				+ "in the tree file and ignoring matching enums or classes");
 		ops.addOption(null, "remap-trt-branches", false,
 				"Flag to ramap/expand any TRT branches. Implies --ignore-precomputed-maps");
-		ops.addOption(null, "remap-rand-dist-branches", false,
-				"Flag to remap/bin any randomly-sampled continuous distribution. Implies --ignore-precomputed-maps");
+		ops.addOption(null, "remap-binnable-branches", false,
+				"Flag to remap/bin any binnable branches to theird binned form. Implies --ignore-precomputed-maps");
 		ops.addOption(null, "remap", false,
 				"Flag to enable all remapping options. Implies --ignore-precomputed-maps");
 		
@@ -503,12 +504,12 @@ public class LogicTreeHazardCompare {
 	private boolean ignorePrecomputed = false;
 
 	public LogicTreeHazardCompare(SolutionLogicTree solLogicTree, File mapsZipFile,
-			ReturnPeriods[] rps, double[] periods, double spacing, boolean remapTRTs, boolean remapRandDist) throws IOException {
-		this(solLogicTree, solLogicTree.getLogicTree(), mapsZipFile, rps, periods, spacing, remapTRTs, remapRandDist);
+			ReturnPeriods[] rps, double[] periods, double spacing, boolean remapTRTs, boolean remapBinnable) throws IOException {
+		this(solLogicTree, solLogicTree.getLogicTree(), mapsZipFile, rps, periods, spacing, remapTRTs, remapBinnable);
 	}
 
 	public LogicTreeHazardCompare(SolutionLogicTree solLogicTree, LogicTree<?> tree, File mapsZipFile,
-			ReturnPeriods[] rps, double[] periods, double spacing, boolean remapTRTs, boolean remapRandDists) throws IOException {
+			ReturnPeriods[] rps, double[] periods, double spacing, boolean remapTRTs, boolean remapBinnable) throws IOException {
 		this.solLogicTree = solLogicTree;
 		this.rps = rps;
 		this.periods = periods;
@@ -613,15 +614,15 @@ public class LogicTreeHazardCompare {
 				levels = branchLevels;
 			}
 			
-			if (remapRandDists) {
+			if (remapBinnable) {
 				List<Integer> binnedLevelIndexes = null;
-				List<ContinuousDistributionBinnedLevel> binnedLevels = null;
+				List<BinnedLevel<?, ?>> binnedLevels = null;
 				
 				for (int l=0; l<levels.size(); l++) {
 					LogicTreeLevel<?> level = levels.get(l);
-					if (level instanceof LogicTreeLevel.AbstractContinuousDistributionSampledLevel<?>) {
-						ContinuousDistributionBinnedLevel binned =
-								((LogicTreeLevel.AbstractContinuousDistributionSampledLevel<?>)level).toBinnedLevel(3);
+					if (level instanceof LogicTreeLevel.BinnableLevel<?,?,?>) {
+						BinnedLevel<?, ?> binned =
+								((LogicTreeLevel.BinnableLevel<?,?,?>)level).toBinnedLevel();
 						if (binnedLevelIndexes == null) {
 							binnedLevelIndexes = new ArrayList<>();
 							binnedLevels = new ArrayList<>();
@@ -629,7 +630,7 @@ public class LogicTreeHazardCompare {
 						binnedLevelIndexes.add(l);
 						binnedLevels.add(binned);
 						System.out.println("Binning "+level.getName()+":");
-						for (LogicTreeNode node : binned.getNodes())
+						for (LogicTreeNode node : ((LogicTreeLevel<?>)binned).getNodes())
 							System.out.println("\t"+node.getName());
 						
 					}
@@ -641,7 +642,7 @@ public class LogicTreeHazardCompare {
 					for (int l=0; l<levels.size(); l++)
 						modLevels.add(levels.get(l));
 					for (int i=0; i<binnedLevelIndexes.size(); i++)
-						modLevels.set(binnedLevelIndexes.get(i), binnedLevels.get(i));
+						modLevels.set(binnedLevelIndexes.get(i), (LogicTreeLevel<?>)binnedLevels.get(i));
 					
 					for (LogicTreeBranch<?> branch : branches) {
 						List<LogicTreeNode> values = new ArrayList<>();
@@ -650,8 +651,7 @@ public class LogicTreeHazardCompare {
 							values.add(branch.getValue(l));
 						for (int i=0; i<binnedLevelIndexes.size(); i++) {
 							int l = binnedLevelIndexes.get(i);
-							double value = ((ValuedLogicTreeNode<Double>)values.get(l)).getValue();
-							values.set(l, binnedLevels.get(i).getBin(value));
+							values.set(l, binnedLevels.get(i).getBinUnchecked(values.get(l)));
 						}
 						
 						LogicTreeBranch<LogicTreeNode> modBranch = new LogicTreeBranch<>(modLevels, values);

@@ -868,7 +868,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 	}
 	
 	public static abstract class AbstractContinuousDistributionSampledLevel<N extends ValuedLogicTreeNode<Double>>
-	extends AbstractRandomlySampledLevel<Double, N> {
+	extends AbstractRandomlySampledLevel<Double, N> implements BinnableLevel<Double, N, ContinuousDistributionBinnedLevel> {
 
 		private ContinuousDistribution dist;
 		private int precisionScale;
@@ -944,6 +944,12 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		
 		private static DecimalFormat oDF = new DecimalFormat("0.##");
 		
+		@Override
+		public ContinuousDistributionBinnedLevel toBinnedLevel() {
+			return toBinnedLevel(3);
+		}
+		
+		@Override
 		public ContinuousDistributionBinnedLevel toBinnedLevel(int numBins) {
 			Preconditions.checkState(numBins > 0);
 			List<Double> binEdges = new ArrayList<>(numBins+1);
@@ -995,7 +1001,6 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 				startP = endP;
 			}
 			
-			
 			return toBinnedLevel(binEdges, names, shortNames);
 		}
 		
@@ -1018,7 +1023,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			Preconditions.checkState(names.size() == numBins);
 			Preconditions.checkState(shortNames == null || shortNames.size() == numBins);
 			List<SimpleValuedNode<Range<Double>>> nodes = new ArrayList<>();
-			Class<? extends Range<Double>> valueType = (Class<? extends Range<Double>>) (Class<?>) Range.class;
+			
 			for (int i=0; i<numBins; i++) {
 				double lower = binEdges.get(i);
 				double upper = binEdges.get(i+1);
@@ -1042,16 +1047,41 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 				double weight = cdf1 - cdf0;
 				new SimpleValuedNode<>(range, null, weight, name, name, "Bin"+i);
 				SimpleValuedNode<Range<Double>> node = new SimpleValuedNode<Range<Double>>(
-						range, valueType, weight, name, shortName, "Bin"+i);
+						range, ContinuousDistributionBinnedLevel.VALUE_TYPE, weight, name, shortName, "Bin"+i);
 				nodes.add(node);
 			}
 			
 			return new ContinuousDistributionBinnedLevel(this, nodes);
 		}
 		
+	}	
+	
+	public interface BinnableLevel<E, N extends ValuedLogicTreeNode<E>, B extends LogicTreeLevel<?> & BinnedLevel<?,?>> extends ValueBackedLevel<E, N> {
+		
+		public B toBinnedLevel();
+		
+		public B toBinnedLevel(int numBins);
+		
 	}
 	
-	public static class ContinuousDistributionBinnedLevel extends LogicTreeLevel<SimpleValuedNode<Range<Double>>> {
+	public interface BinnedLevel<E, N extends LogicTreeNode> {
+		
+		@SuppressWarnings("unchecked")
+		public default N getBinUnchecked(LogicTreeNode node) {
+			return getBin((ValuedLogicTreeNode<E>)node);
+		}
+		
+		public default N getBin(ValuedLogicTreeNode<E> node) {
+			return getBin(node.getValue());
+		}
+		
+		public N getBin(E value);
+		
+	}
+	
+	public static class ContinuousDistributionBinnedLevel extends LogicTreeLevel<SimpleValuedNode<Range<Double>>> 
+	implements ValueBackedLevel<Range<Double>, SimpleValuedNode<Range<Double>>>,
+	BinnedLevel<Double, SimpleValuedNode<Range<Double>>>{
 		
 		private AbstractContinuousDistributionSampledLevel<? extends ValuedLogicTreeNode<Double>> samplingLevel;
 		private List<SimpleValuedNode<Range<Double>>> nodes;
@@ -1059,6 +1089,8 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		// this extra cast to Class<?> resolves compile errors that don't show up in eclipse, which is annoying
 		private static Class<? extends SimpleValuedNode<Range<Double>>> TYPE =
 				(Class<SimpleValuedNode<Range<Double>>>) (Class<?>) SimpleValuedNode.class;
+		private static Class<? extends Range<Double>> VALUE_TYPE =
+				(Class<? extends Range<Double>>) (Class<?>) Range.class;
 		
 		public ContinuousDistributionBinnedLevel(
 				AbstractContinuousDistributionSampledLevel<? extends ValuedLogicTreeNode<Double>> samplingLevel,
@@ -1096,11 +1128,22 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			return getBin(node.getValue());
 		}
 		
-		public SimpleValuedNode<Range<Double>> getBin(double value) {
+		public SimpleValuedNode<Range<Double>> getBin(Double value) {
 			for (SimpleValuedNode<Range<Double>> bin : nodes)
 				if (bin.getValue().contains(value))
 					return bin;
 			return null;
+		}
+
+		@Override
+		public Class<? extends Range<Double>> getValueType() {
+			return VALUE_TYPE;
+		}
+
+		@Override
+		public SimpleValuedNode<Range<Double>> build(Range<Double> value, double weight, String name, String shortName,
+				String filePrefix) {
+			return new SimpleValuedNode<Range<Double>>(value, VALUE_TYPE, weight, name, shortName, filePrefix);
 		}
 		
 	}

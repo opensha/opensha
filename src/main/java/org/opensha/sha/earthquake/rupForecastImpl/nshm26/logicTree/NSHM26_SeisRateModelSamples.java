@@ -2,21 +2,32 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
+import org.opensha.commons.data.function.LightFixedXFunc;
+import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.AbstractRandomlySampledLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.BinnableLevel;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.NSHM26_InvConfigFactory;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_SeisRateModel.BinnedSamplesLevel;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_SeisRateModel.BinnedSamplesNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_SeisRateModel.NSHM26_SiesRateModelSample;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Range;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.TypeAdapter;
@@ -27,7 +38,8 @@ import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.PureGR;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateType;
 
-public class NSHM26_SeisRateModelSamples extends AbstractRandomlySampledLevel<PureGR, NSHM26_SiesRateModelSample> {
+public class NSHM26_SeisRateModelSamples extends AbstractRandomlySampledLevel<PureGR, NSHM26_SiesRateModelSample>
+implements BinnableLevel<PureGR, NSHM26_SiesRateModelSample, BinnedSamplesLevel> {
 	
 	private NSHM26_SeismicityRegions region;
 	private TectonicRegionType trt;
@@ -141,6 +153,93 @@ public class NSHM26_SeisRateModelSamples extends AbstractRandomlySampledLevel<Pu
 		trt = TectonicRegionType.valueOf(jsonObj.get("tectonicRegime").getAsString());
 		
 		super.initFromJsonObject(jsonObj);
+	}
+
+	@Override
+	public BinnedSamplesLevel toBinnedLevel() {
+		return toBinnedLevel(3);
+	}
+
+	@Override
+	public BinnedSamplesLevel toBinnedLevel(int numBins) {
+		Preconditions.checkState(numBins > 0);
+		List<Double> binEdges = new ArrayList<>(numBins+1);
+		List<String> names = new ArrayList<>(numBins);
+		List<String> shortNames = new ArrayList<>(numBins);
+		
+		double[] allRates = new double[nodes.size()];
+		double minRate = Double.POSITIVE_INFINITY;
+		double maxRate = 0d;
+		for (int i=0; i<allRates.length; i++) {
+			allRates[i] = nodes.get(i).getValue().rateAboveM1;
+			minRate = Math.min(minRate, allRates[i]);
+			maxRate = Math.max(maxRate, allRates[i]);
+		}
+		
+		LightFixedXFunc cdf = ArbDiscrEmpiricalDistFunc.calcQuickNormCDF(allRates, null);
+		
+		DecimalFormat rateDF = new DecimalFormat("0.0#");
+		
+		DecimalFormat mDF = new DecimalFormat("0.#");
+		String nmLabel = "N"+mDF.format(nodes.get(0).getValue().M1);
+		
+		binEdges.add(minRate);
+		double probEach = 1d/(double)numBins;
+		double startP = 0d;
+		List<BinnedSamplesNode> binNodes = new ArrayList<>();
+		for (int i=0; i<numBins; i++) {
+			double lower = binEdges.get(i);
+			double upper;
+			double endP;
+			if (i == numBins-1) {
+				// last
+				endP = 1d;
+				upper = maxRate;
+			} else {
+				// intermediate
+				endP = startP + probEach;
+				upper = ArbDiscrEmpiricalDistFunc.calcFractileFromNormCDF(cdf, endP);
+			}
+			
+			binEdges.add(upper);
+			
+			String binStr;
+			if (Double.isInfinite(lower) && Double.isInfinite(upper))
+				binStr = nmLabel+" ∈ ["+Double.POSITIVE_INFINITY+"]";
+			else if (Double.isInfinite(lower))
+				binStr = nmLabel+" < "+rateDF.format(upper);
+			else if (Double.isInfinite(upper))
+				binStr = nmLabel+" > "+rateDF.format(lower);
+			else
+				binStr = nmLabel+" ∈ ["+rateDF.format(lower)+", "+rateDF.format(upper)+"]";
+			
+			String name, shortName;
+			Range<Double> range;
+			if (numBins == 1 || numBins > 3) {
+				name = binStr;
+				shortName = binStr;
+				range = Range.all();
+			} else if (i == 0) {
+				shortName = "Low";
+				name = shortName+": "+binStr;
+				range = Range.atMost(upper);
+			} else if (i == numBins-1) {
+				shortName = "High";
+				name = shortName+": "+binStr;
+				range = Range.atLeast(lower);
+			} else {
+				shortName = "Middle";
+				name = shortName+": "+binStr;
+				range = Range.closed(lower, upper);
+			}
+			names.add(name);
+			shortNames.add(binStr);
+			
+			startP = endP;
+			
+			binNodes.add(new BinnedSamplesNode(name, shortName, "Bin"+i, probEach, range));
+		}
+		return new BinnedSamplesLevel(this, binNodes);
 	}
 
 }
