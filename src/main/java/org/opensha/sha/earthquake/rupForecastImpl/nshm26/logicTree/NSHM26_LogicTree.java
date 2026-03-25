@@ -44,7 +44,7 @@ public class NSHM26_LogicTree {
 	public static final LogicTreeLevel<NSHM26_InterfaceFaultModels> INTERFACE_FM =
 			LogicTreeLevel.forEnum(NSHM26_InterfaceFaultModels.class, "Interface Fault Model", "InterfaceFM");
 	public static final LogicTreeLevel<NSHM26_InterfaceCouplingDepthModels> INTERFACE_DEPTH_COUPLING =
-			LogicTreeLevel.forEnum(NSHM26_InterfaceCouplingDepthModels.class, "Interface Depth Coupling", "InterfaceDepthCoupling");
+			LogicTreeLevel.forEnum(NSHM26_InterfaceCouplingDepthModels.class, "Interface Depth Coupling Taper", "InterfaceDepthCoupling");
 	public static final LogicTreeLevel<NSHM26_InterfaceDeformationModels> INTERFACE_DM =
 			LogicTreeLevel.forEnum(NSHM26_InterfaceDeformationModels.class, "Interface Deformation Model", "InterfaceDM");
 	public static final LogicTreeLevel<PRVI25_SubductionScalingRelationships> INTERFACE_SCALE = 
@@ -93,7 +93,7 @@ public class NSHM26_LogicTree {
 		String trtName = NSHM26_RegionLoader.getNameForTRT(trt);
 		
 		// inversion
-		String supraBname = sampled ? trtName+" b-value Samples" : trtName+" Fixed b-value";
+		String supraBname = sampled ? trtName+" Inversion b-value Samples" : trtName+" Inversion Fixed b-value";
 		String supraBshortName = sampled ? trtName+"-bSamples" : trtName+"-FixedB";
 		if (trt == TectonicRegionType.SUBDUCTION_INTERFACE) {
 			levels.add(INTERFACE_FM);
@@ -132,14 +132,14 @@ public class NSHM26_LogicTree {
 			levels.add(new NSHM26_SeisRateModelSamples(seisReg, trt));
 		else
 			levels.add(LogicTreeLevel.forEnum(NSHM26_SeisRateModelBranch.class,
-					seisReg.getShortName()+" Rate Model Branch ("+NSHM26_RegionLoader.getNameForTRT(trt)+")",
-					seisReg.name()+"-"+NSHM26_RegionLoader.getNameForTRT(trt)+"Branch"));
+					"Rate Model Branch ("+NSHM26_RegionLoader.getNameForTRT(trt)+")",
+					NSHM26_RegionLoader.getNameForTRT(trt)+"Branch"));
 		levels.add(LogicTreeLevel.forEnum(NSHM26_DeclusteringAlgorithms.class,
-				seisReg.getShortName()+" Declustering Algorithm ("+NSHM26_RegionLoader.getNameForTRT(trt)+")",
-				seisReg.name()+"-"+NSHM26_RegionLoader.getNameForTRT(trt)+"-Decluster"));
+				"Declustering Algorithm ("+NSHM26_RegionLoader.getNameForTRT(trt)+")",
+				NSHM26_RegionLoader.getNameForTRT(trt)+"-Decluster"));
 		levels.add(LogicTreeLevel.forEnum(NSHM26_SeisSmoothingAlgorithms.class,
-				seisReg.getShortName()+" Smoothing Kernel ("+NSHM26_RegionLoader.getNameForTRT(trt)+")",
-				seisReg.name()+"-"+NSHM26_RegionLoader.getNameForTRT(trt)+"-Smooth"));
+				"Smoothing Kernel ("+NSHM26_RegionLoader.getNameForTRT(trt)+")",
+				NSHM26_RegionLoader.getNameForTRT(trt)+"-Smooth"));
 
 		String mMaxName = sampled ? trtName+" Off Fault Mmax Samples" : trtName+" Fixed Off Fault Mmax";
 		String mMaxShortName = sampled ? trtName+"-MmaxOffSamples" : trtName+"-FixedMmaxOff";
