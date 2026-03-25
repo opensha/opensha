@@ -101,7 +101,7 @@ public class LogicTreeSimplifiedMapDataWriter {
 		double[] periods = LogicTreeHazardCompare.detectHazardPeriods(new ReturnPeriods[] {ReturnPeriods.TWO_IN_50}, input);
 		input.close(); // loader below uses file directly
 		
-		LogicTreeHazardCompare loader = new LogicTreeHazardCompare(null, tree, inputFile, rps, periods, gridReg.getSpacing());
+		LogicTreeHazardCompare loader = new LogicTreeHazardCompare(null, tree, inputFile, rps, periods, gridReg.getSpacing(), false, false);
 		
 		Stopwatch overallWatch = Stopwatch.createStarted();
 		

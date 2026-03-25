@@ -288,15 +288,13 @@ public class LogicTreeHazardCompare {
 		LogicTreeHazardCompare comp = null;
 		int exit = 0;
 		try {
-			mapper = new LogicTreeHazardCompare(solTree, tree,
-					hazardFile, rps, periods, spacing);
-			
 			boolean remapTRTs = cmd.hasOption("remap-trt-branches") || cmd.hasOption("remap");
 			boolean remapRandDists = cmd.hasOption("remap-rand-dist-branches") || cmd.hasOption("remap");
+			
 			if (remapTRTs || remapRandDists)
 				ignorePrecomputed = true;
-			mapper.remapTRTs = remapTRTs;
-			mapper.remapRandDists = remapRandDists;
+			mapper = new LogicTreeHazardCompare(solTree, tree,
+					hazardFile, rps, periods, spacing, remapTRTs, remapRandDists);
 			
 			mapper.skipLogicTree = cmd.hasOption("skip-logic-tree") || tree == null;
 			if (ignorePrecomputed)
@@ -361,7 +359,7 @@ public class LogicTreeHazardCompare {
 						compTree.setWeightProvider(new BranchWeightProvider.CurrentWeights());
 				}
 				comp = new LogicTreeHazardCompare(compSolTree, compTree,
-						compHazardFile, rps, periods, spacing);
+						compHazardFile, rps, periods, spacing, remapTRTs, remapRandDists);
 				mapper.ignorePrecomputed = ignorePrecomputed;
 			}
 			
@@ -503,16 +501,14 @@ public class LogicTreeHazardCompare {
 	// command line options
 	private boolean skipLogicTree = false;
 	private boolean ignorePrecomputed = false;
-	private boolean remapTRTs = false;
-	private boolean remapRandDists = false;
 
 	public LogicTreeHazardCompare(SolutionLogicTree solLogicTree, File mapsZipFile,
-			ReturnPeriods[] rps, double[] periods, double spacing) throws IOException {
-		this(solLogicTree, solLogicTree.getLogicTree(), mapsZipFile, rps, periods, spacing);
+			ReturnPeriods[] rps, double[] periods, double spacing, boolean remapTRTs, boolean remapRandDist) throws IOException {
+		this(solLogicTree, solLogicTree.getLogicTree(), mapsZipFile, rps, periods, spacing, remapTRTs, remapRandDist);
 	}
 
 	public LogicTreeHazardCompare(SolutionLogicTree solLogicTree, LogicTree<?> tree, File mapsZipFile,
-			ReturnPeriods[] rps, double[] periods, double spacing) throws IOException {
+			ReturnPeriods[] rps, double[] periods, double spacing, boolean remapTRTs, boolean remapRandDists) throws IOException {
 		this.solLogicTree = solLogicTree;
 		this.rps = rps;
 		this.periods = periods;
