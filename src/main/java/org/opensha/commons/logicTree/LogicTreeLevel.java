@@ -948,6 +948,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			Preconditions.checkState(numBins > 0);
 			List<Double> binEdges = new ArrayList<>(numBins+1);
 			List<String> names = new ArrayList<>(numBins);
+			List<String> shortNames = new ArrayList<>(numBins);
 			
 			binEdges.add(dist.getSupportLowerBound());
 			double probEach = 1d/(double)numBins;
@@ -989,12 +990,13 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					name = "Middle: "+binStr;
 				}
 				names.add(name);
+				shortNames.add(binStr);
 				
 				startP = endP;
 			}
 			
 			
-			return toBinnedLevel(binEdges, names);
+			return toBinnedLevel(binEdges, names, shortNames);
 		}
 		
 		private static String formatVal(double val) {
@@ -1010,10 +1012,11 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			return oDF.format(val);
 		}
 		
-		public ContinuousDistributionBinnedLevel toBinnedLevel(List<Double> binEdges, List<String> names) {
+		public ContinuousDistributionBinnedLevel toBinnedLevel(List<Double> binEdges, List<String> names, List<String> shortNames) {
 			Preconditions.checkState(binEdges.size() > 1);
 			int numBins = binEdges.size()-1;
 			Preconditions.checkState(names.size() == numBins);
+			Preconditions.checkState(shortNames == null || shortNames.size() == numBins);
 			List<SimpleValuedNode<Range<Double>>> nodes = new ArrayList<>();
 			Class<? extends Range<Double>> valueType = (Class<? extends Range<Double>>) (Class<?>) Range.class;
 			for (int i=0; i<numBins; i++) {
@@ -1025,6 +1028,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 				else
 					range = Range.closedOpen(lower, upper);
 				String name = names.get(i);
+				String shortName = shortNames == null ? name : shortNames.get(i);
 				double cdf0;
 				if (Double.isInfinite(lower) || lower <= dist.getSupportLowerBound())
 					cdf0 = 0;
@@ -1038,7 +1042,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 				double weight = cdf1 - cdf0;
 				new SimpleValuedNode<>(range, null, weight, name, name, "Bin"+i);
 				SimpleValuedNode<Range<Double>> node = new SimpleValuedNode<Range<Double>>(
-						range, valueType, weight, name, name, "Bin"+i);
+						range, valueType, weight, name, shortName, "Bin"+i);
 				nodes.add(node);
 			}
 			
@@ -1070,7 +1074,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 
 		@Override
 		public String getName() {
-			return samplingLevel.getShortName();
+			return samplingLevel.getName();
 		}
 
 		@Override
