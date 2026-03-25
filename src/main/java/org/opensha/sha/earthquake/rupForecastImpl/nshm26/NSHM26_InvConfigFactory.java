@@ -498,8 +498,10 @@ public class NSHM26_InvConfigFactory implements ClusterSpecificInversionConfigur
 		List<BinaryRuptureProbabilityCalc> exclusionModels = new ArrayList<>();
 		for (ExclusionaryLogicTreeNode exclusionNode : branch.getValues(ExclusionaryLogicTreeNode.class)) {
 			BinaryRuptureProbabilityCalc exclusionModel = exclusionNode.getExclusionModel(rupSet, branch);
-			if (exclusionModel != null)
+			if (exclusionModel != null) {
+				System.out.println("Adding exclusion model: "+exclusionModel.getName()+" (from "+exclusionNode.getName()+")");
 				exclusionModels.add(exclusionModel);
+			}
 		}
 		
 		if (exclusionModels.isEmpty())

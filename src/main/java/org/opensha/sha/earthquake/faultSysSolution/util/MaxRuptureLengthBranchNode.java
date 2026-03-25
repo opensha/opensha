@@ -2,10 +2,13 @@ package org.opensha.sha.earthquake.faultSysSolution.util;
 
 import java.text.DecimalFormat;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.apache.commons.statistics.distribution.ContinuousDistribution;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
+import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.logicTree.LogicTreeNode.ValuedLogicTreeNode;
@@ -13,13 +16,59 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.ExclusionaryLogicTreeNode;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
-public interface MaxRuptureLengthBranchNode extends ValuedLogicTreeNode<Double> {
+public interface MaxRuptureLengthBranchNode extends ValuedLogicTreeNode<Double>, ExclusionaryLogicTreeNode {
 	
+	@Override
+	default BinaryRuptureProbabilityCalc getExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+		return new ExclusionModel(getValue());
+	}
+	
+	public static class ExclusionModel implements BinaryRuptureProbabilityCalc {
+		
+		private float maxLen;
+		
+		private ConcurrentMap<FaultSubsectionCluster, Double> clusterLenMap;
+
+		public ExclusionModel(double maxLen) {
+			this.maxLen = (float)maxLen;
+			
+			clusterLenMap = new ConcurrentHashMap<>();
+		}
+
+		@Override
+		public boolean isDirectional(boolean splayed) {
+			return false;
+		}
+
+		@Override
+		public String getName() {
+			return "Length <= "+maxLen+" km";
+		}
+
+		@Override
+		public boolean isRupAllowed(ClusterRupture fullRupture, boolean verbose) {
+			double lenSum = 0d;
+			
+			for (FaultSubsectionCluster cluster : fullRupture.getClustersIterable()) {
+				lenSum += clusterLenMap.computeIfAbsent(cluster,
+						c->FaultSystemRupSet.calculateLength(c.subSects)*1e-3);
+				if ((float)lenSum > maxLen)
+					return false;
+			}
+			return true;
+		}
+		
+	}
+
 	@DoesNotAffect(FaultSystemRupSet.SECTS_FILE_NAME)
 	@DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 	@DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
