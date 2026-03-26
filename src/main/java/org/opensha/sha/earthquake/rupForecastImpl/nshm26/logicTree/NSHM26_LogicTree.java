@@ -82,7 +82,7 @@ public class NSHM26_LogicTree {
 	public static final double CRUSTAL_B_SINGLE_DEFAULT = 0.5d;
 	public static final ContinuousDistribution CRUSTAL_B_DIST = UniformContinuousDistribution.of(0d, 1d);
 	public static final double CRUSTAL_MMAX_OFF_SINGLE_DEFAULT = 7.6;
-	public static final ContinuousDistribution CRUSTAL_MMAX_OFF_DIST = CorrTruncatedNormalDistribution.of(7.6, 0.134, 7.05, 8.05);
+	public static final ContinuousDistribution CRUSTAL_MMAX_OFF_DIST = CorrTruncatedNormalDistribution.of(7.6, 0.134, 7.15, 8.05);
 	
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> buildLevels(NSHM26_SeismicityRegions seisReg,
 			TectonicRegionType trt, boolean sampled) {
