@@ -809,7 +809,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		
 		@Override
 		public boolean isMember(LogicTreeNode node) {
-			return getType().isInstance(node) && nodes.contains(node);
+			return getType().isInstance(node);
 		}
 		
 		public abstract Class<? extends E> getValueType();
@@ -1045,7 +1045,6 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 				else
 					cdf1 = dist.cumulativeProbability(upper);
 				double weight = cdf1 - cdf0;
-				new SimpleValuedNode<>(range, null, weight, name, name, "Bin"+i);
 				SimpleValuedNode<Range<Double>> node = new SimpleValuedNode<Range<Double>>(
 						range, ContinuousDistributionBinnedLevel.VALUE_TYPE, weight, name, shortName, "Bin"+i);
 				nodes.add(node);
