@@ -27,6 +27,7 @@ import org.opensha.commons.logicTree.LogicTreeNode.SimpleValuedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.ValuedLogicTreeNode;
 import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.json.ContinuousDistributionTypeAdapter;
+import org.opensha.commons.util.json.DoubleRangeAdapter;
 import org.opensha.commons.util.json.JsonAdapterHelper;
 import org.opensha.commons.util.json.JsonObjectSerializable;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
@@ -1149,11 +1150,10 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		
 	}
 	
-	public static class ContinuousDistributionBinnedLevel extends LogicTreeLevel<SimpleValuedNode<Range<Double>>> 
+	public static class ContinuousDistributionBinnedLevel extends DataBackedLevel<SimpleValuedNode<Range<Double>>> 
 	implements ValueBackedLevel<Range<Double>, SimpleValuedNode<Range<Double>>>,
-	BinnedLevel<Double, SimpleValuedNode<Range<Double>>>{
+	BinnedLevel<Double, SimpleValuedNode<Range<Double>>> {
 		
-		private AbstractContinuousDistributionSampledLevel<? extends ValuedLogicTreeNode<Double>> samplingLevel;
 		private List<SimpleValuedNode<Range<Double>>> nodes;
 		
 		// this extra cast to Class<?> resolves compile errors that don't show up in eclipse, which is annoying
@@ -1162,21 +1162,14 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		private static Class<? extends Range<Double>> VALUE_TYPE =
 				(Class<? extends Range<Double>>) (Class<?>) Range.class;
 		
+		@SuppressWarnings("unused") // deserialization
+		private ContinuousDistributionBinnedLevel() {};
+		
 		public ContinuousDistributionBinnedLevel(
 				AbstractContinuousDistributionSampledLevel<? extends ValuedLogicTreeNode<Double>> samplingLevel,
 				List<SimpleValuedNode<Range<Double>>> nodes) {
-			this.samplingLevel = samplingLevel;
+			super(samplingLevel.getName(), samplingLevel.getShortName());
 			this.nodes = nodes;
-		}
-
-		@Override
-		public String getShortName() {
-			return samplingLevel.getShortName();
-		}
-
-		@Override
-		public String getName() {
-			return samplingLevel.getName();
 		}
 
 		@Override
@@ -1214,6 +1207,48 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		public SimpleValuedNode<Range<Double>> build(Range<Double> value, double weight, String name, String shortName,
 				String filePrefix) {
 			return new SimpleValuedNode<Range<Double>>(value, VALUE_TYPE, weight, name, shortName, filePrefix);
+		}
+
+		@Override
+		public JsonObject toJsonObject() {
+			JsonObject json = new JsonObject();
+			
+			JsonArray binsArray = new JsonArray();
+			
+			DoubleRangeAdapter rangeAdapter = new DoubleRangeAdapter();
+			
+			for (SimpleValuedNode<Range<Double>> node : nodes) {
+				JsonObject binObj = new JsonObject();
+
+				binObj.add("range", rangeAdapter.toJsonTree(node.getValue()));
+				binObj.add("name", new JsonPrimitive(node.getName()));
+				binObj.add("shortName", new JsonPrimitive(node.getShortName()));
+				binObj.add("filePrefix", new JsonPrimitive(node.getFilePrefix()));
+				binObj.add("weight", new JsonPrimitive(node.getNodeWeight()));
+				
+				binsArray.add(binObj);
+			}
+			
+			json.add("bins", binsArray);
+			return json;
+			
+		}
+
+		@Override
+		public void initFromJsonObject(JsonObject jsonObj) {
+			JsonArray bins = jsonObj.getAsJsonArray("bins");
+			
+			DoubleRangeAdapter rangeAdapter = new DoubleRangeAdapter();
+			
+			nodes = new ArrayList<>(bins.size());
+			for (int i=0; i<bins.size(); i++) {
+				Range<Double> range = rangeAdapter.fromJsonTree(jsonObj.get("range"));
+				String name = jsonObj.get("name").getAsString();
+				String shortName = jsonObj.get("shortName").getAsString();
+				String filePrefix = jsonObj.get("filePrefix").getAsString();
+				double weight = jsonObj.get("weight").getAsDouble();
+				nodes.add(build(range, weight, name, shortName, filePrefix));
+			}
 		}
 		
 	}

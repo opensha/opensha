@@ -1,5 +1,6 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
@@ -8,7 +9,9 @@ import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.util.json.DoubleRangeAdapter;
 import org.opensha.commons.logicTree.LogicTreeLevel.BinnedLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.DataBackedLevel;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
@@ -19,6 +22,9 @@ import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Range;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.PureGR;
@@ -72,25 +78,17 @@ public interface NSHM26_SeisRateModel extends LogicTreeNode {
 		
 	}
 	
-	public static class BinnedSamplesLevel extends LogicTreeLevel<BinnedSamplesNode>
+	public static class BinnedSamplesLevel extends DataBackedLevel<BinnedSamplesNode>
 	implements BinnedLevel<PureGR, BinnedSamplesNode>{
 		
-		private NSHM26_SeisRateModelSamples samplesLevel;
 		private List<BinnedSamplesNode> nodes;
+		
+		@SuppressWarnings("unused") // deserialization
+		private BinnedSamplesLevel() {}
 
 		BinnedSamplesLevel(NSHM26_SeisRateModelSamples samplesLevel, List<BinnedSamplesNode> nodes) {
-			this.samplesLevel = samplesLevel;
+			super(samplesLevel.getName(), samplesLevel.getShortName());
 			this.nodes = nodes;
-		}
-
-		@Override
-		public String getShortName() {
-			return samplesLevel.getShortName();
-		}
-
-		@Override
-		public String getName() {
-			return samplesLevel.getName();
 		}
 
 		@Override
@@ -115,10 +113,52 @@ public interface NSHM26_SeisRateModel extends LogicTreeNode {
 					return node;
 			return null;
 		}
+
+		@Override
+		public JsonObject toJsonObject() {
+			JsonObject json = new JsonObject();
+			
+			JsonArray binsArray = new JsonArray();
+			
+			DoubleRangeAdapter rangeAdapter = new DoubleRangeAdapter();
+			
+			for (BinnedSamplesNode node : nodes) {
+				JsonObject binObj = new JsonObject();
+
+				binObj.add("range", rangeAdapter.toJsonTree(node.rateRange));
+				binObj.add("name", new JsonPrimitive(node.getName()));
+				binObj.add("shortName", new JsonPrimitive(node.getShortName()));
+				binObj.add("filePrefix", new JsonPrimitive(node.getFilePrefix()));
+				binObj.add("weight", new JsonPrimitive(node.getNodeWeight()));
+				
+				binsArray.add(binObj);
+			}
+			
+			json.add("bins", binsArray);
+			return json;
+			
+		}
+
+		@Override
+		public void initFromJsonObject(JsonObject jsonObj) {
+			JsonArray bins = jsonObj.getAsJsonArray("bins");
+			
+			DoubleRangeAdapter rangeAdapter = new DoubleRangeAdapter();
+			
+			nodes = new ArrayList<>(bins.size());
+			for (int i=0; i<bins.size(); i++) {
+				Range<Double> range = rangeAdapter.fromJsonTree(jsonObj.get("range"));
+				String name = jsonObj.get("name").getAsString();
+				String shortName = jsonObj.get("shortName").getAsString();
+				String filePrefix = jsonObj.get("filePrefix").getAsString();
+				double weight = jsonObj.get("weight").getAsDouble();
+				nodes.add(new BinnedSamplesNode(name, shortName, filePrefix, weight, range));
+			}
+		}
 		
 	}
 	
-	public static class BinnedSamplesNode implements LogicTreeNode {
+	public static class BinnedSamplesNode implements LogicTreeNode.FixedWeightNode {
 		
 		private String name;
 		private String shortName;
@@ -146,7 +186,7 @@ public interface NSHM26_SeisRateModel extends LogicTreeNode {
 		}
 
 		@Override
-		public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+		public double getNodeWeight() {
 			return weight;
 		}
 

@@ -1,6 +1,5 @@
 package org.opensha.sha.earthquake;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 
 import com.google.common.base.Preconditions;

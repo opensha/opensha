@@ -610,11 +610,12 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 					
 					// need to write out even if we're rank=0, as the serialized type can be different than the
 					// in memory (which can mess up the averaging step that follows)
-					memoryDebug("Building BA sol for "+baPrefix);
-					FaultSystemSolution nodeBASol = nodeBACreators.get(baPrefix).build();
 					File outFile = new File(myNodeBADir, AbstractAsyncLogicTreeWriter.baFile(outputDir, baPrefix).getName());
+					memoryDebug("Building BA sol for "+baPrefix+" ("+outFile.getName()+")");
+					FaultSystemSolution nodeBASol = nodeBACreators.get(baPrefix).build();
 					memoryDebug("Writing BA sol to "+outFile.getAbsolutePath());
 					nodeBASol.write(outFile);
+					memoryDebug("Done with BA sol for "+baPrefix+" ("+outFile.getName()+")");
 				}
 			}
 			nodeBACreators = null;
