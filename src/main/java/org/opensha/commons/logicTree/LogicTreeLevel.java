@@ -956,7 +956,10 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			List<String> names = new ArrayList<>(numBins);
 			List<String> shortNames = new ArrayList<>(numBins);
 			
-			binEdges.add(dist.getSupportLowerBound());
+			if (precisionScale > 0)
+				binEdges.add(Precision.round(dist.getSupportLowerBound(), precisionScale));
+			else
+				binEdges.add(dist.getSupportLowerBound());
 			double probEach = 1d/(double)numBins;
 			double startP = 0d;
 			for (int i=0; i<numBins; i++) {
@@ -973,17 +976,45 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					upper = dist.inverseCumulativeProbability(endP);
 				}
 				
+				double lowerForStr = lower;
+				double upperForStr = upper;
+				
+				if (precisionScale > 0) {
+					double binWidth = 1d/Math.pow(10, precisionScale);
+					lowerForStr = Precision.round(lower, precisionScale);
+					// make it round down
+					upperForStr = Precision.round(upper, precisionScale) - 0.0001*binWidth;
+					
+					if (numBins == 3) {
+						// expand center bin to precision edges
+						// don't change the values used in the bin strings though
+						if (i == 0) {
+							// we're working on the left edge of the center bin
+							upper = Precision.round(upper, precisionScale) - 0.5*binWidth;
+							// make it round down
+							upperForStr = upper - 0.5*binWidth;
+						} else if (i == 1) {
+							// we're working on the right edge of the center bin
+							upper = Precision.round(upper, precisionScale) + 0.5*binWidth;
+						}
+					}
+				}
+				
+				if (numBins == 3 && precisionScale > 0) {
+					
+				}
+				
 				binEdges.add(upper);
 				
 				String binStr;
 				if (Double.isInfinite(lower) && Double.isInfinite(upper))
 					binStr = "["+Double.POSITIVE_INFINITY+"]";
-				else if (Double.isInfinite(lower))
-					binStr = "<"+formatVal(upper);
-				else if (Double.isInfinite(upper))
-					binStr = ">"+formatVal(lower);
+				else if (Double.isInfinite(lowerForStr))
+					binStr = "<"+formatVal(upperForStr);
+				else if (Double.isInfinite(upperForStr))
+					binStr = ">"+formatVal(lowerForStr);
 				else
-					binStr = "["+formatVal(lower)+", "+formatVal(upper)+"]";
+					binStr = "["+formatVal(lowerForStr)+", "+formatVal(upperForStr)+"]";
 				
 				String name;
 				if (numBins == 1 || numBins > 3) {
@@ -1002,6 +1033,46 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			}
 			
 			return toBinnedLevel(binEdges, names, shortNames);
+		}
+
+		private double cumulativeProbabilityForBound(double value) {
+			if (Double.isInfinite(value) || value >= dist.getSupportUpperBound())
+				return 1d;
+			if (value <= dist.getSupportLowerBound())
+				return 0d;
+			return dist.cumulativeProbability(value);
+		}
+
+		private double discretizedLowerBound(double value, double step, double lowerSupport) {
+			return Math.max(lowerSupport, value - 0.5d * step);
+		}
+
+		private double discretizedUpperBound(double value, double step, double upperSupport) {
+			return Math.min(upperSupport, value + 0.5d * step);
+		}
+
+		private String[] buildBinLabels(int numBins, int binIndex, double lower, double upper) {
+			String binStr;
+			if (Double.isInfinite(lower) && Double.isInfinite(upper))
+				binStr = "["+Double.POSITIVE_INFINITY+"]";
+			else if (Double.isInfinite(lower))
+				binStr = "<"+formatVal(upper);
+			else if (Double.isInfinite(upper))
+				binStr = ">"+formatVal(lower);
+			else
+				binStr = "["+formatVal(lower)+", "+formatVal(upper)+"]";
+			
+			String name;
+			if (numBins == 1 || numBins > 3) {
+				name = binStr;
+			} else if (binIndex == 0) {
+				name = "Low: "+binStr;
+			} else if (binIndex == numBins-1) {
+				name = "High: "+binStr;
+			} else {
+				name = "Middle: "+binStr;
+			}
+			return new String[] {name, binStr};
 		}
 		
 		private static String formatVal(double val) {
@@ -1147,7 +1218,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		
 	}
 	
-	public static abstract class ContinuousDistributionSampledLevel
+	public static class ContinuousDistributionSampledLevel
 	extends AbstractContinuousDistributionSampledLevel<SimpleValuedNode<Double>> {
 		
 		protected ContinuousDistributionSampledLevel(String levelName, String levelShortName) {
