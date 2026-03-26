@@ -298,6 +298,7 @@ public class LogicTreeHazardCompare {
 					hazardFile, rps, periods, spacing, remapTRTs, remapBinnable);
 			
 			mapper.skipLogicTree = cmd.hasOption("skip-logic-tree") || tree == null;
+			mapper.forceFullLT = cmd.hasOption("force-full-lt");
 			if (ignorePrecomputed)
 				System.out.println("Ignoring any pre-computed mean maps");
 			mapper.ignorePrecomputed = ignorePrecomputed;
@@ -432,6 +433,9 @@ public class LogicTreeHazardCompare {
 		ops.addOption(null, "force-sparse-lt-var", false, "Flag to force using the sparse logic tree variance algorithm");
 		ops.addOption(null, "force-file-backed-lt", false, "Flag to force loading the logic tree exactly as registered "
 				+ "in the tree file and ignoring matching enums or classes");
+		ops.addOption(null, "force-full-lt", false,
+				"Flat to force full suite of logic tree plots including between options of each level; default will skip "
+				+ "them if the logic tree has more than "+MAX_LEVELS_FOR_FULL_LT_PLOT_SUITE+" levels.");
 		ops.addOption(null, "remap-trt-branches", false,
 				"Flag to ramap/expand any TRT branches. Implies --ignore-precomputed-maps");
 		ops.addOption(null, "remap-binnable-branches", false,
@@ -441,6 +445,8 @@ public class LogicTreeHazardCompare {
 		
 		return ops;
 	}
+	
+	private static final int MAX_LEVELS_FOR_FULL_LT_PLOT_SUITE = 7;
 	
 	private static LogicTree<?> loadTreeFromResults(File resultsFile, boolean forceFileBacked) throws IOException {
 		ZipFile zip = new ZipFile(resultsFile);
@@ -501,6 +507,7 @@ public class LogicTreeHazardCompare {
 	
 	// command line options
 	private boolean skipLogicTree = false;
+	private boolean forceFullLT = false;
 	private boolean ignorePrecomputed = false;
 
 	public LogicTreeHazardCompare(SolutionLogicTree solLogicTree, File mapsZipFile,
@@ -2117,6 +2124,8 @@ public class LogicTreeHazardCompare {
 				
 				int numLevels = levels.size();
 				
+				boolean fullLT = forceFullLT || numLevels <= MAX_LEVELS_FOR_FULL_LT_PLOT_SUITE;
+				
 				if (canDecomposeVariance == null) {
 					System.out.println("Seeing if the logic tree is structured in a way that supports variance decomposition");
 					// track the levels where there are a unique sample for each branch in the tree, i.e., a value
@@ -2482,25 +2491,29 @@ public class LogicTreeHazardCompare {
 						branchLevelDiffPlots.add(branchDiffPlots);
 						
 						// build norm CDFs for each sub-choice
-						System.out.println("Building choice CDFs for "+level.getName());
-						LightFixedXFunc[][] choiceCDFs = new LightFixedXFunc[choices.size()][];
-						double[] choiceSumWeights = new double[choices.size()];
-						for (int c=0; c<choices.size(); c++) {
-							List<GriddedGeoDataSet> mapsWith = new ArrayList<>();
-							List<Double> weightsWith = new ArrayList<>();
-							LogicTreeNode choice = choices.get(c);
-							for (int i=0; i<branches.size(); i++) {
-								LogicTreeBranch<?> branch = branches.get(i);
-								if (branch.hasValue(choice)) {
-									mapsWith.add(maps[i]);
-									double weight = weights.get(i);
-									weightsWith.add(weight);
-									choiceSumWeights[c] += weight;
+						LightFixedXFunc[][] choiceCDFs = null;
+						double[] choiceSumWeights = null;
+						if (fullLT) {
+							System.out.println("Building choice CDFs for "+level.getName());
+							choiceCDFs = new LightFixedXFunc[choices.size()][];
+							choiceSumWeights = new double[choices.size()];
+							for (int c=0; c<choices.size(); c++) {
+								List<GriddedGeoDataSet> mapsWith = new ArrayList<>();
+								List<Double> weightsWith = new ArrayList<>();
+								LogicTreeNode choice = choices.get(c);
+								for (int i=0; i<branches.size(); i++) {
+									LogicTreeBranch<?> branch = branches.get(i);
+									if (branch.hasValue(choice)) {
+										mapsWith.add(maps[i]);
+										double weight = weights.get(i);
+										weightsWith.add(weight);
+										choiceSumWeights[c] += weight;
+									}
 								}
+								System.out.println("\tBuilding "+choice.getShortName()+" with "+mapsWith.size()
+									+" maps, sumWeight="+(float)choiceSumWeights[c]);
+								choiceCDFs[c] = buildNormCDFs(mapsWith, weightsWith);
 							}
-							System.out.println("\tBuilding "+choice.getShortName()+" with "+mapsWith.size()
-								+" maps, sumWeight="+(float)choiceSumWeights[c]);
-							choiceCDFs[c] = buildNormCDFs(mapsWith, weightsWith);
 						}
 						
 						List<GriddedGeoDataSet> choicePDiffs = new ArrayList<>();
@@ -2520,22 +2533,24 @@ public class LogicTreeHazardCompare {
 							GriddedGeoDataSet choiceMap = choiceMeans.get(choice);
 							table.addColumn(mapPDiffStr(choiceMap, mean, null, null, meanCSVLine, meanAbsCSVLine));
 							
-							for (LogicTreeNode oChoice : choices) {
-								if (choice == oChoice) {
-									table.addColumn("");
-									mapVsChoiceTable.addColumn("");
-									meanCSVLine.add("");
-									meanAbsCSVLine.add("");
-								} else {
-									table.addColumn(mapPDiffStr(choiceMap, choiceMeans.get(oChoice),
-											runningDiffAvg, runningAbsDiffAvg, meanCSVLine, meanAbsCSVLine));
-									// plot choice vs choice map
-									GriddedGeoDataSet oChoiceMap = choiceMeans.get(oChoice);
-									GriddedGeoDataSet pDiff = buildPDiff(oChoiceMap, choiceMap);
-									File map = submitMapFuture(mapper, exec, futures, resourcesDir, levelPrefix+"_"+choice.getFilePrefix()+"_vs_"+oChoice.getFilePrefix(),
-											pDiff, pDiffCPT, TITLES ? choice.getShortName()+" vs "+oChoice.getShortName() : " ",
-											choice.getShortName()+" / "+oChoice.getShortName()+", % Change, "+unitlessLabel, true);
-									mapVsChoiceTable.addColumn("![Difference Map]("+resourcesDir.getName()+"/"+map.getName()+")");
+							if (fullLT) {
+								for (LogicTreeNode oChoice : choices) {
+									if (choice == oChoice) {
+										table.addColumn("");
+										mapVsChoiceTable.addColumn("");
+										meanCSVLine.add("");
+										meanAbsCSVLine.add("");
+									} else {
+										table.addColumn(mapPDiffStr(choiceMap, choiceMeans.get(oChoice),
+												runningDiffAvg, runningAbsDiffAvg, meanCSVLine, meanAbsCSVLine));
+										// plot choice vs choice map
+										GriddedGeoDataSet oChoiceMap = choiceMeans.get(oChoice);
+										GriddedGeoDataSet pDiff = buildPDiff(oChoiceMap, choiceMap);
+										File map = submitMapFuture(mapper, exec, futures, resourcesDir, levelPrefix+"_"+choice.getFilePrefix()+"_vs_"+oChoice.getFilePrefix(),
+												pDiff, pDiffCPT, TITLES ? choice.getShortName()+" vs "+oChoice.getShortName() : " ",
+												choice.getShortName()+" / "+oChoice.getShortName()+", % Change, "+unitlessLabel, true);
+										mapVsChoiceTable.addColumn("![Difference Map]("+resourcesDir.getName()+"/"+map.getName()+")");
+									}
 								}
 							}
 							
@@ -2570,6 +2585,9 @@ public class LogicTreeHazardCompare {
 							branchDiffPlots.add(diffMap);
 							map = new File(resourcesDir, diffMap.prefix+".png");
 							mapTable.addColumn("![Difference Map]("+resourcesDir.getName()+"/"+map.getName()+")");
+							
+							if (!fullLT)
+								continue;
 							
 							// percentile
 							GriddedGeoDataSet percentile = choiceMeanPercentiles.get(choice);
@@ -2631,87 +2649,89 @@ public class LogicTreeHazardCompare {
 						lines.add("");
 						lines.add("Download Choice Hazard CSV: ["+choicesCSV.getName()+"]("+resourcesDir.getName()+"/"+choicesCSV.getName()+")");
 						lines.add("");
-						lines.add("The table below gives summary statistics for the spatial average difference and average "
-								+ "absolute difference of hazard between mean hazard maps for each individual branch "
-								+ "choices. In other words, it gives the expected difference (or absolute "
-								+ "difference) between two models if you picked a location at random. Values are listed "
-								+ "between each pair of branch choices, and also between that choice and the overall "
-								+ "mean map in the first column.");
-						lines.add("");
-						lines.add("The overall average absolute difference between the map for any choice to each other "
-								+ "choice, a decent summary measure of how much hazard varies due to this branch choice, "
-								+ "is: **"+twoDigits.format(runningAbsDiffAvg.getAverage())+"%**");
-						System.out.println("\tOverall MAD: "+twoDigits.format(runningAbsDiffAvg.getAverage())+" %");
-						choiceMeanAbsSummaryCSV.set(summaryRow, 2, runningAbsDiffAvg.getAverage()+"%");
-						lines.add("");
-						lines.addAll(table.build());
-						lines.add("");
-						lines.add("The map table below shows how the mean map for each branch choice compares to the overall "
-								+ "mean map, expressed as % change (first column) and difference (second column). The "
-								+ "third column, 'Choice Percentile in Full Dist', shows at what percentile the map for "
-								+ "that branch choice lies within the full distribution, and the fourth column, 'Choice "
-								+ "Percentile in Dist Without', shows the same but for the distribution of all other "
-								+ "branches (without this choice included).");
-						lines.add("");
-						lines.add("Note that these percentile comparisons can be outlier dominated, in which case even "
-								+ "if a choice is near the overall mean hazard it may still lie far from the 50th "
-								+ "percentile (see 'Mean Map Percentile' above to better understand outlier dominated "
-								+ "regions).");
-						lines.add("");
-						lines.addAll(mapTable.build());
-						lines.add("");
-						lines.add("The table below gives % change maps between each option, head-to-head.");
-						lines.add("");
-						lines.addAll(mapVsChoiceTable.build());
-						lines.add("");
-						
-						// now value of removal
-						HashMap<LogicTreeNode, GriddedGeoDataSet> choiceMeanWithouts = choiceMeanWithoutsList.get(l);
-						if (choiceMeanWithouts != null) {
-							table = MarkdownUtils.tableBuilder();
-							
-							List<File> ratioPlots = new ArrayList<>();
-							List<File> diffPlots = new ArrayList<>();
-							table.initNewLine();
-							for (LogicTreeNode choice : choices) {
-								table.addColumn(choice.getShortName());
-								
-								GriddedGeoDataSet choiceWithout = choiceMeanWithouts.get(choice);
-								
-								GriddedGeoDataSet pDiff = buildPDiff(mean, choiceWithout);
-								ratioPlots.add(submitMapFuture(mapper, exec, futures, resourcesDir,
-										levelPrefix+"_"+choice.getFilePrefix()+"_mean_pDiff_without",
-										pDiff, pDiffCPT, TITLES ? choice.getShortName()+" Removal Comparison" : " ",
-										choice.getShortName()+", Mean Without / With, % Change, "+unitlessLabel, true));
-								
-								GriddedGeoDataSet diff = new GriddedGeoDataSet(region, false);
-								for (int i=0; i<diff.size(); i++)
-									diff.set(i, choiceWithout.get(i) - mean.get(i));
-								diffPlots.add(submitMapFuture(mapper, exec, futures, resourcesDir,
-										levelPrefix+"_"+choice.getFilePrefix()+"_mean_diff_without",
-										diff, diffCPT, TITLES ? choice.getShortName()+" Removal Comparison" : " ",
-										choice.getShortName()+", Mean Without - With, "+label, false));
-							}
-							table.finalizeLine();
-							
-							table.initNewLine();
-							for (File ratioPlot : ratioPlots)
-								table.addColumn("![Percent Difference Map]("+resourcesDir.getName()+"/"+ratioPlot.getName()+")");
-							table.finalizeLine();
-							
-							table.initNewLine();
-							for (File diffPlot : diffPlots)
-								table.addColumn("![Difference Map]("+resourcesDir.getName()+"/"+diffPlot.getName()+")");
-							table.finalizeLine();
-							
-							lines.add("The table below shows how much the mean hazard map would change if each branch "
-									+ "were eliminated. This differs from the above comparisons in that it also "
-									+ "reflects the weight assigned to each branch. The sign is now flipped such "
-									+ "that blue and green areas indicate areas where hazard is higher due to inclusion "
-									+ "of the listed listed choice, and would go down were that choice eliminated.");
+						if (fullLT) {
+							lines.add("The table below gives summary statistics for the spatial average difference and average "
+									+ "absolute difference of hazard between mean hazard maps for each individual branch "
+									+ "choices. In other words, it gives the expected difference (or absolute "
+									+ "difference) between two models if you picked a location at random. Values are listed "
+									+ "between each pair of branch choices, and also between that choice and the overall "
+									+ "mean map in the first column.");
+							lines.add("");
+							lines.add("The overall average absolute difference between the map for any choice to each other "
+									+ "choice, a decent summary measure of how much hazard varies due to this branch choice, "
+									+ "is: **"+twoDigits.format(runningAbsDiffAvg.getAverage())+"%**");
+							System.out.println("\tOverall MAD: "+twoDigits.format(runningAbsDiffAvg.getAverage())+" %");
+							choiceMeanAbsSummaryCSV.set(summaryRow, 2, runningAbsDiffAvg.getAverage()+"%");
 							lines.add("");
 							lines.addAll(table.build());
 							lines.add("");
+							lines.add("The map table below shows how the mean map for each branch choice compares to the overall "
+									+ "mean map, expressed as % change (first column) and difference (second column). The "
+									+ "third column, 'Choice Percentile in Full Dist', shows at what percentile the map for "
+									+ "that branch choice lies within the full distribution, and the fourth column, 'Choice "
+									+ "Percentile in Dist Without', shows the same but for the distribution of all other "
+									+ "branches (without this choice included).");
+							lines.add("");
+							lines.add("Note that these percentile comparisons can be outlier dominated, in which case even "
+									+ "if a choice is near the overall mean hazard it may still lie far from the 50th "
+									+ "percentile (see 'Mean Map Percentile' above to better understand outlier dominated "
+									+ "regions).");
+							lines.add("");
+							lines.addAll(mapTable.build());
+							lines.add("");
+							lines.add("The table below gives % change maps between each option, head-to-head.");
+							lines.add("");
+							lines.addAll(mapVsChoiceTable.build());
+							lines.add("");
+							
+							// now value of removal
+							HashMap<LogicTreeNode, GriddedGeoDataSet> choiceMeanWithouts = choiceMeanWithoutsList.get(l);
+							if (choiceMeanWithouts != null) {
+								table = MarkdownUtils.tableBuilder();
+								
+								List<File> ratioPlots = new ArrayList<>();
+								List<File> diffPlots = new ArrayList<>();
+								table.initNewLine();
+								for (LogicTreeNode choice : choices) {
+									table.addColumn(choice.getShortName());
+									
+									GriddedGeoDataSet choiceWithout = choiceMeanWithouts.get(choice);
+									
+									GriddedGeoDataSet pDiff = buildPDiff(mean, choiceWithout);
+									ratioPlots.add(submitMapFuture(mapper, exec, futures, resourcesDir,
+											levelPrefix+"_"+choice.getFilePrefix()+"_mean_pDiff_without",
+											pDiff, pDiffCPT, TITLES ? choice.getShortName()+" Removal Comparison" : " ",
+											choice.getShortName()+", Mean Without / With, % Change, "+unitlessLabel, true));
+									
+									GriddedGeoDataSet diff = new GriddedGeoDataSet(region, false);
+									for (int i=0; i<diff.size(); i++)
+										diff.set(i, choiceWithout.get(i) - mean.get(i));
+									diffPlots.add(submitMapFuture(mapper, exec, futures, resourcesDir,
+											levelPrefix+"_"+choice.getFilePrefix()+"_mean_diff_without",
+											diff, diffCPT, TITLES ? choice.getShortName()+" Removal Comparison" : " ",
+											choice.getShortName()+", Mean Without - With, "+label, false));
+								}
+								table.finalizeLine();
+								
+								table.initNewLine();
+								for (File ratioPlot : ratioPlots)
+									table.addColumn("![Percent Difference Map]("+resourcesDir.getName()+"/"+ratioPlot.getName()+")");
+								table.finalizeLine();
+								
+								table.initNewLine();
+								for (File diffPlot : diffPlots)
+									table.addColumn("![Difference Map]("+resourcesDir.getName()+"/"+diffPlot.getName()+")");
+								table.finalizeLine();
+								
+								lines.add("The table below shows how much the mean hazard map would change if each branch "
+										+ "were eliminated. This differs from the above comparisons in that it also "
+										+ "reflects the weight assigned to each branch. The sign is now flipped such "
+										+ "that blue and green areas indicate areas where hazard is higher due to inclusion "
+										+ "of the listed listed choice, and would go down were that choice eliminated.");
+								lines.add("");
+								lines.addAll(table.build());
+								lines.add("");
+							}
 						}
 					}
 				}
