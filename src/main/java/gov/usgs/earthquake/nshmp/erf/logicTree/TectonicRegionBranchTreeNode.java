@@ -212,7 +212,7 @@ public class TectonicRegionBranchTreeNode implements LogicTreeNode.ValuedLogicTr
 		return branch.hasValue(TectonicRegionBranchTreeNode.class);
 	}
 	
-	public static LogicTreeBranch<LogicTreeNode> unfoldTRTBranches(LogicTreeBranch<?> branch) {
+	public static LogicTreeBranch<LogicTreeNode> unrollTRTBranches(LogicTreeBranch<?> branch) {
 		List<LogicTreeLevel<? extends LogicTreeNode>> unfoldedLevels = new ArrayList<>();
 		List<LogicTreeNode> unfoldedValues = new ArrayList<>();
 		

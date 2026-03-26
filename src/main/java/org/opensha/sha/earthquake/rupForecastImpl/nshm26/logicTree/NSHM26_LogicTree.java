@@ -228,56 +228,7 @@ public class NSHM26_LogicTree {
 		Preconditions.checkState(numSamples > 0);
 		List<LogicTreeLevel<? extends LogicTreeNode>> levels = buildLevels(seisReg, trt, true);
 		
-		Random r = new Random(seed);
-		List<List<? extends LogicTreeNode>> levelSamples = new ArrayList<>(levels.size());
-		for (LogicTreeLevel<?> level : levels) {
-			List<? extends LogicTreeNode> samples;
-			if (level == INTERFACE_FM) {
-				samples = buildFixed(NSHM26_InterfaceFaultModels.regionDefault(seisReg), numSamples);
-			} else if (level instanceof RandomLevel<?,?>) {
-				((RandomLevel<?,?>)level).build(r.nextLong(), numSamples);
-				samples = ((RandomLevel<?,?>)level).getNodes();
-				Preconditions.checkState(samples.size() == numSamples);
-			} else {
-				List<? extends LogicTreeNode> nodes = level.getNodes();
-				List<LogicTreeNode> nonzeroWeightNodes = new ArrayList<>(nodes.size());
-				List<Double> nonzeroWeights = new ArrayList<>(nodes.size());
-				for (LogicTreeNode node : nodes) {
-					// TODO: no support yet for branch-dependent-weighting
-					double weight = node.getNodeWeight(null);
-					if (weight > 0d) {
-						nonzeroWeightNodes.add(node);
-						nonzeroWeights.add(weight);
-					}
-				}
-				Preconditions.checkState(!nonzeroWeightNodes.isEmpty());
-				List<LogicTreeNode> mySamples = new ArrayList<>(numSamples);
-				if (nonzeroWeightNodes.size() == 1) {
-					for (int i=0; i<numSamples; i++)
-						mySamples.add(nonzeroWeightNodes.get(0));
-				} else {
-					IntegerPDF_FunctionSampler sampler = new IntegerPDF_FunctionSampler(Doubles.toArray(nonzeroWeights));
-					for (int i=0; i<numSamples; i++)
-						mySamples.add(nonzeroWeightNodes.get(sampler.getRandomInt(r)));
-				}
-				samples = mySamples;
-			}
-			levelSamples.add(samples);
-		}
-//		String branchPrefix = seisReg.name()+"_"+NSHM26_RegionLoader.getNameForTRT(trt)+"Sample";
-		double weightEach = 1d/(double)numSamples;
-		List<LogicTreeBranch<LogicTreeNode>> branches = new ArrayList<>(numSamples);
-		for (int i=0; i<numSamples; i++) {
-			List<LogicTreeNode> values = new ArrayList<>(levels.size());
-			for (int l=0; l<levels.size(); l++)
-				values.add(levelSamples.get(l).get(i));
-			LogicTreeBranch<LogicTreeNode> branch = new LogicTreeBranch<>(levels, values);
-			branch.setOrigBranchWeight(weightEach);
-//			branch.setCustomFileName(branchPrefix+i);
-			branches.add(branch);
-		}
-		
-		return LogicTree.fromExisting(levels, branches);
+		return LogicTree.buildSampled(levels, numSamples, seed, NSHM26_InterfaceFaultModels.regionDefault(seisReg));
 	}
 	
 	public static LogicTree<LogicTreeNode> buildMultiRegimeTree(NSHM26_SeismicityRegions seisReg,

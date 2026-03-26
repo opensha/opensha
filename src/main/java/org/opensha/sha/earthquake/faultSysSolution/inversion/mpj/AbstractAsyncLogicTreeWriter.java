@@ -214,7 +214,7 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 	 */
 	public static LogicTreeBranch<?> getBranchForBA(LogicTreeBranch<?> branch) {
 		if (TectonicRegionBranchTreeNode.isTRTBranch(branch))
-			return TectonicRegionBranchTreeNode.unfoldTRTBranches(branch);
+			return TectonicRegionBranchTreeNode.unrollTRTBranches(branch);
 		return branch;
 	}
 	

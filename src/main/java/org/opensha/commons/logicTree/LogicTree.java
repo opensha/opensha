@@ -23,11 +23,13 @@ import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.logicTree.BranchWeightProvider.OriginalWeights;
 import org.opensha.commons.logicTree.LogicTreeLevel.FileBackedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
+import org.opensha.commons.logicTree.LogicTreeNode.FixedWeightNode;
 import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.primitives.Doubles;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.TypeAdapter;
@@ -568,6 +570,112 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			Collection<? extends LogicTreeBranch<E>> branches) {
 		return new LogicTree<>(levels, branches, DEFAULT_WEIGHTS);
 	}
+	
+	public static <E extends LogicTreeNode> LogicTree<E> buildSampled(
+			List<LogicTreeLevel<? extends E>> levels, int numSamples, long seed, LogicTreeNode... required) {
+		Random r = new Random(seed);
+		List<LogicTreeBranch<E>> branches = new ArrayList<>(numSamples);
+		// initialize empty
+		double weightEach = 1d/(double)numSamples;
+		for (int i=0; i<numSamples; i++) {
+			LogicTreeBranch<E> branch = new LogicTreeBranch<>(levels);
+			branch.setOrigBranchWeight(weightEach);
+			branches.add(branch);
+		}
+		for (int l=0; l<levels.size(); l++) {
+			LogicTreeLevel<?> level = levels.get(l);
+			List<? extends LogicTreeNode> samples;
+			if (level instanceof RandomLevel<?,?>) {
+				((RandomLevel<?,?>)level).build(r.nextLong(), numSamples);
+				samples = ((RandomLevel<?,?>)level).getNodes();
+				Preconditions.checkState(samples.size() == numSamples);
+			} else {
+				LogicTreeNode fixed = null;
+				if (required != null && required.length > 0) {
+					for (LogicTreeNode node : required) {
+						if (level.isMember(node)) {
+							if (fixed != null)
+								throw new IllegalStateException("Multiple required members belong to level "
+										+level.getName()+": "+fixed.getName()+" and "+node.getName());
+							fixed = node;
+						}
+					}
+				}
+				List<LogicTreeNode> mySamples = new ArrayList<>(numSamples);
+				if (fixed != null) {
+					for (int i=0; i<numSamples; i++)
+						mySamples.add(fixed);
+				} else {
+					List<? extends LogicTreeNode> nodes = level.getNodes();
+					if (FixedWeightNode.class.isAssignableFrom(level.getType())) {
+						// fixed weights, simple
+						List<LogicTreeNode> nonzeroWeightNodes = new ArrayList<>(nodes.size());
+						List<Double> nonzeroWeights = new ArrayList<>(nodes.size());
+						for (LogicTreeNode node : nodes) {
+							double weight = ((FixedWeightNode)node).getNodeWeight();
+							if (weight > 0d) {
+								nonzeroWeightNodes.add(node);
+								nonzeroWeights.add(weight);
+							}
+						}
+						Preconditions.checkState(!nonzeroWeightNodes.isEmpty());
+						if (nonzeroWeightNodes.size() == 1) {
+							for (int i=0; i<numSamples; i++)
+								mySamples.add(nonzeroWeightNodes.get(0));
+						} else {
+							IntegerPDF_FunctionSampler sampler = new IntegerPDF_FunctionSampler(Doubles.toArray(nonzeroWeights));
+							for (int i=0; i<numSamples; i++)
+								mySamples.add(nonzeroWeightNodes.get(sampler.getRandomInt(r)));
+						}
+					} else {
+						// potentially-varying based on upstream
+						IntegerPDF_FunctionSampler sampler = null;
+						double[] curWeights = new double[nodes.size()];
+						for (int i=0; i<numSamples; i++) {
+							LogicTreeNode firstNonzero = null;
+							int numNonZero = 0;
+							LogicTreeBranch<E> branch = branches.get(i);
+							for (int n=0; n<curWeights.length; n++) {
+								LogicTreeNode node = nodes.get(n);
+								curWeights[n] = node.getNodeWeight(branch);
+								if (curWeights[n] > 0) {
+									if (numNonZero == 0)
+										firstNonzero = node;
+									else
+										firstNonzero = null;
+									numNonZero++;
+								}
+								if (sampler != null && curWeights[n] != sampler.getY(n))
+									// can't reuse this sampler
+									sampler = null;
+							}
+							if (numNonZero == 1) {
+								// only one with nonzero weight
+								mySamples.add(firstNonzero);
+							} else {
+								// multiple, need to sample
+								if (sampler == null)
+									sampler = new IntegerPDF_FunctionSampler(curWeights);
+								mySamples.add(nodes.get(sampler.getRandomInt(r)));
+							}
+						}
+					}
+					
+				}
+				samples = mySamples;
+			}
+			Preconditions.checkState(samples.size() == numSamples);
+			for (int i=0; i<numSamples; i++)
+				branches.get(i).setValue(l, (E)samples.get(i));
+		}
+		
+		return fromExisting(levels, branches);
+	}
+	
+//	public static LogicTree<LogicTreeNode> unrollTRTs(
+//			LogicTree<?> inputTree) {
+//		
+//	}
 	
 	public static void main(String[] args) {
 		LogicTree<U3LogicTreeBranchNode<?>> fullU3 = buildExhaustive(U3LogicTreeBranch.getLogicTreeLevels(), true);
