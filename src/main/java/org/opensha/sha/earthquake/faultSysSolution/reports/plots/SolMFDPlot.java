@@ -168,12 +168,14 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 			for (int i=0; i<regions.size(); i++) {
 				Region region = regions.get(i);
 				String name = region.getName();
+				TectonicRegionType trt = regionTRTs == null ? null : regionTRTs.get(i);
 				if (name == null || name.isBlank())
 					name = "Region Of Interest "+i;
 				// see if it's a duplicate
 				boolean duplicate = false;
 				for (MFD_Plot plot : plots) {
-					if (plot.region != null && plot.region.equalsRegion(region)) {
+					if (plot.region != null && plot.region.equalsRegion(region)
+							&& trt == plot.trt) {
 						duplicate = true;
 						break;
 					}
@@ -181,7 +183,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 				if (duplicate) {
 					System.out.println("Skipping duplicate region from ROI list: "+name);
 				} else {
-					TectonicRegionType trt = regionTRTs == null ? null : regionTRTs.get(i);
+					
 					MFD_Plot plot = new MFD_Plot(name, region, trt);
 					if (regionMFDs != null) {
 						IncrementalMagFreqDist mfd = regionMFDs.get(i);
