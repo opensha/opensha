@@ -914,7 +914,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	 * @return
 	 */
 	public int getFltSysRupIndexForNthRup(int nthRup) {
-		int srcIndex = getSrcIndexForFltSysRup(nthRup);
+		int srcIndex = getSrcIndexForNthRup(nthRup);
 		if (srcIndex >= numNonZeroFaultSystemSources)
 			return -1;
 		return fltSysRupIndexForSource[srcIndex];
