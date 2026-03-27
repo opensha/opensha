@@ -738,7 +738,7 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 	
 	public static Options createOptions() {
 		Options ops = MPJTaskCalculator.createOptions();
-		
+
 		ops.addRequiredOption("lt", "logic-tree", true, "Path to logic tree JSON file");
 		ops.addRequiredOption("od", "output-dir", true, "Path to output directory");
 		ops.addOption(FaultSysTools.cacheDirOption());

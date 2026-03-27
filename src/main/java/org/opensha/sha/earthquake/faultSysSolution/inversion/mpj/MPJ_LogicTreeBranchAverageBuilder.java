@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -62,6 +63,7 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 	private File outputDir;
 
 	private LogicTree<LogicTreeNode> tree;
+	private LogicTree<LogicTreeNode> analysisTree;
 	
 	private int depth;
 	
@@ -70,8 +72,8 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 	private FaultSystemSolution compSol;
 	private String compName;
 	
-	private Map<LogicTreeNode, LogicTreeLevel<?>> levelsMap;
-	private List<LogicTreeNode[]> combinations;
+//	private Map<LogicTreeNode, LogicTreeLevel<?>> levelsMap;
+	private List<NodeLevelPair[]> combinations;
 	
 	private boolean replot;
 	private boolean process;
@@ -99,6 +101,14 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 				debug("Loaded "+tree.size()+" tree nodes");
 			slt = new SolutionLogicTree.ResultsDirReader(inputDir, tree);
 		}
+		if (cmd.hasOption("analysis-logic-tree")) {
+			File logicTreeFile = new File(cmd.getOptionValue("analysis-logic-tree"));
+			Preconditions.checkArgument(logicTreeFile.exists(), "Logic tree file doesn't exist: %s",
+					logicTreeFile.getAbsolutePath());
+			analysisTree = LogicTree.read(logicTreeFile);
+		} else {
+			analysisTree = tree;
+		}
 		
 		process = !cmd.hasOption("no-process");
 		
@@ -111,7 +121,7 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 			depth = 1;
 		}
 		
-		combinations = buildCombinations(tree, depth);
+		combinations = buildCombinations(analysisTree, depth);
 		
 		if (rank == 0)
 			debug(combinations.size()+" combinations for depth="+depth);
@@ -123,14 +133,6 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 				compSol = FaultSystemSolution.load(new File(cmd.getOptionValue("compare-to")));
 				if (cmd.hasOption("comp-name"))
 					compName = cmd.getOptionValue("comp-name");
-			}
-		}
-		
-		levelsMap = new HashMap<>();
-		for (LogicTreeLevel<?> level : tree.getLevels()) {
-			for (LogicTreeNode node : level.getNodes()) {
-				Preconditions.checkState(!levelsMap.containsKey(node));
-				levelsMap.put(node, level);
 			}
 		}
 
@@ -160,28 +162,26 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 		return combinations.size();
 	}
 	
-	private String getPrefix(LogicTreeNode[] fixedNodes) {
+	private String getPrefix(NodeLevelPair[] fixedNodes) {
 		String str = null;
-		for (LogicTreeNode node : fixedNodes) {
+		for (NodeLevelPair node : fixedNodes) {
 			if (str == null)
 				str = "";
 			else
 				str += "_";
-			LogicTreeLevel<?> level = levelsMap.get(node);
-			str += level.getFilePrefix()+"_"+node.getFilePrefix();
+			str += node.level.getFilePrefix()+"_"+node.node.getFilePrefix();
 		}
 		return str;
 	}
 	
-	private String getName(LogicTreeNode[] fixedNodes) {
+	private String getName(NodeLevelPair[] fixedNodes) {
 		String str = null;
-		for (LogicTreeNode node : fixedNodes) {
+		for (NodeLevelPair node : fixedNodes) {
 			if (str == null)
 				str = "";
 			else
 				str += ", ";
-			LogicTreeLevel<?> level = levelsMap.get(node);
-			str += level.getShortName()+": "+node.getName();
+			str += node.level.getShortName()+": "+node.node.getName();
 		}
 		return str;
 	}
@@ -189,30 +189,53 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 	@Override
 	protected void calculateBatch(int[] batch) throws Exception {
 		for (int index : batch) {
-			LogicTreeNode[] fixedNodes = combinations.get(index);
+			NodeLevelPair[] fixedNodes = combinations.get(index);
 			String prefix = getPrefix(fixedNodes);
 			
-			LogicTree<?> subTree = tree.matchingAll(fixedNodes);
+			List<LogicTreeBranch<?>> subBranches = new ArrayList<>();
+			for (LogicTreeBranch<?> branch : analysisTree) {
+				boolean match = true;
+				for (NodeLevelPair fixed : fixedNodes) {
+					if (!fixed.node.equals(branch.getValue(fixed.levelIndex))) {
+						match = false;
+						break;
+					}
+				}
+				if (match)
+					subBranches.add(branch);
+			}
 			
-			debug("Building BA for "+index+": "+prefix+" ("+subTree.size()+" branches)");
-			Preconditions.checkState(subTree.size() > 1, "Need at least 2 branches, have %s for %s", subTree.size(), prefix);
+			debug("Building BA for "+index+": "+prefix+" ("+subBranches.size()+" branches)");
+			Preconditions.checkState(subBranches.size() > 1, "Need at least 2 branches, have %s for %s", subBranches.size(), prefix);
 			
 			File baFile = new File(outputDir, prefix+".zip");
 			
 			FaultSystemSolution baSol;
 			if (rebuild || !baFile.exists()) {
-				BranchAverageSolutionCreator baCreator = new BranchAverageSolutionCreator(subTree.getWeightProvider());
+				BranchAverageSolutionCreator baCreator = new BranchAverageSolutionCreator(analysisTree.getWeightProvider());
 				int count = 0;
 				CompletableFuture<Void> processingLoadedFuture = null;
 				Stopwatch loadWatch = Stopwatch.createUnstarted();
 				Stopwatch processWatch = Stopwatch.createUnstarted();
 				Stopwatch totalWatch = Stopwatch.createStarted();
-				for (LogicTreeBranch<?> branch : subTree) {
+				for (LogicTreeBranch<?> branch : subBranches) {
 					int myCount = count;
 					count++;
-					debug("Loading branch "+(myCount)+"/"+subTree.size()+" for "+prefix+": "+branch);
+					debug("Loading branch "+(myCount)+"/"+subBranches.size()+" for "+prefix+": "+branch);
 					loadWatch.start();
-					FaultSystemSolution sol = slt.forBranch(branch, process);
+					LogicTreeBranch<?> readBranch = branch;
+					if (analysisTree != tree) {
+						// find matching input branch
+						readBranch = null;
+						String fName = branch.buildFileName();
+						for (LogicTreeBranch<?> oBranch : tree) {
+							if (oBranch.buildFileName().equals(fName)) {
+								Preconditions.checkState(readBranch == null);
+								readBranch = oBranch;
+							}
+						}
+					}
+					FaultSystemSolution sol = slt.forBranch(readBranch, process);
 					// pre-load all averageable modules
 					sol.getModulesAssignableTo(BranchAverageableModule.class, true);
 					sol.getRupSet().getModulesAssignableTo(BranchAverageableModule.class, true);
@@ -229,7 +252,7 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 							baCreator.addSolution(sol, branch);
 							processWatch.stop();
 							int done = myCount+1;
-							debug("Done processing branch "+myCount+"/"+subTree.size()+";\t"+MPJ_LogicTreeInversionRunner.memoryString()
+							debug("Done processing branch "+myCount+"/"+subBranches.size()+";\t"+MPJ_LogicTreeInversionRunner.memoryString()
 								+";\tEACH: load="+elapsed(loadWatch, done)+", process="+elapsed(processWatch, done)+", tot="+elapsed(totalWatch, done)
 								+";\tTOTAL: load="+elapsed(loadWatch)+", process="+elapsed(processWatch)+", tot="+elapsed(totalWatch));
 						}
@@ -300,7 +323,7 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 			int tocIndex = lines.size();
 			String topLink = "_[(top)](#table-of-contents)_";
 			
-			List<List<LogicTreeNode>> levelNodesUsed = levelNodesUsed(tree);
+			List<List<NodeLevelPair>> levelNodesUsed = levelNodesUsed(analysisTree);
 			
 			IncrementalMagFreqDist compMFD = null;
 			EvenlyDiscretizedFunc compCmlMFD = null;
@@ -313,18 +336,18 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 			}
 			
 			double totalWeight = 0d;
-			for (LogicTreeBranch<?> branch : tree)
-				totalWeight += tree.getBranchWeight(branch);
+			for (LogicTreeBranch<?> branch : analysisTree)
+				totalWeight += analysisTree.getBranchWeight(branch);
 			
 			DecimalFormat weightDF = new DecimalFormat("0.##%");
 			
 			for (int l=0; l<levelNodesUsed.size(); l++) {
-				List<LogicTreeNode> levelNodes = levelNodesUsed.get(l);
+				List<NodeLevelPair> levelNodes = levelNodesUsed.get(l);
 				
-				if (levelNodes.size() < 2 || LogicTreeCurveAverager.shouldSkipLevel(tree.getLevels().get(l), levelNodes.size()))
+				if (levelNodes.size() < 2 || LogicTreeCurveAverager.shouldSkipLevel(analysisTree.getLevels().get(l), levelNodes.size()))
 					continue;
 				
-				LogicTreeLevel<?> level = tree.getLevels().get(l);
+				LogicTreeLevel<?> level = analysisTree.getLevels().get(l);
 				
 				debug("Building page for "+level.getName());
 				
@@ -342,8 +365,8 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 				CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, levelNodes.size()-1d);
 				
 				for (int i=0; i<levelNodes.size(); i++) {
-					LogicTreeNode node = levelNodes.get(i);
-					LogicTreeNode[] array = {node};
+					NodeLevelPair node = levelNodes.get(i);
+					NodeLevelPair[] array = {node};
 					String prefix = getPrefix(array);
 					File solFile = new File(outputDir, prefix+".zip");
 					Preconditions.checkState(solFile.exists(),
@@ -352,17 +375,17 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 					int numBranches = 0;
 					double myWeight = 0d;
 					
-					for (LogicTreeBranch<?> branch : tree) {
-						if (branch.hasValue(node)) {
+					for (LogicTreeBranch<?> branch : analysisTree) {
+						if (node.node.equals(branch.getValue(node.levelIndex))) {
 							numBranches++;
-							myWeight += tree.getBranchWeight(branch);
+							myWeight += analysisTree.getBranchWeight(branch);
 						}
 					}
 					
-					debug(node.getShortName()+" has "+numBranches+" branches, "+weightDF.format(myWeight/totalWeight)+" weight");
+					debug(node.node.getShortName()+" has "+numBranches+" branches, "+weightDF.format(myWeight/totalWeight)+" weight");
 					
 					linkTable.initNewLine();
-					linkTable.addColumn(node.getName());
+					linkTable.addColumn(node.node.getName());
 					linkTable.addColumn(numBranches);
 					linkTable.addColumn(weightDF.format(myWeight/totalWeight));
 					if (plotLevel != null)
@@ -373,10 +396,10 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 					FaultSystemSolution sol = FaultSystemSolution.load(solFile);
 					EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(sol.getRupSet());
 					IncrementalMagFreqDist mfd = sol.calcTotalNucleationMFD(refMFD.getMinX(), refMFD.getMaxX(), refMFD.getDelta());
-					mfd.setName(node.getShortName());
+					mfd.setName(node.node.getShortName());
 					incrMFDs.add(mfd);
 					EvenlyDiscretizedFunc cmlMFD = mfd.getCumRateDistWithOffset();
-					cmlMFD.setName(node.getShortName());
+					cmlMFD.setName(node.node.getShortName());
 					cmlMFDs.add(cmlMFD);
 					Color color = cpt.getColor((float)i);
 					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, color));
@@ -475,6 +498,8 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 		Options ops = MPJTaskCalculator.createOptions();
 		
 		ops.addOption("lt", "logic-tree", true, "Path to logic tree JSON file");
+		ops.addOption(null, "analysis-logic-tree", true, "Path to separate logic tree used for analysis that should be used "
+				+ "for writing the results.");
 		ops.addRequiredOption("id", "input-dir", true, "Path to input (results) directory");
 		ops.addRequiredOption("od", "output-dir", true, "Path to output directory");
 		ops.addOption("pl", "plot-level", true, "This enables reports and sets the plot level, one of: "
@@ -494,30 +519,58 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 		return ops;
 	}
 	
-	public static List<LogicTreeNode[]> buildCombinations(LogicTree<?> tree, int depth) {
-		List<List<LogicTreeNode>> levelNodesUsed = levelNodesUsed(tree);
+	public static class NodeLevelPair {
+		public final LogicTreeNode node;
+		public final LogicTreeLevel<?> level;
+		public final int levelIndex;
+		private NodeLevelPair(LogicTreeNode node, LogicTreeLevel<?> level, int levelIndex) {
+			this.node = node;
+			this.level = level;
+			this.levelIndex = levelIndex;
+		}
+		@Override
+		public int hashCode() {
+			return Objects.hash(level, node, levelIndex);
+		}
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			NodeLevelPair other = (NodeLevelPair) obj;
+			return levelIndex == other.levelIndex && Objects.equals(level, other.level) && Objects.equals(node, other.node);
+		}
+	}
+	
+	public static List<NodeLevelPair[]> buildCombinations(LogicTree<?> tree, int depth) {
+		List<List<NodeLevelPair>> levelNodesUsed = levelNodesUsed(tree);
 		
 		List<int[]> levelCombinations = new ArrayList<>();
 		fillInLevelCombinationsRecursive(tree, levelNodesUsed, levelCombinations, 0, new int[0], depth);
 		if (depth > 1)
 			System.out.println("Found "+levelCombinations.size()+" level combinations");
-		List<LogicTreeNode[]> combinations = new ArrayList<>();
+		List<NodeLevelPair[]> combinations = new ArrayList<>();
 		for (int[] fixedLevels : levelCombinations)
-			addCombinationsRecursive(tree, levelNodesUsed, fixedLevels, 0, new LogicTreeNode[0], combinations);
+			addCombinationsRecursive(tree, levelNodesUsed, fixedLevels, 0, new NodeLevelPair[0], combinations);
 		if (depth > 1)
 			System.out.println("Found "+combinations.size()+" node combinations");
 		return combinations;
 	}
 	
-	private static List<List<LogicTreeNode>> levelNodesUsed(LogicTree<?> tree) {
-		List<List<LogicTreeNode>> levelNodesUsed = new ArrayList<>();
-		for (LogicTreeLevel<?> level : tree.getLevels()) {
-			List<LogicTreeNode> myNodes = new ArrayList<>();
+	private static List<List<NodeLevelPair>> levelNodesUsed(LogicTree<?> tree) {
+		int numLevels = tree.getLevels().size();
+		List<List<NodeLevelPair>> levelNodesUsed = new ArrayList<>(numLevels);
+		for (int l=0; l<numLevels; l++) {
+			LogicTreeLevel<?> level = tree.getLevels().get(l);
+			List<NodeLevelPair> myNodes = new ArrayList<>();
 			levelNodesUsed.add(myNodes);
 			for (LogicTreeNode node : level.getNodes()) {
 				for (LogicTreeBranch<?> branch : tree) {
 					if (branch.hasValue(node)) {
-						myNodes.add(node);
+						myNodes.add(new NodeLevelPair(node, level, l));
 						break;
 					}
 				}
@@ -526,7 +579,7 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 		return levelNodesUsed;
 	}
 	
-	private static void fillInLevelCombinationsRecursive(LogicTree<?> tree, List<List<LogicTreeNode>> levelNodesUsed, List<int[]> ret, int curDepth, int[] curFixed, int totDepth) {
+	private static void fillInLevelCombinationsRecursive(LogicTree<?> tree, List<List<NodeLevelPair>> levelNodesUsed, List<int[]> ret, int curDepth, int[] curFixed, int totDepth) {
 		Preconditions.checkState(curFixed.length == curDepth);
 		if (curDepth == totDepth) {
 			ret.add(curFixed);
@@ -535,7 +588,8 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 			for (int l=startLevel; l<levelNodesUsed.size(); l++) {
 				int numNodes = levelNodesUsed.get(l).size();
 				LogicTreeLevel<?> level = tree.getLevels().get(l);
-				if (numNodes < 2 || LogicTreeCurveAverager.shouldSkipLevel(level, numNodes))
+				if (numNodes < 2 || LogicTreeCurveAverager.shouldSkipLevel(level, numNodes)
+						|| !level.affects(FaultSystemSolution.RATES_FILE_NAME, true))
 					continue;
 				int[] newFixed = Arrays.copyOf(curFixed, curFixed.length+1);
 				newFixed[newFixed.length-1] = l;
@@ -544,15 +598,15 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 		}
 	}
 	
-	private static void addCombinationsRecursive(LogicTree<?> tree, List<List<LogicTreeNode>> levelNodesUsed, int[] fixedLevels, int curIndex, LogicTreeNode[] fixedVals, List<LogicTreeNode[]> ret) {
+	private static void addCombinationsRecursive(LogicTree<?> tree, List<List<NodeLevelPair>> levelNodesUsed, int[] fixedLevels, int curIndex, NodeLevelPair[] fixedVals, List<NodeLevelPair[]> ret) {
 		Preconditions.checkState(fixedVals.length == curIndex);
 		if (curIndex == fixedLevels.length) {
 			// done
 			ret.add(fixedVals);
 		} else {
 			int levelIndex = fixedLevels[curIndex];
-			for (LogicTreeNode node : levelNodesUsed.get(levelIndex)) {
-				LogicTreeNode[] newFixed = Arrays.copyOf(fixedVals, fixedVals.length+1);
+			for (NodeLevelPair node : levelNodesUsed.get(levelIndex)) {
+				NodeLevelPair[] newFixed = Arrays.copyOf(fixedVals, fixedVals.length+1);
 				newFixed[newFixed.length-1] = node;
 				addCombinationsRecursive(tree, levelNodesUsed, fixedLevels, curIndex+1, newFixed, ret);
 			}

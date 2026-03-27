@@ -158,7 +158,9 @@ public class LogicTreeHazardCompare {
 		File resultsFile, hazardFile;
 		File compResultsFile, compHazardFile;
 		LogicTree<?> tree = null;
+		LogicTreeBranch<?> branch0 = null;
 		LogicTree<?> compTree = null;
+		LogicTreeBranch<?> compBranch0 = null;
 		
 		boolean ignorePrecomputed = false;
 		
@@ -188,6 +190,7 @@ public class LogicTreeHazardCompare {
 				// read it from the hazard file if available
 				tree = loadTreeFromResults(hazardFile, forceFileBacked);
 			}
+			branch0 = loadBranch0FromResults(hazardFile, forceFileBacked);
 			if (cmd.hasOption("ignore-precomputed-maps"))
 				ignorePrecomputed = true;
 			mainName = args[cnt++];
@@ -211,6 +214,7 @@ public class LogicTreeHazardCompare {
 					// read it from the hazard file if available
 					compTree = loadTreeFromResults(compHazardFile, forceFileBacked);
 				}
+				compBranch0 = loadBranch0FromResults(compHazardFile, forceFileBacked);
 				compName = args[cnt++];
 			} else {
 				compResultsFile = null;
@@ -297,6 +301,9 @@ public class LogicTreeHazardCompare {
 			mapper = new LogicTreeHazardCompare(solTree, tree,
 					hazardFile, rps, periods, spacing, remapTRTs, remapBinnable);
 			
+			if (branch0 != null)
+				mapper.branch0 = branch0;
+			
 			mapper.skipLogicTree = cmd.hasOption("skip-logic-tree") || tree == null;
 			mapper.forceFullLT = cmd.hasOption("force-full-lt");
 			if (ignorePrecomputed)
@@ -362,6 +369,8 @@ public class LogicTreeHazardCompare {
 				}
 				comp = new LogicTreeHazardCompare(compSolTree, compTree,
 						compHazardFile, rps, periods, spacing, remapTRTs, remapBinnable);
+				if (compBranch0 != null)
+					comp.branch0 = compBranch0;
 				mapper.ignorePrecomputed = ignorePrecomputed;
 			}
 			
@@ -468,6 +477,26 @@ public class LogicTreeHazardCompare {
 		return tree;
 	}
 	
+	private static LogicTreeBranch<?> loadBranch0FromResults(File resultsFile, boolean forceFileBacked) throws IOException {
+		ZipFile zip = new ZipFile(resultsFile);
+		
+		ZipEntry entry = zip.getEntry(MPJ_LogicTreeHazardCalc.ORIG_LOGIC_TREE_FILE_NAME);
+		if (entry == null) {
+			zip.close();
+			return null;
+		}
+		
+		BufferedInputStream logicTreeIS = new BufferedInputStream(zip.getInputStream(entry));
+		InputStreamReader reader = new InputStreamReader(logicTreeIS);
+		LogicTree<?> tree;
+		if (forceFileBacked)
+			tree = LogicTree.readFileBacked(reader);
+		else
+			tree = LogicTree.read(reader);
+		zip.close();
+		return tree.getBranch(0);
+	}
+	
 	private ReturnPeriods[] rps;
 	private double[] periods;
 	private boolean forceSparseLTVar = false;
@@ -543,7 +572,8 @@ public class LogicTreeHazardCompare {
 		sdDiffCPT.setNanColor(Color.LIGHT_GRAY);
 //		pDiffCPT = GMT_CPT_Files.GMT_POLAR.instance().rescale(-100d, 100d);
 //		pDiffCPT = GMT_CPT_Files.GMT_POLAR.instance().rescale(-50d, 50d);
-		pDiffCPT = GMT_CPT_Files.DIVERGING_VIK_UNIFORM.instance().rescale(-50d, 50d);
+//		pDiffCPT = GMT_CPT_Files.DIVERGING_VIK_UNIFORM.instance().rescale(-50d, 50d);
+		pDiffCPT = GMT_CPT_Files.DIVERGING_VIK_UNIFORM.instance().rescale(-20d, 20d);
 //		pDiffCPT = GMT_CPT_Files.DIVERGING_DARK_BLUE_RED_UNIFORM.instance().rescale(-50d, 50d);
 		pDiffCPT.setNanColor(Color.LIGHT_GRAY);
 		diffCPT = GMT_CPT_Files.DIVERGING_BAM_UNIFORM.instance().reverse().rescale(-0.2, 0.2d);
@@ -3400,6 +3430,19 @@ public class LogicTreeHazardCompare {
 			if (CENTER_SUBPLOTS && myChoices.size() < maxNumChoices)
 				x += ((maxNumChoices-myChoices.size())*secondaryWidth)/2;
 			
+			int branchLevelIndex = -1;
+			if (INCLUDE_SUBPLOT_WEIGHT_LABELS) {
+				// find the correct branch level
+				LogicTreeBranch<?> branch0 = branches.get(0);
+				for (int i=0; i<branch0.size(); i++) {
+					LogicTreeLevel<?> levelTest = branch0.getLevel(i);
+					if (levelTest == level) {
+						Preconditions.checkState(branchLevelIndex < 0);
+						branchLevelIndex = i;
+					}
+				}
+			}
+			
 			for (int i=0; i<myChoices.size(); i++) {
 				secondaryPlot = myPlots.get(i);
 				secondaryGP = drawSimplifiedSecondaryPlot(secondaryPlot, secondaryPrefs, secondaryScale);
@@ -3409,14 +3452,14 @@ public class LogicTreeHazardCompare {
 				LogicTreeNode choice = branchLevelValues.get(l).get(i);
 				placeLabel(panel, labelLayer, x, choiceLabelY, secondaryWidth, heightChoice, choice.getShortName(), fontChoiceName);
 				
-				if (INCLUDE_SUBPLOT_WEIGHT_LABELS) {
+				if (INCLUDE_SUBPLOT_WEIGHT_LABELS && branchLevelIndex >= 0) {
 //					double choice = tr
 					double totWeight = 0d;
 					double matchWeight = 0d;
 					for (int b=0; b<branches.size(); b++) {
 						LogicTreeBranch<?> branch = branches.get(b);
 						double weight = weights.get(b);
-						if (branch.hasValue(choice))
+						if (choice.equals(branch.getValue(branchLevelIndex)))
 							matchWeight += weight;
 						totWeight += weight;
 					}

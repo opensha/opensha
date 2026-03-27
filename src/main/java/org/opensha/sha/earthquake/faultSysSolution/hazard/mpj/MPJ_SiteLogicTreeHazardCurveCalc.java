@@ -75,6 +75,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 	
 	private SolutionLogicTree solTree;
 	private LogicTree<?> tree;
+	private LogicTree<?> analysisTree;
 	
 	private AbstractSitewiseThreadedLogicTreeCalc calc;
 	private DiscretizedFunc[] xVals;
@@ -121,9 +122,16 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 			}
 		}
 		tree = solTree.getLogicTree();
+		if (cmd.hasOption("analysis-logic-tree")) {
+			File logicTreeFile = new File(cmd.getOptionValue("analysis-logic-tree"));
+			Preconditions.checkArgument(logicTreeFile.exists(), "Logic tree file doesn't exist: %s",
+					logicTreeFile.getAbsolutePath());
+			analysisTree = LogicTree.read(logicTreeFile);
+			Preconditions.checkState(analysisTree.size() == tree.size());
+		}
 		
 		if (rank == 0)
-			debug("Loaded "+solTree.getLogicTree().size()+" tree nodes/solutions");
+			debug("Loaded "+tree.size()+" tree nodes/solutions");
 		
 		outputDir = new File(cmd.getOptionValue("output-dir"));
 		
@@ -483,7 +491,10 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 			zout.closeEntry();
 			
 			zout.putNextEntry(new ZipEntry(tree.getFileName()));
-			tree.writeToStream(new BufferedOutputStream(zout));
+			if (analysisTree == null)
+				tree.writeToStream(new BufferedOutputStream(zout));
+			else
+				analysisTree.writeToStream(new BufferedOutputStream(zout));
 			zout.closeEntry();
 			
 			OutputStreamWriter zipWriter = new OutputStreamWriter(new BufferedOutputStream(zout));
@@ -600,6 +611,8 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		ops.addRequiredOption("if", "input-file", true, "Path to input file (solution logic tree zip)");
 		ops.addOption("lt", "logic-tree", true, "Path to logic tree JSON file, required if a results directory is "
 				+ "supplied with --input-file");
+		ops.addOption(null, "analysis-logic-tree", true, "Path to separate logic tree used for analysis that should be used "
+				+ "for writing the hazard results.");
 		ops.addRequiredOption("sf", "sites-file", true, "Path to sites CSV file");
 		ops.addRequiredOption("od", "output-dir", true, "Path to output directory");
 		ops.addOption("of", "output-file", true, "Path to output zip file. Default will be based on the output directory");
