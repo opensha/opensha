@@ -460,28 +460,34 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 	public File getBranchDirectory(File parentDir, boolean mkdir, String suffix) {
 		if (suffix == null)
 			suffix = "";
-		StringBuilder fileName = new StringBuilder();
-		for (int i=0; i<size(); i++) {
-			LogicTreeNode value = values.get(i);
-			if (value == null)
-				throw new IllegalStateException("Must be fully specified to build file name! (missing="
-						+levels.get(i).getName()+")");
-			String prefix = value.getFilePrefix();
-			int newLen = fileName.length()+prefix.length()+1+suffix.length();
-			if (newLen >= NAME_LENGTH_LIMIT) {
-				// need to break it up
-				File subDir = new File(parentDir, fileName.toString());
-				Preconditions.checkState(!mkdir || subDir.exists() || subDir.mkdir(),
-						"Directory doesn't exist and couldn't be created: %s", subDir.getAbsolutePath());
-				parentDir = subDir;
-				fileName.setLength(0); // clear it
+		StringBuilder fileName;
+		if (hasCustomFileName()) {
+			fileName = new StringBuilder(customFileName);
+		} else {
+			fileName = new StringBuilder();
+			for (int i=0; i<size(); i++) {
+				LogicTreeNode value = values.get(i);
+				if (value == null)
+					throw new IllegalStateException("Must be fully specified to build file name! (missing="
+							+levels.get(i).getName()+")");
+				String prefix = value.getFilePrefix();
+				int newLen = fileName.length()+prefix.length()+1+suffix.length();
+				if (newLen >= NAME_LENGTH_LIMIT) {
+					// need to break it up
+					File subDir = new File(parentDir, fileName.toString());
+					Preconditions.checkState(!mkdir || subDir.exists() || subDir.mkdir(),
+							"Directory doesn't exist and couldn't be created: %s", subDir.getAbsolutePath());
+					parentDir = subDir;
+					fileName.setLength(0); // clear it
+				}
+				if (fileName.length() > 0)
+					fileName.append('_');
+				fileName.append(prefix);
 			}
-			if (fileName.length() > 0)
-				fileName.append('_');
-			fileName.append(prefix);
+			Preconditions.checkState(fileName.length() > 0);
 		}
-		Preconditions.checkState(fileName.length() > 0);
 		fileName.append(suffix);
+		
 		File dir = new File(parentDir, fileName.toString());
 		Preconditions.checkState(!mkdir || dir.exists() || dir.mkdir(),
 				"Directory doesn't exist and couldn't be created: %s", dir.getAbsolutePath());
@@ -947,6 +953,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 								adapter = ((LogicTreeLevel.ValueBackedLevel)level).getValueTypeAdapter();
 							else
 								adapter = JsonAdapterHelper.initTypeAdapter(valueClass, true);
+//							System.out.println("Deserializing value for level "+level.getName()+" with adapter="+adapter);
 							value = adapter.read(in);
 						}
 					}
