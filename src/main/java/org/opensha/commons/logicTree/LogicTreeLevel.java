@@ -36,7 +36,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Range;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
@@ -982,27 +981,25 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 				
 				if (precisionScale > 0) {
 					double binWidth = 1d/Math.pow(10, precisionScale);
-					lowerForStr = Precision.round(lower, precisionScale);
-					// make it round down
-					upperForStr = Precision.round(upper, precisionScale) - 0.0001*binWidth;
+//					System.out.println("raw lower="+lower+", upper="+upper+", binWidth="+binWidth);
 					
 					if (numBins == 3) {
 						// expand center bin to precision edges
-						// don't change the values used in the bin strings though
 						if (i == 0) {
 							// we're working on the left edge of the center bin
 							upper = Precision.round(upper, precisionScale) - 0.5*binWidth;
-							// make it round down
-							upperForStr = upper - 0.5*binWidth;
 						} else if (i == 1) {
 							// we're working on the right edge of the center bin
 							upper = Precision.round(upper, precisionScale) + 0.5*binWidth;
 						}
+//						System.out.println("mod lower="+lower+", upper="+upper);
 					}
-				}
-				
-				if (numBins == 3 && precisionScale > 0) {
 					
+					// make it round up
+					lowerForStr = Precision.round(lower + 0.01*binWidth, precisionScale);
+					// make it round down
+					upperForStr = Precision.round(upper - 0.01*binWidth, precisionScale);
+//					System.out.println("Building bin "+i+"; lower="+lower+", lowerForStr="+lowerForStr+", upper="+upper+", upperForStr="+upperForStr);
 				}
 				
 				binEdges.add(upper);
@@ -1170,6 +1167,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 				List<SimpleValuedNode<Range<Double>>> nodes) {
 			super(samplingLevel.getName(), samplingLevel.getShortName());
 			this.nodes = nodes;
+			setAffected(samplingLevel.getAffected(), samplingLevel.getNotAffected(), false);
 		}
 
 		@Override
@@ -1201,6 +1199,11 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		@Override
 		public Class<? extends Range<Double>> getValueType() {
 			return VALUE_TYPE;
+		}
+
+		@Override
+		public TypeAdapter<Range<Double>> getValueTypeAdapter() {
+			return new DoubleRangeAdapter();
 		}
 
 		@Override
@@ -1242,11 +1245,12 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			
 			nodes = new ArrayList<>(bins.size());
 			for (int i=0; i<bins.size(); i++) {
-				Range<Double> range = rangeAdapter.fromJsonTree(jsonObj.get("range"));
-				String name = jsonObj.get("name").getAsString();
-				String shortName = jsonObj.get("shortName").getAsString();
-				String filePrefix = jsonObj.get("filePrefix").getAsString();
-				double weight = jsonObj.get("weight").getAsDouble();
+				JsonObject binObj = bins.get(i).getAsJsonObject();
+				Range<Double> range = rangeAdapter.fromJsonTree(binObj.get("range"));
+				String name = binObj.get("name").getAsString();
+				String shortName = binObj.get("shortName").getAsString();
+				String filePrefix = binObj.get("filePrefix").getAsString();
+				double weight = binObj.get("weight").getAsDouble();
 				nodes.add(build(range, weight, name, shortName, filePrefix));
 			}
 		}
@@ -1402,41 +1406,46 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					JsonObjectSerializable.writeJsonObjectToWriter(data, out);
 				}
 			}
-			if (level instanceof IndexedValuedLevel) {
-				// don't need to write node data, can just write values/weights
-				out.name("values").beginObject();
-				boolean allSameWeight = true;
-				List<? extends E> nodes = level.getNodes();
-				double[] weights = new double[nodes.size()];
-				for (int i=0; i<weights.length; i++) {
-					weights[i] = ((ValuedLogicTreeNode<?>)nodes.get(i)).getNodeWeight();
-					allSameWeight &= weights[i] == weights[0];
-				}
-				ValueBackedLevel<?,?> valueLevel = (ValueBackedLevel<?,?>)level;
-				out.name("valueClass").value(valueLevel.getValueType().getName());
-				out.name("count").value(nodes.size());
-				if (allSameWeight) {
-					out.name("weightEach").value(weights[0]);
-				} else {
-					out.name("weights").beginArray();
-					for (double weight : weights)
-						out.value(weight);
-					out.endArray();
-				}
-				if (!(level instanceof ValueByIndexLevel)) {
-					// write the values
-					out.name("values").beginArray();
-					TypeAdapter valueAdapter = valueLevel.getValueTypeAdapter();
-					for (E node : nodes) {
-						Object value = ((ValuedLogicTreeNode<?>)node).getValue();
-						if (value == null)
-							out.nullValue();
-						else
-							valueAdapter.write(out, value);
+			if (level instanceof DataBackedLevel<?>) {
+				// don't need to write node data
+				// (there's no method to set them were we to deserialize them anyway)
+				
+				if (level instanceof IndexedValuedLevel) {
+					// do need to write values/weights
+					out.name("values").beginObject();
+					boolean allSameWeight = true;
+					List<? extends E> nodes = level.getNodes();
+					double[] weights = new double[nodes.size()];
+					for (int i=0; i<weights.length; i++) {
+						weights[i] = ((ValuedLogicTreeNode<?>)nodes.get(i)).getNodeWeight();
+						allSameWeight &= weights[i] == weights[0];
 					}
-					out.endArray();
+					ValueBackedLevel<?,?> valueLevel = (ValueBackedLevel<?,?>)level;
+					out.name("valueClass").value(valueLevel.getValueType().getName());
+					out.name("count").value(nodes.size());
+					if (allSameWeight) {
+						out.name("weightEach").value(weights[0]);
+					} else {
+						out.name("weights").beginArray();
+						for (double weight : weights)
+							out.value(weight);
+						out.endArray();
+					}
+					if (!(level instanceof ValueByIndexLevel)) {
+						// write the values themselves
+						out.name("values").beginArray();
+						TypeAdapter valueAdapter = valueLevel.getValueTypeAdapter();
+						for (E node : nodes) {
+							Object value = ((ValuedLogicTreeNode<?>)node).getValue();
+							if (value == null)
+								out.nullValue();
+							else
+								valueAdapter.write(out, value);
+						}
+						out.endArray();
+					}
+					out.endObject();
 				}
-				out.endObject();
 			} else if (writeNodes) {
 				out.name("nodes").beginArray();
 				for (LogicTreeNode node : level.getNodes())
