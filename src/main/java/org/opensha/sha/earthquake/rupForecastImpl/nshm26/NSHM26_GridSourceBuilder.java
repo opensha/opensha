@@ -808,18 +808,18 @@ public class NSHM26_GridSourceBuilder {
 		branch = NSHM26_LogicTree.buildDefault(seisReg, TectonicRegionType.SUBDUCTION_SLAB, false);
 		GridSourceList intraslabProv = buildIntraslabGridSourceList(branch, seisReg);
 		
-//		if (crustalSol != null) {
-//			branch = crustalSol.requireModule(LogicTreeBranch.class);
-//			doPreGridBuildHook(crustalSol, branch);
-//		} else {
-//			branch = NSHM26_LogicTree.buildDefault(seisReg, TectonicRegionType.ACTIVE_SHALLOW, false);
-//		}
-//		GridSourceList crustalProv = buildCrustalGridSourceProv(crustalSol, branch, seisReg);
-//		
-//		GridSourceList combProv = buildCombinedGridSourceProv(interfaceProv, intraslabProv, crustalProv);
-//		interfaceSol.setGridSourceProvider(combProv);
-//		
-//		fm.attachDefaultModules(interfaceSol.getRupSet());
-//		interfaceSol.write(new File("/tmp/"+seisReg.name()+"_test_gridded_sol.zip"));
+		if (crustalSol != null) {
+			branch = crustalSol.requireModule(LogicTreeBranch.class);
+			doPreGridBuildHook(crustalSol, branch);
+		} else {
+			branch = NSHM26_LogicTree.buildDefault(seisReg, TectonicRegionType.ACTIVE_SHALLOW, false);
+		}
+		GridSourceList crustalProv = buildCrustalGridSourceProv(crustalSol, branch, seisReg);
+		
+		GridSourceList combProv = buildCombinedGridSourceProv(interfaceProv, intraslabProv, crustalProv);
+		interfaceSol.setGridSourceProvider(combProv);
+		
+		fm.attachDefaultModules(interfaceSol.getRupSet());
+		interfaceSol.write(new File("/tmp/"+seisReg.name()+"_test_gridded_sol.zip"));
 	}
 }

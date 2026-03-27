@@ -42,7 +42,7 @@ public class NSHM26_SeisPDF_Loader {
 	
 	private static final DecimalFormat pDF = new DecimalFormat("0.00%");
 	
-	public static final String DATA_DATE = "2026_03_09-v1";
+	public static final String DATA_DATE = "2026_03_27-v1";
 	
 	public static GriddedGeoDataSet load2D(NSHM26_SeismicityRegions region, TectonicRegionType trt,
 			NSHM26_DeclusteringAlgorithms decluster, NSHM26_SeisSmoothingAlgorithms smooth) throws IOException {
@@ -266,9 +266,9 @@ public class NSHM26_SeisPDF_Loader {
 	}
 
 	public static void main(String[] args) throws IOException {
-		boolean twoD = false;
-//		NSHM26_SeismicityRegions region = NSHM26_SeismicityRegions.GNMI;
-		NSHM26_SeismicityRegions region = NSHM26_SeismicityRegions.AMSAM;
+		boolean twoD = true;
+		NSHM26_SeismicityRegions region = NSHM26_SeismicityRegions.GNMI;
+//		NSHM26_SeismicityRegions region = NSHM26_SeismicityRegions.AMSAM;
 		File plotDir = new File("/tmp/pdf_plots");
 		Preconditions.checkArgument(plotDir.exists() || plotDir.mkdir());
 		
@@ -280,7 +280,7 @@ public class NSHM26_SeisPDF_Loader {
 		pdfCPT.setLog10(true);
 		pdfCPT.setNanColor(new Color(255, 255, 255, 0));
 		
-		File dir = new File("/home/kevin/OpenSHA/nshm26/data/spatial_seis_pdfs/"+region.name().toLowerCase()+"/2026_03_09-v1_"+(twoD ? "2D" : "3D"));
+		File dir = new File("/home/kevin/OpenSHA/nshm26/data/spatial_seis_pdfs/"+region.name().toLowerCase()+"/2026_03_27-v1_"+(twoD ? "2D" : "3D"));
 		for (File subdir : dir.listFiles()) {
 			for (File file : subdir.listFiles()) {
 				if (file.getName().endsWith(".csv")) {

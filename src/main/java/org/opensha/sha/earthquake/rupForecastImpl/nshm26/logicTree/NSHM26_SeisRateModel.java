@@ -89,6 +89,7 @@ public interface NSHM26_SeisRateModel extends LogicTreeNode {
 		BinnedSamplesLevel(NSHM26_SeisRateModelSamples samplesLevel, List<BinnedSamplesNode> nodes) {
 			super(samplesLevel.getName(), samplesLevel.getShortName());
 			this.nodes = nodes;
+			setAffected(samplesLevel.getAffected(), samplesLevel.getNotAffected(), false);
 		}
 
 		@Override
@@ -147,11 +148,12 @@ public interface NSHM26_SeisRateModel extends LogicTreeNode {
 			
 			nodes = new ArrayList<>(bins.size());
 			for (int i=0; i<bins.size(); i++) {
-				Range<Double> range = rangeAdapter.fromJsonTree(jsonObj.get("range"));
-				String name = jsonObj.get("name").getAsString();
-				String shortName = jsonObj.get("shortName").getAsString();
-				String filePrefix = jsonObj.get("filePrefix").getAsString();
-				double weight = jsonObj.get("weight").getAsDouble();
+				JsonObject binObj = bins.get(i).getAsJsonObject();
+				Range<Double> range = rangeAdapter.fromJsonTree(binObj.get("range"));
+				String name = binObj.get("name").getAsString();
+				String shortName = binObj.get("shortName").getAsString();
+				String filePrefix = binObj.get("filePrefix").getAsString();
+				double weight = binObj.get("weight").getAsDouble();
 				nodes.add(new BinnedSamplesNode(name, shortName, filePrefix, weight, range));
 			}
 		}

@@ -77,8 +77,10 @@ public class NSHM26_LogicTree {
 			LogicTreeLevel.forEnum(NSHM26_CrustalFaultModels.class, "Crustal Fault Model", "CrustalFM");
 	public static final LogicTreeLevel<NSHM26_CrustalAggregatedDeformationModels> CRUSTAL_AGG_DM =
 			LogicTreeLevel.forEnum(NSHM26_CrustalAggregatedDeformationModels.class, "Crustal Aggregated Deformation Model", "CrustalAggDM");
-	public static final LogicTreeLevel<NSHM23_ScalingRelationships> CRUSTAL_SCALE = NSHM23_LogicTreeBranch.SCALE;
-	public static final LogicTreeLevel<NSHM23_SegmentationModels> SEG = NSHM23_LogicTreeBranch.SEG;
+	public static final LogicTreeLevel<NSHM23_ScalingRelationships> CRUSTAL_SCALE =
+			LogicTreeLevel.forEnum(NSHM23_ScalingRelationships.class, "Crustal Scaling Relationship", "CrustalScale");
+	public static final LogicTreeLevel<NSHM23_SegmentationModels> SEG =
+			LogicTreeLevel.forEnum(NSHM23_SegmentationModels.class, "Crustal Segmentation Model", "CrustalSegModel");
 	public static final double CRUSTAL_B_SINGLE_DEFAULT = 0.5d;
 	public static final ContinuousDistribution CRUSTAL_B_DIST = UniformContinuousDistribution.of(0d, 1d);
 	public static final double CRUSTAL_MMAX_OFF_SINGLE_DEFAULT = 7.6;
@@ -322,6 +324,16 @@ public class NSHM26_LogicTree {
 			File treeFile = new File("/tmp/nshm26_tree_test_"+seisReg.name()+"_multi.json");
 			multiTree.write(treeFile);
 			LogicTree<LogicTreeNode> tree2 = LogicTree.read(treeFile);
+			tree2.write(new File(treeFile.getParentFile(), treeFile.getName()+".rerpo"));
+			LogicTree<LogicTreeNode> tree = LogicTree.unrollTRTs(multiTree);
+			treeFile = new File("/tmp/nshm26_tree_test_"+seisReg.name()+"_multi_unrolled.json");
+			tree.write(treeFile);
+			tree2 = LogicTree.read(treeFile);
+			tree2.write(new File(treeFile.getParentFile(), treeFile.getName()+".rerpo"));
+			tree = LogicTree.applyBinning(tree);
+			treeFile = new File("/tmp/nshm26_tree_test_"+seisReg.name()+"_multi_unrolled_binned.json");
+			tree.write(treeFile);
+			tree2 = LogicTree.read(treeFile);
 			tree2.write(new File(treeFile.getParentFile(), treeFile.getName()+".rerpo"));
 		}
 	}
