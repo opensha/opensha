@@ -20,11 +20,9 @@ import java.util.Map;
 import java.util.Random;
 
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
-import org.opensha.commons.logicTree.BranchWeightProvider.OriginalWeights;
-import org.opensha.commons.logicTree.LogicTreeLevel.FileBackedLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.BinnedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
 import org.opensha.commons.logicTree.LogicTreeNode.FixedWeightNode;
-import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 
 import com.google.common.base.Preconditions;
@@ -38,6 +36,7 @@ import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
+import gov.usgs.earthquake.nshmp.erf.logicTree.TectonicRegionBranchTreeNode;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
@@ -672,10 +671,82 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		return fromExisting(levels, branches);
 	}
 	
-//	public static LogicTree<LogicTreeNode> unrollTRTs(
-//			LogicTree<?> inputTree) {
-//		
-//	}
+	public static LogicTree<LogicTreeNode> unrollTRTs(
+			LogicTree<?> inputTree) {
+		List<? extends LogicTreeLevel<?>> origLevels = inputTree.getLevels();
+		boolean hasTRTs = false;
+		for (LogicTreeLevel<?> level : origLevels) {
+			if (level instanceof TectonicRegionBranchTreeNode.Level) {
+				hasTRTs = true;
+				break;
+			}
+		}
+		if (!hasTRTs)
+			return null;
+		List<LogicTreeLevel<? extends LogicTreeNode>> modLevels = null;
+		List<LogicTreeBranch<LogicTreeNode>> modBranches = new ArrayList<>();
+		for (int i=0; i<inputTree.size(); i++) {
+			// this preserves origWeight and sets the custom file name to the original
+			LogicTreeBranch<LogicTreeNode> branch = TectonicRegionBranchTreeNode.unrollTRTBranches(inputTree.getBranch(i));
+			if (i == 0)
+				modLevels = branch.getLevels();
+			modBranches.add(branch);
+		}
+		
+		return fromExisting(modLevels, modBranches);
+	}
+	
+	public static LogicTree<LogicTreeNode> applyBinning(
+			LogicTree<?> inputTree) {
+		List<Integer> binnedLevelIndexes = null;
+		List<BinnedLevel<?, ?>> binnedLevels = null;
+		List<? extends LogicTreeLevel<?>> origLevels = inputTree.getLevels();
+		
+		for (int l=0; l<origLevels.size(); l++) {
+			LogicTreeLevel<?> level = origLevels.get(l);
+			if (level instanceof LogicTreeLevel.BinnableLevel<?,?,?>) {
+				BinnedLevel<?, ?> binned =
+						((LogicTreeLevel.BinnableLevel<?,?,?>)level).toBinnedLevel();
+				if (binnedLevelIndexes == null) {
+					binnedLevelIndexes = new ArrayList<>();
+					binnedLevels = new ArrayList<>();
+				}
+				binnedLevelIndexes.add(l);
+				binnedLevels.add(binned);
+				System.out.println("Binning "+level.getName()+":");
+				for (LogicTreeNode node : ((LogicTreeLevel<?>)binned).getNodes())
+					System.out.println("\t"+node.getName());
+				
+			}
+		}
+		if (binnedLevelIndexes == null)
+			return null;
+		List<LogicTreeBranch<LogicTreeNode>> modBranches = new ArrayList<>(inputTree.size());
+		List<LogicTreeLevel<? extends LogicTreeNode>> modLevels = new ArrayList<>(origLevels.size());
+		
+		for (int l=0; l<origLevels.size(); l++)
+			modLevels.add(origLevels.get(l));
+		for (int i=0; i<binnedLevelIndexes.size(); i++)
+			modLevels.set(binnedLevelIndexes.get(i), (LogicTreeLevel<?>)binnedLevels.get(i));
+		
+		for (LogicTreeBranch<?> branch : inputTree) {
+			List<LogicTreeNode> values = new ArrayList<>();
+			
+			for (int l=0; l<origLevels.size(); l++)
+				values.add(branch.getValue(l));
+			for (int i=0; i<binnedLevelIndexes.size(); i++) {
+				int l = binnedLevelIndexes.get(i);
+				values.set(l, binnedLevels.get(i).getBinUnchecked(values.get(l)));
+			}
+			
+			LogicTreeBranch<LogicTreeNode> modBranch = new LogicTreeBranch<>(modLevels, values);
+			modBranch.setCustomFileName(branch.buildFileName());
+			modBranch.setOrigBranchWeight(branch.getOrigBranchWeight());
+			
+			modBranches.add(modBranch);
+		}
+		return fromExisting(modLevels, modBranches);
+	}
 	
 	public static void main(String[] args) {
 		LogicTree<U3LogicTreeBranchNode<?>> fullU3 = buildExhaustive(U3LogicTreeBranch.getLogicTreeLevels(), true);
