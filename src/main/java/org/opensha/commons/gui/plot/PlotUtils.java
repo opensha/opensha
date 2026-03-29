@@ -278,6 +278,16 @@ public class PlotUtils {
 		}
 	}
 	
+	public static ChartRenderingInfo getRenderingInfo(GraphPanel gp, int width, int height) {
+		return getRenderingInfo(gp.getChartPanel(), width, height);
+	}
+	
+	public static ChartRenderingInfo getRenderingInfo(ChartPanel cp, int width, int height) {
+		ChartRenderingInfo chartInfo = new ChartRenderingInfo();
+		cp.getChart().createBufferedImage(width, height, chartInfo);
+		return chartInfo;
+	}
+	
 	// TODO untested, verify and uncomment if needed
 //	public static int calcWidth(GraphPanel gp, int height,  boolean isLatLon) {
 //		return calcWidth(gp.getChartPanel(), height, calcAspectRatio(gp.getX_AxisRange(), gp.getY_AxisRange(), isLatLon));
