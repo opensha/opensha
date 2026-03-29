@@ -50,8 +50,8 @@ implements BinnableLevel<PureGR, NSHM26_SiesRateModelSample, BinnedSamplesLevel>
 	}
 	
 	public NSHM26_SeisRateModelSamples(NSHM26_SeismicityRegions region, TectonicRegionType trt) {
-		super(region.getShortName()+" Rate Model Samples ("+NSHM26_RegionLoader.getNameForTRT(trt)+")",
-				region.name()+"-"+NSHM26_RegionLoader.getNameForTRT(trt)+"Samples",
+		super(NSHM26_RegionLoader.getNameForTRT(trt)+" Seismicity Rate Model Samples",
+				NSHM26_RegionLoader.getNameForTRT(trt)+"RateSamples",
 				"Rate sample ", "RateSample", "RateSample");
 		this.region = region;
 		this.trt = trt;

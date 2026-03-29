@@ -16,6 +16,8 @@ import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.RandomSeedUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxRuptureLengthBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
@@ -134,14 +136,22 @@ public class NSHM26_LogicTree {
 			levels.add(new NSHM26_SeisRateModelSamples(seisReg, trt));
 		else
 			levels.add(LogicTreeLevel.forEnum(NSHM26_SeisRateModelBranch.class,
-					"Rate Model Branch ("+NSHM26_RegionLoader.getNameForTRT(trt)+")",
+					NSHM26_RegionLoader.getNameForTRT(trt)+" Rate Model Branch",
 					NSHM26_RegionLoader.getNameForTRT(trt)+"Branch"));
 		levels.add(LogicTreeLevel.forEnum(NSHM26_DeclusteringAlgorithms.class,
-				"Declustering Algorithm ("+NSHM26_RegionLoader.getNameForTRT(trt)+")",
+				NSHM26_RegionLoader.getNameForTRT(trt)+" Declustering Algorithm",
 				NSHM26_RegionLoader.getNameForTRT(trt)+"-Decluster"));
 		levels.add(LogicTreeLevel.forEnum(NSHM26_SeisSmoothingAlgorithms.class,
-				"Smoothing Kernel ("+NSHM26_RegionLoader.getNameForTRT(trt)+")",
+				NSHM26_RegionLoader.getNameForTRT(trt)+" Smoothing Kernel",
 				NSHM26_RegionLoader.getNameForTRT(trt)+"-Smooth"));
+		if (trt != TectonicRegionType.SUBDUCTION_INTERFACE) {
+			// these only affect inversion if subduction interface
+			for (int i=levels.size()-4; i<levels.size(); i++) {
+				LogicTreeLevel<? extends LogicTreeNode> level = levels.get(i);
+				level.overrideIndividualAffected(FaultSystemRupSet.SECTS_FILE_NAME, false);
+				level.overrideIndividualAffected(FaultSystemSolution.RATES_FILE_NAME, false);
+			}
+		}
 
 		String mMaxName = sampled ? trtName+" Off Fault Mmax Samples" : trtName+" Fixed Off Fault Mmax";
 		String mMaxShortName = sampled ? trtName+"-MmaxOffSamples" : trtName+"-FixedMmaxOff";
