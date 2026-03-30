@@ -146,7 +146,7 @@ public class NSHM26_LogicTree {
 				NSHM26_RegionLoader.getNameForTRT(trt)+"-Smooth"));
 		if (trt != TectonicRegionType.SUBDUCTION_INTERFACE) {
 			// these only affect inversion if subduction interface
-			for (int i=levels.size()-4; i<levels.size(); i++) {
+			for (int i=levels.size()-3; i<levels.size(); i++) {
 				LogicTreeLevel<? extends LogicTreeNode> level = levels.get(i);
 				level.overrideIndividualAffected(FaultSystemRupSet.SECTS_FILE_NAME, false);
 				level.overrideIndividualAffected(FaultSystemSolution.RATES_FILE_NAME, false);
