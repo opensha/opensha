@@ -22,7 +22,7 @@ public abstract class AbstractNthRupERF extends AbstractERF {
 	/**
 	 * total number of ruptures across all sources
 	 */
-	private int totNumRups=-1;
+	private volatile int totNumRups=-1;
 	
 	/**
 	 * array of length {#link {@link #getNumSources()}.
@@ -31,7 +31,7 @@ public abstract class AbstractNthRupERF extends AbstractERF {
 	 * it should contain the first rupture following that source (and NOT -1) to ensure this is in order for
 	 * binary searches
 	 */
-	private int[] sourceRupIndexes;
+	private volatile int[] sourceRupIndexes;
 	
 	protected synchronized final void sourceRupIndexesChanged() {
 		sourceRupIndexes = null;
@@ -54,7 +54,7 @@ public abstract class AbstractNthRupERF extends AbstractERF {
 		for (int srcIndex=0; srcIndex<sourceRupIndexes.length; srcIndex++) {
 			sourceRupIndexes[srcIndex] = numRuptures;
 			int srcRups = getSource(srcIndex).getNumRuptures();
-			Preconditions.checkState(numRuptures+srcRups <= Integer.MAX_VALUE,
+			Preconditions.checkState((long)numRuptures+(long)srcRups <= Integer.MAX_VALUE,
 					"The rupture count exceeds Integer.MAX_VALUE=%s", Integer.MAX_VALUE);
 			numRuptures += srcRups;
 		}
