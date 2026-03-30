@@ -344,7 +344,7 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 			for (int l=0; l<levelNodesUsed.size(); l++) {
 				List<NodeLevelPair> levelNodes = levelNodesUsed.get(l);
 				
-				if (levelNodes.size() < 2 || LogicTreeCurveAverager.shouldSkipLevel(analysisTree.getLevels().get(l), levelNodes.size()))
+				if (shouldSkipLevel(analysisTree.getLevels().get(l), levelNodes.size()))
 					continue;
 				
 				LogicTreeLevel<?> level = analysisTree.getLevels().get(l);
@@ -588,14 +588,18 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 			for (int l=startLevel; l<levelNodesUsed.size(); l++) {
 				int numNodes = levelNodesUsed.get(l).size();
 				LogicTreeLevel<?> level = tree.getLevels().get(l);
-				if (numNodes < 2 || LogicTreeCurveAverager.shouldSkipLevel(level, numNodes)
-						|| !level.affects(FaultSystemSolution.RATES_FILE_NAME, true))
+				if (shouldSkipLevel(level, numNodes))
 					continue;
 				int[] newFixed = Arrays.copyOf(curFixed, curFixed.length+1);
 				newFixed[newFixed.length-1] = l;
 				fillInLevelCombinationsRecursive(tree, levelNodesUsed, ret, curDepth+1, newFixed, totDepth);
 			}
 		}
+	}
+	
+	private static boolean shouldSkipLevel(LogicTreeLevel<?> level, int numNodes) {
+		return numNodes < 2 || LogicTreeCurveAverager.shouldSkipLevel(level, numNodes)
+				|| !level.affects(FaultSystemSolution.RATES_FILE_NAME, true);
 	}
 	
 	private static void addCombinationsRecursive(LogicTree<?> tree, List<List<NodeLevelPair>> levelNodesUsed, int[] fixedLevels, int curIndex, NodeLevelPair[] fixedVals, List<NodeLevelPair[]> ret) {
