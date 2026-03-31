@@ -996,10 +996,6 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			List<String> shortNames = new ArrayList<>(numBins);
 			
 			binEdges.add(getLowerBound());
-			if (precisionScale > 0)
-				binEdges.add(Precision.round(dist.getSupportLowerBound(), precisionScale));
-			else
-				binEdges.add(dist.getSupportLowerBound());
 			double probEach = 1d/(double)numBins;
 			double startP = 0d;
 			for (int i=0; i<numBins; i++) {
@@ -1129,7 +1125,8 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		public ContinuousDistributionBinnedLevel toBinnedLevel(List<Double> binEdges, List<String> names, List<String> shortNames) {
 			Preconditions.checkState(binEdges.size() > 1);
 			int numBins = binEdges.size()-1;
-			Preconditions.checkState(names.size() == numBins);
+			Preconditions.checkState(names.size() == numBins,
+					"Must have exactly one name per bin (numBins=%s, edges=%s, names=%s)", numBins, binEdges, names);
 			Preconditions.checkState(shortNames == null || shortNames.size() == numBins);
 			List<SimpleValuedNode<Range<Double>>> nodes = new ArrayList<>();
 			
