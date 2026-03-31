@@ -6,7 +6,7 @@ import org.opensha.commons.logicTree.LogicTreeLevel.RandomlyGeneratedLevel;
 
 public class NSHM26_CrustalRandomlySampledDeformationModelLevel extends RandomlyGeneratedLevel<NSHM26_CrustalRandomlySampledDeformationModels> {
 
-	public static String NAME = "NSHM26 Crustal Def Model Sample";
+	public static String NAME = "Crustal Deformation Model Sample";
 	public static String SHORT_NAME = "DMSample";
 
 	public NSHM26_CrustalRandomlySampledDeformationModelLevel() {
