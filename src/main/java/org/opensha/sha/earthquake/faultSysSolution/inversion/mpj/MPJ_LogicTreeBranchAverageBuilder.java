@@ -523,7 +523,7 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 		public final LogicTreeNode node;
 		public final LogicTreeLevel<?> level;
 		public final int levelIndex;
-		private NodeLevelPair(LogicTreeNode node, LogicTreeLevel<?> level, int levelIndex) {
+		public NodeLevelPair(LogicTreeNode node, LogicTreeLevel<?> level, int levelIndex) {
 			this.node = node;
 			this.level = level;
 			this.levelIndex = levelIndex;
