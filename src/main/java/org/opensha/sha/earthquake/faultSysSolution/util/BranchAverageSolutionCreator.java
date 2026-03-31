@@ -1,5 +1,6 @@
 package org.opensha.sha.earthquake.faultSysSolution.util;
 
+import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
@@ -253,6 +254,7 @@ public class BranchAverageSolutionCreator {
 				}
 			}
 			
+			RupMFDsModule upstreamMFDs = mergeMode ? sol.getModule(RupMFDsModule.class) : null;
 			for (int r=0; r<avgRates.length; r++) {
 				avgRakes.get(r).add(rupSet.getAveRakeForRup(r), weight);
 				double rate = sol.getRateForRup(r);
@@ -265,12 +267,29 @@ public class BranchAverageSolutionCreator {
 					// skip
 					continue;
 				avgRates[r] += rate*weight;
-				DiscretizedFunc rupMFD = rupMFDs.get(r);
-				double y = rate*weight;
-				if (rupMFD.hasX(mag))
-					y += rupMFD.getY(mag);
-				rupMFD.set(mag, y);
+				if (mergeMode) {
+					// this is an upstream already-averaged solution; don't track it's mean magnitude, instead add in
+					// it's rupture MFD (weighted)
+					DiscretizedFunc upstreamMFD = upstreamMFDs == null ? null : upstreamMFDs.getRuptureMFD(r);
+					if (upstreamMFD != null) {
+						DiscretizedFunc rupMFD = rupMFDs.get(r);
+						for (Point2D pt : upstreamMFD) {
+							double x = pt.getX();
+							double y = pt.getY()*weight;
+							if (rupMFD.hasX(x))
+								y += rupMFD.getY(x);
+							rupMFD.set(x, y);
+						}
+					}
+				} else {
+					DiscretizedFunc rupMFD = rupMFDs.get(r);
+					double y = rate*weight;
+					if (rupMFD.hasX(mag))
+						y += rupMFD.getY(mag);
+					rupMFD.set(mag, y);
+				}
 			}
+			
 			addWeighted(avgMags, rupSet.getMagForAllRups(), weight);
 			addWeighted(avgAreas, rupSet.getAreaForAllRups(), weight);
 			addWeighted(avgLengths, rupSet.getLengthForAllRups(), weight);
