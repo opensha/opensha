@@ -872,6 +872,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 
 		private ContinuousDistribution dist;
 		private int precisionScale;
+		private String units;
 		
 		protected AbstractContinuousDistributionSampledLevel(String levelName, String levelShortName) {
 			super(levelName, levelShortName);
@@ -898,15 +899,49 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		protected void build(UniformRandomProvider rand, int numSamples, double weightEach) {
 			Sampler sampler = dist.createSampler(rand);
 			build(()->{
-				double sample = sampler.sample();
-				if (precisionScale > 0)
-					sample = Precision.round(sample, precisionScale);
+				double sample = getRoundedToPrecision(sampler.sample());
 				return sample;
 			}, numSamples, weightEach);
 		}
 		
 		public ContinuousDistribution getDistribution() {
 			return dist;
+		}
+		
+		public int getPrecisionScale() {
+			return precisionScale;
+		}
+		
+		public void setUnits(String units) {
+			this.units = units;
+		}
+		
+		public String getUnits() {
+			return units;
+		}
+		
+		public double getRoundedToPrecision(double value) {
+			if (precisionScale > 0)
+				return Precision.round(value, precisionScale);
+			return value;
+		}
+		
+		public double getLowerBound() {
+			double lower = dist.getSupportLowerBound();
+			if (precisionScale < 1 || !Double.isFinite(lower))
+				return lower;
+			double binWidth = 1d/Math.pow(10, precisionScale);
+			// round edges up
+			return getRoundedToPrecision(lower + 0.01*binWidth);
+		}
+		
+		public double getUpperBound() {
+			double upper = dist.getSupportUpperBound();
+			if (precisionScale < 1 || !Double.isFinite(upper))
+				return upper;
+			double binWidth = 1d/Math.pow(10, precisionScale);
+			// round edges down
+			return getRoundedToPrecision(upper - 0.01*binWidth);
 		}
 		
 		public void setDistribution(ContinuousDistribution dist) {
@@ -926,6 +961,8 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 				json.add("distribution", ContinuousDistributionTypeAdapter.get().toJsonTree(dist));
 			if (precisionScale > 0)
 				json.add("precisionScale", new JsonPrimitive(precisionScale));
+			if (units != null && !units.isBlank())
+				json.add("units", new JsonPrimitive(units));
 			
 			return json;
 		}
@@ -940,6 +977,8 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 				precisionScale = jsonObj.get("precisionScale").getAsInt();
 			else
 				precisionScale = -1;
+			if (jsonObj.has("units"))
+				units = jsonObj.get("units").getAsString();
 		}
 		
 		private static DecimalFormat oDF = new DecimalFormat("0.##");
@@ -956,6 +995,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			List<String> names = new ArrayList<>(numBins);
 			List<String> shortNames = new ArrayList<>(numBins);
 			
+			binEdges.add(getLowerBound());
 			if (precisionScale > 0)
 				binEdges.add(Precision.round(dist.getSupportLowerBound(), precisionScale));
 			else
