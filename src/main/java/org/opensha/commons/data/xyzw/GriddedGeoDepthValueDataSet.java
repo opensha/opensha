@@ -77,25 +77,55 @@ public class GriddedGeoDepthValueDataSet implements GeoXYZW_DataSet {
 	}
 	
 	public enum DepthRediscretizationMethod {
+		/** Linearly interpolates values at the new depth centers. */
 		INTERPOLATE,
+		/**
+		 * Redistributes each original depth-bin value into the new bins by overlap fraction so that the total
+		 * summed value is preserved. The first and last new bins are expanded as needed to span the original
+		 * depth range.
+		 */
 		PRESERVE_SUM,
+		/** Assigns each new depth center the value from the closest original depth center. */
 		CLOSEST
 	}
 
+	/**
+	 * Rediscretizes this data set onto a new set of depth centers.
+	 *
+	 * @param depths new depth centers
+	 * @param method rediscretization method controlling how values are mapped onto the new depth discretization
+	 * @return a new data set with the same gridded region and values mapped onto the supplied depth centers
+	 */
 	public GriddedGeoDepthValueDataSet rediscretizeDepths(double[] depths, DepthRediscretizationMethod method) {
 		return rediscretizeDepths(new LightFixedXFunc(depths, new double[depths.length]), method);
 	}
 
+	/**
+	 * Rediscretizes this data set onto a new depth discretization.
+	 * <p>
+	 * {@link DepthRediscretizationMethod#INTERPOLATE} linearly interpolates values at each new depth.
+	 * {@link DepthRediscretizationMethod#PRESERVE_SUM} treats both old and new depth centers as bins and
+	 * redistributes values according to bin overlap so that the total sum is preserved across depths.
+	 * {@link DepthRediscretizationMethod#CLOSEST} copies the value from the closest original depth center.
+	 *
+	 * @param newDepthFunction new depth discretization
+	 * @param method rediscretization method controlling how values are mapped onto the new depth discretization
+	 * @return a new data set with the same gridded region and values mapped onto the supplied depth discretization
+	 */
 	public GriddedGeoDepthValueDataSet rediscretizeDepths(DiscretizedFunc newDepthFunction,
 			DepthRediscretizationMethod method) {
 		Preconditions.checkNotNull(newDepthFunction, "New depth function cannot be null");
-		Preconditions.checkNotNull(newDepthFunction, "No depth discretization method supplied");
+		Preconditions.checkNotNull(method, "No depth discretization method supplied");
 		int newDepthCount = newDepthFunction.size();
 		double[][] newValues = new double[nodeCount][newDepthCount];
 		switch (method) {
 		case PRESERVE_SUM:
 			double[] oldEdges = calcDepthBinEdges(depthFunction);
 			double[] newEdges = calcDepthBinEdges(newDepthFunction);
+			if (newEdges[0] > oldEdges[0])
+				newEdges[0] = oldEdges[0];
+			if (newEdges[newEdges.length-1] < oldEdges[oldEdges.length-1])
+				newEdges[newEdges.length-1] = oldEdges[oldEdges.length-1];
 			for (int nodeIndex=0; nodeIndex<nodeCount; nodeIndex++)
 				for (int newDepthIndex=0; newDepthIndex<newDepthCount; newDepthIndex++)
 					newValues[nodeIndex][newDepthIndex] = redistributeValue(nodeIndex, newDepthIndex, oldEdges, newEdges);
