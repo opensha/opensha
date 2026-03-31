@@ -345,7 +345,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	}
 	
 	@Override
-	public void updateForecast() throws NullPointerException {
+	public synchronized void updateForecast() throws NullPointerException {
 		
 		if (D) System.out.println("Updating forecast");
 		long runTime = System.currentTimeMillis();
@@ -661,8 +661,11 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	 */
 	private void makeAllFaultSystemSources() {
 		faultSourceList = new ArrayList<>(numNonZeroFaultSystemSources);
+		totNumRupsFromFaultSystem = 0;
 		for (int i=0; i<numNonZeroFaultSystemSources; i++) {
-			faultSourceList.add(makeFaultSystemSource(i));
+			ProbEqkSource source = makeFaultSystemSource(i);
+			totNumRupsFromFaultSystem += source.getNumRuptures();
+			faultSourceList.add(source);
 		}
 	}
 	
