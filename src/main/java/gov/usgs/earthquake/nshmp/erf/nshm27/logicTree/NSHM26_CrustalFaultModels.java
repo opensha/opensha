@@ -1,4 +1,4 @@
-package org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree;
+package gov.usgs.earthquake.nshmp.erf.nshm27.logicTree;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -20,10 +20,11 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionBuilder;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.util.TectonicRegionType;
+
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
 
 @Affects(FaultSystemRupSet.SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_SECTS_FILE_NAME)

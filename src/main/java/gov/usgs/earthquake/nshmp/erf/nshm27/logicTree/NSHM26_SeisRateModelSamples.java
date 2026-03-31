@@ -1,4 +1,4 @@
-package org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree;
+package gov.usgs.earthquake.nshmp.erf.nshm27.logicTree;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,12 +18,6 @@ import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.AbstractRandomlySampledLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.BinnableLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm26.NSHM26_InvConfigFactory;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_SeisRateModel.BinnedSamplesLevel;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_SeisRateModel.BinnedSamplesNode;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_SeisRateModel.NSHM26_SiesRateModelSample;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -34,6 +28,12 @@ import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
+import gov.usgs.earthquake.nshmp.erf.nshm27.NSHM26_InvConfigFactory;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_SeisRateModel.BinnedSamplesLevel;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_SeisRateModel.BinnedSamplesNode;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_SeisRateModel.NSHM26_SiesRateModelSample;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.PureGR;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateType;

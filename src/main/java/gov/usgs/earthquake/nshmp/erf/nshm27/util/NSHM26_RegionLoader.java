@@ -1,4 +1,4 @@
-package org.opensha.sha.earthquake.rupForecastImpl.nshm26.util;
+package gov.usgs.earthquake.nshmp.erf.nshm27.util;
 
 import java.io.IOException;
 

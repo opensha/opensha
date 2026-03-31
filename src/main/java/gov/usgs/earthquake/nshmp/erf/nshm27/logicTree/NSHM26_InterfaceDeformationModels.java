@@ -1,4 +1,4 @@
-package org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree;
+package gov.usgs.earthquake.nshmp.erf.nshm27.logicTree;
 
 import java.io.IOException;
 import java.io.InputStream;

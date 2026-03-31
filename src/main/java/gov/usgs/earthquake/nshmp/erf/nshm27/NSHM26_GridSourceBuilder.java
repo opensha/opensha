@@ -1,4 +1,4 @@
-package org.opensha.sha.earthquake.rupForecastImpl.nshm26;
+package gov.usgs.earthquake.nshmp.erf.nshm27;
 
 import java.awt.Color;
 import java.io.File;
@@ -46,16 +46,6 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_Abstract
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_FaultCubeAssociations;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SingleRegionGridSourceProvider;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SingleRegionGridSourceProvider.NSHM23_WUS_FiniteRuptureConverter;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_CrustalFaultModels;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_DeclusteringAlgorithms;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_InterfaceFaultModels;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_InterfaceMinSubSects;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_LogicTree;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_SeisRateModel;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree.NSHM26_SeisSmoothingAlgorithms;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.InterfaceGridAssociations;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_SeisPDF_Loader;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionScalingRelationships;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -65,6 +55,16 @@ import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
 import com.google.common.primitives.Doubles;
 
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_CrustalFaultModels;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_DeclusteringAlgorithms;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_InterfaceFaultModels;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_InterfaceMinSubSects;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_LogicTree;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_SeisRateModel;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_SeisSmoothingAlgorithms;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.InterfaceGridAssociations;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_SeisPDF_Loader;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
 import scratch.UCERF3.erf.ETAS.SeisDepthDistribution;
 
 public class NSHM26_GridSourceBuilder {

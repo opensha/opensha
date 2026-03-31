@@ -1,4 +1,4 @@
-package org.opensha.sha.earthquake.rupForecastImpl.nshm26.logicTree;
+package gov.usgs.earthquake.nshmp.erf.nshm27.logicTree;
 
 import java.io.File;
 import java.io.IOException;
@@ -24,8 +24,6 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicT
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm26.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionScalingRelationships;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -33,6 +31,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
 
 import gov.usgs.earthquake.nshmp.erf.logicTree.TectonicRegionBranchTreeNode;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
 
 public class NSHM26_LogicTree {
 	
