@@ -24,6 +24,7 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.ExceptionUtils;
@@ -82,7 +83,7 @@ public class NSHM26_GridSourceBuilder {
 	public static final double INTERFACE_MAX_HYOPCENTRAL_DEPTH = 60d;
 	public static final double INTERFACE_MAX_GRID_FINITE_DEPTH = Double.POSITIVE_INFINITY;
 	
-	public static double[] SLAB_DEPTH_REDISCRETIZATION;
+	public static double[] SLAB_DEPTH_REDISCRETIZATION = { 10, 20, 30, 40, 60, 80, 100, 150, 200, 250, 350, 450, 550 };
 	
 	public static final double SLAB_MIN_RATE = 1e-10; // approximately 1 in the age of the known universe
 	
@@ -92,38 +93,6 @@ public class NSHM26_GridSourceBuilder {
 	public static final double CRUSTAL_FRACT_SS = 0.5d;
 	public static final double CRUSTAL_FRACT_REV = 0d; // TODO
 	public static final double CRUSTAL_FRACT_NORM = 0.5d;
-	
-	static {
-		List<Double> depths = new ArrayList<>();
-		for (int i=0; i<NSHM26_SeisPDF_Loader.DEPTH_DISCR_3D.size(); i++) {
-			double x = NSHM26_SeisPDF_Loader.DEPTH_DISCR_3D.getX(i);
-//			if (x <= 100.01) {
-//				depths.add(x);
-//			} else if (x <= 200.01) {
-//				if (Math.abs(x % 20) < 0.1)
-//					depths.add(x);
-////			} else if (x <= 00.01) {
-////				if (Math.abs(x % 20) < 0.1)
-////					depths.add(x);
-//			} else {
-//				if (Math.abs(x % 50) < 0.1)
-//					depths.add(x);
-//			}
-			if (x <= 50.01) {
-				depths.add(x);
-			} else if (x <= 100.01) {
-				if (Math.abs(x % 20) < 0.1)
-					depths.add(x);
-			} else if (x <= 300.01) {
-				if (Math.abs(x % 50) < 0.1)
-					depths.add(x);
-			} else {
-				if (Math.abs(x % 100) < 0.1)
-					depths.add(x);
-			}
-		}
-		SLAB_DEPTH_REDISCRETIZATION = Doubles.toArray(depths);
-	}
 	
 	public static void doPreGridBuildHook(FaultSystemSolution sol, LogicTreeBranch<?> faultBranch) throws IOException {
 		doPreGridBuildHook(sol == null ? null : sol.getRupSet(), faultBranch);
@@ -523,7 +492,8 @@ public class NSHM26_GridSourceBuilder {
 			int origNum = pdf.size();
 			pdf = pdf.rediscretizeDepths(SLAB_DEPTH_REDISCRETIZATION, DepthRediscretizationMethod.PRESERVE_SUM);
 			System.out.println("Reduced from "+origNum+" to "+pdf.size()+" locations");
-			Preconditions.checkState((float)pdf.getSumValues() == 1f);
+			double rediscrSum = pdf.getSumValues();
+			Preconditions.checkState((float)rediscrSum == 1f, "Bad PDF sum=%s", rediscrSum);
 		}
 		if (SLAB_MIN_RATE > 0) {
 			double fractFilteredOut = 0d;
@@ -804,9 +774,25 @@ public class NSHM26_GridSourceBuilder {
 		doPreGridBuildHook(interfaceSol, branch);
 		NSHM26_InterfaceFaultModels fm = branch.requireValue(NSHM26_InterfaceFaultModels.class);
 		GridSourceList interfaceProv = buildInterfaceGridSourceList(interfaceSol, branch, seisReg);
+		long interfaceRupCount = 0;
+		for (int l=0; l<interfaceProv.getNumLocations(); l++)
+			interfaceRupCount += interfaceProv.getRuptures(TectonicRegionType.SUBDUCTION_INTERFACE, l).size();
+		System.out.println("Built "+interfaceRupCount+" interface ruptures for "+seisReg);
 		
 		branch = NSHM26_LogicTree.buildDefault(seisReg, TectonicRegionType.SUBDUCTION_SLAB, false);
+		for (int l=0; l<branch.size(); l++) {
+			LogicTreeLevel<?> level = branch.getLevel(l);
+			if (level instanceof MaxMagOffFaultBranchNode.FixedValueLevel) {
+				((MaxMagOffFaultBranchNode.FixedValueLevel)level).setValue(8.5d);
+				branch.setValue(l, level.getNodes().get(0));
+				System.out.println("Set slab Mmax to "+branch.getValue(l).getName());
+			}
+		}
 		GridSourceList intraslabProv = buildIntraslabGridSourceList(branch, seisReg);
+		long slabRupCount = 0;
+		for (int l=0; l<intraslabProv.getNumLocations(); l++)
+			slabRupCount += intraslabProv.getRuptures(TectonicRegionType.SUBDUCTION_SLAB, l).size();
+		System.out.println("Built "+slabRupCount+" slab ruptures for "+seisReg);
 		
 		if (crustalSol != null) {
 			branch = crustalSol.requireModule(LogicTreeBranch.class);
@@ -814,7 +800,19 @@ public class NSHM26_GridSourceBuilder {
 		} else {
 			branch = NSHM26_LogicTree.buildDefault(seisReg, TectonicRegionType.ACTIVE_SHALLOW, false);
 		}
+		for (int l=0; l<branch.size(); l++) {
+			LogicTreeLevel<?> level = branch.getLevel(l);
+			if (level instanceof MaxMagOffFaultBranchNode.FixedValueLevel) {
+				((MaxMagOffFaultBranchNode.FixedValueLevel)level).setValue(8.5d);
+				branch.setValue(l, level.getNodes().get(0));
+				System.out.println("Set crustal Mmax to "+branch.getValue(l).getName());
+			}
+		}
 		GridSourceList crustalProv = buildCrustalGridSourceProv(crustalSol, branch, seisReg);
+		long crustalRupCount = 0;
+		for (int l=0; l<crustalProv.getNumLocations(); l++)
+			crustalRupCount += crustalProv.getRuptures(TectonicRegionType.ACTIVE_SHALLOW, l).size();
+		System.out.println("Built "+crustalRupCount+" crustal ruptures for "+seisReg);
 		
 		GridSourceList combProv = buildCombinedGridSourceProv(interfaceProv, intraslabProv, crustalProv);
 		interfaceSol.setGridSourceProvider(combProv);
