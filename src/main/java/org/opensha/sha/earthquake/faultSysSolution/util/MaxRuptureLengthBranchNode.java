@@ -139,6 +139,7 @@ public interface MaxRuptureLengthBranchNode extends ValuedLogicTreeNode<Double>,
 
 		public DistributionSamplingLevel(String name, String shortName, ContinuousDistribution dist) {
 			super(name, shortName, dist, dist.getMean() > 1000 ? 1 : 2, "Lmax Sample ", "LmaxSample", "LmaxSample");
+			setUnits("km");
 		}
 
 		@Override
