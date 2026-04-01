@@ -751,8 +751,8 @@ public class NSHM27_GridSourceBuilder {
 	}
 	
 	public static void main(String[] args) throws IOException {
-//		plotInterfaceDepthStrikeData(NSHM26_SeismicityRegions.AMSAM, new File("/tmp"));
-//		plotInterfaceDepthStrikeData(NSHM26_SeismicityRegions.GNMI, new File("/tmp"));
+//		plotInterfaceDepthStrikeData(NSHM27_SeismicityRegions.AMSAM, new File("/tmp"));
+//		plotInterfaceDepthStrikeData(NSHM27_SeismicityRegions.GNMI, new File("/tmp"));
 		
 		System.out.println("Rediscr depths:");
 		
@@ -766,10 +766,10 @@ public class NSHM27_GridSourceBuilder {
 		
 //		FaultSystemSolution interfaceSol = FaultSystemSolution.load(new File(invDir,
 //				"2026_03_20-nshm26-amsam-AMSAM_V1_DOUBLE_TAPER_LOW_COUPLING_LogA_C4p0_SECTION_SPECIFIC_ONE_High_AVERAGE_AVERAGE/solution.zip"));
-//		NSHM26_SeismicityRegions seisReg = NSHM26_SeismicityRegions.AMSAM;
+//		NSHM27_SeismicityRegions seisReg = NSHM27_SeismicityRegions.AMSAM;
 //		FaultSystemSolution crustalSol = null;
 		
-//		LogicTreeBranch<LogicTreeNode> branch = NSHM26_LogicTree.buildDefault(seisReg, TectonicRegionType.SUBDUCTION_INTERFACE, false);
+//		LogicTreeBranch<LogicTreeNode> branch = NSHM27_LogicTree.buildDefault(seisReg, TectonicRegionType.SUBDUCTION_INTERFACE, false);
 		LogicTreeBranch<LogicTreeNode> branch = interfaceSol.requireModule(LogicTreeBranch.class);
 		doPreGridBuildHook(interfaceSol, branch);
 		NSHM27_InterfaceFaultModels fm = branch.requireValue(NSHM27_InterfaceFaultModels.class);

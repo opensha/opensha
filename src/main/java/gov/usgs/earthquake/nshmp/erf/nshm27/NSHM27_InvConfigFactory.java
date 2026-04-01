@@ -82,8 +82,8 @@ import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateRec
 public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory, GridSourceProviderFactory.Single {
 	
 	private static final File[] POSSIBLE_DATA_DIRS = {
-			new File("/home/kevin/OpenSHA/nshm26/data/"),
-			new File("/project2/scec_608/kmilner/nshms/nshm26/data")
+			new File("/home/kevin/OpenSHA/nshm27/data/"),
+			new File("/project2/scec_608/kmilner/nshms/nshm27/data")
 	};
 	public static File locateDataDirectory() {
 		for (File dir : POSSIBLE_DATA_DIRS)
@@ -559,10 +559,10 @@ public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigur
 
 	@Override
 	public SolutionProcessor getSolutionLogicTreeProcessor() {
-		return new NSHM26SolProcessor();
+		return new NSHM27SolProcessor();
 	}
 	
-	public static class NSHM26SolProcessor implements SolutionProcessor {
+	public static class NSHM27SolProcessor implements SolutionProcessor {
 		
 		private Table<RupSetFaultModel, RupturePlausibilityModels, PlausibilityConfiguration> configCache = HashBasedTable.create();
 

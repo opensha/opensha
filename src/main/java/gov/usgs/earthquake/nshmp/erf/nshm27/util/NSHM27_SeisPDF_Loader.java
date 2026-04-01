@@ -351,7 +351,7 @@ public class NSHM27_SeisPDF_Loader {
 
 	public static void main(String[] args) throws IOException {
 		boolean twoD = false;
-//		NSHM26_SeismicityRegions region = NSHM26_SeismicityRegions.GNMI;
+//		NSHM27_SeismicityRegions region = NSHM27_SeismicityRegions.GNMI;
 		NSHM27_SeismicityRegions region = NSHM27_SeismicityRegions.AMSAM;
 		File plotDir = new File("/tmp/pdf_plots");
 		Preconditions.checkArgument(plotDir.exists() || plotDir.mkdir());
@@ -365,8 +365,8 @@ public class NSHM27_SeisPDF_Loader {
 		pdfCPT.setLog10(true);
 		pdfCPT.setNanColor(new Color(255, 255, 255, 0));
 
-//		NSHM26_DeclusteringAlgorithms[] declusters = NSHM26_DeclusteringAlgorithms.values();
-//		NSHM26_SeisSmoothingAlgorithms[] smooths = NSHM26_SeisSmoothingAlgorithms.values();
+//		NSHM27_DeclusteringAlgorithms[] declusters = NSHM27_DeclusteringAlgorithms.values();
+//		NSHM27_SeisSmoothingAlgorithms[] smooths = NSHM27_SeisSmoothingAlgorithms.values();
 		NSHM27_DeclusteringAlgorithms[] declusters = { NSHM27_DeclusteringAlgorithms.AVERAGE };
 		NSHM27_SeisSmoothingAlgorithms[] smooths = { NSHM27_SeisSmoothingAlgorithms.AVERAGE };
 		

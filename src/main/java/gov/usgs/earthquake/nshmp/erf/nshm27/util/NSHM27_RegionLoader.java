@@ -11,8 +11,8 @@ import org.opensha.sha.util.TectonicRegionType;
 
 public class NSHM27_RegionLoader {
 	
-	private static final String GNMI_DIR = "/data/erf/nshm26/gnmi/regions/";
-	private static final String AMSAM_DIR = "/data/erf/nshm26/amsam/regions/";
+	private static final String GNMI_DIR = "/data/erf/nshm27/gnmi/regions/";
+	private static final String AMSAM_DIR = "/data/erf/nshm27/amsam/regions/";
 	
 	/**
 	 * Regions within which seismicity constraints and spatial seismicity PDFs are determined
@@ -66,7 +66,7 @@ public class NSHM27_RegionLoader {
 	 * @see NSHM23_SeisSmoothingAlgorithms
 	 * 
 	 */
-	public enum NSHM26_MapRegions implements NSHM23_BaseRegion, ShortNamed {
+	public enum NSHM27_MapRegions implements NSHM23_BaseRegion, ShortNamed {
 		GNMI(GNMI_DIR+"gnmi-map.geojson", "Guam & Northern Mariana Islands Map Region", "GNMI Map Region"),
 		AMSAM(AMSAM_DIR+"amsam-map.geojson", "American Samoa Map Region", "AmSam Map Region");
 		
@@ -74,7 +74,7 @@ public class NSHM27_RegionLoader {
 		private String name;
 		private String shortName;
 
-		private NSHM26_MapRegions(String path, String name, String shortName) {
+		private NSHM27_MapRegions(String path, String name, String shortName) {
 			this.path = path;
 			this.name = name;
 			this.shortName = shortName;

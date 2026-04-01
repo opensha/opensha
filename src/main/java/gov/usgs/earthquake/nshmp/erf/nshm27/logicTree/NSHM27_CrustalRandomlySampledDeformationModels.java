@@ -39,7 +39,7 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME) // if rate balancing disabled
 public class NSHM27_CrustalRandomlySampledDeformationModels extends RandomlyGeneratedNode implements RupSetDeformationModel {
 	
-	private static final String PATH = "/data/erf/nshm26/gnmi/deformation_models/crustal/2026_03_02";
+	private static final String PATH = "/data/erf/nshm27/gnmi/deformation_models/crustal/2026_03_02";
 	private static Map<Integer, DiscretizedFunc> pdfs = null;
 	private static Map<Integer, IntegerPDF_FunctionSampler> pdfSamplers = null;
 
@@ -195,15 +195,15 @@ public class NSHM27_CrustalRandomlySampledDeformationModels extends RandomlyGene
 		long randSeed = 12345678l;
 		Random rand = new Random(randSeed);
 		
-//		NSHM26_CrustalRandomlySampledDeformationModelLevel level = new NSHM26_CrustalRandomlySampledDeformationModelLevel(numSamples, rand);
-//		List<NSHM26_CrustalRandomlySampledDeformationModels> nodes = level.getNodes();
-//		NSHM26_CrustalFaultModels fm = null; // TODO
+//		NSHM27_CrustalRandomlySampledDeformationModelLevel level = new NSHM27_CrustalRandomlySampledDeformationModelLevel(numSamples, rand);
+//		List<NSHM27_CrustalRandomlySampledDeformationModels> nodes = level.getNodes();
+//		NSHM27_CrustalFaultModels fm = null; // TODO
 //		List<? extends FaultSection> fullSects = fm.getFaultSections();
 //		
 //		List<MinMaxAveTracker> parentTracks = new ArrayList<>();
 //		for (int i=0; i<fullSects.size(); i++)
 //			parentTracks.add(new MinMaxAveTracker());
-//		for (NSHM26_CrustalRandomlySampledDeformationModels node : nodes) {
+//		for (NSHM27_CrustalRandomlySampledDeformationModels node : nodes) {
 //			Map<Integer, Double> slipSample = node.drawSectSlipRates(fullSects);
 //			for (int i=0; i<fullSects.size(); i++) {
 //				int id = fullSects.get(i).getSectionId();
@@ -216,8 +216,8 @@ public class NSHM27_CrustalRandomlySampledDeformationModels extends RandomlyGene
 //		for (int i=0; i<fullSects.size(); i++) {
 //			FaultSection sect = fullSects.get(i);
 //			double origMean = sect.getOrigAveSlipRate();
-//			double origUpper = ((GeoJSONFaultSection)sect).getProperties().getDouble(NSHM26_CrustalFaultModels.HIGH_RATE_PROP_NAME, Double.NaN);
-//			double origLower = ((GeoJSONFaultSection)sect).getProperties().getDouble(NSHM26_CrustalFaultModels.LOW_RATE_PROP_NAME, Double.NaN);
+//			double origUpper = ((GeoJSONFaultSection)sect).getProperties().getDouble(NSHM27_CrustalFaultModels.HIGH_RATE_PROP_NAME, Double.NaN);
+//			double origLower = ((GeoJSONFaultSection)sect).getProperties().getDouble(NSHM27_CrustalFaultModels.LOW_RATE_PROP_NAME, Double.NaN);
 //			DiscretizedFunc pdf = pdfs.get(sect.getSectionId());
 //			MinMaxAveTracker track = parentTracks.get(i);
 //			double sampleMean = track.getAverage();

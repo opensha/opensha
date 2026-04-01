@@ -45,15 +45,15 @@ public interface NSHM27_SeisRateModel extends LogicTreeNode {
 	@DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 	@DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 	@Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-	public static class NSHM26_SiesRateModelSample extends SimpleValuedNode<PureGR> implements NSHM27_SeisRateModel {
+	public static class NSHM27_SiesRateModelSample extends SimpleValuedNode<PureGR> implements NSHM27_SeisRateModel {
 		
 		private NSHM27_SeismicityRegions region;
 		private TectonicRegionType trt;
 
 		@SuppressWarnings("unused") // deserialization
-		private NSHM26_SiesRateModelSample() {}
+		private NSHM27_SiesRateModelSample() {}
 
-		public NSHM26_SiesRateModelSample(PureGR value, NSHM27_SeismicityRegions region, TectonicRegionType trt, double weight, String name,
+		public NSHM27_SiesRateModelSample(PureGR value, NSHM27_SeismicityRegions region, TectonicRegionType trt, double weight, String name,
 				String shortName, String filePrefix) {
 			super(value, PureGR.class, weight, name, shortName, filePrefix);
 			this.region = region;

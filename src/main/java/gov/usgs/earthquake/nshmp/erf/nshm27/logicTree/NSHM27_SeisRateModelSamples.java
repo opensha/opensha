@@ -31,15 +31,15 @@ import com.google.gson.stream.JsonWriter;
 import gov.usgs.earthquake.nshmp.erf.nshm27.NSHM27_InvConfigFactory;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisRateModel.BinnedSamplesLevel;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisRateModel.BinnedSamplesNode;
-import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisRateModel.NSHM26_SiesRateModelSample;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisRateModel.NSHM27_SiesRateModelSample;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.PureGR;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateType;
 
-public class NSHM27_SeisRateModelSamples extends AbstractRandomlySampledLevel<PureGR, NSHM26_SiesRateModelSample>
-implements BinnableLevel<PureGR, NSHM26_SiesRateModelSample, BinnedSamplesLevel> {
+public class NSHM27_SeisRateModelSamples extends AbstractRandomlySampledLevel<PureGR, NSHM27_SiesRateModelSample>
+implements BinnableLevel<PureGR, NSHM27_SiesRateModelSample, BinnedSamplesLevel> {
 	
 	private NSHM27_SeismicityRegions region;
 	private TectonicRegionType trt;
@@ -98,14 +98,14 @@ implements BinnableLevel<PureGR, NSHM26_SiesRateModelSample, BinnedSamplesLevel>
 	}
 
 	@Override
-	public NSHM26_SiesRateModelSample build(PureGR value, double weight, String name, String shortName,
+	public NSHM27_SiesRateModelSample build(PureGR value, double weight, String name, String shortName,
 			String filePrefix) {
-		return new NSHM26_SiesRateModelSample(value, region, trt, weight, name, shortName, filePrefix);
+		return new NSHM27_SiesRateModelSample(value, region, trt, weight, name, shortName, filePrefix);
 	}
 
 	@Override
-	public Class<? extends NSHM26_SiesRateModelSample> getType() {
-		return NSHM26_SiesRateModelSample.class;
+	public Class<? extends NSHM27_SiesRateModelSample> getType() {
+		return NSHM27_SiesRateModelSample.class;
 	}
 
 	@Override

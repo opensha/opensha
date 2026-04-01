@@ -134,8 +134,8 @@ public class NSHM27_ModelRegimeNode implements LogicTreeNode.FixedWeightNode, Lo
 		
 		private NSHM27_ModelRegimeNode node;
 		
-		private static final String NAME = "NSHM26 Model & Regime";
-		private static final String SHORT_NAME = "NSHM26 Model";
+		private static final String NAME = "NSHM27 Model & Regime";
+		private static final String SHORT_NAME = "NSHM27 Model";
 
 		private Level() {
 			super(NAME, SHORT_NAME);

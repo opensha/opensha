@@ -974,14 +974,14 @@ public class InterfaceSubSectionBuilder {
 	}
 
 	public static void main(String[] args) throws IOException {
-		File baseOutputDir = new File("/home/kevin/OpenSHA/nshm26/down-dip-subsectioning");
+		File baseOutputDir = new File("/home/kevin/OpenSHA/nshm27/down-dip-subsectioning");
 		Preconditions.checkState(baseOutputDir.exists() || baseOutputDir.mkdir());
 		
 		double backTraceDist = 100d;
 		
 		String faultName = "Tonga Trench";
 		int faultID = 6700;
-		String resourcePrefix = "/data/erf/nshm26/amsam/fault_models/subduction/";
+		String resourcePrefix = "/data/erf/nshm27/amsam/fault_models/subduction/";
 		BufferedReader countoursIn = new BufferedReader(new InputStreamReader(
 				InterfaceSubSectionBuilder.class.getResourceAsStream(resourcePrefix+"ker_slab2_dep_10km_contours.xyz")));
 		CSVFile<String> traceCSV = CSVFile.readStream(
@@ -1000,7 +1000,7 @@ public class InterfaceSubSectionBuilder {
 		
 //		String faultName = "Mariana Trench";
 //		int faultID = 6200;
-//		String resourcePrefix = "/data/erf/nshm26/gnmi/fault_models/subduction/";
+//		String resourcePrefix = "/data/erf/nshm27/gnmi/fault_models/subduction/";
 //		BufferedReader countoursIn = new BufferedReader(new InputStreamReader(
 //				InterfaceSubSectionBuilder.class.getResourceAsStream(resourcePrefix+"izu_slab2_dep_10km_contours.xyz")));
 //		CSVFile<String> traceCSV = CSVFile.readStream(

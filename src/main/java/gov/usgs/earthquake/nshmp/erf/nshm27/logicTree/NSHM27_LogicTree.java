@@ -312,13 +312,13 @@ public class NSHM27_LogicTree {
 				System.out.println("\tBuilding sampled tree");
 				LogicTree<LogicTreeNode> tree = buildLogicTree(seisReg, trt, 100, true);
 				trees.add(tree);
-				File treeFile = new File("/tmp/nshm26_tree_test_"+seisReg.name()+"_"+trt.name()+".json");
+				File treeFile = new File("/tmp/nshm27_tree_test_"+seisReg.name()+"_"+trt.name()+".json");
 				tree.write(treeFile);
 				LogicTree<LogicTreeNode> tree2 = LogicTree.read(treeFile);
 				tree2.write(new File(treeFile.getParentFile(), treeFile.getName()+".rerpo"));
 				LogicTreeBranch<LogicTreeNode> branch = tree2.getBranch(0);
 				System.out.println("\tOrig branch origWeight="+branch.getOrigBranchWeight());
-				File branchFile = new File("/tmp/nshm26_tree_test_"+seisReg.name()+"_"+trt.name()+"_branch0.json");
+				File branchFile = new File("/tmp/nshm27_tree_test_"+seisReg.name()+"_"+trt.name()+"_branch0.json");
 				branch.writeToFile(branchFile);
 				LogicTreeBranch<LogicTreeNode> branch2 = LogicTreeBranch.read(branchFile);
 				System.out.println("\tLoaded branch origWeight="+branch2.getOrigBranchWeight());
@@ -331,17 +331,17 @@ public class NSHM27_LogicTree {
 				System.out.println("\t\tAffected: "+level.getAffected());
 				System.out.println("\t\tNotAffected: "+level.getNotAffected());
 			}
-			File treeFile = new File("/tmp/nshm26_tree_test_"+seisReg.name()+"_multi.json");
+			File treeFile = new File("/tmp/nshm27_tree_test_"+seisReg.name()+"_multi.json");
 			multiTree.write(treeFile);
 			LogicTree<LogicTreeNode> tree2 = LogicTree.read(treeFile);
 			tree2.write(new File(treeFile.getParentFile(), treeFile.getName()+".rerpo"));
 			LogicTree<LogicTreeNode> tree = LogicTree.unrollTRTs(multiTree);
-			treeFile = new File("/tmp/nshm26_tree_test_"+seisReg.name()+"_multi_unrolled.json");
+			treeFile = new File("/tmp/nshm27_tree_test_"+seisReg.name()+"_multi_unrolled.json");
 			tree.write(treeFile);
 			tree2 = LogicTree.read(treeFile);
 			tree2.write(new File(treeFile.getParentFile(), treeFile.getName()+".rerpo"));
 			tree = LogicTree.applyBinning(tree);
-			treeFile = new File("/tmp/nshm26_tree_test_"+seisReg.name()+"_multi_unrolled_binned.json");
+			treeFile = new File("/tmp/nshm27_tree_test_"+seisReg.name()+"_multi_unrolled_binned.json");
 			tree.write(treeFile);
 			tree2 = LogicTree.read(treeFile);
 			tree2.write(new File(treeFile.getParentFile(), treeFile.getName()+".rerpo"));

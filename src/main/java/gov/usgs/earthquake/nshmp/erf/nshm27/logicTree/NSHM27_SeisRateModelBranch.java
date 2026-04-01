@@ -131,9 +131,9 @@ public enum NSHM27_SeisRateModelBranch implements NSHM27_SeisRateModel {
 		String date = getRateModelDate(region);
 		return switch (region) {
 			case AMSAM:
-				yield "/data/erf/nshm26/amsam/seismicity/rates/"+date+"/";
+				yield "/data/erf/nshm27/amsam/seismicity/rates/"+date+"/";
 			case GNMI:
-				yield "/data/erf/nshm26/gnmi/seismicity/rates/"+date+"/";
+				yield "/data/erf/nshm27/gnmi/seismicity/rates/"+date+"/";
 			default:
 				throw new IllegalArgumentException("Unexpected region: "+region);
 		};

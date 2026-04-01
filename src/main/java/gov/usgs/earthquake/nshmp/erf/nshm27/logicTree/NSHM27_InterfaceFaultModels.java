@@ -35,7 +35,7 @@ import org.opensha.sha.util.TectonicRegionType;
 import com.google.common.base.Preconditions;
 
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader;
-import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM26_MapRegions;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_MapRegions;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
 
 @Affects(FaultSystemRupSet.SECTS_FILE_NAME)
@@ -47,9 +47,9 @@ import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_Seis
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum NSHM27_InterfaceFaultModels implements RupSetFaultModel, RupSetSubsectioningModel {
 	AMSAM_V1("Amarican Samoa (Interface FM v1)", "AmSam-Inter-v1",
-			"/data/erf/nshm26/amsam/fault_models/subduction/", NSHM27_SeismicityRegions.AMSAM, 0d),
+			"/data/erf/nshm27/amsam/fault_models/subduction/", NSHM27_SeismicityRegions.AMSAM, 0d),
 	GNMI_V1("Guam & Northern Mariana Islands (Interface FM v1)", "GNMI-Inter-v1",
-			"/data/erf/nshm26/gnmi/fault_models/subduction/", NSHM27_SeismicityRegions.GNMI, 100d);
+			"/data/erf/nshm27/gnmi/fault_models/subduction/", NSHM27_SeismicityRegions.GNMI, 100d);
 	
 	public static NSHM27_InterfaceFaultModels regionDefault(NSHM27_SeismicityRegions region) {
 		for (NSHM27_InterfaceFaultModels fm : values())
@@ -166,11 +166,11 @@ public enum NSHM27_InterfaceFaultModels implements RupSetFaultModel, RupSetSubse
 			trtMFDs.add(NSHM27_SeisRateModelBranch.loadRateModel(seisReg, trt).getBounded(refMFD, mMax));
 			regionTRTs.add(trt);
 		}
-		NSHM26_MapRegions mapRegion = NSHM26_MapRegions.valueOf(seisReg.name());
+		NSHM27_MapRegions mapRegion = NSHM27_MapRegions.valueOf(seisReg.name());
 		for (TectonicRegionType trt : trts) {
 			trtRegions.add(cloneForTRT(mapRegion.load(), trt));
-//			double mMax = NSHM26_SeisRateModelBranch.getPlotMmax(trt);
-//			trtMFDs.add(NSHM26_SeisRateModelBranch.loadRateModel(seisReg, trt).getBounded(refMFD, mMax));
+//			double mMax = NSHM27_SeisRateModelBranch.getPlotMmax(trt);
+//			trtMFDs.add(NSHM27_SeisRateModelBranch.loadRateModel(seisReg, trt).getBounded(refMFD, mMax));
 			// TODO remapped
 			trtMFDs.add(null);
 			regionTRTs.add(trt);

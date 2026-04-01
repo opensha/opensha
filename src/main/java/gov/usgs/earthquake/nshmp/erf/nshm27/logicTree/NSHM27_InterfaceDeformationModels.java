@@ -101,9 +101,9 @@ public enum NSHM27_InterfaceDeformationModels implements RupSetDeformationModel 
 		NSHM27_InterfaceFaultModels fm = (NSHM27_InterfaceFaultModels)faultModel;
 		String csvPath;
 		if (faultModel == NSHM27_InterfaceFaultModels.AMSAM_V1) {
-			csvPath = "/data/erf/nshm26/amsam/deformation_models/subduction/ker_trace_dm.csv";
+			csvPath = "/data/erf/nshm27/amsam/deformation_models/subduction/ker_trace_dm.csv";
 		} else if (faultModel == NSHM27_InterfaceFaultModels.GNMI_V1) {
-			csvPath = "/data/erf/nshm26/gnmi/deformation_models/subduction/izu_trace_dm.csv";
+			csvPath = "/data/erf/nshm27/gnmi/deformation_models/subduction/izu_trace_dm.csv";
 		} else {
 			throw new IllegalStateException("Unexpected FM: "+faultModel);
 		}

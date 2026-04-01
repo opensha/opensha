@@ -47,8 +47,8 @@ public class InterfaceGridAssociations implements FaultGridAssociations, Archiva
 //	}
 
 	public static void main(String[] args) throws IOException {
-//		LogicTreeBranch<LogicTreeNode> branch = NSHM26_LogicTree.buildDefault(
-//				NSHM26_SeismicityRegions.AMSAM, TectonicRegionType.SUBDUCTION_INTERFACE, false);
+//		LogicTreeBranch<LogicTreeNode> branch = NSHM27_LogicTree.buildDefault(
+//				NSHM27_SeismicityRegions.AMSAM, TectonicRegionType.SUBDUCTION_INTERFACE, false);
 		LogicTreeBranch<LogicTreeNode> branch = NSHM27_LogicTree.buildDefault(
 				NSHM27_SeismicityRegions.GNMI, TectonicRegionType.SUBDUCTION_INTERFACE, false);
 		NSHM27_InterfaceFaultModels fm = branch.requireValue(NSHM27_InterfaceFaultModels.class);
