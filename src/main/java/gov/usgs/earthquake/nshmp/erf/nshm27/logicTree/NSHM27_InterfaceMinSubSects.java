@@ -19,7 +19,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.ExclusionaryL
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM26_InterfaceMinSubSects implements ValuedLogicTreeNode<Integer>, ExclusionaryLogicTreeNode {
+public enum NSHM27_InterfaceMinSubSects implements ValuedLogicTreeNode<Integer>, ExclusionaryLogicTreeNode {
 	ONE("One", 1, 1d),
 	TWO("Two", 2, 1d),
 	FOUR("Four", 4, 1d),
@@ -29,7 +29,7 @@ public enum NSHM26_InterfaceMinSubSects implements ValuedLogicTreeNode<Integer>,
 	private final int count;
 	private final double weight;
 
-	private NSHM26_InterfaceMinSubSects(String name, int count, double weight) {
+	private NSHM27_InterfaceMinSubSects(String name, int count, double weight) {
 		this.name = name;
 		this.count = count;
 		this.weight = weight;

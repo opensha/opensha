@@ -71,15 +71,15 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Range;
 import com.google.common.collect.Table;
 
-import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_InterfaceFaultModels;
-import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_InterfaceObsSeisDMAdjustment;
-import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_ModelRegimeNode;
-import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_SeisRateModel;
-import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_InterfaceFaultModels;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_InterfaceObsSeisDMAdjustment;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_ModelRegimeNode;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisRateModel;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.PureGR;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateRecord;
 
-public class NSHM26_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory, GridSourceProviderFactory.Single {
+public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory, GridSourceProviderFactory.Single {
 	
 	private static final File[] POSSIBLE_DATA_DIRS = {
 			new File("/home/kevin/OpenSHA/nshm26/data/"),
@@ -129,7 +129,7 @@ public class NSHM26_InvConfigFactory implements ClusterSpecificInversionConfigur
 		RupSetSubsectioningModel ssm = branch.requireValue(RupSetSubsectioningModel.class);
 		RupturePlausibilityModels model = branch.getValue(RupturePlausibilityModels.class);
 		if (model == null) {
-			if (fm instanceof NSHM26_InterfaceFaultModels) // Subduction
+			if (fm instanceof NSHM27_InterfaceFaultModels) // Subduction
 				model = RupturePlausibilityModels.SUBDUCTION_DD_RECTANGULAR;
 			else
 				model = RupturePlausibilityModels.COULOMB;
@@ -329,9 +329,9 @@ public class NSHM26_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		
 		
-		if (branch.hasValue(NSHM26_InterfaceObsSeisDMAdjustment.class)) {
-			NSHM26_InterfaceObsSeisDMAdjustment adjustment = branch.requireValue(NSHM26_InterfaceObsSeisDMAdjustment.class);
-			if (adjustment == NSHM26_InterfaceObsSeisDMAdjustment.NONE) {
+		if (branch.hasValue(NSHM27_InterfaceObsSeisDMAdjustment.class)) {
+			NSHM27_InterfaceObsSeisDMAdjustment adjustment = branch.requireValue(NSHM27_InterfaceObsSeisDMAdjustment.class);
+			if (adjustment == NSHM27_InterfaceObsSeisDMAdjustment.NONE) {
 				constrBuilder.subSeisMoRateReduction(SubSeisMoRateReduction.NONE);
 			} else {
 				constrBuilder.subSeisMoRateReduction(SubSeisMoRateReduction.FROM_INPUT_SLIP_RATES);
@@ -340,9 +340,9 @@ public class NSHM26_InvConfigFactory implements ClusterSpecificInversionConfigur
 				} catch (IOException e) {
 					throw ExceptionUtils.asRuntimeException(e);
 				}
-				NSHM26_InterfaceFaultModels fm = branch.getValue(NSHM26_InterfaceFaultModels.class);
-				if (fm != null && branch.hasValue(NSHM26_SeisRateModel.class)) {
-					NSHM26_SeisRateModel rateModel = branch.requireValue(NSHM26_SeisRateModel.class);
+				NSHM27_InterfaceFaultModels fm = branch.getValue(NSHM27_InterfaceFaultModels.class);
+				if (fm != null && branch.hasValue(NSHM27_SeisRateModel.class)) {
+					NSHM27_SeisRateModel rateModel = branch.requireValue(NSHM27_SeisRateModel.class);
 					RateRecord record = rateModel.getRateRecord(fm.getSeisReg(), TectonicRegionType.SUBDUCTION_INTERFACE);
 					if (record instanceof PureGR)
 						constrBuilder.subSeisBOverride(((PureGR)record).b);
@@ -703,19 +703,19 @@ public class NSHM26_InvConfigFactory implements ClusterSpecificInversionConfigur
 	@Override
 	public GridSourceProvider buildGridSourceProvider(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch)
 			throws IOException {
-		NSHM26_ModelRegimeNode modelRegime = fullBranch.requireValue(NSHM26_ModelRegimeNode.class);
-		NSHM26_SeismicityRegions seisReg = modelRegime.getRegion();
+		NSHM27_ModelRegimeNode modelRegime = fullBranch.requireValue(NSHM27_ModelRegimeNode.class);
+		NSHM27_SeismicityRegions seisReg = modelRegime.getRegion();
 		TectonicRegionType trt = modelRegime.getTectonicRegime();
 		Preconditions.checkNotNull(seisReg, "Model regime node must have seismicity region");
 		Preconditions.checkNotNull(trt, "Model regime node must have tectonic regime");
 		preGridBuildHook(sol, fullBranch);
 		return switch (trt){
 		case SUBDUCTION_INTERFACE:
-			yield NSHM26_GridSourceBuilder.buildInterfaceGridSourceList(sol, fullBranch, seisReg);
+			yield NSHM27_GridSourceBuilder.buildInterfaceGridSourceList(sol, fullBranch, seisReg);
 		case SUBDUCTION_SLAB:
-			yield NSHM26_GridSourceBuilder.buildIntraslabGridSourceList(fullBranch, seisReg);
+			yield NSHM27_GridSourceBuilder.buildIntraslabGridSourceList(fullBranch, seisReg);
 		case ACTIVE_SHALLOW:
-			yield NSHM26_GridSourceBuilder.buildCrustalGridSourceProv(sol, fullBranch, seisReg);
+			yield NSHM27_GridSourceBuilder.buildCrustalGridSourceProv(sol, fullBranch, seisReg);
 		default:
 			throw new IllegalArgumentException("Unexpected TRT: "+trt);
 		};
@@ -723,7 +723,7 @@ public class NSHM26_InvConfigFactory implements ClusterSpecificInversionConfigur
 
 	@Override
 	public void preGridBuildHook(FaultSystemSolution sol, LogicTreeBranch<?> faultBranch) throws IOException {
-		NSHM26_GridSourceBuilder.doPreGridBuildHook(sol, faultBranch);
+		NSHM27_GridSourceBuilder.doPreGridBuildHook(sol, faultBranch);
 	}
 
 }

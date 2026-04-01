@@ -55,19 +55,19 @@ import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
 import com.google.common.primitives.Doubles;
 
-import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_CrustalFaultModels;
-import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_DeclusteringAlgorithms;
-import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_InterfaceFaultModels;
-import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_InterfaceMinSubSects;
-import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_LogicTree;
-import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_SeisRateModel;
-import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_SeisSmoothingAlgorithms;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_CrustalFaultModels;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_DeclusteringAlgorithms;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_InterfaceFaultModels;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_InterfaceMinSubSects;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_LogicTree;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisRateModel;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisSmoothingAlgorithms;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.InterfaceGridAssociations;
-import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_SeisPDF_Loader;
-import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_SeisPDF_Loader;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
 import scratch.UCERF3.erf.ETAS.SeisDepthDistribution;
 
-public class NSHM26_GridSourceBuilder {
+public class NSHM27_GridSourceBuilder {
 	
 	// for intraslab sources, assign these IDs as associated sections (even though there aren't sections with these IDs)
 	// so that we can track them later and in nshmp-haz
@@ -76,9 +76,9 @@ public class NSHM26_GridSourceBuilder {
 	
 	public static final double OVERALL_MMIN = 2.55;
 
-	private static EnumMap<NSHM26_SeismicityRegions, GriddedGeoDataSet> interfaceGridDepths;
-	private static EnumMap<NSHM26_SeismicityRegions, GriddedGeoDataSet> interfaceGridStrikes;
-	private static EnumMap<NSHM26_SeismicityRegions, GriddedGeoDataSet> interfaceGridDips;
+	private static EnumMap<NSHM27_SeismicityRegions, GriddedGeoDataSet> interfaceGridDepths;
+	private static EnumMap<NSHM27_SeismicityRegions, GriddedGeoDataSet> interfaceGridStrikes;
+	private static EnumMap<NSHM27_SeismicityRegions, GriddedGeoDataSet> interfaceGridDips;
 	
 	public static final double INTERFACE_MAX_HYOPCENTRAL_DEPTH = 60d;
 	public static final double INTERFACE_MAX_GRID_FINITE_DEPTH = Double.POSITIVE_INFINITY;
@@ -99,10 +99,10 @@ public class NSHM26_GridSourceBuilder {
 	}
 	
 	public static void doPreGridBuildHook(FaultSystemRupSet rupSet, LogicTreeBranch<?> faultBranch) throws IOException {
-		if (faultBranch.hasValue(NSHM26_CrustalFaultModels.class)) {
+		if (faultBranch.hasValue(NSHM27_CrustalFaultModels.class)) {
 			// add fault cube associations and seismicity regions
 			
-			NSHM26_SeismicityRegions seisReg = faultBranch.requireValue(NSHM26_CrustalFaultModels.class).getSeisReg();
+			NSHM27_SeismicityRegions seisReg = faultBranch.requireValue(NSHM27_CrustalFaultModels.class).getSeisReg();
 			if (!rupSet.hasModule(ModelRegion.class))
 				rupSet.addModule(new ModelRegion(seisReg.load()));
 			GriddedRegion modelGrid = initGridReg(seisReg);
@@ -116,9 +116,9 @@ public class NSHM26_GridSourceBuilder {
 				Preconditions.checkState(cubeAssociations.getRegion().equals(modelGrid));
 			}
 			Preconditions.checkNotNull(cubeAssociations, "Cube associations is null");
-		} else if (faultBranch.hasValue(NSHM26_InterfaceFaultModels.class)) {
+		} else if (faultBranch.hasValue(NSHM27_InterfaceFaultModels.class)) {
 			
-			NSHM26_SeismicityRegions seisReg = faultBranch.requireValue(NSHM26_InterfaceFaultModels.class).getSeisReg();
+			NSHM27_SeismicityRegions seisReg = faultBranch.requireValue(NSHM27_InterfaceFaultModels.class).getSeisReg();
 			if (!rupSet.hasModule(ModelRegion.class))
 				rupSet.addModule(new ModelRegion(seisReg.load()));
 			GriddedRegion modelGrid = initGridReg(seisReg);
@@ -137,8 +137,8 @@ public class NSHM26_GridSourceBuilder {
 		int numSects = rupSet.getNumSections();
 		double[] ret = new double[numSects];
 		int minNumSects = 1;
-		if (branch.hasValue(NSHM26_InterfaceMinSubSects.class))
-			minNumSects = branch.requireValue(NSHM26_InterfaceMinSubSects.class).getValue();
+		if (branch.hasValue(NSHM27_InterfaceMinSubSects.class))
+			minNumSects = branch.requireValue(NSHM27_InterfaceMinSubSects.class).getValue();
 		for (int s=0; s<numSects; s++) {
 			if (minNumSects == 1) {
 				ret[s] = rupSet.getMinMagForSection(s);
@@ -154,7 +154,7 @@ public class NSHM26_GridSourceBuilder {
 		return ret;
 	}
 	
-	public static GriddedRegion initGridReg(NSHM26_SeismicityRegions seisReg) {
+	public static GriddedRegion initGridReg(NSHM27_SeismicityRegions seisReg) {
 		try {
 			return new GriddedRegion(seisReg.load(), 0.1, GriddedRegion.ANCHOR_0_0);
 		} catch (IOException e) {
@@ -162,26 +162,26 @@ public class NSHM26_GridSourceBuilder {
 		}
 	}
 	
-	public static GriddedGeoDataSet loadInterfaceDepths(NSHM26_SeismicityRegions seisReg) throws IOException {
+	public static GriddedGeoDataSet loadInterfaceDepths(NSHM27_SeismicityRegions seisReg) throws IOException {
 		loadInterfaceDepthStrikeData(seisReg);
 		return interfaceGridDepths.get(seisReg).copy();
 	}
 	
-	public static GriddedGeoDataSet loadInterfaceStrikes(NSHM26_SeismicityRegions seisReg) throws IOException {
+	public static GriddedGeoDataSet loadInterfaceStrikes(NSHM27_SeismicityRegions seisReg) throws IOException {
 		loadInterfaceDepthStrikeData(seisReg);
 		return interfaceGridStrikes.get(seisReg).copy();
 	}
 	
-	public static GriddedGeoDataSet loadInterfaceDips(NSHM26_SeismicityRegions seisReg) throws IOException {
+	public static GriddedGeoDataSet loadInterfaceDips(NSHM27_SeismicityRegions seisReg) throws IOException {
 		loadInterfaceDepthStrikeData(seisReg);
 		return interfaceGridDips.get(seisReg).copy();
 	}
 	
-	private synchronized static void loadInterfaceDepthStrikeData(NSHM26_SeismicityRegions seisReg) throws IOException {
+	private synchronized static void loadInterfaceDepthStrikeData(NSHM27_SeismicityRegions seisReg) throws IOException {
 		if (interfaceGridDepths == null) {
-			interfaceGridDepths = new EnumMap<>(NSHM26_SeismicityRegions.class);
-			interfaceGridStrikes = new EnumMap<>(NSHM26_SeismicityRegions.class);
-			interfaceGridDips = new EnumMap<>(NSHM26_SeismicityRegions.class);
+			interfaceGridDepths = new EnumMap<>(NSHM27_SeismicityRegions.class);
+			interfaceGridStrikes = new EnumMap<>(NSHM27_SeismicityRegions.class);
+			interfaceGridDips = new EnumMap<>(NSHM27_SeismicityRegions.class);
 		}
 		
 		if (!interfaceGridDepths.containsKey(seisReg)) {
@@ -205,7 +205,7 @@ public class NSHM26_GridSourceBuilder {
 			
 			GriddedRegion gridReg = initGridReg(seisReg);
 			
-			File dir = new File(NSHM26_InvConfigFactory.locateDataDirectory(), "slab2");
+			File dir = new File(NSHM27_InvConfigFactory.locateDataDirectory(), "slab2");
 			
 			for (int i=0; i<xyzs.length; i++) {
 				GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridReg);
@@ -259,9 +259,9 @@ public class NSHM26_GridSourceBuilder {
 		}
 	}
 	
-	private static void plotInterfaceDepthStrikeData(NSHM26_SeismicityRegions seisReg, File outputDir) throws IOException {
+	private static void plotInterfaceDepthStrikeData(NSHM27_SeismicityRegions seisReg, File outputDir) throws IOException {
 		GeographicMapMaker mapMaker = new GeographicMapMaker(seisReg.load());
-		mapMaker.setFaultSections(NSHM26_InterfaceFaultModels.regionDefault(seisReg).getFaultSections());
+		mapMaker.setFaultSections(NSHM27_InterfaceFaultModels.regionDefault(seisReg).getFaultSections());
 		
 		loadInterfaceDepthStrikeData(seisReg);
 		
@@ -289,12 +289,12 @@ public class NSHM26_GridSourceBuilder {
 	}
 	
 	public static GridSourceList buildInterfaceGridSourceList(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch,
-			NSHM26_SeismicityRegions seisRegion) throws IOException {
+			NSHM27_SeismicityRegions seisRegion) throws IOException {
 		return buildInterfaceGridSourceList(sol.getRupSet(), fullBranch, seisRegion);
 	}
 	
 	public static GridSourceList buildInterfaceGridSourceList(FaultSystemRupSet rupSet, LogicTreeBranch<?> fullBranch,
-			NSHM26_SeismicityRegions seisRegion) throws IOException {
+			NSHM27_SeismicityRegions seisRegion) throws IOException {
 		MagAreaRelationship scale = fullBranch.requireValue(PRVI25_SubductionScalingRelationships.class).getMagAreaRelationship();
 		
 //		final boolean D = false;
@@ -304,9 +304,9 @@ public class NSHM26_GridSourceBuilder {
 		double[] sectMinMags = getInterfaceSectMinMag(rupSet, fullBranch);
 		double avgMinMag = StatUtils.mean(sectMinMags);
 		
-		NSHM26_SeisRateModel rateBranch = fullBranch.requireValue(NSHM26_SeisRateModel.class);
-		NSHM26_DeclusteringAlgorithms decluster = fullBranch.requireValue(NSHM26_DeclusteringAlgorithms.class);
-		NSHM26_SeisSmoothingAlgorithms smooth = fullBranch.requireValue(NSHM26_SeisSmoothingAlgorithms.class);
+		NSHM27_SeisRateModel rateBranch = fullBranch.requireValue(NSHM27_SeisRateModel.class);
+		NSHM27_DeclusteringAlgorithms decluster = fullBranch.requireValue(NSHM27_DeclusteringAlgorithms.class);
+		NSHM27_SeisSmoothingAlgorithms smooth = fullBranch.requireValue(NSHM27_SeisSmoothingAlgorithms.class);
 		
 		IncrementalMagFreqDist refMFD = FaultSysTools.initEmptyMFD(OVERALL_MMIN, StatUtils.max(sectMinMags)+0.1);
 		Map<Double, IncrementalMagFreqDist> mMaxMFDCache = new HashMap<>();
@@ -319,7 +319,7 @@ public class NSHM26_GridSourceBuilder {
 		GriddedGeoDataSet strikes = loadInterfaceStrikes(seisRegion);
 		double rake = 90d;
 		
-		GriddedGeoDataSet pdf = NSHM26_SeisPDF_Loader.load2D(seisRegion, TectonicRegionType.SUBDUCTION_INTERFACE, decluster, smooth);
+		GriddedGeoDataSet pdf = NSHM27_SeisPDF_Loader.load2D(seisRegion, TectonicRegionType.SUBDUCTION_INTERFACE, decluster, smooth);
 		GriddedGeoDataSet clippedPDF = new GriddedGeoDataSet(pdf.getRegion());
 		int skipped = 0;
 		double skippedWeight = 0d;
@@ -457,10 +457,10 @@ public class NSHM26_GridSourceBuilder {
 		return new GridSourceList.Precomputed(pdf.getRegion(), TectonicRegionType.SUBDUCTION_INTERFACE, ruptureLists);
 	}
 	
-	public static GridSourceList buildIntraslabGridSourceList(LogicTreeBranch<?> fullBranch, NSHM26_SeismicityRegions seisRegion) throws IOException {
-		NSHM26_SeisRateModel rateBranch = fullBranch.requireValue(NSHM26_SeisRateModel.class);
-		NSHM26_DeclusteringAlgorithms decluster = fullBranch.requireValue(NSHM26_DeclusteringAlgorithms.class);
-		NSHM26_SeisSmoothingAlgorithms smooth = fullBranch.requireValue(NSHM26_SeisSmoothingAlgorithms.class);
+	public static GridSourceList buildIntraslabGridSourceList(LogicTreeBranch<?> fullBranch, NSHM27_SeismicityRegions seisRegion) throws IOException {
+		NSHM27_SeisRateModel rateBranch = fullBranch.requireValue(NSHM27_SeisRateModel.class);
+		NSHM27_DeclusteringAlgorithms decluster = fullBranch.requireValue(NSHM27_DeclusteringAlgorithms.class);
+		NSHM27_SeisSmoothingAlgorithms smooth = fullBranch.requireValue(NSHM27_SeisSmoothingAlgorithms.class);
 		
 		double mMax = fullBranch.requireValue(MaxMagOffFaultBranchNode.class).getMaxMagOffFault();
 		
@@ -476,7 +476,7 @@ public class NSHM26_GridSourceBuilder {
 		double dip = 90d;
 		double strike = Double.NaN;
 		
-		GriddedGeoDepthValueDataSet pdf = NSHM26_SeisPDF_Loader.load3D(
+		GriddedGeoDepthValueDataSet pdf = NSHM27_SeisPDF_Loader.load3D(
 				seisRegion, TectonicRegionType.SUBDUCTION_SLAB, decluster, smooth);
 		Preconditions.checkState((float)pdf.getSumValues() == 1f);
 		if (SLAB_DEPTH_REDISCRETIZATION != null) {
@@ -567,10 +567,10 @@ public class NSHM26_GridSourceBuilder {
 	}
 	
 	public static GridSourceList buildCrustalGridSourceProv(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch,
-			NSHM26_SeismicityRegions seisRegion) throws IOException {
-		NSHM26_SeisRateModel rateBranch = fullBranch.requireValue(NSHM26_SeisRateModel.class);
-		NSHM26_DeclusteringAlgorithms decluster = fullBranch.requireValue(NSHM26_DeclusteringAlgorithms.class);
-		NSHM26_SeisSmoothingAlgorithms smooth = fullBranch.requireValue(NSHM26_SeisSmoothingAlgorithms.class);
+			NSHM27_SeismicityRegions seisRegion) throws IOException {
+		NSHM27_SeisRateModel rateBranch = fullBranch.requireValue(NSHM27_SeisRateModel.class);
+		NSHM27_DeclusteringAlgorithms decluster = fullBranch.requireValue(NSHM27_DeclusteringAlgorithms.class);
+		NSHM27_SeisSmoothingAlgorithms smooth = fullBranch.requireValue(NSHM27_SeisSmoothingAlgorithms.class);
 		
 		double mMax = fullBranch.requireValue(MaxMagOffFaultBranchNode.class).getMaxMagOffFault();
 		
@@ -579,12 +579,12 @@ public class NSHM26_GridSourceBuilder {
 		IncrementalMagFreqDist totalGR = rateBranch.build(seisRegion, TectonicRegionType.ACTIVE_SHALLOW,
 				refMFD, refMFD.getX(refMFD.getClosestXIndex(mMax-0.001)));
 		
-		GriddedGeoDataSet pdf = NSHM26_SeisPDF_Loader.load2D(seisRegion, TectonicRegionType.ACTIVE_SHALLOW, decluster, smooth);
+		GriddedGeoDataSet pdf = NSHM27_SeisPDF_Loader.load2D(seisRegion, TectonicRegionType.ACTIVE_SHALLOW, decluster, smooth);
 		
 		return buildCrustalGridSourceProv(seisRegion, sol, totalGR, pdf);
 	}
 	
-	public static GridSourceList buildCrustalGridSourceProv(NSHM26_SeismicityRegions seisReg, FaultSystemSolution sol,
+	public static GridSourceList buildCrustalGridSourceProv(NSHM27_SeismicityRegions seisReg, FaultSystemSolution sol,
 			IncrementalMagFreqDist totalGR, GriddedGeoDataSet pdf)  throws IOException {
 		
 		GriddedRegion gridReg = pdf.getRegion();
@@ -760,7 +760,7 @@ public class NSHM26_GridSourceBuilder {
 		
 		FaultSystemSolution interfaceSol = FaultSystemSolution.load(new File(invDir,
 				"2026_03_20-nshm26-gnmi-GNMI_V1_DOUBLE_TAPER_LOW_COUPLING_LogA_C4p0_SECTION_SPECIFIC_ONE_High_AVERAGE_AVERAGE/solution.zip"));
-		NSHM26_SeismicityRegions seisReg = NSHM26_SeismicityRegions.GNMI;
+		NSHM27_SeismicityRegions seisReg = NSHM27_SeismicityRegions.GNMI;
 		FaultSystemSolution crustalSol = FaultSystemSolution.load(new File(invDir,
 				"2026_03_20-nshm26-gnmi-AVERAGE_LogA_C4p2_Middle_Average_AVERAGE_AVERAGE/solution.zip"));
 		
@@ -772,14 +772,14 @@ public class NSHM26_GridSourceBuilder {
 //		LogicTreeBranch<LogicTreeNode> branch = NSHM26_LogicTree.buildDefault(seisReg, TectonicRegionType.SUBDUCTION_INTERFACE, false);
 		LogicTreeBranch<LogicTreeNode> branch = interfaceSol.requireModule(LogicTreeBranch.class);
 		doPreGridBuildHook(interfaceSol, branch);
-		NSHM26_InterfaceFaultModels fm = branch.requireValue(NSHM26_InterfaceFaultModels.class);
+		NSHM27_InterfaceFaultModels fm = branch.requireValue(NSHM27_InterfaceFaultModels.class);
 		GridSourceList interfaceProv = buildInterfaceGridSourceList(interfaceSol, branch, seisReg);
 		long interfaceRupCount = 0;
 		for (int l=0; l<interfaceProv.getNumLocations(); l++)
 			interfaceRupCount += interfaceProv.getRuptures(TectonicRegionType.SUBDUCTION_INTERFACE, l).size();
 		System.out.println("Built "+interfaceRupCount+" interface ruptures for "+seisReg);
 		
-		branch = NSHM26_LogicTree.buildDefault(seisReg, TectonicRegionType.SUBDUCTION_SLAB, false);
+		branch = NSHM27_LogicTree.buildDefault(seisReg, TectonicRegionType.SUBDUCTION_SLAB, false);
 		for (int l=0; l<branch.size(); l++) {
 			LogicTreeLevel<?> level = branch.getLevel(l);
 			if (level instanceof MaxMagOffFaultBranchNode.FixedValueLevel) {
@@ -798,7 +798,7 @@ public class NSHM26_GridSourceBuilder {
 			branch = crustalSol.requireModule(LogicTreeBranch.class);
 			doPreGridBuildHook(crustalSol, branch);
 		} else {
-			branch = NSHM26_LogicTree.buildDefault(seisReg, TectonicRegionType.ACTIVE_SHALLOW, false);
+			branch = NSHM27_LogicTree.buildDefault(seisReg, TectonicRegionType.ACTIVE_SHALLOW, false);
 		}
 		for (int l=0; l<branch.size(); l++) {
 			LogicTreeLevel<?> level = branch.getLevel(l);

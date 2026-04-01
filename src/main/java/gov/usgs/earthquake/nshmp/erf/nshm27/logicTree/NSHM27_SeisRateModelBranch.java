@@ -23,8 +23,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 
-import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader;
-import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateModel;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateRecord;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateType;
@@ -38,47 +38,47 @@ import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateTyp
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM26_SeisRateModelBranch implements NSHM26_SeisRateModel {
+public enum NSHM27_SeisRateModelBranch implements NSHM27_SeisRateModel {
 	LOW("Lower Seismicity Bound (p2.5)", "Low", 0.13d) {
 		@Override
-		public IncrementalMagFreqDist build(NSHM26_SeismicityRegions region, TectonicRegionType trt, EvenlyDiscretizedFunc refMFD, double mMax) {
+		public IncrementalMagFreqDist build(NSHM27_SeismicityRegions region, TectonicRegionType trt, EvenlyDiscretizedFunc refMFD, double mMax) {
 			return loadRateModel(region, trt, TYPE).buildLower(refMFD, mMax);
 		}
 
 		@Override
-		public RateRecord getRateRecord(NSHM26_SeismicityRegions region, TectonicRegionType trt) {
+		public RateRecord getRateRecord(NSHM27_SeismicityRegions region, TectonicRegionType trt) {
 			return loadRateModel(region, trt, TYPE).getLowerRecord();
 		}
 	},
 	PREFFERRED("Preffered Seismicity Rate", "Preferred", 0.74d) {
 		@Override
-		public IncrementalMagFreqDist build(NSHM26_SeismicityRegions region, TectonicRegionType trt, EvenlyDiscretizedFunc refMFD, double mMax) {
+		public IncrementalMagFreqDist build(NSHM27_SeismicityRegions region, TectonicRegionType trt, EvenlyDiscretizedFunc refMFD, double mMax) {
 			return loadRateModel(region, trt, TYPE).buildPreferred(refMFD, mMax);
 		}
 
 		@Override
-		public RateRecord getRateRecord(NSHM26_SeismicityRegions region, TectonicRegionType trt) {
+		public RateRecord getRateRecord(NSHM27_SeismicityRegions region, TectonicRegionType trt) {
 			return loadRateModel(region, trt, TYPE).getMeanRecord();
 		}
 	},
 	HIGH("Upper Seismicity Bound (p97.5)", "High", 0.13d) {
 		@Override
-		public IncrementalMagFreqDist build(NSHM26_SeismicityRegions region, TectonicRegionType trt, EvenlyDiscretizedFunc refMFD, double mMax) {
+		public IncrementalMagFreqDist build(NSHM27_SeismicityRegions region, TectonicRegionType trt, EvenlyDiscretizedFunc refMFD, double mMax) {
 			return loadRateModel(region, trt, TYPE).buildUpper(refMFD, mMax);
 		}
 
 		@Override
-		public RateRecord getRateRecord(NSHM26_SeismicityRegions region, TectonicRegionType trt) {
+		public RateRecord getRateRecord(NSHM27_SeismicityRegions region, TectonicRegionType trt) {
 			return loadRateModel(region, trt, TYPE).getUpperRecord();
 		}
 	},
 	AVERAGE("Average Seismicity Rate", "Average", 0d) {
 
 		@Override
-		public IncrementalMagFreqDist build(NSHM26_SeismicityRegions region, TectonicRegionType trt, EvenlyDiscretizedFunc refMFD, double mMax) {
+		public IncrementalMagFreqDist build(NSHM27_SeismicityRegions region, TectonicRegionType trt, EvenlyDiscretizedFunc refMFD, double mMax) {
 			IncrementalMagFreqDist ret = null;
 			double weightSum = 0d;
-			for (NSHM26_SeisRateModelBranch seis : values()) {
+			for (NSHM27_SeisRateModelBranch seis : values()) {
 				if (seis == this || seis.weight == 0d)
 					continue;
 				weightSum += seis.weight;
@@ -96,7 +96,7 @@ public enum NSHM26_SeisRateModelBranch implements NSHM26_SeisRateModel {
 		}
 
 		@Override
-		public RateRecord getRateRecord(NSHM26_SeismicityRegions region, TectonicRegionType trt) {
+		public RateRecord getRateRecord(NSHM27_SeismicityRegions region, TectonicRegionType trt) {
 			return PREFFERRED.getRateRecord(region, trt);
 		}
 		
@@ -116,7 +116,7 @@ public enum NSHM26_SeisRateModelBranch implements NSHM26_SeisRateModel {
 		};
 	}
 	
-	public static final String getRateModelDate(NSHM26_SeismicityRegions region) {
+	public static final String getRateModelDate(NSHM27_SeismicityRegions region) {
 		return switch (region) {
 			case AMSAM:
 				yield "2026_02_27-v1";
@@ -127,7 +127,7 @@ public enum NSHM26_SeisRateModelBranch implements NSHM26_SeisRateModel {
 		};
 	}
 	
-	public static final String getRateModelPath(NSHM26_SeismicityRegions region) {
+	public static final String getRateModelPath(NSHM27_SeismicityRegions region) {
 		String date = getRateModelDate(region);
 		return switch (region) {
 			case AMSAM:
@@ -165,10 +165,10 @@ public enum NSHM26_SeisRateModelBranch implements NSHM26_SeisRateModel {
 	private String shortName;
 	private double weight;
 
-	private static Table<NSHM26_SeismicityRegions, TectonicRegionType, CSVFile<String>> csvsCache;
-	private static Table<NSHM26_SeismicityRegions, TectonicRegionType, SeismicityRateModel> rateModelsCache;
+	private static Table<NSHM27_SeismicityRegions, TectonicRegionType, CSVFile<String>> csvsCache;
+	private static Table<NSHM27_SeismicityRegions, TectonicRegionType, SeismicityRateModel> rateModelsCache;
 
-	private NSHM26_SeisRateModelBranch(String name, String shortName, double weight) {
+	private NSHM27_SeisRateModelBranch(String name, String shortName, double weight) {
 		this.name = name;
 		this.shortName = shortName;
 		this.weight = weight;
@@ -194,11 +194,11 @@ public enum NSHM26_SeisRateModelBranch implements NSHM26_SeisRateModel {
 		return getShortName();
 	}
 	
-	public static SeismicityRateModel loadRateModel(NSHM26_SeismicityRegions region, TectonicRegionType trt) {
+	public static SeismicityRateModel loadRateModel(NSHM27_SeismicityRegions region, TectonicRegionType trt) {
 		return loadRateModel(region, trt, TYPE);
 	}
 	
-	public synchronized static SeismicityRateModel loadRateModel(NSHM26_SeismicityRegions region, TectonicRegionType trt, RateType type) {
+	public synchronized static SeismicityRateModel loadRateModel(NSHM27_SeismicityRegions region, TectonicRegionType trt, RateType type) {
 		if (rateModelsCache == null)
 			rateModelsCache = HashBasedTable.create();
 		if (type == TYPE) {
@@ -220,7 +220,7 @@ public enum NSHM26_SeisRateModelBranch implements NSHM26_SeisRateModel {
 		}
 	}
 	
-	private synchronized static CSVFile<String> loadCSV(NSHM26_SeismicityRegions region, TectonicRegionType trt) throws IOException {
+	private synchronized static CSVFile<String> loadCSV(NSHM27_SeismicityRegions region, TectonicRegionType trt) throws IOException {
 		if (csvsCache == null)
 			csvsCache = HashBasedTable.create();
 		CSVFile<String> csv = csvsCache.get(region, trt);
@@ -228,7 +228,7 @@ public enum NSHM26_SeisRateModelBranch implements NSHM26_SeisRateModel {
 			return csv;
 		String resourceName = getRateModelPath(region)+getRateModelCSVName(trt);
 		
-		InputStream stream = NSHM26_SeisRateModelBranch.class.getResourceAsStream(resourceName);
+		InputStream stream = NSHM27_SeisRateModelBranch.class.getResourceAsStream(resourceName);
 		Preconditions.checkNotNull(stream, "Error loading stream for '%s'", resourceName);
 		csv = CSVFile.readStream(stream, false);
 		stream.close();

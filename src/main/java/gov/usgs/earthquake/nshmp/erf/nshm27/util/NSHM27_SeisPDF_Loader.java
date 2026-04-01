@@ -38,14 +38,14 @@ import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
-import gov.usgs.earthquake.nshmp.erf.nshm27.NSHM26_GridSourceBuilder;
-import gov.usgs.earthquake.nshmp.erf.nshm27.NSHM26_InvConfigFactory;
-import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_DeclusteringAlgorithms;
-import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_InterfaceFaultModels;
-import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_SeisSmoothingAlgorithms;
-import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
+import gov.usgs.earthquake.nshmp.erf.nshm27.NSHM27_GridSourceBuilder;
+import gov.usgs.earthquake.nshmp.erf.nshm27.NSHM27_InvConfigFactory;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_DeclusteringAlgorithms;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_InterfaceFaultModels;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisSmoothingAlgorithms;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
 
-public class NSHM26_SeisPDF_Loader {
+public class NSHM27_SeisPDF_Loader {
 
 	private static final boolean PRINT_ALL_UNMAPPED_GRIDS = false;
 	private static final boolean PRINT_FIRST_UNMAPPED_GRIDS = true;
@@ -54,34 +54,34 @@ public class NSHM26_SeisPDF_Loader {
 	
 	public static final String DATA_DATE = "2026_03_27-v1";
 	
-	public static GriddedGeoDataSet load2D(NSHM26_SeismicityRegions region, TectonicRegionType trt,
-			NSHM26_DeclusteringAlgorithms decluster, NSHM26_SeisSmoothingAlgorithms smooth) throws IOException {
-		File dataDir = NSHM26_InvConfigFactory.locateDataDirectory();
+	public static GriddedGeoDataSet load2D(NSHM27_SeismicityRegions region, TectonicRegionType trt,
+			NSHM27_DeclusteringAlgorithms decluster, NSHM27_SeisSmoothingAlgorithms smooth) throws IOException {
+		File dataDir = NSHM27_InvConfigFactory.locateDataDirectory();
 		File baseDir = new File(dataDir, "spatial_seis_pdfs/"+region.name().toLowerCase()
-				+"/"+DATA_DATE+"_2D/"+NSHM26_RegionLoader.getNameForTRT(trt).toUpperCase()+"/");
+				+"/"+DATA_DATE+"_2D/"+NSHM27_RegionLoader.getNameForTRT(trt).toUpperCase()+"/");
 		return load2D(baseDir, region, decluster, smooth);
 	}
 	
-	public static GriddedGeoDataSet load2D(File baseDir, NSHM26_SeismicityRegions region,
-			NSHM26_DeclusteringAlgorithms decluster, NSHM26_SeisSmoothingAlgorithms smooth) throws IOException {
-		if (decluster == NSHM26_DeclusteringAlgorithms.AVERAGE || smooth == NSHM26_SeisSmoothingAlgorithms.AVERAGE) {
+	public static GriddedGeoDataSet load2D(File baseDir, NSHM27_SeismicityRegions region,
+			NSHM27_DeclusteringAlgorithms decluster, NSHM27_SeisSmoothingAlgorithms smooth) throws IOException {
+		if (decluster == NSHM27_DeclusteringAlgorithms.AVERAGE || smooth == NSHM27_SeisSmoothingAlgorithms.AVERAGE) {
 			WeightedList<GriddedGeoDataSet> wtList = new WeightedList<>();
-			NSHM26_DeclusteringAlgorithms[] declusters;
-			if (decluster == NSHM26_DeclusteringAlgorithms.AVERAGE)
-				declusters = NSHM26_DeclusteringAlgorithms.values();
+			NSHM27_DeclusteringAlgorithms[] declusters;
+			if (decluster == NSHM27_DeclusteringAlgorithms.AVERAGE)
+				declusters = NSHM27_DeclusteringAlgorithms.values();
 			else
-				declusters = new NSHM26_DeclusteringAlgorithms[] {decluster};
-			NSHM26_SeisSmoothingAlgorithms[] smooths;
-			if (smooth == NSHM26_SeisSmoothingAlgorithms.AVERAGE)
-				smooths = NSHM26_SeisSmoothingAlgorithms.values();
+				declusters = new NSHM27_DeclusteringAlgorithms[] {decluster};
+			NSHM27_SeisSmoothingAlgorithms[] smooths;
+			if (smooth == NSHM27_SeisSmoothingAlgorithms.AVERAGE)
+				smooths = NSHM27_SeisSmoothingAlgorithms.values();
 			else
-				smooths = new NSHM26_SeisSmoothingAlgorithms[] {smooth};
-			for (NSHM26_DeclusteringAlgorithms d : declusters) {
-				double dWeight = decluster == NSHM26_DeclusteringAlgorithms.AVERAGE ? d.getNodeWeight(null) : 1d;
+				smooths = new NSHM27_SeisSmoothingAlgorithms[] {smooth};
+			for (NSHM27_DeclusteringAlgorithms d : declusters) {
+				double dWeight = decluster == NSHM27_DeclusteringAlgorithms.AVERAGE ? d.getNodeWeight(null) : 1d;
 				if (dWeight == 0d)
 					continue;
-				for (NSHM26_SeisSmoothingAlgorithms s : smooths) {
-					double sWeight = smooth == NSHM26_SeisSmoothingAlgorithms.AVERAGE ? s.getNodeWeight(null) : 1d;
+				for (NSHM27_SeisSmoothingAlgorithms s : smooths) {
+					double sWeight = smooth == NSHM27_SeisSmoothingAlgorithms.AVERAGE ? s.getNodeWeight(null) : 1d;
 					if (sWeight == 0d)
 						continue;
 					wtList.add(load2D(region,  new File(baseDir, d.name()+"_"+s.name()+".csv")), dWeight*sWeight);
@@ -105,12 +105,12 @@ public class NSHM26_SeisPDF_Loader {
 		return xyz;
 	}
 	
-	public static GriddedGeoDataSet load2D(NSHM26_SeismicityRegions region, File file) throws IOException {
+	public static GriddedGeoDataSet load2D(NSHM27_SeismicityRegions region, File file) throws IOException {
 		return load2D(region, file, false);
 	}
 	
-	public static GriddedGeoDataSet load2D(NSHM26_SeismicityRegions region, File file, boolean writeUnmappedPlot) throws IOException {
-		GriddedRegion gridReg = NSHM26_GridSourceBuilder.initGridReg(region);
+	public static GriddedGeoDataSet load2D(NSHM27_SeismicityRegions region, File file, boolean writeUnmappedPlot) throws IOException {
+		GriddedRegion gridReg = NSHM27_GridSourceBuilder.initGridReg(region);
 		GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridReg, false);
 		double sum = 0d;
 		int numMapped = 0;
@@ -181,34 +181,34 @@ public class NSHM26_SeisPDF_Loader {
 	
 	public static EvenlyDiscretizedFunc DEPTH_DISCR_3D = new EvenlyDiscretizedFunc(10d, 600d, 60);
 	
-	public static GriddedGeoDepthValueDataSet load3D(NSHM26_SeismicityRegions region, TectonicRegionType trt,
-			NSHM26_DeclusteringAlgorithms decluster, NSHM26_SeisSmoothingAlgorithms smooth) throws IOException {
-		File dataDir = NSHM26_InvConfigFactory.locateDataDirectory();
+	public static GriddedGeoDepthValueDataSet load3D(NSHM27_SeismicityRegions region, TectonicRegionType trt,
+			NSHM27_DeclusteringAlgorithms decluster, NSHM27_SeisSmoothingAlgorithms smooth) throws IOException {
+		File dataDir = NSHM27_InvConfigFactory.locateDataDirectory();
 		File baseDir = new File(dataDir, "spatial_seis_pdfs/"+region.name().toLowerCase()
-				+"/"+DATA_DATE+"_3D/"+NSHM26_RegionLoader.getNameForTRT(trt).toUpperCase()+"/");
+				+"/"+DATA_DATE+"_3D/"+NSHM27_RegionLoader.getNameForTRT(trt).toUpperCase()+"/");
 		return load3D(baseDir, region, decluster, smooth);
 	}
 	
-	public static GriddedGeoDepthValueDataSet load3D(File baseDir, NSHM26_SeismicityRegions region,
-			NSHM26_DeclusteringAlgorithms decluster, NSHM26_SeisSmoothingAlgorithms smooth) throws IOException {
-		if (decluster == NSHM26_DeclusteringAlgorithms.AVERAGE || smooth == NSHM26_SeisSmoothingAlgorithms.AVERAGE) {
+	public static GriddedGeoDepthValueDataSet load3D(File baseDir, NSHM27_SeismicityRegions region,
+			NSHM27_DeclusteringAlgorithms decluster, NSHM27_SeisSmoothingAlgorithms smooth) throws IOException {
+		if (decluster == NSHM27_DeclusteringAlgorithms.AVERAGE || smooth == NSHM27_SeisSmoothingAlgorithms.AVERAGE) {
 			WeightedList<GriddedGeoDepthValueDataSet> wtList = new WeightedList<>();
-			NSHM26_DeclusteringAlgorithms[] declusters;
-			if (decluster == NSHM26_DeclusteringAlgorithms.AVERAGE)
-				declusters = NSHM26_DeclusteringAlgorithms.values();
+			NSHM27_DeclusteringAlgorithms[] declusters;
+			if (decluster == NSHM27_DeclusteringAlgorithms.AVERAGE)
+				declusters = NSHM27_DeclusteringAlgorithms.values();
 			else
-				declusters = new NSHM26_DeclusteringAlgorithms[] {decluster};
-			NSHM26_SeisSmoothingAlgorithms[] smooths;
-			if (smooth == NSHM26_SeisSmoothingAlgorithms.AVERAGE)
-				smooths = NSHM26_SeisSmoothingAlgorithms.values();
+				declusters = new NSHM27_DeclusteringAlgorithms[] {decluster};
+			NSHM27_SeisSmoothingAlgorithms[] smooths;
+			if (smooth == NSHM27_SeisSmoothingAlgorithms.AVERAGE)
+				smooths = NSHM27_SeisSmoothingAlgorithms.values();
 			else
-				smooths = new NSHM26_SeisSmoothingAlgorithms[] {smooth};
-			for (NSHM26_DeclusteringAlgorithms d : declusters) {
-				double dWeight = decluster == NSHM26_DeclusteringAlgorithms.AVERAGE ? d.getNodeWeight(null) : 1d;
+				smooths = new NSHM27_SeisSmoothingAlgorithms[] {smooth};
+			for (NSHM27_DeclusteringAlgorithms d : declusters) {
+				double dWeight = decluster == NSHM27_DeclusteringAlgorithms.AVERAGE ? d.getNodeWeight(null) : 1d;
 				if (dWeight == 0d)
 					continue;
-				for (NSHM26_SeisSmoothingAlgorithms s : smooths) {
-					double sWeight = smooth == NSHM26_SeisSmoothingAlgorithms.AVERAGE ? s.getNodeWeight(null) : 1d;
+				for (NSHM27_SeisSmoothingAlgorithms s : smooths) {
+					double sWeight = smooth == NSHM27_SeisSmoothingAlgorithms.AVERAGE ? s.getNodeWeight(null) : 1d;
 					if (sWeight == 0d)
 						continue;
 					wtList.add(load3D(region,  new File(baseDir, d.name()+"_"+s.name()+".csv")), dWeight*sWeight);
@@ -232,8 +232,8 @@ public class NSHM26_SeisPDF_Loader {
 		return xyz;
 	}
 	
-	public static GriddedGeoDepthValueDataSet load3D(NSHM26_SeismicityRegions region, File file) throws IOException {
-		GriddedRegion gridReg = NSHM26_GridSourceBuilder.initGridReg(region);
+	public static GriddedGeoDepthValueDataSet load3D(NSHM27_SeismicityRegions region, File file) throws IOException {
+		GriddedRegion gridReg = NSHM27_GridSourceBuilder.initGridReg(region);
 		GriddedGeoDepthValueDataSet ret = new GriddedGeoDepthValueDataSet(gridReg, DEPTH_DISCR_3D);
 		double sum = 0d;
 		int numMapped = 0;
@@ -352,14 +352,14 @@ public class NSHM26_SeisPDF_Loader {
 	public static void main(String[] args) throws IOException {
 		boolean twoD = false;
 //		NSHM26_SeismicityRegions region = NSHM26_SeismicityRegions.GNMI;
-		NSHM26_SeismicityRegions region = NSHM26_SeismicityRegions.AMSAM;
+		NSHM27_SeismicityRegions region = NSHM27_SeismicityRegions.AMSAM;
 		File plotDir = new File("/tmp/pdf_plots");
 		Preconditions.checkArgument(plotDir.exists() || plotDir.mkdir());
 		
 		GeographicMapMaker mapMaker = new GeographicMapMaker(region.load());
 		mapMaker.setWriteGeoJSON(false);
 		mapMaker.setWritePDFs(false);
-		mapMaker.setFaultSections(NSHM26_InterfaceFaultModels.regionDefault(region).getFaultSections());
+		mapMaker.setFaultSections(NSHM27_InterfaceFaultModels.regionDefault(region).getFaultSections());
 		
 		CPT pdfCPT = GMT_CPT_Files.SEQUENTIAL_LAJOLLA_UNIFORM.instance().reverse().rescale(-6d, 0d);
 		pdfCPT.setLog10(true);
@@ -367,14 +367,14 @@ public class NSHM26_SeisPDF_Loader {
 
 //		NSHM26_DeclusteringAlgorithms[] declusters = NSHM26_DeclusteringAlgorithms.values();
 //		NSHM26_SeisSmoothingAlgorithms[] smooths = NSHM26_SeisSmoothingAlgorithms.values();
-		NSHM26_DeclusteringAlgorithms[] declusters = { NSHM26_DeclusteringAlgorithms.AVERAGE };
-		NSHM26_SeisSmoothingAlgorithms[] smooths = { NSHM26_SeisSmoothingAlgorithms.AVERAGE };
+		NSHM27_DeclusteringAlgorithms[] declusters = { NSHM27_DeclusteringAlgorithms.AVERAGE };
+		NSHM27_SeisSmoothingAlgorithms[] smooths = { NSHM27_SeisSmoothingAlgorithms.AVERAGE };
 		
 		TectonicRegionType[] trts = {TectonicRegionType.ACTIVE_SHALLOW, TectonicRegionType.SUBDUCTION_SLAB, TectonicRegionType.SUBDUCTION_INTERFACE};
 		for (TectonicRegionType trt : trts) {
-			String trtName = NSHM26_RegionLoader.getNameForTRT(trt);
-			for (NSHM26_DeclusteringAlgorithms decluster : declusters) {
-				for (NSHM26_SeisSmoothingAlgorithms smooth : smooths) {
+			String trtName = NSHM27_RegionLoader.getNameForTRT(trt);
+			for (NSHM27_DeclusteringAlgorithms decluster : declusters) {
+				for (NSHM27_SeisSmoothingAlgorithms smooth : smooths) {
 					String plotPrefix = region.name()+"_"+decluster.name()+"_"+smooth.name()+"_"+trt.name();
 					if (twoD) {
 						GriddedGeoDataSet pdf = load2D(region, trt, decluster, smooth);
@@ -392,11 +392,11 @@ public class NSHM26_SeisPDF_Loader {
 		
 		if (!twoD) {
 			// write cross-sections
-			GriddedGeoDataSet interfaceDepths = NSHM26_GridSourceBuilder.loadInterfaceDepths(region);
+			GriddedGeoDataSet interfaceDepths = NSHM27_GridSourceBuilder.loadInterfaceDepths(region);
 			GriddedGeoDepthValueDataSet pdf = load3D(region, TectonicRegionType.SUBDUCTION_SLAB,
-					NSHM26_DeclusteringAlgorithms.AVERAGE, NSHM26_SeisSmoothingAlgorithms.AVERAGE);
+					NSHM27_DeclusteringAlgorithms.AVERAGE, NSHM27_SeisSmoothingAlgorithms.AVERAGE);
 			GriddedGeoDepthValueDataSet rediscr = pdf.rediscretizeDepths(
-					NSHM26_GridSourceBuilder.SLAB_DEPTH_REDISCRETIZATION, DepthRediscretizationMethod.PRESERVE_SUM);
+					NSHM27_GridSourceBuilder.SLAB_DEPTH_REDISCRETIZATION, DepthRediscretizationMethod.PRESERVE_SUM);
 			DiscretizedFunc origDepths = pdf.getDepthDiscretization();
 			GriddedGeoDepthValueDataSet rediscrRemap = new GriddedGeoDepthValueDataSet(pdf.getRegion(), origDepths);
 			rediscrRemap.scale(Double.NaN);
@@ -427,7 +427,7 @@ public class NSHM26_SeisPDF_Loader {
 			}
 			
 			StringBuilder depthStr = null;
-			for (double depth : NSHM26_GridSourceBuilder.SLAB_DEPTH_REDISCRETIZATION) {
+			for (double depth : NSHM27_GridSourceBuilder.SLAB_DEPTH_REDISCRETIZATION) {
 				if (depthStr == null)
 					depthStr = new StringBuilder();
 				else

@@ -24,7 +24,7 @@ import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.util.TectonicRegionType;
 
-import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
 
 @Affects(FaultSystemRupSet.SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
@@ -33,18 +33,18 @@ import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader.NSHM26_Seis
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM26_CrustalFaultModels implements RupSetFaultModel, RupSetSubsectioningModel {
-	GNMI_V1("Guam & Northern Mariana Islands (Crustal FM v1)", "GNMI-Crust-V1", NSHM26_SeismicityRegions.GNMI, 1d,
+public enum NSHM27_CrustalFaultModels implements RupSetFaultModel, RupSetSubsectioningModel {
+	GNMI_V1("Guam & Northern Mariana Islands (Crustal FM v1)", "GNMI-Crust-V1", NSHM27_SeismicityRegions.GNMI, 1d,
 			"/data/erf/nshm26/gnmi/fault_models/crustal/NSHM26_GNMI_FaultSections_v1.geojson");
 	
 	private String name;
 	private String shortName;
-	private NSHM26_SeismicityRegions seisReg;
+	private NSHM27_SeismicityRegions seisReg;
 	private double weight;
 	private String jsonPath;
 
 
-	private NSHM26_CrustalFaultModels(String name, String shortName, NSHM26_SeismicityRegions seisReg, double weight, String jsonPath) {
+	private NSHM27_CrustalFaultModels(String name, String shortName, NSHM27_SeismicityRegions seisReg, double weight, String jsonPath) {
 		this.name = name;
 		this.shortName = shortName;
 		this.seisReg = seisReg;
@@ -52,7 +52,7 @@ public enum NSHM26_CrustalFaultModels implements RupSetFaultModel, RupSetSubsect
 		this.jsonPath = jsonPath;
 	}
 	
-	public NSHM26_SeismicityRegions getSeisReg() {
+	public NSHM27_SeismicityRegions getSeisReg() {
 		return seisReg;
 	}
 
@@ -89,7 +89,7 @@ public enum NSHM26_CrustalFaultModels implements RupSetFaultModel, RupSetSubsect
 
 	@Override
 	public List<? extends FaultSection> getFaultSections() throws IOException {
-		BufferedReader reader = new BufferedReader(new InputStreamReader(NSHM26_CrustalFaultModels.class.getResourceAsStream(jsonPath)));
+		BufferedReader reader = new BufferedReader(new InputStreamReader(NSHM27_CrustalFaultModels.class.getResourceAsStream(jsonPath)));
 		List<GeoJSONFaultSection> sects = GeoJSONFaultReader.readFaultSections(reader);
 		for (GeoJSONFaultSection sect : sects)
 			sect.setTectonicRegionType(TectonicRegionType.ACTIVE_SHALLOW);
@@ -98,13 +98,13 @@ public enum NSHM26_CrustalFaultModels implements RupSetFaultModel, RupSetSubsect
 
 	@Override
 	public RupSetDeformationModel getDefaultDeformationModel() {
-		return NSHM26_CrustalAggregatedDeformationModels.AVERAGE;
+		return NSHM27_CrustalAggregatedDeformationModels.AVERAGE;
 	}
 
 	@Override
 	public void attachDefaultModules(FaultSystemRupSet rupSet) {
 		rupSet.addAvailableModule(() -> {
-			return NSHM26_InterfaceFaultModels.buildROI(seisReg);
+			return NSHM27_InterfaceFaultModels.buildROI(seisReg);
 		}, RegionsOfInterest.class);
 		rupSet.addAvailableModule(() -> {
 			return new ModelRegion(seisReg.load());

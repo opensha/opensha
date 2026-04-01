@@ -26,10 +26,10 @@ import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
-import gov.usgs.earthquake.nshmp.erf.nshm27.NSHM26_GridSourceBuilder;
+import gov.usgs.earthquake.nshmp.erf.nshm27.NSHM27_GridSourceBuilder;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.InterfaceGridAssociations;
-import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_SeisPDF_Loader;
-import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_SeisPDF_Loader;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
 
 @Affects(FaultSystemRupSet.SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
@@ -38,7 +38,7 @@ import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader.NSHM26_Seis
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM26_InterfaceObsSeisDMAdjustment implements LogicTreeNode {
+public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode {
 	NONE("No Adjustment", "None", 1d),
 	AVERAGE("Average Observed Seismicity", "Average", 1d),
 	SECTION_SPECIFIC("Section-Specific Observed Seismicity", "Sect-Specific", 1d);
@@ -47,7 +47,7 @@ public enum NSHM26_InterfaceObsSeisDMAdjustment implements LogicTreeNode {
 	private String shortName;
 	private double weight;
 
-	private NSHM26_InterfaceObsSeisDMAdjustment(String name, String shortName, double weight) {
+	private NSHM27_InterfaceObsSeisDMAdjustment(String name, String shortName, double weight) {
 		this.name = name;
 		this.shortName = shortName;
 		this.weight = weight;
@@ -76,16 +76,16 @@ public enum NSHM26_InterfaceObsSeisDMAdjustment implements LogicTreeNode {
 	public void adjustSlipRates(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) throws IOException {
 		if (this == NONE)
 			return;
-		NSHM26_InterfaceFaultModels fm = branch.requireValue(NSHM26_InterfaceFaultModels.class);
-		NSHM26_SeismicityRegions seisReg = fm.getSeisReg();
-		NSHM26_GridSourceBuilder.doPreGridBuildHook(rupSet, branch);
-		GridSourceList gridList = NSHM26_GridSourceBuilder.buildInterfaceGridSourceList(rupSet, branch, seisReg);
+		NSHM27_InterfaceFaultModels fm = branch.requireValue(NSHM27_InterfaceFaultModels.class);
+		NSHM27_SeismicityRegions seisReg = fm.getSeisReg();
+		NSHM27_GridSourceBuilder.doPreGridBuildHook(rupSet, branch);
+		GridSourceList gridList = NSHM27_GridSourceBuilder.buildInterfaceGridSourceList(rupSet, branch, seisReg);
 		
 		SectSlipRates origSlipRates = SectSlipRates.fromFaultSectData(rupSet);
 		FaultGridAssociations assoc = rupSet.requireModule(FaultGridAssociations.class);
 		
 		// just go off of average mMin
-		double[] sectMmins = NSHM26_GridSourceBuilder.getInterfaceSectMinMag(rupSet, branch);
+		double[] sectMmins = NSHM27_GridSourceBuilder.getInterfaceSectMinMag(rupSet, branch);
 		double[] moments = new double[sectMmins.length];
 		double[] slipSDs = new double[sectMmins.length];
 		

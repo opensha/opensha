@@ -33,7 +33,7 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM26_InterfaceDeformationModels implements RupSetDeformationModel {
+public enum NSHM27_InterfaceDeformationModels implements RupSetDeformationModel {
 	LOW_COUPLING("Low Interface Coupling", "Low", 1d),
 	PREF_COUPLING("Preferred Interface Coupling", "Preferred", 1d),
 	HIGH_COUPLING("High Interface Coupling", "High", 1d);
@@ -62,7 +62,7 @@ public enum NSHM26_InterfaceDeformationModels implements RupSetDeformationModel 
 	private String shortName;
 	private double weight;
 
-	private NSHM26_InterfaceDeformationModels(String name, String shortName, double weight) {
+	private NSHM27_InterfaceDeformationModels(String name, String shortName, double weight) {
 		this.name = name;
 		this.shortName = shortName;
 		this.weight = weight;
@@ -90,24 +90,24 @@ public enum NSHM26_InterfaceDeformationModels implements RupSetDeformationModel 
 
 	@Override
 	public boolean isApplicableTo(RupSetFaultModel faultModel) {
-		return faultModel instanceof NSHM26_InterfaceFaultModels;
+		return faultModel instanceof NSHM27_InterfaceFaultModels;
 	}
 
 	@Override
 	public List<? extends FaultSection> apply(RupSetFaultModel faultModel,
 			LogicTreeBranch<? extends LogicTreeNode> branch, List<? extends FaultSection> fullSects,
 			List<? extends FaultSection> subSects) throws IOException {
-		Preconditions.checkState(faultModel instanceof NSHM26_InterfaceFaultModels);
-		NSHM26_InterfaceFaultModels fm = (NSHM26_InterfaceFaultModels)faultModel;
+		Preconditions.checkState(faultModel instanceof NSHM27_InterfaceFaultModels);
+		NSHM27_InterfaceFaultModels fm = (NSHM27_InterfaceFaultModels)faultModel;
 		String csvPath;
-		if (faultModel == NSHM26_InterfaceFaultModels.AMSAM_V1) {
+		if (faultModel == NSHM27_InterfaceFaultModels.AMSAM_V1) {
 			csvPath = "/data/erf/nshm26/amsam/deformation_models/subduction/ker_trace_dm.csv";
-		} else if (faultModel == NSHM26_InterfaceFaultModels.GNMI_V1) {
+		} else if (faultModel == NSHM27_InterfaceFaultModels.GNMI_V1) {
 			csvPath = "/data/erf/nshm26/gnmi/deformation_models/subduction/izu_trace_dm.csv";
 		} else {
 			throw new IllegalStateException("Unexpected FM: "+faultModel);
 		}
-		InputStream is = NSHM26_InterfaceDeformationModels.class.getResourceAsStream(csvPath);
+		InputStream is = NSHM27_InterfaceDeformationModels.class.getResourceAsStream(csvPath);
 		Preconditions.checkNotNull(is, "Couldn't load CSV: %s", csvPath);
 		CSVFile<String> csv = CSVFile.readStream(is, true);
 		FaultTrace trace = new FaultTrace(faultModel.getName(), csv.getNumRows()-1);
@@ -148,8 +148,8 @@ public enum NSHM26_InterfaceDeformationModels implements RupSetDeformationModel 
 		
 		InterfaceDeformationProjection.projectSlipRates(subSects, trace, slips);
 		
-		NSHM26_InterfaceCouplingDepthModels depthCoupling = branch.getValue(
-				NSHM26_InterfaceCouplingDepthModels.class);
+		NSHM27_InterfaceCouplingDepthModels depthCoupling = branch.getValue(
+				NSHM27_InterfaceCouplingDepthModels.class);
 		if (depthCoupling != null) {
 			System.out.println("Applying depth-coupling model: "+depthCoupling);
 			depthCoupling.apply(subSects);

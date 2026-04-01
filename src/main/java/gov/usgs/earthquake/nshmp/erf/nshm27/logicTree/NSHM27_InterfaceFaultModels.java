@@ -34,9 +34,9 @@ import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
-import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader;
-import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader.NSHM26_MapRegions;
-import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM26_MapRegions;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
 
 @Affects(FaultSystemRupSet.SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
@@ -45,14 +45,14 @@ import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader.NSHM26_Seis
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM26_InterfaceFaultModels implements RupSetFaultModel, RupSetSubsectioningModel {
+public enum NSHM27_InterfaceFaultModels implements RupSetFaultModel, RupSetSubsectioningModel {
 	AMSAM_V1("Amarican Samoa (Interface FM v1)", "AmSam-Inter-v1",
-			"/data/erf/nshm26/amsam/fault_models/subduction/", NSHM26_SeismicityRegions.AMSAM, 0d),
+			"/data/erf/nshm26/amsam/fault_models/subduction/", NSHM27_SeismicityRegions.AMSAM, 0d),
 	GNMI_V1("Guam & Northern Mariana Islands (Interface FM v1)", "GNMI-Inter-v1",
-			"/data/erf/nshm26/gnmi/fault_models/subduction/", NSHM26_SeismicityRegions.GNMI, 100d);
+			"/data/erf/nshm26/gnmi/fault_models/subduction/", NSHM27_SeismicityRegions.GNMI, 100d);
 	
-	public static NSHM26_InterfaceFaultModels regionDefault(NSHM26_SeismicityRegions region) {
-		for (NSHM26_InterfaceFaultModels fm : values())
+	public static NSHM27_InterfaceFaultModels regionDefault(NSHM27_SeismicityRegions region) {
+		for (NSHM27_InterfaceFaultModels fm : values())
 			if (fm.seisReg == region && fm.getNodeWeight(null) > 0)
 				return fm;
 		throw new IllegalStateException("No FMs found for "+region);
@@ -62,9 +62,9 @@ public enum NSHM26_InterfaceFaultModels implements RupSetFaultModel, RupSetSubse
 	private String shortName;
 	private String dataPrefix;
 	private double slipSmoothingDist;
-	private NSHM26_SeismicityRegions seisReg;
+	private NSHM27_SeismicityRegions seisReg;
 
-	NSHM26_InterfaceFaultModels(String name, String shortName, String dataPrefix, NSHM26_SeismicityRegions seisReg, double slipSmoothingDist) {
+	NSHM27_InterfaceFaultModels(String name, String shortName, String dataPrefix, NSHM27_SeismicityRegions seisReg, double slipSmoothingDist) {
 		this.name = name;
 		this.shortName = shortName;
 		this.dataPrefix = dataPrefix;
@@ -96,14 +96,14 @@ public enum NSHM26_InterfaceFaultModels implements RupSetFaultModel, RupSetSubse
 		return slipSmoothingDist;
 	}
 	
-	public NSHM26_SeismicityRegions getSeisReg() {
+	public NSHM27_SeismicityRegions getSeisReg() {
 		return seisReg;
 	}
 
 	@Override
 	public List<? extends FaultSection> buildSubSects(RupSetFaultModel faultModel) throws IOException {
 		String path = dataPrefix+"sub_sections.geojson";
-		InputStream is = NSHM26_InterfaceFaultModels.class.getResourceAsStream(path);
+		InputStream is = NSHM27_InterfaceFaultModels.class.getResourceAsStream(path);
 		Preconditions.checkNotNull(is, "Could not load %s", path);
 		BufferedReader reader = new BufferedReader(new InputStreamReader(is));
 		List<GeoJSONFaultSection> sects = GeoJSONFaultReader.readFaultSections(reader);
@@ -125,7 +125,7 @@ public enum NSHM26_InterfaceFaultModels implements RupSetFaultModel, RupSetSubse
 	@Override
 	public List<? extends FaultSection> getFaultSections() throws IOException {
 		String path = dataPrefix+"full_section.geojson";
-		InputStream is = NSHM26_InterfaceFaultModels.class.getResourceAsStream(path);
+		InputStream is = NSHM27_InterfaceFaultModels.class.getResourceAsStream(path);
 		Preconditions.checkNotNull(is, "Could not load %s", path);
 		BufferedReader reader = new BufferedReader(new InputStreamReader(is));
 		FeatureCollection fullSectCollection = FeatureCollection.read(reader);
@@ -137,7 +137,7 @@ public enum NSHM26_InterfaceFaultModels implements RupSetFaultModel, RupSetSubse
 
 	@Override
 	public RupSetDeformationModel getDefaultDeformationModel() {
-		return NSHM26_InterfaceDeformationModels.PREF_COUPLING;
+		return NSHM27_InterfaceDeformationModels.PREF_COUPLING;
 	}
 
 	@Override
@@ -153,7 +153,7 @@ public enum NSHM26_InterfaceFaultModels implements RupSetFaultModel, RupSetSubse
 		}, RupSetTectonicRegimes.class);
 	}
 	
-	public static RegionsOfInterest buildROI(NSHM26_SeismicityRegions seisReg) throws IOException {
+	public static RegionsOfInterest buildROI(NSHM27_SeismicityRegions seisReg) throws IOException {
 		TectonicRegionType[] trts = {TectonicRegionType.SUBDUCTION_INTERFACE,
 				TectonicRegionType.SUBDUCTION_SLAB,TectonicRegionType.ACTIVE_SHALLOW};
 		List<Region> trtRegions = new ArrayList<>(trts.length*2);
@@ -162,8 +162,8 @@ public enum NSHM26_InterfaceFaultModels implements RupSetFaultModel, RupSetSubse
 		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(5.01, 9.01);
 		for (TectonicRegionType trt : trts) {
 			trtRegions.add(cloneForTRT(seisReg.load(), trt));
-			double mMax = NSHM26_SeisRateModelBranch.getPlotMmax(trt);
-			trtMFDs.add(NSHM26_SeisRateModelBranch.loadRateModel(seisReg, trt).getBounded(refMFD, mMax));
+			double mMax = NSHM27_SeisRateModelBranch.getPlotMmax(trt);
+			trtMFDs.add(NSHM27_SeisRateModelBranch.loadRateModel(seisReg, trt).getBounded(refMFD, mMax));
 			regionTRTs.add(trt);
 		}
 		NSHM26_MapRegions mapRegion = NSHM26_MapRegions.valueOf(seisReg.name());
@@ -181,7 +181,7 @@ public enum NSHM26_InterfaceFaultModels implements RupSetFaultModel, RupSetSubse
 	
 	private static Region cloneForTRT(Region reg, TectonicRegionType trt) {
 		reg = reg.clone();
-		reg.setName(reg.getName()+" ("+NSHM26_RegionLoader.getNameForTRT(trt)+")");
+		reg.setName(reg.getName()+" ("+NSHM27_RegionLoader.getNameForTRT(trt)+")");
 		return reg;
 	}
 

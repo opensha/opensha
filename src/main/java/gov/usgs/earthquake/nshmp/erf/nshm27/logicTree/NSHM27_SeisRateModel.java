@@ -25,16 +25,16 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
-import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.PureGR;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateRecord;
 
-public interface NSHM26_SeisRateModel extends LogicTreeNode {
+public interface NSHM27_SeisRateModel extends LogicTreeNode {
 	
-	public abstract IncrementalMagFreqDist build(NSHM26_SeismicityRegions region, TectonicRegionType trt, EvenlyDiscretizedFunc refMFD, double mMax);
+	public abstract IncrementalMagFreqDist build(NSHM27_SeismicityRegions region, TectonicRegionType trt, EvenlyDiscretizedFunc refMFD, double mMax);
 	
-	public abstract RateRecord getRateRecord(NSHM26_SeismicityRegions region, TectonicRegionType trt);
+	public abstract RateRecord getRateRecord(NSHM27_SeismicityRegions region, TectonicRegionType trt);
 	
 	// this affects interface slip rates
 	@Affects(FaultSystemRupSet.SECTS_FILE_NAME)
@@ -45,15 +45,15 @@ public interface NSHM26_SeisRateModel extends LogicTreeNode {
 	@DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 	@DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 	@Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-	public static class NSHM26_SiesRateModelSample extends SimpleValuedNode<PureGR> implements NSHM26_SeisRateModel {
+	public static class NSHM26_SiesRateModelSample extends SimpleValuedNode<PureGR> implements NSHM27_SeisRateModel {
 		
-		private NSHM26_SeismicityRegions region;
+		private NSHM27_SeismicityRegions region;
 		private TectonicRegionType trt;
 
 		@SuppressWarnings("unused") // deserialization
 		private NSHM26_SiesRateModelSample() {}
 
-		public NSHM26_SiesRateModelSample(PureGR value, NSHM26_SeismicityRegions region, TectonicRegionType trt, double weight, String name,
+		public NSHM26_SiesRateModelSample(PureGR value, NSHM27_SeismicityRegions region, TectonicRegionType trt, double weight, String name,
 				String shortName, String filePrefix) {
 			super(value, PureGR.class, weight, name, shortName, filePrefix);
 			this.region = region;
@@ -61,7 +61,7 @@ public interface NSHM26_SeisRateModel extends LogicTreeNode {
 		}
 
 		@Override
-		public IncrementalMagFreqDist build(NSHM26_SeismicityRegions region, TectonicRegionType trt,
+		public IncrementalMagFreqDist build(NSHM27_SeismicityRegions region, TectonicRegionType trt,
 				EvenlyDiscretizedFunc refMFD, double mMax) {
 			PureGR value = getValue();
 			Preconditions.checkState(this.region == null || region == this.region, "Region mismatch: %s != %s", region, this.region);
@@ -70,7 +70,7 @@ public interface NSHM26_SeisRateModel extends LogicTreeNode {
 		}
 
 		@Override
-		public RateRecord getRateRecord(NSHM26_SeismicityRegions region, TectonicRegionType trt) {
+		public RateRecord getRateRecord(NSHM27_SeismicityRegions region, TectonicRegionType trt) {
 			Preconditions.checkState(this.region == null || region == this.region, "Region mismatch: %s != %s", region, this.region);
 			Preconditions.checkState(this.trt == null || trt == this.trt, "TRT mismatch: %s != %s", trt, this.trt);
 			return getValue();
@@ -86,7 +86,7 @@ public interface NSHM26_SeisRateModel extends LogicTreeNode {
 		@SuppressWarnings("unused") // deserialization
 		private BinnedSamplesLevel() {}
 
-		BinnedSamplesLevel(NSHM26_SeisRateModelSamples samplesLevel, List<BinnedSamplesNode> nodes) {
+		BinnedSamplesLevel(NSHM27_SeisRateModelSamples samplesLevel, List<BinnedSamplesNode> nodes) {
 			super(samplesLevel.getName(), samplesLevel.getShortName());
 			this.nodes = nodes;
 			setAffected(samplesLevel.getAffected(), samplesLevel.getNotAffected(), false);

@@ -27,7 +27,7 @@ import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.collect.Range;
 
-import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
 
 @Affects(FaultSystemRupSet.SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
@@ -36,7 +36,7 @@ import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader.NSHM26_Seis
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM26_InterfaceCouplingDepthModels implements LogicTreeNode {
+public enum NSHM27_InterfaceCouplingDepthModels implements LogicTreeNode {
 	DEEP_TAPER("Deep Taper", "Deep", Range.closed(0d, 10d), Range.closed(40d, 60d), 1d),
 	DOUBLE_TAPER("Double Taper", "Double", Range.closed(10d, 20d), Range.closed(40d, 60d), 1d),
 	NONE("None", "None", null, null, 1d);
@@ -47,7 +47,7 @@ public enum NSHM26_InterfaceCouplingDepthModels implements LogicTreeNode {
 	private Range<Double> lowerTaper;
 	private double weight;
 
-	NSHM26_InterfaceCouplingDepthModels(String name, String shortName, Range<Double> upperTaper,
+	NSHM27_InterfaceCouplingDepthModels(String name, String shortName, Range<Double> upperTaper,
 			Range<Double> lowerTaper, double weight) {
 		this.name = name;
 		this.shortName = shortName;
@@ -126,9 +126,9 @@ public enum NSHM26_InterfaceCouplingDepthModels implements LogicTreeNode {
 	
 	public static void main(String[] args) throws IOException {
 		EvenlyDiscretizedFunc depths = new EvenlyDiscretizedFunc(0d, 70, 1d);
-		NSHM26_InterfaceCouplingDepthModels[] models = values();
+		NSHM27_InterfaceCouplingDepthModels[] models = values();
 		System.out.print("Depth");
-		for (NSHM26_InterfaceCouplingDepthModels model : models)
+		for (NSHM27_InterfaceCouplingDepthModels model : models)
 			System.out.print("\t"+model.getShortName());
 		System.out.println();
 		DecimalFormat cDF = new DecimalFormat("0.###");
@@ -141,13 +141,13 @@ public enum NSHM26_InterfaceCouplingDepthModels implements LogicTreeNode {
 			System.out.println();
 		}
 		
-		NSHM26_SeismicityRegions seisReg = NSHM26_SeismicityRegions.GNMI;
-		LogicTreeBranch<LogicTreeNode> branch = NSHM26_LogicTree.buildDefault(seisReg, TectonicRegionType.SUBDUCTION_INTERFACE, false);
-		NSHM26_InterfaceDeformationModels dm = branch.requireValue(NSHM26_InterfaceDeformationModels.class);
+		NSHM27_SeismicityRegions seisReg = NSHM27_SeismicityRegions.GNMI;
+		LogicTreeBranch<LogicTreeNode> branch = NSHM27_LogicTree.buildDefault(seisReg, TectonicRegionType.SUBDUCTION_INTERFACE, false);
+		NSHM27_InterfaceDeformationModels dm = branch.requireValue(NSHM27_InterfaceDeformationModels.class);
 		CPT couplingCPT = GMT_CPT_Files.SEQUENTIAL_LAJOLLA_UNIFORM.instance().rescale(0d, 1d);
-		for (NSHM26_InterfaceCouplingDepthModels model : models) {
+		for (NSHM27_InterfaceCouplingDepthModels model : models) {
 			branch.setValue(model);
-			List<? extends FaultSection> subSects = dm.build(branch.requireValue(NSHM26_InterfaceFaultModels.class), branch);
+			List<? extends FaultSection> subSects = dm.build(branch.requireValue(NSHM27_InterfaceFaultModels.class), branch);
 			GeographicMapMaker mapMaker = new GeographicMapMaker(subSects);
 			mapMaker.plotSectScalars(S->S.getCouplingCoeff(), couplingCPT, "Coupling Coefficient");
 			mapMaker.plot(new File("/tmp"), seisReg.name()+"_coupling_"+model.name(), " ");

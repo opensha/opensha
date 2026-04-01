@@ -17,7 +17,7 @@ import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 
-public enum NSHM26_CrustalAggregatedDeformationModels implements RupSetDeformationModel {
+public enum NSHM27_CrustalAggregatedDeformationModels implements RupSetDeformationModel {
 	UPPER("Upper Bounds", "Upper", F-> {
 		for (int i=F.size(); --i>=0;)
 			if (F.getY(i) > 0)
@@ -44,7 +44,7 @@ public enum NSHM26_CrustalAggregatedDeformationModels implements RupSetDeformati
 	private String shortName;
 	private Function<DiscretizedFunc, Double> pdfFunc;
 
-	private NSHM26_CrustalAggregatedDeformationModels(String name, String shortName,
+	private NSHM27_CrustalAggregatedDeformationModels(String name, String shortName,
 			Function<DiscretizedFunc, Double> pdfFunc) {
 		this.name = name;
 		this.shortName = shortName;
@@ -73,14 +73,14 @@ public enum NSHM26_CrustalAggregatedDeformationModels implements RupSetDeformati
 
 	@Override
 	public boolean isApplicableTo(RupSetFaultModel faultModel) {
-		return faultModel instanceof NSHM26_CrustalFaultModels;
+		return faultModel instanceof NSHM27_CrustalFaultModels;
 	}
 
 	@Override
 	public List<? extends FaultSection> apply(RupSetFaultModel faultModel,
 			LogicTreeBranch<? extends LogicTreeNode> branch, List<? extends FaultSection> fullSects,
 			List<? extends FaultSection> subSects) throws IOException {
-		Map<Integer, DiscretizedFunc> pdfs = NSHM26_CrustalRandomlySampledDeformationModels.getPDFs(fullSects);
+		Map<Integer, DiscretizedFunc> pdfs = NSHM27_CrustalRandomlySampledDeformationModels.getPDFs(fullSects);
 		Map<Integer, Double> sectVals = new HashMap<>(pdfs.size());
 		for (Integer index : pdfs.keySet()) {
 			double val = pdfFunc.apply(pdfs.get(index));

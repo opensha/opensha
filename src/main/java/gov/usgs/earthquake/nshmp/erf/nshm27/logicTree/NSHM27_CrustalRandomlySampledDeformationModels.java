@@ -37,22 +37,22 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 //@Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME) // if rate balancing enabled
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME) // if rate balancing disabled
-public class NSHM26_CrustalRandomlySampledDeformationModels extends RandomlyGeneratedNode implements RupSetDeformationModel {
+public class NSHM27_CrustalRandomlySampledDeformationModels extends RandomlyGeneratedNode implements RupSetDeformationModel {
 	
 	private static final String PATH = "/data/erf/nshm26/gnmi/deformation_models/crustal/2026_03_02";
 	private static Map<Integer, DiscretizedFunc> pdfs = null;
 	private static Map<Integer, IntegerPDF_FunctionSampler> pdfSamplers = null;
 
 	@SuppressWarnings("unused") // for deserialization
-	private NSHM26_CrustalRandomlySampledDeformationModels() {}
+	private NSHM27_CrustalRandomlySampledDeformationModels() {}
 	
-	NSHM26_CrustalRandomlySampledDeformationModels(String name, String shortName, String filePrefix, long seed, double weight) {
+	NSHM27_CrustalRandomlySampledDeformationModels(String name, String shortName, String filePrefix, long seed, double weight) {
 		super(name, shortName, filePrefix, weight, seed);
 	}
 
 	@Override
 	public boolean isApplicableTo(RupSetFaultModel faultModel) {
-		return faultModel instanceof NSHM26_CrustalFaultModels;
+		return faultModel instanceof NSHM27_CrustalFaultModels;
 	}
 	
 	@Override
@@ -124,7 +124,7 @@ public class NSHM26_CrustalRandomlySampledDeformationModels extends RandomlyGene
 //				System.out.println("Loading slip PDF for "+sect.getSectionName());
 				String fName = sect.getSectionName()+".csv";
 				String path = PATH+"/"+fName;
-				InputStream is = NSHM26_CrustalRandomlySampledDeformationModels.class.getResourceAsStream(path);
+				InputStream is = NSHM27_CrustalRandomlySampledDeformationModels.class.getResourceAsStream(path);
 				Preconditions.checkNotNull(is, "%s was not found", path);
 				CSVFile<String> csv = CSVFile.readStream(is, true);
 				DiscretizedFunc func = new ArbitrarilyDiscretizedFunc();

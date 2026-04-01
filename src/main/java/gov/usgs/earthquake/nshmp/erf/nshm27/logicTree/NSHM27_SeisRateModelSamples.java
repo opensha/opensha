@@ -28,30 +28,30 @@ import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
-import gov.usgs.earthquake.nshmp.erf.nshm27.NSHM26_InvConfigFactory;
-import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_SeisRateModel.BinnedSamplesLevel;
-import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_SeisRateModel.BinnedSamplesNode;
-import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_SeisRateModel.NSHM26_SiesRateModelSample;
-import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader;
-import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
+import gov.usgs.earthquake.nshmp.erf.nshm27.NSHM27_InvConfigFactory;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisRateModel.BinnedSamplesLevel;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisRateModel.BinnedSamplesNode;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisRateModel.NSHM26_SiesRateModelSample;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.PureGR;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateType;
 
-public class NSHM26_SeisRateModelSamples extends AbstractRandomlySampledLevel<PureGR, NSHM26_SiesRateModelSample>
+public class NSHM27_SeisRateModelSamples extends AbstractRandomlySampledLevel<PureGR, NSHM26_SiesRateModelSample>
 implements BinnableLevel<PureGR, NSHM26_SiesRateModelSample, BinnedSamplesLevel> {
 	
-	private NSHM26_SeismicityRegions region;
+	private NSHM27_SeismicityRegions region;
 	private TectonicRegionType trt;
 	
 	@SuppressWarnings("unused") // deserialization
-	private NSHM26_SeisRateModelSamples(String name, String shortName) {
+	private NSHM27_SeisRateModelSamples(String name, String shortName) {
 		super(name, shortName);
 	}
 	
-	public NSHM26_SeisRateModelSamples(NSHM26_SeismicityRegions region, TectonicRegionType trt) {
-		super(NSHM26_RegionLoader.getNameForTRT(trt)+" Seismicity Rate Model Samples",
-				NSHM26_RegionLoader.getNameForTRT(trt)+"RateSamples",
+	public NSHM27_SeisRateModelSamples(NSHM27_SeismicityRegions region, TectonicRegionType trt) {
+		super(NSHM27_RegionLoader.getNameForTRT(trt)+" Seismicity Rate Model Samples",
+				NSHM27_RegionLoader.getNameForTRT(trt)+"RateSamples",
 				"Rate sample ", "RateSample", "RateSample");
 		this.region = region;
 		this.trt = trt;
@@ -63,15 +63,15 @@ implements BinnableLevel<PureGR, NSHM26_SiesRateModelSample, BinnedSamplesLevel>
 	}
 	
 	protected CSVFile<String> loadCSV() throws IOException {
-		File data = new File(NSHM26_InvConfigFactory.locateDataDirectory(), "seis_rate_samples");
+		File data = new File(NSHM27_InvConfigFactory.locateDataDirectory(), "seis_rate_samples");
 		Preconditions.checkState(data.exists(), "Data directory doesn't exist: %s", data.getAbsolutePath());
 		Preconditions.checkNotNull(region, "Region not set; can only be built upon initial construction");
 		Preconditions.checkNotNull(trt, "TRT not set; can only be built upon initial construction");
 		data = new File(data, region.name().toLowerCase());
 		Preconditions.checkState(data.exists(), "Region directory doesn't exist: %s", data.getAbsolutePath());
-		data = new File(data, NSHM26_SeisRateModelBranch.getRateModelDate(region));
+		data = new File(data, NSHM27_SeisRateModelBranch.getRateModelDate(region));
 		Preconditions.checkState(data.exists(), "Date directory doesn't exist: %s", data.getAbsolutePath());
-		File csvFile = new File(data, NSHM26_SeisRateModelBranch.getRateModelCSVName(trt));
+		File csvFile = new File(data, NSHM27_SeisRateModelBranch.getRateModelCSVName(trt));
 		Preconditions.checkState(csvFile.exists(), "CSV doesn't exist: %s", data.getAbsolutePath());
 		return CSVFile.readFile(csvFile, false);
 	}
@@ -149,7 +149,7 @@ implements BinnableLevel<PureGR, NSHM26_SiesRateModelSample, BinnedSamplesLevel>
 
 	@Override
 	public void initFromJsonObject(JsonObject jsonObj) {
-		region = NSHM26_SeismicityRegions.valueOf(jsonObj.get("region").getAsString());
+		region = NSHM27_SeismicityRegions.valueOf(jsonObj.get("region").getAsString());
 		trt = TectonicRegionType.valueOf(jsonObj.get("tectonicRegime").getAsString());
 		
 		super.initFromJsonObject(jsonObj);

@@ -35,10 +35,10 @@ import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
-import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_InterfaceDeformationModels;
-import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_InterfaceFaultModels;
-import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM26_LogicTree;
-import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM26_RegionLoader.NSHM26_SeismicityRegions;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_InterfaceDeformationModels;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_InterfaceFaultModels;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_LogicTree;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
 
 public class InterfaceGridAssociations implements FaultGridAssociations, ArchivableModule {
 	
@@ -49,12 +49,12 @@ public class InterfaceGridAssociations implements FaultGridAssociations, Archiva
 	public static void main(String[] args) throws IOException {
 //		LogicTreeBranch<LogicTreeNode> branch = NSHM26_LogicTree.buildDefault(
 //				NSHM26_SeismicityRegions.AMSAM, TectonicRegionType.SUBDUCTION_INTERFACE, false);
-		LogicTreeBranch<LogicTreeNode> branch = NSHM26_LogicTree.buildDefault(
-				NSHM26_SeismicityRegions.GNMI, TectonicRegionType.SUBDUCTION_INTERFACE, false);
-		NSHM26_InterfaceFaultModels fm = branch.requireValue(NSHM26_InterfaceFaultModels.class);
-		NSHM26_InterfaceDeformationModels dm = branch.requireValue(NSHM26_InterfaceDeformationModels.class);
+		LogicTreeBranch<LogicTreeNode> branch = NSHM27_LogicTree.buildDefault(
+				NSHM27_SeismicityRegions.GNMI, TectonicRegionType.SUBDUCTION_INTERFACE, false);
+		NSHM27_InterfaceFaultModels fm = branch.requireValue(NSHM27_InterfaceFaultModels.class);
+		NSHM27_InterfaceDeformationModels dm = branch.requireValue(NSHM27_InterfaceDeformationModels.class);
 
-		NSHM26_SeismicityRegions reg = fm.getSeisReg();
+		NSHM27_SeismicityRegions reg = fm.getSeisReg();
 		
 		System.out.println("Branch: "+branch+"; reg="+reg);
 		
