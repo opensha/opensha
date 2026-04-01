@@ -35,7 +35,7 @@ import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_Seis
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum NSHM27_CrustalFaultModels implements RupSetFaultModel, RupSetSubsectioningModel {
 	GNMI_V1("Guam & Northern Mariana Islands (Crustal FM v1)", "GNMI-Crust-V1", NSHM27_SeismicityRegions.GNMI, 1d,
-			"/data/erf/nshm26/gnmi/fault_models/crustal/NSHM26_GNMI_FaultSections_v1.geojson");
+			"/data/erf/nshm27/gnmi/fault_models/crustal/NSHM27_GNMI_FaultSections_v1.geojson");
 	
 	private String name;
 	private String shortName;
