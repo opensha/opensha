@@ -9,6 +9,7 @@ import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
@@ -32,7 +33,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum PRVI25_SubductionScalingRelationships implements RupSetScalingRelationship {
+public enum PRVI25_SubductionScalingRelationships implements RupSetScalingRelationship, LogicTreeNode.FixedWeightNode {
 	
 	LOGA_C4p1("LogA+4.1", "LogA+4.1", "LogA_C4p1") {
 		@Override
@@ -43,7 +44,7 @@ public enum PRVI25_SubductionScalingRelationships implements RupSetScalingRelati
 		}
 
 		@Override
-		public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+		public double getNodeWeight() {
 			return 1d;
 		}
 
@@ -61,7 +62,7 @@ public enum PRVI25_SubductionScalingRelationships implements RupSetScalingRelati
 		}
 
 		@Override
-		public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+		public double getNodeWeight() {
 			return 1d;
 		}
 
@@ -79,7 +80,7 @@ public enum PRVI25_SubductionScalingRelationships implements RupSetScalingRelati
 		}
 
 		@Override
-		public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+		public double getNodeWeight() {
 			return 1d;
 		}
 
@@ -118,7 +119,7 @@ public enum PRVI25_SubductionScalingRelationships implements RupSetScalingRelati
 		}
 
 		@Override
-		public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+		public double getNodeWeight() {
 			return 0d;
 		}
 

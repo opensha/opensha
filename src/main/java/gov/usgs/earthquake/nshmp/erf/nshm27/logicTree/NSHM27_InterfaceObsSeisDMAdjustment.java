@@ -38,7 +38,7 @@ import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_Seis
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode {
+public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode.FixedWeightNode {
 	NONE("No Adjustment", "None", 1d),
 	AVERAGE("Average Observed Seismicity", "Average", 1d),
 	SECTION_SPECIFIC("Section-Specific Observed Seismicity", "Sect-Specific", 1d);
@@ -64,7 +64,7 @@ public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode {
 	}
 
 	@Override
-	public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+	public double getNodeWeight() {
 		return weight;
 	}
 

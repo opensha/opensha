@@ -18,7 +18,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM27_DeclusteringAlgorithms implements LogicTreeNode {
+public enum NSHM27_DeclusteringAlgorithms implements LogicTreeNode.FixedWeightNode {
 	GK("Gardner-Knopoff", "Gardner-Knopoff", 0.45d),
 	NN("Nearest-Neighbor", "Nearest-Neighbor", 0.45d),
 	REAS("Reasenberg", "Reasenberg", 0.1d),
@@ -45,7 +45,7 @@ public enum NSHM27_DeclusteringAlgorithms implements LogicTreeNode {
 	}
 
 	@Override
-	public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+	public double getNodeWeight() {
 		return weight;
 	}
 

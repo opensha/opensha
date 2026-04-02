@@ -16,7 +16,8 @@
         "SubSectIndex": 0,
         "SubSectIndexAlong": 0,
         "SubSectIndexDown": 0,
-        "LowDepth": 10.714747500379413
+        "LowDepth": 10.714747500379413,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -88,7 +89,8 @@
         "SubSectIndex": 1,
         "SubSectIndexAlong": 1,
         "SubSectIndexDown": 0,
-        "LowDepth": 11.06632648886437
+        "LowDepth": 11.06632648886437,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -165,7 +167,8 @@
         "SubSectIndex": 2,
         "SubSectIndexAlong": 2,
         "SubSectIndexDown": 0,
-        "LowDepth": 11.42066926838767
+        "LowDepth": 11.42066926838767,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -242,7 +245,8 @@
         "SubSectIndex": 3,
         "SubSectIndexAlong": 3,
         "SubSectIndexDown": 0,
-        "LowDepth": 11.636603259705195
+        "LowDepth": 11.636603259705195,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -324,7 +328,8 @@
         "SubSectIndex": 4,
         "SubSectIndexAlong": 4,
         "SubSectIndexDown": 0,
-        "LowDepth": 11.532914882105727
+        "LowDepth": 11.532914882105727,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -396,7 +401,8 @@
         "SubSectIndex": 5,
         "SubSectIndexAlong": 5,
         "SubSectIndexDown": 0,
-        "LowDepth": 11.348345975286065
+        "LowDepth": 11.348345975286065,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -473,7 +479,8 @@
         "SubSectIndex": 6,
         "SubSectIndexAlong": 6,
         "SubSectIndexDown": 0,
-        "LowDepth": 11.062905000450128
+        "LowDepth": 11.062905000450128,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -545,7 +552,8 @@
         "SubSectIndex": 7,
         "SubSectIndexAlong": 7,
         "SubSectIndexDown": 0,
-        "LowDepth": 10.68895881738206
+        "LowDepth": 10.68895881738206,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -617,7 +625,8 @@
         "SubSectIndex": 8,
         "SubSectIndexAlong": 8,
         "SubSectIndexDown": 0,
-        "LowDepth": 10.421581641313965
+        "LowDepth": 10.421581641313965,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -689,7 +698,8 @@
         "SubSectIndex": 9,
         "SubSectIndexAlong": 9,
         "SubSectIndexDown": 0,
-        "LowDepth": 10.356881539985958
+        "LowDepth": 10.356881539985958,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -761,7 +771,8 @@
         "SubSectIndex": 10,
         "SubSectIndexAlong": 10,
         "SubSectIndexDown": 0,
-        "LowDepth": 10.197262639399023
+        "LowDepth": 10.197262639399023,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -838,7 +849,8 @@
         "SubSectIndex": 11,
         "SubSectIndexAlong": 11,
         "SubSectIndexDown": 0,
-        "LowDepth": 9.939403429810225
+        "LowDepth": 9.939403429810225,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -910,7 +922,8 @@
         "SubSectIndex": 12,
         "SubSectIndexAlong": 12,
         "SubSectIndexDown": 0,
-        "LowDepth": 9.820103100349979
+        "LowDepth": 9.820103100349979,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -982,7 +995,8 @@
         "SubSectIndex": 13,
         "SubSectIndexAlong": 13,
         "SubSectIndexDown": 0,
-        "LowDepth": 9.687817251717602
+        "LowDepth": 9.687817251717602,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -1059,7 +1073,8 @@
         "SubSectIndex": 14,
         "SubSectIndexAlong": 14,
         "SubSectIndexDown": 0,
-        "LowDepth": 9.504304661880855
+        "LowDepth": 9.504304661880855,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -1126,7 +1141,8 @@
         "SubSectIndex": 15,
         "SubSectIndexAlong": 15,
         "SubSectIndexDown": 0,
-        "LowDepth": 9.482454620010191
+        "LowDepth": 9.482454620010191,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -1203,7 +1219,8 @@
         "SubSectIndex": 16,
         "SubSectIndexAlong": 16,
         "SubSectIndexDown": 0,
-        "LowDepth": 9.440735989811563
+        "LowDepth": 9.440735989811563,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -1275,7 +1292,8 @@
         "SubSectIndex": 17,
         "SubSectIndexAlong": 17,
         "SubSectIndexDown": 0,
-        "LowDepth": 9.347617498349413
+        "LowDepth": 9.347617498349413,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -1347,7 +1365,8 @@
         "SubSectIndex": 18,
         "SubSectIndexAlong": 18,
         "SubSectIndexDown": 0,
-        "LowDepth": 9.255203769691914
+        "LowDepth": 9.255203769691914,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -1424,7 +1443,8 @@
         "SubSectIndex": 19,
         "SubSectIndexAlong": 19,
         "SubSectIndexDown": 0,
-        "LowDepth": 9.20041001368461
+        "LowDepth": 9.20041001368461,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -1496,7 +1516,8 @@
         "SubSectIndex": 20,
         "SubSectIndexAlong": 20,
         "SubSectIndexDown": 0,
-        "LowDepth": 9.200788779976879
+        "LowDepth": 9.200788779976879,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -1568,7 +1589,8 @@
         "SubSectIndex": 21,
         "SubSectIndexAlong": 21,
         "SubSectIndexDown": 0,
-        "LowDepth": 9.169853536259422
+        "LowDepth": 9.169853536259422,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -1640,7 +1662,8 @@
         "SubSectIndex": 22,
         "SubSectIndexAlong": 22,
         "SubSectIndexDown": 0,
-        "LowDepth": 9.116985354149193
+        "LowDepth": 9.116985354149193,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -1712,7 +1735,8 @@
         "SubSectIndex": 23,
         "SubSectIndexAlong": 23,
         "SubSectIndexDown": 0,
-        "LowDepth": 9.030843509744598
+        "LowDepth": 9.030843509744598,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -1789,7 +1813,8 @@
         "SubSectIndex": 24,
         "SubSectIndexAlong": 24,
         "SubSectIndexDown": 0,
-        "LowDepth": 8.981842468625384
+        "LowDepth": 8.981842468625384,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -1861,7 +1886,8 @@
         "SubSectIndex": 25,
         "SubSectIndexAlong": 25,
         "SubSectIndexDown": 0,
-        "LowDepth": 9.071309406208035
+        "LowDepth": 9.071309406208035,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -1933,7 +1959,8 @@
         "SubSectIndex": 26,
         "SubSectIndexAlong": 26,
         "SubSectIndexDown": 0,
-        "LowDepth": 9.22918037703993
+        "LowDepth": 9.22918037703993,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -2005,7 +2032,8 @@
         "SubSectIndex": 27,
         "SubSectIndexAlong": 27,
         "SubSectIndexDown": 0,
-        "LowDepth": 9.497145598420685
+        "LowDepth": 9.497145598420685,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -2077,7 +2105,8 @@
         "SubSectIndex": 28,
         "SubSectIndexAlong": 28,
         "SubSectIndexDown": 0,
-        "LowDepth": 9.94967650502378
+        "LowDepth": 9.94967650502378,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -2154,7 +2183,8 @@
         "SubSectIndex": 29,
         "SubSectIndexAlong": 29,
         "SubSectIndexDown": 0,
-        "LowDepth": 10.67568486967654
+        "LowDepth": 10.67568486967654,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -2226,7 +2256,8 @@
         "SubSectIndex": 30,
         "SubSectIndexAlong": 30,
         "SubSectIndexDown": 0,
-        "LowDepth": 11.384631719285448
+        "LowDepth": 11.384631719285448,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -2298,7 +2329,8 @@
         "SubSectIndex": 31,
         "SubSectIndexAlong": 31,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.16886275874473
+        "LowDepth": 12.16886275874473,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -2375,7 +2407,8 @@
         "SubSectIndex": 32,
         "SubSectIndexAlong": 32,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.698863593143358
+        "LowDepth": 12.698863593143358,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -2447,7 +2480,8 @@
         "SubSectIndex": 33,
         "SubSectIndexAlong": 33,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.9802193575814
+        "LowDepth": 12.9802193575814,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -2519,7 +2553,8 @@
         "SubSectIndex": 34,
         "SubSectIndexAlong": 34,
         "SubSectIndexDown": 0,
-        "LowDepth": 13.199573683288705
+        "LowDepth": 13.199573683288705,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -2596,7 +2631,8 @@
         "SubSectIndex": 35,
         "SubSectIndexAlong": 35,
         "SubSectIndexDown": 0,
-        "LowDepth": 13.340913208961142
+        "LowDepth": 13.340913208961142,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -2673,7 +2709,8 @@
         "SubSectIndex": 36,
         "SubSectIndexAlong": 36,
         "SubSectIndexDown": 0,
-        "LowDepth": 13.402998261691542
+        "LowDepth": 13.402998261691542,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -2750,7 +2787,8 @@
         "SubSectIndex": 37,
         "SubSectIndexAlong": 37,
         "SubSectIndexDown": 0,
-        "LowDepth": 13.43104902684758
+        "LowDepth": 13.43104902684758,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -2827,7 +2865,8 @@
         "SubSectIndex": 38,
         "SubSectIndexAlong": 38,
         "SubSectIndexDown": 0,
-        "LowDepth": 13.488202488180072
+        "LowDepth": 13.488202488180072,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -2899,7 +2938,8 @@
         "SubSectIndex": 39,
         "SubSectIndexAlong": 39,
         "SubSectIndexDown": 0,
-        "LowDepth": 13.558404572756006
+        "LowDepth": 13.558404572756006,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -2981,7 +3021,8 @@
         "SubSectIndex": 40,
         "SubSectIndexAlong": 40,
         "SubSectIndexDown": 0,
-        "LowDepth": 13.605719870305284
+        "LowDepth": 13.605719870305284,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -3058,7 +3099,8 @@
         "SubSectIndex": 41,
         "SubSectIndexAlong": 41,
         "SubSectIndexDown": 0,
-        "LowDepth": 13.614119351367322
+        "LowDepth": 13.614119351367322,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -3135,7 +3177,8 @@
         "SubSectIndex": 42,
         "SubSectIndexAlong": 42,
         "SubSectIndexDown": 0,
-        "LowDepth": 13.573913817814706
+        "LowDepth": 13.573913817814706,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -3207,7 +3250,8 @@
         "SubSectIndex": 43,
         "SubSectIndexAlong": 43,
         "SubSectIndexDown": 0,
-        "LowDepth": 13.318578719307325
+        "LowDepth": 13.318578719307325,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -3279,7 +3323,8 @@
         "SubSectIndex": 44,
         "SubSectIndexAlong": 44,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.872503352359505
+        "LowDepth": 12.872503352359505,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -3351,7 +3396,8 @@
         "SubSectIndex": 45,
         "SubSectIndexAlong": 45,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.41683800409954
+        "LowDepth": 12.41683800409954,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -3423,7 +3469,8 @@
         "SubSectIndex": 46,
         "SubSectIndexAlong": 46,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.171401348632939
+        "LowDepth": 12.171401348632939,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -3500,7 +3547,8 @@
         "SubSectIndex": 47,
         "SubSectIndexAlong": 47,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.053785866868946
+        "LowDepth": 12.053785866868946,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -3572,7 +3620,8 @@
         "SubSectIndex": 48,
         "SubSectIndexAlong": 48,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.096295406890821
+        "LowDepth": 12.096295406890821,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -3654,7 +3703,8 @@
         "SubSectIndex": 49,
         "SubSectIndexAlong": 49,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.255589355166316
+        "LowDepth": 12.255589355166316,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -3726,7 +3776,8 @@
         "SubSectIndex": 50,
         "SubSectIndexAlong": 50,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.332922213555657
+        "LowDepth": 12.332922213555657,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -3798,7 +3849,8 @@
         "SubSectIndex": 51,
         "SubSectIndexAlong": 51,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.361442889304826
+        "LowDepth": 12.361442889304826,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -3875,7 +3927,8 @@
         "SubSectIndex": 52,
         "SubSectIndexAlong": 52,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.333531498796818
+        "LowDepth": 12.333531498796818,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -3952,7 +4005,8 @@
         "SubSectIndex": 53,
         "SubSectIndexAlong": 53,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.234201201816537
+        "LowDepth": 12.234201201816537,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -4029,7 +4083,8 @@
         "SubSectIndex": 54,
         "SubSectIndexAlong": 54,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.084362494636629
+        "LowDepth": 12.084362494636629,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -4101,7 +4156,8 @@
         "SubSectIndex": 55,
         "SubSectIndexAlong": 55,
         "SubSectIndexDown": 0,
-        "LowDepth": 11.987336368599083
+        "LowDepth": 11.987336368599083,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -4178,7 +4234,8 @@
         "SubSectIndex": 56,
         "SubSectIndexAlong": 56,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.132698642129865
+        "LowDepth": 12.132698642129865,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -4250,7 +4307,8 @@
         "SubSectIndex": 57,
         "SubSectIndexAlong": 57,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.14420528001917
+        "LowDepth": 12.14420528001917,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -4322,7 +4380,8 @@
         "SubSectIndex": 58,
         "SubSectIndexAlong": 58,
         "SubSectIndexDown": 0,
-        "LowDepth": 11.963781697139542
+        "LowDepth": 11.963781697139542,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -4389,7 +4448,8 @@
         "SubSectIndex": 59,
         "SubSectIndexAlong": 59,
         "SubSectIndexDown": 0,
-        "LowDepth": 11.805354925018438
+        "LowDepth": 11.805354925018438,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -4466,7 +4526,8 @@
         "SubSectIndex": 60,
         "SubSectIndexAlong": 60,
         "SubSectIndexDown": 0,
-        "LowDepth": 11.891998943698152
+        "LowDepth": 11.891998943698152,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -4538,7 +4599,8 @@
         "SubSectIndex": 61,
         "SubSectIndexAlong": 61,
         "SubSectIndexDown": 0,
-        "LowDepth": 11.81112382692686
+        "LowDepth": 11.81112382692686,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -4615,7 +4677,8 @@
         "SubSectIndex": 62,
         "SubSectIndexAlong": 62,
         "SubSectIndexDown": 0,
-        "LowDepth": 11.959953177782106
+        "LowDepth": 11.959953177782106,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -4692,7 +4755,8 @@
         "SubSectIndex": 63,
         "SubSectIndexAlong": 63,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.19216861575172
+        "LowDepth": 12.19216861575172,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -4764,7 +4828,8 @@
         "SubSectIndex": 64,
         "SubSectIndexAlong": 64,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.40222071184094
+        "LowDepth": 12.40222071184094,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -4836,7 +4901,8 @@
         "SubSectIndex": 65,
         "SubSectIndexAlong": 65,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.628682676012328
+        "LowDepth": 12.628682676012328,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -4913,7 +4979,8 @@
         "SubSectIndex": 66,
         "SubSectIndexAlong": 66,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.777911986693322
+        "LowDepth": 12.777911986693322,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -4985,7 +5052,8 @@
         "SubSectIndex": 67,
         "SubSectIndexAlong": 67,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.849669800045525
+        "LowDepth": 12.849669800045525,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -5057,7 +5125,8 @@
         "SubSectIndex": 68,
         "SubSectIndexAlong": 68,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.592384884161085
+        "LowDepth": 12.592384884161085,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -5129,7 +5198,8 @@
         "SubSectIndex": 69,
         "SubSectIndexAlong": 69,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.260304366679009
+        "LowDepth": 12.260304366679009,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -5201,7 +5271,8 @@
         "SubSectIndex": 70,
         "SubSectIndexAlong": 70,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.305334791811262
+        "LowDepth": 12.305334791811262,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -5278,7 +5349,8 @@
         "SubSectIndex": 71,
         "SubSectIndexAlong": 71,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.62376844751287
+        "LowDepth": 12.62376844751287,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -5350,7 +5422,8 @@
         "SubSectIndex": 72,
         "SubSectIndexAlong": 72,
         "SubSectIndexDown": 0,
-        "LowDepth": 13.000559766522231
+        "LowDepth": 13.000559766522231,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -5422,7 +5495,8 @@
         "SubSectIndex": 73,
         "SubSectIndexAlong": 73,
         "SubSectIndexDown": 0,
-        "LowDepth": 13.053698640784784
+        "LowDepth": 13.053698640784784,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -5494,7 +5568,8 @@
         "SubSectIndex": 74,
         "SubSectIndexAlong": 74,
         "SubSectIndexDown": 0,
-        "LowDepth": 13.034448835580628
+        "LowDepth": 13.034448835580628,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -5566,7 +5641,8 @@
         "SubSectIndex": 75,
         "SubSectIndexAlong": 75,
         "SubSectIndexDown": 0,
-        "LowDepth": 13.021547545320537
+        "LowDepth": 13.021547545320537,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -5643,7 +5719,8 @@
         "SubSectIndex": 76,
         "SubSectIndexAlong": 76,
         "SubSectIndexDown": 0,
-        "LowDepth": 13.00444887396334
+        "LowDepth": 13.00444887396334,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -5720,7 +5797,8 @@
         "SubSectIndex": 77,
         "SubSectIndexAlong": 77,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.903836690184944
+        "LowDepth": 12.903836690184944,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -5792,7 +5870,8 @@
         "SubSectIndex": 78,
         "SubSectIndexAlong": 78,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.70004755256966
+        "LowDepth": 12.70004755256966,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -5869,7 +5948,8 @@
         "SubSectIndex": 79,
         "SubSectIndexAlong": 79,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.576450376383397
+        "LowDepth": 12.576450376383397,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -5946,7 +6026,8 @@
         "SubSectIndex": 80,
         "SubSectIndexAlong": 80,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.619877746289525
+        "LowDepth": 12.619877746289525,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -6023,7 +6104,8 @@
         "SubSectIndex": 81,
         "SubSectIndexAlong": 81,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.70270207441213
+        "LowDepth": 12.70270207441213,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -6105,7 +6187,8 @@
         "SubSectIndex": 82,
         "SubSectIndexAlong": 82,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.904454939820683
+        "LowDepth": 12.904454939820683,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -6182,7 +6265,8 @@
         "SubSectIndex": 83,
         "SubSectIndexAlong": 83,
         "SubSectIndexDown": 0,
-        "LowDepth": 13.026088239699867
+        "LowDepth": 13.026088239699867,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -6259,7 +6343,8 @@
         "SubSectIndex": 84,
         "SubSectIndexAlong": 84,
         "SubSectIndexDown": 0,
-        "LowDepth": 13.102679058617252
+        "LowDepth": 13.102679058617252,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -6336,7 +6421,8 @@
         "SubSectIndex": 85,
         "SubSectIndexAlong": 85,
         "SubSectIndexDown": 0,
-        "LowDepth": 13.197099451798325
+        "LowDepth": 13.197099451798325,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -6413,7 +6499,8 @@
         "SubSectIndex": 86,
         "SubSectIndexAlong": 86,
         "SubSectIndexDown": 0,
-        "LowDepth": 13.275030231905646
+        "LowDepth": 13.275030231905646,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -6485,7 +6572,8 @@
         "SubSectIndex": 87,
         "SubSectIndexAlong": 87,
         "SubSectIndexDown": 0,
-        "LowDepth": 13.279280180495908
+        "LowDepth": 13.279280180495908,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -6562,7 +6650,8 @@
         "SubSectIndex": 88,
         "SubSectIndexAlong": 88,
         "SubSectIndexDown": 0,
-        "LowDepth": 13.123215773198483
+        "LowDepth": 13.123215773198483,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -6639,7 +6728,8 @@
         "SubSectIndex": 89,
         "SubSectIndexAlong": 89,
         "SubSectIndexDown": 0,
-        "LowDepth": 12.825267544893775
+        "LowDepth": 12.825267544893775,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -6711,7 +6801,8 @@
         "SubSectIndex": 90,
         "SubSectIndexAlong": 90,
         "SubSectIndexDown": 0,
-        "LowDepth": 11.935443741545416
+        "LowDepth": 11.935443741545416,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -6783,7 +6874,8 @@
         "SubSectIndex": 91,
         "SubSectIndexAlong": 91,
         "SubSectIndexDown": 0,
-        "LowDepth": 10.96098168143403
+        "LowDepth": 10.96098168143403,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -6855,7 +6947,8 @@
         "SubSectIndex": 92,
         "SubSectIndexAlong": 92,
         "SubSectIndexDown": 0,
-        "LowDepth": 10.436604010283364
+        "LowDepth": 10.436604010283364,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -6932,7 +7025,8 @@
         "SubSectIndex": 93,
         "SubSectIndexAlong": 93,
         "SubSectIndexDown": 0,
-        "LowDepth": 10.083909950685754
+        "LowDepth": 10.083909950685754,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -6999,7 +7093,8 @@
         "SubSectIndex": 94,
         "SubSectIndexAlong": 94,
         "SubSectIndexDown": 0,
-        "LowDepth": 9.965393248662755
+        "LowDepth": 9.965393248662755,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -7066,7 +7161,8 @@
         "SubSectIndex": 95,
         "SubSectIndexAlong": 0,
         "SubSectIndexDown": 1,
-        "LowDepth": 14.558046574563795
+        "LowDepth": 14.558046574563795,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -7153,7 +7249,8 @@
         "SubSectIndex": 96,
         "SubSectIndexAlong": 1,
         "SubSectIndexDown": 1,
-        "LowDepth": 14.787825170000174
+        "LowDepth": 14.787825170000174,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -7240,7 +7337,8 @@
         "SubSectIndex": 97,
         "SubSectIndexAlong": 2,
         "SubSectIndexDown": 1,
-        "LowDepth": 15.052883194908945
+        "LowDepth": 15.052883194908945,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -7322,7 +7420,8 @@
         "SubSectIndex": 98,
         "SubSectIndexAlong": 3,
         "SubSectIndexDown": 1,
-        "LowDepth": 15.22345433295823
+        "LowDepth": 15.22345433295823,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -7414,7 +7513,8 @@
         "SubSectIndex": 99,
         "SubSectIndexAlong": 4,
         "SubSectIndexDown": 1,
-        "LowDepth": 15.165595981713953
+        "LowDepth": 15.165595981713953,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -7501,7 +7601,8 @@
         "SubSectIndex": 100,
         "SubSectIndexAlong": 5,
         "SubSectIndexDown": 1,
-        "LowDepth": 15.045684954427559
+        "LowDepth": 15.045684954427559,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -7588,7 +7689,8 @@
         "SubSectIndex": 101,
         "SubSectIndexAlong": 6,
         "SubSectIndexDown": 1,
-        "LowDepth": 14.83358423982747
+        "LowDepth": 14.83358423982747,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -7680,7 +7782,8 @@
         "SubSectIndex": 102,
         "SubSectIndexAlong": 7,
         "SubSectIndexDown": 1,
-        "LowDepth": 14.523544424082704
+        "LowDepth": 14.523544424082704,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -7757,7 +7860,8 @@
         "SubSectIndex": 103,
         "SubSectIndexAlong": 8,
         "SubSectIndexDown": 1,
-        "LowDepth": 14.388214647583993
+        "LowDepth": 14.388214647583993,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -7849,7 +7953,8 @@
         "SubSectIndex": 104,
         "SubSectIndexAlong": 9,
         "SubSectIndexDown": 1,
-        "LowDepth": 14.312147459970431
+        "LowDepth": 14.312147459970431,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -7941,7 +8046,8 @@
         "SubSectIndex": 105,
         "SubSectIndexAlong": 10,
         "SubSectIndexDown": 1,
-        "LowDepth": 14.123184870942927
+        "LowDepth": 14.123184870942927,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -8023,7 +8129,8 @@
         "SubSectIndex": 106,
         "SubSectIndexAlong": 11,
         "SubSectIndexDown": 1,
-        "LowDepth": 13.869578366751352
+        "LowDepth": 13.869578366751352,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -8110,7 +8217,8 @@
         "SubSectIndex": 107,
         "SubSectIndexAlong": 12,
         "SubSectIndexDown": 1,
-        "LowDepth": 13.759470286576889
+        "LowDepth": 13.759470286576889,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -8197,7 +8305,8 @@
         "SubSectIndex": 108,
         "SubSectIndexAlong": 13,
         "SubSectIndexDown": 1,
-        "LowDepth": 13.522256928847948
+        "LowDepth": 13.522256928847948,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -8284,7 +8393,8 @@
         "SubSectIndex": 109,
         "SubSectIndexAlong": 14,
         "SubSectIndexDown": 1,
-        "LowDepth": 13.353359696665455
+        "LowDepth": 13.353359696665455,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -8376,7 +8486,8 @@
         "SubSectIndex": 110,
         "SubSectIndexAlong": 15,
         "SubSectIndexDown": 1,
-        "LowDepth": 13.386517857874294
+        "LowDepth": 13.386517857874294,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -8463,7 +8574,8 @@
         "SubSectIndex": 111,
         "SubSectIndexAlong": 16,
         "SubSectIndexDown": 1,
-        "LowDepth": 13.31012190481527
+        "LowDepth": 13.31012190481527,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -8550,7 +8662,8 @@
         "SubSectIndex": 112,
         "SubSectIndexAlong": 17,
         "SubSectIndexDown": 1,
-        "LowDepth": 13.170013242361213
+        "LowDepth": 13.170013242361213,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -8637,7 +8750,8 @@
         "SubSectIndex": 113,
         "SubSectIndexAlong": 18,
         "SubSectIndexDown": 1,
-        "LowDepth": 13.041137123183184
+        "LowDepth": 13.041137123183184,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -8729,7 +8843,8 @@
         "SubSectIndex": 114,
         "SubSectIndexAlong": 19,
         "SubSectIndexDown": 1,
-        "LowDepth": 13.009206145385265
+        "LowDepth": 13.009206145385265,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -8816,7 +8931,8 @@
         "SubSectIndex": 115,
         "SubSectIndexAlong": 20,
         "SubSectIndexDown": 1,
-        "LowDepth": 13.02928209623463
+        "LowDepth": 13.02928209623463,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -8903,7 +9019,8 @@
         "SubSectIndex": 116,
         "SubSectIndexAlong": 21,
         "SubSectIndexDown": 1,
-        "LowDepth": 12.96716489367121
+        "LowDepth": 12.96716489367121,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -8990,7 +9107,8 @@
         "SubSectIndex": 117,
         "SubSectIndexAlong": 22,
         "SubSectIndexDown": 1,
-        "LowDepth": 12.841063755752362
+        "LowDepth": 12.841063755752362,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -9077,7 +9195,8 @@
         "SubSectIndex": 118,
         "SubSectIndexAlong": 23,
         "SubSectIndexDown": 1,
-        "LowDepth": 12.697535962776943
+        "LowDepth": 12.697535962776943,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -9164,7 +9283,8 @@
         "SubSectIndex": 119,
         "SubSectIndexAlong": 24,
         "SubSectIndexDown": 1,
-        "LowDepth": 12.83023984313201
+        "LowDepth": 12.83023984313201,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -9251,7 +9371,8 @@
         "SubSectIndex": 120,
         "SubSectIndexAlong": 25,
         "SubSectIndexDown": 1,
-        "LowDepth": 13.110860881758578
+        "LowDepth": 13.110860881758578,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -9338,7 +9459,8 @@
         "SubSectIndex": 121,
         "SubSectIndexAlong": 26,
         "SubSectIndexDown": 1,
-        "LowDepth": 13.593038345332978
+        "LowDepth": 13.593038345332978,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -9425,7 +9547,8 @@
         "SubSectIndex": 122,
         "SubSectIndexAlong": 27,
         "SubSectIndexDown": 1,
-        "LowDepth": 14.290827399686274
+        "LowDepth": 14.290827399686274,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -9517,7 +9640,8 @@
         "SubSectIndex": 123,
         "SubSectIndexAlong": 28,
         "SubSectIndexDown": 1,
-        "LowDepth": 15.025089200513056
+        "LowDepth": 15.025089200513056,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -9604,7 +9728,8 @@
         "SubSectIndex": 124,
         "SubSectIndexAlong": 29,
         "SubSectIndexDown": 1,
-        "LowDepth": 15.71733570504943
+        "LowDepth": 15.71733570504943,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -9691,7 +9816,8 @@
         "SubSectIndex": 125,
         "SubSectIndexAlong": 30,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.485988590816447
+        "LowDepth": 16.485988590816447,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -9783,7 +9909,8 @@
         "SubSectIndex": 126,
         "SubSectIndexAlong": 31,
         "SubSectIndexDown": 1,
-        "LowDepth": 17.00180827730548
+        "LowDepth": 17.00180827730548,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -9870,7 +9997,8 @@
         "SubSectIndex": 127,
         "SubSectIndexAlong": 32,
         "SubSectIndexDown": 1,
-        "LowDepth": 17.289615643531317
+        "LowDepth": 17.289615643531317,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -9962,7 +10090,8 @@
         "SubSectIndex": 128,
         "SubSectIndexAlong": 33,
         "SubSectIndexDown": 1,
-        "LowDepth": 17.489769901119654
+        "LowDepth": 17.489769901119654,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -10049,7 +10178,8 @@
         "SubSectIndex": 129,
         "SubSectIndexAlong": 34,
         "SubSectIndexDown": 1,
-        "LowDepth": 17.57735296477466
+        "LowDepth": 17.57735296477466,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -10136,7 +10266,8 @@
         "SubSectIndex": 130,
         "SubSectIndexAlong": 35,
         "SubSectIndexDown": 1,
-        "LowDepth": 17.5684140404042
+        "LowDepth": 17.5684140404042,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -10228,7 +10359,8 @@
         "SubSectIndex": 131,
         "SubSectIndexAlong": 36,
         "SubSectIndexDown": 1,
-        "LowDepth": 17.565776744117873
+        "LowDepth": 17.565776744117873,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -10315,7 +10447,8 @@
         "SubSectIndex": 132,
         "SubSectIndexAlong": 37,
         "SubSectIndexDown": 1,
-        "LowDepth": 17.660665349659148
+        "LowDepth": 17.660665349659148,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -10407,7 +10540,8 @@
         "SubSectIndex": 133,
         "SubSectIndexAlong": 38,
         "SubSectIndexDown": 1,
-        "LowDepth": 17.752617483944523
+        "LowDepth": 17.752617483944523,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -10494,7 +10628,8 @@
         "SubSectIndex": 134,
         "SubSectIndexAlong": 39,
         "SubSectIndexDown": 1,
-        "LowDepth": 17.777257044893105
+        "LowDepth": 17.777257044893105,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -10581,7 +10716,8 @@
         "SubSectIndex": 135,
         "SubSectIndexAlong": 40,
         "SubSectIndexDown": 1,
-        "LowDepth": 17.698899487662594
+        "LowDepth": 17.698899487662594,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -10668,7 +10804,8 @@
         "SubSectIndex": 136,
         "SubSectIndexAlong": 41,
         "SubSectIndexDown": 1,
-        "LowDepth": 17.61754647774099
+        "LowDepth": 17.61754647774099,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -10760,7 +10897,8 @@
         "SubSectIndex": 137,
         "SubSectIndexAlong": 42,
         "SubSectIndexDown": 1,
-        "LowDepth": 17.340062992838728
+        "LowDepth": 17.340062992838728,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -10852,7 +10990,8 @@
         "SubSectIndex": 138,
         "SubSectIndexAlong": 43,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.939839129426996
+        "LowDepth": 16.939839129426996,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -10939,7 +11078,8 @@
         "SubSectIndex": 139,
         "SubSectIndexAlong": 44,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.60472545897564
+        "LowDepth": 16.60472545897564,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -11026,7 +11166,8 @@
         "SubSectIndex": 140,
         "SubSectIndexAlong": 45,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.471484805162234
+        "LowDepth": 16.471484805162234,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -11113,7 +11254,8 @@
         "SubSectIndex": 141,
         "SubSectIndexAlong": 46,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.412788765526702
+        "LowDepth": 16.412788765526702,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -11200,7 +11342,8 @@
         "SubSectIndex": 142,
         "SubSectIndexAlong": 47,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.54740603536916
+        "LowDepth": 16.54740603536916,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -11287,7 +11430,8 @@
         "SubSectIndex": 143,
         "SubSectIndexAlong": 48,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.659758306575817
+        "LowDepth": 16.659758306575817,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -11374,7 +11518,8 @@
         "SubSectIndex": 144,
         "SubSectIndexAlong": 49,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.714071599527283
+        "LowDepth": 16.714071599527283,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -11466,7 +11611,8 @@
         "SubSectIndex": 145,
         "SubSectIndexAlong": 50,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.72837238263951
+        "LowDepth": 16.72837238263951,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -11553,7 +11699,8 @@
         "SubSectIndex": 146,
         "SubSectIndexAlong": 51,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.669354206915145
+        "LowDepth": 16.669354206915145,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -11640,7 +11787,8 @@
         "SubSectIndex": 147,
         "SubSectIndexAlong": 52,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.538000251804284
+        "LowDepth": 16.538000251804284,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -11727,7 +11875,8 @@
         "SubSectIndex": 148,
         "SubSectIndexAlong": 53,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.38406645174137
+        "LowDepth": 16.38406645174137,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -11819,7 +11968,8 @@
         "SubSectIndex": 149,
         "SubSectIndexAlong": 54,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.42531167337175
+        "LowDepth": 16.42531167337175,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -11906,7 +12056,8 @@
         "SubSectIndex": 150,
         "SubSectIndexAlong": 55,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.362423164858658
+        "LowDepth": 16.362423164858658,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -11993,7 +12144,8 @@
         "SubSectIndex": 151,
         "SubSectIndexAlong": 56,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.13070536844962
+        "LowDepth": 16.13070536844962,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -12080,7 +12232,8 @@
         "SubSectIndex": 152,
         "SubSectIndexAlong": 57,
         "SubSectIndexDown": 1,
-        "LowDepth": 15.875175483883336
+        "LowDepth": 15.875175483883336,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -12167,7 +12320,8 @@
         "SubSectIndex": 153,
         "SubSectIndexAlong": 58,
         "SubSectIndexDown": 1,
-        "LowDepth": 15.862358234413561
+        "LowDepth": 15.862358234413561,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -12259,7 +12413,8 @@
         "SubSectIndex": 154,
         "SubSectIndexAlong": 59,
         "SubSectIndexDown": 1,
-        "LowDepth": 15.718381572370337
+        "LowDepth": 15.718381572370337,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -12346,7 +12501,8 @@
         "SubSectIndex": 155,
         "SubSectIndexAlong": 60,
         "SubSectIndexDown": 1,
-        "LowDepth": 15.750406008809486
+        "LowDepth": 15.750406008809486,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -12433,7 +12589,8 @@
         "SubSectIndex": 156,
         "SubSectIndexAlong": 61,
         "SubSectIndexDown": 1,
-        "LowDepth": 15.848662472675322
+        "LowDepth": 15.848662472675322,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -12520,7 +12677,8 @@
         "SubSectIndex": 157,
         "SubSectIndexAlong": 62,
         "SubSectIndexDown": 1,
-        "LowDepth": 15.918898598999151
+        "LowDepth": 15.918898598999151,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -12607,7 +12765,8 @@
         "SubSectIndex": 158,
         "SubSectIndexAlong": 63,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.007415689568173
+        "LowDepth": 16.007415689568173,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -12699,7 +12858,8 @@
         "SubSectIndex": 159,
         "SubSectIndexAlong": 64,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.06626159330583
+        "LowDepth": 16.06626159330583,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -12791,7 +12951,8 @@
         "SubSectIndex": 160,
         "SubSectIndexAlong": 65,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.071214825068303
+        "LowDepth": 16.071214825068303,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -12878,7 +13039,8 @@
         "SubSectIndex": 161,
         "SubSectIndexAlong": 66,
         "SubSectIndexDown": 1,
-        "LowDepth": 15.803206768127986
+        "LowDepth": 15.803206768127986,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -12960,7 +13122,8 @@
         "SubSectIndex": 162,
         "SubSectIndexAlong": 67,
         "SubSectIndexDown": 1,
-        "LowDepth": 15.568182864601857
+        "LowDepth": 15.568182864601857,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -13052,7 +13215,8 @@
         "SubSectIndex": 163,
         "SubSectIndexAlong": 68,
         "SubSectIndexDown": 1,
-        "LowDepth": 15.670767563981
+        "LowDepth": 15.670767563981,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -13139,7 +13303,8 @@
         "SubSectIndex": 164,
         "SubSectIndexAlong": 69,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.00204955809688
+        "LowDepth": 16.00204955809688,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -13226,7 +13391,8 @@
         "SubSectIndex": 165,
         "SubSectIndexAlong": 70,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.245054579666395
+        "LowDepth": 16.245054579666395,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -13313,7 +13479,8 @@
         "SubSectIndex": 166,
         "SubSectIndexAlong": 71,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.29202104618088
+        "LowDepth": 16.29202104618088,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -13400,7 +13567,8 @@
         "SubSectIndex": 167,
         "SubSectIndexAlong": 72,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.297791318337325
+        "LowDepth": 16.297791318337325,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -13492,7 +13660,8 @@
         "SubSectIndex": 168,
         "SubSectIndexAlong": 73,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.33997165847549
+        "LowDepth": 16.33997165847549,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -13584,7 +13753,8 @@
         "SubSectIndex": 169,
         "SubSectIndexAlong": 74,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.322626720339358
+        "LowDepth": 16.322626720339358,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -13671,7 +13841,8 @@
         "SubSectIndex": 170,
         "SubSectIndexAlong": 75,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.096692663789522
+        "LowDepth": 16.096692663789522,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -13758,7 +13929,8 @@
         "SubSectIndex": 171,
         "SubSectIndexAlong": 76,
         "SubSectIndexDown": 1,
-        "LowDepth": 15.871905148233266
+        "LowDepth": 15.871905148233266,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -13845,7 +14017,8 @@
         "SubSectIndex": 172,
         "SubSectIndexAlong": 77,
         "SubSectIndexDown": 1,
-        "LowDepth": 15.854508965549062
+        "LowDepth": 15.854508965549062,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -13932,7 +14105,8 @@
         "SubSectIndex": 173,
         "SubSectIndexAlong": 78,
         "SubSectIndexDown": 1,
-        "LowDepth": 15.867989937370696
+        "LowDepth": 15.867989937370696,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -14019,7 +14193,8 @@
         "SubSectIndex": 174,
         "SubSectIndexAlong": 79,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.0258437132272
+        "LowDepth": 16.0258437132272,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -14106,7 +14281,8 @@
         "SubSectIndex": 175,
         "SubSectIndexAlong": 80,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.230790934740604
+        "LowDepth": 16.230790934740604,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -14203,7 +14379,8 @@
         "SubSectIndex": 176,
         "SubSectIndexAlong": 81,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.36416099191375
+        "LowDepth": 16.36416099191375,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -14290,7 +14467,8 @@
         "SubSectIndex": 177,
         "SubSectIndexAlong": 82,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.496733248332315
+        "LowDepth": 16.496733248332315,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -14377,7 +14555,8 @@
         "SubSectIndex": 178,
         "SubSectIndexAlong": 83,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.655182044473587
+        "LowDepth": 16.655182044473587,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -14464,7 +14643,8 @@
         "SubSectIndex": 179,
         "SubSectIndexAlong": 84,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.71265129760782
+        "LowDepth": 16.71265129760782,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -14551,7 +14731,8 @@
         "SubSectIndex": 180,
         "SubSectIndexAlong": 85,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.618701076299107
+        "LowDepth": 16.618701076299107,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -14638,7 +14819,8 @@
         "SubSectIndex": 181,
         "SubSectIndexAlong": 86,
         "SubSectIndexDown": 1,
-        "LowDepth": 16.364320725171005
+        "LowDepth": 16.364320725171005,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -14730,7 +14912,8 @@
         "SubSectIndex": 182,
         "SubSectIndexAlong": 87,
         "SubSectIndexDown": 1,
-        "LowDepth": 15.656296945606531
+        "LowDepth": 15.656296945606531,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -14817,7 +15000,8 @@
         "SubSectIndex": 183,
         "SubSectIndexAlong": 88,
         "SubSectIndexDown": 1,
-        "LowDepth": 14.71088261391579
+        "LowDepth": 14.71088261391579,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -14904,7 +15088,8 @@
         "SubSectIndex": 184,
         "SubSectIndexAlong": 89,
         "SubSectIndexDown": 1,
-        "LowDepth": 14.15630016911814
+        "LowDepth": 14.15630016911814,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -14991,7 +15176,8 @@
         "SubSectIndex": 185,
         "SubSectIndexAlong": 90,
         "SubSectIndexDown": 1,
-        "LowDepth": 13.832166740844483
+        "LowDepth": 13.832166740844483,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -15078,7 +15264,8 @@
         "SubSectIndex": 186,
         "SubSectIndexAlong": 91,
         "SubSectIndexDown": 1,
-        "LowDepth": 13.62983938130035
+        "LowDepth": 13.62983938130035,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -15160,7 +15347,8 @@
         "SubSectIndex": 187,
         "SubSectIndexAlong": 0,
         "SubSectIndexDown": 2,
-        "LowDepth": 18.397668615456745
+        "LowDepth": 18.397668615456745,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -15247,7 +15435,8 @@
         "SubSectIndex": 188,
         "SubSectIndexAlong": 1,
         "SubSectIndexDown": 2,
-        "LowDepth": 18.500268760446826
+        "LowDepth": 18.500268760446826,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -15334,7 +15523,8 @@
         "SubSectIndex": 189,
         "SubSectIndexAlong": 2,
         "SubSectIndexDown": 2,
-        "LowDepth": 18.682718069259426
+        "LowDepth": 18.682718069259426,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -15421,7 +15611,8 @@
         "SubSectIndex": 190,
         "SubSectIndexAlong": 3,
         "SubSectIndexDown": 2,
-        "LowDepth": 18.816017395877864
+        "LowDepth": 18.816017395877864,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -15513,7 +15704,8 @@
         "SubSectIndex": 191,
         "SubSectIndexAlong": 4,
         "SubSectIndexDown": 2,
-        "LowDepth": 18.819262580380613
+        "LowDepth": 18.819262580380613,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -15600,7 +15792,8 @@
         "SubSectIndex": 192,
         "SubSectIndexAlong": 5,
         "SubSectIndexDown": 2,
-        "LowDepth": 18.77325421490371
+        "LowDepth": 18.77325421490371,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -15687,7 +15880,8 @@
         "SubSectIndex": 193,
         "SubSectIndexAlong": 6,
         "SubSectIndexDown": 2,
-        "LowDepth": 18.637271463913205
+        "LowDepth": 18.637271463913205,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -15779,7 +15973,8 @@
         "SubSectIndex": 194,
         "SubSectIndexAlong": 7,
         "SubSectIndexDown": 2,
-        "LowDepth": 18.420729171922137
+        "LowDepth": 18.420729171922137,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -15866,7 +16061,8 @@
         "SubSectIndex": 195,
         "SubSectIndexAlong": 8,
         "SubSectIndexDown": 2,
-        "LowDepth": 18.36323383611968
+        "LowDepth": 18.36323383611968,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -15958,7 +16154,8 @@
         "SubSectIndex": 196,
         "SubSectIndexAlong": 9,
         "SubSectIndexDown": 2,
-        "LowDepth": 18.2634203170407
+        "LowDepth": 18.2634203170407,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -16045,7 +16242,8 @@
         "SubSectIndex": 197,
         "SubSectIndexAlong": 10,
         "SubSectIndexDown": 2,
-        "LowDepth": 18.05731060870589
+        "LowDepth": 18.05731060870589,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -16132,7 +16330,8 @@
         "SubSectIndex": 198,
         "SubSectIndexAlong": 11,
         "SubSectIndexDown": 2,
-        "LowDepth": 17.878359669576593
+        "LowDepth": 17.878359669576593,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -16224,7 +16423,8 @@
         "SubSectIndex": 199,
         "SubSectIndexAlong": 12,
         "SubSectIndexDown": 2,
-        "LowDepth": 17.775308459402886
+        "LowDepth": 17.775308459402886,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -16311,7 +16511,8 @@
         "SubSectIndex": 200,
         "SubSectIndexAlong": 13,
         "SubSectIndexDown": 2,
-        "LowDepth": 17.573319137961068
+        "LowDepth": 17.573319137961068,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -16398,7 +16599,8 @@
         "SubSectIndex": 201,
         "SubSectIndexAlong": 14,
         "SubSectIndexDown": 2,
-        "LowDepth": 17.572861550536707
+        "LowDepth": 17.572861550536707,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -16490,7 +16692,8 @@
         "SubSectIndex": 202,
         "SubSectIndexAlong": 15,
         "SubSectIndexDown": 2,
-        "LowDepth": 17.577289249865213
+        "LowDepth": 17.577289249865213,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -16577,7 +16780,8 @@
         "SubSectIndex": 203,
         "SubSectIndexAlong": 16,
         "SubSectIndexDown": 2,
-        "LowDepth": 17.49701842575189
+        "LowDepth": 17.49701842575189,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -16669,7 +16873,8 @@
         "SubSectIndex": 204,
         "SubSectIndexAlong": 17,
         "SubSectIndexDown": 2,
-        "LowDepth": 17.39598408644745
+        "LowDepth": 17.39598408644745,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -16756,7 +16961,8 @@
         "SubSectIndex": 205,
         "SubSectIndexAlong": 18,
         "SubSectIndexDown": 2,
-        "LowDepth": 17.33937434075008
+        "LowDepth": 17.33937434075008,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -16843,7 +17049,8 @@
         "SubSectIndex": 206,
         "SubSectIndexAlong": 19,
         "SubSectIndexDown": 2,
-        "LowDepth": 17.360133723673048
+        "LowDepth": 17.360133723673048,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -16935,7 +17142,8 @@
         "SubSectIndex": 207,
         "SubSectIndexAlong": 20,
         "SubSectIndexDown": 2,
-        "LowDepth": 17.318527142747023
+        "LowDepth": 17.318527142747023,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -17022,7 +17230,8 @@
         "SubSectIndex": 208,
         "SubSectIndexAlong": 21,
         "SubSectIndexDown": 2,
-        "LowDepth": 17.245365820504805
+        "LowDepth": 17.245365820504805,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -17109,7 +17318,8 @@
         "SubSectIndex": 209,
         "SubSectIndexAlong": 22,
         "SubSectIndexDown": 2,
-        "LowDepth": 17.150459690580057
+        "LowDepth": 17.150459690580057,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -17196,7 +17406,8 @@
         "SubSectIndex": 210,
         "SubSectIndexAlong": 23,
         "SubSectIndexDown": 2,
-        "LowDepth": 17.28337506818704
+        "LowDepth": 17.28337506818704,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -17288,7 +17499,8 @@
         "SubSectIndex": 211,
         "SubSectIndexAlong": 24,
         "SubSectIndexDown": 2,
-        "LowDepth": 17.57086626557873
+        "LowDepth": 17.57086626557873,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -17375,7 +17587,8 @@
         "SubSectIndex": 212,
         "SubSectIndexAlong": 25,
         "SubSectIndexDown": 2,
-        "LowDepth": 18.031297621252953
+        "LowDepth": 18.031297621252953,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -17467,7 +17680,8 @@
         "SubSectIndex": 213,
         "SubSectIndexAlong": 26,
         "SubSectIndexDown": 2,
-        "LowDepth": 18.68237351594909
+        "LowDepth": 18.68237351594909,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -17554,7 +17768,8 @@
         "SubSectIndex": 214,
         "SubSectIndexAlong": 27,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.395120435617653
+        "LowDepth": 19.395120435617653,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -17651,7 +17866,8 @@
         "SubSectIndex": 215,
         "SubSectIndexAlong": 28,
         "SubSectIndexDown": 2,
-        "LowDepth": 20.15964046589263
+        "LowDepth": 20.15964046589263,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -17738,7 +17954,8 @@
         "SubSectIndex": 216,
         "SubSectIndexAlong": 29,
         "SubSectIndexDown": 2,
-        "LowDepth": 21.346868485654777
+        "LowDepth": 21.346868485654777,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -17835,7 +18052,8 @@
         "SubSectIndex": 217,
         "SubSectIndexAlong": 30,
         "SubSectIndexDown": 2,
-        "LowDepth": 22.196600176145537
+        "LowDepth": 22.196600176145537,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -17922,7 +18140,8 @@
         "SubSectIndex": 218,
         "SubSectIndexAlong": 31,
         "SubSectIndexDown": 2,
-        "LowDepth": 22.68661825662496
+        "LowDepth": 22.68661825662496,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -18014,7 +18233,8 @@
         "SubSectIndex": 219,
         "SubSectIndexAlong": 32,
         "SubSectIndexDown": 2,
-        "LowDepth": 23.014129863009536
+        "LowDepth": 23.014129863009536,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -18106,7 +18326,8 @@
         "SubSectIndex": 220,
         "SubSectIndexAlong": 33,
         "SubSectIndexDown": 2,
-        "LowDepth": 23.113623079643396
+        "LowDepth": 23.113623079643396,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -18193,7 +18414,8 @@
         "SubSectIndex": 221,
         "SubSectIndexAlong": 34,
         "SubSectIndexDown": 2,
-        "LowDepth": 23.041834163086744
+        "LowDepth": 23.041834163086744,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -18285,7 +18507,8 @@
         "SubSectIndex": 222,
         "SubSectIndexAlong": 35,
         "SubSectIndexDown": 2,
-        "LowDepth": 23.033005949751352
+        "LowDepth": 23.033005949751352,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -18377,7 +18600,8 @@
         "SubSectIndex": 223,
         "SubSectIndexAlong": 36,
         "SubSectIndexDown": 2,
-        "LowDepth": 23.216784577022924
+        "LowDepth": 23.216784577022924,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -18464,7 +18688,8 @@
         "SubSectIndex": 224,
         "SubSectIndexAlong": 37,
         "SubSectIndexDown": 2,
-        "LowDepth": 23.33503413333062
+        "LowDepth": 23.33503413333062,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -18556,7 +18781,8 @@
         "SubSectIndex": 225,
         "SubSectIndexAlong": 38,
         "SubSectIndexDown": 2,
-        "LowDepth": 23.2834876975855
+        "LowDepth": 23.2834876975855,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -18643,7 +18869,8 @@
         "SubSectIndex": 226,
         "SubSectIndexAlong": 39,
         "SubSectIndexDown": 2,
-        "LowDepth": 23.073010946461675
+        "LowDepth": 23.073010946461675,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -18735,7 +18962,8 @@
         "SubSectIndex": 227,
         "SubSectIndexAlong": 40,
         "SubSectIndexDown": 2,
-        "LowDepth": 22.918845421919816
+        "LowDepth": 22.918845421919816,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -18822,7 +19050,8 @@
         "SubSectIndex": 228,
         "SubSectIndexAlong": 41,
         "SubSectIndexDown": 2,
-        "LowDepth": 22.439253299041802
+        "LowDepth": 22.439253299041802,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -18914,7 +19143,8 @@
         "SubSectIndex": 229,
         "SubSectIndexAlong": 42,
         "SubSectIndexDown": 2,
-        "LowDepth": 21.87174795717912
+        "LowDepth": 21.87174795717912,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -19006,7 +19236,8 @@
         "SubSectIndex": 230,
         "SubSectIndexAlong": 43,
         "SubSectIndexDown": 2,
-        "LowDepth": 21.53249462431134
+        "LowDepth": 21.53249462431134,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -19093,7 +19324,8 @@
         "SubSectIndex": 231,
         "SubSectIndexAlong": 44,
         "SubSectIndexDown": 2,
-        "LowDepth": 21.361913320628986
+        "LowDepth": 21.361913320628986,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -19180,7 +19412,8 @@
         "SubSectIndex": 232,
         "SubSectIndexAlong": 45,
         "SubSectIndexDown": 2,
-        "LowDepth": 21.463509414820845
+        "LowDepth": 21.463509414820845,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -19272,7 +19505,8 @@
         "SubSectIndex": 233,
         "SubSectIndexAlong": 46,
         "SubSectIndexDown": 2,
-        "LowDepth": 21.671076216770487
+        "LowDepth": 21.671076216770487,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -19364,7 +19598,8 @@
         "SubSectIndex": 234,
         "SubSectIndexAlong": 47,
         "SubSectIndexDown": 2,
-        "LowDepth": 21.800861008491797
+        "LowDepth": 21.800861008491797,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -19451,7 +19686,8 @@
         "SubSectIndex": 235,
         "SubSectIndexAlong": 48,
         "SubSectIndexDown": 2,
-        "LowDepth": 21.88764999776214
+        "LowDepth": 21.88764999776214,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -19543,7 +19779,8 @@
         "SubSectIndex": 236,
         "SubSectIndexAlong": 49,
         "SubSectIndexDown": 2,
-        "LowDepth": 21.86730225882728
+        "LowDepth": 21.86730225882728,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -19630,7 +19867,8 @@
         "SubSectIndex": 237,
         "SubSectIndexAlong": 50,
         "SubSectIndexDown": 2,
-        "LowDepth": 21.709880577260137
+        "LowDepth": 21.709880577260137,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -19722,7 +19960,8 @@
         "SubSectIndex": 238,
         "SubSectIndexAlong": 51,
         "SubSectIndexDown": 2,
-        "LowDepth": 21.422424508889055
+        "LowDepth": 21.422424508889055,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -19809,7 +20048,8 @@
         "SubSectIndex": 239,
         "SubSectIndexAlong": 52,
         "SubSectIndexDown": 2,
-        "LowDepth": 21.33120633931724
+        "LowDepth": 21.33120633931724,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -19901,7 +20141,8 @@
         "SubSectIndex": 240,
         "SubSectIndexAlong": 53,
         "SubSectIndexDown": 2,
-        "LowDepth": 21.08282308854179
+        "LowDepth": 21.08282308854179,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -19993,7 +20234,8 @@
         "SubSectIndex": 241,
         "SubSectIndexAlong": 54,
         "SubSectIndexDown": 2,
-        "LowDepth": 20.551991569625617
+        "LowDepth": 20.551991569625617,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -20080,7 +20322,8 @@
         "SubSectIndex": 242,
         "SubSectIndexAlong": 55,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.967547174104844
+        "LowDepth": 19.967547174104844,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -20167,7 +20410,8 @@
         "SubSectIndex": 243,
         "SubSectIndexAlong": 56,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.828543307161272
+        "LowDepth": 19.828543307161272,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -20259,7 +20503,8 @@
         "SubSectIndex": 244,
         "SubSectIndexAlong": 57,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.61141018221167
+        "LowDepth": 19.61141018221167,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -20346,7 +20591,8 @@
         "SubSectIndex": 245,
         "SubSectIndexAlong": 58,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.54310544678967
+        "LowDepth": 19.54310544678967,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -20438,7 +20684,8 @@
         "SubSectIndex": 246,
         "SubSectIndexAlong": 59,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.487014070956736
+        "LowDepth": 19.487014070956736,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -20530,7 +20777,8 @@
         "SubSectIndex": 247,
         "SubSectIndexAlong": 60,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.411823287023985
+        "LowDepth": 19.411823287023985,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -20617,7 +20865,8 @@
         "SubSectIndex": 248,
         "SubSectIndexAlong": 61,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.360933490324445
+        "LowDepth": 19.360933490324445,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -20704,7 +20953,8 @@
         "SubSectIndex": 249,
         "SubSectIndexAlong": 62,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.337659002200756
+        "LowDepth": 19.337659002200756,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -20796,7 +21046,8 @@
         "SubSectIndex": 250,
         "SubSectIndexAlong": 63,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.278843702003908
+        "LowDepth": 19.278843702003908,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -20883,7 +21134,8 @@
         "SubSectIndex": 251,
         "SubSectIndexAlong": 64,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.031040242745632
+        "LowDepth": 19.031040242745632,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -20975,7 +21227,8 @@
         "SubSectIndex": 252,
         "SubSectIndexAlong": 65,
         "SubSectIndexDown": 2,
-        "LowDepth": 18.902914658967184
+        "LowDepth": 18.902914658967184,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -21062,7 +21315,8 @@
         "SubSectIndex": 253,
         "SubSectIndexAlong": 66,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.043013805264476
+        "LowDepth": 19.043013805264476,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -21149,7 +21403,8 @@
         "SubSectIndex": 254,
         "SubSectIndexAlong": 67,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.334287238817268
+        "LowDepth": 19.334287238817268,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -21246,7 +21501,8 @@
         "SubSectIndex": 255,
         "SubSectIndexAlong": 68,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.497593282116448
+        "LowDepth": 19.497593282116448,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -21333,7 +21589,8 @@
         "SubSectIndex": 256,
         "SubSectIndexAlong": 69,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.540989943402774
+        "LowDepth": 19.540989943402774,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -21420,7 +21677,8 @@
         "SubSectIndex": 257,
         "SubSectIndexAlong": 70,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.60843817490945
+        "LowDepth": 19.60843817490945,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -21507,7 +21765,8 @@
         "SubSectIndex": 258,
         "SubSectIndexAlong": 71,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.70220032060533
+        "LowDepth": 19.70220032060533,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -21599,7 +21858,8 @@
         "SubSectIndex": 259,
         "SubSectIndexAlong": 72,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.53490475438529
+        "LowDepth": 19.53490475438529,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -21691,7 +21951,8 @@
         "SubSectIndex": 260,
         "SubSectIndexAlong": 73,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.22996392657788
+        "LowDepth": 19.22996392657788,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -21778,7 +22039,8 @@
         "SubSectIndex": 261,
         "SubSectIndexAlong": 74,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.11229167606137
+        "LowDepth": 19.11229167606137,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -21865,7 +22127,8 @@
         "SubSectIndex": 262,
         "SubSectIndexAlong": 75,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.10730894582645
+        "LowDepth": 19.10730894582645,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -21957,7 +22220,8 @@
         "SubSectIndex": 263,
         "SubSectIndexAlong": 76,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.147526232734386
+        "LowDepth": 19.147526232734386,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -22049,7 +22313,8 @@
         "SubSectIndex": 264,
         "SubSectIndexAlong": 77,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.35554441913278
+        "LowDepth": 19.35554441913278,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -22136,7 +22401,8 @@
         "SubSectIndex": 265,
         "SubSectIndexAlong": 78,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.607939727225794
+        "LowDepth": 19.607939727225794,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -22223,7 +22489,8 @@
         "SubSectIndex": 266,
         "SubSectIndexAlong": 79,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.758899504895787
+        "LowDepth": 19.758899504895787,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -22315,7 +22582,8 @@
         "SubSectIndex": 267,
         "SubSectIndexAlong": 80,
         "SubSectIndexDown": 2,
-        "LowDepth": 20.023930211574275
+        "LowDepth": 20.023930211574275,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -22407,7 +22675,8 @@
         "SubSectIndex": 268,
         "SubSectIndexAlong": 81,
         "SubSectIndexDown": 2,
-        "LowDepth": 20.273907033149257
+        "LowDepth": 20.273907033149257,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -22494,7 +22763,8 @@
         "SubSectIndex": 269,
         "SubSectIndexAlong": 82,
         "SubSectIndexDown": 2,
-        "LowDepth": 20.178541607092004
+        "LowDepth": 20.178541607092004,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -22586,7 +22856,8 @@
         "SubSectIndex": 270,
         "SubSectIndexAlong": 83,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.86927027520033
+        "LowDepth": 19.86927027520033,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -22673,7 +22944,8 @@
         "SubSectIndex": 271,
         "SubSectIndexAlong": 84,
         "SubSectIndexDown": 2,
-        "LowDepth": 19.337874222384748
+        "LowDepth": 19.337874222384748,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -22765,7 +23037,8 @@
         "SubSectIndex": 272,
         "SubSectIndexAlong": 85,
         "SubSectIndexDown": 2,
-        "LowDepth": 18.44987196909535
+        "LowDepth": 18.44987196909535,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -22852,7 +23125,8 @@
         "SubSectIndex": 273,
         "SubSectIndexAlong": 86,
         "SubSectIndexDown": 2,
-        "LowDepth": 17.854104602134687
+        "LowDepth": 17.854104602134687,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -22944,7 +23218,8 @@
         "SubSectIndex": 274,
         "SubSectIndexAlong": 87,
         "SubSectIndexDown": 2,
-        "LowDepth": 17.57636581197865
+        "LowDepth": 17.57636581197865,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -23031,7 +23306,8 @@
         "SubSectIndex": 275,
         "SubSectIndexAlong": 88,
         "SubSectIndexDown": 2,
-        "LowDepth": 17.478035158680367
+        "LowDepth": 17.478035158680367,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -23113,7 +23389,8 @@
         "SubSectIndex": 276,
         "SubSectIndexAlong": 0,
         "SubSectIndexDown": 3,
-        "LowDepth": 24.69345569115942
+        "LowDepth": 24.69345569115942,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -23200,7 +23477,8 @@
         "SubSectIndex": 277,
         "SubSectIndexAlong": 1,
         "SubSectIndexDown": 3,
-        "LowDepth": 24.741257552803518
+        "LowDepth": 24.741257552803518,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -23287,7 +23565,8 @@
         "SubSectIndex": 278,
         "SubSectIndexAlong": 2,
         "SubSectIndexDown": 3,
-        "LowDepth": 24.98475107292142
+        "LowDepth": 24.98475107292142,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -23374,7 +23653,8 @@
         "SubSectIndex": 279,
         "SubSectIndexAlong": 3,
         "SubSectIndexDown": 3,
-        "LowDepth": 25.223211759448798
+        "LowDepth": 25.223211759448798,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -23466,7 +23746,8 @@
         "SubSectIndex": 280,
         "SubSectIndexAlong": 4,
         "SubSectIndexDown": 3,
-        "LowDepth": 25.315892779543603
+        "LowDepth": 25.315892779543603,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -23563,7 +23844,8 @@
         "SubSectIndex": 281,
         "SubSectIndexAlong": 5,
         "SubSectIndexDown": 3,
-        "LowDepth": 25.345942269362425
+        "LowDepth": 25.345942269362425,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -23650,7 +23932,8 @@
         "SubSectIndex": 282,
         "SubSectIndexAlong": 6,
         "SubSectIndexDown": 3,
-        "LowDepth": 25.231370943655445
+        "LowDepth": 25.231370943655445,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -23737,7 +24020,8 @@
         "SubSectIndex": 283,
         "SubSectIndexAlong": 7,
         "SubSectIndexDown": 3,
-        "LowDepth": 24.989182644297724
+        "LowDepth": 24.989182644297724,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -23824,7 +24108,8 @@
         "SubSectIndex": 284,
         "SubSectIndexAlong": 8,
         "SubSectIndexDown": 3,
-        "LowDepth": 24.93962429776712
+        "LowDepth": 24.93962429776712,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -23921,7 +24206,8 @@
         "SubSectIndex": 285,
         "SubSectIndexAlong": 9,
         "SubSectIndexDown": 3,
-        "LowDepth": 24.713355720102886
+        "LowDepth": 24.713355720102886,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -24008,7 +24294,8 @@
         "SubSectIndex": 286,
         "SubSectIndexAlong": 10,
         "SubSectIndexDown": 3,
-        "LowDepth": 24.31319435860694
+        "LowDepth": 24.31319435860694,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -24100,7 +24387,8 @@
         "SubSectIndex": 287,
         "SubSectIndexAlong": 11,
         "SubSectIndexDown": 3,
-        "LowDepth": 24.077219339892473
+        "LowDepth": 24.077219339892473,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -24187,7 +24475,8 @@
         "SubSectIndex": 288,
         "SubSectIndexAlong": 12,
         "SubSectIndexDown": 3,
-        "LowDepth": 23.85652476388811
+        "LowDepth": 23.85652476388811,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -24274,7 +24563,8 @@
         "SubSectIndex": 289,
         "SubSectIndexAlong": 13,
         "SubSectIndexDown": 3,
-        "LowDepth": 23.614235062611133
+        "LowDepth": 23.614235062611133,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -24371,7 +24661,8 @@
         "SubSectIndex": 290,
         "SubSectIndexAlong": 14,
         "SubSectIndexDown": 3,
-        "LowDepth": 23.713739694827414
+        "LowDepth": 23.713739694827414,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -24458,7 +24749,8 @@
         "SubSectIndex": 291,
         "SubSectIndexAlong": 15,
         "SubSectIndexDown": 3,
-        "LowDepth": 23.693104727459442
+        "LowDepth": 23.693104727459442,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -24545,7 +24837,8 @@
         "SubSectIndex": 292,
         "SubSectIndexAlong": 16,
         "SubSectIndexDown": 3,
-        "LowDepth": 23.571753794157093
+        "LowDepth": 23.571753794157093,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -24637,7 +24930,8 @@
         "SubSectIndex": 293,
         "SubSectIndexAlong": 17,
         "SubSectIndexDown": 3,
-        "LowDepth": 23.44964784703314
+        "LowDepth": 23.44964784703314,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -24729,7 +25023,8 @@
         "SubSectIndex": 294,
         "SubSectIndexAlong": 18,
         "SubSectIndexDown": 3,
-        "LowDepth": 23.44194666812707
+        "LowDepth": 23.44194666812707,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -24816,7 +25111,8 @@
         "SubSectIndex": 295,
         "SubSectIndexAlong": 19,
         "SubSectIndexDown": 3,
-        "LowDepth": 23.425788680101785
+        "LowDepth": 23.425788680101785,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -24908,7 +25204,8 @@
         "SubSectIndex": 296,
         "SubSectIndexAlong": 20,
         "SubSectIndexDown": 3,
-        "LowDepth": 23.33071884021304
+        "LowDepth": 23.33071884021304,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -24995,7 +25292,8 @@
         "SubSectIndex": 297,
         "SubSectIndexAlong": 21,
         "SubSectIndexDown": 3,
-        "LowDepth": 23.228657952194798
+        "LowDepth": 23.228657952194798,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -25087,7 +25385,8 @@
         "SubSectIndex": 298,
         "SubSectIndexAlong": 22,
         "SubSectIndexDown": 3,
-        "LowDepth": 23.338579633592136
+        "LowDepth": 23.338579633592136,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -25179,7 +25478,8 @@
         "SubSectIndex": 299,
         "SubSectIndexAlong": 23,
         "SubSectIndexDown": 3,
-        "LowDepth": 23.815186861677144
+        "LowDepth": 23.815186861677144,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -25266,7 +25566,8 @@
         "SubSectIndex": 300,
         "SubSectIndexAlong": 24,
         "SubSectIndexDown": 3,
-        "LowDepth": 24.479614505149275
+        "LowDepth": 24.479614505149275,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -25358,7 +25659,8 @@
         "SubSectIndex": 301,
         "SubSectIndexAlong": 25,
         "SubSectIndexDown": 3,
-        "LowDepth": 25.368203781998464
+        "LowDepth": 25.368203781998464,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -25450,7 +25752,8 @@
         "SubSectIndex": 302,
         "SubSectIndexAlong": 26,
         "SubSectIndexDown": 3,
-        "LowDepth": 26.38639707694809
+        "LowDepth": 26.38639707694809,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -25537,7 +25840,8 @@
         "SubSectIndex": 303,
         "SubSectIndexAlong": 27,
         "SubSectIndexDown": 3,
-        "LowDepth": 27.327622441853144
+        "LowDepth": 27.327622441853144,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -25634,7 +25938,8 @@
         "SubSectIndex": 304,
         "SubSectIndexAlong": 28,
         "SubSectIndexDown": 3,
-        "LowDepth": 28.335963124428076
+        "LowDepth": 28.335963124428076,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -25721,7 +26026,8 @@
         "SubSectIndex": 305,
         "SubSectIndexAlong": 29,
         "SubSectIndexDown": 3,
-        "LowDepth": 29.165273266336037
+        "LowDepth": 29.165273266336037,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -25818,7 +26124,8 @@
         "SubSectIndex": 306,
         "SubSectIndexAlong": 30,
         "SubSectIndexDown": 3,
-        "LowDepth": 29.73614275714158
+        "LowDepth": 29.73614275714158,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -25905,7 +26212,8 @@
         "SubSectIndex": 307,
         "SubSectIndexAlong": 31,
         "SubSectIndexDown": 3,
-        "LowDepth": 30.201908135340652
+        "LowDepth": 30.201908135340652,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -25997,7 +26305,8 @@
         "SubSectIndex": 308,
         "SubSectIndexAlong": 32,
         "SubSectIndexDown": 3,
-        "LowDepth": 30.498067834918018
+        "LowDepth": 30.498067834918018,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -26089,7 +26398,8 @@
         "SubSectIndex": 309,
         "SubSectIndexAlong": 33,
         "SubSectIndexDown": 3,
-        "LowDepth": 30.50895094747062
+        "LowDepth": 30.50895094747062,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -26181,7 +26491,8 @@
         "SubSectIndex": 310,
         "SubSectIndexAlong": 34,
         "SubSectIndexDown": 3,
-        "LowDepth": 30.449819183561193
+        "LowDepth": 30.449819183561193,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -26273,7 +26584,8 @@
         "SubSectIndex": 311,
         "SubSectIndexAlong": 35,
         "SubSectIndexDown": 3,
-        "LowDepth": 30.540096559829944
+        "LowDepth": 30.540096559829944,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -26365,7 +26677,8 @@
         "SubSectIndex": 312,
         "SubSectIndexAlong": 36,
         "SubSectIndexDown": 3,
-        "LowDepth": 30.611692486666076
+        "LowDepth": 30.611692486666076,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -26457,7 +26770,8 @@
         "SubSectIndex": 313,
         "SubSectIndexAlong": 37,
         "SubSectIndexDown": 3,
-        "LowDepth": 30.543459006496434
+        "LowDepth": 30.543459006496434,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -26544,7 +26858,8 @@
         "SubSectIndex": 314,
         "SubSectIndexAlong": 38,
         "SubSectIndexDown": 3,
-        "LowDepth": 30.32798441838274
+        "LowDepth": 30.32798441838274,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -26636,7 +26951,8 @@
         "SubSectIndex": 315,
         "SubSectIndexAlong": 39,
         "SubSectIndexDown": 3,
-        "LowDepth": 30.214179299613317
+        "LowDepth": 30.214179299613317,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -26728,7 +27044,8 @@
         "SubSectIndex": 316,
         "SubSectIndexAlong": 40,
         "SubSectIndexDown": 3,
-        "LowDepth": 29.83454397736246
+        "LowDepth": 29.83454397736246,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -26815,7 +27132,8 @@
         "SubSectIndex": 317,
         "SubSectIndexAlong": 41,
         "SubSectIndexDown": 3,
-        "LowDepth": 29.395429677733432
+        "LowDepth": 29.395429677733432,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -26912,7 +27230,8 @@
         "SubSectIndex": 318,
         "SubSectIndexAlong": 42,
         "SubSectIndexDown": 3,
-        "LowDepth": 29.112459657638333
+        "LowDepth": 29.112459657638333,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -26999,7 +27318,8 @@
         "SubSectIndex": 319,
         "SubSectIndexAlong": 43,
         "SubSectIndexDown": 3,
-        "LowDepth": 28.957626994147404
+        "LowDepth": 28.957626994147404,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -27091,7 +27411,8 @@
         "SubSectIndex": 320,
         "SubSectIndexAlong": 44,
         "SubSectIndexDown": 3,
-        "LowDepth": 29.012533168412055
+        "LowDepth": 29.012533168412055,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -27183,7 +27504,8 @@
         "SubSectIndex": 321,
         "SubSectIndexAlong": 45,
         "SubSectIndexDown": 3,
-        "LowDepth": 29.157689008291545
+        "LowDepth": 29.157689008291545,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -27270,7 +27592,8 @@
         "SubSectIndex": 322,
         "SubSectIndexAlong": 46,
         "SubSectIndexDown": 3,
-        "LowDepth": 29.272648678058165
+        "LowDepth": 29.272648678058165,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -27367,7 +27690,8 @@
         "SubSectIndex": 323,
         "SubSectIndexAlong": 47,
         "SubSectIndexDown": 3,
-        "LowDepth": 29.37819039061566
+        "LowDepth": 29.37819039061566,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -27454,7 +27778,8 @@
         "SubSectIndex": 324,
         "SubSectIndexAlong": 48,
         "SubSectIndexDown": 3,
-        "LowDepth": 29.412763775815726
+        "LowDepth": 29.412763775815726,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -27541,7 +27866,8 @@
         "SubSectIndex": 325,
         "SubSectIndexAlong": 49,
         "SubSectIndexDown": 3,
-        "LowDepth": 29.329219413855487
+        "LowDepth": 29.329219413855487,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -27638,7 +27964,8 @@
         "SubSectIndex": 326,
         "SubSectIndexAlong": 50,
         "SubSectIndexDown": 3,
-        "LowDepth": 29.133963929491262
+        "LowDepth": 29.133963929491262,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -27725,7 +28052,8 @@
         "SubSectIndex": 327,
         "SubSectIndexAlong": 51,
         "SubSectIndexDown": 3,
-        "LowDepth": 29.025384022777637
+        "LowDepth": 29.025384022777637,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -27817,7 +28145,8 @@
         "SubSectIndex": 328,
         "SubSectIndexAlong": 52,
         "SubSectIndexDown": 3,
-        "LowDepth": 28.693031927860694
+        "LowDepth": 28.693031927860694,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -27909,7 +28238,8 @@
         "SubSectIndex": 329,
         "SubSectIndexAlong": 53,
         "SubSectIndexDown": 3,
-        "LowDepth": 28.13748593023943
+        "LowDepth": 28.13748593023943,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -27996,7 +28326,8 @@
         "SubSectIndex": 330,
         "SubSectIndexAlong": 54,
         "SubSectIndexDown": 3,
-        "LowDepth": 27.63649921652706
+        "LowDepth": 27.63649921652706,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -28088,7 +28419,8 @@
         "SubSectIndex": 331,
         "SubSectIndexAlong": 55,
         "SubSectIndexDown": 3,
-        "LowDepth": 27.327020883367307
+        "LowDepth": 27.327020883367307,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -28175,7 +28507,8 @@
         "SubSectIndex": 332,
         "SubSectIndexAlong": 56,
         "SubSectIndexDown": 3,
-        "LowDepth": 26.86235884836638
+        "LowDepth": 26.86235884836638,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -28267,7 +28600,8 @@
         "SubSectIndex": 333,
         "SubSectIndexAlong": 57,
         "SubSectIndexDown": 3,
-        "LowDepth": 26.64527982778112
+        "LowDepth": 26.64527982778112,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -28359,7 +28693,8 @@
         "SubSectIndex": 334,
         "SubSectIndexAlong": 58,
         "SubSectIndexDown": 3,
-        "LowDepth": 26.376627420715046
+        "LowDepth": 26.376627420715046,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -28451,7 +28786,8 @@
         "SubSectIndex": 335,
         "SubSectIndexAlong": 59,
         "SubSectIndexDown": 3,
-        "LowDepth": 26.17059392644739
+        "LowDepth": 26.17059392644739,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -28543,7 +28879,8 @@
         "SubSectIndex": 336,
         "SubSectIndexAlong": 60,
         "SubSectIndexDown": 3,
-        "LowDepth": 26.054553017250523
+        "LowDepth": 26.054553017250523,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -28630,7 +28967,8 @@
         "SubSectIndex": 337,
         "SubSectIndexAlong": 61,
         "SubSectIndexDown": 3,
-        "LowDepth": 26.046630745959348
+        "LowDepth": 26.046630745959348,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -28717,7 +29055,8 @@
         "SubSectIndex": 338,
         "SubSectIndexAlong": 62,
         "SubSectIndexDown": 3,
-        "LowDepth": 25.76724397574502
+        "LowDepth": 25.76724397574502,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -28814,7 +29153,8 @@
         "SubSectIndex": 339,
         "SubSectIndexAlong": 63,
         "SubSectIndexDown": 3,
-        "LowDepth": 25.322467249243946
+        "LowDepth": 25.322467249243946,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -28901,7 +29241,8 @@
         "SubSectIndex": 340,
         "SubSectIndexAlong": 64,
         "SubSectIndexDown": 3,
-        "LowDepth": 25.34175113877545
+        "LowDepth": 25.34175113877545,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -28988,7 +29329,8 @@
         "SubSectIndex": 341,
         "SubSectIndexAlong": 65,
         "SubSectIndexDown": 3,
-        "LowDepth": 25.7220037045542
+        "LowDepth": 25.7220037045542,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -29080,7 +29422,8 @@
         "SubSectIndex": 342,
         "SubSectIndexAlong": 66,
         "SubSectIndexDown": 3,
-        "LowDepth": 26.101080266635638
+        "LowDepth": 26.101080266635638,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -29172,7 +29515,8 @@
         "SubSectIndex": 343,
         "SubSectIndexAlong": 67,
         "SubSectIndexDown": 3,
-        "LowDepth": 26.235642888877596
+        "LowDepth": 26.235642888877596,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -29259,7 +29603,8 @@
         "SubSectIndex": 344,
         "SubSectIndexAlong": 68,
         "SubSectIndexDown": 3,
-        "LowDepth": 26.276297201797806
+        "LowDepth": 26.276297201797806,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -29356,7 +29701,8 @@
         "SubSectIndex": 345,
         "SubSectIndexAlong": 69,
         "SubSectIndexDown": 3,
-        "LowDepth": 26.42895290392
+        "LowDepth": 26.42895290392,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -29443,7 +29789,8 @@
         "SubSectIndex": 346,
         "SubSectIndexAlong": 70,
         "SubSectIndexDown": 3,
-        "LowDepth": 26.37836230814751
+        "LowDepth": 26.37836230814751,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -29535,7 +29882,8 @@
         "SubSectIndex": 347,
         "SubSectIndexAlong": 71,
         "SubSectIndexDown": 3,
-        "LowDepth": 25.794841903084688
+        "LowDepth": 25.794841903084688,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -29622,7 +29970,8 @@
         "SubSectIndex": 348,
         "SubSectIndexAlong": 72,
         "SubSectIndexDown": 3,
-        "LowDepth": 25.444817608908423
+        "LowDepth": 25.444817608908423,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -29714,7 +30063,8 @@
         "SubSectIndex": 349,
         "SubSectIndexAlong": 73,
         "SubSectIndexDown": 3,
-        "LowDepth": 25.40452678269484
+        "LowDepth": 25.40452678269484,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -29801,7 +30151,8 @@
         "SubSectIndex": 350,
         "SubSectIndexAlong": 74,
         "SubSectIndexDown": 3,
-        "LowDepth": 25.41494289204595
+        "LowDepth": 25.41494289204595,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -29893,7 +30244,8 @@
         "SubSectIndex": 351,
         "SubSectIndexAlong": 75,
         "SubSectIndexDown": 3,
-        "LowDepth": 25.73242522181568
+        "LowDepth": 25.73242522181568,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -29985,7 +30337,8 @@
         "SubSectIndex": 352,
         "SubSectIndexAlong": 76,
         "SubSectIndexDown": 3,
-        "LowDepth": 26.266890132128793
+        "LowDepth": 26.266890132128793,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -30072,7 +30425,8 @@
         "SubSectIndex": 353,
         "SubSectIndexAlong": 77,
         "SubSectIndexDown": 3,
-        "LowDepth": 26.55097084786333
+        "LowDepth": 26.55097084786333,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -30164,7 +30518,8 @@
         "SubSectIndex": 354,
         "SubSectIndexAlong": 78,
         "SubSectIndexDown": 3,
-        "LowDepth": 26.97476685165737
+        "LowDepth": 26.97476685165737,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -30256,7 +30611,8 @@
         "SubSectIndex": 355,
         "SubSectIndexAlong": 79,
         "SubSectIndexDown": 3,
-        "LowDepth": 27.30422999317284
+        "LowDepth": 27.30422999317284,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -30343,7 +30699,8 @@
         "SubSectIndex": 356,
         "SubSectIndexAlong": 80,
         "SubSectIndexDown": 3,
-        "LowDepth": 27.335886284294368
+        "LowDepth": 27.335886284294368,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -30440,7 +30797,8 @@
         "SubSectIndex": 357,
         "SubSectIndexAlong": 81,
         "SubSectIndexDown": 3,
-        "LowDepth": 27.073657388073123
+        "LowDepth": 27.073657388073123,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -30527,7 +30885,8 @@
         "SubSectIndex": 358,
         "SubSectIndexAlong": 82,
         "SubSectIndexDown": 3,
-        "LowDepth": 26.345929218670737
+        "LowDepth": 26.345929218670737,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -30619,7 +30978,8 @@
         "SubSectIndex": 359,
         "SubSectIndexAlong": 83,
         "SubSectIndexDown": 3,
-        "LowDepth": 24.765019958505615
+        "LowDepth": 24.765019958505615,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -30706,7 +31066,8 @@
         "SubSectIndex": 360,
         "SubSectIndexAlong": 84,
         "SubSectIndexDown": 3,
-        "LowDepth": 23.53248999659178
+        "LowDepth": 23.53248999659178,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -30798,7 +31159,8 @@
         "SubSectIndex": 361,
         "SubSectIndexAlong": 85,
         "SubSectIndexDown": 3,
-        "LowDepth": 22.961365078929653
+        "LowDepth": 22.961365078929653,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -30890,7 +31252,8 @@
         "SubSectIndex": 362,
         "SubSectIndexAlong": 86,
         "SubSectIndexDown": 3,
-        "LowDepth": 22.879107073601887
+        "LowDepth": 22.879107073601887,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -30972,7 +31335,8 @@
         "SubSectIndex": 363,
         "SubSectIndexAlong": 0,
         "SubSectIndexDown": 4,
-        "LowDepth": 33.80977929610321
+        "LowDepth": 33.80977929610321,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -31059,7 +31423,8 @@
         "SubSectIndex": 364,
         "SubSectIndexAlong": 1,
         "SubSectIndexDown": 4,
-        "LowDepth": 33.776025222642836
+        "LowDepth": 33.776025222642836,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -31146,7 +31511,8 @@
         "SubSectIndex": 365,
         "SubSectIndexAlong": 2,
         "SubSectIndexDown": 4,
-        "LowDepth": 33.97988696125707
+        "LowDepth": 33.97988696125707,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -31243,7 +31609,8 @@
         "SubSectIndex": 366,
         "SubSectIndexAlong": 3,
         "SubSectIndexDown": 4,
-        "LowDepth": 34.21884723746358
+        "LowDepth": 34.21884723746358,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -31335,7 +31702,8 @@
         "SubSectIndex": 367,
         "SubSectIndexAlong": 4,
         "SubSectIndexDown": 4,
-        "LowDepth": 34.38774248071207
+        "LowDepth": 34.38774248071207,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -31422,7 +31790,8 @@
         "SubSectIndex": 368,
         "SubSectIndexAlong": 5,
         "SubSectIndexDown": 4,
-        "LowDepth": 34.51966218172637
+        "LowDepth": 34.51966218172637,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -31519,7 +31888,8 @@
         "SubSectIndex": 369,
         "SubSectIndexAlong": 6,
         "SubSectIndexDown": 4,
-        "LowDepth": 34.510428434745904
+        "LowDepth": 34.510428434745904,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -31606,7 +31976,8 @@
         "SubSectIndex": 370,
         "SubSectIndexAlong": 7,
         "SubSectIndexDown": 4,
-        "LowDepth": 34.445029438318095
+        "LowDepth": 34.445029438318095,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -31698,7 +32069,8 @@
         "SubSectIndex": 371,
         "SubSectIndexAlong": 8,
         "SubSectIndexDown": 4,
-        "LowDepth": 34.404933294266165
+        "LowDepth": 34.404933294266165,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -31790,7 +32162,8 @@
         "SubSectIndex": 372,
         "SubSectIndexAlong": 9,
         "SubSectIndexDown": 4,
-        "LowDepth": 34.11404663163918
+        "LowDepth": 34.11404663163918,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -31882,7 +32255,8 @@
         "SubSectIndex": 373,
         "SubSectIndexAlong": 10,
         "SubSectIndexDown": 4,
-        "LowDepth": 33.71833680047415
+        "LowDepth": 33.71833680047415,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -31974,7 +32348,8 @@
         "SubSectIndex": 374,
         "SubSectIndexAlong": 11,
         "SubSectIndexDown": 4,
-        "LowDepth": 33.541790674493576
+        "LowDepth": 33.541790674493576,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -32066,7 +32441,8 @@
         "SubSectIndex": 375,
         "SubSectIndexAlong": 12,
         "SubSectIndexDown": 4,
-        "LowDepth": 33.25034117670325
+        "LowDepth": 33.25034117670325,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -32153,7 +32529,8 @@
         "SubSectIndex": 376,
         "SubSectIndexAlong": 13,
         "SubSectIndexDown": 4,
-        "LowDepth": 33.22531309486248
+        "LowDepth": 33.22531309486248,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -32250,7 +32627,8 @@
         "SubSectIndex": 377,
         "SubSectIndexAlong": 14,
         "SubSectIndexDown": 4,
-        "LowDepth": 33.287638137798034
+        "LowDepth": 33.287638137798034,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -32337,7 +32715,8 @@
         "SubSectIndex": 378,
         "SubSectIndexAlong": 15,
         "SubSectIndexDown": 4,
-        "LowDepth": 33.21493677012973
+        "LowDepth": 33.21493677012973,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -32434,7 +32813,8 @@
         "SubSectIndex": 379,
         "SubSectIndexAlong": 16,
         "SubSectIndexDown": 4,
-        "LowDepth": 33.10030838396664
+        "LowDepth": 33.10030838396664,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -32526,7 +32906,8 @@
         "SubSectIndex": 380,
         "SubSectIndexAlong": 17,
         "SubSectIndexDown": 4,
-        "LowDepth": 33.05534007821339
+        "LowDepth": 33.05534007821339,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -32613,7 +32994,8 @@
         "SubSectIndex": 381,
         "SubSectIndexAlong": 18,
         "SubSectIndexDown": 4,
-        "LowDepth": 33.074960366272634
+        "LowDepth": 33.074960366272634,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -32710,7 +33092,8 @@
         "SubSectIndex": 382,
         "SubSectIndexAlong": 19,
         "SubSectIndexDown": 4,
-        "LowDepth": 32.98534580104682
+        "LowDepth": 32.98534580104682,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -32797,7 +33180,8 @@
         "SubSectIndex": 383,
         "SubSectIndexAlong": 20,
         "SubSectIndexDown": 4,
-        "LowDepth": 32.90849803695408
+        "LowDepth": 32.90849803695408,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -32894,7 +33278,8 @@
         "SubSectIndex": 384,
         "SubSectIndexAlong": 21,
         "SubSectIndexDown": 4,
-        "LowDepth": 32.9956658688072
+        "LowDepth": 32.9956658688072,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -32981,7 +33366,8 @@
         "SubSectIndex": 385,
         "SubSectIndexAlong": 22,
         "SubSectIndexDown": 4,
-        "LowDepth": 33.44405063992921
+        "LowDepth": 33.44405063992921,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -33078,7 +33464,8 @@
         "SubSectIndex": 386,
         "SubSectIndexAlong": 23,
         "SubSectIndexDown": 4,
-        "LowDepth": 34.028288126483275
+        "LowDepth": 34.028288126483275,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -33165,7 +33552,8 @@
         "SubSectIndex": 387,
         "SubSectIndexAlong": 24,
         "SubSectIndexDown": 4,
-        "LowDepth": 34.78625117626849
+        "LowDepth": 34.78625117626849,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -33262,7 +33650,8 @@
         "SubSectIndex": 388,
         "SubSectIndexAlong": 25,
         "SubSectIndexDown": 4,
-        "LowDepth": 35.63995718000018
+        "LowDepth": 35.63995718000018,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -33349,7 +33738,8 @@
         "SubSectIndex": 389,
         "SubSectIndexAlong": 26,
         "SubSectIndexDown": 4,
-        "LowDepth": 36.428212407014634
+        "LowDepth": 36.428212407014634,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -33446,7 +33836,8 @@
         "SubSectIndex": 390,
         "SubSectIndexAlong": 27,
         "SubSectIndexDown": 4,
-        "LowDepth": 37.29491715246121
+        "LowDepth": 37.29491715246121,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -33538,7 +33929,8 @@
         "SubSectIndex": 391,
         "SubSectIndexAlong": 28,
         "SubSectIndexDown": 4,
-        "LowDepth": 38.04567260273485
+        "LowDepth": 38.04567260273485,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -33630,7 +34022,8 @@
         "SubSectIndex": 392,
         "SubSectIndexAlong": 29,
         "SubSectIndexDown": 4,
-        "LowDepth": 38.6240451682624
+        "LowDepth": 38.6240451682624,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -33722,7 +34115,8 @@
         "SubSectIndex": 393,
         "SubSectIndexAlong": 30,
         "SubSectIndexDown": 4,
-        "LowDepth": 39.10291960864472
+        "LowDepth": 39.10291960864472,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -33819,7 +34213,8 @@
         "SubSectIndex": 394,
         "SubSectIndexAlong": 31,
         "SubSectIndexDown": 4,
-        "LowDepth": 39.40848946838827
+        "LowDepth": 39.40848946838827,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -33911,7 +34306,8 @@
         "SubSectIndex": 395,
         "SubSectIndexAlong": 32,
         "SubSectIndexDown": 4,
-        "LowDepth": 39.491130632082005
+        "LowDepth": 39.491130632082005,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -34003,7 +34399,8 @@
         "SubSectIndex": 396,
         "SubSectIndexAlong": 33,
         "SubSectIndexDown": 4,
-        "LowDepth": 39.50961981051038
+        "LowDepth": 39.50961981051038,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -34095,7 +34492,8 @@
         "SubSectIndex": 397,
         "SubSectIndexAlong": 34,
         "SubSectIndexDown": 4,
-        "LowDepth": 39.58234411357921
+        "LowDepth": 39.58234411357921,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -34187,7 +34585,8 @@
         "SubSectIndex": 398,
         "SubSectIndexAlong": 35,
         "SubSectIndexDown": 4,
-        "LowDepth": 39.585076615642606
+        "LowDepth": 39.585076615642606,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -34279,7 +34678,8 @@
         "SubSectIndex": 399,
         "SubSectIndexAlong": 36,
         "SubSectIndexDown": 4,
-        "LowDepth": 39.472033924525164
+        "LowDepth": 39.472033924525164,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -34371,7 +34771,8 @@
         "SubSectIndex": 400,
         "SubSectIndexAlong": 37,
         "SubSectIndexDown": 4,
-        "LowDepth": 39.32901477053746
+        "LowDepth": 39.32901477053746,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -34463,7 +34864,8 @@
         "SubSectIndex": 401,
         "SubSectIndexAlong": 38,
         "SubSectIndexDown": 4,
-        "LowDepth": 39.19357705519352
+        "LowDepth": 39.19357705519352,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -34555,7 +34957,8 @@
         "SubSectIndex": 402,
         "SubSectIndexAlong": 39,
         "SubSectIndexDown": 4,
-        "LowDepth": 38.847458911763574
+        "LowDepth": 38.847458911763574,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -34647,7 +35050,8 @@
         "SubSectIndex": 403,
         "SubSectIndexAlong": 40,
         "SubSectIndexDown": 4,
-        "LowDepth": 38.49845066119652
+        "LowDepth": 38.49845066119652,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -34744,7 +35148,8 @@
         "SubSectIndex": 404,
         "SubSectIndexAlong": 41,
         "SubSectIndexDown": 4,
-        "LowDepth": 38.31294649407067
+        "LowDepth": 38.31294649407067,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -34831,7 +35236,8 @@
         "SubSectIndex": 405,
         "SubSectIndexAlong": 42,
         "SubSectIndexDown": 4,
-        "LowDepth": 38.22069528906112
+        "LowDepth": 38.22069528906112,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -34928,7 +35334,8 @@
         "SubSectIndex": 406,
         "SubSectIndexAlong": 43,
         "SubSectIndexDown": 4,
-        "LowDepth": 38.32224767884051
+        "LowDepth": 38.32224767884051,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -35020,7 +35427,8 @@
         "SubSectIndex": 407,
         "SubSectIndexAlong": 44,
         "SubSectIndexDown": 4,
-        "LowDepth": 38.42766762098461
+        "LowDepth": 38.42766762098461,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -35112,7 +35520,8 @@
         "SubSectIndex": 408,
         "SubSectIndexAlong": 45,
         "SubSectIndexDown": 4,
-        "LowDepth": 38.54644246073918
+        "LowDepth": 38.54644246073918,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -35204,7 +35613,8 @@
         "SubSectIndex": 409,
         "SubSectIndexAlong": 46,
         "SubSectIndexDown": 4,
-        "LowDepth": 38.64952095265359
+        "LowDepth": 38.64952095265359,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -35296,7 +35706,8 @@
         "SubSectIndex": 410,
         "SubSectIndexAlong": 47,
         "SubSectIndexDown": 4,
-        "LowDepth": 38.66326383459199
+        "LowDepth": 38.66326383459199,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -35383,7 +35794,8 @@
         "SubSectIndex": 411,
         "SubSectIndexAlong": 48,
         "SubSectIndexDown": 4,
-        "LowDepth": 38.53758108453498
+        "LowDepth": 38.53758108453498,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -35480,7 +35892,8 @@
         "SubSectIndex": 412,
         "SubSectIndexAlong": 49,
         "SubSectIndexDown": 4,
-        "LowDepth": 38.41350578346976
+        "LowDepth": 38.41350578346976,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -35572,7 +35985,8 @@
         "SubSectIndex": 413,
         "SubSectIndexAlong": 50,
         "SubSectIndexDown": 4,
-        "LowDepth": 38.16174033772307
+        "LowDepth": 38.16174033772307,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -35659,7 +36073,8 @@
         "SubSectIndex": 414,
         "SubSectIndexAlong": 51,
         "SubSectIndexDown": 4,
-        "LowDepth": 37.67712598421405
+        "LowDepth": 37.67712598421405,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -35756,7 +36171,8 @@
         "SubSectIndex": 415,
         "SubSectIndexAlong": 52,
         "SubSectIndexDown": 4,
-        "LowDepth": 37.06619467198708
+        "LowDepth": 37.06619467198708,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -35848,7 +36264,8 @@
         "SubSectIndex": 416,
         "SubSectIndexAlong": 53,
         "SubSectIndexDown": 4,
-        "LowDepth": 36.645713504439435
+        "LowDepth": 36.645713504439435,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -35940,7 +36357,8 @@
         "SubSectIndex": 417,
         "SubSectIndexAlong": 54,
         "SubSectIndexDown": 4,
-        "LowDepth": 36.05688079151442
+        "LowDepth": 36.05688079151442,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -36032,7 +36450,8 @@
         "SubSectIndex": 418,
         "SubSectIndexAlong": 55,
         "SubSectIndexDown": 4,
-        "LowDepth": 35.69976775212336
+        "LowDepth": 35.69976775212336,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -36124,7 +36543,8 @@
         "SubSectIndex": 419,
         "SubSectIndexAlong": 56,
         "SubSectIndexDown": 4,
-        "LowDepth": 35.335770868265
+        "LowDepth": 35.335770868265,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -36216,7 +36636,8 @@
         "SubSectIndex": 420,
         "SubSectIndexAlong": 57,
         "SubSectIndexDown": 4,
-        "LowDepth": 35.1058228837443
+        "LowDepth": 35.1058228837443,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -36308,7 +36729,8 @@
         "SubSectIndex": 421,
         "SubSectIndexAlong": 58,
         "SubSectIndexDown": 4,
-        "LowDepth": 35.026168726421076
+        "LowDepth": 35.026168726421076,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -36400,7 +36822,8 @@
         "SubSectIndex": 422,
         "SubSectIndexAlong": 59,
         "SubSectIndexDown": 4,
-        "LowDepth": 35.07434845002929
+        "LowDepth": 35.07434845002929,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -36492,7 +36915,8 @@
         "SubSectIndex": 423,
         "SubSectIndexAlong": 60,
         "SubSectIndexDown": 4,
-        "LowDepth": 34.786614883315636
+        "LowDepth": 34.786614883315636,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -36584,7 +37008,8 @@
         "SubSectIndex": 424,
         "SubSectIndexAlong": 61,
         "SubSectIndexDown": 4,
-        "LowDepth": 34.37859620673156
+        "LowDepth": 34.37859620673156,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -36676,7 +37101,8 @@
         "SubSectIndex": 425,
         "SubSectIndexAlong": 62,
         "SubSectIndexDown": 4,
-        "LowDepth": 34.422455158892724
+        "LowDepth": 34.422455158892724,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -36768,7 +37194,8 @@
         "SubSectIndex": 426,
         "SubSectIndexAlong": 63,
         "SubSectIndexDown": 4,
-        "LowDepth": 34.774691880962244
+        "LowDepth": 34.774691880962244,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -36860,7 +37287,8 @@
         "SubSectIndex": 427,
         "SubSectIndexAlong": 64,
         "SubSectIndexDown": 4,
-        "LowDepth": 34.991476777800145
+        "LowDepth": 34.991476777800145,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -36952,7 +37380,8 @@
         "SubSectIndex": 428,
         "SubSectIndexAlong": 65,
         "SubSectIndexDown": 4,
-        "LowDepth": 35.011220339802534
+        "LowDepth": 35.011220339802534,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -37044,7 +37473,8 @@
         "SubSectIndex": 429,
         "SubSectIndexAlong": 66,
         "SubSectIndexDown": 4,
-        "LowDepth": 35.05269556969763
+        "LowDepth": 35.05269556969763,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -37136,7 +37566,8 @@
         "SubSectIndex": 430,
         "SubSectIndexAlong": 67,
         "SubSectIndexDown": 4,
-        "LowDepth": 35.17374993425532
+        "LowDepth": 35.17374993425532,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -37228,7 +37659,8 @@
         "SubSectIndex": 431,
         "SubSectIndexAlong": 68,
         "SubSectIndexDown": 4,
-        "LowDepth": 34.85182237895329
+        "LowDepth": 34.85182237895329,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -37315,7 +37747,8 @@
         "SubSectIndex": 432,
         "SubSectIndexAlong": 69,
         "SubSectIndexDown": 4,
-        "LowDepth": 34.2973543018033
+        "LowDepth": 34.2973543018033,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -37412,7 +37845,8 @@
         "SubSectIndex": 433,
         "SubSectIndexAlong": 70,
         "SubSectIndexDown": 4,
-        "LowDepth": 34.13343475482982
+        "LowDepth": 34.13343475482982,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -37499,7 +37933,8 @@
         "SubSectIndex": 434,
         "SubSectIndexAlong": 71,
         "SubSectIndexDown": 4,
-        "LowDepth": 34.13266201544084
+        "LowDepth": 34.13266201544084,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -37596,7 +38031,8 @@
         "SubSectIndex": 435,
         "SubSectIndexAlong": 72,
         "SubSectIndexDown": 4,
-        "LowDepth": 34.30383578588585
+        "LowDepth": 34.30383578588585,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -37683,7 +38119,8 @@
         "SubSectIndex": 436,
         "SubSectIndexAlong": 73,
         "SubSectIndexDown": 4,
-        "LowDepth": 34.81998446892835
+        "LowDepth": 34.81998446892835,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -37780,7 +38217,8 @@
         "SubSectIndex": 437,
         "SubSectIndexAlong": 74,
         "SubSectIndexDown": 4,
-        "LowDepth": 35.19413555718206
+        "LowDepth": 35.19413555718206,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -37867,7 +38305,8 @@
         "SubSectIndex": 438,
         "SubSectIndexAlong": 75,
         "SubSectIndexDown": 4,
-        "LowDepth": 35.59474237810692
+        "LowDepth": 35.59474237810692,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -37959,7 +38398,8 @@
         "SubSectIndex": 439,
         "SubSectIndexAlong": 76,
         "SubSectIndexDown": 4,
-        "LowDepth": 36.02858185663761
+        "LowDepth": 36.02858185663761,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -38051,7 +38491,8 @@
         "SubSectIndex": 440,
         "SubSectIndexAlong": 77,
         "SubSectIndexDown": 4,
-        "LowDepth": 36.20660089885503
+        "LowDepth": 36.20660089885503,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -38143,7 +38584,8 @@
         "SubSectIndex": 441,
         "SubSectIndexAlong": 78,
         "SubSectIndexDown": 4,
-        "LowDepth": 36.07533628614418
+        "LowDepth": 36.07533628614418,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -38235,7 +38677,8 @@
         "SubSectIndex": 442,
         "SubSectIndexAlong": 79,
         "SubSectIndexDown": 4,
-        "LowDepth": 35.56959799239645
+        "LowDepth": 35.56959799239645,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -38332,7 +38775,8 @@
         "SubSectIndex": 443,
         "SubSectIndexAlong": 80,
         "SubSectIndexDown": 4,
-        "LowDepth": 34.17372173580007
+        "LowDepth": 34.17372173580007,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -38419,7 +38863,8 @@
         "SubSectIndex": 444,
         "SubSectIndexAlong": 81,
         "SubSectIndexDown": 4,
-        "LowDepth": 32.78785898528559
+        "LowDepth": 32.78785898528559,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -38511,7 +38956,8 @@
         "SubSectIndex": 445,
         "SubSectIndexAlong": 82,
         "SubSectIndexDown": 4,
-        "LowDepth": 32.03087713933174
+        "LowDepth": 32.03087713933174,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -38603,7 +39049,8 @@
         "SubSectIndex": 446,
         "SubSectIndexAlong": 83,
         "SubSectIndexDown": 4,
-        "LowDepth": 31.818781519368567
+        "LowDepth": 31.818781519368567,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -38690,7 +39137,8 @@
         "SubSectIndex": 447,
         "SubSectIndexAlong": 0,
         "SubSectIndexDown": 5,
-        "LowDepth": 45.87448428452018
+        "LowDepth": 45.87448428452018,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -38777,7 +39225,8 @@
         "SubSectIndex": 448,
         "SubSectIndexAlong": 1,
         "SubSectIndexDown": 5,
-        "LowDepth": 45.82921468479416
+        "LowDepth": 45.82921468479416,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -38874,7 +39323,8 @@
         "SubSectIndex": 449,
         "SubSectIndexAlong": 2,
         "SubSectIndexDown": 5,
-        "LowDepth": 45.92759231597062
+        "LowDepth": 45.92759231597062,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -38961,7 +39411,8 @@
         "SubSectIndex": 450,
         "SubSectIndexAlong": 3,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.06432386617413
+        "LowDepth": 46.06432386617413,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -39053,7 +39504,8 @@
         "SubSectIndex": 451,
         "SubSectIndexAlong": 4,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.20255008706901
+        "LowDepth": 46.20255008706901,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -39150,7 +39602,8 @@
         "SubSectIndex": 452,
         "SubSectIndexAlong": 5,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.31465149837974
+        "LowDepth": 46.31465149837974,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -39242,7 +39695,8 @@
         "SubSectIndex": 453,
         "SubSectIndexAlong": 6,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.35090640032325
+        "LowDepth": 46.35090640032325,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -39334,7 +39788,8 @@
         "SubSectIndex": 454,
         "SubSectIndexAlong": 7,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.38453494615923
+        "LowDepth": 46.38453494615923,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -39431,7 +39886,8 @@
         "SubSectIndex": 455,
         "SubSectIndexAlong": 8,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.34799564515596
+        "LowDepth": 46.34799564515596,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -39518,7 +39974,8 @@
         "SubSectIndex": 456,
         "SubSectIndexAlong": 9,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.17076837831232
+        "LowDepth": 46.17076837831232,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -39615,7 +40072,8 @@
         "SubSectIndex": 457,
         "SubSectIndexAlong": 10,
         "SubSectIndexDown": 5,
-        "LowDepth": 45.971229326635
+        "LowDepth": 45.971229326635,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -39707,7 +40165,8 @@
         "SubSectIndex": 458,
         "SubSectIndexAlong": 11,
         "SubSectIndexDown": 5,
-        "LowDepth": 45.85773229742646
+        "LowDepth": 45.85773229742646,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -39799,7 +40258,8 @@
         "SubSectIndex": 459,
         "SubSectIndexAlong": 12,
         "SubSectIndexDown": 5,
-        "LowDepth": 45.69631001103926
+        "LowDepth": 45.69631001103926,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -39891,7 +40351,8 @@
         "SubSectIndex": 460,
         "SubSectIndexAlong": 13,
         "SubSectIndexDown": 5,
-        "LowDepth": 45.738263620067045
+        "LowDepth": 45.738263620067045,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -39988,7 +40449,8 @@
         "SubSectIndex": 461,
         "SubSectIndexAlong": 14,
         "SubSectIndexDown": 5,
-        "LowDepth": 45.73022821118816
+        "LowDepth": 45.73022821118816,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -40075,7 +40537,8 @@
         "SubSectIndex": 462,
         "SubSectIndexAlong": 15,
         "SubSectIndexDown": 5,
-        "LowDepth": 45.66353577803086
+        "LowDepth": 45.66353577803086,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -40172,7 +40635,8 @@
         "SubSectIndex": 463,
         "SubSectIndexAlong": 16,
         "SubSectIndexDown": 5,
-        "LowDepth": 45.59809128772124
+        "LowDepth": 45.59809128772124,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -40264,7 +40728,8 @@
         "SubSectIndex": 464,
         "SubSectIndexAlong": 17,
         "SubSectIndexDown": 5,
-        "LowDepth": 45.61658578194142
+        "LowDepth": 45.61658578194142,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -40356,7 +40821,8 @@
         "SubSectIndex": 465,
         "SubSectIndexAlong": 18,
         "SubSectIndexDown": 5,
-        "LowDepth": 45.59336924108803
+        "LowDepth": 45.59336924108803,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -40448,7 +40914,8 @@
         "SubSectIndex": 466,
         "SubSectIndexAlong": 19,
         "SubSectIndexDown": 5,
-        "LowDepth": 45.55129273083074
+        "LowDepth": 45.55129273083074,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -40545,7 +41012,8 @@
         "SubSectIndex": 467,
         "SubSectIndexAlong": 20,
         "SubSectIndexDown": 5,
-        "LowDepth": 45.54154069088789
+        "LowDepth": 45.54154069088789,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -40632,7 +41100,8 @@
         "SubSectIndex": 468,
         "SubSectIndexAlong": 21,
         "SubSectIndexDown": 5,
-        "LowDepth": 45.75371326505505
+        "LowDepth": 45.75371326505505,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -40729,7 +41198,8 @@
         "SubSectIndex": 469,
         "SubSectIndexAlong": 22,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.06657493406676
+        "LowDepth": 46.06657493406676,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -40821,7 +41291,8 @@
         "SubSectIndex": 470,
         "SubSectIndexAlong": 23,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.45316122306763
+        "LowDepth": 46.45316122306763,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -40913,7 +41384,8 @@
         "SubSectIndex": 471,
         "SubSectIndexAlong": 24,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.905722402280134
+        "LowDepth": 46.905722402280134,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -41010,7 +41482,8 @@
         "SubSectIndex": 472,
         "SubSectIndexAlong": 25,
         "SubSectIndexDown": 5,
-        "LowDepth": 47.32691557429606
+        "LowDepth": 47.32691557429606,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -41097,7 +41570,8 @@
         "SubSectIndex": 473,
         "SubSectIndexAlong": 26,
         "SubSectIndexDown": 5,
-        "LowDepth": 47.77369440110014
+        "LowDepth": 47.77369440110014,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -41194,7 +41668,8 @@
         "SubSectIndex": 474,
         "SubSectIndexAlong": 27,
         "SubSectIndexDown": 5,
-        "LowDepth": 48.234941818427
+        "LowDepth": 48.234941818427,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -41291,7 +41766,8 @@
         "SubSectIndex": 475,
         "SubSectIndexAlong": 28,
         "SubSectIndexDown": 5,
-        "LowDepth": 48.608308422071936
+        "LowDepth": 48.608308422071936,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -41383,7 +41859,8 @@
         "SubSectIndex": 476,
         "SubSectIndexAlong": 29,
         "SubSectIndexDown": 5,
-        "LowDepth": 48.93926319242961
+        "LowDepth": 48.93926319242961,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -41475,7 +41952,8 @@
         "SubSectIndex": 477,
         "SubSectIndexAlong": 30,
         "SubSectIndexDown": 5,
-        "LowDepth": 49.21002417096546
+        "LowDepth": 49.21002417096546,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -41567,7 +42045,8 @@
         "SubSectIndex": 478,
         "SubSectIndexAlong": 31,
         "SubSectIndexDown": 5,
-        "LowDepth": 49.35219919486343
+        "LowDepth": 49.35219919486343,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -41664,7 +42143,8 @@
         "SubSectIndex": 479,
         "SubSectIndexAlong": 32,
         "SubSectIndexDown": 5,
-        "LowDepth": 49.41427753333859
+        "LowDepth": 49.41427753333859,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -41756,7 +42236,8 @@
         "SubSectIndex": 480,
         "SubSectIndexAlong": 33,
         "SubSectIndexDown": 5,
-        "LowDepth": 49.47686941275842
+        "LowDepth": 49.47686941275842,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -41848,7 +42329,8 @@
         "SubSectIndex": 481,
         "SubSectIndexAlong": 34,
         "SubSectIndexDown": 5,
-        "LowDepth": 49.480318016203455
+        "LowDepth": 49.480318016203455,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -41945,7 +42427,8 @@
         "SubSectIndex": 482,
         "SubSectIndexAlong": 35,
         "SubSectIndexDown": 5,
-        "LowDepth": 49.404713836882266
+        "LowDepth": 49.404713836882266,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -42037,7 +42520,8 @@
         "SubSectIndex": 483,
         "SubSectIndexAlong": 36,
         "SubSectIndexDown": 5,
-        "LowDepth": 49.31052052896929
+        "LowDepth": 49.31052052896929,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -42129,7 +42613,8 @@
         "SubSectIndex": 484,
         "SubSectIndexAlong": 37,
         "SubSectIndexDown": 5,
-        "LowDepth": 49.24735238769641
+        "LowDepth": 49.24735238769641,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -42226,7 +42711,8 @@
         "SubSectIndex": 485,
         "SubSectIndexAlong": 38,
         "SubSectIndexDown": 5,
-        "LowDepth": 49.07194094376634
+        "LowDepth": 49.07194094376634,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -42318,7 +42804,8 @@
         "SubSectIndex": 486,
         "SubSectIndexAlong": 39,
         "SubSectIndexDown": 5,
-        "LowDepth": 48.8733548122598
+        "LowDepth": 48.8733548122598,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -42410,7 +42897,8 @@
         "SubSectIndex": 487,
         "SubSectIndexAlong": 40,
         "SubSectIndexDown": 5,
-        "LowDepth": 48.75963104223683
+        "LowDepth": 48.75963104223683,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -42502,7 +42990,8 @@
         "SubSectIndex": 488,
         "SubSectIndexAlong": 41,
         "SubSectIndexDown": 5,
-        "LowDepth": 48.69203431168572
+        "LowDepth": 48.69203431168572,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -42594,7 +43083,8 @@
         "SubSectIndex": 489,
         "SubSectIndexAlong": 42,
         "SubSectIndexDown": 5,
-        "LowDepth": 48.73261707296065
+        "LowDepth": 48.73261707296065,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -42691,7 +43181,8 @@
         "SubSectIndex": 490,
         "SubSectIndexAlong": 43,
         "SubSectIndexDown": 5,
-        "LowDepth": 48.78227036251778
+        "LowDepth": 48.78227036251778,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -42783,7 +43274,8 @@
         "SubSectIndex": 491,
         "SubSectIndexAlong": 44,
         "SubSectIndexDown": 5,
-        "LowDepth": 48.858389990996656
+        "LowDepth": 48.858389990996656,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -42875,7 +43367,8 @@
         "SubSectIndex": 492,
         "SubSectIndexAlong": 45,
         "SubSectIndexDown": 5,
-        "LowDepth": 48.94293682558234
+        "LowDepth": 48.94293682558234,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -42967,7 +43460,8 @@
         "SubSectIndex": 493,
         "SubSectIndexAlong": 46,
         "SubSectIndexDown": 5,
-        "LowDepth": 48.97302724390448
+        "LowDepth": 48.97302724390448,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -43064,7 +43558,8 @@
         "SubSectIndex": 494,
         "SubSectIndexAlong": 47,
         "SubSectIndexDown": 5,
-        "LowDepth": 48.90574343890907
+        "LowDepth": 48.90574343890907,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -43156,7 +43651,8 @@
         "SubSectIndex": 495,
         "SubSectIndexAlong": 48,
         "SubSectIndexDown": 5,
-        "LowDepth": 48.835825268758505
+        "LowDepth": 48.835825268758505,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -43248,7 +43744,8 @@
         "SubSectIndex": 496,
         "SubSectIndexAlong": 49,
         "SubSectIndexDown": 5,
-        "LowDepth": 48.6593746879639
+        "LowDepth": 48.6593746879639,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -43340,7 +43837,8 @@
         "SubSectIndex": 497,
         "SubSectIndexAlong": 50,
         "SubSectIndexDown": 5,
-        "LowDepth": 48.30618464630421
+        "LowDepth": 48.30618464630421,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -43437,7 +43935,8 @@
         "SubSectIndex": 498,
         "SubSectIndexAlong": 51,
         "SubSectIndexDown": 5,
-        "LowDepth": 47.90330917099057
+        "LowDepth": 47.90330917099057,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -43529,7 +44028,8 @@
         "SubSectIndex": 499,
         "SubSectIndexAlong": 52,
         "SubSectIndexDown": 5,
-        "LowDepth": 47.55605581096644
+        "LowDepth": 47.55605581096644,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -43621,7 +44121,8 @@
         "SubSectIndex": 500,
         "SubSectIndexAlong": 53,
         "SubSectIndexDown": 5,
-        "LowDepth": 47.13342748302856
+        "LowDepth": 47.13342748302856,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -43713,7 +44214,8 @@
         "SubSectIndex": 501,
         "SubSectIndexAlong": 54,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.87502488348764
+        "LowDepth": 46.87502488348764,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -43810,7 +44312,8 @@
         "SubSectIndex": 502,
         "SubSectIndexAlong": 55,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.652641207116915
+        "LowDepth": 46.652641207116915,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -43902,7 +44405,8 @@
         "SubSectIndex": 503,
         "SubSectIndexAlong": 56,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.57583925804147
+        "LowDepth": 46.57583925804147,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -43994,7 +44498,8 @@
         "SubSectIndex": 504,
         "SubSectIndexAlong": 57,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.601338790564235
+        "LowDepth": 46.601338790564235,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -44091,7 +44596,8 @@
         "SubSectIndex": 505,
         "SubSectIndexAlong": 58,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.628776333024845
+        "LowDepth": 46.628776333024845,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -44178,7 +44684,8 @@
         "SubSectIndex": 506,
         "SubSectIndexAlong": 59,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.39056138307453
+        "LowDepth": 46.39056138307453,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -44275,7 +44782,8 @@
         "SubSectIndex": 507,
         "SubSectIndexAlong": 60,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.210584021917526
+        "LowDepth": 46.210584021917526,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -44367,7 +44875,8 @@
         "SubSectIndex": 508,
         "SubSectIndexAlong": 61,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.29803816231519
+        "LowDepth": 46.29803816231519,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -44459,7 +44968,8 @@
         "SubSectIndex": 509,
         "SubSectIndexAlong": 62,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.469307376624535
+        "LowDepth": 46.469307376624535,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -44556,7 +45066,8 @@
         "SubSectIndex": 510,
         "SubSectIndexAlong": 63,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.50755960826674
+        "LowDepth": 46.50755960826674,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -44648,7 +45159,8 @@
         "SubSectIndex": 511,
         "SubSectIndexAlong": 64,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.47043578607478
+        "LowDepth": 46.47043578607478,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -44740,7 +45252,8 @@
         "SubSectIndex": 512,
         "SubSectIndexAlong": 65,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.524779276723315
+        "LowDepth": 46.524779276723315,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -44832,7 +45345,8 @@
         "SubSectIndex": 513,
         "SubSectIndexAlong": 66,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.49454211120625
+        "LowDepth": 46.49454211120625,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -44924,7 +45438,8 @@
         "SubSectIndex": 514,
         "SubSectIndexAlong": 67,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.14232071161149
+        "LowDepth": 46.14232071161149,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -45016,7 +45531,8 @@
         "SubSectIndex": 515,
         "SubSectIndexAlong": 68,
         "SubSectIndexDown": 5,
-        "LowDepth": 45.950699483999834
+        "LowDepth": 45.950699483999834,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -45113,7 +45629,8 @@
         "SubSectIndex": 516,
         "SubSectIndexAlong": 69,
         "SubSectIndexDown": 5,
-        "LowDepth": 45.969808968623006
+        "LowDepth": 45.969808968623006,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -45205,7 +45722,8 @@
         "SubSectIndex": 517,
         "SubSectIndexAlong": 70,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.02898271899854
+        "LowDepth": 46.02898271899854,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -45297,7 +45815,8 @@
         "SubSectIndex": 518,
         "SubSectIndexAlong": 71,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.287620238394865
+        "LowDepth": 46.287620238394865,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -45389,7 +45908,8 @@
         "SubSectIndex": 519,
         "SubSectIndexAlong": 72,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.56822057026706
+        "LowDepth": 46.56822057026706,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -45481,7 +46001,8 @@
         "SubSectIndex": 520,
         "SubSectIndexAlong": 73,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.78877294153192
+        "LowDepth": 46.78877294153192,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -45578,7 +46099,8 @@
         "SubSectIndex": 521,
         "SubSectIndexAlong": 74,
         "SubSectIndexDown": 5,
-        "LowDepth": 47.08159503886403
+        "LowDepth": 47.08159503886403,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -45670,7 +46192,8 @@
         "SubSectIndex": 522,
         "SubSectIndexAlong": 75,
         "SubSectIndexDown": 5,
-        "LowDepth": 47.2512211804381
+        "LowDepth": 47.2512211804381,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -45762,7 +46285,8 @@
         "SubSectIndex": 523,
         "SubSectIndexAlong": 76,
         "SubSectIndexDown": 5,
-        "LowDepth": 47.234211720462525
+        "LowDepth": 47.234211720462525,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -45854,7 +46378,8 @@
         "SubSectIndex": 524,
         "SubSectIndexAlong": 77,
         "SubSectIndexDown": 5,
-        "LowDepth": 47.02259189897635
+        "LowDepth": 47.02259189897635,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -45946,7 +46471,8 @@
         "SubSectIndex": 525,
         "SubSectIndexAlong": 78,
         "SubSectIndexDown": 5,
-        "LowDepth": 46.26192187495268
+        "LowDepth": 46.26192187495268,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -46043,7 +46569,8 @@
         "SubSectIndex": 526,
         "SubSectIndexAlong": 79,
         "SubSectIndexDown": 5,
-        "LowDepth": 45.397622941662554
+        "LowDepth": 45.397622941662554,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -46130,7 +46657,8 @@
         "SubSectIndex": 527,
         "SubSectIndexAlong": 80,
         "SubSectIndexDown": 5,
-        "LowDepth": 44.86117684085657
+        "LowDepth": 44.86117684085657,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -46227,7 +46755,8 @@
         "SubSectIndex": 528,
         "SubSectIndexAlong": 81,
         "SubSectIndexDown": 5,
-        "LowDepth": 44.623054329452486
+        "LowDepth": 44.623054329452486,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -46314,7 +46843,8 @@
         "SubSectIndex": 529,
         "SubSectIndexAlong": 0,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -46401,7 +46931,8 @@
         "SubSectIndex": 530,
         "SubSectIndexAlong": 1,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.999999999999986
+        "LowDepth": 59.999999999999986,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -46498,7 +47029,8 @@
         "SubSectIndex": 531,
         "SubSectIndexAlong": 2,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -46590,7 +47122,8 @@
         "SubSectIndex": 532,
         "SubSectIndexAlong": 3,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.99999999999998
+        "LowDepth": 59.99999999999998,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -46687,7 +47220,8 @@
         "SubSectIndex": 533,
         "SubSectIndexAlong": 4,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.999999999999986
+        "LowDepth": 59.999999999999986,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -46779,7 +47313,8 @@
         "SubSectIndex": 534,
         "SubSectIndexAlong": 5,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.999999999999986
+        "LowDepth": 59.999999999999986,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -46871,7 +47406,8 @@
         "SubSectIndex": 535,
         "SubSectIndexAlong": 6,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -46968,7 +47504,8 @@
         "SubSectIndex": 536,
         "SubSectIndexAlong": 7,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.999999999999986
+        "LowDepth": 59.999999999999986,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -47060,7 +47597,8 @@
         "SubSectIndex": 537,
         "SubSectIndexAlong": 8,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -47157,7 +47695,8 @@
         "SubSectIndex": 538,
         "SubSectIndexAlong": 9,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.99999999999998
+        "LowDepth": 59.99999999999998,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -47249,7 +47788,8 @@
         "SubSectIndex": 539,
         "SubSectIndexAlong": 10,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.999999999999986
+        "LowDepth": 59.999999999999986,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -47341,7 +47881,8 @@
         "SubSectIndex": 540,
         "SubSectIndexAlong": 11,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.000000000000014
+        "LowDepth": 60.000000000000014,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -47438,7 +47979,8 @@
         "SubSectIndex": 541,
         "SubSectIndexAlong": 12,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.99999999999998
+        "LowDepth": 59.99999999999998,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -47535,7 +48077,8 @@
         "SubSectIndex": 542,
         "SubSectIndexAlong": 13,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -47632,7 +48175,8 @@
         "SubSectIndex": 543,
         "SubSectIndexAlong": 14,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.999999999999986
+        "LowDepth": 59.999999999999986,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -47719,7 +48263,8 @@
         "SubSectIndex": 544,
         "SubSectIndexAlong": 15,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -47816,7 +48361,8 @@
         "SubSectIndex": 545,
         "SubSectIndexAlong": 16,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.000000000000014
+        "LowDepth": 60.000000000000014,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -47908,7 +48454,8 @@
         "SubSectIndex": 546,
         "SubSectIndexAlong": 17,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -48005,7 +48552,8 @@
         "SubSectIndex": 547,
         "SubSectIndexAlong": 18,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.99999999999998
+        "LowDepth": 59.99999999999998,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -48097,7 +48645,8 @@
         "SubSectIndex": 548,
         "SubSectIndexAlong": 19,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -48189,7 +48738,8 @@
         "SubSectIndex": 549,
         "SubSectIndexAlong": 20,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.000000000000014
+        "LowDepth": 60.000000000000014,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -48286,7 +48836,8 @@
         "SubSectIndex": 550,
         "SubSectIndexAlong": 21,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.000000000000014
+        "LowDepth": 60.000000000000014,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -48383,7 +48934,8 @@
         "SubSectIndex": 551,
         "SubSectIndexAlong": 22,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.000000000000014
+        "LowDepth": 60.000000000000014,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -48470,7 +49022,8 @@
         "SubSectIndex": 552,
         "SubSectIndexAlong": 23,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -48567,7 +49120,8 @@
         "SubSectIndex": 553,
         "SubSectIndexAlong": 24,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.00000000000002
+        "LowDepth": 60.00000000000002,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -48664,7 +49218,8 @@
         "SubSectIndex": 554,
         "SubSectIndexAlong": 25,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -48756,7 +49311,8 @@
         "SubSectIndex": 555,
         "SubSectIndexAlong": 26,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -48853,7 +49409,8 @@
         "SubSectIndex": 556,
         "SubSectIndexAlong": 27,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.00000000000002
+        "LowDepth": 60.00000000000002,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -48945,7 +49502,8 @@
         "SubSectIndex": 557,
         "SubSectIndexAlong": 28,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -49042,7 +49600,8 @@
         "SubSectIndex": 558,
         "SubSectIndexAlong": 29,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.000000000000014
+        "LowDepth": 60.000000000000014,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -49134,7 +49693,8 @@
         "SubSectIndex": 559,
         "SubSectIndexAlong": 30,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.99999999999998
+        "LowDepth": 59.99999999999998,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -49231,7 +49791,8 @@
         "SubSectIndex": 560,
         "SubSectIndexAlong": 31,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.000000000000014
+        "LowDepth": 60.000000000000014,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -49323,7 +49884,8 @@
         "SubSectIndex": 561,
         "SubSectIndexAlong": 32,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.99999999999998
+        "LowDepth": 59.99999999999998,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -49415,7 +49977,8 @@
         "SubSectIndex": 562,
         "SubSectIndexAlong": 33,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -49512,7 +50075,8 @@
         "SubSectIndex": 563,
         "SubSectIndexAlong": 34,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -49609,7 +50173,8 @@
         "SubSectIndex": 564,
         "SubSectIndexAlong": 35,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.999999999999986
+        "LowDepth": 59.999999999999986,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -49706,7 +50271,8 @@
         "SubSectIndex": 565,
         "SubSectIndexAlong": 36,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.999999999999986
+        "LowDepth": 59.999999999999986,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -49793,7 +50359,8 @@
         "SubSectIndex": 566,
         "SubSectIndexAlong": 37,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.000000000000014
+        "LowDepth": 60.000000000000014,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -49890,7 +50457,8 @@
         "SubSectIndex": 567,
         "SubSectIndexAlong": 38,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -49987,7 +50555,8 @@
         "SubSectIndex": 568,
         "SubSectIndexAlong": 39,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -50079,7 +50648,8 @@
         "SubSectIndex": 569,
         "SubSectIndexAlong": 40,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -50171,7 +50741,8 @@
         "SubSectIndex": 570,
         "SubSectIndexAlong": 41,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.000000000000014
+        "LowDepth": 60.000000000000014,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -50268,7 +50839,8 @@
         "SubSectIndex": 571,
         "SubSectIndexAlong": 42,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.000000000000014
+        "LowDepth": 60.000000000000014,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -50360,7 +50932,8 @@
         "SubSectIndex": 572,
         "SubSectIndexAlong": 43,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -50457,7 +51030,8 @@
         "SubSectIndex": 573,
         "SubSectIndexAlong": 44,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.99999999999998
+        "LowDepth": 59.99999999999998,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -50549,7 +51123,8 @@
         "SubSectIndex": 574,
         "SubSectIndexAlong": 45,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -50646,7 +51221,8 @@
         "SubSectIndex": 575,
         "SubSectIndexAlong": 46,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.999999999999986
+        "LowDepth": 59.999999999999986,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -50738,7 +51314,8 @@
         "SubSectIndex": 576,
         "SubSectIndexAlong": 47,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.00000000000002
+        "LowDepth": 60.00000000000002,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -50830,7 +51407,8 @@
         "SubSectIndex": 577,
         "SubSectIndexAlong": 48,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.000000000000014
+        "LowDepth": 60.000000000000014,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -50927,7 +51505,8 @@
         "SubSectIndex": 578,
         "SubSectIndexAlong": 49,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -51024,7 +51603,8 @@
         "SubSectIndex": 579,
         "SubSectIndexAlong": 50,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.000000000000014
+        "LowDepth": 60.000000000000014,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -51116,7 +51696,8 @@
         "SubSectIndex": 580,
         "SubSectIndexAlong": 51,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -51213,7 +51794,8 @@
         "SubSectIndex": 581,
         "SubSectIndexAlong": 52,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.999999999999986
+        "LowDepth": 59.999999999999986,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -51310,7 +51892,8 @@
         "SubSectIndex": 582,
         "SubSectIndexAlong": 53,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.000000000000014
+        "LowDepth": 60.000000000000014,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -51397,7 +51980,8 @@
         "SubSectIndex": 583,
         "SubSectIndexAlong": 54,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.999999999999986
+        "LowDepth": 59.999999999999986,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -51494,7 +52078,8 @@
         "SubSectIndex": 584,
         "SubSectIndexAlong": 55,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -51591,7 +52176,8 @@
         "SubSectIndex": 585,
         "SubSectIndexAlong": 56,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -51683,7 +52269,8 @@
         "SubSectIndex": 586,
         "SubSectIndexAlong": 57,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.999999999999986
+        "LowDepth": 59.999999999999986,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -51775,7 +52362,8 @@
         "SubSectIndex": 587,
         "SubSectIndexAlong": 58,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -51872,7 +52460,8 @@
         "SubSectIndex": 588,
         "SubSectIndexAlong": 59,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -51964,7 +52553,8 @@
         "SubSectIndex": 589,
         "SubSectIndexAlong": 60,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.999999999999986
+        "LowDepth": 59.999999999999986,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -52056,7 +52646,8 @@
         "SubSectIndex": 590,
         "SubSectIndexAlong": 61,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.999999999999986
+        "LowDepth": 59.999999999999986,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -52153,7 +52744,8 @@
         "SubSectIndex": 591,
         "SubSectIndexAlong": 62,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.999999999999986
+        "LowDepth": 59.999999999999986,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -52250,7 +52842,8 @@
         "SubSectIndex": 592,
         "SubSectIndexAlong": 63,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -52342,7 +52935,8 @@
         "SubSectIndex": 593,
         "SubSectIndexAlong": 64,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.000000000000014
+        "LowDepth": 60.000000000000014,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -52439,7 +53033,8 @@
         "SubSectIndex": 594,
         "SubSectIndexAlong": 65,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.000000000000014
+        "LowDepth": 60.000000000000014,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -52531,7 +53126,8 @@
         "SubSectIndex": 595,
         "SubSectIndexAlong": 66,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -52623,7 +53219,8 @@
         "SubSectIndex": 596,
         "SubSectIndexAlong": 67,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.99999999999998
+        "LowDepth": 59.99999999999998,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -52720,7 +53317,8 @@
         "SubSectIndex": 597,
         "SubSectIndexAlong": 68,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -52812,7 +53410,8 @@
         "SubSectIndex": 598,
         "SubSectIndexAlong": 69,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.999999999999986
+        "LowDepth": 59.999999999999986,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -52904,7 +53503,8 @@
         "SubSectIndex": 599,
         "SubSectIndexAlong": 70,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.000000000000014
+        "LowDepth": 60.000000000000014,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -53001,7 +53601,8 @@
         "SubSectIndex": 600,
         "SubSectIndexAlong": 71,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.000000000000014
+        "LowDepth": 60.000000000000014,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -53098,7 +53699,8 @@
         "SubSectIndex": 601,
         "SubSectIndexAlong": 72,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.999999999999986
+        "LowDepth": 59.999999999999986,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -53190,7 +53792,8 @@
         "SubSectIndex": 602,
         "SubSectIndexAlong": 73,
         "SubSectIndexDown": 6,
-        "LowDepth": 59.99999999999998
+        "LowDepth": 59.99999999999998,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -53282,7 +53885,8 @@
         "SubSectIndex": 603,
         "SubSectIndexAlong": 74,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -53379,7 +53983,8 @@
         "SubSectIndex": 604,
         "SubSectIndexAlong": 75,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -53471,7 +54076,8 @@
         "SubSectIndex": 605,
         "SubSectIndexAlong": 76,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.000000000000014
+        "LowDepth": 60.000000000000014,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -53568,7 +54174,8 @@
         "SubSectIndex": 606,
         "SubSectIndexAlong": 77,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.000000000000014
+        "LowDepth": 60.000000000000014,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -53660,7 +54267,8 @@
         "SubSectIndex": 607,
         "SubSectIndexAlong": 78,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",
@@ -53757,7 +54365,8 @@
         "SubSectIndex": 608,
         "SubSectIndexAlong": 79,
         "SubSectIndexDown": 6,
-        "LowDepth": 60.0
+        "LowDepth": 60.0,
+        "TectonicRegion": "SUBDUCTION_INTERFACE"
       },
       "geometry": {
         "type": "MultiLineString",

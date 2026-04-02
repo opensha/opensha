@@ -231,10 +231,10 @@ public class LogicTreeFigureWriter extends JPanel {
 					uniquesWithout.add(str);
 //					System.out.println(str);
 				}
+				g2d.setFont(choiceFont);
 				int prefNumLines;
 				if (tree.size() % uniquesWithout.size() == 0) {
 					int numPer = tree.size() / uniquesWithout.size();
-					g2d.setFont(choiceFont);
 					String samplesStr;
 					if (numPer == 1) {
 						prefNumLines = 3;

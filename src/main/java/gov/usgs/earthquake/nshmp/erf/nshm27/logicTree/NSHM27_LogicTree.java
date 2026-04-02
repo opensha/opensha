@@ -90,6 +90,11 @@ public class NSHM27_LogicTree {
 	
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> buildLevels(NSHM27_SeismicityRegions seisReg,
 			TectonicRegionType trt, boolean sampled) {
+		return buildLevels(seisReg, trt, sampled, true, true);
+	}
+	
+	public static List<LogicTreeLevel<? extends LogicTreeNode>> buildLevels(NSHM27_SeismicityRegions seisReg,
+			TectonicRegionType trt, boolean sampled, boolean inversion, boolean gridded) {
 		List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
 		
 		levels.add(new NSHM27_ModelRegimeNode.Level(seisReg, trt));
@@ -97,74 +102,78 @@ public class NSHM27_LogicTree {
 		String trtName = NSHM27_RegionLoader.getNameForTRT(trt);
 		
 		// inversion
-		String supraBname = sampled ? trtName+" Inversion b-value Samples" : trtName+" Inversion Fixed b-value";
-		String supraBshortName = sampled ? trtName+"-bSamples" : trtName+"-FixedB";
-		if (trt == TectonicRegionType.SUBDUCTION_INTERFACE) {
-			levels.add(INTERFACE_FM);
-			levels.add(INTERFACE_DEPTH_COUPLING);
-			levels.add(INTERFACE_DM);
-			levels.add(INTERFACE_SCALE);
-			if (sampled)
-				levels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(supraBname, supraBshortName, INTERFACE_B_DIST));
-			else
-				levels.add(new SectionSupraSeisBValues.FixedValueLevel(supraBname, supraBshortName, INTERFACE_B_SINGLE_DEFAULT));
-			levels.add(INTERFACE_OBS_SEIS_DM_ADJ);
-			levels.add(INTERFACE_MIN_SUB_SECTS);
-			if (sampled)
-				levels.add(new MaxRuptureLengthBranchNode.DistributionSamplingLevel(
-						"Interface Maximum Rupture Length", "Interface Max. Len.", INTERFACE_MAX_LEN_DIST));
-			else
-				levels.add(new MaxRuptureLengthBranchNode.FixedValueLevel(
-						"Interface Maximum Rupture Length", "Interface Max. Len.", INTERFACE_MAX_LEN_SINGLE_DEFAULT));
-		} else if (trt == TectonicRegionType.ACTIVE_SHALLOW && seisReg == NSHM27_SeismicityRegions.GNMI) {
-			// have crustal on-fault
-			levels.add(CRUSTAL_FM);
-			if (sampled)
-				levels.add(new NSHM27_CrustalRandomlySampledDeformationModelLevel());
-			else
-				levels.add(CRUSTAL_AGG_DM);
-			levels.add(CRUSTAL_SCALE);
-			if (sampled)
-				levels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(supraBname, supraBshortName, CRUSTAL_B_DIST));
-			else
-				levels.add(new SectionSupraSeisBValues.FixedValueLevel(supraBname, supraBshortName, CRUSTAL_B_SINGLE_DEFAULT));
-			levels.add(SEG);
+		if (inversion) {
+			String supraBname = sampled ? trtName+" Inversion b-value Samples" : trtName+" Inversion Fixed b-value";
+			String supraBshortName = sampled ? trtName+"-bSamples" : trtName+"-FixedB";
+			if (trt == TectonicRegionType.SUBDUCTION_INTERFACE) {
+				levels.add(INTERFACE_FM);
+				levels.add(INTERFACE_DEPTH_COUPLING);
+				levels.add(INTERFACE_DM);
+				levels.add(INTERFACE_SCALE);
+				if (sampled)
+					levels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(supraBname, supraBshortName, INTERFACE_B_DIST));
+				else
+					levels.add(new SectionSupraSeisBValues.FixedValueLevel(supraBname, supraBshortName, INTERFACE_B_SINGLE_DEFAULT));
+				levels.add(INTERFACE_OBS_SEIS_DM_ADJ);
+				levels.add(INTERFACE_MIN_SUB_SECTS);
+				if (sampled)
+					levels.add(new MaxRuptureLengthBranchNode.DistributionSamplingLevel(
+							"Interface Maximum Rupture Length", "Interface Max. Len.", INTERFACE_MAX_LEN_DIST));
+				else
+					levels.add(new MaxRuptureLengthBranchNode.FixedValueLevel(
+							"Interface Maximum Rupture Length", "Interface Max. Len.", INTERFACE_MAX_LEN_SINGLE_DEFAULT));
+			} else if (trt == TectonicRegionType.ACTIVE_SHALLOW && seisReg == NSHM27_SeismicityRegions.GNMI) {
+				// have crustal on-fault
+				levels.add(CRUSTAL_FM);
+				if (sampled)
+					levels.add(new NSHM27_CrustalRandomlySampledDeformationModelLevel());
+				else
+					levels.add(CRUSTAL_AGG_DM);
+				levels.add(CRUSTAL_SCALE);
+				if (sampled)
+					levels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(supraBname, supraBshortName, CRUSTAL_B_DIST));
+				else
+					levels.add(new SectionSupraSeisBValues.FixedValueLevel(supraBname, supraBshortName, CRUSTAL_B_SINGLE_DEFAULT));
+				levels.add(SEG);
+			}
 		}
 		
 		// gridded
-		if (sampled)
-			levels.add(new NSHM27_SeisRateModelSamples(seisReg, trt));
-		else
-			levels.add(LogicTreeLevel.forEnum(NSHM27_SeisRateModelBranch.class,
-					NSHM27_RegionLoader.getNameForTRT(trt)+" Rate Model Branch",
-					NSHM27_RegionLoader.getNameForTRT(trt)+"Branch"));
-		levels.add(LogicTreeLevel.forEnum(NSHM27_DeclusteringAlgorithms.class,
-				NSHM27_RegionLoader.getNameForTRT(trt)+" Declustering Algorithm",
-				NSHM27_RegionLoader.getNameForTRT(trt)+"-Decluster"));
-		levels.add(LogicTreeLevel.forEnum(NSHM27_SeisSmoothingAlgorithms.class,
-				NSHM27_RegionLoader.getNameForTRT(trt)+" Smoothing Kernel",
-				NSHM27_RegionLoader.getNameForTRT(trt)+"-Smooth"));
-		if (trt != TectonicRegionType.SUBDUCTION_INTERFACE) {
-			// these only affect inversion if subduction interface
-			for (int i=levels.size()-3; i<levels.size(); i++) {
-				LogicTreeLevel<? extends LogicTreeNode> level = levels.get(i);
-				level.overrideIndividualAffected(FaultSystemRupSet.SECTS_FILE_NAME, false);
-				level.overrideIndividualAffected(FaultSystemSolution.RATES_FILE_NAME, false);
+		if (gridded) {
+			if (sampled)
+				levels.add(new NSHM27_SeisRateModelSamples(seisReg, trt));
+			else
+				levels.add(LogicTreeLevel.forEnum(NSHM27_SeisRateModelBranch.class,
+						NSHM27_RegionLoader.getNameForTRT(trt)+" Rate Model Branch",
+						NSHM27_RegionLoader.getNameForTRT(trt)+"Branch"));
+			levels.add(LogicTreeLevel.forEnum(NSHM27_DeclusteringAlgorithms.class,
+					NSHM27_RegionLoader.getNameForTRT(trt)+" Declustering Algorithm",
+					NSHM27_RegionLoader.getNameForTRT(trt)+"-Decluster"));
+			levels.add(LogicTreeLevel.forEnum(NSHM27_SeisSmoothingAlgorithms.class,
+					NSHM27_RegionLoader.getNameForTRT(trt)+" Smoothing Kernel",
+					NSHM27_RegionLoader.getNameForTRT(trt)+"-Smooth"));
+			if (trt != TectonicRegionType.SUBDUCTION_INTERFACE) {
+				// these only affect inversion if subduction interface
+				for (int i=levels.size()-3; i<levels.size(); i++) {
+					LogicTreeLevel<? extends LogicTreeNode> level = levels.get(i);
+					level.overrideIndividualAffected(FaultSystemRupSet.SECTS_FILE_NAME, false);
+					level.overrideIndividualAffected(FaultSystemSolution.RATES_FILE_NAME, false);
+				}
 			}
-		}
 
-		String mMaxName = sampled ? trtName+" Off Fault Mmax Samples" : trtName+" Fixed Off Fault Mmax";
-		String mMaxShortName = sampled ? trtName+"-MmaxOffSamples" : trtName+"-FixedMmaxOff";
-		if (trt == TectonicRegionType.ACTIVE_SHALLOW) {
-			if (sampled)
-				levels.add(new MaxMagOffFaultBranchNode.DistributionSamplingLevel(mMaxName, mMaxShortName, trt, CRUSTAL_MMAX_OFF_DIST));
-			else
-				levels.add(new MaxMagOffFaultBranchNode.FixedValueLevel(mMaxName, mMaxShortName, trt, CRUSTAL_MMAX_OFF_SINGLE_DEFAULT));
-		} else if (trt == TectonicRegionType.SUBDUCTION_SLAB) {
-			if (sampled)
-				levels.add(new MaxMagOffFaultBranchNode.DistributionSamplingLevel(mMaxName, mMaxShortName, trt, INTRASLAB_MMAX_OFF_DIST));
-			else
-				levels.add(new MaxMagOffFaultBranchNode.FixedValueLevel(mMaxName, mMaxShortName, trt, INTRASLAB_MMAX_OFF_SINGLE_DEFAULT));
+			String mMaxName = sampled ? trtName+" Off Fault Mmax Samples" : trtName+" Fixed Off Fault Mmax";
+			String mMaxShortName = sampled ? trtName+"-MmaxOffSamples" : trtName+"-FixedMmaxOff";
+			if (trt == TectonicRegionType.ACTIVE_SHALLOW) {
+				if (sampled)
+					levels.add(new MaxMagOffFaultBranchNode.DistributionSamplingLevel(mMaxName, mMaxShortName, trt, CRUSTAL_MMAX_OFF_DIST));
+				else
+					levels.add(new MaxMagOffFaultBranchNode.FixedValueLevel(mMaxName, mMaxShortName, trt, CRUSTAL_MMAX_OFF_SINGLE_DEFAULT));
+			} else if (trt == TectonicRegionType.SUBDUCTION_SLAB) {
+				if (sampled)
+					levels.add(new MaxMagOffFaultBranchNode.DistributionSamplingLevel(mMaxName, mMaxShortName, trt, INTRASLAB_MMAX_OFF_DIST));
+				else
+					levels.add(new MaxMagOffFaultBranchNode.FixedValueLevel(mMaxName, mMaxShortName, trt, INTRASLAB_MMAX_OFF_SINGLE_DEFAULT));
+			}
 		}
 		return levels;
 	}
@@ -323,6 +332,10 @@ public class NSHM27_LogicTree {
 				LogicTreeBranch<LogicTreeNode> branch2 = LogicTreeBranch.read(branchFile);
 				System.out.println("\tLoaded branch origWeight="+branch2.getOrigBranchWeight());
 				branch2.writeToFile(new File(branchFile.getParentFile(), branchFile.getName()+".rerpo"));
+				for (LogicTreeLevel<? extends LogicTreeNode> level : tree.getLevels()) {
+					if (!LogicTreeNode.FixedWeightNode.class.isAssignableFrom(level.getType()))
+						System.err.println("WARNING: Level not fixed-weight: "+level.getName()+" ("+level.getType().getClass().getName()+")");
+				}
 			}
 			System.out.println("\tBuilding multi-regime");
 			LogicTree<LogicTreeNode> multiTree = buildMultiRegimeTree(seisReg, trees.get(0), trees.get(1), trees.get(2));

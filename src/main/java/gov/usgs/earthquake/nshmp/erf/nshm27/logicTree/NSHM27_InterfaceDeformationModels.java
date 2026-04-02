@@ -11,6 +11,7 @@ import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.logicTree.LogicTreeNode.FixedWeightNode;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -33,7 +34,7 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM27_InterfaceDeformationModels implements RupSetDeformationModel {
+public enum NSHM27_InterfaceDeformationModels implements RupSetDeformationModel, FixedWeightNode {
 	LOW_COUPLING("Low Interface Coupling", "Low", 1d),
 	PREF_COUPLING("Preferred Interface Coupling", "Preferred", 1d),
 	HIGH_COUPLING("High Interface Coupling", "High", 1d);
@@ -69,7 +70,7 @@ public enum NSHM27_InterfaceDeformationModels implements RupSetDeformationModel 
 	}
 
 	@Override
-	public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+	public double getNodeWeight() {
 		return weight;
 	}
 
@@ -92,25 +93,22 @@ public enum NSHM27_InterfaceDeformationModels implements RupSetDeformationModel 
 	public boolean isApplicableTo(RupSetFaultModel faultModel) {
 		return faultModel instanceof NSHM27_InterfaceFaultModels;
 	}
-
-	@Override
-	public List<? extends FaultSection> apply(RupSetFaultModel faultModel,
-			LogicTreeBranch<? extends LogicTreeNode> branch, List<? extends FaultSection> fullSects,
-			List<? extends FaultSection> subSects) throws IOException {
-		Preconditions.checkState(faultModel instanceof NSHM27_InterfaceFaultModels);
-		NSHM27_InterfaceFaultModels fm = (NSHM27_InterfaceFaultModels)faultModel;
+	
+	public record DeformationFront(FaultTrace trace, double[] slips) {}
+	
+	public DeformationFront getDeformationFront(NSHM27_InterfaceFaultModels fm) throws IOException {
 		String csvPath;
-		if (faultModel == NSHM27_InterfaceFaultModels.AMSAM_V1) {
+		if (fm == NSHM27_InterfaceFaultModels.AMSAM_V1) {
 			csvPath = "/data/erf/nshm27/amsam/deformation_models/subduction/ker_trace_dm.csv";
-		} else if (faultModel == NSHM27_InterfaceFaultModels.GNMI_V1) {
+		} else if (fm == NSHM27_InterfaceFaultModels.GNMI_V1) {
 			csvPath = "/data/erf/nshm27/gnmi/deformation_models/subduction/izu_trace_dm.csv";
 		} else {
-			throw new IllegalStateException("Unexpected FM: "+faultModel);
+			throw new IllegalStateException("Unexpected FM: "+fm);
 		}
 		InputStream is = NSHM27_InterfaceDeformationModels.class.getResourceAsStream(csvPath);
 		Preconditions.checkNotNull(is, "Couldn't load CSV: %s", csvPath);
 		CSVFile<String> csv = CSVFile.readStream(is, true);
-		FaultTrace trace = new FaultTrace(faultModel.getName(), csv.getNumRows()-1);
+		FaultTrace trace = new FaultTrace(fm.getName(), csv.getNumRows()-1);
 		double[] slips = new double[csv.getNumRows()-1];
 		int column;
 		switch (this) {
@@ -128,6 +126,7 @@ public enum NSHM27_InterfaceDeformationModels implements RupSetDeformationModel 
 			throw new IllegalStateException("Unexpected model: "+this);
 		}
 		
+		List<? extends FaultSection> fullSects = fm.getFaultSections();
 		Preconditions.checkState(fullSects.size() == 1);
 		FaultSection fullSect = fullSects.get(0);
 		
@@ -146,7 +145,18 @@ public enum NSHM27_InterfaceDeformationModels implements RupSetDeformationModel 
 		if (fm.getSlipSmoothingDistance() > 0)
 			slips = InterfaceDeformationProjection.getSmoothedDeformationFrontSlipRates(trace, slips, fm.getSlipSmoothingDistance());
 		
-		InterfaceDeformationProjection.projectSlipRates(subSects, trace, slips);
+		return new DeformationFront(trace, slips);
+	}
+
+	@Override
+	public List<? extends FaultSection> apply(RupSetFaultModel faultModel,
+			LogicTreeBranch<? extends LogicTreeNode> branch, List<? extends FaultSection> fullSects,
+			List<? extends FaultSection> subSects) throws IOException {
+		Preconditions.checkState(faultModel instanceof NSHM27_InterfaceFaultModels);
+		NSHM27_InterfaceFaultModels fm = (NSHM27_InterfaceFaultModels)faultModel;
+		
+		DeformationFront df = getDeformationFront(fm);
+		InterfaceDeformationProjection.projectSlipRates(subSects, df.trace, df.slips);
 		
 		NSHM27_InterfaceCouplingDepthModels depthCoupling = branch.getValue(
 				NSHM27_InterfaceCouplingDepthModels.class);

@@ -36,10 +36,11 @@ import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_Seis
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM27_InterfaceCouplingDepthModels implements LogicTreeNode {
+public enum NSHM27_InterfaceCouplingDepthModels implements LogicTreeNode.FixedWeightNode {
 	DEEP_TAPER("Deep Taper", "Deep", Range.closed(0d, 10d), Range.closed(40d, 60d), 1d),
 	DOUBLE_TAPER("Double Taper", "Double", Range.closed(10d, 20d), Range.closed(40d, 60d), 1d),
-	NONE("None", "None", null, null, 1d);
+	NONE("None", "None", null, null, 1d),
+	AVERAGE("Average", "Average", null, null, 0d);
 
 	private String name;
 	private String shortName;
@@ -67,7 +68,7 @@ public enum NSHM27_InterfaceCouplingDepthModels implements LogicTreeNode {
 	}
 
 	@Override
-	public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+	public double getNodeWeight() {
 		return weight;
 	}
 
@@ -77,6 +78,21 @@ public enum NSHM27_InterfaceCouplingDepthModels implements LogicTreeNode {
 	}
 	
 	public void apply(List<? extends FaultSection> subSects) {
+		if (this == AVERAGE) {
+			double sumWeights = 0d;
+			for (NSHM27_InterfaceCouplingDepthModels model : values())
+				sumWeights += model.weight;
+			for (FaultSection sect : subSects) {
+				RuptureSurface surf = sect.getFaultSurface(1d);
+				LocationList surfLocs = surf.getEvenlyDiscritizedListOfLocsOnSurface();
+				
+				double coupling = 0d;
+				for (NSHM27_InterfaceCouplingDepthModels model : values())
+					coupling += model.getCoupling(surfLocs)*model.weight;
+				sect.setCouplingCoeff(coupling/sumWeights);
+			}
+			return;
+		}
 		if (upperTaper == null && lowerTaper == null) {
 			// shortcut
 			for (FaultSection sect : subSects)

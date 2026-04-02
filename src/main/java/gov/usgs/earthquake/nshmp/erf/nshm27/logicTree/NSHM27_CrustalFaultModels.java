@@ -8,6 +8,7 @@ import java.util.List;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
@@ -33,7 +34,7 @@ import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_Seis
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM27_CrustalFaultModels implements RupSetFaultModel, RupSetSubsectioningModel {
+public enum NSHM27_CrustalFaultModels implements RupSetFaultModel, RupSetSubsectioningModel, LogicTreeNode.FixedWeightNode {
 	GNMI_V1("Guam & Northern Mariana Islands (Crustal FM v1)", "GNMI-Crust-V1", NSHM27_SeismicityRegions.GNMI, 1d,
 			"/data/erf/nshm27/gnmi/fault_models/crustal/NSHM27_GNMI_FaultSections_v1.geojson");
 	
@@ -57,7 +58,7 @@ public enum NSHM27_CrustalFaultModels implements RupSetFaultModel, RupSetSubsect
 	}
 
 	@Override
-	public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+	public double getNodeWeight() {
 		return weight;
 	}
 

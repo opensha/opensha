@@ -842,6 +842,7 @@ public class InterfaceSubSectionBuilder {
 	}
 	
 	private static final PlotCurveCharacterstics rawChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.BLACK);
+	private static final PlotCurveCharacterstics rawCharBlue = new PlotCurveCharacterstics(PlotLineType.SOLID, 1.5f, Colors.tab_blue);
 	private static final PlotCurveCharacterstics rawCharLight = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.LIGHT_GRAY);
 	private static final PlotCurveCharacterstics traceChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Colors.tab_orange);
 	
@@ -923,10 +924,10 @@ public class InterfaceSubSectionBuilder {
 		
 		for (FaultTrace raw : rawContours) {
 			lines.add(raw);
-			chars.add(rawCharLight);
+			chars.add(rawCharBlue);
 		}
 		
-		PlotCurveCharacterstics interpChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1.2f, Color.BLACK);
+		PlotCurveCharacterstics interpChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK);
 		for (FaultTrace interp : interpContours) {
 			lines.add(interp);
 			chars.add(interpChar);
@@ -979,41 +980,41 @@ public class InterfaceSubSectionBuilder {
 		
 		double backTraceDist = 100d;
 		
-		String faultName = "Tonga Trench";
-		int faultID = 6700;
-		String resourcePrefix = "/data/erf/nshm27/amsam/fault_models/subduction/";
-		BufferedReader countoursIn = new BufferedReader(new InputStreamReader(
-				InterfaceSubSectionBuilder.class.getResourceAsStream(resourcePrefix+"ker_slab2_dep_10km_contours.xyz")));
-		CSVFile<String> traceCSV = CSVFile.readStream(
-				InterfaceSubSectionBuilder.class.getResourceAsStream(resourcePrefix+"trenches_usgs_2017_depths_ker.csv"), true);
-		boolean smoothTraceForDDW = true;
-		String prefix = "ker_slab2";
-		Range<Double> depthRange = Range.closed(0d, 60d);
-		// these happen before cleanup
-		Range<Double> preLonFilter = null;
-		Range<Double> preLatFilter = Range.atLeast(-30d);
-		// these happen after cleanup
-		Range<Double> postLonFilter = null;
-		Range<Double> postLatFilter = Range.atLeast(-23.7335);
-		boolean filterStartPerpendicular = false;
-		boolean filterEndPerpendicular = true;
-		
-//		String faultName = "Mariana Trench";
-//		int faultID = 6200;
-//		String resourcePrefix = "/data/erf/nshm27/gnmi/fault_models/subduction/";
+//		String faultName = "Tonga Trench";
+//		int faultID = 6700;
+//		String resourcePrefix = "/data/erf/nshm27/amsam/fault_models/subduction/";
 //		BufferedReader countoursIn = new BufferedReader(new InputStreamReader(
-//				InterfaceSubSectionBuilder.class.getResourceAsStream(resourcePrefix+"izu_slab2_dep_10km_contours.xyz")));
+//				InterfaceSubSectionBuilder.class.getResourceAsStream(resourcePrefix+"ker_slab2_dep_10km_contours.xyz")));
 //		CSVFile<String> traceCSV = CSVFile.readStream(
-//				InterfaceSubSectionBuilder.class.getResourceAsStream(resourcePrefix+"trenches_usgs_2017_depths_izu.csv"), true);
+//				InterfaceSubSectionBuilder.class.getResourceAsStream(resourcePrefix+"trenches_usgs_2017_depths_ker.csv"), true);
 //		boolean smoothTraceForDDW = true;
-//		String prefix = "izu_slab2";
+//		String prefix = "ker_slab2";
 //		Range<Double> depthRange = Range.closed(0d, 60d);
+//		// these happen before cleanup
 //		Range<Double> preLonFilter = null;
-//		Range<Double> preLatFilter = Range.atMost(23.123577);
+//		Range<Double> preLatFilter = Range.atLeast(-30d);
+//		// these happen after cleanup
 //		Range<Double> postLonFilter = null;
-//		Range<Double> postLatFilter = null;
-//		boolean filterStartPerpendicular = true;
-//		boolean filterEndPerpendicular = false;
+//		Range<Double> postLatFilter = Range.atLeast(-23.7335);
+//		boolean filterStartPerpendicular = false;
+//		boolean filterEndPerpendicular = true;
+		
+		String faultName = "Mariana Trench";
+		int faultID = 6200;
+		String resourcePrefix = "/data/erf/nshm27/gnmi/fault_models/subduction/";
+		BufferedReader countoursIn = new BufferedReader(new InputStreamReader(
+				InterfaceSubSectionBuilder.class.getResourceAsStream(resourcePrefix+"izu_slab2_dep_10km_contours.xyz")));
+		CSVFile<String> traceCSV = CSVFile.readStream(
+				InterfaceSubSectionBuilder.class.getResourceAsStream(resourcePrefix+"trenches_usgs_2017_depths_izu.csv"), true);
+		boolean smoothTraceForDDW = true;
+		String prefix = "izu_slab2";
+		Range<Double> depthRange = Range.closed(0d, 60d);
+		Range<Double> preLonFilter = null;
+		Range<Double> preLatFilter = Range.atMost(23.123577);
+		Range<Double> postLonFilter = null;
+		Range<Double> postLatFilter = null;
+		boolean filterStartPerpendicular = true;
+		boolean filterEndPerpendicular = false;
 		
 		double scaleLength = 20d;
 		double traceSmoothDist = 200d;

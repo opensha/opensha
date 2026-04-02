@@ -15,6 +15,7 @@ import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
@@ -45,7 +46,7 @@ import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_Seis
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM27_InterfaceFaultModels implements RupSetFaultModel, RupSetSubsectioningModel {
+public enum NSHM27_InterfaceFaultModels implements RupSetFaultModel, RupSetSubsectioningModel, LogicTreeNode.FixedWeightNode {
 	AMSAM_V1("Amarican Samoa (Interface FM v1)", "AmSam-Inter-v1",
 			"/data/erf/nshm27/amsam/fault_models/subduction/", NSHM27_SeismicityRegions.AMSAM, 0d),
 	GNMI_V1("Guam & Northern Mariana Islands (Interface FM v1)", "GNMI-Inter-v1",
@@ -73,7 +74,7 @@ public enum NSHM27_InterfaceFaultModels implements RupSetFaultModel, RupSetSubse
 	}
 
 	@Override
-	public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+	public double getNodeWeight() {
 		return 1;
 	}
 
@@ -136,7 +137,7 @@ public enum NSHM27_InterfaceFaultModels implements RupSetFaultModel, RupSetSubse
 	}
 
 	@Override
-	public RupSetDeformationModel getDefaultDeformationModel() {
+	public NSHM27_InterfaceDeformationModels getDefaultDeformationModel() {
 		return NSHM27_InterfaceDeformationModels.PREF_COUPLING;
 	}
 

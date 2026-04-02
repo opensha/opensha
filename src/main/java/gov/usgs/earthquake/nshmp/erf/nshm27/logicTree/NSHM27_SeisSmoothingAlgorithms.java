@@ -18,7 +18,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM27_SeisSmoothingAlgorithms implements LogicTreeNode {
+public enum NSHM27_SeisSmoothingAlgorithms implements LogicTreeNode.FixedWeightNode {
 	
 	ADAPTIVE("Adaptive Kernel", "Adaptive", 0.5d),
 	FIXED("Fixed Kernel", "Fixed", 0.5d),
@@ -45,7 +45,7 @@ public enum NSHM27_SeisSmoothingAlgorithms implements LogicTreeNode {
 	}
 
 	@Override
-	public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+	public double getNodeWeight() {
 		return weight;
 	}
 
