@@ -766,16 +766,15 @@ public class ComcatReportPageGen {
 	private static void combinePager(File top, File bottom, File output) throws IOException {
 		BufferedImage topIMG = ImageIO.read(top);
 		BufferedImage botIMG = ImageIO.read(bottom);
-		
+
 		int width = Integer.max(topIMG.getWidth(), botIMG.getWidth());
 		int height = topIMG.getHeight()+botIMG.getHeight();
-		
-		BufferedImage comb = new BufferedImage(width, height, topIMG.getType());
+		BufferedImage comb = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
 		for (int y=0; y<topIMG.getHeight(); y++)
 			for (int x=0; x<topIMG.getWidth(); x++)
 				comb.setRGB(x, y, topIMG.getRGB(x, y));
-		for (int y=0; y<topIMG.getHeight(); y++)
-			for (int x=0; x<topIMG.getWidth(); x++)
+		for (int y=0; y<botIMG.getHeight(); y++)
+			for (int x=0; x<botIMG.getWidth(); x++)
 				comb.setRGB(x, y+topIMG.getHeight(), botIMG.getRGB(x, y));
 		
 		ImageIO.write(comb, "png", output);
