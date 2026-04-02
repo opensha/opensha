@@ -14,6 +14,7 @@ import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.SamplingMethod;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.RandomSeedUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -222,7 +223,7 @@ public class NSHM27_LogicTree {
 	}
 	
 	public static LogicTree<LogicTreeNode> buildLogicTree(NSHM27_SeismicityRegions seisReg, TectonicRegionType trt,
-			int numSamples, boolean deterministicSeed) {
+			int numSamples, boolean deterministicSeed, SamplingMethod samplingMethod) {
 		
 		long seed;
 		if (deterministicSeed) {
@@ -234,7 +235,7 @@ public class NSHM27_LogicTree {
 		} else {
 			seed = new Random().nextLong();
 		}
-		return buildLogicTree(seisReg, trt, numSamples, seed);
+		return buildLogicTree(seisReg, trt, numSamples, seed, samplingMethod);
 	}
 	
 	private static List<LogicTreeNode> buildFixed(LogicTreeNode node, int numSamples) {
@@ -245,15 +246,15 @@ public class NSHM27_LogicTree {
 	}
 	
 	public static LogicTree<LogicTreeNode> buildLogicTree(NSHM27_SeismicityRegions seisReg, TectonicRegionType trt,
-			int numSamples, long seed) {
+			int numSamples, long seed, SamplingMethod samplingMethod) {
 		Preconditions.checkState(numSamples > 0);
 		List<LogicTreeLevel<? extends LogicTreeNode>> levels = buildLevels(seisReg, trt, true);
 		
-		return LogicTree.buildSampled(levels, numSamples, seed, NSHM27_InterfaceFaultModels.regionDefault(seisReg));
+		return LogicTree.buildSampled(levels, numSamples, seed, samplingMethod, NSHM27_InterfaceFaultModels.regionDefault(seisReg));
 	}
 	
 	public static LogicTree<LogicTreeNode> buildMultiRegimeTree(NSHM27_SeismicityRegions seisReg,
-			int numSamples, boolean deterministicSeed) {
+			int numSamples, boolean deterministicSeed, SamplingMethod samplingMethod) {
 		long seed;
 		if (deterministicSeed) {
 			List<Integer> seedComponents = new ArrayList<>();
@@ -263,16 +264,16 @@ public class NSHM27_LogicTree {
 		} else {
 			seed = new Random().nextLong();
 		}
-		return buildMultiRegimeTree(seisReg, numSamples, seed);
+		return buildMultiRegimeTree(seisReg, numSamples, seed, samplingMethod);
 	}
 	
 	public static LogicTree<LogicTreeNode> buildMultiRegimeTree(NSHM27_SeismicityRegions seisReg,
-			int numSamples, long seed) {
+			int numSamples, long seed, SamplingMethod samplingMethod) {
 		Random rand = new Random(seed);
 		
-		LogicTree<LogicTreeNode> interfaceTree = buildLogicTree(seisReg, TectonicRegionType.SUBDUCTION_INTERFACE, numSamples, rand.nextLong());
-		LogicTree<LogicTreeNode> intraslabTree = buildLogicTree(seisReg, TectonicRegionType.SUBDUCTION_SLAB, numSamples, rand.nextLong());
-		LogicTree<LogicTreeNode> crustalTree = buildLogicTree(seisReg, TectonicRegionType.ACTIVE_SHALLOW, numSamples, rand.nextLong());
+		LogicTree<LogicTreeNode> interfaceTree = buildLogicTree(seisReg, TectonicRegionType.SUBDUCTION_INTERFACE, numSamples, rand.nextLong(), samplingMethod);
+		LogicTree<LogicTreeNode> intraslabTree = buildLogicTree(seisReg, TectonicRegionType.SUBDUCTION_SLAB, numSamples, rand.nextLong(), samplingMethod);
+		LogicTree<LogicTreeNode> crustalTree = buildLogicTree(seisReg, TectonicRegionType.ACTIVE_SHALLOW, numSamples, rand.nextLong(), samplingMethod);
 		
 		return buildMultiRegimeTree(seisReg, interfaceTree, intraslabTree, crustalTree);
 	}
@@ -311,6 +312,7 @@ public class NSHM27_LogicTree {
 	}
 	
 	public static void main(String[] args) throws IOException {
+		SamplingMethod samplingMethod = SamplingMethod.MONTE_CARLO;
 		TectonicRegionType[] trts = {TectonicRegionType.SUBDUCTION_INTERFACE, TectonicRegionType.SUBDUCTION_SLAB, TectonicRegionType.ACTIVE_SHALLOW};
 		for (NSHM27_SeismicityRegions seisReg : NSHM27_SeismicityRegions.values()) {
 			List<LogicTree<LogicTreeNode>> trees = new ArrayList<>(3);
@@ -319,7 +321,7 @@ public class NSHM27_LogicTree {
 				System.out.println("\tRegular:\t"+buildDefault(seisReg, trt, false));
 				System.out.println("\tSampled:\t"+buildDefault(seisReg, trt, true));
 				System.out.println("\tBuilding sampled tree");
-				LogicTree<LogicTreeNode> tree = buildLogicTree(seisReg, trt, 100, true);
+				LogicTree<LogicTreeNode> tree = buildLogicTree(seisReg, trt, 100, true, samplingMethod);
 				trees.add(tree);
 				File treeFile = new File("/tmp/nshm27_tree_test_"+seisReg.name()+"_"+trt.name()+".json");
 				tree.write(treeFile);

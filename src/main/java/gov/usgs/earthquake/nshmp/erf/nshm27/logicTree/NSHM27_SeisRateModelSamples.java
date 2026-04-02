@@ -17,6 +17,7 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.AbstractRandomlySampledLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.BinnableLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.SamplingMethod;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -77,24 +78,52 @@ implements BinnableLevel<PureGR, NSHM27_SiesRateModelSample, BinnedSamplesLevel>
 	}
 
 	@Override
-	protected void doBuild(long seed, int numNodes, double weightEach) {
+	protected void doBuild(long seed, int numNodes, SamplingMethod samplingMethod) {
 		CSVFile<String> csv;
 		try {
 			csv = loadCSV();
 		} catch (IOException e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
-		List<PureGR> samplesList = SeismicityRateFileLoader.loadSamplesCSV(csv);
+		List<PureGR> origSamples = SeismicityRateFileLoader.loadSamplesCSV(csv);
 		Random rand = new Random(seed);
 		ArrayDeque<PureGR> samples = new ArrayDeque<>(numNodes);
-		for (int i=0; i<numNodes; i++) {
-			int sampleIndex = i % samplesList.size();
-			if (sampleIndex == 0)
-				// shuffle the list (and reshuffle on any subsequent passes through it)
-				Collections.shuffle(samplesList, rand);
-			samples.addLast(samplesList.get(sampleIndex));
+		if (samplingMethod == SamplingMethod.LATIN_HYPERCUBE) {
+			// sort by rate
+			origSamples.sort((o1,o2) -> {
+				int cmp = Double.compare(o1.rateAboveM1, o2.rateAboveM1);
+				if (cmp == 0)
+					// treat lower b-value as "higher" to break rate ties
+					cmp = Double.compare(o2.b, o1.b);
+				return cmp;
+			});
+			int numOrigSamples = origSamples.size();
+			
+			List<PureGR> sampled = new ArrayList<>(numNodes);
+			for (int i=0; i<numNodes; i++) {
+				double binStart = (double)i / numNodes;
+				double binEnd = (double)(i + 1) / numNodes;
+				double p = rand.nextDouble(binStart, binEnd);
+
+				int index = (int)(p * numOrigSamples);
+				if (index == numOrigSamples)
+					index = numOrigSamples - 1;
+
+				sampled.add(origSamples.get(index));
+			}
+			Collections.shuffle(sampled, rand);
+			samples.addAll(sampled);
+		} else {
+			// monte carlo
+			for (int i=0; i<numNodes; i++) {
+				int sampleIndex = i % origSamples.size();
+				if (sampleIndex == 0)
+					// shuffle the list (and reshuffle on any subsequent passes through it)
+					Collections.shuffle(origSamples, rand);
+				samples.addLast(origSamples.get(sampleIndex));
+			}
 		}
-		build(()->{ return samples.pop(); }, numNodes, weightEach);
+		build(()->{ return samples.pop(); }, numNodes, 1d/numNodes);
 	}
 
 	@Override

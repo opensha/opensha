@@ -7,6 +7,7 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
@@ -18,6 +19,8 @@ import org.apache.commons.statistics.distribution.ContinuousDistribution;
 import org.apache.commons.statistics.distribution.ContinuousDistribution.Sampler;
 import org.opensha.commons.data.ShortNamed;
 import org.opensha.commons.data.WeightedList;
+import org.opensha.commons.data.WeightedValue;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.logicTree.Affects.Affected;
 import org.opensha.commons.logicTree.DoesNotAffect.NotAffected;
 import org.opensha.commons.logicTree.LogicTreeBranch.NodeTypeAdapter;
@@ -34,6 +37,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Range;
+import com.google.common.primitives.Doubles;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -710,6 +714,18 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		
 	}
 	
+	public enum SamplingMethod {
+		/**
+		 * Purely random-sampling
+		 */
+		MONTE_CARLO,
+		/**
+		 * Stratify the uncertainties into equal-probability bins, sample a value from each bin, and then shuffle the
+		 * order. This ensures the full marginal distribution is sampled for each level
+		 */
+		LATIN_HYPERCUBE
+	}
+	
 	public static abstract class RandomLevel<E, N extends ValuedLogicTreeNode<E>> extends IndexedValuedLevel<E,N> {
 		
 		private long origSeed = -1l;
@@ -726,15 +742,15 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		}
 		
 		public final void build(long seed, int numNodes) {
-			build(seed, numNodes, 1d/(double)numNodes);
+			build(seed, numNodes, SamplingMethod.MONTE_CARLO);
 		}
 		
-		public final void build(long seed, int numNodes, double weightEach) {
+		public final void build(long seed, int numNodes, SamplingMethod samplingMethod) {
 			this.origSeed = seed;
-			doBuild(seed, numNodes, weightEach);
+			doBuild(seed, numNodes, samplingMethod);
 		}
 		
-		protected abstract void doBuild(long seed, int numNodes, double weightEach);
+		protected abstract void doBuild(long seed, int numNodes, SamplingMethod samplingMethod);
 
 		public final boolean isBuilt() {
 			return nodes != null;
@@ -860,11 +876,24 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		}
 
 		@Override
-		protected void doBuild(long seed, int numSamples, double weightEach) {
-			Random rand = new Random(seed);
-			build(()->{return weightedValues.sample(rand);}, numSamples, weightEach);
+		protected void doBuild(long seed, int numSamples, SamplingMethod samplingMethod) {
+			if (samplingMethod == SamplingMethod.LATIN_HYPERCUBE) {
+				doBuildLHS(seed, numSamples);
+			} else {
+				// monte-carlo otherwise
+				Random rand = new Random(seed);
+				build(()->{return weightedValues.sample(rand);}, numSamples, 1d/numSamples);
+			}
 		}
 		
+		protected void doBuildLHS(long seed, int numSamples) {
+			List<E> samples = weightedValues.sampleEvenly(numSamples, new Random(seed));
+			
+			Iterator<E> it = samples.iterator();
+			build(() -> {
+				return it.next();
+			}, numSamples, 1d / numSamples);
+		}
 	}
 	
 	public static abstract class AbstractContinuousDistributionSampledLevel<N extends ValuedLogicTreeNode<Double>>
@@ -892,11 +921,48 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		}
 		
 		@Override
-		protected void doBuild(long seed, int numSamples, double weightEach) {
-			build(RandomSource.XO_RO_SHI_RO_128_PP.create(seed), numSamples, weightEach);
+		protected void doBuild(long seed, int numSamples, SamplingMethod samplingMethod) {
+			build(RandomSource.XO_RO_SHI_RO_128_PP.create(seed), numSamples, samplingMethod);
 		}
 		
-		protected void build(UniformRandomProvider rand, int numSamples, double weightEach) {
+		protected void build(UniformRandomProvider rand, int numSamples, SamplingMethod samplingMethod) {
+			if (samplingMethod == SamplingMethod.LATIN_HYPERCUBE)
+				buildLHS(rand, numSamples);
+			else
+				// fallback
+				buildMonteCarlo(rand, numSamples);
+		}
+		
+		protected void buildLHS(UniformRandomProvider rand, int numSamples) {
+			double[] samples = new double[numSamples];
+			for (int i=0; i<numSamples; i++) {
+				double binStart = (double)i / numSamples;
+				double binEnd = (double)(i + 1) / numSamples;
+				double p = rand.nextDouble(binStart, binEnd);
+				samples[i] = getRoundedToPrecision(dist.inverseCumulativeProbability(p));
+			}
+			// shuffle them according to the uniform random provider
+			// Fisher–Yates shuffle
+			for (int i = numSamples - 1; i > 0; i--) {
+				int j = rand.nextInt(i + 1);
+				double tmp = samples[i];
+				samples[i] = samples[j];
+				samples[j] = tmp;
+			}
+			
+			build(new Supplier<Double>() {
+				int index = 0;
+				@Override
+				public Double get() {
+					if (index >= samples.length)
+						throw new IllegalStateException("No more LHS samples available");
+					return samples[index++];
+				}
+			}, numSamples, 1d/numSamples);
+		}
+		
+		protected void buildMonteCarlo(UniformRandomProvider rand, int numSamples) {
+			double weightEach = 1d/(double)numSamples;
 			Sampler sampler = dist.createSampler(rand);
 			build(()->{
 				double sample = getRoundedToPrecision(sampler.sample());
@@ -1339,8 +1405,9 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		}
 		
 		@Override
-		protected void doBuild(long seed, int num, double weightEach) {
-			buildNodes(new Random(seed), num, weightEach);
+		protected void doBuild(long seed, int num, SamplingMethod samplingMethod) {
+			// sampling method currently ignored for randomly-generated (always Monte Carlo)
+			buildNodes(new Random(seed), num, 1d/(double)num);
 		}
 		
 		protected void buildNodes(Random rand, int num, double weightEach) {

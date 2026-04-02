@@ -649,5 +649,62 @@ public class WeightedList<E> extends AbstractList<WeightedValue<E>> implements X
 		int index = sampler.getRandomInt(randDouble);
 		return list.get(index).value;
 	}
+	
+	public List<E> sampleMonteCarlo(int numSamples, Random rand) {
+		List<E> samples = new ArrayList<>(numSamples);
+		for (int i=0; i<numSamples; i++)
+			samples.add(sample(rand.nextDouble()));
+		return samples;
+	}
+	
+	public List<E> sampleEvenly(int numSamples, Random rand) {
+		List<E> samples = new ArrayList<>(numSamples);
+
+		double totWeight = getWeightSum();
+
+		WeightedList<E> remainders = new WeightedList<>(size());
+		int allocated = 0;
+
+		for (WeightedValue<E> value : list) {
+			double weight = value.weight;
+			if (totWeight != 1d)
+				weight /= totWeight;
+
+			double expected = numSamples * weight;
+			int num = (int)Math.floor(expected);
+			double remainder = expected - num;
+			
+			if (remainder > 0d)
+				remainders.add(value.value, remainder);
+
+			for (int i=0; i<num; i++)
+				samples.add(value.value);
+
+			allocated += num;
+		}
+
+		int remaining = numSamples - allocated;
+		Preconditions.checkState(remaining >= 0);
+		if (remaining > 0) {
+			Preconditions.checkState(!remainders.isEmpty());
+			if (remainders.size() == 1) {
+				for (int i=0; i<remaining; i++)
+					samples.add(remainders.getValue(0));
+			} else {
+				Preconditions.checkState(remainders.size() >= remaining);
+				// sort descending by remainder
+				// first shuffle for random tie-breaker for equal remainders
+				Collections.shuffle(remainders, rand);
+				// now sort
+				remainders.sort((o1, o2) -> {return Double.compare(o2.weight, o1.weight);});
+				for (int i=0; i<remaining; i++)
+					samples.add(remainders.getValue(i));
+			}
+		}
+
+		Collections.shuffle(samples, rand);
+		
+		return samples;
+	}
 
 }

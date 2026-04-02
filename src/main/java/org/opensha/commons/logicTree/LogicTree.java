@@ -19,9 +19,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.logicTree.LogicTreeLevel.BinnedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.SamplingMethod;
 import org.opensha.commons.logicTree.LogicTreeNode.FixedWeightNode;
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 
@@ -572,6 +574,13 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	
 	public static <E extends LogicTreeNode> LogicTree<E> buildSampled(
 			List<LogicTreeLevel<? extends E>> levels, int numSamples, long seed, LogicTreeNode... required) {
+		return buildSampled(levels, numSamples, seed, SamplingMethod.MONTE_CARLO, required);
+	}
+	
+	public static <E extends LogicTreeNode> LogicTree<E> buildSampled(
+			List<LogicTreeLevel<? extends E>> levels, int numSamples, long seed, SamplingMethod samplingMethod, LogicTreeNode... required) {
+		Preconditions.checkState(numSamples > 0, "NumSamples must be positive");
+		Preconditions.checkState(!levels.isEmpty(), "Must supply at least 1 level");
 		Random r = new Random(seed);
 		List<LogicTreeBranch<E>> branches = new ArrayList<>(numSamples);
 		// initialize empty
@@ -581,11 +590,12 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			branch.setOrigBranchWeight(weightEach);
 			branches.add(branch);
 		}
+		LogicTreeBranch<?> branch0 = branches.get(0);
 		for (int l=0; l<levels.size(); l++) {
 			LogicTreeLevel<?> level = levels.get(l);
 			List<? extends LogicTreeNode> samples;
 			if (level instanceof RandomLevel<?,?>) {
-				((RandomLevel<?,?>)level).build(r.nextLong(), numSamples);
+				((RandomLevel<?,?>)level).build(r.nextLong(), numSamples, samplingMethod);
 				samples = ((RandomLevel<?,?>)level).getNodes();
 				Preconditions.checkState(samples.size() == numSamples);
 			} else {
@@ -606,29 +616,47 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 						mySamples.add(fixed);
 				} else {
 					List<? extends LogicTreeNode> nodes = level.getNodes();
-					if (FixedWeightNode.class.isAssignableFrom(level.getType())) {
-						// fixed weights, simple
-						List<LogicTreeNode> nonzeroWeightNodes = new ArrayList<>(nodes.size());
-						List<Double> nonzeroWeights = new ArrayList<>(nodes.size());
+					boolean fixedWeights = FixedWeightNode.class.isAssignableFrom(level.getType());
+					if (!fixedWeights) {
+						// see if it's effectively fixed weight
+						fixedWeights = true;
 						for (LogicTreeNode node : nodes) {
-							double weight = ((FixedWeightNode)node).getNodeWeight();
-							if (weight > 0d) {
-								nonzeroWeightNodes.add(node);
-								nonzeroWeights.add(weight);
+							double weight0 = node.getNodeWeight(branches.get(0));
+							for (LogicTreeBranch<?> branch : branches) {
+								if (weight0 != node.getNodeWeight(branch)) {
+									fixedWeights = false;
+									break;
+								}
 							}
+							if (!fixedWeights)
+								break;
 						}
-						Preconditions.checkState(!nonzeroWeightNodes.isEmpty());
-						if (nonzeroWeightNodes.size() == 1) {
+					}
+					
+					if (fixedWeights) {
+						// fixed weights, simple
+						WeightedList<LogicTreeNode> weightedNodes = new WeightedList<>(nodes.size());
+						for (LogicTreeNode node : nodes) {
+							double weight = node instanceof FixedWeightNode ? ((FixedWeightNode)node).getNodeWeight() : node.getNodeWeight(branch0);
+							if (weight > 0d)
+								weightedNodes.add(node, weight);
+						}
+						Preconditions.checkState(!weightedNodes.isEmpty());
+						if (weightedNodes.size() == 1) {
 							for (int i=0; i<numSamples; i++)
-								mySamples.add(nonzeroWeightNodes.get(0));
+								mySamples.add(weightedNodes.get(0).value);
+						} else if (samplingMethod == SamplingMethod.LATIN_HYPERCUBE) {
+							mySamples.addAll(weightedNodes.sampleEvenly(numSamples, r));
 						} else {
-							IntegerPDF_FunctionSampler sampler = new IntegerPDF_FunctionSampler(Doubles.toArray(nonzeroWeights));
-							for (int i=0; i<numSamples; i++)
-								mySamples.add(nonzeroWeightNodes.get(sampler.getRandomInt(r)));
+							mySamples.addAll(weightedNodes.sampleMonteCarlo(numSamples, r));
 						}
 					} else {
-						// potentially-varying based on upstream
+						// weights vary based on upstream
+						// this implies monte carlo
 						IntegerPDF_FunctionSampler sampler = null;
+						if (samplingMethod == SamplingMethod.LATIN_HYPERCUBE)
+							System.err.println("WARNING: Latin hypercube sampling selected but nodes of "+level.getName()
+									+" vary based on upstream choices; will revert to Monte Carlo sampling for this level");
 						double[] curWeights = new double[nodes.size()];
 						for (int i=0; i<numSamples; i++) {
 							LogicTreeNode firstNonzero = null;
@@ -636,6 +664,8 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 							LogicTreeBranch<E> branch = branches.get(i);
 							for (int n=0; n<curWeights.length; n++) {
 								LogicTreeNode node = nodes.get(n);
+								double weight = node.getNodeWeight(branch);
+								fixedWeights &= (i == 0 || weight == curWeights[n]);
 								curWeights[n] = node.getNodeWeight(branch);
 								if (curWeights[n] > 0) {
 									if (numNonZero == 0)
