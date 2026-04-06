@@ -29,6 +29,7 @@ import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.cpt.CPT;
+import org.opensha.commons.util.modules.ModuleArchive;
 import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.earthquake.PointSource;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -85,7 +86,7 @@ public class NSHM27_GridSourceBuilder {
 	
 	public static double[] SLAB_DEPTH_REDISCRETIZATION = { 10, 20, 30, 40, 60, 80, 100, 150, 200, 250, 350, 450, 550 };
 	
-	public static final double SLAB_MIN_RATE = 1e-10; // approximately 1 in the age of the known universe
+	public static final double MIN_RATE_THRESHOLD = 1e-10; // approximately 1 in the age of the known universe
 	
 	public static boolean RATE_BALANCE_CRUSTAL_GRIDDED = true;
 	
@@ -468,7 +469,7 @@ public class NSHM27_GridSourceBuilder {
 		
 		IncrementalMagFreqDist totalGR = rateBranch.build(seisRegion, TectonicRegionType.SUBDUCTION_SLAB,
 				refMFD, refMFD.getX(refMFD.getClosestXIndex(mMax-0.001)));
-		double totalRate = totalGR.calcSumOfY_Vals();
+		double m5Rate = totalGR.getCumRate(totalGR.getClosestXIndex(5.05));
 		
 		// this is what nshm23 did for NSHM23 Cascadia and PRVI25
 		// slab GMMs don't even use these according to Peter
@@ -495,15 +496,15 @@ public class NSHM27_GridSourceBuilder {
 			double rediscrSum = pdf.getSumValues();
 			Preconditions.checkState((float)rediscrSum == 1f, "Bad PDF sum=%s", rediscrSum);
 		}
-		if (SLAB_MIN_RATE > 0) {
+		if (MIN_RATE_THRESHOLD > 0) {
 			double fractFilteredOut = 0d;
 			int numFilteredOut = 0;
 			int size = pdf.size();
 			for (int i=0; i<size; i++) {
 				double fract = pdf.get(i);
 				if (fract > 0d) {
-					double rate = fract*totalRate;
-					if (rate < SLAB_MIN_RATE) {
+					double rate = fract*m5Rate;
+					if (rate < MIN_RATE_THRESHOLD) {
 						pdf.set(i, 0d);
 						numFilteredOut++;
 						fractFilteredOut += fract;
@@ -511,7 +512,8 @@ public class NSHM27_GridSourceBuilder {
 				}
 			}
 			if (numFilteredOut > 0) {
-				System.out.println("Filtered out "+numFilteredOut+"/"+size+" locations (fract="+fractFilteredOut+") with rates < "+SLAB_MIN_RATE);
+				System.out.println("Filtered out "+numFilteredOut+"/"+size+" slab locations (fract="
+						+fractFilteredOut+") with rates < "+MIN_RATE_THRESHOLD);
 				pdf.scale(1d/pdf.getSumValues());
 			}
 		}
@@ -596,12 +598,27 @@ public class NSHM27_GridSourceBuilder {
 		double[] fractNormal = new double[gridReg.getNodeCount()];
 //		checkCalcCrustalFaultCategories();
 		double[] pdfVals = new double[pdf.size()];
+		int numFilteredOut = 0;
+		double weightFilteredOut = 0;
+		double m5Rate = totalGR.getCumRate(totalGR.getClosestXIndex(5.05));
 		for (int i=0; i<fractStrikeSlip.length; i++) {
 			// these moment fractions from the crustal DM
 			fractStrikeSlip[i] = CRUSTAL_FRACT_SS;
 			fractReverse[i] = CRUSTAL_FRACT_REV;
 			fractNormal[i] = CRUSTAL_FRACT_NORM;
 			pdfVals[i] = pdf.get(i);
+			if (MIN_RATE_THRESHOLD > 0d && pdfVals[i]*m5Rate < MIN_RATE_THRESHOLD) {
+				numFilteredOut++;
+				weightFilteredOut += pdfVals[i];
+				pdfVals[i] = 0d;
+			}
+		}
+		if (numFilteredOut > 0) {
+			System.out.println("Filtered out "+numFilteredOut+"/"+pdf.size()+" crustal locations (fract="
+					+weightFilteredOut+") with rates < "+MIN_RATE_THRESHOLD);
+			double scalar = 1d/(1d-weightFilteredOut);
+			for (int i=0; i<pdfVals.length; i++)
+				pdfVals[i] *= scalar;
 		}
 		
 		FaultGridAssociations assoc;
@@ -753,24 +770,25 @@ public class NSHM27_GridSourceBuilder {
 	public static void main(String[] args) throws IOException {
 //		plotInterfaceDepthStrikeData(NSHM27_SeismicityRegions.AMSAM, new File("/tmp"));
 //		plotInterfaceDepthStrikeData(NSHM27_SeismicityRegions.GNMI, new File("/tmp"));
+		ModuleArchive.VERBOSE_DEFAULT = false;
 		
 		System.out.println("Rediscr depths:");
 		
-		File invDir = new File("/home/kevin/markdown/inversions/");
-		
-		FaultSystemSolution interfaceSol = FaultSystemSolution.load(new File(invDir,
-				"2026_03_20-nshm26-gnmi-GNMI_V1_DOUBLE_TAPER_LOW_COUPLING_LogA_C4p0_SECTION_SPECIFIC_ONE_High_AVERAGE_AVERAGE/solution.zip"));
-		NSHM27_SeismicityRegions seisReg = NSHM27_SeismicityRegions.GNMI;
-		FaultSystemSolution crustalSol = FaultSystemSolution.load(new File(invDir,
-				"2026_03_20-nshm26-gnmi-AVERAGE_LogA_C4p2_Middle_Average_AVERAGE_AVERAGE/solution.zip"));
+		File invDir = new File("/data/kevin/nshm23/batch_inversions/");
 		
 //		FaultSystemSolution interfaceSol = FaultSystemSolution.load(new File(invDir,
-//				"2026_03_20-nshm26-amsam-AMSAM_V1_DOUBLE_TAPER_LOW_COUPLING_LogA_C4p0_SECTION_SPECIFIC_ONE_High_AVERAGE_AVERAGE/solution.zip"));
-//		NSHM27_SeismicityRegions seisReg = NSHM27_SeismicityRegions.AMSAM;
-//		FaultSystemSolution crustalSol = null;
+//				"2026_03_20-nshm26-gnmi-GNMI_V1_DOUBLE_TAPER_LOW_COUPLING_LogA_C4p0_SECTION_SPECIFIC_ONE_High_AVERAGE_AVERAGE/solution.zip"));
+//		NSHM27_SeismicityRegions seisReg = NSHM27_SeismicityRegions.GNMI;
+//		FaultSystemSolution crustalSol = FaultSystemSolution.load(new File(invDir,
+//				"2026_03_20-nshm26-gnmi-AVERAGE_LogA_C4p2_Middle_Average_AVERAGE_AVERAGE/solution.zip"));
 		
-//		LogicTreeBranch<LogicTreeNode> branch = NSHM27_LogicTree.buildDefault(seisReg, TectonicRegionType.SUBDUCTION_INTERFACE, false);
-		LogicTreeBranch<LogicTreeNode> branch = interfaceSol.requireModule(LogicTreeBranch.class);
+		FaultSystemSolution interfaceSol = FaultSystemSolution.load(new File(invDir,
+				"2026_04_02-nshm27-AMSAM-2000samples-lhs-gridded/results_AMSAM_V1_SUBDUCTION_INTERFACE_branch_averaged.zip"));
+		NSHM27_SeismicityRegions seisReg = NSHM27_SeismicityRegions.AMSAM;
+		FaultSystemSolution crustalSol = null;
+		
+		LogicTreeBranch<LogicTreeNode> branch = NSHM27_LogicTree.buildDefault(seisReg, TectonicRegionType.SUBDUCTION_INTERFACE, false);
+//		LogicTreeBranch<LogicTreeNode> branch = interfaceSol.requireModule(LogicTreeBranch.class);
 		doPreGridBuildHook(interfaceSol, branch);
 		NSHM27_InterfaceFaultModels fm = branch.requireValue(NSHM27_InterfaceFaultModels.class);
 		GridSourceList interfaceProv = buildInterfaceGridSourceList(interfaceSol, branch, seisReg);
