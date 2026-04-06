@@ -9,6 +9,7 @@ import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -109,6 +110,38 @@ public interface AperiodicityModel extends ParameterizedModel {
 		 * @return section-specific aperiodicity values array
 		 */
 		public double[] getSectionAperiodicity();
+	}
+	
+	public static abstract class SlipRateDependent implements SectionDependent {
+		
+		private FaultSystemRupSet rupSet;
+		private SectSlipRates slipRates;
+
+		public SlipRateDependent(FaultSystemRupSet rupSet) {
+			this.rupSet = rupSet;
+			this.slipRates = rupSet.getSectSlipRates();
+		}
+
+		@Override
+		public double getRuptureAperiodicity(int ruptureIndex) {
+			return getRuptureAperiodicity(getAverageSlipRate(ruptureIndex));
+		}
+		
+		/**
+		 * @param ruptureIndex
+		 * @return average slip rate for the given rupture (SI units: m/yr)
+		 */
+		public double getAverageSlipRate(int ruptureIndex) {
+			return rupSet.getSectionsIndicesForRup(ruptureIndex).stream()
+					.mapToDouble(S->slipRates.getSlipRate(S)).average().getAsDouble();
+		}
+		
+		/**
+		 * @param averageSlipRate average slip rate for the given rupture (SI units: m/yr)
+		 * @return aperiodicity for the given slip rate
+		 */
+		public abstract double getRuptureAperiodicity(double averageSlipRate);
+		
 	}
 	
 	public static abstract class MagnitudeDependent implements AperiodicityModel {
