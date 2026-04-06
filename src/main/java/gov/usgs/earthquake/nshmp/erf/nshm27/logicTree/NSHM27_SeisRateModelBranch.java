@@ -38,7 +38,7 @@ import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateTyp
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM27_SeisRateModelBranch implements NSHM27_SeisRateModel {
+public enum NSHM27_SeisRateModelBranch implements NSHM27_SeisRateModel, LogicTreeNode.FixedWeightNode {
 	LOW("Lower Seismicity Bound (p2.5)", "Low", 0.13d) {
 		@Override
 		public IncrementalMagFreqDist build(NSHM27_SeismicityRegions region, TectonicRegionType trt, EvenlyDiscretizedFunc refMFD, double mMax) {
@@ -185,7 +185,7 @@ public enum NSHM27_SeisRateModelBranch implements NSHM27_SeisRateModel {
 	}
 
 	@Override
-	public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+	public double getNodeWeight() {
 		return weight;
 	}
 

@@ -76,16 +76,20 @@ implements BinnableLevel<PureGR, NSHM27_SiesRateModelSample, BinnedSamplesLevel>
 		Preconditions.checkState(csvFile.exists(), "CSV doesn't exist: %s", data.getAbsolutePath());
 		return CSVFile.readFile(csvFile, false);
 	}
-
-	@Override
-	protected void doBuild(long seed, int numNodes, SamplingMethod samplingMethod) {
+	
+	public List<PureGR> loadOrigSamples() {
 		CSVFile<String> csv;
 		try {
 			csv = loadCSV();
 		} catch (IOException e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
-		List<PureGR> origSamples = SeismicityRateFileLoader.loadSamplesCSV(csv);
+		return SeismicityRateFileLoader.loadSamplesCSV(csv);
+	}
+
+	@Override
+	protected void doBuild(long seed, int numNodes, SamplingMethod samplingMethod) {
+		List<PureGR> origSamples = loadOrigSamples();
 		Random rand = new Random(seed);
 		ArrayDeque<PureGR> samples = new ArrayDeque<>(numNodes);
 		if (samplingMethod == SamplingMethod.LATIN_HYPERCUBE) {
