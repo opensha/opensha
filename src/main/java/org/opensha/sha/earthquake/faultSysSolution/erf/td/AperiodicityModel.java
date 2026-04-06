@@ -124,7 +124,7 @@ public interface AperiodicityModel extends ParameterizedModel {
 
 		@Override
 		public double getRuptureAperiodicity(int ruptureIndex) {
-			return getRuptureAperiodicity(getAverageSlipRate(ruptureIndex));
+			return getAperiodicity(getAverageSlipRate(ruptureIndex));
 		}
 		
 		/**
@@ -140,7 +140,20 @@ public interface AperiodicityModel extends ParameterizedModel {
 		 * @param averageSlipRate average slip rate for the given rupture (SI units: m/yr)
 		 * @return aperiodicity for the given slip rate
 		 */
-		public abstract double getRuptureAperiodicity(double averageSlipRate);
+		public abstract double getAperiodicity(double averageSlipRate);
+
+		@Override
+		public double getSectionAperiodicity(int sectIndex) {
+			return getAperiodicity(slipRates.getSlipRate(sectIndex));
+		}
+
+		@Override
+		public double[] getSectionAperiodicity() {
+			double[] sectAper = new double[rupSet.getNumSections()];
+			for (int i=0; i<sectAper.length; i++)
+				sectAper[i] = getAperiodicity(slipRates.getSlipRate(i));
+			return sectAper;
+		}
 		
 	}
 	
