@@ -45,7 +45,7 @@ public class SolLogicTreeSampler {
 				randSeed = Long.parseLong(cmd.getOptionValue("rand-seed"));
 			else
 				randSeed = (long)origTree.size() * (long)numSamples;
-			outputTree = origTree.sample(numSamples, true, new Random(randSeed), true);
+			outputTree = origTree.sample(numSamples, true, randSeed, true);
 		} else if (cmd.hasOption("logic-tree")) {
 			outputTree = LogicTree.read(new File(cmd.getOptionValue("logic-tree")));
 		} else {

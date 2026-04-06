@@ -271,11 +271,16 @@ public class NSHM27_LogicTree {
 			int numSamples, long seed, SamplingMethod samplingMethod) {
 		Random rand = new Random(seed);
 		
-		LogicTree<LogicTreeNode> interfaceTree = buildLogicTree(seisReg, TectonicRegionType.SUBDUCTION_INTERFACE, numSamples, rand.nextLong(), samplingMethod);
-		LogicTree<LogicTreeNode> intraslabTree = buildLogicTree(seisReg, TectonicRegionType.SUBDUCTION_SLAB, numSamples, rand.nextLong(), samplingMethod);
-		LogicTree<LogicTreeNode> crustalTree = buildLogicTree(seisReg, TectonicRegionType.ACTIVE_SHALLOW, numSamples, rand.nextLong(), samplingMethod);
+		LogicTree<LogicTreeNode> interfaceTree = buildLogicTree(seisReg,
+				TectonicRegionType.SUBDUCTION_INTERFACE, numSamples, rand.nextLong(), samplingMethod);
+		LogicTree<LogicTreeNode> intraslabTree = buildLogicTree(seisReg,
+				TectonicRegionType.SUBDUCTION_SLAB, numSamples, rand.nextLong(), samplingMethod);
+		LogicTree<LogicTreeNode> crustalTree = buildLogicTree(seisReg,
+				TectonicRegionType.ACTIVE_SHALLOW, numSamples, rand.nextLong(), samplingMethod);
 		
-		return buildMultiRegimeTree(seisReg, interfaceTree, intraslabTree, crustalTree);
+		LogicTree<LogicTreeNode> tree = buildMultiRegimeTree(seisReg, interfaceTree, intraslabTree, crustalTree);
+		tree.setSamplingParameters(seed, 0, samplingMethod);
+		return tree;
 	}
 	
 	public static LogicTree<LogicTreeNode> buildMultiRegimeTree(NSHM27_SeismicityRegions seisReg,

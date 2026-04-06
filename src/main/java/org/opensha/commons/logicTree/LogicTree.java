@@ -62,6 +62,10 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	
 	private BranchWeightProvider weightProvider = DEFAULT_WEIGHTS;
 	
+	private long randomSeed;
+	private int origNumBranches;
+	private SamplingMethod samplingMethod;
+	
 	private LogicTree(BranchWeightProvider weightProvider) {
 		this.weightProvider = weightProvider;
 	}
@@ -173,6 +177,20 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	}
 	
 	/**
+	 * Sets metadata about the parameters used when randomly sampling (or downsampling) a logic tree. This method
+	 * is for informational purposes and reproducibility only; these values are not used once set here.
+	 * 
+	 * @param randomSeed the random seed used when (down)sampling this logic tree
+	 * @param origNumBranches the original number of branches if this is a downsampled logic tree, otherwise 0
+	 * @param samplingMethod the sampling method used when sampling this logic tree, or null
+	 */
+	public void setSamplingParameters(long randomSeed, int origNumBranches, SamplingMethod samplingMethod) {
+		this.randomSeed = randomSeed;
+		this.origNumBranches = origNumBranches;
+		this.samplingMethod = samplingMethod;
+	}
+	
+	/**
 	 * @param values
 	 * @return a subset of this logic tree where each branch contains all of the given values
 	 */
@@ -276,7 +294,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	 * use a {@link BranchWeightProvider} instance modified to reflect the even (post-sampling) weights.
 	 */
 	public final LogicTree<E> sample(int numSamples, boolean redrawDuplicates) {
-		return sample(numSamples, redrawDuplicates, new Random());
+		return sample(numSamples, redrawDuplicates, new Random().nextLong());
 	}
 	
 	/**
@@ -284,12 +302,12 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	 * @param redrawDuplicates if true, each branch will be unique, drawing another branch if an already sampled branch
 	 * has been selected. Branches that are drawn multiple times will be assigned greater weight and the total number
 	 * of branches will exactly match the specified number of samples.
-	 * @param rand random number generator
+	 * @param seed random seed
 	 * @return a randomly sampled subset of this logic tree, according to their weights. The returned logic tree will
 	 * use a {@link BranchWeightProvider} instance modified to reflect the even (post-sampling) weights.
 	 */
-	public final LogicTree<E> sample(int numSamples, boolean redrawDuplicates, Random rand) {
-		return sample(numSamples, redrawDuplicates, rand, true);
+	public final LogicTree<E> sample(int numSamples, boolean redrawDuplicates, long seed) {
+		return sample(numSamples, redrawDuplicates, seed, true);
 	}
 	
 	/**
@@ -297,11 +315,11 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	 * @param redrawDuplicates if true, each branch will be unique, drawing another branch if an already sampled branch
 	 * has been selected. Branches that are drawn multiple times will be assigned greater weight and the total number
 	 * of branches will exactly match the specified number of samples.
-	 * @param rand random number generator
+	 * @param seed random seed
 	 * @return a randomly sampled subset of this logic tree, according to their weights. The returned logic tree will
 	 * use a {@link BranchWeightProvider} instance modified to reflect the even (post-sampling) weights.
 	 */
-	public final LogicTree<E> sample(int numSamples, boolean redrawDuplicates, Random rand, boolean verbose) {
+	public final LogicTree<E> sample(int numSamples, boolean redrawDuplicates, long seed, boolean verbose) {
 		if (verbose) System.out.println("Resampling logic tree of size="+size()+" to "+numSamples+" samples...");
 		Preconditions.checkArgument(numSamples > 0);
 		Preconditions.checkState(!redrawDuplicates || numSamples <= size(),
@@ -310,6 +328,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		int[] indexCounts = new int[branches.size()];
 		int sampleCountSum = 0;
 		int uniqueBranches = 0;
+		Random rand = new Random(seed);
 		if (redrawDuplicates) {
 			while (uniqueBranches < numSamples) {
 				int index = sampler.getRandomInt(rand);
@@ -392,6 +411,11 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			printSamplingStats(levels, weightEach, sampledNodeCounts, origNodeCounts, origNodeWeights);
 				
 		}
+		
+		ret.origNumBranches = size();
+		ret.randomSeed = seed;
+		ret.samplingMethod = SamplingMethod.MONTE_CARLO;
+		
 		return ret;
 	}
 
@@ -698,7 +722,11 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 				branches.get(i).setValue(l, (E)samples.get(i));
 		}
 		
-		return fromExisting(levels, branches);
+		LogicTree<E> tree = fromExisting(levels, branches);
+		tree.randomSeed = seed;
+		tree.origNumBranches = 0;
+		tree.samplingMethod = samplingMethod;
+		return tree;
 	}
 	
 	public static LogicTree<LogicTreeNode> unrollTRTs(
@@ -723,7 +751,13 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			modBranches.add(branch);
 		}
 		
-		return fromExisting(modLevels, modBranches);
+		LogicTree<LogicTreeNode> tree = fromExisting(modLevels, modBranches);
+		
+		tree.randomSeed = inputTree.randomSeed;
+		tree.origNumBranches = inputTree.origNumBranches;
+		tree.samplingMethod = inputTree.samplingMethod;
+		
+		return tree;
 	}
 	
 	public static LogicTree<LogicTreeNode> applyBinning(
@@ -775,7 +809,13 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			
 			modBranches.add(modBranch);
 		}
-		return fromExisting(modLevels, modBranches);
+		LogicTree<LogicTreeNode> tree = fromExisting(modLevels, modBranches);
+		
+		tree.randomSeed = inputTree.randomSeed;
+		tree.origNumBranches = inputTree.origNumBranches;
+		tree.samplingMethod = inputTree.samplingMethod;
+		
+		return tree;
 	}
 	
 	public static void main(String[] args) {
@@ -911,6 +951,13 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 				out.endArray();
 			}
 			
+			if (value.randomSeed != 0l)
+				out.name("randomSeed").value(value.randomSeed);
+			if (value.origNumBranches > 0)
+				out.name("origNumBranches").value(value.origNumBranches);
+			if (value.samplingMethod != null)
+				out.name("samplingMethod").value(value.samplingMethod.name());
+			
 			out.endObject();
 		}
 
@@ -929,6 +976,10 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			List<String> customFilePrefixes = null;
 			
 			List<Map<String, E>> nodeMatchCache = null;
+			
+			long randomSeed = 0l;
+			int origNumBranches = 0;
+			SamplingMethod samplingMethod = null;
 			
 			while (in.hasNext()) {
 				switch (in.nextName()) {
@@ -1055,6 +1106,15 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 						origWeights.add(in.nextDouble());
 					in.endArray();
 					break;
+				case "randomSeed":
+					randomSeed = in.nextLong();
+					break;
+				case "origNumBranches":
+					origNumBranches = in.nextInt();
+					break;
+				case "samplingMethod":
+					samplingMethod = SamplingMethod.valueOf(in.nextString());
+					break;
 
 				default:
 					in.skipValue();
@@ -1087,7 +1147,13 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 				for (int i=0; i<branches.size(); i++)
 					branches.get(i).setOrigBranchWeight(origWeightEach);
 			}
-			return new LogicTree<>(levels, branches, weightProvider);
+			LogicTree<E> tree = new LogicTree<>(levels, branches, weightProvider);
+			
+			tree.randomSeed = randomSeed;
+			tree.origNumBranches = origNumBranches;
+			tree.samplingMethod = samplingMethod;
+			
+			return tree;
 		}
 		
 	}
