@@ -867,8 +867,8 @@ public class ETAS_CatalogIO {
 			return numCatalogs;
 		}
 	}
-	
-	private static final int ITERABLE_PRELOAD_CAPACITY = 500; // catalogs
+
+	private static final int MAX_ITERABLE_PRELOAD_CAPACITY = 500; // catalogs
 	
 	public static class BinarayCatalogsListIterator implements Iterator<ETAS_Catalog> {
 		
@@ -889,7 +889,7 @@ public class ETAS_CatalogIO {
 
 			numCatalogs = in.readInt();
 			
-			deque = new LinkedBlockingDeque<>(ITERABLE_PRELOAD_CAPACITY);
+			deque = new LinkedBlockingDeque<>(Integer.min(MAX_ITERABLE_PRELOAD_CAPACITY, Integer.max(2, numCatalogs/1000)));
 			loadIndex = 0;
 			loadThread = new Thread() {
 				@Override
@@ -955,6 +955,48 @@ public class ETAS_CatalogIO {
 		
 	}
 	
+	/**
+	 * Loads a single catalog from a catalog binary file. Note that simulations may assign indexes to catalogs that
+	 * differ from their order in the file. If you want to use the simulation catalog index, set indexInFile to false,
+	 * otherwise if you just want to use the index in the file set indexInFile to true.
+	 * 
+	 * @param catalogsFile binary consolidated catalog file
+	 * @param index index to load
+	 * @param indexInFile if true, the index-th catalog is returned, otherwise the catalog whose metadata matches the specified index is returned
+	 * @return
+	 * @throws IOException
+	 */
+	public static ETAS_Catalog loadIndividualCatalogBinary(File catalogsFile, int index, boolean indexInFile) throws IOException {
+		BinarayCatalogsMetadataIterator metaIt = getBinaryCatalogsMetadataIterator(catalogsFile);
+		ETAS_SimulationMetadata meta = null;
+		long startPos = -1l;
+		int curIndexInFile = 0;
+		while (metaIt.hasNext()) {
+			ETAS_SimulationMetadata nextMeta = metaIt.peek();
+			Preconditions.checkState(metaIt.isNextFullyWritten());
+			boolean match;
+			if (indexInFile)
+				match = index == curIndexInFile;
+			else
+				match = nextMeta.catalogIndex == index;
+			if (match) {
+				meta = nextMeta;
+				startPos = metaIt.getNextMetaStartPos();
+				break;
+			}
+			metaIt.next();
+			curIndexInFile++;
+		}
+		metaIt.close();
+		Preconditions.checkNotNull(meta, "No catalog found with index=%s", index);
+		System.out.println("Catalog "+index+" starts at pos="+startPos);
+		RandomAccessFile ra = new RandomAccessFile(catalogsFile, "r");
+		ra.seek(startPos);
+		ETAS_Catalog catalog = doLoadCatalogBinary(ra, 0d);
+		ra.close();
+		return catalog;
+	}
+	
 	public static BinarayCatalogsMetadataIterator getBinaryCatalogsMetadataIterator(File binFile) throws IOException {
 		return new BinarayCatalogsMetadataIterator(binFile);
 	}
@@ -967,6 +1009,7 @@ public class ETAS_CatalogIO {
 		private int curIndex = -1;
 		private ETAS_SimulationMetadata current;
 		private short curVersion = -1;
+		private long curMetaStartPos = -1;
 		private long curStartPos = -1;
 		private long curEndPos = -1;
 		private int curNumRuptures = -1;
@@ -996,12 +1039,12 @@ public class ETAS_CatalogIO {
 			
 			curIndex++;
 			ETAS_SimulationMetadata meta;
-			long headerStartPos = ra.getFilePointer();
+			curMetaStartPos = ra.getFilePointer();
 			try {
 				curVersion = ra.readShort();
 				meta = readBinaryMetadata(ra, curVersion);
 			} catch (Exception e) {
-				System.err.println("Error reading metadata for catalog "+curIndex+" at header pos="+headerStartPos
+				System.err.println("Error reading metadata for catalog "+curIndex+" at header pos="+curMetaStartPos
 						+", trucated? "+e.getMessage());
 				close();
 				return;
@@ -1048,6 +1091,11 @@ public class ETAS_CatalogIO {
 		@Override
 		public void remove() {
 			throw new UnsupportedOperationException();
+		}
+		
+		public long getNextMetaStartPos() {
+			peek();
+			return curMetaStartPos;
 		}
 		
 		public long getNextStartPos() {
@@ -1431,10 +1479,24 @@ public class ETAS_CatalogIO {
 //			writeEventDataToFile(eventFile, loadCatalog(eventFile));
 //		}
 		
-		File dir = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations/"
-//				+ "2016_02_19-mojave_m7-10yr-full_td-subSeisSupraNucl-gridSeisCorr-scale1.14-combined100k");
-				+ "2016_08_24-spontaneous-10yr-no_ert-subSeisSupraNucl-gridSeisCorr-combined");
-		binaryCatalogsFilterByMag(new File(dir, "results_m4.bin"), new File(dir, "results_m5.bin"), 5d, false);
+//		File dir = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations/"
+////				+ "2016_02_19-mojave_m7-10yr-full_td-subSeisSupraNucl-gridSeisCorr-scale1.14-combined100k");
+//				+ "2016_08_24-spontaneous-10yr-no_ert-subSeisSupraNucl-gridSeisCorr-combined");
+//		binaryCatalogsFilterByMag(new File(dir, "results_m4.bin"), new File(dir, "results_m5.bin"), 5d, false);
+		
+		File file = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations/"
+				+ "2024_06_06-Start2012_500yr_kCOV1p5_Spontaneous_HistCatalog/results_m5_preserve_chain.bin");
+		List<ETAS_Catalog> catalogs = loadCatalogsBinary(file);
+		int index = 42;
+		ETAS_Catalog catalog = catalogs.get(42);
+		System.out.println("Catalog "+index+" is "+catalog.meta.catalogIndex);
+//		ETAS_Catalog indvCatalog = loadIndividualCatalogBinary(file, catalog.meta.catalogIndex, false);
+		ETAS_Catalog indvCatalog = loadIndividualCatalogBinary(file, index, true);
+		Preconditions.checkState(indvCatalog.size() == catalog.size());
+		ETAS_EqkRupture rup0 = catalog.get(0);
+		ETAS_EqkRupture indvRup0 = catalog.get(0);
+		Preconditions.checkState(rup0.getMag() == indvRup0.getMag());
+		Preconditions.checkState(rup0.getHypocenterLocation().equals(indvRup0.getHypocenterLocation()));
 		
 //		File binFile = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations/"
 //				+ "2016_02_17-spontaneous-1000yr-scaleMFD1p14-full_td-subSeisSupraNucl-gridSeisCorr/results_m4.bin");

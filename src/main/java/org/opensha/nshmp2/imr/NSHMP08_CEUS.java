@@ -1,8 +1,15 @@
 package org.opensha.nshmp2.imr;
 
-import static org.opensha.nshmp2.util.SiteType.*;
-import static org.opensha.sha.imr.PropagationEffect.*;
-import static org.opensha.sha.imr.AttenRelRef.*;
+import static org.opensha.nshmp2.util.SiteType.FIRM_ROCK;
+import static org.opensha.nshmp2.util.SiteType.HARD_ROCK;
+import static org.opensha.sha.imr.AttenRelRef.AB_2006_140;
+import static org.opensha.sha.imr.AttenRelRef.AB_2006_200;
+import static org.opensha.sha.imr.AttenRelRef.CAMPBELL_2003;
+import static org.opensha.sha.imr.AttenRelRef.FEA_1996;
+import static org.opensha.sha.imr.AttenRelRef.SILVA_2002;
+import static org.opensha.sha.imr.AttenRelRef.SOMERVILLE_2001;
+import static org.opensha.sha.imr.AttenRelRef.TORO_1997;
+import static org.opensha.sha.imr.AttenRelRef.TP_2005;
 
 import java.util.EnumSet;
 import java.util.List;
@@ -12,13 +19,12 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.exceptions.IMRException;
 import org.opensha.commons.exceptions.ParameterException;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.constraint.impl.DoubleDiscreteConstraint;
-import org.opensha.commons.param.constraint.impl.StringConstraint;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
-import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.EnumParameter;
 import org.opensha.commons.param.impl.StringParameter;
@@ -34,9 +40,9 @@ import org.opensha.nshmp2.util.Period;
 import org.opensha.nshmp2.util.SiteType;
 import org.opensha.nshmp2.util.Utils;
 import org.opensha.sha.earthquake.EqkRupture;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
-import org.opensha.sha.imr.PropagationEffect;
+import org.opensha.sha.imr.ErgodicIMR;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.DampingParam;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
@@ -97,7 +103,7 @@ public class NSHMP08_CEUS extends AttenuationRelationship implements
 	private final static double VS30_WARN_MAX = 1300;
 
 	// imr weight maps; n.b. Charleston fixed-strike uses fault weights
-	Map<ScalarIMR, Double> imrMap;
+	Map<ErgodicIMR, Double> imrMap;
 
 	// custom params
 	private EnumParameter<SiteType> siteTypeParam;
@@ -174,6 +180,13 @@ public class NSHMP08_CEUS extends AttenuationRelationship implements
 
 	@Override
 	protected void setPropagationEffectParams() {}
+
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		for (ErgodicIMR imr : imrMap.keySet()) {
+			imr.setPropagationEffectParams(distances);
+		}
+	}
 
 	@Override
 	protected void initSupportedIntensityMeasureParams() {
@@ -280,8 +293,16 @@ public class NSHMP08_CEUS extends AttenuationRelationship implements
 	}
 
 	@Override
+	public void setSiteLocation(Location loc) {
+		for (ScalarIMR imr : imrMap.keySet()) {
+			imr.setSiteLocation(loc);
+		}
+		super.setSiteLocation(loc);
+	}
+
+	@Override
 	public void setEqkRupture(EqkRupture eqkRupture) {
-		this.eqkRupture = eqkRupture;
+		super.setEqkRupture(eqkRupture);
 		for (ScalarIMR imr : imrMap.keySet()) {
 			imr.setEqkRupture(eqkRupture);
 		}
@@ -359,12 +380,6 @@ public class NSHMP08_CEUS extends AttenuationRelationship implements
 	public DiscretizedFunc getSA_IML_AtExceedProbSpectrum(double exceedProb)
 			throws ParameterException, IMRException {
 		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public double getTotExceedProbability(PointEqkSource ptSrc, double iml) {
-		throw new UnsupportedOperationException(
-			"getTotExceedProbability is unsupported for " + C);
 	}
 
 	@Override

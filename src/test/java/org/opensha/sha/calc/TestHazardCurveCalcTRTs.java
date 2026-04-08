@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Stack;
 
@@ -18,9 +19,9 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
-import org.opensha.sha.calc.params.MaxDistanceParam;
 import org.opensha.sha.calc.params.NonSupportedTRT_OptionsParam;
 import org.opensha.sha.calc.params.SetTRTinIMR_FromSourceParam;
+import org.opensha.sha.calc.sourceFilters.params.MaxDistanceParam;
 import org.opensha.sha.earthquake.ERFSubset;
 import org.opensha.sha.earthquake.rupForecastImpl.Frankel96.Frankel96_AdjustableEqkRupForecast;
 import org.opensha.sha.gui.infoTools.IMT_Info;
@@ -85,14 +86,11 @@ public class TestHazardCurveCalcTRTs implements ParameterChangeListener {
 
 	@Before
 	public void setUp() throws Exception {
-		ArrayList<TectonicRegionType> trts = new ArrayList<TectonicRegionType>();
-		for (TectonicRegionType trt : TectonicRegionType.values())
-			trts.add(trt);
+		EnumSet<TectonicRegionType> trts = EnumSet.allOf(TectonicRegionType.class); 
 		allIMR = new FakeTRTBasedIMR(trts, TectonicRegionType.ACTIVE_SHALLOW);
 		
 		calc = new HazardCurveCalculator();
-		maxDistanceParam = (MaxDistanceParam) calc.getAdjustableParams().getParameter(MaxDistanceParam.NAME);
-		maxDistanceParam.setValue(MaxDistanceParam.MAX);
+		calc.setMaxSourceDistance(MaxDistanceParam.MAX);
 		setTRTinIMR_FromSourceParam = (SetTRTinIMR_FromSourceParam)
 					calc.getAdjustableParams().getParameter(SetTRTinIMR_FromSourceParam.NAME);
 		nonSupportedTRT_OptionsParam = (NonSupportedTRT_OptionsParam)
@@ -114,7 +112,7 @@ public class TestHazardCurveCalcTRTs implements ParameterChangeListener {
 		
 		for (TectonicRegionType trt : TectonicRegionType.values()) {
 			assertEquals("event stack should be empty", 0, eventStack.size());
-			TectonicRegionType prevTRT = trtParam.getValueAsTRT();
+			TectonicRegionType prevTRT = trtParam.getValue();
 			if (prevTRT != trt) {
 				trtParam.setValue(trt);
 				eventStack.pop(); // pop the event from the manual set
@@ -122,7 +120,7 @@ public class TestHazardCurveCalcTRTs implements ParameterChangeListener {
 			for (TectonicRegionType erfTRT : TectonicRegionType.values()) {
 				calc.getHazardCurve(func, site, allIMR, singleERFMaps.get(erfTRT));
 				assertEquals("event stack should be empty", 0, eventStack.size());
-				assertTrue("TRT changed but wasn't supposed to!", trtParam.getValueAsTRT() == trt);
+				assertTrue("TRT changed but wasn't supposed to!", trtParam.getValue() == trt);
 			}
 		}
 	}
@@ -144,7 +142,7 @@ public class TestHazardCurveCalcTRTs implements ParameterChangeListener {
 			trtParam.setValue(origTRT);
 			for (TectonicRegionType erfTRT : TectonicRegionType.values()) {
 				calc.getHazardCurve(func, site, allIMR, singleERFMaps.get(erfTRT));
-				assertTrue("TRT changed but wasn't changed back!", trtParam.getValueAsTRT() == origTRT);
+				assertTrue("TRT changed but wasn't changed back!", trtParam.getValue() == origTRT);
 			}
 		}
 		
@@ -152,7 +150,7 @@ public class TestHazardCurveCalcTRTs implements ParameterChangeListener {
 		trtParam.addParameterChangeListener(this);
 		for (TectonicRegionType origTRT : TectonicRegionType.values()) {
 			assertEquals("event stack should be empty", 0, eventStack.size());
-			TectonicRegionType prevTRT = trtParam.getValueAsTRT();
+			TectonicRegionType prevTRT = trtParam.getValue();
 			if (prevTRT != origTRT) {
 				trtParam.setValue(origTRT);
 				eventStack.pop(); // pop the event from the manual set
@@ -170,11 +168,11 @@ public class TestHazardCurveCalcTRTs implements ParameterChangeListener {
 //					System.out.println("event2: new=" + event2.getNewValue() + " old=" + event2.getOldValue());
 //					System.out.println("event1: new=" + event1.getNewValue() + " old=" + event1.getOldValue());
 					assertNotNull(event2.getNewValue());
-					assertTrue("2nd event should have set back to orig", event2.getNewValue().equals(origTRT.toString()));
+					assertTrue("2nd event should have set back to orig", event2.getNewValue().equals(origTRT));
 					assertNotNull(event1.getNewValue());
-					assertTrue("1st event should have set to erf's TRT", event1.getNewValue().equals(erfTRT.toString()));
+					assertTrue("1st event should have set to erf's TRT", event1.getNewValue().equals(erfTRT));
 				}
-				assertTrue("TRT changed but wasn't changed back!", trtParam.getValueAsTRT() == origTRT);
+				assertTrue("TRT changed but wasn't changed back!", trtParam.getValue() == origTRT);
 			}
 		}
 	}
@@ -189,9 +187,7 @@ public class TestHazardCurveCalcTRTs implements ParameterChangeListener {
 	public void testHCSetBySourceUnsupportedAsDefault() {
 		setTRTinIMR_FromSourceParam.setValue(true);
 		
-		ArrayList<TectonicRegionType> subdTypes = new ArrayList<TectonicRegionType>();
-		subdTypes.add(TectonicRegionType.SUBDUCTION_INTERFACE);
-		subdTypes.add(TectonicRegionType.SUBDUCTION_SLAB);
+		EnumSet<TectonicRegionType> subdTypes = EnumSet.of(TectonicRegionType.SUBDUCTION_INTERFACE, TectonicRegionType.SUBDUCTION_SLAB);
 		FakeTRTBasedIMR subdIMR = new FakeTRTBasedIMR(subdTypes, TectonicRegionType.SUBDUCTION_INTERFACE);
 		
 		TectonicRegionTypeParam trtParam = (TectonicRegionTypeParam)subdIMR.getParameter(TectonicRegionTypeParam.NAME);
@@ -203,7 +199,7 @@ public class TestHazardCurveCalcTRTs implements ParameterChangeListener {
 		TectonicRegionType erfTRT = TectonicRegionType.ACTIVE_SHALLOW;
 		calc.getHazardCurve(func, site, subdIMR, singleERFMaps.get(erfTRT));
 		assertEquals("event stack should be empty", 0, eventStack.size());
-		assertTrue("TRT should still be default", trtParam.getValueAsTRT() == TectonicRegionType.SUBDUCTION_INTERFACE);
+		assertTrue("TRT should still be default", trtParam.getValue() == TectonicRegionType.SUBDUCTION_INTERFACE);
 		
 		trtParam.setValue(TectonicRegionType.SUBDUCTION_SLAB);
 		eventStack.pop();
@@ -214,11 +210,11 @@ public class TestHazardCurveCalcTRTs implements ParameterChangeListener {
 		ParameterChangeEvent event1 = eventStack.pop(); // the 1st change, setting as default
 		assertNotNull(event2.getNewValue());
 		assertTrue("2nd event should have set back to orig",
-				event2.getNewValue().equals(TectonicRegionType.SUBDUCTION_SLAB.toString()));
+				event2.getNewValue().equals(TectonicRegionType.SUBDUCTION_SLAB));
 		assertNotNull(event1.getNewValue());
 		assertTrue("1st event should have set to erf's TRT",
-				event1.getNewValue().equals(TectonicRegionType.SUBDUCTION_INTERFACE.toString()));
-		assertTrue("TRT should still be default", trtParam.getValueAsTRT() == TectonicRegionType.SUBDUCTION_SLAB);
+				event1.getNewValue().equals(TectonicRegionType.SUBDUCTION_INTERFACE));
+		assertTrue("TRT should still be default", trtParam.getValue() == TectonicRegionType.SUBDUCTION_SLAB);
 		
 		assertEquals("event stack should be empty", 0, eventStack.size());
 	}
@@ -231,9 +227,7 @@ public class TestHazardCurveCalcTRTs implements ParameterChangeListener {
 	public void testHCSetBySourceUnsupportedUseOrig() {
 		setTRTinIMR_FromSourceParam.setValue(true);
 		
-		ArrayList<TectonicRegionType> subdTypes = new ArrayList<TectonicRegionType>();
-		subdTypes.add(TectonicRegionType.SUBDUCTION_INTERFACE);
-		subdTypes.add(TectonicRegionType.SUBDUCTION_SLAB);
+		EnumSet<TectonicRegionType> subdTypes = EnumSet.of(TectonicRegionType.SUBDUCTION_INTERFACE, TectonicRegionType.SUBDUCTION_SLAB);
 		FakeTRTBasedIMR subdIMR = new FakeTRTBasedIMR(subdTypes, TectonicRegionType.SUBDUCTION_INTERFACE);
 		
 		TectonicRegionTypeParam trtParam = (TectonicRegionTypeParam)subdIMR.getParameter(TectonicRegionTypeParam.NAME);
@@ -247,14 +241,14 @@ public class TestHazardCurveCalcTRTs implements ParameterChangeListener {
 		
 		calc.getHazardCurve(func, site, subdIMR, singleERFMaps.get(erfTRT));
 		assertEquals("event stack should be empty", 0, eventStack.size());
-		assertTrue("TRT should still be orig", trtParam.getValueAsTRT() == TectonicRegionType.SUBDUCTION_INTERFACE);
+		assertTrue("TRT should still be orig", trtParam.getValue() == TectonicRegionType.SUBDUCTION_INTERFACE);
 		
 		trtParam.setValue(TectonicRegionType.SUBDUCTION_SLAB);
 		eventStack.pop();
 		assertEquals("event stack should be empty", 0, eventStack.size());
 		calc.getHazardCurve(func, site, subdIMR, singleERFMaps.get(erfTRT));
 		assertEquals("event stack should be empty", 0, eventStack.size());
-		assertTrue("TRT should still be orig", trtParam.getValueAsTRT() == TectonicRegionType.SUBDUCTION_SLAB);
+		assertTrue("TRT should still be orig", trtParam.getValue() == TectonicRegionType.SUBDUCTION_SLAB);
 	}
 	
 	/**
@@ -266,9 +260,7 @@ public class TestHazardCurveCalcTRTs implements ParameterChangeListener {
 	public void testHCSetBySourceUnsupportedThrow() {
 		setTRTinIMR_FromSourceParam.setValue(true);
 		
-		ArrayList<TectonicRegionType> subdTypes = new ArrayList<TectonicRegionType>();
-		subdTypes.add(TectonicRegionType.SUBDUCTION_INTERFACE);
-		subdTypes.add(TectonicRegionType.SUBDUCTION_SLAB);
+		EnumSet<TectonicRegionType> subdTypes = EnumSet.of(TectonicRegionType.SUBDUCTION_INTERFACE, TectonicRegionType.SUBDUCTION_SLAB);
 		FakeTRTBasedIMR subdIMR = new FakeTRTBasedIMR(subdTypes, TectonicRegionType.SUBDUCTION_INTERFACE);
 		
 		TectonicRegionTypeParam trtParam = (TectonicRegionTypeParam)subdIMR.getParameter(TectonicRegionTypeParam.NAME);

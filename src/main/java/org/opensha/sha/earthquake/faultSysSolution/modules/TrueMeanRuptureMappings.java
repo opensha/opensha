@@ -17,6 +17,8 @@ import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -38,8 +40,8 @@ public abstract class TrueMeanRuptureMappings extends AbstractLogicTreeModule {
 	protected Map<String, int[]> rupFileMappingsCache = new HashMap<>();
 	protected Map<String, double[]> rupFileMagsCache = new HashMap<>();
 	
-	private TrueMeanRuptureMappings(ZipFile zip, String prefix, LogicTree<?> logicTree) {
-		super(zip, prefix, logicTree);
+	private TrueMeanRuptureMappings(ArchiveInput input, String prefix, LogicTree<?> logicTree) {
+		super(input, prefix, logicTree);
 	}
 
 	@Override
@@ -109,7 +111,7 @@ public abstract class TrueMeanRuptureMappings extends AbstractLogicTreeModule {
 	public abstract double[] getRuptureMags(LogicTreeBranch<?> branch);
 
 	@Override
-	protected synchronized Map<String, String> writeBranchFilesToArchive(ZipOutputStream zout, String prefix, LogicTreeBranch<?> branch,
+	protected synchronized Map<String, String> writeBranchFilesToArchive(ArchiveOutput output, String prefix, LogicTreeBranch<?> branch,
 			HashSet<String> writtenFiles) throws IOException {
 		Map<String, String> mappings = new LinkedHashMap<>();
 		
@@ -130,7 +132,7 @@ public abstract class TrueMeanRuptureMappings extends AbstractLogicTreeModule {
 			int[] sectMappings = getSectionMappings(branch);
 			CSVFile<String> csv = buildMappingCSV("Section", sectMappings);
 			
-			CSV_BackedModule.writeToArchive(csv, zout, entryPrefix, sectMappingFile);
+			CSV_BackedModule.writeToArchive(csv, output, entryPrefix, sectMappingFile);
 			
 			sectFileMappingsCache.put(sectMappingFile, sectMappings);
 			writtenFiles.add(sectMappingFile);
@@ -151,7 +153,7 @@ public abstract class TrueMeanRuptureMappings extends AbstractLogicTreeModule {
 			int[] rupMappings = getRuptureMappings(branch);
 			CSVFile<String> csv = buildMappingCSV("Rupture", rupMappings);
 			
-			CSV_BackedModule.writeToArchive(csv, zout, entryPrefix, rupMappingFile);
+			CSV_BackedModule.writeToArchive(csv, output, entryPrefix, rupMappingFile);
 			
 			rupFileMappingsCache.put(rupMappingFile, rupMappings);
 			writtenFiles.add(rupMappingFile);
@@ -172,7 +174,7 @@ public abstract class TrueMeanRuptureMappings extends AbstractLogicTreeModule {
 			double[] rupMags = getRuptureMags(branch);
 			CSVFile<String> csv = buildMappingCSV("Rupture", "Magnitude", rupMags);
 			
-			CSV_BackedModule.writeToArchive(csv, zout, entryPrefix, rupMagsFile);
+			CSV_BackedModule.writeToArchive(csv, output, entryPrefix, rupMagsFile);
 			
 			rupFileMagsCache.put(rupMagsFile, rupMags);
 			writtenFiles.add(rupMagsFile);
@@ -245,8 +247,8 @@ public abstract class TrueMeanRuptureMappings extends AbstractLogicTreeModule {
 			super(null, null, null);
 		}
 
-		private FileBacked(ZipFile zip, String prefix) {
-			super(zip, prefix, null);
+		private FileBacked(ArchiveInput input, String prefix) {
+			super(input, prefix, null);
 		}
 
 		@Override
@@ -271,16 +273,16 @@ public abstract class TrueMeanRuptureMappings extends AbstractLogicTreeModule {
 			int[] ret = cache.get(fileName);
 			if (ret == null) {
 				// load it
-				ZipFile zip = getZipFile();
-				ZipEntry entry = zip.getEntry(fileName);
-				Preconditions.checkNotNull(entry, "Entry not found: %s", fileName);
-				
 				CSVFile<String> csv;
 				try {
-					csv = CSVFile.readStream(zip.getInputStream(entry), true);
+					ArchiveInput input = getArchiveInput();
+					Preconditions.checkState(input.hasEntry(fileName), "Entry not found: %s", fileName);
+				
+					csv = CSVFile.readStream(input.getInputStream(fileName), true);
 				} catch (IOException e) {
 					throw ExceptionUtils.asRuntimeException(e);
 				}
+				
 				ret = new int[csv.getNumRows()-1];
 				for (int i=0; i<ret.length; i++) {
 					int row = i+1;
@@ -298,16 +300,16 @@ public abstract class TrueMeanRuptureMappings extends AbstractLogicTreeModule {
 			double[] ret = cache.get(fileName);
 			if (ret == null) {
 				// load it
-				ZipFile zip = getZipFile();
-				ZipEntry entry = zip.getEntry(fileName);
-				Preconditions.checkNotNull(entry, "Entry not found: %s", fileName);
-				
 				CSVFile<String> csv;
 				try {
-					csv = CSVFile.readStream(zip.getInputStream(entry), true);
+					ArchiveInput input = getArchiveInput();
+					Preconditions.checkState(input.hasEntry(fileName), "Entry not found: %s", fileName);
+					
+					csv = CSVFile.readStream(input.getInputStream(fileName), true);
 				} catch (IOException e) {
 					throw ExceptionUtils.asRuntimeException(e);
 				}
+				
 				ret = new double[csv.getNumRows()-1];
 				for (int i=0; i<ret.length; i++) {
 					int row = i+1;

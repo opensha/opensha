@@ -55,6 +55,26 @@ public class ArbDiscrXYZ_DataSet extends AbstractXYZ_DataSet {
 	public void set(int index, double z) {
 		set(getPoint(index), z);
 	}
+	
+	@Override
+	public void add(Point2D point, double z) {
+		if (point ==  null)
+			throw new NullPointerException("Point cannot be null");
+		if (!contains(point))
+			points.add(point);
+		double prev = map.containsKey(point) ? map.get(point) : 0d;
+		map.put(point, z+prev);
+	}
+
+	@Override
+	public void add(double x, double y, double z) {
+		add(new Point2D.Double(x, y), z);
+	}
+
+	@Override
+	public void add(int index, double z) {
+		add(getPoint(index), z);
+	}
 
 	@Override
 	public double get(Point2D point) {

@@ -28,6 +28,7 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader;
@@ -91,6 +92,29 @@ public class PoliticalBoundariesData {
 						ret.add(xy);
 				}
 			}
+			if (region.getMaxLon() > 180d) {
+				// translate any defined < 0
+				for (int i=0; i<ret.size(); i++) {
+					XY_DataSet xy = ret.get(i);
+					if (xy.getMinX() < 0) {
+						DefaultXY_DataSet modXY = new DefaultXY_DataSet();
+						for (Point2D pt : xy)
+							modXY.set(pt.getX()+360d, pt.getY());
+						ret.set(i, modXY);
+					}
+				}
+			} else if (region.getMinLon() < 0d) {
+				// translate any defined > 180
+				for (int i=0; i<ret.size(); i++) {
+					XY_DataSet xy = ret.get(i);
+					if (xy.getMaxX() > 180) {
+						DefaultXY_DataSet modXY = new DefaultXY_DataSet();
+						for (Point2D pt : xy)
+							modXY.set(pt.getX()-360d, pt.getY());
+						ret.set(i, modXY);
+					}
+				}
+			}
 			return ret.toArray(new XY_DataSet[0]);
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -106,14 +130,50 @@ public class PoliticalBoundariesData {
 		if (region.getMaxLat() < bounds[0].lat)
 			// region is south of the bounds
 			return false;
-		if (region.getMinLon() > bounds[1].lon)
-			// region is east of the bounds
-			return false;
-		if (region.getMaxLon() < bounds[0].lon)
-			// region is west of the bounds
-			return false;
-		// they overlap
-		return true;
+
+		double minLon = region.getMinLon();
+		double maxLon = region.getMaxLon();
+
+		// Copy bounds so we can shift them without touching the inputs
+		double bMinLon = bounds[0].lon;
+		double bMaxLon = bounds[1].lon;
+
+		// We assume region never crosses the dateline in its own convention.
+		// Shift ONLY the bounds to match the region's longitude convention.
+		boolean regionLikely360 = minLon >= 0.0 && maxLon > 180.0;
+		boolean boundsLikely360 = bMinLon >= 0.0 && bMaxLon > 180.0;
+
+		if (regionLikely360 != boundsLikely360) {
+			if (regionLikely360) {
+				// region is [0,360]-like; shift bounds from [-180,180] -> [0,360]
+				if (bMinLon < 0.0) bMinLon += 360.0;
+				if (bMaxLon < 0.0) bMaxLon += 360.0;
+			} else {
+				// region is [-180,180]-like; shift bounds from [0,360] -> [-180,180]
+				if (bMinLon > 180.0) bMinLon -= 360.0;
+				if (bMaxLon > 180.0) bMaxLon -= 360.0;
+			}
+
+			// After shifting, bounds might now "cross" the dateline (min > max).
+			// Since region doesn't cross, handle that by splitting bounds into two intervals.
+			if (bMinLon > bMaxLon) {
+				// bounds covers [bMinLon, maxOfRange] U [minOfRange, bMaxLon]
+				// pick range endpoints based on region convention
+				final double lo = regionLikely360 ? 0.0 : -180.0;
+				final double hi = regionLikely360 ? 360.0 : 180.0;
+
+				boolean overlapA = intervalsOverlap(minLon, maxLon, bMinLon, hi);
+				boolean overlapB = intervalsOverlap(minLon, maxLon, lo, bMaxLon);
+				return overlapA || overlapB;
+			}
+		}
+
+		return intervalsOverlap(minLon, maxLon, bMinLon, bMaxLon);
+	}
+
+	private static boolean intervalsOverlap(double aMin, double aMax, double bMin, double bMax) {
+		// assumes both intervals are non-wrapping (aMin <= aMax and bMin <= bMax)
+		return !(aMin > bMax || aMax < bMin);
 	}
 
 	/**
@@ -279,9 +339,7 @@ public class PoliticalBoundariesData {
 					continue;
 				XY_DataSet[] regOutlines = outlines.get(regName);
 				
-				String outFName = regName.replaceAll("\\W+", "_")+".txt";
-				while (outFName.contains("__"))
-					outFName = outFName.replace("__", "_");
+				String outFName = FileNameUtils.simplify(regName)+".txt";
 				
 				File outFile = new File(subDir, outFName);
 				FileWriter fw = new FileWriter(outFile);
@@ -329,12 +387,13 @@ public class PoliticalBoundariesData {
 
 		//		GriddedRegion gridReg = null;
 		//		gridReg.getlat
-		writeMappingsIndex(new File("/home/kevin/workspace/scec_vdo_vtk/data/PoliticalBoundaries/sourcefiles"),
-				new File("/home/kevin/workspace/opensha/src/main/resources/data/boundaries"));
+//		writeMappingsIndex(new File("/home/kevin/workspace/scec_vdo_vtk/data/PoliticalBoundaries/sourcefiles"),
+//				new File("/home/kevin/workspace/opensha/src/main/resources/data/boundaries"));
 		
 //		loadDefaultOutlines(NSHM23_RegionLoader.loadFullConterminousUS());
 		D = true;
-		loadDefaultOutlines(PRVI25_RegionLoader.loadPRVI_ModelBroad());
+//		loadDefaultOutlines(PRVI25_RegionLoader.loadPRVI_ModelBroad());
+		loadDefaultOutlines(new Region(new Location(-31, 177), new Location(-14, 189)));
 //		loadCAOutlines();
 //		loadNZOutlines();
 	}

@@ -336,7 +336,7 @@ public enum FaultModels implements U3LogicTreeBranchNode<FaultModels>, RupSetFau
 	}
 
 	@Override
-	public RupSetDeformationModel getDefaultDeformationModel() {
+	public DeformationModels getDefaultDeformationModel() {
 		return getFilterBasis();
 	}
 	

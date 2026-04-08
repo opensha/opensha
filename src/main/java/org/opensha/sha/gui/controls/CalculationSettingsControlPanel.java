@@ -39,10 +39,10 @@ public class CalculationSettingsControlPanel extends ControlPanel {
 
 	/**
 	 *
-	 * @param api : Instance of the class using this control panel and implmenting
+	 * @param api : Instance of the class using this control panel and implementing
 	 * the CalculationSettingsControlPanelAPI.
 	 */
-	public CalculationSettingsControlPanel(Component parentComponent,CalculationSettingsControlPanelAPI api) {
+	public CalculationSettingsControlPanel(Component parentComponent, CalculationSettingsControlPanelAPI api) {
 		super(NAME);
 		application = api;
 		this.parentComponent = parentComponent;
@@ -69,6 +69,7 @@ public class CalculationSettingsControlPanel extends ControlPanel {
 		frame.getContentPane().setLayout(new GridBagLayout());
 		frame.getContentPane().add(editor,new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0
 				,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(4, 4, 4, 4), 0, 0));
+        editor.setTitle("Parameters");
 	}
 
 	public Object getParameterValue(String paramName) {

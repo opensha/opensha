@@ -34,6 +34,7 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
@@ -539,7 +540,7 @@ public class RupSetFilterComparePageGen {
 			gp.drawGraphPanel(spec, false, false, xRange, new Range(0d, maxY));
 			gp.getChartPanel().setSize(1000, 800);
 			
-			String prefix = name.replaceAll("\\W+", "");
+			String prefix = FileNameUtils.simplify(name);
 			File pngFile = new File(resourcesDir, prefix+".png");
 			File pdfFile = new File(resourcesDir, prefix+".pdf");
 			gp.saveAsPNG(pngFile.getAbsolutePath());
@@ -719,7 +720,7 @@ public class RupSetFilterComparePageGen {
 			PlotSpec spec = new PlotSpec(funcs, chars, " ", "Minimum Magnitude", "% Failed");
 			spec.setLegendVisible(true);
 			
-			HeadlessGraphPanel gp = PlotUtils.initHeadless();
+			HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 			gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
 			
 			double maxY = 20d;

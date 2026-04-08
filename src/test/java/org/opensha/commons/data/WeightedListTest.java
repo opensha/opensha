@@ -184,13 +184,13 @@ public class WeightedListTest {
 	@Test
 	public void testGet() {
 		for (int i=0; i<testList.size(); i++) {
-			assertEquals("get doesn't work!", getLabel(i), testList.get(i));
+			assertEquals("get doesn't work!", getLabel(i), testList.getValue(i));
 		}
 	}
 	
 	@Test(expected=java.lang.IllegalStateException.class)
 	public void testSetObjectsBad() {
-		testList.setObjects(new ArrayList<String>());
+		testList.setValues(new ArrayList<String>());
 	}
 	
 	@Test
@@ -198,21 +198,21 @@ public class WeightedListTest {
 		ArrayList<String> objs = new ArrayList<String>();
 		for (int i=0; i<testList.size(); i++)
 			objs.add("asdf");
-		testList.setObjects(objs);
+		testList.setValues(objs);
 		for (int i=0; i<testList.size(); i++)
-			assertEquals("setObjects didn't set", "asdf", testList.get(i));
+			assertEquals("setObjects didn't set", "asdf", testList.getValue(i));
 	}
 	
 	@Test(expected=java.lang.IllegalArgumentException.class)
 	public void testSetObjectsNull() {
-		testList.setObjects(null);
+		testList.setValues(null);
 	}
 	
 	@Test
 	public void testGetWeightByObject() {
 		for (int i=0; i<randomList.size(); i++) {
 			double wt = randomList.getWeight(i);
-			double wtByObj = randomList.getWeight(randomList.get(i));
+			double wtByObj = randomList.getWeight(randomList.getValue(i));
 			
 			assertEquals("getWeight by object not equal to by index!", wt, wtByObj, almost_zero);
 		}

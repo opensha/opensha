@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import org.jfree.chart.ui.RectangleEdge;
 import org.jfree.data.Range;
@@ -39,6 +40,7 @@ import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.modules.OpenSHA_Module;
+import org.opensha.refFaultParamDb.vo.Fault;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
@@ -880,7 +882,7 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 		return pngFile;
 	}
 	
-	public static PlotPreferences PLOT_PREFS_DEFAULT = PlotUtils.getDefaultFigurePrefs();
+	public static PlotPreferences PLOT_PREFS_DEFAULT = PlotPreferences.getDefaultScreenFigurePrefs();
 	public static boolean TITLES = true;
 	
 	private static HistogramFunction getCumulativeFractionalHist(HistogramFunction hist) {
@@ -1071,10 +1073,22 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			this.sol = sol;
 			this.rups = rups;
 			
-			values = new ArrayList<>();
+			
 			System.out.println("Calculating "+scalar.getName()+" for "+rups.size()+" ruptures");
-			for (int r=0; r<rups.size(); r++)
-				values.add(scalar.getValue(r, rupSet, rups.get(r), distAzCalc));
+			if (scalar.isParallel()) {
+				List<CompletableFuture<Double>> futures = new ArrayList<>(rups.size());
+				for (int r=0; r<rups.size(); r++) {
+					int rupIndex = r;
+					futures.add(CompletableFuture.supplyAsync(() -> (Double)scalar.getValue(rupIndex, rupSet, rups.get(rupIndex), distAzCalc)));
+				}
+				values = new ArrayList<>(rups.size());
+				for (CompletableFuture<Double> future : futures)
+					values.add(future.join());
+			} else {
+				values = new ArrayList<>(rups.size());
+				for (int r=0; r<rups.size(); r++)
+					values.add(scalar.getValue(r, rupSet, rups.get(r), distAzCalc));
+			}
 		}
 
 		/**
@@ -1123,6 +1137,38 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 	private static double[] example_fractiles_default =  { 0d, 0.5, 0.9, 0.95, 0.975, 0.99, 0.999, 1d };
 	
 	public enum HistScalar {
+		MULTI_PROPORTIONS("Multi Rupture Proportions",
+				"crustal area/subduction area",
+		"Area of crustal component / area of subduction component.") {
+			@Override
+			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
+				double min = Math.floor(Math.log(scalarTrack.getMin()));
+				double max = Math.ceil(Math.log(scalarTrack.getMax()));
+				int num = (int)Math.max(5, Math.max(20, max - min + 2));
+				return new HistogramFunction(min, max, num);
+			}
+
+			@Override
+			public double getValue(int index, FaultSystemRupSet rupSet, ClusterRupture rup,
+								   SectionDistanceAzimuthCalculator distAzCalc) {
+				List<FaultSection> sections = rup.buildOrderedSectionList();
+				double subduction = sections.stream().filter(s -> s.getSectionName().contains("row:")).mapToDouble(s -> s.getArea(false)).sum();
+				double crustal = sections.stream().filter(s -> !s.getSectionName().contains("row:")).mapToDouble(s -> s.getArea(false)).sum();
+				if(subduction == 0) {
+					return 1;
+				}
+				return crustal/subduction;
+			}
+			public boolean isLogX() {
+				return true;
+			}
+
+
+			@Override
+			public double[] getExampleRupPlotFractiles() {
+				return example_fractiles_default;
+			}
+		},
 		LENGTH("Rupture Length", "Length (km)",
 				"Total length (km) of the rupture, not including jumps or gaps.") {
 			@Override
@@ -1308,6 +1354,11 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			public double[] getExampleRupPlotFractiles() {
 				return example_fractiles_default;
 			}
+			
+			@Override
+			public boolean isParallel() {
+				return true;
+			}
 		},
 		IDEAL_LEN_DIFF("Ideal Length Difference", "Ideal Length Difference",
 				"The difference between the total length of this rupture and the 'idealized length,' which we "
@@ -1335,6 +1386,11 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			@Override
 			public double[] getExampleRupPlotFractiles() {
 				return example_fractiles_default;
+			}
+			
+			@Override
+			public boolean isParallel() {
+				return true;
 			}
 		},
 		RAKE("Rake", "Rake (degrees)",
@@ -1465,6 +1521,11 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			public double[] getExampleRupPlotFractiles() {
 				return new double[] { 1d, 0.5, 0.1, 0.05, 0.025, 0.01, 0.001, 0 };
 			}
+			
+			@Override
+			public boolean isParallel() {
+				return true;
+			}
 		},
 		MAX_SLIP_DIFF("Max Slip Rate Difference", "Section Max - Min Slip Rate in Rupture (mm/yr)",
 				"The difference between the slip rate of the sections with the highest and lowest "
@@ -1497,6 +1558,11 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			public double[] getExampleRupPlotFractiles() {
 				return example_fractiles_default;
 			}
+			
+			@Override
+			public boolean isParallel() {
+				return true;
+			}
 		};
 		
 		private String name;
@@ -1510,6 +1576,10 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 		}
 		
 		public boolean isLogX() {
+			return false;
+		}
+		
+		public boolean isParallel() {
 			return false;
 		}
 		

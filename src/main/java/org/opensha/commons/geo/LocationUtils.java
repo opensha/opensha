@@ -10,8 +10,9 @@ import java.awt.geom.Line2D;
 import java.util.Collection;
 
 import org.apache.commons.math3.util.Precision;
-import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+
+import com.google.common.base.Preconditions;
 
 /**
  * This class contains static utility methods to operate on geographic
@@ -63,6 +64,35 @@ public final class LocationUtils {
 		LEFT,
 		/** Indicates a point is on the a line. */
 		ON;
+	}
+
+	public static class LocationAverager {
+	
+		private Location singleLoc = null;
+		private double sumLat = 0d;
+		private double sumLon = 0d;
+		private double sumDepth = 0d;
+		private double sumWeight;
+		
+		public synchronized void add(Location loc, double weight) {
+			if (sumWeight == 0d) {
+				singleLoc = loc;
+			} else if (singleLoc != null && !loc.equals(singleLoc)) {
+				singleLoc = null;
+			}
+			sumLat += weight*loc.lat;
+			sumLon += weight*loc.lon;
+			sumDepth += weight*loc.depth;
+			sumWeight += weight;
+		}
+		
+		public Location getAverage() {
+			Preconditions.checkState(sumWeight > 0d, "No locations added");
+			if (singleLoc != null)
+				return singleLoc;
+			return new Location(sumLat/sumWeight, sumLon/sumWeight, sumDepth/sumWeight);
+		}
+		
 	}
 
 	/**
@@ -193,6 +223,41 @@ public final class LocationUtils {
 		double h = horzDistanceFast(p1, p2);
 		double v = vertDistance(p1, p2);
 		return Math.sqrt(h * h + v * v);
+	}
+	
+	/**
+	 * Calculates the 3D cartesian distance between two locations, useful if you only
+	 * need a quick distance metric to determine the relative distance between
+	 * various objects. For any other use case, use {@link #linearDistance(Location, Location)}
+	 * or {@link #linearDistanceFast(Location, Location)}.
+	 * 
+	 * @param p1 the first <code>Location</code> point
+	 * @param p2 the second <code>Location</code> point
+	 * @return the cartesian distance between the points
+	 */
+	public static double cartesianDistance(Location p1, Location p2) {
+		return Math.sqrt(cartesianDistanceSq(p1, p2));
+	}
+	
+	/**
+	 * Calculates the squared 3D cartesian distance between two locations, useful if you only
+	 * need a quick distance metric to determine the relative distance between various objects.
+	 * This version is faster than {@link #cartesianDistance(Location, Location)} because it
+	 * skips the square-root step, and may be equally useful if you just need to find the
+	 * closest point.
+	 * 
+	 * <p>For any other use case, use {@link #linearDistance(Location, Location)}
+	 * or {@link #linearDistanceFast(Location, Location)}.
+	 * 
+	 * @param p1 the first <code>Location</code> point
+	 * @param p2 the second <code>Location</code> point
+	 * @return the cartesian distance between the points
+	 */
+	public static double cartesianDistanceSq(Location p1, Location p2) {
+		double latDiff = p1.lat - p2.lat;
+		double lonDiff = p1.lon - p2.lon;
+		double vDiff = p1.depth - p2.depth;
+		return latDiff*latDiff + lonDiff*lonDiff + vDiff*vDiff;
 	}
 
 	/**

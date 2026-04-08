@@ -34,11 +34,12 @@ public class SiteGuiBeanFacade extends Site_GuiBean {
 	}
 
 	@Override
-	public void addSiteParams(Iterator it) {
+	public void addSiteParams(Iterable<Parameter<?>> it) {
 		ArrayList<String> invisibles = new ArrayList<String>();
 		ArrayList<Parameter<?>> paramsToShow = new ArrayList<Parameter<?>>();
-		while (it.hasNext()) {
-			Parameter<?> p = (Parameter<?>)it.next();
+//		while (it.hasNext()) {
+//			Parameter<?> p = (Parameter<?>)it.next();
+		for (Parameter<?> p : it) {
 			// we don't want to show Vs30, or parameters that can be set by Vs30 because they will be overridden by
 			// the value in the portfolio file.
 			if (p.getName().equals(Vs30_Param.NAME)) {
@@ -52,7 +53,7 @@ public class SiteGuiBeanFacade extends Site_GuiBean {
 //			System.out.println("Adding param: "+p.getName());
 			paramsToShow.add(p);
 		}
-		super.addSiteParams(paramsToShow.iterator());
+		super.addSiteParams(paramsToShow);
 		for (String name : invisibles)
 			getParameterListEditor().setParameterVisible(name, false);
 //		System.out.println();

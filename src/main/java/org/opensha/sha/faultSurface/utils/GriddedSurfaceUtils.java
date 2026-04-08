@@ -1,20 +1,24 @@
 package org.opensha.sha.faultSurface.utils;
 
-import java.awt.Color;
+import static org.opensha.commons.geo.GeoTools.EARTH_RADIUS_MEAN;
+import static org.opensha.commons.geo.GeoTools.TWOPI;
+
 import java.awt.geom.Area;
+import java.awt.geom.Line2D;
 import java.awt.geom.Path2D;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.function.Function;
 
+import org.apache.commons.math3.util.Precision;
 import org.opensha.commons.geo.BorderType;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
-import org.opensha.commons.geo.RegionUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
@@ -22,6 +26,7 @@ import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.FrankelGriddedSurface;
 import org.opensha.sha.faultSurface.GriddedSubsetSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -36,36 +41,54 @@ public class GriddedSurfaceUtils {
 	/** minimum depth for Campbell model */
 	public final static double SEIS_DEPTH = 3d;
 	
+	private static class LazyXCalculator implements Function<Location, Double> {
+		
+		private EvenlyGriddedSurface surface;
+
+		private LazyXCalculator(EvenlyGriddedSurface surface) {
+			this.surface = surface;
+		}
+
+		@Override
+		public Double apply(Location t) {
+			return GriddedSurfaceUtils.getDistanceX(surface.getEvenlyDiscritizedUpperEdge(), t);
+		}
+		
+	}
 	
 	/**
-	 * This computes distRup, distJB, & distSeis, which are available in the returned
-	 * array in elements 0, 1, and 2 respectively.
+	 * This computes distRup and distJB, and provides lazily-initialized distX
+	 * 
 	 * @param surface
 	 * @param loc
 	 * @return
 	 */
-	public static double[] getPropagationDistances(EvenlyGriddedSurface surface, Location loc) {
+	public static SurfaceDistances getPropagationDistances(EvenlyGriddedSurface surface, Location loc) {
+		return getPropagationDistances(surface, loc, new LazyXCalculator(surface));
+	}
+	
+	/**
+	 * This computes distRup and distJB, and provides lazily-initialized distX
+	 * 
+	 * @param surface
+	 * @param loc
+	 * @return
+	 */
+	public static SurfaceDistances getPropagationDistances(EvenlyGriddedSurface surface, Location loc,
+			Function<Location, Double> distXCalcFunc) {
 		
 		Location loc1 = loc;
 		Location loc2;
 		double distJB = Double.MAX_VALUE;
-		double distSeis = Double.MAX_VALUE;
 		double distRup = Double.MAX_VALUE;
 		
 		double horzDist, vertDist, rupDist;
-
-		// flag to project to seisDepth if only one row and depth is below seisDepth
-		boolean projectToDepth = false;
-		if (surface.getNumRows() == 1 && surface.getLocation(0,0).getDepth() < SEIS_DEPTH)
-			projectToDepth = true;
 
 		// get locations to iterate over depending on dip
 		ListIterator<Location> it;
 		try {
 			if(surface.getAveDip() > 89) {
 				it = surface.getColumnIterator(0);
-				if (surface.getLocation(0,0).getDepth() < SEIS_DEPTH)
-					projectToDepth = true;
 			} else {
 				it = surface.getLocationsIterator();
 			}
@@ -88,62 +111,57 @@ public class GriddedSurfaceUtils {
 
 			rupDist = horzDist * horzDist + vertDist * vertDist;
 			if(rupDist < distRup) distRup = rupDist;
-
-			if (loc2.getDepth() >= SEIS_DEPTH) {
-				if (rupDist < distSeis)
-					distSeis = rupDist;
-			}
-			// take care of shallow line or point source case
-			else if(projectToDepth) {
-				rupDist = horzDist * horzDist + SEIS_DEPTH * SEIS_DEPTH;
-				if (rupDist < distSeis)
-					distSeis = rupDist;
-			}
 		}
 
 		distRup = Math.pow(distRup,0.5);
-		distSeis = Math.pow(distSeis,0.5);
 
 		if(D) {
 			System.out.println(C+": distRup = " + distRup);
-			System.out.println(C+": distSeis = " + distSeis);
 			System.out.println(C+": distJB = " + distJB);
 		}
 		
 		// Check whether small values of distJB should really be zero
-		if(distJB <surface.getAveGridSpacing()) { // check this first since the next steps could take time
+		if(distJB <surface.getAveGridSpacing() && surface.getAveDip() != 90) { // check this first since the next steps could take time
 			
 			// first identify whether it's a frankel type surface
 			boolean frankelTypeSurface=false;
 			if(surface instanceof FrankelGriddedSurface) {
 				frankelTypeSurface = true;
-			}
-			else if(surface instanceof GriddedSubsetSurface) {
-				if(((GriddedSubsetSurface)surface).getParentSurface() instanceof FrankelGriddedSurface) {
+			} else if(surface instanceof GriddedSubsetSurface) {
+				if(((GriddedSubsetSurface)surface).getParentSurface() instanceof FrankelGriddedSurface)
 					frankelTypeSurface = true;
-				}
 			}
 					
 			if (frankelTypeSurface) {
-				if (isDjbZeroFrankel(surface, distJB)) distJB = 0;
+				if (isDjbZeroFrankel(surface, distJB))
+					distJB = 0;
 			} else {
-				if (isDjbZero(surface.getPerimeter(), loc)) distJB = 0;
+				if (isDjbZero(surface.getPerimeter(), loc))
+					distJB = 0;
 			}
 		}
-
-		double[] results = {distRup, distJB, distSeis};
 		
-		return results;
-
+		return new SurfaceDistances.PrecomputedLazyX(loc, distRup, distJB, distXCalcFunc);
 	}
 	
 	/**
-	 * This computes distanceX
+	 * This is the original OpenSHA DistanceX calculation method; it is slow an inaccurate, but preserved for posterity
+	 * in case we need to reproduce prior results.
+	 * 
+	 * It is slow because:
+	 * 1. It calculates everything using the static LocationUtils lat/lon methods, which each project internally rather
+	 * than projecting once
+	 * 2. It detects the sign (left or right of the trace) using a Region object which is slow to construct, and is
+	 * constructed on each invocation
+	 * 
+	 * It is inaccurate because it extends the trace out 1000 km in each direction, then calculates a distance to the
+	 * straight line at the location. This ends up exaggerating the curvature of the earth, especially at high latitudes
+	 * 
 	 * @param surface
 	 * @param siteLoc
 	 * @return
 	 */
-	public static double getDistanceX(FaultTrace trace, Location siteLoc) {
+	public static double getDistanceX_old(FaultTrace trace, Location siteLoc) {
 
 		double distanceX;
 		
@@ -211,7 +229,6 @@ public class GriddedSurfaceUtils {
 				try {
 					polygon = new Region(locsForRegion, BorderType.MERCATOR_LINEAR);
 				} catch (Exception e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 					System.out.println("==== trace  ====");
 					System.out.println(trace);
@@ -219,7 +236,7 @@ public class GriddedSurfaceUtils {
 					System.out.println("==== region ====");
 					System.out.println(locsForRegion);
 //					RegionUtils.locListToKML(locsForRegion, "distX_region", Color.RED);
-					System.exit(0);
+//					System.exit(0);
 				}
 				boolean isInside = polygon.contains(siteLoc);
 
@@ -233,6 +250,305 @@ public class GriddedSurfaceUtils {
 		
 		return distanceX;
 	}
+	
+	/**
+	 * This computes distanceX
+	 * @param surface
+	 * @param siteLoc
+	 * @return
+	 */
+	public static double getDistanceX(FaultTrace trace, Location siteLoc) {
+		
+		// set to zero if it's a point source
+		if(trace.size() == 1) {
+			return 0d;
+		} else {
+			Location traceStart = trace.first();
+			Location traceEnd = trace.last();
+			
+			// projection reference frame, weighted 50% to the site location, and 50% to the middle of the trace
+			double latRefRad = 0.5*siteLoc.getLatRad() + 0.25*traceStart.getLatRad() + 0.25*traceEnd.getLatRad();
+			double lonRefRad = 0.5*siteLoc.getLonRad() + 0.25*traceStart.getLonRad() + 0.25*traceEnd.getLonRad();
+			double lonScale = Math.cos(latRefRad);
+			
+			double[] traceX = new double[trace.size()];
+			double[] traceY = new double[traceX.length];
+			for (int i=0; i<traceX.length; i++) {
+				Location loc = trace.get(i);
+				traceX[i] = (loc.getLonRad() - lonRefRad) * lonScale;
+				traceY[i] = loc.getLatRad() - latRefRad;
+			}
+			double siteX = (siteLoc.getLonRad() - lonRefRad) * lonScale;
+			double siteY = siteLoc.getLatRad() - latRefRad;
+			
+			// find the nearest segment
+			// keep track of angular (not-scaled to earth's radius) and squared distances for speed
+			double[] angularSegDistsSq = new double[trace.size()-1];
+			double minAngularSegDistSq = Double.POSITIVE_INFINITY;
+			int minSegDistIndex = -1;
+			for (int i=0; i<angularSegDistsSq.length; i++) {
+				angularSegDistsSq[i] = Line2D.ptSegDistSq(
+						traceX[i], traceY[i],
+						traceX[i+1], traceY[i+1],
+						siteX, siteY);
+				if (angularSegDistsSq[i] < minAngularSegDistSq) {
+					minAngularSegDistSq = angularSegDistsSq[i];
+					minSegDistIndex = i;
+				}
+			}
+			
+			// now convert the closest squared angluar segment distance to km
+			double minSegDist = Math.sqrt(minAngularSegDistSq) * EARTH_RADIUS_MEAN;
+
+			// now figure out if we're beyond the ends, in which case we're likely closest to the extension
+			double x0 = traceX[0];
+			double y0 = traceY[0];
+			double xN = traceX[traceX.length - 1];
+			double yN = traceY[traceY.length - 1];
+
+			double dxAll = xN - x0;
+			double dyAll = yN - y0;
+			double lenSqAll = dxAll*dxAll + dyAll*dyAll;
+	        
+			double sx = siteX - x0; // vector from start->site
+			double sy = siteY - y0;
+			double dotAll = dxAll*sx + dyAll*sy;
+
+			if (dotAll < 0.0 || dotAll > lenSqAll) {
+				// we're before or after
+				
+				boolean backwards = dotAll < 0.0;
+				double azRad = LocationUtils.azimuthRad(traceStart, traceEnd);
+				if (backwards) {
+					// before
+					return calcExtendedDistanceX(traceStart, siteLoc, azRad+Math.PI, minSegDist, minAngularSegDistSq, true);
+				} else {
+					// after
+					return calcExtendedDistanceX(traceEnd, siteLoc, azRad, minSegDist, minAngularSegDistSq, false);
+				}
+			}
+			
+			// we're within the bounds, now we just need to figure out the sign
+			boolean leftOfClosest = cross2D(
+					traceX[minSegDistIndex+1] - traceX[minSegDistIndex],
+					traceY[minSegDistIndex+1] - traceY[minSegDistIndex],
+					siteX - traceX[minSegDistIndex],
+					siteY - traceY[minSegDistIndex]) > 0;
+			// check for the special case where we're equidistant from 2 segments (closest to a corner)
+			// in that case, we could be left of the infinite extension of one but right of the other
+			double checkPrecision = 1e-10;
+			int equidistantIndex = -1;
+			if (minSegDistIndex > 0 &&
+					Precision.equals(angularSegDistsSq[minSegDistIndex], angularSegDistsSq[minSegDistIndex-1], checkPrecision)) {
+				equidistantIndex = minSegDistIndex-1;
+			} else if (minSegDistIndex < angularSegDistsSq.length-1 &&
+					Precision.equals(angularSegDistsSq[minSegDistIndex], angularSegDistsSq[minSegDistIndex+1], checkPrecision)) {
+				equidistantIndex = minSegDistIndex+1;
+			}
+			if (equidistantIndex >= 0) {
+				boolean leftOfEquidistant = cross2D(
+						traceX[equidistantIndex+1] - traceX[equidistantIndex],
+						traceY[equidistantIndex+1] - traceY[equidistantIndex],
+						siteX - traceX[equidistantIndex],
+						siteY - traceY[equidistantIndex]) > 0;
+				if (leftOfClosest != leftOfEquidistant) {
+					// we're closest to a corner, and in the intermediate zone where we're left of one's extension but right of another
+					
+					boolean leftBefore, leftAfter;
+					if (equidistantIndex < minSegDistIndex) {
+						leftBefore = leftOfEquidistant;
+						leftAfter = leftOfClosest;
+					} else {
+						leftBefore = leftOfClosest;
+						leftAfter = leftOfEquidistant;
+					}
+					int firstMatchIndex = Integer.min(equidistantIndex, minSegDistIndex);
+					double xBefore = traceX[firstMatchIndex];
+					double yBefore = traceY[firstMatchIndex];
+					double xCorner = traceX[firstMatchIndex+1];
+					double yCorner = traceY[firstMatchIndex+1];
+					double xAfter = traceX[firstMatchIndex+2];
+					double yAfter = traceY[firstMatchIndex+2];
+					
+					// Vector B = (corner->before), anchored at P_i
+				    double bx = xBefore - xCorner;
+				    double by = yBefore - yCorner;
+
+				    // Vector A = (corner->after), also anchored at P_i
+				    double ax = xAfter - xCorner;
+				    double ay = yAfter - yCorner;
+
+				    // Magnitudes
+				    double bLen = Math.hypot(bx, by);
+				    double aLen = Math.hypot(ax, ay);
+
+				    // Handle degenerate cases: no well-defined angle
+				    if (bLen < 1e-12 || aLen < 1e-12) {
+						// Corner is basically a repeated point or something nearly collinear.
+						// default to before
+						leftOfClosest = leftBefore; 
+					} else {
+						// Normalize
+					    double bxn = bx / bLen;
+					    double byn = by / bLen;
+					    double axn = ax / aLen;
+					    double ayn = ay / aLen;
+
+					    // Check the turn direction
+					    double crossBA = cross2D(bx, by, ax, ay);  // cross(B, A)
+
+					    // Start with the naive sum
+					    double wx = bxn + axn;
+					    double wy = byn + ayn;
+
+					    // If cross(B, A) < 0 => it's a "right turn" => flip W to keep inside angle
+					    if (crossBA < 0.0) {
+					        wx = -wx;
+					        wy = -wy;
+					    }
+
+					    // If the sum is near zero length, e.g. B and A nearly opposite
+					    double wLen = Math.hypot(wx, wy);
+					    if (wLen < 1e-12) {
+							// This means B and A point in nearly opposite directions (e.g. 180° turn).
+							// The angle-bisector is ill-defined. default to after
+							leftOfClosest = leftAfter;
+						} else {
+							// The site vector from corner = (siteX - xCorner, siteY - yCorner)
+							sx = siteX - xCorner;
+							sy = siteY - yCorner;
+
+							// Cross of W with site vector => which side of the bisector?
+							double cross = cross2D(wx, wy, sx, sy);
+
+							// Example policy:
+							//   If cross < 0 => site is on the "far side" => use after sign
+							//   else => use before sign
+							if (cross < 0.0) {
+//								leftOfClosest = leftAfter;
+								leftOfClosest = leftBefore;
+							} else {
+//								leftOfClosest = leftBefore;
+								leftOfClosest = leftAfter;
+							}
+							
+							// this can be used to debug
+//							leftOfClosest = false;
+//							if (cross < 0d) {
+//								minSegDist = -1d;
+//							} else {
+//								minSegDist = 1d;
+//							}
+						}
+					}
+				}
+			}
+			if (leftOfClosest)
+				return -minSegDist;
+			return minSegDist;
+		}
+	}
+	
+	/**
+	 * Calculate distanceX from a trace extending in a great circle from startLoc in the given direction.
+	 * 
+	 * This is more accurate than using the projected straight line distance
+	 * 
+	 * @param startLoc
+	 * @param siteLoc
+	 * @param azimuthRad
+	 * @param distToEnd
+	 * @param angularDistToEndSq
+	 * @param backwards
+	 * @return
+	 */
+	private static double calcExtendedDistanceX(Location startLoc, Location siteLoc,
+			double azimuthRad, double distToEnd, double angularDistToEndSq, boolean backwards) {
+		double lat1 = startLoc.getLatRad();
+		double lon1 = startLoc.getLonRad();
+		double sinLat1 = Math.sin(lat1);
+		double cosLat1 = Math.cos(lat1);
+		
+		double siteLat = siteLoc.getLatRad();
+		double siteLon = siteLoc.getLonRad();
+
+		// figure out azimuth from start to site
+		// modifed from LocationUtils.azimuthRad to remove duplicate sin & cos calculations
+		double dSiteLon = siteLon - lon1;
+		double sinSiteLat = Math.sin(siteLat);
+		double cosSiteLat = Math.cos(siteLat);
+		double siteAz = Math.atan2(Math.sin(dSiteLon) * cosSiteLat, cosLat1 *
+			sinSiteLat - Math.sin(lat1) * cosSiteLat * Math.cos(dSiteLon));
+
+		siteAz = (siteAz + TWOPI) % TWOPI;
+
+		// make a straight line approximation of how far away the closest point on this line will be
+		double diff = siteAz - azimuthRad;
+		diff = (diff + Math.PI) % (2 * Math.PI);
+		if (diff < 0)
+			diff += 2 * Math.PI;
+		diff = diff - Math.PI;
+
+		// make sure it's not too small
+		double destDist = Math.max(10d, distToEnd * Math.cos(diff));
+		
+		// now move that distance in the chosen direction
+		double ad = destDist / EARTH_RADIUS_MEAN; // angular distance
+		double sinD = Math.sin(ad);
+		double cosD = Math.cos(ad);
+
+		// this is that point along the line
+		double lat2 = Math.asin(sinLat1 * cosD + cosLat1 * sinD * Math.cos(azimuthRad));
+		double lon2 = lon1 +
+			Math.atan2(Math.sin(azimuthRad) * sinD * cosLat1,
+				cosD - sinLat1 * Math.sin(lat2));
+
+		// set reference frame, use the average of the site and our guess of the closest location on the line
+		double latRefRad = 0.5*(lat2 + siteLat);
+		double lonRefRad = 0.5*(lon2 + siteLon);
+		double lonScale = Math.cos(latRefRad);
+
+		// project into that reference frame
+		double x1 = (lon1 - lonRefRad) * lonScale;
+		double y1 = lat1 - latRefRad;
+
+		double x2 = (lon2 - lonRefRad) * lonScale;
+		double y2 = lat2 - latRefRad;
+
+		double siteX = (siteLon - lonRefRad) * lonScale;
+		double siteY = siteLat - latRefRad;
+
+		// squared distance to that infinite line
+		double angularDistSq = Line2D.ptLineDistSq(x1, y1, x2, y2, siteX, siteY);
+		// the nearest segment could still be closer
+		double dist;
+		if (angularDistSq < angularDistToEndSq) {
+			// this is closest
+			dist = Math.sqrt(angularDistSq) * EARTH_RADIUS_MEAN;
+		} else {
+			// segment is still closer
+			dist = distToEnd;
+		}
+		// determine sign from cross product with that global line
+		double cross = cross2D(x2-x1, y2-y1, siteX, siteY);
+		if (cross > 0.0)
+			dist = -dist;
+		if (backwards)
+			dist = -dist;
+		return dist;
+	}
+
+    /**
+     * Simple 2D cross-product helper:
+     * cross2D( (ax,ay), (bx,by) ) = ax*by - ay*bx.
+     *
+     * Positive => (bx,by) is "left" of (ax,ay),
+     * Negative => "right",
+     * Zero => collinear.
+     */
+    private static double cross2D(double ax, double ay, double bx, double by) {
+        return ax * by - ay * bx;
+    }
 	
 	/**
 	 * This computes Ry0, the absolute value of Ry
@@ -483,50 +799,6 @@ public class GriddedSurfaceUtils {
 			return distJB <= min_dist;
 		}
 		return false;
-	}
-	
-	/**
-	 * Trims the given number of points from the start and end of the given compound surface. All sub surfaces
-	 * must be instances of EvenlyGriddedSurfaces
-	 * @param compoundSurf
-	 * @param numFromStart
-	 * @param numFromEnd
-	 * @return
-	 */
-	public static CompoundSurface trimEndsOfSurface(CompoundSurface compoundSurf, int numFromStart, int numFromEnd) {
-		Preconditions.checkArgument(numFromStart > 0 || numFromEnd > 0, "must remove at least one point");
-		List<? extends RuptureSurface> surfList = compoundSurf.getSurfaceList();
-		// make sure each one is an evenly gridded surface
-		for (RuptureSurface subSurf : surfList)
-			Preconditions.checkState(subSurf instanceof EvenlyGriddedSurface, "all sub surfaces must be evenly gridded");
-		
-		List<RuptureSurface> newSurfList = Lists.newArrayList();
-		// add first. if first is reversed, then trim from the end instead
-		EvenlyGriddedSurface trimmedStart = (EvenlyGriddedSurface) surfList.get(0);
-		if (numFromStart > 0) {
-			if (compoundSurf.isSubSurfaceReversed(0))
-				trimmedStart = trimEndsOfSurface(trimmedStart, 0, numFromStart);
-			else
-				trimmedStart = trimEndsOfSurface(trimmedStart, numFromStart, 0);
-		}
-		newSurfList.add(trimmedStart);
-		int lastIndex = surfList.size()-1;
-		// add middle
-		for (int i=1; i<lastIndex; i++)
-			newSurfList.add(surfList.get(i));
-		// add last. if last is reversed, then trim from start instead
-		EvenlyGriddedSurface trimmedEnd = (EvenlyGriddedSurface)surfList.get(lastIndex);
-		if (numFromEnd > 0) {
-			if (compoundSurf.isSubSurfaceReversed(lastIndex))
-				trimmedEnd = trimEndsOfSurface(trimmedEnd, numFromEnd, 0);
-			else
-				trimmedEnd = trimEndsOfSurface(trimmedEnd, 0, numFromEnd);
-		}
-		newSurfList.add(trimmedEnd);
-		
-		Preconditions.checkState(newSurfList.size() == surfList.size(), "Size is messed up");
-		
-		return new CompoundSurface(newSurfList);
 	}
 	
 	/**

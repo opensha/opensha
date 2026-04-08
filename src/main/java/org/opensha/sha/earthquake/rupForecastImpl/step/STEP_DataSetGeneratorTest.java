@@ -29,7 +29,6 @@ import org.opensha.commons.util.FileUtils;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
 import org.opensha.sha.gui.infoTools.ConnectToCVM;
 import org.opensha.sha.imr.attenRelImpl.ShakeMap_2003_AttenRel;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
@@ -1492,7 +1491,7 @@ public class STEP_DataSetGeneratorTest implements ParameterChangeWarningListener
 
           // indicate that a source has been used
           sourceUsed = true;
-          hazVal *= (1.0 - imr.getTotExceedProbability((PointEqkSource)source,IML_VALUE));
+          hazVal *= (1.0 - STEP_DataSetGenerator.getTotExceedProbability(imr, source,IML_VALUE));
         }
 
         // finalize the hazard function

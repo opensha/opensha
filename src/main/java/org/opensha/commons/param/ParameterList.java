@@ -4,7 +4,13 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.Iterator;
+import java.util.List;
 import java.util.ListIterator;
+import java.util.Set;
+import java.util.HashSet;
+
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 import org.dom4j.Element;
 import org.opensha.commons.exceptions.ConstraintException;
@@ -66,18 +72,29 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	protected final static boolean D = false;
 
 	/** Internal vector list of parameters. */
-	protected ArrayList<Parameter<?>> params = new ArrayList<Parameter<?>>();
+	protected ArrayList<Parameter<?>> params;
 
 	/** Internal list of constraint name mapped to parameter name. */
 	protected Hashtable<String, String> constraintNameMap = new Hashtable<String, String>();
 
+	/** Notify all listeners when a modification to the given paramList */
+	private transient ArrayList<ChangeListener> changeListeners;
+
+	private transient boolean changeEventsPaused = false;
+	protected transient List<Parameter<?>> pausedParamsState = new ArrayList<Parameter<?>>();
 
 	/* **********************/
 	/** @todo  Constructors */
 	/* **********************/
 
 	/** no arg constructor. Does nothing. */
-	public ParameterList() {}
+	public ParameterList() {
+		params = new ArrayList<Parameter<?>>();
+	}
+	
+	public ParameterList(int initialCapacity) {
+		params = new ArrayList<Parameter<?>>(initialCapacity);
+	}
 
 
 
@@ -90,13 +107,15 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	 * named parameter is not already in the list. If a named parameter
 	 * exists already a Parameter Exception is thrown.
 	 */
-	public void addParameterList(ParameterList list2) throws ParameterException{
-
+	public void addParameterList(ParameterList list2) throws ParameterException {
 		ListIterator<Parameter<?>> it = list2.getParametersIterator();
-		while( it.hasNext() ){
+		while (it.hasNext()) {
 			Parameter<?> param = (Parameter<?>)it.next();
-			if( !this.containsParameter(param) ){ this.addParameter(param); }        }
-
+			if(!this.containsParameter(param)) {
+				this.addParameter(param);
+			}
+		}
+		fireChangeEvent(new ChangeEvent(this));
 	}
 
 	/**
@@ -116,34 +135,30 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	 * name.
 	 */
 	public void addParameter(int index, Parameter param) throws ParameterException {
-
 		String S = C + ": addParameter(): ";
-
 		String name = param.getName();
 		String constraintName = param.getConstraintName();
 
-		if( getIndexOf(name)== -1) {
-			if (index >= 0)
+		fireChangeEvent(new ChangeEvent(this));
+		if (getIndexOf(name) == -1) {
+			if (index >= 0) {
 				params.add(index, param);
-			else
+			} else {
 				params.add(param);
+			}
 		} else {
 			throw new ParameterException(S + "A Parameter already exists named " + name);
 		}
 
+		if (constraintName == null || constraintName.equals("") || constraintName.equals( name )) return;
 
-		if( constraintName == null || constraintName.equals("") || constraintName.equals( name )) return;
-
-		if( !constraintNameMap.containsKey(constraintName) ) {
+		if (!constraintNameMap.containsKey(constraintName)) {
 			constraintNameMap.put(constraintName, name);
 		}
-		else{
+		else {
 			params.remove(name);
 			throw new ParameterException(S + "A Parameter already exists with this constraint named " + constraintName);
 		}
-
-
-
 	}
 
 	/**
@@ -206,7 +221,7 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	 * Parameter<String> instead of a raw typed Parameter instance.
 	 * 
 	 * @param type
-	 * @param name
+	 * @param index
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
@@ -247,7 +262,7 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	 * Returns a Parameter at the given index, cast to the given type.
 	 * 
 	 * @param type
-	 * @param name
+	 * @param index
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
@@ -257,35 +272,29 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 
 	/** Set's a new value to a Parameter in the list if it exists, else throws exception. */
 	public void setValue(String name, Object value) throws ParameterException, ConstraintException {
-
 		String S = C + ": setValue(): ";
 		if(D) System.out.println(S + "Starting");
 
-		name = getParameterName( name );
+		name = getParameterName(name);
 		int index = getIndexOf(name);
-		if( index !=-1 ) {
+		if (index != -1) {
 			Parameter param = (Parameter)params.get(index);
 			param.setValue(value);
-		}
-		else{
-
+		} else {
 			throw new ParameterException(S + "No parameter exists named " + name);
 		}
-
-		if(D) System.out.println(S + "Ending");
-
 	}
 
 	/** Returns parameter type of named parameter in list, if not exist throws exception. */
 	public String getType(String name) throws ParameterException {
 		name = getParameterName( name );
 		int index = getIndexOf(name);
-		if( index!=-1) {
+		if(index != -1) {
 			Parameter param = (Parameter)params.get(index);
 			String str = param.getType();
 			return str;
 		}
-		else{
+		else {
 			String S = C + ": getType(): ";
 			throw new ParameterException(S + "No parameter exists named " + name);
 		}
@@ -293,20 +302,20 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 
 
 	/** Checks if the parameter exists in the list. Returns true if it does, else returns false. */
-	public boolean containsParameter(Parameter param){
+	public boolean containsParameter(Parameter param) {
 
 		String name = param.getName();
 		int index = getIndexOf(name);
-		if( index!=-1 ) { return true; }
-		else{ return false; }
+		if (index != -1) { return true; }
+		else { return false; }
 
 	}
 
 	/** Checks if the parameter exists in the list. Returns true if it does, else returns false. */
-	public boolean containsParameter(String paramName){
+	public boolean containsParameter(String paramName) {
 		int index = getIndexOf(paramName);
-		if( index!=-1 ) { return true; }
-		else{ return false; }
+		if ( index!= -1 ) { return true; }
+		else { return false; }
 
 	}
 
@@ -320,11 +329,12 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	/** Removes parameter if it exists, else throws exception. */
 	public void removeParameter(String name) throws ParameterException {
 		int index = getIndexOf(name);
-		if( index!=-1 ) { params.remove(index); }
-		else{
+		if (index != -1 ) { params.remove(index); }
+		else {
 			String S = C + ": removeParameter(): ";
 			throw new ParameterException(S + "No Parameter exist named " + name + ", unable to remove");
 		}
+		fireChangeEvent(new ChangeEvent(this));
 	}
 
 
@@ -343,10 +353,9 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	 * the order the elements were added.
 	 */
 	public ListIterator<Parameter<?>> getParametersIterator(){
-
 		ArrayList<Parameter<?>> v = new ArrayList<Parameter<?>>();
 		int size = this.params.size();
-		for(int i = 0; i<size;++i) {
+		for (int i = 0; i < size; ++i) {
 			Parameter obj = params.get(i);
 			v.add(obj);
 		}
@@ -355,24 +364,20 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	}
 
 
-
 	/**
 	 * Searches for the named parameter, then replaces the parameter
 	 * it is currently editing.
 	 * @param parameterName : Name of the parameter that is being removed
 	 * @param param : New parameter that is replacing the old parameter
 	 */
-	public void replaceParameter( String parameterName, Parameter param ) {
-
-		parameterName = getParameterName( parameterName );
+	public void replaceParameter(String parameterName, Parameter param) {
+		parameterName = getParameterName(parameterName);
 		int index = getIndexOf(parameterName);
-		if ( index != -1 ) {
-			removeParameter( parameterName );
-			addParameter( param );
+		if (index != -1) {
+			removeParameter(parameterName);
+			addParameter(param);
 		}
-
 	}
-
 
 
 	/**
@@ -384,15 +389,12 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	 * @param obj instance of ParameterList
 	 * @return int 0 if both object are same else return -1
 	 */
-	public int compareTo(Object obj){
-
-		int result =0;
-
-		if (! (obj instanceof ParameterList)) {
+	public int compareTo(Object obj) {
+		int result = 0;
+		if (!(obj instanceof ParameterList)) {
 			throw new ClassCastException(C +
 					"Object not a ParameterList, unable to compare");
 		}
-
 		ParameterList paramList = (ParameterList) obj;
 
 		ListIterator<Parameter<?>> it = paramList.getParametersIterator();
@@ -400,27 +402,24 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 		if(size() != paramList.size())
 			return -1;
 
-		while(it.hasNext()){
+		while(it.hasNext()) {
 			Parameter param1 = (Parameter)it.next();
 			Parameter param2 = (Parameter)getParameter(param1.getName());
 			result = param2.compareTo(param1);
-			if(result !=0)
+			if(result != 0)
 				break;
-
 		}
-
 		return result;
-
 	}
 
 	/**
 	 * Returns an iterator of all parameter names of the paramters in the list.
 	 * Returns the list in the order the elements were added.
 	 */
-	public ListIterator<String> getParameterNamesIterator(){
+	public ListIterator<String> getParameterNamesIterator() {
 		ArrayList<String> v = new ArrayList<String>();
 		int size = this.params.size();
-		for(int i = 0; i<size;++i) {
+		for (int i = 0; i < size; ++i) {
 			Parameter obj = (Parameter)params.get(i);
 			v.add(obj.getName());
 		}
@@ -428,10 +427,15 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	}
 
 	/** Removes all parameters from the list, making it empty, ready for new parameters.  */
-	public void clear(){ params.clear(); }
+	public void clear() {
+		boolean wasEmpty = params.isEmpty();
+		params.clear();
+		if (!wasEmpty)
+			fireChangeEvent(new ChangeEvent(this));
+	}
 
 	/** Returns the number of parameters in the list. */
-	public int size(){ return params.size(); }
+	public int size() { return params.size(); }
 
 	/**
 	 * Returns true if all the parameters have the same names and values.
@@ -495,7 +499,7 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	 * can be plotted on the same axis, i.e. set up with the
 	 * same independent parameters.
 	 */
-	public boolean equalNames(ParameterList list){
+	public boolean equalNames(ParameterList list) {
 
 		// Not same size, can't be equal
 		if( this.size() != list.size() ) return false;
@@ -521,15 +525,13 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	 * Returns a copy of this list, therefore any changes to the copy
 	 * cannot affect this original list.
 	 */
-	public Object clone(){
-
-		String S = C + ": clone(): ";
+	public Object clone() {
 		ParameterList list = new ParameterList();
-		if( this.size() < 1 ) return list;
+		if(this.size() < 1) return list;
 		int size = this.params.size();
 		for(int i = 0; i<size;++i) {
 			Parameter param = (Parameter)params.get(i);
-			list.addParameter( (Parameter)param.clone() );
+			list.addParameter((Parameter)param.clone());
 		}
 
 		return list;
@@ -537,13 +539,12 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 
 	/** Prints out all parameters in this list. For debugging purposes */
 	public String toString(){
-
 		String S = C + ": toString():";
 
 		StringBuffer b = new StringBuffer();
 		boolean first = true;
 
-		ArrayList<String> v=new ArrayList<String>();
+		ArrayList<String> v = new ArrayList<String>();
 
 		int vectorSize = params.size();
 		for(int i = 0; i<vectorSize;++i) {
@@ -552,10 +553,10 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 		}
 
 		Iterator<String> it = v.iterator();
-		while(it.hasNext()){
+		while(it.hasNext()) {
 
 			String key = (String)it.next();
-			if(D) System.out.println(S + "Next Parameter Key = " + key);
+//			if (D) System.out.println(S + "Next Parameter Key = " + key);
 
 			int index = getIndexOf(key);
 			Parameter param = (Parameter)params.get(index);
@@ -569,19 +570,17 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 
 			}
 
-			if( ok ){
-
+			if (ok) {
 				String val = "N/A";
 				Object obj = param.getValue();
-				if( obj != null) val = obj.toString();
-
-				if(D) System.out.println(S + val);
+				if(obj != null) val = obj.toString();
+//				if (D) System.out.println(S + val);
 				if(first){
 					first = false;
-					b.append( key + " = " + val );
+					b.append(key + " = " + val);
 				}
 				else {
-					b.append( ", " + key + " = " + val );
+					b.append(", " + key + " = " + val);
 				}
 			}
 		}
@@ -605,17 +604,17 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	 * the metadata in the XML format and can used to recreate the
 	 * parameterList from scratch.
 	 */
-	public String getParameterListMetadataString(){
+	public String getParameterListMetadataString() {
 		return getParameterListMetadataString("; ");
 	}
 
-	public String getParameterListMetadataString(String delimiter){
+	public String getParameterListMetadataString(String delimiter) {
 		int size  = params.size();
 		StringBuffer metaData = new StringBuffer();
 		boolean first = true;
 		for(int i=0;i<size;++i){
 			Parameter tempParam=(Parameter)params.get(i);
-			if(first){
+			if(first) {
 				metaData.append(tempParam.getMetadataString());
 				first = false;
 			}
@@ -624,7 +623,6 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 		}
 		return metaData.toString();
 	}
-
 
 
 	/** Returns the index of the named Parameter in this list. Returns -1 if not found. */
@@ -674,5 +672,172 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 
 		return !failure;
 	}
+	
+	/**
+	 * Pauses all {@link ChangeEvent}s until {@link #resumeChangeEvents()} is called; useful if you want to
+	 * rebuild or bulk-modify a parameter list without events being thrown for each intermediate step.
+	 *
+	 * The state of the parameter list is stored when this method is called, and will be checked to see if a
+	 * {@link ChangeEvent} should be thrown when {@link #resumeChangeEvents()} is thrown.
+	 */
+	public void pauseChangeEvents() {
+		if (D) System.out.println("ParameterList.pauseChangeEvents()");
+		this.changeEventsPaused = true;
+		this.pausedParamsState = new ArrayList<>(params);
+	}
 
+	/**
+	 * Resumes firing of {@link ChangeEvent} after they were paused via {@link #pauseChangeEvents()}.
+	 * @param fireEvent if true, a {@link ChangeEvent} will be fired to all registered listeners after un-pausing
+	 */
+	public void resumeChangeEvents() {
+		if (D) System.out.println("ParameterList.resumeChangeEvents()");
+		this.changeEventsPaused = false;
+		List<Parameter<?>> pausedParamsState = this.pausedParamsState;
+		boolean fireEvent = pausedParamsState == null || pausedParamsState.size() != params.size();
+		if (!fireEvent) {
+			// we have a prior state and it's the same size; see if they're really the same
+			if (D) System.out.println("ParameterList.resumeChangeEvents(): "
+					+ "checking state against prior state when paused to determine if we should fire a ChangeEvent");
+			try {
+				for (int i=0; i<params.size(); i++) {
+					if (params.get(i) != pausedParamsState.get(i)) {
+						// they differ
+						fireEvent = true;
+						break;
+					}
+				}
+			} catch (Exception e) {
+				System.err.println("WANRING: error encountered checking prior ParameterList state, "
+						+ "will default to firing a ChangeEvent: "+e.getMessage());
+				fireEvent = true;
+			}
+
+		}
+		if (fireEvent) {
+			if (D) System.out.println("ParameterList.resumeChangeEvents(): firing ChangeEvent");
+			fireChangeEvent(new ChangeEvent(this));
+		} else if (D) {
+			System.out.println("ParameterList.resumeChangeEvents(): skipping ChangeEvent");
+		}
+	}
+
+	/**
+	 * Add a listener to notify about ParameterList events. Listeners will be notified
+	 * when the contents of the parameter list are changed (e.g., parameters added or
+	 * removed), but will not be notified when parameter values themselves are changed.
+	 * @param listener Listener to add
+	 */
+	public synchronized void addChangeListener(
+			ChangeListener listener) {
+		if (changeListeners == null) changeListeners = new ArrayList<ChangeListener>();
+		if (!changeListeners.contains(listener)) changeListeners.add(listener);
+	}
+
+	/**
+	 * Remove a listener that was watching changes to the ParameterList
+	 * @param listener Listener to remove
+	 */
+	public synchronized void removeChangeListener(
+			ChangeListener listener) {
+		if (changeListeners != null && changeListeners.contains(listener))
+			changeListeners.remove(listener);
+	}
+	
+	/**
+	 * Signal to listeners that a change has occured to the ParameterList.
+	 * Listeners will be notified when the contents of the parameter list are
+	 * changed (e.g., parameters added or removed), but will not be notified
+	 * when parameter values themselves are changed.
+	 * @param event Event that occured (i.e. add/remove parameter)
+	 */
+	private void fireChangeEvent(ChangeEvent event) {
+		if (D) System.out.println("ParameterList.fireChangeEvent()");
+		if (changeEventsPaused) {
+			if (D) System.out.println("ParameterList.fireChangeEvent(): skipping because changeEventsPaused=true");
+			return;
+		}
+		ChangeListener[] listeners;
+		synchronized (this) {
+			if (changeListeners == null) return;
+			listeners = new ChangeListener[changeListeners.size()];
+			changeListeners.toArray(listeners);
+		}
+		for (ChangeListener listener : listeners) {
+			listener.stateChanged(event);
+		}
+	}
+
+    /**
+     * Build a new ParameterList with the intersection of ParameterLists.
+     * Contains only parameters found in all lists.
+     * For a deep copy, invoke ParameterList.clone on intersection output
+     * @param lists ParameterLists to build intersection
+     * @return new shallow-copy ParameterList
+     * @throws ParameterException Could throw exception from getParameter
+     */
+    public static ParameterList intersection(ParameterList... lists) throws ParameterException {
+        if (lists == null || lists.length == 0) return new ParameterList();
+
+        // Step 1: Start with the names from the first list
+        Set<String> commonNames = new HashSet<>();
+        ListIterator<String> it = lists[0].getParameterNamesIterator();
+        while (it.hasNext()) commonNames.add(it.next());
+
+        // Step 2: Intersect with the rest of the lists
+        for (int i = 1; i < lists.length; i++) {
+            Set<String> currentNames = new HashSet<>();
+            it = lists[i].getParameterNamesIterator();
+            while (it.hasNext()) currentNames.add(it.next());
+            commonNames.retainAll(currentNames); // keep only names present in both
+        }
+
+        // Step 3: Construct new ParameterList with only common parameters
+        ParameterList result = new ParameterList();
+        for (String name : commonNames) {
+            Parameter<?> param = lists[0].getParameter(name);
+            result.addParameter((Parameter<?>) param);
+        }
+
+        return result;
+    }
+
+    /**
+     * Build a new ParameterList with the union of provided parameters
+     * Contains parameters found in at least one of the lists
+     * For a deep copy, invoke ParameterList.clone on union output
+     * @param lists ParameterList to build union
+     * @return new shallow-copy ParameterList
+     * @throws ParameterException Could throw exception from getParameter
+     */
+    public static ParameterList union(ParameterList... lists) throws ParameterException {
+        ParameterList result = new ParameterList();
+        if (lists == null || lists.length == 0) return result;
+
+        for (ParameterList list : lists) {
+            for (Parameter<?> param : list) {
+                // Add only if not already present
+                if (!result.containsParameter(param.getName())) {
+                    result.addParameter((Parameter<?>) param);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Gets a new ParameterList with only the parameters in this ParameterList that are visible.
+     * For a deep copy, invoke ParameterList.clone on output
+     * @return new shallow-copy ParameterList
+     */
+    public ParameterList getVisibleParams() {
+        ParameterList visible = new ParameterList();
+        for (Parameter<?> param : this) {
+            if (param.isEditorBuilt() && param.getEditor().isVisible()) {
+                visible.addParameter(param);
+            }
+        }
+        return visible;
+    }
 }

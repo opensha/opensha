@@ -13,10 +13,13 @@ import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.sha.earthquake.AbstractERF;
+import org.opensha.sha.earthquake.FocalMechanism;
+import org.opensha.sha.earthquake.PointSource;
+import org.opensha.sha.earthquake.PointSource.PoissonPointSource;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.util.TectonicRegionType;
 
 /**
  * <p>Title: STEP_EqkRupForecast</p>
@@ -29,8 +32,10 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
  * @version 1.0
  */
 
-  public class STEP_AlaskanPipeForecast extends AbstractERF
+public class STEP_AlaskanPipeForecast extends AbstractERF
     implements ParameterChangeListener{
+	
+	private static final TectonicRegionType TRT = TectonicRegionType.ACTIVE_SHALLOW;
 
   //for Debug purposes
   private static String  C = new String("STEP_AlaskanPipeForecast");
@@ -126,7 +131,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
     double duration = timeSpan.getDuration();
 
     IncrementalMagFreqDist magFreqDist;
-    PointEqkSource ptSource;
+    PoissonPointSource ptSource;
 
     // Get iterator over input-file lines
     ListIterator it = inputFileLines.listIterator();
@@ -162,7 +167,12 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
         }
       }
 
-      ptSource = new PointEqkSource(new Location(lat,lon,DEPTH),magFreqDist,duration,RAKE,DIP);
+//      ptSource = new PointEqkSource(new Location(lat,lon,DEPTH),magFreqDist,duration,RAKE,DIP);
+      ptSource = PointSource.poissonBuilder(new Location(lat,lon,DEPTH))
+    		  .truePointSources()
+    		  .duration(duration)
+    		  .forMFDAndFocalMech(magFreqDist, new FocalMechanism(Double.NaN, DIP, RAKE), TRT)
+    		  .build();
       sources.add(ptSource);
 
       if(D) System.out.println(C+"makeSources(): numRups="+ptSource.getNumRuptures()+
@@ -270,7 +280,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
      // check first one
      int index = 0;
-     PointEqkSource qkSrc = (PointEqkSource) forecast.getSource(index);
+     PoissonPointSource qkSrc = (PoissonPointSource) forecast.getSource(index);
      System.out.println("getNumRuptures(): "+qkSrc.getNumRuptures());
      double duration = qkSrc.getDuration();
      for(int i=0;i<qkSrc.getNumRuptures();i++) {
@@ -282,7 +292,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
      }
      // check last one
      index = forecast.getNumSources()-1;
-     qkSrc = (PointEqkSource) forecast.getSource(index);
+     qkSrc = (PoissonPointSource) forecast.getSource(index);
      System.out.println("getNumRuptures(): "+qkSrc.getNumRuptures());
      duration = qkSrc.getDuration();
      double cumRate=0;

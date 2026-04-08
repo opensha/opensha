@@ -11,6 +11,7 @@ import org.junit.Test;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.param.Parameter;
 import org.opensha.sha.imr.AttenRelRef;
+import org.opensha.sha.imr.ErgodicIMR;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.MultiIMR_Averaged_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_GMM_Wrapper;
@@ -23,8 +24,8 @@ import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
 
 public class MultiIMR_ParamTest {
 	
-	private static List<? extends ScalarIMR> imrs;
-	private static ArrayList<ArrayList<ScalarIMR>> bundles;
+	private static List<? extends ErgodicIMR> imrs;
+	private static ArrayList<ArrayList<ErgodicIMR>> bundles;
 	
 	private static int imrs_per_bundle = 3;
 
@@ -47,15 +48,15 @@ public class MultiIMR_ParamTest {
 		
 //		Collections.shuffle(imrs);
 		
-		bundles = new ArrayList<ArrayList<ScalarIMR>>();
+		bundles = new ArrayList<ArrayList<ErgodicIMR>>();
 		
-		ArrayList<ScalarIMR> mimrs = null;
+		ArrayList<ErgodicIMR> mimrs = null;
 		for (int i=0; i<imrs.size(); i++) {
 			if (i % imrs_per_bundle == 0) {
 				if (mimrs != null) {
 					bundles.add(mimrs);
 				}
-				mimrs = new ArrayList<ScalarIMR>();
+				mimrs = new ArrayList<ErgodicIMR>();
 			}
 			mimrs.add(imrs.get(i));
 		}
@@ -66,7 +67,7 @@ public class MultiIMR_ParamTest {
 	
 	@Test
 	public void testSetIMTs() {
-		for (ArrayList<ScalarIMR> bundle : bundles) {
+		for (ArrayList<ErgodicIMR> bundle : bundles) {
 			MultiIMR_Averaged_AttenRel multi = new MultiIMR_Averaged_AttenRel(bundle);
 			
 			for (Parameter<?> imt : multi.getSupportedIntensityMeasures()) {
@@ -84,7 +85,7 @@ public class MultiIMR_ParamTest {
 	
 	@Test
 	public void testInitialConsist() {
-		for (ArrayList<ScalarIMR> bundle : bundles) {
+		for (ArrayList<ErgodicIMR> bundle : bundles) {
 			MultiIMR_Averaged_AttenRel multi = new MultiIMR_Averaged_AttenRel(bundle);
 			testParamConsistancy(multi, bundle);
 		}
@@ -92,7 +93,7 @@ public class MultiIMR_ParamTest {
 	
 	@Test
 	public void testChangeProp() {
-		for (ArrayList<ScalarIMR> bundle : bundles) {
+		for (ArrayList<ErgodicIMR> bundle : bundles) {
 			MultiIMR_Averaged_AttenRel multi = new MultiIMR_Averaged_AttenRel(bundle);
 			trySet(multi, StdDevTypeParam.NAME, StdDevTypeParam.STD_DEV_TYPE_INTRA);
 			testParamConsistancy(multi, bundle);
@@ -124,7 +125,7 @@ public class MultiIMR_ParamTest {
 	}
 	
 	private void testParamConsistancy(MultiIMR_Averaged_AttenRel multi,
-			ArrayList<ScalarIMR> bundle) {
+			ArrayList<ErgodicIMR> bundle) {
 		for (ScalarIMR imr : bundle) {
 			testParamConsistancy(multi.getSiteParamsIterator(), imr);
 			testParamConsistancy(multi.getOtherParamsIterator(), imr);

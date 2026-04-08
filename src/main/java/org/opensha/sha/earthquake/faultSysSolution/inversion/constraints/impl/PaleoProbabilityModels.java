@@ -34,7 +34,7 @@ public enum PaleoProbabilityModels implements ShortNamed, Supplier<PaleoProbabil
 			return new NSHM23_PaleoProbabilityModel();
 		}
 	},
-	NONE("None (all ruptures fully observed)", "None)") {
+	NONE("None (all ruptures fully observed)", "None") {
 		@Override
 		protected PaleoProbabilityModel doGet() throws IOException {
 			return new NoneModel();

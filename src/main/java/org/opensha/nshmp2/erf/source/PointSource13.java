@@ -27,9 +27,9 @@ import com.google.common.collect.Range;
 
 /**
  * 
- * Updated for use with 2013 maps; NGAW2 reuire more details on width dip etc..
+ * Updated for use with 2013 maps; NGAW2 require more details on width dip etc..
  * (hanging wall effect approximations are not possible at present); we still 
- * want o use meanrjb distances but reverse and normal sources should be modeled
+ * want to use meanrjb distances but reverse and normal sources should be modeled
  * as both HW and FW; just using +-rJB for rX for now.
  *  
  * This is a custom point earthquake source representation used for the NSHMP.
@@ -196,7 +196,7 @@ public class PointSource13 extends ProbEqkSource {
 		probEqkRupture.setAveRake(rake);
 		surface.setAveDip(dip);
 		// check as this builds a new internal Location in ptSurface
-		if (surface.getDepth() != depth) surface.setDepth(depth);
+		if (surface.getAveRupTopDepth() != depth) surface.setDepth(depth);
 		surface.width = width;
 		surface.footwall = footwall;
 		probEqkRupture.setPointSurface(surface);

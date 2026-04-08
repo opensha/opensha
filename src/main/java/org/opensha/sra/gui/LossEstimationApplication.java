@@ -61,10 +61,10 @@ import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.commons.util.bugReports.BugReport;
 import org.opensha.commons.util.bugReports.BugReportDialog;
-import org.opensha.commons.util.bugReports.DefaultExceptoinHandler;
+import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.HazardCurveCalculatorAPI;
-import org.opensha.sha.calc.params.MaxDistanceParam;
+import org.opensha.sha.calc.sourceFilters.params.MaxDistanceParam;
 import org.opensha.sha.earthquake.ERF_Ref;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.BaseERF;
@@ -96,6 +96,7 @@ import org.opensha.sra.vulnerability.models.curee.caltech.CCSmallHouseTypical;
 import org.opensha.sra.vulnerability.models.curee.caltech.CCTownhouseLimitedDrift;
 import org.opensha.sra.vulnerability.models.curee.caltech.CCTownhouseTypical;
 import org.opensha.sra.vulnerability.models.servlet.VulnerabilityServletAccessor;
+import org.opensha.sra.vulnerability.models.servlet.VulnerabilityLocalAccessor;
 import org.opensha.sra.gui.components.GuiBeanAPI;
 import org.opensha.sra.gui.components.VulnerabilityBean;
 
@@ -290,6 +291,7 @@ implements Runnable, ParameterChangeListener, CurveDisplayAppAPI, IMR_GuiBeanAPI
 	
 	public static List<AbstractVulnerability> fetchVulns() throws IOException {
 		VulnerabilityServletAccessor access = new VulnerabilityServletAccessor();
+//		VulnerabilityLocalAccessor access = new VulnerabilityLocalAccessor();
 		ArrayList<AbstractVulnerability> vms = new ArrayList<AbstractVulnerability>();
 		for (Vulnerability vuln : access.getVulnMap().values()) {
 			if (vuln instanceof AbstractVulnerability)
@@ -555,7 +557,7 @@ implements Runnable, ParameterChangeListener, CurveDisplayAppAPI, IMR_GuiBeanAPI
 	//Main method
 	public static void main(String[] args) {
 		new DisclaimerDialog(APP_NAME, APP_SHORT_NAME, getAppVersion());
-		DefaultExceptoinHandler exp = new DefaultExceptoinHandler(
+		DefaultExceptionHandler exp = new DefaultExceptionHandler(
 				APP_SHORT_NAME, getAppVersion(), null, null);
 		Thread.setDefaultUncaughtExceptionHandler(exp);
 		
@@ -669,15 +671,12 @@ implements Runnable, ParameterChangeListener, CurveDisplayAppAPI, IMR_GuiBeanAPI
 				public void actionPerformed(ActionEvent evt) {
 					try{
 
-						int totRupture = calc.getTotRuptures();
-						int currRupture = calc.getCurrRuptures();
-						boolean totCurCalculated = true;
-						if(currRupture ==-1){
-							progressClass.setProgressMessage("Please wait, calculating total rutures ....");
-							totCurCalculated = false;
-						}
-						if(!isHazardCalcDone && totCurCalculated)
-							progressClass.updateProgress(currRupture, totRupture);
+						int totProgress = calc.getTotalProgressCount();
+						int currProgress = calc.getCurrentProgress();
+						boolean totCurCalculated = currProgress >= 0 && currProgress > 0;
+						if (!isHazardCalcDone && totCurCalculated)
+							progressClass.updateProgress(currProgress,
+									totProgress);
 
 						if (isHazardCalcDone) {
 							timer.stop();
@@ -790,7 +789,7 @@ implements Runnable, ParameterChangeListener, CurveDisplayAppAPI, IMR_GuiBeanAPI
 		// if IMR selection changed, update the site parameter list and supported IMT
 		if ( name1.equalsIgnoreCase(imrGuiBean.IMR_PARAM_NAME)) {
 			ScalarIMR imr = imrGuiBean.getSelectedIMR_Instance();
-			siteGuiBean.replaceSiteParams(imr.getSiteParamsIterator());
+			siteGuiBean.replaceSiteParams(imr.getSiteParams());
 			siteGuiBean.validate();
 			siteGuiBean.repaint();
 		}
@@ -802,7 +801,7 @@ implements Runnable, ParameterChangeListener, CurveDisplayAppAPI, IMR_GuiBeanAPI
 				currentPeriod = currentModel.getPeriod();
 			imrGuiBean.setIMRParamListAndEditor(currentIMT, currentIMT, currentPeriod, currentPeriod);
 			ScalarIMR imr = imrGuiBean.getSelectedIMR_Instance();
-			siteGuiBean.replaceSiteParams(imr.getSiteParamsIterator());
+			siteGuiBean.replaceSiteParams(imr.getSiteParams());
 			siteGuiBean.validate();
 			siteGuiBean.repaint();
 		} 
@@ -895,7 +894,7 @@ implements Runnable, ParameterChangeListener, CurveDisplayAppAPI, IMR_GuiBeanAPI
 			(ArbitrarilyDiscretizedFunc)calc.getAnnualizedRates(currentHazardCurve, 
 					forecast.getTimeSpan().getDuration());
 		getAnnualizedPE(currentAnnualizedRates);
-	}*/
+	}*/	
 		AbstractVulnerability vuln = vulnBean.getCurrentModel();
 		Preconditions.checkNotNull(vuln, "Vulnerability model is null");
 		System.out.println("Vuln model: "+vuln.getName()+" ("+vuln.getClass()+")");
@@ -1055,7 +1054,7 @@ implements Runnable, ParameterChangeListener, CurveDisplayAppAPI, IMR_GuiBeanAPI
 		ScalarIMR imr = imrGuiBean.getSelectedIMR_Instance();
 		// create the Site Gui Bean object
 		siteGuiBean = new Site_GuiBean();
-		siteGuiBean.addSiteParams(imr.getSiteParamsIterator());
+		siteGuiBean.addSiteParams(imr.getSiteParams());
 		// show the sitebean in JPanel
 		sitePanel.add(this.siteGuiBean, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
 				GridBagConstraints.CENTER, GridBagConstraints.BOTH, defaultInsets, 0, 0));
@@ -1442,7 +1441,7 @@ implements Runnable, ParameterChangeListener, CurveDisplayAppAPI, IMR_GuiBeanAPI
 	public void updateSiteParams() {
 		//get the selected IMR
 		ScalarIMR imr = imrGuiBean.getSelectedIMR_Instance();
-		siteGuiBean.replaceSiteParams(imr.getSiteParamsIterator());
+		siteGuiBean.replaceSiteParams(imr.getSiteParams());
 		siteGuiBean.validate();
 		siteGuiBean.repaint();
 	}

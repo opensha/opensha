@@ -18,6 +18,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetSubsectioningModel;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration.Builder;
@@ -123,7 +124,7 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 		// override slip rates for the given deformation model
 		List<? extends FaultSection> subSects;
 		try {
-			subSects = dm.build(fm);
+			subSects = dm.build(fm, null, branch);
 		} catch (IOException e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
@@ -656,7 +657,7 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 				if (sect instanceof GeoJSONFaultSection)
 					geoSect = (GeoJSONFaultSection)sect;
 				else
-					geoSect = new GeoJSONFaultSection(sect);
+					geoSect = GeoJSONFaultSection.fromFaultSection(sect);
 				Feature feature = geoSect.toFeature();
 				FeatureProperties props = feature.properties;
 				double curLowDepth = props.getDouble(GeoJSONFaultSection.LOW_DEPTH, Double.NaN);

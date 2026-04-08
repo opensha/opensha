@@ -421,6 +421,38 @@
     <servlet-name>CS18_8_1_0</servlet-name>
     <url-pattern>/SiteData/CS18_8_1_0</url-pattern>
   </servlet-mapping>
+  
+  <!-- * CS 24.8 2.5 * -->
+  <servlet>
+    <servlet-name>CS24_8_2_5</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.CS_Study24_8_BasinDepthTo2_5_Servlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>CS24_8_2_5</servlet-name>
+    <url-pattern>/SiteData/CS24_8_2_5</url-pattern>
+  </servlet-mapping>
+  
+  <!-- * CS 24.8 1.0 * -->
+  <servlet>
+    <servlet-name>CS24_8_1_0</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.CS_Study24_8_BasinDepthTo1_0_Servlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>CS24_8_1_0</servlet-name>
+    <url-pattern>/SiteData/CS24_8_1_0</url-pattern>
+  </servlet-mapping>
 
   <!-- * CVM Vs30 * -->
   <servlet>
@@ -564,6 +596,22 @@
   <servlet-mapping>
     <servlet-name>Wills2015</servlet-name>
     <url-pattern>/SiteData/Wills2015</url-pattern>
+  </servlet-mapping>
+
+  <!-- * Thompson 2022 * -->
+  <servlet>
+    <servlet-name>Thompson2022</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.ThompsonVs30_2022Servlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>Thompson2022</servlet-name>
+    <url-pattern>/SiteData/Thompson2022</url-pattern>
   </servlet-mapping>
 
   <!-- * Thompson 2020 * -->
@@ -740,24 +788,6 @@
   <servlet-mapping>
     <servlet-name>STREC_DataWrapper</servlet-name>
     <url-pattern>/SiteData/STREC_DataWrapper</url-pattern>
-  </servlet-mapping>
-
-
-  <!-- ** ERF related ** -->
-  <!-- * WG02 Fortran Wrapper * -->
-  <servlet>
-    <servlet-name>WG02_Fortran</servlet-name>
-    <servlet-class>org.opensha.sha.earthquake.rupForecastImpl.WG02.servlet.WG02Servlet</servlet-class>
-    <init-param>
-      <param-name>debug</param-name>
-      <param-value>2</param-value>
-    </init-param>
-  </servlet>
-
-  <!-- Mapping -->
-  <servlet-mapping>
-    <servlet-name>WG02_Fortran</servlet-name>
-    <url-pattern>/WG02_Fortran</url-pattern>
   </servlet-mapping>
 
   <!-- ********* END SERVLETS ********* -->

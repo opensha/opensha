@@ -886,6 +886,15 @@ public class DataUtils {
 		}
 		
 		/**
+		 * Returns the center value (average of min and max)
+		 * 
+		 * @return center value
+		 */
+		public double getCenter() {
+			return 0.5*(min + max);
+		}
+		
+		/**
 		 * Returns the length of the range
 		 * 
 		 * @return getMax()-getMin()
@@ -921,7 +930,7 @@ public class DataUtils {
 
 		@Override
 		public String toString() {
-			return "min: " + min + ", max: " + max + ", avg: " + getAverage() + ", tot: "+tot;
+			return "min: " + (float)min + ", max: " + (float)max + ", avg: " + (float)getAverage() + ", tot: "+(float)tot;
 		}
 	}
 	

@@ -165,13 +165,18 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 				return (M)module;
 			if (call != null) {
 				// actually have to synchronize (expensive) here as we have a callable for it and haven't yet loaded it
+//				debug("Need to load module of type '"+clazz+"' and have a callable, waiting for synchronization lock");
 				synchronized (this) {
 					// see if another thread loaded it while we were waiting on this synchronized block
 					module = mappings.get(clazz);
-					if (module != null)
+					if (module != null) {
+//						debug("In syncrhonized lock for '"+clazz+"' loading, it was already loaded before I got in");
 						return (M)module;
+					}
 					// actually have to load it
+//					debug("In synchronized lock for '"+clazz+"' loading and still need to load it");
 					module = getLoadAvailableModule(call);
+//					debug("Done loading '"+clazz+"' in synchronized lock; null ? "+(module == null)+", mapped ? "+(mappings.containsKey(clazz)));
 				}
 			}
 		}
@@ -530,14 +535,6 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @throws IllegalStateException if call is not already registered as an available module
 	 */
 	private synchronized E getLoadAvailableModule(Callable<? extends E> call) {
-		/*
-		 * TODO: does this need to be synchronized? could maybe do the call portion asynchronously and just
-		 * synchronize for the list/map operations, which would allow for parallel loading.
-		 * 
-		 * would also need to synchronize on only the call in getModule for that efficiency to be realized
-		 * 
-		 * need to check other methods, could get tricky
-		 */
 		Preconditions.checkState(availableModules.remove(call));
 		E module = null;
 		Stopwatch watch = Stopwatch.createStarted();
@@ -546,24 +543,24 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 			module = call.call();
 			double secs = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
 			debug("Took "+secsDF.format(secs)+" s to load "+(module == null ? "null" : module.getName()));
-		} catch (Exception e) {
+		} catch (Throwable e) {
 			e.printStackTrace();
-			debug("WARNING: failed to lazily load a module (see exception above)", true);
+			debug("WARNING: failed to lazily load a module (see exception above): "+e.getMessage(), true);
 		}
 		watch.stop();
 		
-		// remove mappings to this available module, whether or not it was successful
-		List<Class<? extends E>> oldMappings = new ArrayList<>();
-		for (Class<? extends E> oClazz : availableMappings.keySet())
-			if (availableMappings.get(oClazz).equals(call))
-				oldMappings.add(oClazz);
-		for (Class<? extends E> oldMapping : oldMappings)
-			availableMappings.remove(oldMapping);
-		
 		if (module != null) {
-			// register it
+			// map it
+			
+			// this will remove available module mappings, but only after it was mapped; that order is important because
+			// another thread might be in getModule right now using the order of "available?" then "mapped?" to determine
+			// if it needs to synchronize
 			addModule(module);
+		} else {
+			// wasn't successful, now need to remove mappings to this (failed) available module
+			removeAvailableMappings(call);
 		}
+		
 		// will return null if failed
 		return module;
 	}
@@ -611,14 +608,16 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 		return ret;
 	}
 	
-	private boolean removeAvailableMappings(Callable<E> call) {
+	private boolean removeAvailableMappings(Callable<? extends E> call) {
 		List<Class<? extends E>> oldMappings = new ArrayList<>();
 		for (Class<? extends E> clazz : availableMappings.keySet())
 			if (availableMappings.get(clazz).equals(call))
 				oldMappings.add(clazz);
 		boolean ret = false;
-		for (Class<? extends E> oldMapping : oldMappings)
-			ret |= availableMappings.remove(oldMapping) != null;
+		for (Class<? extends E> oldMapping : oldMappings) {
+			boolean removed = availableMappings.remove(oldMapping) != null;
+			ret |= removed;
+		}
 		return ret;
 	}
 	
@@ -745,12 +744,47 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	private void debug(String message, boolean err) {
 		if (!err && !verbose)
 			return;
+		if (debug_common_prefix == null) {
+			synchronized (ModuleContainer.class) {
+				if (debug_common_prefix == null) {
+					try {
+						// see if we're in MPJ mode and include a more useful prefix
+						int rank =  mpi.MPI.COMM_WORLD.Rank();
+						String hostname = java.net.InetAddress.getLocalHost().getHostName();
+						if (hostname != null && !hostname.isBlank())
+							debug_common_prefix = hostname+", "+rank;
+						else
+							debug_common_prefix = rank+"";
+					} catch (Throwable t) {
+						debug_common_prefix = "";
+					}
+				}
+			}
+		}
+		if (debugPrefix == null) {
+			String debugPrefix = debug_common_prefix;
+			if (this instanceof Named) {
+				String name = ((Named)this).getName();
+				if (name != null && !name.isBlank()) {
+					debugPrefix = name;
+					if (!debug_common_prefix.isBlank())
+						debugPrefix += " ("+debug_common_prefix+")";
+				}
+			}
+			if (!debugPrefix.isBlank())
+				debugPrefix += ":\t";
+			this.debugPrefix = debugPrefix;
+		}
 		if (this instanceof Named)
-			message = ((Named)this).getName()+":\t"+message;
+			message = debugPrefix+message;
+		
 		if (err)
 			System.err.println(message);
 		else
 			System.out.println(message);
 	}
+	private String debugPrefix;
+	
+	private static String debug_common_prefix = null;
 
 }

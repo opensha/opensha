@@ -50,6 +50,7 @@ import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
+import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -82,6 +83,7 @@ import scratch.UCERF3.utils.U3FaultSystemIO;
 public class SubSectStiffnessCalculator {
 	
 	private List<? extends FaultSection> subSects;
+	private Map<Integer, Integer> idToIndexMap = null;
 	
 	private int utmZone;
 	private char utmChar;
@@ -199,6 +201,29 @@ public class SubSectStiffnessCalculator {
 		utmZone = UTM.calcZone(centerLon);
 		utmChar = UTM.calcLetter(centerLat);
 //		System.out.println("UTM zone: "+utmZone+" "+utmChar);
+		
+		boolean indexed = true;
+		for (int i=0; indexed&&i<subSects.size(); i++)
+			indexed &= subSects.get(i).getSectionId() == i;
+		if (!indexed) {
+			// build mappings
+			idToIndexMap = new HashMap<>(subSects.size());
+			for (int i=0; i<subSects.size(); i++) {
+				FaultSection sect = subSects.get(i);
+				int id = sect.getSectionId();
+				Preconditions.checkState(!idToIndexMap.containsKey(id),
+						"Duplicate id=%s; 2nd encountered was '%s'", id, sect);
+				idToIndexMap.put(id, i);
+			}
+		}
+	}
+	
+	int index(int sectID) {
+		return idToIndexMap == null ? sectID : idToIndexMap.get(sectID);
+	}
+	
+	int index(FaultSection sect) {
+		return idToIndexMap == null ? sect.getSectionId() : idToIndexMap.get(sect.getSectionId());
 	}
 	
 	public synchronized void setPatchAlignment(PatchAlignment alignment) {
@@ -218,11 +243,28 @@ public class SubSectStiffnessCalculator {
 		return patchesMap.get(sect);
 	}
 	
+	/**
+	 * Builds patches for the given section with the current patch settings and without regard to any caching
+	 * @param sect
+	 * @return
+	 */
+	public List<PatchLocation> buildPatches(FaultSection sect) {
+		switch (alignment) {
+		case CENTER:
+			return buildCenterPatches(sect);
+		case FILL_OVERLAP:
+			return buildFillOverlapPatches(sect);
+
+		default:
+			throw new IllegalStateException("Patch alignment not supported: "+alignment);
+		}
+	}
+	
 	private List<PatchLocation> buildCenterPatches(FaultSection sect) {
 		// super sample the surface
 		double hiResSpacing = gridSpacing/10d;
 		StirlingGriddedSurface surf = new StirlingGriddedSurface(
-				sect.getSimpleFaultData(false), hiResSpacing, hiResSpacing);
+				sect.getSimpleFaultData(isApplyAseisReduction()), hiResSpacing, hiResSpacing);
 		
 		double surfLength = surf.getAveLength();
 		double surfWidth = surf.getAveWidth();
@@ -259,9 +301,15 @@ public class SubSectStiffnessCalculator {
 	private List<PatchLocation> buildFillOverlapPatches(FaultSection sect) {
 		// super sample the surface
 		double hiResSpacing = gridSpacing/10d;
-		RuptureSurface surf = sect.getFaultSurface(hiResSpacing, false, false);
-		Preconditions.checkState(surf instanceof StirlingGriddedSurface, "Currently only support Coulomb calculations for "
-				+ "StirlingGriddedSurface instances, have %s for %s", ClassUtils.getClassNameWithoutPackage(surf.getClass()), sect.getSectionName());
+		RuptureSurface surf = sect.getFaultSurface(hiResSpacing, false, isApplyAseisReduction());
+		if (!(surf instanceof StirlingGriddedSurface)) {
+			System.err.println("WARNING: "+sect.getSectionName()+" provides a "
+					+ClassUtils.getClassNameWithoutPackage(surf.getClass())+" rather than a StirlingGriddedSurface; "
+					+ "Coulomb calculations may be innacurate.");
+		}
+		Preconditions.checkState(surf instanceof AbstractEvenlyGriddedSurface, "Currently only support Coulomb calculations for "
+				+ "AbstractEvenlyGriddedSurface instances, have %s for %s",
+				ClassUtils.getClassNameWithoutPackage(surf.getClass()), sect.getSectionName());
 //		StirlingGriddedSurface surf = new StirlingGriddedSurface(
 //				sect.getSimpleFaultData(false), hiResSpacing, hiResSpacing);
 		
@@ -284,11 +332,15 @@ public class SubSectStiffnessCalculator {
 		
 		for (double das : dasCenters) {
 			for (double ddw : dasWidths) {
-				PatchLocation patchLoc = buildPatch((StirlingGriddedSurface)surf, aveDip, aveRake, halfSpacingKM, dipRad, das, ddw);
+				PatchLocation patchLoc = buildPatch((AbstractEvenlyGriddedSurface)surf, aveDip, aveRake, halfSpacingKM, dipRad, das, ddw);
 				myPatches.add(patchLoc);
 			}
 		}
 		return myPatches;
+	}
+	
+	public boolean isApplyAseisReduction() {
+		return false;
 	}
 	
 	private static List<Double> calcFullOverlapCenters(double length, double gridSpacing) {
@@ -349,7 +401,7 @@ public class SubSectStiffnessCalculator {
 		return centers;
 	}
 
-	private PatchLocation buildPatch(StirlingGriddedSurface surf, double aveDip, double aveRake,
+	private PatchLocation buildPatch(AbstractEvenlyGriddedSurface surf, double aveDip, double aveRake,
 			double halfSpacingKM, double dipRad, double das, double ddw) {
 		Location center = surf.getInterpolatedLocation(das, ddw);
 		double strike = surf.getStrikeAtDAS(das);
@@ -390,18 +442,7 @@ public class SubSectStiffnessCalculator {
 				Map<FaultSection, List<PatchLocation>> patchesMap = new HashMap<>();
 				MinMaxAveTracker patchCountTrack = new MinMaxAveTracker();
 				for (FaultSection sect : subSects) {
-					List<PatchLocation> myPatches;
-					switch (alignment) {
-					case CENTER:
-						myPatches = buildCenterPatches(sect);
-						break;
-					case FILL_OVERLAP:
-						myPatches = buildFillOverlapPatches(sect);
-						break;
-
-					default:
-						throw new IllegalStateException("Patch alignment not supported: "+alignment);
-					}
+					List<PatchLocation> myPatches = buildPatches(sect);
 					Preconditions.checkState(myPatches.size() > 0, "must have at least 1 patch");
 					patchCountTrack.addValue(myPatches.size());
 //					System.out.println(sect.getSectionName()+" has "+myPatches.size()
@@ -437,20 +478,27 @@ public class SubSectStiffnessCalculator {
 	 */
 	public StiffnessDistribution calcStiffnessDistribution(int sourceID, int receiverID) {
 		checkInitPatches();
-		List<PatchLocation> sourcePatches = patchesMap.get(subSects.get(sourceID));
-		List<PatchLocation> receiverPatches = patchesMap.get(subSects.get(receiverID));
-		
-		double[][][] values = new double[StiffnessType.values().length][receiverPatches.size()][sourcePatches.size()];
+		int sIndex = index(sourceID);
+		int rIndex = index(receiverID);
+		List<PatchLocation> sourcePatches = patchesMap.get(subSects.get(sIndex));
+		List<PatchLocation> receiverPatches = patchesMap.get(subSects.get(rIndex));
 		
 		double[] selfStiffness = null;
 		if (selfStiffnessCap > 0)
-			selfStiffness = getSelfStiffness(receiverID, receiverPatches);
+			selfStiffness = getSelfStiffness(rIndex, receiverPatches);
+		
+		return calcStiffnessDistribution(sourcePatches, receiverPatches, selfStiffness);
+	}
+	
+	public StiffnessDistribution calcStiffnessDistribution(List<PatchLocation> sourcePatches,
+			List<PatchLocation> receiverPatches, double[] receiverSelfStiffnes) {
+		double[][][] values = new double[StiffnessType.values().length][receiverPatches.size()][sourcePatches.size()];
 
 		for (int r=0; r<receiverPatches.size(); r++) {
 			PatchLocation receiver = receiverPatches.get(r);
 			double cap = Double.NaN;
-			if (selfStiffnessCap > 0)
-				cap = Math.abs(selfStiffness[r])*selfStiffnessCap;
+			if (receiverSelfStiffnes != null)
+				cap = Math.abs(receiverSelfStiffnes[r])*selfStiffnessCap;
 			for (int s=0; s<sourcePatches.size(); s++) {
 				PatchLocation source = sourcePatches.get(s);
 				double[] stiffness = StiffnessCalc.calcStiffness(
@@ -464,7 +512,7 @@ public class SubSectStiffnessCalculator {
 					sigma = stiffness[0];
 					tau = stiffness[1];
 					cff = StiffnessCalc.calcCoulombStress(tau, sigma, coeffOfFriction);
-					if (selfStiffnessCap > 0) {
+					if (receiverSelfStiffnes != null) {
 						if (cff > cap)
 							cff = cap;
 						else if (cff < -cap)
@@ -480,25 +528,29 @@ public class SubSectStiffnessCalculator {
 		return new StiffnessDistribution(sourcePatches, receiverPatches, values);
 	}
 	
-	private double[] getSelfStiffness(int sectID, List<PatchLocation> receiverPatches) {
+	private double[] getSelfStiffness(int sectIndex, List<PatchLocation> receiverPatches) {
 		if (selfStiffnessCache == null) {
 			synchronized (this) {
 				if (selfStiffnessCache == null)
 					selfStiffnessCache = new double[subSects.size()][];
 			}
 		}
-		if (selfStiffnessCache[sectID] == null) {
+		if (selfStiffnessCache[sectIndex] == null) {
 			// calculate it
-			double[] values = new double[receiverPatches.size()];
-			for (int r=0; r<values.length; r++) {
-				PatchLocation receiver = receiverPatches.get(r);
-				double[] stiffness = StiffnessCalc.calcStiffness(
-						lameLambda, lameMu, receiver.patch, receiver.patch);
-				values[r] = StiffnessCalc.calcCoulombStress(stiffness[1], stiffness[0], coeffOfFriction);
-			}
-			selfStiffnessCache[sectID] = values;
+			selfStiffnessCache[sectIndex] = calcSelfStiffness(receiverPatches);
 		}
-		return selfStiffnessCache[sectID];
+		return selfStiffnessCache[sectIndex];
+	}
+	
+	public double[] calcSelfStiffness(List<PatchLocation> patches) {
+		double[] values = new double[patches.size()];
+		for (int r=0; r<values.length; r++) {
+			PatchLocation receiver = patches.get(r);
+			double[] stiffness = StiffnessCalc.calcStiffness(
+					lameLambda, lameMu, receiver.patch, receiver.patch);
+			values[r] = StiffnessCalc.calcCoulombStress(stiffness[1], stiffness[0], coeffOfFriction);
+		}
+		return values;
 	}
 	
 	public static class LogDistributionPlot {

@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.math3.stat.StatUtils;
 import org.jfree.data.Range;
 import org.opensha.commons.data.CSVFile;
@@ -41,8 +42,10 @@ import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 
 public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
+	
+	private static boolean USE_OLD_CPTS = false;
 
-	boolean fillSurfaces = false;
+	Boolean fillSurfaces = null;
 
 	@Override
 	public void setFillSurfaces(boolean fillSurfaces){
@@ -59,7 +62,8 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 			String relPathToResources, String topLink) throws IOException {
 		GeographicMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region);
 		mapMaker.setWriteGeoJSON(true);
-		mapMaker.setFillSurfaces(fillSurfaces);
+		if (fillSurfaces != null)
+			mapMaker.setFillSurfaces(fillSurfaces);
 		
 		List<String> lines = new ArrayList<>();
 		
@@ -85,13 +89,13 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 				lines.add(getSubHeading()+" Log10 Slip Rate Plots");
 				
 				slipCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(-3, 2);
+				slipCPT.setLog10(true);
 				
 				slipCPT.setBelowMinColor(slipCPT.getMinColor());
 				slipCPT.setAboveMaxColor(slipCPT.getMaxColor());
 				slipCPT.setNanColor(Color.GRAY);
 				
 				prefix = rawPrefix+"_log";
-				labelPrefix = "Log10 ";
 			} else {
 				lines.add(getSubHeading()+" Linear Slip Rate Plots");
 				slipCPT = linearSlipCPT(maxSlip);
@@ -102,11 +106,11 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 			TableBuilder table = MarkdownUtils.tableBuilder();
 			table.initNewLine();
 			
-			mapMaker.plotSectScalars(log ? log10(nonReduced) : nonReduced, slipCPT,
+			mapMaker.plotSectScalars(nonReduced, slipCPT,
 					labelPrefix+"Original (non-reduced) Slip Rate (mm/yr)");
 			mapMaker.plot(resourcesDir, prefix+"_orig", " ");
 			table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_orig.png)");
-			mapMaker.plotSectScalars(log ? log10(origReduced) : origReduced, slipCPT,
+			mapMaker.plotSectScalars(origReduced, slipCPT,
 					labelPrefix+"Creep Reduced Slip Rate (mm/yr)");
 			mapMaker.plot(resourcesDir, prefix+"_reduced", " ");
 			table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_reduced.png)");
@@ -121,7 +125,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 			if (rupSet.hasModule(SectSlipRates.class) || sol != null) {
 				table.initNewLine();
 				if (slipRates != null) {
-					mapMaker.plotSectScalars(log ? log10(targets) : targets, slipCPT, labelPrefix+"Target Slip Rate (mm/yr)");
+					mapMaker.plotSectScalars(targets, slipCPT, labelPrefix+"Target Slip Rate (mm/yr)");
 					mapMaker.plot(resourcesDir, prefix+"_target", " ");
 					table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_target.png)");
 				} else {
@@ -130,7 +134,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 				
 				if (sol != null) {
 					solRates = solution(sol);
-					mapMaker.plotSectScalars(log ? log10(solRates) : solRates, slipCPT, labelPrefix+"Solution Slip Rate (mm/yr)");
+					mapMaker.plotSectScalars(solRates, slipCPT, labelPrefix+"Solution Slip Rate (mm/yr)");
 					mapMaker.plot(resourcesDir, prefix+"_sol", " ");
 					table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_sol.png)");
 				} else {
@@ -160,6 +164,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 								new Color(0, 0, 140), new Color(0, 60, 200 ), new Color(0, 120, 255),
 								Color.WHITE,
 								new Color(255, 120, 0), new Color(200, 60, 0), new Color(140, 0, 0));
+						ratioCPT.setLog10(true);
 					} else {
 						diffCPT = new CPT(-10, 10,
 								new Color(0, 0, 140), new Color(0, 60, 200 ), new Color(0, 120, 255),
@@ -190,7 +195,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 					String diffLabel, ratioLabel;
 					if (log) {
 						diffLabel = null;
-						ratioLabel = "Log10(Solution / Target Slip Rate)";
+						ratioLabel = "Solution / Target Slip Rate";
 					} else {
 						diffLabel = "Solution - Target Slip Rate (mm/yr)";
 						ratioLabel = "Solution / Target Slip Rate";
@@ -201,11 +206,11 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 						mapMaker.plot(resourcesDir, prefix+"_sol_diff", " ");
 						table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_sol_diff.png)");
 					}
-					mapMaker.plotSectScalars(log ? log10(ratios) : ratios, ratioCPT, ratioLabel);
+					mapMaker.plotSectScalars(ratios, ratioCPT, ratioLabel);
 					mapMaker.plot(resourcesDir, prefix+"_sol_ratio", " ");
 					table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_sol_ratio.png)");
 					
-					HeadlessGraphPanel gp = PlotUtils.initHeadless();
+					HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 					if (!log) {
 						table.finalizeLine().initNewLine();
 						table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+"_sol_diff.geojson")
@@ -451,6 +456,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 								new Color(0, 0, 140), new Color(0, 60, 200 ), new Color(0, 120, 255),
 								Color.WHITE,
 								new Color(255, 120, 0), new Color(200, 60, 0), new Color(140, 0, 0));
+						ratioCPT.setLog10(true);
 					} else {
 						diffCPT = new CPT(-10, 10,
 								new Color(0, 0, 140), new Color(0, 60, 200 ), new Color(0, 120, 255),
@@ -482,7 +488,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 					if (isTarget) {
 						if (log) {
 							diffLabel = null;
-							ratioLabel = "Log10(Primary Target / Comparison Target Slip Rate)";
+							ratioLabel = "Primary Target / Comparison Target Slip Rate";
 						} else {
 							diffLabel = "Primary Target - Comparison Target Slip Rate (mm/yr)";
 							ratioLabel = "Primary Target / Comparison Target Slip Rate";
@@ -490,7 +496,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 					} else {
 						if (log) {
 							diffLabel = null;
-							ratioLabel = "Log10(Primary Solution / Comparison Solution Slip Rate)";
+							ratioLabel = "Primary Solution / Comparison Solution Slip Rate";
 						} else {
 							diffLabel = "Primary Solution - Comparison Solution Slip Rate (mm/yr)";
 							ratioLabel = "Primary Solution / Comparison Solution Slip Rate";
@@ -502,11 +508,11 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 						mapMaker.plot(resourcesDir, prefix+"_diff", " ");
 						table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_diff.png)");
 					}
-					mapMaker.plotSectScalars(log ? log10(ratios) : ratios, ratioCPT, ratioLabel);
+					mapMaker.plotSectScalars(ratios, ratioCPT, ratioLabel);
 					mapMaker.plot(resourcesDir, prefix+"_ratio", " ");
 					table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_ratio.png)");
 					
-					HeadlessGraphPanel gp = PlotUtils.initHeadless();
+					HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 					if (!log) {
 						table.finalizeLine().initNewLine();
 						table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+"_diff.geojson")
@@ -680,6 +686,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 			
 			if (hasSubSeis) {
 				CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, 1d);
+				cpt.setNanColor(Color.GRAY);
 				
 				String prefix = rawPrefix+"_sub_seis_red";
 				
@@ -809,24 +816,42 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 
 	public static CPT linearSlipCPT(double maxSlip) {
 		CPT slipCPT;
-		slipCPT = new CPT();
 		
-		slipCPT.setBelowMinColor(Color.GRAY);
-		slipCPT.setNanColor(Color.GRAY);
+		if (USE_OLD_CPTS) {
+			slipCPT = new CPT();
+			
+			slipCPT.setBelowMinColor(Color.GRAY);
+			slipCPT.setNanColor(Color.GRAY);
+			
+//					slipCPT.add(new CPTVal(0f, Color.GRAY, 0f, Color.GRAY));
+			slipCPT.add(new CPTVal(Float.MIN_VALUE, Color.BLUE, 10f, Color.MAGENTA));
+			slipCPT.add(new CPTVal(10f, Color.MAGENTA, 20f, Color.RED));
+			slipCPT.add(new CPTVal(20f, Color.RED, 30f, Color.ORANGE));
+			slipCPT.add(new CPTVal(30f, Color.ORANGE, 40f, Color.YELLOW));
+			
+			slipCPT.setAboveMaxColor(Color.YELLOW);
+		} else {
+			try {
+				slipCPT = GMT_CPT_Files.SEQUENTIAL_BATLOW_UNIFORM.instance().rescale(0d,  40d);
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+		}
 		
-//				slipCPT.add(new CPTVal(0f, Color.GRAY, 0f, Color.GRAY));
-		slipCPT.add(new CPTVal(Float.MIN_VALUE, Color.BLUE, 10f, Color.MAGENTA));
-		slipCPT.add(new CPTVal(10f, Color.MAGENTA, 20f, Color.RED));
-		slipCPT.add(new CPTVal(20f, Color.RED, 30f, Color.ORANGE));
-		slipCPT.add(new CPTVal(30f, Color.ORANGE, 40f, Color.YELLOW));
-		
-		slipCPT.setAboveMaxColor(Color.YELLOW);
-		if (maxSlip < 10d)
+		if (maxSlip < 2d)
+			slipCPT = slipCPT.rescale(0d, 2d);
+		else if (maxSlip < 5d)
+			slipCPT = slipCPT.rescale(0d, 5d);
+		else if (maxSlip < 10d)
 			slipCPT = slipCPT.rescale(0d, 10d);
 		else if (maxSlip < 20d)
 			slipCPT = slipCPT.rescale(0d, 20d);
-		else if (maxSlip > 60d)
-			slipCPT = slipCPT.rescale(0d, 60d);
+		else if (maxSlip > (USE_OLD_CPTS ? 60d : 50d)) {
+			if (maxSlip <= 100d)
+				slipCPT = slipCPT.rescale(0d, 10d*Math.floor(maxSlip/10d));
+			else
+				slipCPT = slipCPT.rescale(0d, 25d*Math.floor(maxSlip/25d));
+		}
 		return slipCPT;
 	}
 	
@@ -888,6 +913,8 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 			if (nonReduced > 0d) {
 				double subSeisReduced = 1e3*slipRates.getSlipRate(s);
 				subSeisRed[s] = (nonReduced - subSeisReduced)/nonReduced;
+			} else {
+				subSeisRed[s] = Double.NaN;
 			}
 		}
 		return subSeisRed;
@@ -916,13 +943,6 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 		for (int i=0; i<ratio.length; i++)
 			ratio[i] = v1[i] / v2[i];
 		return ratio;
-	}
-	
-	private static double[] log10(double[] vals) {
-		double[] ret = new double[vals.length];
-		for (int i=0; i<ret.length; i++)
-			ret[i] = Math.log10(vals[i]);
-		return ret;
 	}
 	
 	private static double[] abs(double[] vals) {

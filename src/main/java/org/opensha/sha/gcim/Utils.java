@@ -54,8 +54,8 @@ public class Utils {
 			// (because it might support multiple Tectonic Regions), otherwise
 			// do nothing to force it to take the ruptures anyway (and to avoid an exception)
 			// what if it support two other types, but not this one?????????????????????
-			if(imCorrRel.isTectonicRegionSupported(trt.toString()))  {
-				imCorrRel.getParameter(TectonicRegionTypeParam.NAME).setValue(trt.toString());					  
+			if(imCorrRel.isTectonicRegionSupported(trt))  {
+				imCorrRel.getParameter(TectonicRegionTypeParam.NAME).setValue(trt);					  
 			} else { // set to the default value
 				imCorrRel.getParameter(TectonicRegionTypeParam.NAME).setValueAsDefault();
 			}

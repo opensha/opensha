@@ -25,6 +25,7 @@ import org.apache.commons.text.StringEscapeUtils;
 import org.commonmark.Extension;
 import org.commonmark.ext.gfm.tables.TablesExtension;
 import org.commonmark.ext.heading.anchor.HeadingAnchorExtension;
+import org.commonmark.ext.heading.anchor.IdGenerator;
 import org.commonmark.node.AbstractVisitor;
 import org.commonmark.node.HardLineBreak;
 import org.commonmark.node.Image;
@@ -39,7 +40,6 @@ import org.commonmark.renderer.html.HtmlRenderer;
 import org.commonmark.renderer.html.HtmlWriter;
 import org.opensha.commons.data.CSVFile;
 
-import com.google.common.base.CharMatcher;
 import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
 
@@ -50,6 +50,19 @@ import com.google.common.io.Files;
  */
 public class MarkdownUtils {
 	
+	public static enum TableTextAlignment {
+		DEFAULT("-----"),
+		LEFT(":----"),
+		CENTER(":---:"),
+		RIGHT("----:");
+		
+		private final String dashes;
+
+		private TableTextAlignment(String dashes) {
+			this.dashes = dashes;
+		}
+	}
+	
 	/**
 	 * Builder model for genearting Markdown tables
 	 * @author kevin
@@ -57,12 +70,55 @@ public class MarkdownUtils {
 	 */
 	public static class TableBuilder {
 		
+		private TableTextAlignment colAlignment = TableTextAlignment.DEFAULT;
+		private TableTextAlignment[] colSpecificAlignments = null;
+		
 		private List<String[]> lines;
 		
 		private List<String> curLine;
 		
 		private TableBuilder() {
 			lines = new LinkedList<>();
+		}
+		
+		/**
+		 * Sets the default text alignment for all columns
+		 * 
+		 * @param alignment
+		 * @return
+		 */
+		public TableBuilder textAlign(TableTextAlignment colAlignment) {
+			this.colAlignment = colAlignment;
+			return this;
+		}
+		
+		/**
+		 * Sets text alignment on a column-by-column basis; if the number of given alignments is less than the number
+		 * of columns or any values are null, then the default alignment will be used.
+		 * 
+		 * @param alignment
+		 * @return
+		 */
+		public TableBuilder textAlign(TableTextAlignment[] colSpecificAlignments) {
+			this.colSpecificAlignments = colSpecificAlignments;
+			return this;
+		}
+		
+		/**
+		 * Sets text alignment on for the specified column only. Subsequent calls to {@link #textAlign(TableTextAlignment)}
+		 * will not reset this, it can only be reset by manually setting it to null
+		 * 
+		 * @param alignment
+		 * @return
+		 */
+		public TableBuilder textAlign(int colIndex, TableTextAlignment colSpecificAlignment) {
+			Preconditions.checkState(colIndex >= 0);
+			if (colSpecificAlignments == null)
+				colSpecificAlignments = new TableTextAlignment[colIndex+1];
+			else if (colSpecificAlignments.length <= colIndex)
+				colSpecificAlignments = Arrays.copyOf(colSpecificAlignments, colIndex+1);
+			colSpecificAlignments[colIndex] = colSpecificAlignment;
+			return this;
 		}
 		
 		public TableBuilder addLine(List<String> vals) {
@@ -192,7 +248,7 @@ public class MarkdownUtils {
 			for (int i=0; i<lines.size(); i++) {
 				strings.add(tableLine(lines.get(i)));
 				if (i == 0)
-					strings.add(generateTableDashLine(lines.get(i).length));
+					strings.add(generateTableDashLine(lines.get(i).length, colAlignment, colSpecificAlignments));
 			}
 			
 			return strings;
@@ -206,7 +262,7 @@ public class MarkdownUtils {
 					str.append("\n");
 				str.append(tableLine(lines.get(i)));
 				if (i == 0)
-					str.append("\n").append(generateTableDashLine(lines.get(i).length));
+					str.append("\n").append(generateTableDashLine(lines.get(i).length, colAlignment, colSpecificAlignments));
 			}
 			return str.toString();
 		}
@@ -238,6 +294,10 @@ public class MarkdownUtils {
 			}
 			return csv;
 		}
+		
+		public int getNumLines() {
+			return lines.size();
+		}
 	}
 	
 	/**
@@ -246,6 +306,15 @@ public class MarkdownUtils {
 	 */
 	public static TableBuilder tableBuilder() {
 		return new TableBuilder();
+	}
+	
+	/**
+	 * Creates a new TableBuilder instance for generating Markdown tables with the given global text alignment
+	 * @param align
+	 * @return
+	 */
+	public static TableBuilder tableBuilder(TableTextAlignment align) {
+		return new TableBuilder().textAlign(align);
 	}
 	
 	public static TableBuilder tableFromCSV(CSVFile<String> csv, boolean boldFirstColumn) {
@@ -261,11 +330,16 @@ public class MarkdownUtils {
 		return table;
 	}
 	
-	private static String generateTableDashLine(int numVals) {
+	private static String generateTableDashLine(int numVals, TableTextAlignment defaultAlignment,
+			TableTextAlignment[] colSpecificAlignments) {
 		Preconditions.checkState(numVals >= 1);
 		String[] vals = new String[numVals];
-		for (int i=0; i<vals.length; i++)
-			vals[i] = "-----";
+		for (int i=0; i<vals.length; i++) {
+			TableTextAlignment alignment = defaultAlignment;
+			if (colSpecificAlignments != null && colSpecificAlignments.length > i && colSpecificAlignments[i] != null)
+				alignment = colSpecificAlignments[i];
+			vals[i] = alignment.dashes;
+		}
 		return tableLine(vals).replaceAll(" ", "");
 	}
 	
@@ -337,9 +411,6 @@ public class MarkdownUtils {
 		return null;
 	}
 	
-	private static final CharMatcher ALNUM = CharMatcher.inRange('a', 'z').or(CharMatcher.inRange('A', 'Z'))
-			  .or(CharMatcher.inRange('0', '9')).or(CharMatcher.is('_')).or(CharMatcher.is('-'));
-	
 	/**
 	 * Builds a table of contents with links to all headers. Each header should be unique
 	 * @param lines
@@ -361,18 +432,22 @@ public class MarkdownUtils {
 	public static List<String> buildTOC(List<String> lines, int minLevel, int maxLevel) {
 		LinkedList<String> toc = new LinkedList<>();
 		
+		IdGenerator idGen = IdGenerator.builder().build();
+		
 		for (int i=0; i<lines.size(); i++) {
 			String line = lines.get(i);
 			if (line.startsWith("#")) {
 				String headerPart = line.substring(0, line.lastIndexOf('#')+1);
 				int level = headerPart.length();
+				String title = line.substring(headerPart.length()).trim();
+				// do this outside of the level check to make sure that duplicates are handled the same way as in commonmark
+				String anchor = getAnchorName(title, idGen);
 				if (level >= minLevel && (maxLevel <=0 || level <= maxLevel)) {
 					String tocLine = "";
 					while ((level > minLevel)) {
 						tocLine += "  ";
 						level--;
 					}
-					String title = line.substring(headerPart.length()).trim();
 					
 					String link = null;
 					// see if it's just a link, if so use that link rather than a link to the link
@@ -406,7 +481,7 @@ public class MarkdownUtils {
 						}
 					}
 					if (link == null)
-						link = "#"+getAnchorName(title);
+						link = "#"+anchor;
 					tocLine += "* ["+title+"]("+link+")";
 					toc.add(tocLine);
 				}
@@ -421,31 +496,21 @@ public class MarkdownUtils {
 	 * @return the name of the anchor link for a given heading
 	 */
 	public static String getAnchorName(String heading) {
+		return getAnchorName(heading, IdGenerator.builder().build());
+	}
+	
+	/**
+	 * 
+	 * @param heading
+	 * @param idGen stateful ID generator that handles duplicates
+	 * @return the name of the anchor link for a given heading
+	 */
+	public static String getAnchorName(String heading, IdGenerator idGen) {
+		heading = StringEscapeUtils.unescapeHtml4(heading).trim();
 		while (heading.startsWith("#"))
-			heading = heading.substring(1);
-		while (heading.contains("&") && heading.contains(";")) {
-			int indexAnd = heading.indexOf("&");
-			int indexSemi = heading.indexOf(";");
-			if (indexSemi > indexAnd) {
-				// remove special symbol
-				String symbol = heading.substring(indexAnd, indexSemi+1);
-				heading = heading.replace(symbol, "");
-			}
-		}
-		while (heading.contains("<") && heading.contains(">")) {
-			int indexStart = heading.indexOf("<");
-			int indexEnd = heading.indexOf(">");
-			if (indexStart < indexEnd) {
-				// remove html tag
-				String tag = heading.substring(indexStart, indexEnd+1);
-				heading = heading.replaceAll(tag, "");
-			} else {
-				// greater than sign? remove it
-				heading.replaceFirst(">", "");
-			}
-		}
-		heading = heading.trim();
-		return ALNUM.retainFrom(heading.toLowerCase().replaceAll(" ", "-")).toLowerCase();
+			heading = heading.substring(1).trim();
+		
+		return idGen.generateId(heading);
 	}
 	
 	/**

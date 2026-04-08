@@ -21,8 +21,8 @@ import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.sha.earthquake.EqkRupture;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
 import org.opensha.sha.faultSurface.PointSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.DampingParam;
@@ -175,6 +175,13 @@ ParameterChangeListener {
 	protected void setPropagationEffectParams() {}
 
 	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		for (AttenuationRelationship ar : arList) {
+			ar.setPropagationEffectParams(distances);
+		}
+	}
+
+	@Override
 	protected void initSupportedIntensityMeasureParams() {
 		// clone periods from ba08
 		DoubleDiscreteConstraint periodConstraint = new DoubleDiscreteConstraint(
@@ -321,29 +328,27 @@ ParameterChangeListener {
 
 	@Override
 	public void setSite(Site site) {
-		this.site = site;
-
-		// being done to satisfy unit tests
-		vs30Param.setValueIgnoreWarning((Double) site.getParameter(Vs30_Param.NAME).getValue());
-
-		if (eqkRupture != null) {
-			setPropagationEffect();
-		}
+		for (AttenuationRelationship ar : arList)
+			ar.setSite(site);
+		super.setSite(site); // will call setPropagationEffectParams
+		if (site != null)
+			// being done to satisfy unit tests
+			vs30Param.setValueIgnoreWarning((Double) site.getParameter(Vs30_Param.NAME).getValue());
 	}
 	
 	@Override
-	public void setEqkRupture(EqkRupture eqkRupture) {
-		this.eqkRupture = eqkRupture;
-		if (site != null) {
-			setPropagationEffect();
-		}
+	public void setSiteLocation(Location loc) {
+		for (AttenuationRelationship ar : arList)
+			ar.setSiteLocation(loc);
+		super.setSiteLocation(loc);
 	}
-	
-	public void setPropagationEffect() {
-		for (AttenuationRelationship ar : arList) {
+
+	@Override
+	public void setEqkRupture(EqkRupture eqkRupture) {
+		super.setEqkRupture(eqkRupture);
+		for (AttenuationRelationship ar : arList)
 			ar.setEqkRupture(eqkRupture);
-			ar.setSite(site);
-		}
+		super.setEqkRupture(eqkRupture); // does NOT automatically call setPropEffectParams
 	}
 
 	@Override
@@ -447,11 +452,6 @@ ParameterChangeListener {
 	public DiscretizedFunc getSA_IML_AtExceedProbSpectrum(double exceedProb)
 			throws ParameterException, IMRException {
 		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public double getTotExceedProbability(PointEqkSource ptSrc, double iml) {
-		throw new UnsupportedOperationException("getTotExceedProbability is unsupported for "+C);
 	}
 
 	@Override

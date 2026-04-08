@@ -15,8 +15,8 @@ import org.opensha.commons.param.event.ParameterChangeListener;
  * 
  * @author Kevin
  *
- * @param <E>
- * @param <F>
+ * @param <E> source parameter type
+ * @param <F> editor's parameter type
  */
 public abstract class AbstractParameterEditorConverter<E, F> implements
 		ParameterEditor<E>, ParameterChangeListener {

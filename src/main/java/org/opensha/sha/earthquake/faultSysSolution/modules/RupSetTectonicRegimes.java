@@ -34,6 +34,13 @@ SplittableRuptureModule<RupSetTectonicRegimes>{
 	
 	private EnumSet<TectonicRegionType> regimeSet;
 	
+	public static RupSetTectonicRegimes forCSV(FaultSystemRupSet rupSet, CSVFile<String> csv) {
+		RupSetTectonicRegimes regimes = new RupSetTectonicRegimes();
+		regimes.setParent(rupSet);
+		regimes.initFromCSV(csv);
+		return regimes;
+	}
+	
 	public RupSetTectonicRegimes(FaultSystemRupSet rupSet, TectonicRegionType[] regimes) {
 		if (rupSet != null)
 			Preconditions.checkState(rupSet.getNumRuptures() == regimes.length);

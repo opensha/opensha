@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -349,7 +350,7 @@ public class ViewFaultSection extends JPanel implements ParameterChangeListener,
 			int totalSubSections =0;
 			for(int i=0; i<faultSectionPrefDataList.size(); ++i) {
 				FaultSectionPrefData faultSecPrefData = (FaultSectionPrefData)faultSectionPrefDataList.get(i);
-				ArrayList<FaultSectionPrefData> subSecList = faultSecPrefData.getSubSectionsList(subSecLen);
+				List<FaultSectionPrefData> subSecList = faultSecPrefData.getSubSectionsList(subSecLen);
 				totalSubSections+=subSecList.size();
 				for(int j=0; j<subSecList.size(); ++j) {
 					sectionWriter.writeForFaultModel(subSecList.get(j), fw);

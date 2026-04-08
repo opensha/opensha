@@ -12,6 +12,7 @@ import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
@@ -106,7 +107,7 @@ public class FaultSectionBranchAverager {
 			avgSectSlipRateStdDevs[s] /= totWeight;
 			double avgRake = FaultUtils.getInRakeRange(avgSectRakes.get(s).getAverage());
 			
-			GeoJSONFaultSection avgSect = new GeoJSONFaultSection(new AvgFaultSection(refSect, avgSectAseis[s],
+			GeoJSONFaultSection avgSect = GeoJSONFaultSection.fromFaultSection(new AvgFaultSection(refSect, avgSectAseis[s],
 					avgSectCoupling[s], avgRake, avgSectSlipRates[s], avgSectSlipRateStdDevs[s]));
 			if (avgSectCreep != null && sectAnyCreeps[s]) {
 				avgSectCreep[s] /= totWeight;
@@ -340,6 +341,31 @@ public class FaultSectionBranchAverager {
 		@Override
 		public boolean isProxyFault() {
 			return refSect.isProxyFault();
+		}
+
+		@Override
+		public int getSubSectionIndex() {
+			return refSect.getSubSectionIndex();
+		}
+
+		@Override
+		public int getSubSectionIndexAlong() {
+			return refSect.getSubSectionIndexAlong();
+		}
+
+		@Override
+		public int getSubSectionIndexDownDip() {
+			return refSect.getSubSectionIndexDownDip();
+		}
+
+		@Override
+		public TectonicRegionType getTectonicRegionType() {
+			return refSect.getTectonicRegionType();
+		}
+
+		@Override
+		public void setTectonicRegionType(TectonicRegionType tectonicRegionType){
+			throw new UnsupportedOperationException();
 		}
 		
 	}

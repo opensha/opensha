@@ -23,6 +23,7 @@ import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.EqkRuptureParams.DipParam;
@@ -180,38 +181,39 @@ public class CB_2008_AttenRel extends AttenuationRelationship implements
 	@Override
 	public void setEqkRupture(EqkRupture eqkRupture)
 			throws InvalidRangeException {
-		this.eqkRupture = eqkRupture;
-		magParam.setValueIgnoreWarning(eqkRupture.getMag());
-		setFaultTypeFromRake(eqkRupture.getAveRake());
-		RuptureSurface surface = eqkRupture.getRuptureSurface();
-		rupTopDepthParam.setValueIgnoreWarning(surface.getAveRupTopDepth());
-		dipParam.setValueIgnoreWarning(surface.getAveDip());
-		setPropagationEffectParams();
+		super.setEqkRupture(eqkRupture);
+		if (eqkRupture != null) {
+			magParam.setValueIgnoreWarning(eqkRupture.getMag());
+			setFaultTypeFromRake(eqkRupture.getAveRake());
+			RuptureSurface surface = eqkRupture.getRuptureSurface();
+			rupTopDepthParam.setValueIgnoreWarning(surface.getAveRupTopDepth());
+			dipParam.setValueIgnoreWarning(surface.getAveDip());
+			setPropagationEffectParams();
+		}
 	}
 
 	@Override
 	public void setSite(Site site) throws ParameterException {
-		this.site = site;
-		vs30Param.setValueIgnoreWarning((Double) site.getParameter(Vs30_Param.NAME)
-			.getValue());
-		depthTo2pt5kmPerSecParam.setValueIgnoreWarning((Double) site
-			.getParameter(DepthTo2pt5kmPerSecParam.NAME).getValue());
-		setPropagationEffectParams();
+		super.setSite(site); // will call setPropagationEffectParams
+		if (site != null) {
+			vs30Param.setValueIgnoreWarning((Double) site.getParameter(Vs30_Param.NAME)
+					.getValue());
+			depthTo2pt5kmPerSecParam.setValueIgnoreWarning((Double) site
+					.getParameter(DepthTo2pt5kmPerSecParam.NAME).getValue());
+		}
 	}
 
 	@Override
 	protected void setPropagationEffectParams() {
 		if (site != null && eqkRupture != null) {
-			propEffectUpdate();
+			setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
 		}
 	}
-	
 
-	
-	private void propEffectUpdate() {
-//		distanceRupParam.setValueIgnoreWarning(eqkRupture.getRuptureSurface().getDistanceRup(site.getLocation())); // this sets rRup too
-		distanceRupParam.setValue(eqkRupture,site); // this sets rRup too
-		double dist_jb = eqkRupture.getRuptureSurface().getDistanceJB(site.getLocation());
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		distanceRupParam.setValue(eqkRupture, site, distances); // this sets rRup too
+		double dist_jb = distances.getDistanceJB();
 		if(rRup == 0)
 			distRupMinusJB_OverRupParam.setValueIgnoreWarning(0.0);
 		else

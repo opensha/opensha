@@ -186,8 +186,9 @@ public class PostProcessPageGen {
 			yearInc = 2;
 		else
 			yearInc = 1;
+		PlotPreferences plotPrefs = PlotPreferences.getDefaultScreenFigurePrefs();
 		PaintScaleLegend scatterBar = GraphPanel.getLegendForCPT(scatterCPT, "Year",
-				22, 18, yearInc, RectangleEdge.BOTTOM);
+				plotPrefs, yearInc, RectangleEdge.BOTTOM);
 
 		DefaultXY_DataSet[][][] medianMagDurScatters = new DefaultXY_DataSet[scatterCPT.size()][minMags.length][scatterDurations.length];
 		DefaultXY_DataSet[][][] meanMagDurScatters = new DefaultXY_DataSet[scatterCPT.size()][minMags.length][scatterDurations.length];
@@ -506,7 +507,6 @@ public class PostProcessPageGen {
 				table.addColumn("**M&ge;"+(float)minMags[m]+"**");
 				
 				Range xRange = null, yRange = null;
-				PlotPreferences plotPrefs = null;
 				for (boolean isMedian : new boolean[] {false, true}) {
 					List<XY_DataSet> funcs = new ArrayList<>();
 					List<PlotCurveCharacterstics> chars = new ArrayList<>();
@@ -581,13 +581,7 @@ public class PostProcessPageGen {
 					
 					spec.setLegendVisible(true);
 
-					HeadlessGraphPanel gp = new HeadlessGraphPanel();
-					gp.setTickLabelFontSize(18);
-					gp.setAxisLabelFontSize(24);
-					gp.setPlotLabelFontSize(24);
-					gp.setLegendFontSize(18);
-					gp.setBackgroundColor(Color.WHITE);
-					plotPrefs = gp.getPlotPrefs();
+					HeadlessGraphPanel gp = new HeadlessGraphPanel(plotPrefs);
 					//					gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
 
 					xRange = new Range(minVal, maxVal);
@@ -912,7 +906,7 @@ public class PostProcessPageGen {
 		cpt.setBelowMinColor(cpt.getMinColor());
 		cpt.setAboveMaxColor(cpt.getMaxColor());
 		PaintScaleLegend cptBar = GraphPanel.getLegendForCPT(cpt, "Year",
-				22, 18, yearInc, RectangleEdge.BOTTOM);
+				plotPrefs, yearInc, RectangleEdge.BOTTOM);
 
 		for (boolean cumulative : new boolean[] { true, false }) {
 			List<DiscretizedFunc[]> meanFuncs, medianFuncs;

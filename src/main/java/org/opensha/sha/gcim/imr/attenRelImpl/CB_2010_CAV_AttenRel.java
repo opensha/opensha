@@ -23,6 +23,7 @@ import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.gcim.imr.param.IntensityMeasureParams.CAV_Param;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
@@ -200,28 +201,28 @@ public class CB_2010_CAV_AttenRel
    * @throws InvalidRangeException thrown if rake is out of bounds
    */
   public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
-	  
-	  magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
-	  
-	  double rake = eqkRupture.getAveRake();
-	  if(rake >30 && rake <150) {
-		  fltTypeParam.setValue(FLT_TYPE_REVERSE);
+	  super.setEqkRupture(eqkRupture);
+	  if (eqkRupture != null) {
+		  magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
+
+		  double rake = eqkRupture.getAveRake();
+		  if(rake >30 && rake <150) {
+			  fltTypeParam.setValue(FLT_TYPE_REVERSE);
+		  }
+		  else if(rake >-150 && rake<-30) {
+			  fltTypeParam.setValue(FLT_TYPE_NORMAL);
+		  }
+		  else { // strike slip
+			  fltTypeParam.setValue(FLT_TYPE_STRIKE_SLIP);
+		  }
+
+		  RuptureSurface surface = eqkRupture.getRuptureSurface();
+		  rupTopDepthParam.setValueIgnoreWarning(surface.getAveRupTopDepth());
+		  dipParam.setValueIgnoreWarning(surface.getAveDip());
+
+		  //	  setFaultTypeFromRake(eqkRupture.getAveRake());
+		  setPropagationEffectParams();
 	  }
-	  else if(rake >-150 && rake<-30) {
-		  fltTypeParam.setValue(FLT_TYPE_NORMAL);
-	  }
-	  else { // strike slip
-		  fltTypeParam.setValue(FLT_TYPE_STRIKE_SLIP);
-	  }
-	  
-	  RuptureSurface surface = eqkRupture.getRuptureSurface();
-	  rupTopDepthParam.setValueIgnoreWarning(surface.getAveRupTopDepth());
-	  dipParam.setValueIgnoreWarning(surface.getAveDip());
-	  
-//	  setFaultTypeFromRake(eqkRupture.getAveRake());
-	  this.eqkRupture = eqkRupture;
-	  setPropagationEffectParams();
-	  
   }
 
   /**
@@ -252,13 +253,18 @@ public class CB_2010_CAV_AttenRel
 
     if ( (this.site != null) && (this.eqkRupture != null)) {
    
-    	distanceRupParam.setValue(eqkRupture, site);
-		double dist_jb = eqkRupture.getRuptureSurface().getDistanceJB(site.getLocation());
-    	if(rRup == 0)
-    		distRupMinusJB_OverRupParam.setValueIgnoreWarning(0.0);
-    	else
-    		distRupMinusJB_OverRupParam.setValueIgnoreWarning((rRup-dist_jb)/rRup);
-    }
+    	setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
+	}
+  }
+
+  @Override
+  public void setPropagationEffectParams(SurfaceDistances distances) {
+	  distanceRupParam.setValue(eqkRupture, site, distances);
+	  double dist_jb = distances.getDistanceJB();
+	  if(rRup == 0)
+		  distRupMinusJB_OverRupParam.setValueIgnoreWarning(0.0);
+	  else
+		  distRupMinusJB_OverRupParam.setValueIgnoreWarning((rRup-dist_jb)/rRup);
   }
 
   /**

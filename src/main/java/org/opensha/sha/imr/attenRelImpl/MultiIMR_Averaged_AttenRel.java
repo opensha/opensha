@@ -3,7 +3,6 @@ package org.opensha.sha.imr.attenRelImpl;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
@@ -11,6 +10,7 @@ import java.util.ListIterator;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.exceptions.ConstraintException;
 import org.opensha.commons.exceptions.EditableException;
 import org.opensha.commons.exceptions.IMRException;
@@ -23,16 +23,15 @@ import org.opensha.commons.param.WarningParameter;
 import org.opensha.commons.param.constraint.impl.DoubleDiscreteConstraint;
 import org.opensha.commons.param.constraint.impl.EnumConstraint;
 import org.opensha.commons.param.constraint.impl.StringConstraint;
-import org.opensha.commons.param.event.ParameterChangeWarningListener;
-import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.commons.param.impl.EnumParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.param.impl.WarningDoubleParameter;
 import org.opensha.commons.param.impl.WeightedListParameter;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.sha.earthquake.EqkRupture;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
+import org.opensha.sha.imr.ErgodicIMR;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.DampingParam;
 import org.opensha.sha.imr.param.IntensityMeasureParams.IA_Param;
@@ -47,13 +46,10 @@ import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
 import org.opensha.sha.imr.param.OtherParams.Component;
 import org.opensha.sha.imr.param.OtherParams.ComponentParam;
 import org.opensha.sha.imr.param.OtherParams.StdDevTypeParam;
-import org.opensha.sha.imr.param.SiteParams.DepthTo1pt0kmPerSecParam;
-import org.opensha.sha.imr.param.SiteParams.DepthTo2pt5kmPerSecParam;
-import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
-import org.opensha.sha.imr.param.SiteParams.Vs30_TypeParam;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.google.common.primitives.Doubles;
 
 public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	
@@ -64,17 +60,17 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	
 	private static final boolean D = false;
 	
-	private List<? extends ScalarIMR> imrs;
-	private WeightedList<ScalarIMR> weights;
+	private List<? extends ErgodicIMR> imrs;
+	private WeightedList<ErgodicIMR> weights;
 	
 	public static final String IMR_WEIGHTS_PARAM_NAME = "IMR Weights";
-	private WeightedListParameter<ScalarIMR> weightsParam;
+	private WeightedListParameter<ErgodicIMR> weightsParam;
 	
-	public MultiIMR_Averaged_AttenRel(List<? extends ScalarIMR> imrs) {
+	public MultiIMR_Averaged_AttenRel(List<? extends ErgodicIMR> imrs) {
 		this(imrs, null);
 	}
 	
-	public MultiIMR_Averaged_AttenRel(List<? extends ScalarIMR> imrs,
+	public MultiIMR_Averaged_AttenRel(List<? extends ErgodicIMR> imrs,
 			ArrayList<Double> weights) {
 		
 		if (imrs == null)
@@ -102,7 +98,7 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	 * 
 	 * @return unmodifiable view of the IMRs list
 	 */
-	public List<? extends ScalarIMR> getIMRs() {
+	public List<? extends ErgodicIMR> getIMRs() {
 		return Collections.unmodifiableList(imrs);
 	}
 	
@@ -119,8 +115,8 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	
 	public void setWeights(List<Double> newWeights) {
 		if (weights == null) {
-			weights = new WeightedList<ScalarIMR>();
-			for (ScalarIMR imr : imrs)
+			weights = new WeightedList<ErgodicIMR>();
+			for (ErgodicIMR imr : imrs)
 				weights.add(imr, 1.0d);
 		}
 		if (newWeights == null) {
@@ -155,9 +151,10 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 		HashMap<String, ArrayList<ScalarIMR>> paramNameIMRMap =
 			new HashMap<String, ArrayList<ScalarIMR>>();
 		for (ScalarIMR imr : imrs) {
-			ListIterator<Parameter<?>> siteParamsIt = imr.getSiteParamsIterator();
-			while (siteParamsIt.hasNext()) {
-				Parameter<?> siteParam = siteParamsIt.next();
+//			ListIterator<Parameter<?>> siteParamsIt = imr.getSiteParamsIterator();
+//			while (siteParamsIt.hasNext()) {
+//				Parameter<?> siteParam = siteParamsIt.next();
+			for (Parameter<?> siteParam : imr.getSiteParams()) {
 				String name = siteParam.getName();
 				if (!paramNameIMRMap.containsKey(name))
 					paramNameIMRMap.put(name, new ArrayList<ScalarIMR>());
@@ -210,19 +207,16 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	 * @param it
 	 * @return
 	 */
-	private static ParameterList removeNonCommonParams(ParameterList params, ListIterator<Parameter<?>> it) {
+	private static ParameterList removeNonCommonParams(ParameterList params, ParameterList paramsToAdd) {
 		if (params == null) {
 			params = new ParameterList();
-			while (it.hasNext())
-				params.addParameter(it.next());
+			params.addParameterList(paramsToAdd);
 			return params;
 		}
 		
 		ParameterList paramsToKeep = new ParameterList();
-		while (it.hasNext()) {
-			Parameter<?> param = it.next();
+		for (Parameter<?> param : paramsToAdd)
 			paramsToKeep.addParameter(param);
-		}
 		ParameterList paramsToRemove = new ParameterList();
 		
 		for (Parameter<?> param : params) {
@@ -240,7 +234,7 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	protected void initSupportedIntensityMeasureParams() {
 		ParameterList imrTempList = null;
 		for (ScalarIMR imr : imrs) {
-			imrTempList = removeNonCommonParams(imrTempList, imr.getSupportedIntensityMeasuresIterator());
+			imrTempList = removeNonCommonParams(imrTempList, imr.getSupportedIntensityMeasures());
 		}
 		
 		saPeriodParam = null;
@@ -370,6 +364,7 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 			if (include)
 				commonPeriods.add(period);
 		}
+		Collections.sort(commonPeriods);
 		
 		return commonPeriods;
 	}
@@ -436,7 +431,7 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 		// link up default params
 //		linkParams(otherParams);
 		
-		weightsParam = new WeightedListParameter<ScalarIMR>(IMR_WEIGHTS_PARAM_NAME, null);
+		weightsParam = new WeightedListParameter<ErgodicIMR>(IMR_WEIGHTS_PARAM_NAME, null);
 		weightsParam.setValue(weights);
 		otherParams.addParameter(weightsParam);
 		
@@ -605,7 +600,7 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	@Override
 	public void setEqkRupture(EqkRupture eqkRupture) {
 		// Set the eqkRupture
-		this.eqkRupture = eqkRupture;
+		super.setEqkRupture(eqkRupture);
 		for (ScalarIMR imr : imrs) {
 			imr.setEqkRupture(eqkRupture);
 		}
@@ -614,11 +609,13 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	@Override
 	public void setSite(Site site) {
 		this.site = site;
-		for (Parameter param : siteParams) {
-			if (param instanceof WarningDoubleParameter)
-				((WarningDoubleParameter)param).setValueIgnoreWarning((Double)site.getParameter(param.getName()).getValue());
-			else
-				param.setValue(site.getParameter(param.getName()).getValue());
+		if (site != null) {
+			for (Parameter param : siteParams) {
+				if (param instanceof WarningDoubleParameter)
+					((WarningDoubleParameter)param).setValueIgnoreWarning((Double)site.getParameter(param.getName()).getValue());
+				else
+					param.setValue(site.getParameter(param.getName()).getValue());
+			}
 		}
 		for (ScalarIMR imr : imrs) {
 			imr.setSite(site);
@@ -629,6 +626,12 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	protected void setPropagationEffectParams() {
 		// do nothing // TODO validate this assumption
 		throw new UnsupportedOperationException("setPropagationEffectParams is not supported by "+C);
+	}
+
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		for (ErgodicIMR imr : imrs)
+			imr.setPropagationEffectParams(distances);
 	}
 
 	@Override
@@ -830,20 +833,69 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	@Override
 	public DiscretizedFunc getSA_ExceedProbSpectrum(double iml)
 			throws ParameterException, IMRException {
-		// TODO implement
-		throw new UnsupportedOperationException("getSA_IML_AtExceedProbSpectrum is unsupported for "+C);
+		List<Double> periodsList = this.saPeriodParam.getAllowedDoubles();
+		double[] periods = Doubles.toArray(periodsList);
+		double[][] allValues = new double[periods.length][imrs.size()];
+		for (int i=0; i<imrs.size(); i++) {
+			if (canSkipIMR(i))
+				continue;
+			ScalarIMR imr = imrs.get(i);
+			DiscretizedFunc rawSpectrum = imr.getSA_ExceedProbSpectrum(iml);
+			if (periods.length == rawSpectrum.size()) {
+				// same periods
+				for (int p=0; p<periods.length; p++) {
+					Preconditions.checkState((float)rawSpectrum.getX(p) == (float)periods[p],
+							"Periods mismatch between IMRs");
+					allValues[p][i] = rawSpectrum.getY(p);
+				}
+			} else {
+				// this one has extra that we should skip
+				Preconditions.checkState(rawSpectrum.size() > periods.length);
+				for (int p=0; p<periods.length; p++)
+					allValues[p][i] = rawSpectrum.getY(periods[p]);
+			}
+		}
+		return new LightFixedXFunc(periods, getWeightedSpectra(allValues));
 	}
 
 	@Override
 	public DiscretizedFunc getSA_IML_AtExceedProbSpectrum(double exceedProb)
 			throws ParameterException, IMRException {
-		// TODO implement
-		throw new UnsupportedOperationException("getSA_IML_AtExceedProbSpectrum is unsupported for "+C);
+		List<Double> periodsList = this.saPeriodParam.getAllowedDoubles();
+		double[] periods = Doubles.toArray(periodsList);
+		double[][] allValues = new double[periods.length][imrs.size()];
+		for (int i=0; i<imrs.size(); i++) {
+			if (canSkipIMR(i))
+				continue;
+			ScalarIMR imr = imrs.get(i);
+			DiscretizedFunc rawSpectrum = imr.getSA_IML_AtExceedProbSpectrum(exceedProb);
+			if (periods.length == rawSpectrum.size()) {
+				// same periods
+				for (int p=0; p<periods.length; p++) {
+					Preconditions.checkState((float)rawSpectrum.getX(p) == (float)periods[p],
+							"Periods mismatch between IMRs");
+					allValues[p][i] = rawSpectrum.getY(p);
+				}
+			} else {
+				// this one has extra that we should skip
+				Preconditions.checkState(rawSpectrum.size() > periods.length);
+				for (int p=0; p<periods.length; p++)
+					allValues[p][i] = rawSpectrum.getY(periods[p]);
+			}
+		}
+		return new LightFixedXFunc(periods, getWeightedSpectra(allValues));
 	}
-
-	@Override
-	public double getTotExceedProbability(PointEqkSource ptSrc, double iml) {
-		throw new UnsupportedOperationException("getTotExceedProbability is unsupported for "+C);
+	
+	private double[] getWeightedSpectra(double[][] vals) {
+		if (!weights.isNormalized()) {
+			weights.normalize();
+			if (weightsParam != null)
+				weightsParam.refreshEditor();
+		}
+		double[] weighted = new double[vals.length];
+		for (int p=0; p<weighted.length; p++)
+			weighted[p] = weights.getWeightedAverage(vals[p]);
+		return weighted;
 	}
 
 	@Override

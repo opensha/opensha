@@ -1,8 +1,9 @@
 package org.opensha.commons.util.modules;
 
 import java.io.IOException;
-import java.util.zip.ZipFile;
-import java.util.zip.ZipOutputStream;
+
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 
 /**
  * Interface for an {@link OpenSHA_Module} module that can be written to and loaded from a zip archive.
@@ -17,22 +18,22 @@ public interface ArchivableModule extends OpenSHA_Module {
 	/**
 	 * Stores any information needed to re-instantiate this module to the archive
 	 * 
-	 * @param zout zip output stream for the archive
+	 * @param output output stream for the archive
 	 * @param entryPrefix path prefix for entries, can be used to store nested module collections in a hierarchical file
 	 * system. If non-empty, then each asset should be stored with this prefix.
 	 * @throws IOException
 	 */
-	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException;
+	public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException;
 	
 	/**
 	 * Initializes this module from the given archive
 	 * 
-	 * @param archive zip file archive
+	 * @param input input for the archive
 	 * @param entryPrefix path prefix for entries, can be used to store nested module collections in a hierarchical file
 	 * system. If non-empty, then each asset should be loaded with this prefix.
 	 * @throws IOException
 	 */
-	public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException;
+	public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException;
 	
 	/**
 	 * Modules can have different implementations when they are created vs when they are loaded from a zip file.

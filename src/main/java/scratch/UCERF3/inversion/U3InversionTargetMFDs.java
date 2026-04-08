@@ -10,6 +10,8 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.RegionUtils;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.SubModule;
@@ -613,12 +615,12 @@ public class U3InversionTargetMFDs extends org.opensha.sha.earthquake.faultSysSo
 	}
 
 	@Override
-	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
-		new Precomputed(this).writeToArchive(zout, entryPrefix);
+	public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
+		new Precomputed(this).writeToArchive(output, entryPrefix);
 	}
 
 	@Override
-	public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+	public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 		// only used if this was serialized before the Precomputed class was implemented
 		FaultSystemRupSet rupSet = getParent();
 		Preconditions.checkNotNull(rupSet, "Rupture set not initialized");

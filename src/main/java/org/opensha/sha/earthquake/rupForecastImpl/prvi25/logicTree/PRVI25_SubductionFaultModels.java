@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
@@ -17,13 +18,16 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetSubsectioningModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.PRVI25_GridSourceBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
@@ -40,21 +44,22 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum PRVI25_SubductionFaultModels implements RupSetFaultModel {
-	PRVI_SUB_FM_LARGE("Subduction FM, Large", "Large",
-			"/data/erf/prvi25/fault_models/subduction/PRVI_sub_v1_fault_model_large.geojson", 0.5d),
-	PRVI_SUB_FM_SMALL("Subduction FM, Small", "Small",
-			"/data/erf/prvi25/fault_models/subduction/PRVI_sub_v1_fault_model_small.geojson", 0.5d);
+public enum PRVI25_SubductionFaultModels implements RupSetFaultModel, RupSetSubsectioningModel {
+	PRVI_SUB_FM_LARGE("Subduction FM, Large", "Large", 0.5d),
+	PRVI_SUB_FM_SMALL("Subduction FM, Small", "Small", 0.5d);
+	
+	private static final String VERSION = "v5";
+	private static final String PREFIX = "/data/erf/prvi25/fault_models/subduction/"+VERSION+"/";
 	
 	private String name;
 	private String shortName;
 	private String jsonPath;
 	private double weight;
 
-	private PRVI25_SubductionFaultModels(String name, String shortName, String jsonPath, double weight) {
+	private PRVI25_SubductionFaultModels(String name, String shortName,  double weight) {
 		this.name = name;
 		this.shortName = shortName;
-		this.jsonPath = jsonPath;
+		this.jsonPath = PREFIX+"PRVI_sub_"+VERSION+"_fault_model_"+name()+".geojson";
 		this.weight = weight;
 		
 	}
@@ -125,16 +130,30 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel {
 				regionMFDs.add(null);
 				regionTRTs.add(null);
 				
+				// smaller map map region
+				Region mapRegion = PRVI25_RegionLoader.loadPRVI_MapExtents();
+				mapRegion.setName("PRVI - NSHMP Map Region");
+				regions.add(mapRegion);
+				regionMFDs.add(null);
+				regionTRTs.add(null);
+				
 				PRVI25_SeismicityRegions[] interfaceRegions = {
 						PRVI25_SeismicityRegions.CAR_INTERFACE,
 						PRVI25_SeismicityRegions.MUE_INTERFACE,
 				};
-				double maxMinMag = 0d;
+//				double maxMinMag = 0d;
+//				for (int s=0; s<rupSet.getNumSections(); s++)
+//					maxMinMag = Math.max(maxMinMag, rupSet.getMinMagForSection(s));
+				// this is just for plots, we want the "data" portion to extend past the right of the rupture data
+				double mMax = 0d;
 				for (int s=0; s<rupSet.getNumSections(); s++)
-					maxMinMag = Math.max(maxMinMag, rupSet.getMinMagForSection(s));
-				IncrementalMagFreqDist interfaceRefMFD = FaultSysTools.initEmptyMFD(maxMinMag);
+					mMax = Math.max(mMax, rupSet.getMaxMagForSection(s));
+				IncrementalMagFreqDist interfaceRefMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.OVERALL_MMIN, mMax+0.1);
 				for (PRVI25_SeismicityRegions seisReg : interfaceRegions) {
+					if (seisReg == PRVI25_SeismicityRegions.MUE_INTERFACE && PRVI25_GridSourceBuilder.MUERTOS_AS_CRUSTAL)
+						continue;
 					List<Double> minMags = new ArrayList<>();
+					List<Double> maxMags = new ArrayList<>();
 					Region reg = seisReg.load();
 					for (FaultSection sect : rupSet.getFaultSectionDataList()) {
 						boolean contained = false;
@@ -144,14 +163,31 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel {
 								break;
 							}
 						}
-						if (contained)
+						if (contained) {
 							minMags.add(rupSet.getMinMagForSection(sect.getSectionId()));
+							maxMags.add(rupSet.getMaxMagForSection(sect.getSectionId()));
+						}
 					}
 					Preconditions.checkState(!minMags.isEmpty());
-					double avgMinMag = minMags.stream().mapToDouble(D->D).average().getAsDouble();
+//					double avgMinMag = minMags.stream().mapToDouble(D->D).average().getAsDouble();
+					double dataMmax = maxMags.stream().mapToDouble(D->D).max().getAsDouble();
+					dataMmax = interfaceRefMFD.getX(interfaceRefMFD.getClosestXIndex(dataMmax));
 					regions.add(reg);
-					regionMFDs.add(PRVI25_RegionalSeismicity.getBounded(seisReg,
-							interfaceRefMFD, interfaceRefMFD.getX(interfaceRefMFD.getClosestXIndex(avgMinMag))));
+					List<UncertainBoundedIncrMagFreqDist> mfds = new ArrayList<>();
+					List<Double> weights = new ArrayList<>();
+					for (PRVI25_SeismicityRateEpoch epoch : PRVI25_SeismicityRateEpoch.values()) {
+						double weight = epoch.getNodeWeight(branch);
+						if (weight == 0d)
+							continue;
+						UncertainBoundedIncrMagFreqDist mfd;
+						if (seisReg == PRVI25_SeismicityRegions.CAR_INTERFACE)
+							mfd = PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(epoch, false).getBounded(interfaceRefMFD, dataMmax);
+						else
+							mfd = PRVI25_SubductionMuertosSeismicityRate.loadRateModel(epoch, false).getBounded(interfaceRefMFD, dataMmax);
+						mfds.add(mfd);
+						weights.add(weight);
+					}
+					regionMFDs.add(PRVI25_SeismicityRateEpoch.averageUncert(mfds, weights));
 					regionTRTs.add(TectonicRegionType.SUBDUCTION_INTERFACE);
 				}
 				
@@ -159,16 +195,42 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel {
 						PRVI25_SeismicityRegions.CAR_INTRASLAB,
 						PRVI25_SeismicityRegions.MUE_INTRASLAB,
 				};
-				IncrementalMagFreqDist slabRefMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.SLAB_MMAX);
+				
+				PRVI25_SubductionSlabMMax slabMmaxBranch = PRVI25_SubductionSlabMMax.DEFAULT;
+				
+				double slabMmaxOff = slabMmaxBranch.getMmax();
+				EvenlyDiscretizedFunc slabRefMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.OVERALL_MMIN, slabMmaxOff);
+				// snap Mmax to incremental bin before it
+				slabMmaxOff = slabRefMFD.getX(slabRefMFD.getClosestXIndex(slabMmaxOff-0.01));
+				Preconditions.checkState(slabMmaxOff <= slabMmaxBranch.getMmax());
+				
 				for (PRVI25_SeismicityRegions seisReg : slabRegions) {
 					regions.add(seisReg.load());
-					UncertainBoundedIncrMagFreqDist mfd = PRVI25_RegionalSeismicity.getBounded(seisReg,
-							slabRefMFD, slabRefMFD.getX(slabRefMFD.getClosestXIndex(PRVI25_GridSourceBuilder.SLAB_MMAX)));
+					List<UncertainBoundedIncrMagFreqDist> mfds = new ArrayList<>();
+					List<Double> weights = new ArrayList<>();
+					for (PRVI25_SeismicityRateEpoch epoch : PRVI25_SeismicityRateEpoch.values()) {
+						double weight = epoch.getNodeWeight(branch);
+						if (weight == 0d)
+							continue;
+						UncertainBoundedIncrMagFreqDist mfd;
+						if (seisReg == PRVI25_SeismicityRegions.CAR_INTRASLAB)
+							mfd = PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(epoch, true).getBounded(slabRefMFD, slabMmaxOff);
+						else
+							mfd = PRVI25_SubductionMuertosSeismicityRate.loadRateModel(epoch, true).getBounded(slabRefMFD, slabMmaxOff);
+						mfds.add(mfd);
+						weights.add(weight);
+					}
+					regionMFDs.add(PRVI25_SeismicityRateEpoch.averageUncert(mfds, weights));
+//					UncertainBoundedIncrMagFreqDist mfd;
+//					if (seisReg == PRVI25_SeismicityRegions.CAR_INTRASLAB)
+//						mfd = PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(epoch, true).getBounded(slabRefMFD, slabMmaxOff);
+//					else
+//						mfd = PRVI25_SubductionMuertosSeismicityRate.loadRateModel(epoch, true).getBounded(slabRefMFD, slabMmaxOff);
 //					System.out.println("MFD for "+seisReg
 //							+"; lowM5="+(float)mfd.getLower().getCumRateDistWithOffset().getY(5d)
 //							+"; prefM5="+(float)mfd.getCumRateDistWithOffset().getY(5d)
 //							+"; highM5="+(float)mfd.getUpper().getCumRateDistWithOffset().getY(5d));
-					regionMFDs.add(mfd);
+//					regionMFDs.add(mfd);
 					regionTRTs.add(TectonicRegionType.SUBDUCTION_SLAB);
 				}
 				return new RegionsOfInterest(regions, regionMFDs, regionTRTs);
@@ -180,6 +242,12 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel {
 	@Override
 	public RupSetDeformationModel getDefaultDeformationModel() {
 		return PRVI25_SubductionDeformationModels.FULL;
+	}
+
+	@Override
+	public List<? extends FaultSection> buildSubSects(RupSetFaultModel faultModel,
+			List<? extends FaultSection> fullSections) {
+		return SubSectionBuilder.buildSubSects(fullSections, 2, 0.5, 30d);
 	}
 
 }

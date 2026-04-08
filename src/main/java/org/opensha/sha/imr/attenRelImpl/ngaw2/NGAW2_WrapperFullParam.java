@@ -3,6 +3,8 @@ package org.opensha.sha.imr.attenRelImpl.ngaw2;
 import static java.lang.Math.sin;
 import static org.opensha.commons.geo.GeoTools.TO_RAD;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
@@ -22,6 +24,7 @@ import org.opensha.commons.param.impl.EnumParameter;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.gcim.imr.param.EqkRuptureParams.FocalDepthParam;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.param.EqkRuptureParams.DipParam;
@@ -149,53 +152,56 @@ public class NGAW2_WrapperFullParam extends AttenuationRelationship implements P
 
 	@Override
 	public void setSite(Site site) {
+		if (site != null) {
+			this.vs30Param.setValueIgnoreWarning(site.getParameter(Double.class, Vs30_Param.NAME).getValue());
+			this.vs30_TypeParam.setValue(site.getParameter(String.class, Vs30_TypeParam.NAME).getValue());
+			this.depthTo1pt0kmPerSecParam.setValue(site.getParameter(Double.class,
+					DepthTo1pt0kmPerSecParam.NAME).getValue());
+			this.depthTo2pt5kmPerSecParam.setValue(site.getParameter(Double.class,
+					DepthTo2pt5kmPerSecParam.NAME).getValue());
+		}
 		super.setSite(site);
-		this.vs30Param.setValueIgnoreWarning(site.getParameter(Double.class, Vs30_Param.NAME).getValue());
-		this.vs30_TypeParam.setValue(site.getParameter(String.class, Vs30_TypeParam.NAME).getValue());
-		this.depthTo1pt0kmPerSecParam.setValue(site.getParameter(Double.class,
-				DepthTo1pt0kmPerSecParam.NAME).getValue());
-		this.depthTo2pt5kmPerSecParam.setValue(site.getParameter(Double.class,
-				DepthTo2pt5kmPerSecParam.NAME).getValue());
-		
-		setPropagationEffectParams();
 	}
 
 	@Override
 	public void setEqkRupture(EqkRupture eqkRupture) {
 		super.setEqkRupture(eqkRupture);
-		
-		RuptureSurface surf = eqkRupture.getRuptureSurface();
-		
-		magParam.setValueIgnoreWarning(eqkRupture.getMag());
-		rakeParam.setValue(eqkRupture.getAveRake());
-		dipParam.setValueIgnoreWarning(surf.getAveDip());
-		double width = surf.getAveWidth();
-		if (width == 0d)
-			width = 0.1; // must be positive
-		rupWidthParam.setValueIgnoreWarning(width);
-		rupTopDepthParam.setValueIgnoreWarning(surf.getAveRupTopDepth());
-		double zHyp;
-		if (eqkRupture.getHypocenterLocation() != null) {
-			zHyp = eqkRupture.getHypocenterLocation().getDepth();
-		} else {
-			zHyp = surf.getAveRupTopDepth() +
-				Math.sin(surf.getAveDip() * TO_RAD) * width/2.0;
+		if (eqkRupture != null) {
+			RuptureSurface surf = eqkRupture.getRuptureSurface();
+
+			magParam.setValueIgnoreWarning(eqkRupture.getMag());
+			rakeParam.setValue(eqkRupture.getAveRake());
+			dipParam.setValueIgnoreWarning(surf.getAveDip());
+			double width = surf.getAveWidth();
+			if (width == 0d)
+				width = 0.1; // must be positive
+			rupWidthParam.setValueIgnoreWarning(width);
+			rupTopDepthParam.setValueIgnoreWarning(surf.getAveRupTopDepth());
+			double zHyp;
+			if (eqkRupture.getHypocenterLocation() != null) {
+				zHyp = eqkRupture.getHypocenterLocation().getDepth();
+			} else {
+				zHyp = surf.getAveRupTopDepth() +
+						Math.sin(surf.getAveDip() * TO_RAD) * width/2.0;
+			}
+			focalDepthParam.setValueIgnoreWarning(zHyp);
+
+			setPropagationEffectParams();
 		}
-		focalDepthParam.setValueIgnoreWarning(zHyp);
-		
-		setPropagationEffectParams();
 	}
 
 	@Override
 	protected void setPropagationEffectParams() {
 		if (site != null && eqkRupture != null) {
-			Location siteLoc = site.getLocation();
-			RuptureSurface surf = eqkRupture.getRuptureSurface();
-			
-			distanceJBParam.setValueIgnoreWarning(surf.getDistanceJB(siteLoc));
-			distanceRupParam.setValueIgnoreWarning(surf.getDistanceRup(siteLoc));
-			distanceXParam.setValueIgnoreWarning(surf.getDistanceX(siteLoc));
+			setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
 		}
+	}
+
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+		distanceJBParam.setValue(eqkRupture, site, distances);
+		distanceRupParam.setValue(eqkRupture, site, distances);
+		distanceXParam.setValue(eqkRupture, site, distances);
 	}
 	
 	/**
@@ -267,7 +273,7 @@ public class NGAW2_WrapperFullParam extends AttenuationRelationship implements P
 	}
 	
 	static FaultStyle getFaultStyle(Double rake) {
-		if (rake == null)
+		if (rake == null || Double.isNaN(rake))
 			return FaultStyle.UNKNOWN;
 		if (rake >= 135 || rake <= -135)
 			// right lateral
@@ -286,13 +292,14 @@ public class NGAW2_WrapperFullParam extends AttenuationRelationship implements P
 		supportedIMParams.clear();
 		
 		// Create saParam:
-		DoubleDiscreteConstraint periodConstraint = new DoubleDiscreteConstraint();
 		HashSet<IMT> imtsSet = new HashSet<IMT>(gmpe.getSupportedIMTs());
+		List<Double> periods = new ArrayList<>();
 		for (IMT imt : imtsSet) {
-			Double p = imt.getPeriod();
-			if (p != null)
-				periodConstraint.addDouble(p);
+			if (imt.isSA())
+				periods.add(imt.getPeriod());
 		}
+		Collections.sort(periods);
+		DoubleDiscreteConstraint periodConstraint = new DoubleDiscreteConstraint(periods);
 		periodConstraint.setNonEditable();
 		saPeriodParam = new PeriodParam(periodConstraint);
 		saPeriodParam.setValueAsDefault();
@@ -413,10 +420,8 @@ public class NGAW2_WrapperFullParam extends AttenuationRelationship implements P
 		stdDevTypeParam = new StdDevTypeParam(stdDevTypeConstraint);
 		otherParams.addParameter(stdDevTypeParam); 
 		
-		StringConstraint options = new StringConstraint();
-		options.addString(gmpe.get_TRT().toString());
-		tectonicRegionTypeParam.setConstraint(options);
-	    tectonicRegionTypeParam.setDefaultValue(gmpe.get_TRT().toString());
+	    tectonicRegionTypeParam.setOptions(EnumSet.of(gmpe.get_TRT()));
+	    tectonicRegionTypeParam.setDefaultValue(gmpe.get_TRT());
 	    tectonicRegionTypeParam.setValueAsDefault();
 	    
 		epiParam = new EnumParameter<EpistemicOption>(EPISTEMIC_PARAM_NAME,

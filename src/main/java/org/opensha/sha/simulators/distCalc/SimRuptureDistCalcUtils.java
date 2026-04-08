@@ -103,7 +103,7 @@ public class SimRuptureDistCalcUtils {
 					if (vertDists == null) {
 						double vertJB = LocationUtils.horzDistanceFast(siteLoc, locs[l]);
 						double vertRup = Math.sqrt(vertJB*vertJB + locs[l].getDepth()*locs[l].getDepth());
-						vertDists = new SurfaceDistances(vertRup, vertJB, Double.NaN);
+						vertDists = new SurfaceDistances.Precomputed(siteLoc, vertRup, vertJB, Double.NaN);
 						vertexDistsMap.put(locs[l], vertDists);
 					}
 					rJBs[l] = vertDists.getDistanceJB();
@@ -147,19 +147,19 @@ public class SimRuptureDistCalcUtils {
 					double dist = LocationUtils.distanceToLineFast(l0, l1, siteLoc);
 					footwall = dist < 0;
 				}
-				dists = new FootwallAwareSurfaceDistances(rRup, rJB, rSeis, footwall);
+				dists = new FootwallAwareSurfaceDistances(siteLoc, rRup, rJB, footwall);
 				elemDistsMap.put(elem, dists);
 			}
 			return dists;
 		}
 	}
 	
-	public static class FootwallAwareSurfaceDistances extends SurfaceDistances {
+	public static class FootwallAwareSurfaceDistances extends SurfaceDistances.Precomputed {
 		private final boolean footwall;
 
-		public FootwallAwareSurfaceDistances(double distanceRup, double distanceJB,
-			double distanceSeis, boolean footwall) {
-			super(distanceRup, distanceJB, distanceSeis);
+		public FootwallAwareSurfaceDistances(Location siteLoc, double distanceRup, double distanceJB,
+			boolean footwall) {
+			super(siteLoc, distanceRup, distanceJB, footwall ? -distanceJB : distanceJB);
 			this.footwall = footwall;
 		}
 		
@@ -179,12 +179,6 @@ public class SimRuptureDistCalcUtils {
 			@Override
 			protected double calc(SurfaceDistances dists) {
 				return dists.getDistanceRup();
-			}
-		},
-		R_SEIS("Rseis", "R<sub>Seis</sub>") {
-			@Override
-			protected double calc(SurfaceDistances dists) {
-				return dists.getDistanceSeis();
 			}
 		};
 		

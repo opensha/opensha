@@ -11,10 +11,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.DoubleBinaryOperator;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
-import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.GriddedRegion;
@@ -22,11 +18,19 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.util.DataUtils;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
+import org.opensha.sha.earthquake.PointSource;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.aftershocks.MagnitudeDependentAftershockFilter;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_AbstractGridSourceProvider;
+import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
+import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
+import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrections;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
@@ -37,6 +41,13 @@ import com.google.common.collect.ImmutableMap.Builder;
 
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 
+/**
+ * {link {@link GridSourceProvider} implementation based on MFDs at each grid node in a {@link GriddedRegion}.
+ * Conceptually simple, but relies upon custom implementing classes to provide any finite surface implementation
+ * (e.g., {@link PointSurface13b} or {@link PointSurfaceNshm}). None of the finite rupture assumptions will be
+ * serialized to data files and are left up to the user (if outside of OpenSHA), therefore the more verbose but fully
+ * explicit{@link GridSourceList} is preferred.
+ */
 public interface MFDGridSourceProvider extends GridSourceProvider {
 	
 	/**
@@ -58,11 +69,11 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 	 * @param duration of forecast
 	 * @param aftershockFilter if non-null, function that will be used to scale rupture rates for aftershocks in the
 	 * form scaledRate = aftershockFilter(magnitude, rate)
-	 * @param bgRupType type of source to build
+	 * @param gridSourceSettings gridded seismicity settings (rupture type, distance corrections, etc)
 	 * @return the source at {@code index}
 	 */
-	public ProbEqkSource getSource(int gridIndex, double duration,
-			DoubleBinaryOperator aftershockFilter, BackgroundRupType bgRupType);
+	public PointSource getSource(int gridIndex, double duration,
+			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings);
 	
 
 	/**
@@ -74,11 +85,11 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 	 * @param duration of forecast
 	 * @param aftershockFilter if non-null, function that will be used to scale rupture rates for aftershocks in the
 	 * form scaledRate = aftershockFilter(magnitude, rate)
-	 * @param bgRupType type of source to build
+	 * @param gridSourceSettings gridded seismicity settings (rupture type, distance corrections, etc)
 	 * @return the source at {@code index}
 	 */
-	public ProbEqkSource getSourceSubSeisOnFault(int gridIndex, double duration,
-			DoubleBinaryOperator aftershockFilter, BackgroundRupType bgRupType);
+	public PointSource getSourceSubSeisOnFault(int gridIndex, double duration,
+			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings);
 
 	/**
 	 * Return the source at {@code gridIndex}, where only the component that is unassociated with modeled faults
@@ -89,33 +100,33 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 	 * @param duration of forecast
 	 * @param aftershockFilter if non-null, function that will be used to scale rupture rates for aftershocks in the
 	 * form scaledRate = aftershockFilter(magnitude, rate)
-	 * @param bgRupType type of source to build
+	 * @param gridSourceSettings gridded seismicity settings (rupture type, distance corrections, etc)
 	 * @return the source at {@code index}
 	 */
-	public ProbEqkSource getSourceUnassociated(int gridIndex, double duration,
-			DoubleBinaryOperator aftershockFilter, BackgroundRupType bgRupType);
+	public PointSource getSourceUnassociated(int gridIndex, double duration,
+			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings);
 
 	@Override
-	default ProbEqkSource getSource(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
-			DoubleBinaryOperator aftershockFilter, BackgroundRupType bgRupType) {
+	default PointSource getSource(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
+			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings) {
 		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType(gridIndex))
-			return getSource(gridIndex, duration, aftershockFilter, bgRupType);
+			return getSource(gridIndex, duration, aftershockFilter, gridSourceSettings);
 		return null;
 	}
 
 	@Override
-	default ProbEqkSource getSourceSubSeisOnFault(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
-			DoubleBinaryOperator aftershockFilter, BackgroundRupType bgRupType) {
+	default PointSource getSourceSubSeisOnFault(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
+			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings) {
 		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType(gridIndex))
-			return getSourceSubSeisOnFault(gridIndex, duration, aftershockFilter, bgRupType);
+			return getSourceSubSeisOnFault(gridIndex, duration, aftershockFilter, gridSourceSettings);
 		return null;
 	}
 
 	@Override
-	default ProbEqkSource getSourceUnassociated(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
-			DoubleBinaryOperator aftershockFilter, BackgroundRupType bgRupType) {
+	default PointSource getSourceUnassociated(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
+			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings) {
 		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType(gridIndex))
-			return getSourceUnassociated(gridIndex, duration, aftershockFilter, bgRupType);
+			return getSourceUnassociated(gridIndex, duration, aftershockFilter, gridSourceSettings);
 		return null;
 	}
 
@@ -292,28 +303,6 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 	 */
 	public abstract class Abstract implements MFDGridSourceProvider {
 		
-		private double minMagCutoff;
-	
-		public Abstract(double minMagCutoff) {
-			this.minMagCutoff = minMagCutoff;
-		}
-		
-		/**
-		 * Sets the minimum magnitude of ruptures to include when building sources for hazard calculation
-		 * 
-		 * @param minMagCutoff
-		 */
-		public void setSourceMinMagCutoff(double minMagCutoff) {
-			this.minMagCutoff = minMagCutoff;
-		}
-		
-		/**
-		 * @return the minimum magnitude of ruptures to include when building sources for hazard calculation
-		 */
-		public double getSourceMinMagCutoff() {
-			return minMagCutoff;
-		}
-		
 		/**
 		 * Builds a source for hazard calculation for the given MFD, which will already be trimmed such that it starts
 		 * at/above {@link #getSourceMinMagCutoff()}.
@@ -322,10 +311,12 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		 * @param mfd
 		 * @param duration
 		 * @param bgRupType
+		 * @param distCorr
+		 * @param supersamplingParams
 		 * @return source
 		 */
-		protected abstract ProbEqkSource buildSource(int gridIndex, IncrementalMagFreqDist mfd,
-				double duration, BackgroundRupType bgRupType);
+		protected abstract PointSource buildSource(int gridIndex, IncrementalMagFreqDist mfd,
+				double duration, GriddedSeismicitySettings gridSourceSettings);
 	
 		@Override
 		public int getNumLocations() {
@@ -341,51 +332,71 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 			// MFD is safe from alteration.
 		}
 		
-		private void applyAftershockFilter(IncrementalMagFreqDist mfd, DoubleBinaryOperator aftershockFilter) {
+		@Override
+		public double getCumulativeNucleationRate(int gridIndex, double minMag) {
+			IncrementalMagFreqDist mfd = getMFD(gridIndex);
+			if (mfd == null)
+				return 0;
+			int magIndex = mfd.getClosestXIndex(minMag);
+			if ((float)mfd.getX(magIndex) < (float)minMag)
+				magIndex++;
+			if (magIndex < mfd.size())
+				return mfd.getCumRate(magIndex);
+			return 0;
+		}
+
+		@Override
+		public double getCumulativeNucleationRate(TectonicRegionType tectonicRegionType, int gridIndex, double minMag) {
+			if (tectonicRegionType == null || getTectonicRegionType(gridIndex) == tectonicRegionType)
+				return getCumulativeNucleationRate(gridIndex, minMag);
+			return 0;
+		}
+
+		private void applyAftershockFilter(IncrementalMagFreqDist mfd, MagnitudeDependentAftershockFilter aftershockFilter) {
 			for (int i=0; i<mfd.size(); i++) {
 				double rate = mfd.getY(i);
 				if (rate > 0d) {
 					double mag = mfd.getX(i);
-					mfd.set(i, aftershockFilter.applyAsDouble(mag, rate));
+					mfd.set(i, aftershockFilter.getFilteredRate(mag, rate));
 				}
 			}
 		}
 	
 		@Override
-		public ProbEqkSource getSource(int gridIndex, double duration, DoubleBinaryOperator aftershockFilter,
-				BackgroundRupType bgRupType) {
-			IncrementalMagFreqDist mfd = getMFD(gridIndex, minMagCutoff);
+		public PointSource getSource(int gridIndex, double duration, MagnitudeDependentAftershockFilter aftershockFilter,
+				GriddedSeismicitySettings gridSourceSettings) {
+			IncrementalMagFreqDist mfd = getMFD(gridIndex, gridSourceSettings.minimumMagnitude);
 			if (mfd == null)
 				return null;
 			if (aftershockFilter != null)
 				applyAftershockFilter(mfd, aftershockFilter);
-			return buildSource(gridIndex, mfd, duration, bgRupType);
+			return buildSource(gridIndex, mfd, duration, gridSourceSettings);
 		}
 	
 		@Override
-		public ProbEqkSource getSourceSubSeisOnFault(int gridIndex, double duration, DoubleBinaryOperator aftershockFilter,
-				BackgroundRupType bgRupType) {
+		public PointSource getSourceSubSeisOnFault(int gridIndex, double duration, MagnitudeDependentAftershockFilter aftershockFilter,
+				GriddedSeismicitySettings gridSourceSettings) {
 			IncrementalMagFreqDist mfd = getMFD_SubSeisOnFault(gridIndex);
 			if(mfd == null)
 				return null;
 			// trim it
-			mfd = trimMFD(mfd, minMagCutoff);
+			mfd = trimMFD(mfd, gridSourceSettings.minimumMagnitude);
 			if (aftershockFilter != null)
 				applyAftershockFilter(mfd, aftershockFilter);
-			return buildSource(gridIndex, mfd, duration, bgRupType);
+			return buildSource(gridIndex, mfd, duration, gridSourceSettings);
 		}
 	
 		@Override
-		public ProbEqkSource getSourceUnassociated(int gridIndex, double duration, DoubleBinaryOperator aftershockFilter,
-				BackgroundRupType bgRupType) {
+		public PointSource getSourceUnassociated(int gridIndex, double duration, MagnitudeDependentAftershockFilter aftershockFilter,
+				GriddedSeismicitySettings gridSourceSettings) {
 			IncrementalMagFreqDist mfd = getMFD_Unassociated(gridIndex);
 			if(mfd == null)
 				return null;
 			// trim it
-			mfd = trimMFD(mfd, minMagCutoff);
+			mfd = trimMFD(mfd, gridSourceSettings.minimumMagnitude);
 			if (aftershockFilter != null)
 				applyAftershockFilter(mfd, aftershockFilter);
-			return buildSource(gridIndex, mfd, duration, bgRupType);
+			return buildSource(gridIndex, mfd, duration, gridSourceSettings);
 		}
 		
 		@Override
@@ -420,9 +431,15 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 	private static IncrementalMagFreqDist trimMFD(IncrementalMagFreqDist mfdIn, double mMin) {
 		if (mfdIn == null)
 			return new IncrementalMagFreqDist(mMin,mMin,1);
+		int mMinIndex = mfdIn.getXIndex(mMin);
+		if (mMinIndex < 0) {
+			// not an exact match to our gridding, get the closest but pad above such that bin edges round to the bin above
+			mMinIndex = mfdIn.getClosestXIndex(mMin+0.01*mfdIn.getDelta());
+			mMin = mfdIn.getX(mMinIndex);
+		}
 		// in GR nofix branches there are mfds with all zero rates
 		double mMax = mfdIn.getMaxMagWithNonZeroRate();
-		if (Double.isNaN(mMax)) {
+		if (Double.isNaN(mMax) || mMax < mMin) {
 			IncrementalMagFreqDist mfdOut = new IncrementalMagFreqDist(mMin,mMin,1);
 			return mfdOut;
 		}
@@ -577,15 +594,13 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		
 		private boolean round = true;
 		
-		protected AbstractPrecomputed(double minMagCutoff) {
+		protected AbstractPrecomputed() {
 			// used for serialization
-			super(minMagCutoff);
 		}
 	
 		public AbstractPrecomputed(GriddedRegion region, Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
 				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip,
-				double[] fracNormal, double[] fracReverse, TectonicRegionType[] trts, double minMagCutoff) {
-			super(minMagCutoff);
+				double[] fracNormal, double[] fracReverse, TectonicRegionType[] trts) {
 			this.region = region;
 			this.nodeSubSeisMFDs = ImmutableMap.copyOf(nodeSubSeisMFDs);
 			this.nodeUnassociatedMFDs = ImmutableMap.copyOf(nodeUnassociatedMFDs);
@@ -596,17 +611,11 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		}
 	
 		public AbstractPrecomputed(GriddedRegion region, CSVFile<String> subSeisCSV,
-				CSVFile<String> unassociatedCSV, CSVFile<String> mechCSV, double minMagCutoff) {
-			super(minMagCutoff);
+				CSVFile<String> unassociatedCSV, CSVFile<String> mechCSV) {
 			init(region, subSeisCSV, unassociatedCSV, mechCSV);
 		}
-	
-		public AbstractPrecomputed(Abstract prov) {
-			this(prov, prov.getSourceMinMagCutoff());
-		}
 		
-		public AbstractPrecomputed(MFDGridSourceProvider prov, double minMagCutoff) {
-			super(minMagCutoff);
+		public AbstractPrecomputed(MFDGridSourceProvider prov) {
 			this.region = prov.getGriddedRegion();
 			int nodeCount = region.getNodeCount();
 			Builder<Integer, IncrementalMagFreqDist> subSeisBuilder = ImmutableMap.builder();
@@ -687,14 +696,6 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 			if (nodeUnassociatedMFDs == null)
 				return null;
 			return buildCSV(nodeUnassociatedMFDs);
-		}
-		
-		private CSVFile<String> buildTRTCSV() {
-			CSVFile<String> csv = new CSVFile<>(true);
-			csv.addLine("Node Index", "Tectonic Regime");
-			for (int i=0; i<getNumLocations(); i++)
-				csv.addLine(i+"", getTectonicRegionType(i).name()+"");
-			return csv;
 		}
 		
 		private CSVFile<String> buildCSV(Map<Integer, IncrementalMagFreqDist> mfds) {
@@ -796,38 +797,37 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		}
 	
 		@Override
-		public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
+		public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 			CSVFile<String> subSeisCSV = buildCSV(nodeSubSeisMFDs);
 			CSVFile<String> unassociatedCSV = buildCSV(nodeUnassociatedMFDs);
 			
-			FileBackedModule.initEntry(zout, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME);
 			Feature regFeature = region.toFeature();
-			OutputStreamWriter writer = new OutputStreamWriter(zout);
+			OutputStreamWriter writer = new OutputStreamWriter(FileBackedModule.initOutputStream(
+					output, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME));
 			Feature.write(regFeature, writer);
 			writer.flush();
-			zout.flush();
-			zout.closeEntry();
+			output.closeEntry();
 			
 			if (subSeisCSV != null)
-				CSV_BackedModule.writeToArchive(subSeisCSV, zout, entryPrefix, MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME);
+				CSV_BackedModule.writeToArchive(subSeisCSV, output, entryPrefix, MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME);
 			if (unassociatedCSV != null)
-				CSV_BackedModule.writeToArchive(unassociatedCSV, zout, entryPrefix, MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME);
-			CSV_BackedModule.writeToArchive(buildWeightsCSV(), zout, entryPrefix, MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME);
+				CSV_BackedModule.writeToArchive(unassociatedCSV, output, entryPrefix, MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME);
+			CSV_BackedModule.writeToArchive(buildWeightsCSV(), output, entryPrefix, MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME);
 		}
 	
 		@Override
-		public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+		public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 			// load MFDs
-			CSVFile<String> subSeisCSV = loadCSV(zip, entryPrefix, MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME);
-			CSVFile<String> nodeUnassociatedCSV = loadCSV(zip, entryPrefix, MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME);
+			CSVFile<String> subSeisCSV = loadCSV(input, entryPrefix, MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME);
+			CSVFile<String> nodeUnassociatedCSV = loadCSV(input, entryPrefix, MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME);
 			
 			// load mechanisms
-			CSVFile<String> mechCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME);
+			CSVFile<String> mechCSV = CSV_BackedModule.loadFromArchive(input, entryPrefix, MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME);
 			
 			GriddedRegion region;
-			if (FileBackedModule.hasEntry(zip, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)) {
+			if (FileBackedModule.hasEntry(input, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)) {
 				// load gridded region
-				BufferedInputStream regionIS = FileBackedModule.getInputStream(zip, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME);
+				BufferedInputStream regionIS = FileBackedModule.getInputStream(input, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME);
 				InputStreamReader regionReader = new InputStreamReader(regionIS);
 				Feature regFeature = Feature.read(regionReader);
 				region = GriddedRegion.fromFeature(regFeature);
@@ -890,14 +890,13 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 			}
 		}
 		
-		public static CSVFile<String> loadCSV(ZipFile zip, String entryPrefix, String fileName) throws IOException {
+		public static CSVFile<String> loadCSV(ArchiveInput input, String entryPrefix, String fileName) throws IOException {
 			String entryName = ArchivableModule.getEntryName(entryPrefix, fileName);
 			Preconditions.checkNotNull(entryName, "entryName is null. prefix='%s', fileName='%s'", entryPrefix, fileName);
-			ZipEntry entry = zip.getEntry(entryName);
-			if (entry == null)
+			if (!input.hasEntry(entryName))
 				return null;
 			
-			return CSVFile.readStream(new BufferedInputStream(zip.getInputStream(entry)), true);
+			return CSVFile.readStream(new BufferedInputStream(input.getInputStream(entryName)), true);
 		}
 		
 		private static Map<Integer, IncrementalMagFreqDist> csvToMFDs(GriddedRegion region, CSVFile<String> csv) {
@@ -953,30 +952,30 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 
 	/**
 	 * Default MFDGridSourceProvider instance that will be loaded if no implementation is specifies. Currently defaults
-	 * to UCERF3 grid source treatment, but that is subject to change (will likely when NSHM23 is released).
+	 * to NSHM23 grid source treatment.
 	 * 
 	 * @author kevin
 	 */
 	public static class Default extends AbstractPrecomputed {
 		
+		@SuppressWarnings("unused") // for deserialization
 		private Default() {
-			super(AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF);
+			super();
 		}
 		
 		public Default(MFDGridSourceProvider prov) {
-			super(prov, AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF);
+			super(prov);
 		}
 	
 		public Default(GriddedRegion region, CSVFile<String> subSeisCSV, CSVFile<String> unassociatedCSV,
 				CSVFile<String> mechCSV) {
-			super(region, subSeisCSV, unassociatedCSV, mechCSV, AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF);
+			super(region, subSeisCSV, unassociatedCSV, mechCSV);
 		}
 	
 		public Default(GriddedRegion region, Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
 				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
 				double[] fracReverse, TectonicRegionType[] trts) {
-			super(region, nodeSubSeisMFDs, nodeUnassociatedMFDs, fracStrikeSlip, fracNormal, fracReverse, trts,
-					AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF);
+			super(region, nodeSubSeisMFDs, nodeUnassociatedMFDs, fracStrikeSlip, fracNormal, fracReverse, trts);
 		}
 	
 		@Override
@@ -985,16 +984,16 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		}
 	
 		@Override
-		protected ProbEqkSource buildSource(int gridIndex, IncrementalMagFreqDist mfd, double duration,
-				BackgroundRupType bgRupType) {
+		protected PointSource buildSource(int gridIndex, IncrementalMagFreqDist mfd, double duration,
+				GriddedSeismicitySettings gridSourceSettings) {
 			Location loc = getGriddedRegion().locationForIndex(gridIndex);
 			
 			double fracStrikeSlip = getFracStrikeSlip(gridIndex);
 			double fracNormal = getFracNormal(gridIndex);
 			double fracReverse = getFracReverse(gridIndex);
-	
-			return AbstractGridSourceProvider.buildSource(
-					mfd, duration, bgRupType, loc, fracStrikeSlip, fracNormal, fracReverse);
+			
+			return NSHM23_AbstractGridSourceProvider.buildSource(mfd, duration, gridSourceSettings, loc,
+					fracStrikeSlip, fracNormal, fracReverse);
 		}
 	
 		@Override

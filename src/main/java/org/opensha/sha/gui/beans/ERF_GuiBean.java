@@ -3,12 +3,9 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Font;
 import java.lang.ref.WeakReference;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -17,19 +14,17 @@ import java.util.ListIterator;
 import java.util.Set;
 
 import javax.swing.BorderFactory;
-import javax.swing.JComponent;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.border.Border;
 import javax.swing.border.TitledBorder;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
-import org.opensha.commons.exceptions.ConstraintException;
-import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.constraint.ParameterConstraint;
-import org.opensha.commons.param.editor.AbstractParameterEditorOld;
 import org.opensha.commons.param.editor.ParameterEditor;
 import org.opensha.commons.param.editor.impl.ParameterListEditor;
 import org.opensha.commons.param.event.ParameterChangeEvent;
@@ -40,7 +35,6 @@ import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.ApplicationVersion;
 import org.opensha.commons.util.bugReports.BugReport;
 import org.opensha.commons.util.bugReports.SimpleBugMessagePanel;
-import org.opensha.sha.earthquake.AbstractEpistemicListERF;
 import org.opensha.sha.earthquake.ERF_Ref;
 import org.opensha.sha.earthquake.EpistemicListERF;
 import org.opensha.sha.earthquake.BaseERF;
@@ -62,7 +56,7 @@ import com.google.common.base.Preconditions;
  */
 
 public class ERF_GuiBean extends JPanel implements ParameterChangeFailListener,
-ParameterChangeListener{
+ParameterChangeListener, ChangeListener {
 
 	private final static String C = "ERF_GuiBean";
 
@@ -81,10 +75,10 @@ ParameterChangeListener{
 	
 	private BaseERF fallbackERF;
 
-	//instance of the selected ERF
+	// instance of the selected ERF
 	BaseERF eqkRupForecast = null;
-	//instance of progress bar to show the progress of updation of forecast
-	CalcProgressBar progress= null;
+	//instance of progress bar to show the progress of forecast update
+	CalcProgressBar progress = null;
 
 
 	//parameter List to hold the selected ERF parameters
@@ -132,7 +126,7 @@ ParameterChangeListener{
 
 	/**
 	 * Constructor : It accepts the classNames of the ERFs to be shown in the editor
-	 * @param erfClassNames
+	 * @param erfRefs
 	 */
 	public ERF_GuiBean(List<ERF_Ref> erfRefs) throws InvocationTargetException{
 		try {
@@ -141,12 +135,12 @@ ParameterChangeListener{
 		catch(Exception e) {
 			e.printStackTrace();
 		}
-		// save the class names of ERFs to be shown\
+		// save the class names of ERFs to be shown
 		this.erfRefs = erfRefs;
 
 		// create the instance of ERFs
 		init_erf_IndParamListAndEditor();
-		// forecast 1  is selected initially
+		// forecast 1 is selected initially
 		setParamsInForecast();
 		
 		fallbackERF = eqkRupForecast;
@@ -188,26 +182,25 @@ ParameterChangeListener{
 		erfSelectionParam.addParameterChangeListener(this);
 		parameterList.addParameter(erfSelectionParam);
 	}
-
-
+	
 	/**
-	 * this function is called to add the paramters based on the forecast
+	 * this function is called to add the parameters based on the forecast
 	 * selected by the user. Based on the selected Forecast it also creates
 	 * timespan and add that to the same panel window that shows the ERF parameters.
 	 */
-	private void setParamsInForecast() throws InvocationTargetException{
-
+	private void setParamsInForecast() throws InvocationTargetException {
 		Parameter chooseERF_Param = parameterList.getParameter(this.ERF_PARAM_NAME);
 		parameterList = new ParameterList();
 		parameterList.addParameter(chooseERF_Param);
 		// get the selected forecast
 		getSelectedERF_Instance();
-		//getting the EqkRupForecast param List and its iterator
+		// getting the EqkRupForecast param List and its iterator
 		ParameterList paramList = eqkRupForecast.getAdjustableParameterList();
+		paramList.addChangeListener(this);
 		Iterator it = paramList.getParametersIterator();
 
 		// make the parameters visible based on selected forecast
-		while(it.hasNext()){
+		while (it.hasNext()) {
 			Parameter param = (Parameter)it.next();
 			//System.out.println("Param Name: "+param.getName());
 			//if(param.getName().equals(EqkRupForecast.TIME_DEPENDENT_PARAM_NAME))
@@ -218,14 +211,12 @@ ParameterChangeListener{
 		}
 
 		//remove the parameters if they already exists in the panel.
-		if(listEditor !=null){
+		if (listEditor != null) {
 			erfAndTimespanPanel.remove(listEditor);
 			listEditor = null;
 		}
 
-
-
-		//creating the new instance of ERF parameter list editors
+		// creating the new instance of ERF parameter list editors
 		listEditor = new ParameterListEditor(parameterList);
 
 		// show the ERF gui Bean in JPanel
@@ -352,7 +343,7 @@ ParameterChangeListener{
 	 * It returns the ERF after updating its forecast
 	 * @return
 	 */
-	public BaseERF getSelectedERF() throws InvocationTargetException{
+	public BaseERF getSelectedERF() throws InvocationTargetException {
 		getSelectedERF_Instance();
 		if(this.showProgressBar) {
 			// also show the progress bar while the forecast is being updated
@@ -377,7 +368,7 @@ ParameterChangeListener{
 				if (count == 10)
 					break;
 			}
-			
+	
 			try {
 				isNewERF_Instance = false;
 				ERF_Ref fallbackRef = erfRefs.get(0);
@@ -389,7 +380,7 @@ ParameterChangeListener{
 			} catch (Exception e1) {}
 			throw e;
 		}
-		if (showProgressBar) {
+		if (showProgressBar && progress != null) {
 			progress.dispose();
 			progress = null;
 		}
@@ -489,25 +480,24 @@ ParameterChangeListener{
 
 	/**
 	 *  This is the main function of this interface. Any time a control
-	 *  paramater or independent paramater is changed by the user in a GUI this
-	 *  function is called, and a paramater change event is passed in. This
+	 *  parameter or independent parameter is changed by the user in a GUI this
+	 *  function is called, and a parameter change event is passed in. This
 	 *  function then determines what to do with the information ie. show some
-	 *  paramaters, set some as invisible, basically control the paramater
-	 *  lists.
+	 *  parameters, set some as invisible, control the parameter lists.
 	 *
-	 * @param  event
+	 * @param event
 	 */
-	public void parameterChange( ParameterChangeEvent event ) {
+	public void parameterChange(ParameterChangeEvent event) {
 
 
 		String name1 = event.getParameterName();
 
 		// if ERF selected by the user  changes
-		if( name1.equals(ERF_PARAM_NAME) && !isNewERF_Instance){
+		if (name1.equals(ERF_PARAM_NAME) && !isNewERF_Instance) {
 			String value = event.getNewValue().toString();
 			int size = this.erfNamesVector.size();
-			try{
-				for(int i=0;i<size;++i){
+			try {
+				for (int i=0;i<size;++i) {
 					if(value.equalsIgnoreCase((String)erfNamesVector.get(i))) {
 						try {
 							eqkRupForecast = getERFInstance(erfRefs.get(i));
@@ -523,7 +513,7 @@ ParameterChangeListener{
 						break;
 					}
 				}
-			}catch(Exception e){
+			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
@@ -535,7 +525,6 @@ ParameterChangeListener{
 		try {
 			setParamsInForecast();
 		} catch (InvocationTargetException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		createTimeSpanPanel();
@@ -557,7 +546,7 @@ ParameterChangeListener{
 	 * This function allows user to add the more ERF's names to the existing list from the application.
 	 * This function allows user with the flexibility that he does not always have to specify the erfNames
 	 * at time of instantiating this ERF gui bean.
-	 * @param erfList
+	 * @param newRefs
 	 * @throws InvocationTargetException
 	 */
 	public void addERFs_ToList(ArrayList<ERF_Ref> newRefs) throws InvocationTargetException{
@@ -588,7 +577,7 @@ ParameterChangeListener{
 	 * This function allows user to remove ERF's names from the existing list from the application.
 	 * This function allows user with the flexibility that he can always remove the erfNames
 	 * later after instantiating this ERF gui bean.
-	 * @param erfList
+	 * @param removed
 	 * @throws InvocationTargetException
 	 */
 	public void removeERFs_FromList(ArrayList<ERF_Ref> removed) throws InvocationTargetException{
@@ -667,8 +656,7 @@ ParameterChangeListener{
 		}
 		return null;
 	}
-
-
+	
 	private void jbInit() throws Exception {
 
 		//setLayout(new GridBagLayout());
@@ -689,6 +677,11 @@ ParameterChangeListener{
 		add(erfScrollPane,  BorderLayout.CENTER);
 
 		//erfScrollPane.getViewport().add(erfAndTimespanPanel, null);
+	}
+
+	@Override
+	public void stateChanged(ChangeEvent e) {
+		refreshGUI();
 	}
 
 }

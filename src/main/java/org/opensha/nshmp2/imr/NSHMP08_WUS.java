@@ -1,7 +1,5 @@
 package org.opensha.nshmp2.imr;
 
-import static org.opensha.sha.imr.PropagationEffect.*;
-
 import java.util.List;
 import java.util.Map;
 
@@ -24,8 +22,8 @@ import org.opensha.nshmp2.util.NSHMP_IMR_Util;
 import org.opensha.nshmp2.util.Period;
 import org.opensha.nshmp2.util.Utils;
 import org.opensha.sha.earthquake.EqkRupture;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
 import org.opensha.sha.faultSurface.PointSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.BA_2008_AttenRel;
@@ -406,8 +404,13 @@ public class NSHMP08_WUS extends AttenuationRelationship implements
 	@Override
 	protected void setPropagationEffectParams() {
 		if (site != null && eqkRupture != null) {
-			distanceJBParam.setValue(eqkRupture, site);
+			setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
 		}
+	}
+	
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+			distanceJBParam.setValue(eqkRupture, site, distances);
 	}
 	
 	// scratch
@@ -636,11 +639,6 @@ public class NSHMP08_WUS extends AttenuationRelationship implements
 	public DiscretizedFunc getSA_IML_AtExceedProbSpectrum(double exceedProb)
 			throws ParameterException, IMRException {
 		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public double getTotExceedProbability(PointEqkSource ptSrc, double iml) {
-		throw new UnsupportedOperationException("getTotExceedProbability is unsupported for "+C);
 	}
 
 	@Override

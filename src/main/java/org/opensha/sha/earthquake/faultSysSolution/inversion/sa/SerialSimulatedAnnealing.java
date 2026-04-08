@@ -34,6 +34,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 	protected static final String XML_METADATA_NAME = "SimulatedAnnealing";
 
 	protected final static boolean D = false;  // for debugging
+	protected final static boolean DD = D&false;  // for debugging
 	
 	// if true, energy change will be calculated during misfit calculation rather than recalculating the full energy
 	// this can lead to tiny floating point drift errors relative to recalculating each time, but it's not clear that
@@ -652,6 +653,8 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		
 		double worstEnergyShortcutFract = 0;
 		double worstEnergyShortcutAbs = 0;
+		
+		long iterPrintMod = 1;
 
 		// we do iter-1 because iter here is 1-based, not 0-based
 		InversionState state = null;
@@ -681,10 +684,12 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			}
 
 			if (D) {  // print out convergence info every so often
-				if ((iter-1) % 10000 == 0) { 
-					System.out.println("Iteration # " + iter);
-					System.out.println("Lowest energy found = "
-							+Doubles.join(", ", Ebest));
+				if ((iter-1) % iterPrintMod == 0) { 
+					System.out.println("Iteration # " + iter+";\t"+state);
+					System.out.println("\tLowest energy found = "+Doubles.join(", ", Ebest));
+					System.out.println("\tCurrent solution energy = "+Doubles.join(", ", E));
+					if (iter >= iterPrintMod*10 && iterPrintMod < 1000)
+						iterPrintMod *= 10l;
 //					System.out.println("Current energy = " + E);
 				}
 			}
@@ -858,9 +863,13 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			
 			// Use transition probability to determine (via random number draw) if solution is kept
 			if (P == 1 || P > r.nextDouble()) {
-				if (energyChange > 0d)
+				if (energyChange > 0d) {
 					// we're keeping one that made energy worse
 					worseValsNotYetSaved++;
+					if (DD && iter < 2000) System.out.println("iter "+iter+"; kept energyChange >0 ("+(float)energyChange
+							+"), P=exp[(("+(float)(-energyChange)+")*"+(float)energyScaleFactor+") / "+(float)T+"]="+(float)P
+							+", worseValsNotYetSaved="+worseValsNotYetSaved);
+				}
 				
 				/* 
 				 * The buffers are a bit confusing, let me explain. Arrays.copyOf(...) calls are costly in this inner
@@ -899,6 +908,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 				
 				// Is this a new best?
 				if (Enew[0] < Ebest[0] || keepCurrentAsBest) {
+					if (DD) System.out.println("iter "+iter+"; new best! E[0]="+Enew[0]);
 					// update xbest with all perturbations since the last new best
 					// we now keep xbest isolated so we never have to do an array copy
 					for (int i=0; i<curPerturbChainSize; i++)

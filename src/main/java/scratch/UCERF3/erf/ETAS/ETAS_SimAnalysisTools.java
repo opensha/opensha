@@ -57,7 +57,9 @@ import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
+import org.opensha.sha.earthquake.observedEarthquake.Declustering.GardnerKnopoffDeclustering;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.faultSurface.CompoundSurface;
@@ -2503,6 +2505,16 @@ public class ETAS_SimAnalysisTools {
 		// create poisson catalog
 		List<ETAS_EqkRupture> poissonCatalog = getRandomizedCatalog(catalog);
 		
+//		// this creates GK declustered catalog
+//		ObsEqkRupList tempList = new ObsEqkRupList();
+//		for(ETAS_EqkRupture rup:catalog)
+//			tempList.add(rup);
+//		ObsEqkRupList tempList2 = GardnerKnopoffDeclustering.getDeclusteredCatalog(tempList);
+//		List<ETAS_EqkRupture> poissonCatalog = new ArrayList<ETAS_EqkRupture>();
+//		for(ObsEqkRupture rup:tempList2)
+//			poissonCatalog.add((ETAS_EqkRupture)rup);
+			
+		
 		List<DefaultXY_DataSet> anns = populateRateFunc(catalog, rateFunc, startOT, binWidth,
 				xAxisDays, annotateMinMag, annotateBinWidth);
 		List<DefaultXY_DataSet> poissonAnns = populateRateFunc(poissonCatalog, poissonFunc, startOT,
@@ -2510,6 +2522,15 @@ public class ETAS_SimAnalysisTools {
 		
 		List<XY_DataSet> funcs = Lists.newArrayList();
 		List<PlotCurveCharacterstics> chars = Lists.newArrayList();
+		
+		// set rates less than 0.1 (e.g., zeros) to 0.1
+		for(int i=0;i<rateFunc.size();i++) {
+			if(rateFunc.getY(i)<0.1)
+				rateFunc.set(i,0.1);
+			if(poissonFunc.getY(i)<0.1)
+				poissonFunc.set(i,0.1);
+		}
+		
 		
 		funcs.add(poissonFunc);
 		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));

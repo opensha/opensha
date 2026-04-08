@@ -183,7 +183,7 @@ public class NGAWestParser {
 			if (surfList.size() == 1) {
 				surf = surfList.get(0);
 			} else {
-				surf = new CompoundSurface(surfList);
+				surf = CompoundSurface.get(surfList);
 			}
 
 			map.put(id, surf);

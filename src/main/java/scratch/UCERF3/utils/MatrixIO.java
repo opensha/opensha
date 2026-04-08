@@ -11,6 +11,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,10 +47,32 @@ public class MatrixIO {
 	 * @throws IOException
 	 */
 	public static void saveSparse(DoubleMatrix2D mat, File file) throws IOException {
+		FileOutputStream out = new FileOutputStream(file);
+		
+		saveSparse(mat, out);
+		
+		out.close();
+	}
+
+	/**
+	 * Saves a binary stream containing the given sparse matrix. Only non zero values are stored.
+	 * <br><br>
+	 * Output format:<br>
+	 * 3 integers, for rows, cols, # values.<br>
+	 * Then for each value, 2 integers for row, col, then 1 double for value. 
+	 * 
+	 * @param mat
+	 * @param file
+	 * @throws IOException
+	 */
+	public static void saveSparse(DoubleMatrix2D mat, OutputStream stream) throws IOException {
 		Preconditions.checkNotNull(mat, "array cannot be null!");
 		Preconditions.checkArgument(mat.rows() > 0 && mat.columns() > 0, "matrix can't be empty!");
 		
-		DataOutputStream out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(file)));
+		if (!(stream instanceof BufferedOutputStream))
+			stream = new BufferedOutputStream(stream);
+		
+		DataOutputStream out = new DataOutputStream(stream);
 		out.writeInt(mat.rows());
 		out.writeInt(mat.columns());
 
@@ -95,7 +118,8 @@ public class MatrixIO {
 			}
 		}
 
-		out.close();
+		out.flush();
+		stream.flush();
 	}
 
 	/**
@@ -178,16 +202,35 @@ public class MatrixIO {
 	 * @throws IOException
 	 */
 	public static void doubleArrayToFile(double[] array, File file) throws IOException {
+		FileOutputStream out = new FileOutputStream(file);
+		
+		doubleArrayToStream(array, out);
+		
+		out.close();
+	}
+
+	/**
+	 * Writes the given double array to an output stream. Output simply contains a series of big endian double values.
+	 * Stream is flushed but not closed.
+	 * @param array
+	 * @param stream
+	 * @throws IOException
+	 */
+	public static void doubleArrayToStream(double[] array, OutputStream stream) throws IOException {
 		Preconditions.checkNotNull(array, "array cannot be null!");
 		Preconditions.checkArgument(array.length > 0, "array cannot be empty!");
+		
+		if (!(stream instanceof BufferedOutputStream))
+			stream = new BufferedOutputStream(stream);
 
-		DataOutputStream out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(file)));
+		DataOutputStream out = new DataOutputStream(stream);
 
 		for (double val : array) {
 			out.writeDouble(val);
 		}
 
-		out.close();
+		out.flush();
+		stream.flush();
 	}
 
 	/**

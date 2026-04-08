@@ -46,7 +46,7 @@ public class FixedStrikeSource extends PointSource13 {
 
 	/**
 	 * Constructs a new fixed-strike earthquake source. This is a variant of a
-	 * {@link PointSource} where ruptures are always represented as finite
+	 * {@link NSHMPPointSource} where ruptures are always represented as finite
 	 * faults with a fixed strike. Fault length is computed using
 	 * {@link WC1994_MagLengthRelationship}.
 	 * 

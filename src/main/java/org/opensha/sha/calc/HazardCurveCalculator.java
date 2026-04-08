@@ -1,8 +1,5 @@
 package org.opensha.sha.calc;
 
-
-
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
@@ -16,37 +13,29 @@ import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
-import org.opensha.commons.param.event.ParameterChangeEvent;
-import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.param.event.ParameterChangeWarningEvent;
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
-import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.commons.util.ExceptionUtils;
-import org.opensha.sha.calc.params.IncludeMagDistFilterParam;
-import org.opensha.sha.calc.params.MagDistCutoffParam;
-import org.opensha.sha.calc.params.MaxDistanceParam;
-import org.opensha.sha.calc.params.MinMagnitudeParam;
 import org.opensha.sha.calc.params.NonSupportedTRT_OptionsParam;
 import org.opensha.sha.calc.params.NumStochasticEventSetsParam;
-import org.opensha.sha.calc.params.PtSrcDistanceCorrectionParam;
+import org.opensha.sha.calc.params.PointSourceOptimizationsParam;
 import org.opensha.sha.calc.params.SetTRTinIMR_FromSourceParam;
-import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
-import org.opensha.sha.calc.params.filters.MagDependentDistCutoffFilter;
-import org.opensha.sha.calc.params.filters.MinMagFilter;
-import org.opensha.sha.calc.params.filters.SourceFilter;
-import org.opensha.sha.calc.params.filters.SourceFilterManager;
-import org.opensha.sha.calc.params.filters.SourceFilters;
-import org.opensha.sha.calc.params.filters.SourceFiltersParam;
-import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter;
-import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
+import org.opensha.sha.calc.sourceFilters.FixedDistanceCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.MagDependentDistCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.MinMagFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
+import org.opensha.sha.calc.sourceFilters.SourceFilterUtils;
+import org.opensha.sha.calc.sourceFilters.SourceFilters;
+import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter;
+import org.opensha.sha.calc.sourceFilters.params.SourceFiltersParam;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.SiteAdaptiveSource;
 import org.opensha.sha.earthquake.rupForecastImpl.Frankel96.Frankel96_EqkRupForecast;
-import org.opensha.sha.faultSurface.PointSurface;
-import org.opensha.sha.faultSurface.utils.PtSrcDistCorr;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.BJF_1997_AttenRel;
@@ -68,14 +57,11 @@ import com.google.common.base.Preconditions;
  * @version 1.0
  */
 
-public class HazardCurveCalculator implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
+public class HazardCurveCalculator extends AbstractCalculator
+implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 1L;
-	protected final static String C = "HazardCurveCalculator";
-	protected final static boolean D = false;
+	private final static String C = "HazardCurveCalculator";
+	private final static boolean D = false;
 
 	/*
 	 * Source filters
@@ -93,6 +79,9 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 	 * Other params
 	 */
 	
+	//enables point source optimizations
+	private PointSourceOptimizationsParam pointSourceOptimizations;
+	
 	//Info for parameter that sets the maximum distance considered
 	private NumStochasticEventSetsParam numStochEventSetRealizationsParam;
 	
@@ -101,17 +90,12 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 	
 	// This tells the calculator what to do if the TRT is not supported by the IMR
 	private NonSupportedTRT_OptionsParam nonSupportedTRT_OptionsParam;
-	
-	// This tell what type of point-source distance correction to apply
-	private PtSrcDistanceCorrectionParam ptSrcDistCorrParam;
 
 	private ParameterList adjustableParams;
 
 	// misc counting and index variables
-	protected int currRuptures = -1;
-	protected int totRuptures=0;
-	protected int sourceIndex;
-	protected int numSources;
+	private int currProgress = -1;
+	private int totProgress = 0;
 
 
 	/**
@@ -134,22 +118,29 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		trtDependentFilter = (TectonicRegionDistCutoffFilter) sourceFilters.getFilterInstance(SourceFilters.TRT_DIST_CUTOFFS);
 		minMagFilter = (MinMagFilter) sourceFilters.getFilterInstance(SourceFilters.MIN_MAG);
 
-		// Max Distance Parameter
+		pointSourceOptimizations = new PointSourceOptimizationsParam();
+		
 		numStochEventSetRealizationsParam = new NumStochasticEventSetsParam();
 		
 		setTRTinIMR_FromSourceParam = new SetTRTinIMR_FromSourceParam();
 		
 		nonSupportedTRT_OptionsParam = new NonSupportedTRT_OptionsParam();
-		
-		ptSrcDistCorrParam = new PtSrcDistanceCorrectionParam();
 
 		adjustableParams = new ParameterList();
 		adjustableParams.addParameter(sourceFilterParam);
+		adjustableParams.addParameter(pointSourceOptimizations);
 		adjustableParams.addParameter(numStochEventSetRealizationsParam);
 		adjustableParams.addParameter(setTRTinIMR_FromSourceParam);
 		adjustableParams.addParameter(nonSupportedTRT_OptionsParam);
-		adjustableParams.addParameter(ptSrcDistCorrParam);
 
+	}
+	
+	public void setPointSourceOptimizationsEnabled(boolean optimize) {
+		pointSourceOptimizations.setValue(optimize);
+	}
+	
+	public boolean isPointSourceOptimizationsEnabled() {
+		return pointSourceOptimizations.getValue();
 	}
 	
 	public SourceFilterManager getSourceFilterManager() {
@@ -159,17 +150,6 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 	@Override
 	public List<SourceFilter> getSourceFilters() {
 		return sourceFilters.getEnabledFilters();
-	}
-	
-//	@Override
-	public void setPtSrcDistCorrType(PtSrcDistCorr.Type type) {
-		ptSrcDistCorrParam.setValueFromTypePtSrcDistCorr(type);
-	}
-	
-
-//	@Override
-	public PtSrcDistCorr.Type getPtSrcDistCorrType(){
-		return ptSrcDistCorrParam.getValueAsTypePtSrcDistCorr();
 	}
 
 
@@ -255,26 +235,40 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 			DiscretizedFunc hazFunction,
 			Site site,
 			Map<TectonicRegionType, ScalarIMR> imrMap, 
-			ERF eqkRupForecast){
+			ERF eqkRupForecast) {
+		RuptureExceedProbCalculator exceedCalc;
+		if (pointSourceOptimizations.getValue())
+			exceedCalc = new PointSourceOptimizedExceedProbCalc();
+		else
+			exceedCalc = RuptureExceedProbCalculator.BASIC_IMPLEMENTATION;
+		return getHazardCurve(hazFunction, site, imrMap, eqkRupForecast, exceedCalc);
+	}
 
+	// TODO add to API?
+	public DiscretizedFunc getHazardCurve(
+			DiscretizedFunc hazFunction,
+			Site site,
+			Map<TectonicRegionType, ScalarIMR> imrMap, 
+			ERF eqkRupForecast,
+			RuptureExceedProbCalculator exceedCalc) {
 		//	  System.out.println("Haz Curv Calc: maxDistanceParam.getValue()="+maxDistanceParam.getValue().toString());
 		//	  System.out.println("Haz Curv Calc: numStochEventSetRealizationsParam.getValue()="+numStochEventSetRealizationsParam.getValue().toString());
 		//	  System.out.println("Haz Curv Calc: includeMagDistFilterParam.getValue()="+includeMagDistFilterParam.getValue().toString());
 //		if(includeMagDistFilterParam.getValue() && D)
 //			System.out.println("Haz Curv Calc: magDistCutoffParam.getValue()="+magDistCutoffParam.getValue().toString());
+		signalReset();
 		
 		boolean setTRTinIMR_FromSource = setTRTinIMR_FromSourceParam.getValue();
 		HashMap<ScalarIMR, TectonicRegionType> trtOrigVals = null;
 		if (setTRTinIMR_FromSource)
 			trtOrigVals = TRTUtils.getTRTsSetInIMRs(imrMap);
 
-		this.currRuptures = -1;
-		
-		PtSrcDistCorr.Type distCorrType = getPtSrcDistCorrType();
+		this.currProgress = -1;
 
-		/* this determines how the calucations are done (doing it the way it's outlined
-    in our original SRL paper gives probs greater than 1 if the total rate of events for the
-    source exceeds 1.0, even if the rates of individual ruptures are << 1).
+		/*
+		 * this determines how the calculations are done (doing it the way it's outlined
+		 * in our original SRL paper gives probs greater than 1 if the total rate of events for the
+		 * source exceeds 1.0, even if the rates of individual ruptures are << 1).
 		 */
 		boolean poissonSource = false;
 
@@ -306,23 +300,14 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		}
 
 		// get total number of sources
-		numSources = eqkRupForecast.getNumSources();
+		int numSources = eqkRupForecast.getNumSources();
 		//System.out.println("Number of Sources: "+numSources);
 		//System.out.println("ERF info: "+ eqkRupForecast.getClass().getName());
 
-
-		// compute the total number of ruptures for updating the progress bar
-		totRuptures = 0;
-		sourceIndex =0;
-		for(sourceIndex=0;sourceIndex<numSources;++sourceIndex)
-			totRuptures+=eqkRupForecast.getSource(sourceIndex).getNumRuptures();
-		//System.out.println("Total number of ruptures:"+ totRuptures);
-
-
 		// init the current rupture number (also for progress bar)
-		currRuptures = 0;
-		int numRupRejected =0;
-
+		currProgress = 0;
+		totProgress = numSources;
+		
 		// initialize the hazard function to 1.0
 		initDiscretizeValues(hazFunction, 1.0);
 
@@ -333,13 +318,19 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		if (D) System.out.println(C+": starting hazard curve calculation");
 
 		// loop over sources
-		for(sourceIndex=0;sourceIndex < numSources ;sourceIndex++) {
-
+		for(int sourceIndex=0; sourceIndex < numSources; sourceIndex++) {
+			if (isCancelled()) return null;
 			//if (sourceIndex%1000 ==0) System.out.println("SourceIdx: " + sourceIndex);
 			
 			// get the ith source
 			ProbEqkSource source = eqkRupForecast.getSource(sourceIndex);
 			TectonicRegionType trt = source.getTectonicRegionType();
+			
+			int numRuptures = source.getNumRuptures();
+			if (source instanceof SiteAdaptiveSource) {
+				source = ((SiteAdaptiveSource)source).getForSite(site);
+				numRuptures = source.getNumRuptures();
+			}
 			
 			// get the IMR
 			ScalarIMR imr = TRTUtils.getIMRforTRT(imrMap, trt);
@@ -350,8 +341,8 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 			}
 
 			// apply any filters
-			if (canSkipSource(filters, source, site)) {
-				currRuptures += source.getNumRuptures();  //update progress bar for skipped ruptures
+			if (SourceFilterUtils.canSkipSource(filters, source, site)) {
+				currProgress++;  //update progress bar for skipped source
 				continue;
 			}
 
@@ -362,12 +353,8 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 			if(!poissonSource)
 				initDiscretizeValues(sourceHazFunc, 0.0);
 
-			// get the number of ruptures for the current source
-			int numRuptures = source.getNumRuptures();
-
 			// loop over these ruptures
-			for(int n=0; n < numRuptures ; n++,++currRuptures) {
-				
+			for(int n=0; n < numRuptures ; n++) {
 				ProbEqkRupture rupture = source.getRupture(n);
 
 				try {
@@ -378,23 +365,15 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 						continue;
 					
 					// apply any filters
-					if (canSkipRupture(filters, rupture, site)) {
-						numRupRejected ++;
+					if (SourceFilterUtils.canSkipRupture(filters, rupture, site)) {
 						continue;
 					}
 					
-					// set point-source distance correction type & mag if it's a pointSurface
-					if(rupture.getRuptureSurface() instanceof PointSurface)
-						((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
-					
 					// indicate that a source has been used (put here because of above filters)
 					sourceUsed = true;
-
-					// set the EqkRup in the IMR
-					imr.setEqkRupture(rupture);
-
-					// get the conditional probability of exceedance from the IMR
-					condProbFunc = imr.getExceedProbabilities(condProbFunc);
+					
+					// get the conditional probability of exceedance from the IMR for this rupture
+					exceedCalc.getExceedProbabilities(imr, rupture, condProbFunc);
 					
 					// For poisson source
 					if(poissonSource) {
@@ -408,9 +387,17 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 						if(Math.log(1.0-qkProb) < -30.0)
 							throw new RuntimeException("Error: The probability for this ProbEqkRupture ("+qkProb+
 							") is too high for a Possion source (~infinite number of events)");
-
-						for(k=0;k<numPoints;k++)
-							hazFunction.set(k,hazFunction.getY(k)*Math.pow(1-qkProb,condProbFunc.getY(k)));
+						// we're going to do a bunch of (1-prob)^value
+						// Math.pow(a, b) is about 3 times slower than Math.exp(a*b)
+						// we can speed this up by replacing the power with this log equivalence and precomputing ln(a):
+						// a^b = exp(b*ln(a))
+//						double lnBase = Math.log(1-qkProb);
+						double lnBase = Math.log1p(-qkProb);
+						Preconditions.checkState(Double.isFinite(lnBase), "Bad lnBase=%s for qkProb=%s", lnBase, qkProb);
+						for(k=0;k<numPoints;k++) {
+							hazFunction.set(k,hazFunction.getY(k)*Math.exp(lnBase*condProbFunc.getY(k)));
+//							hazFunction.set(k,hazFunction.getY(k)*Math.pow(1-qkProb,condProbFunc.getY(k)));
+						}
 					}
 					// For non-Poissin source
 					else
@@ -438,6 +425,7 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 			if(!poissonSource)
 				for(k=0;k<numPoints;k++)
 					hazFunction.set(k,hazFunction.getY(k)*(1-sourceHazFunc.getY(k)));
+			currProgress++;
 		}
 
 		int i;
@@ -461,36 +449,12 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 
 		return hazFunction;
 	}
-	
-	public static boolean canSkipSource(Collection<SourceFilter> filters, ProbEqkSource source, Site site) {
-		if (filters == null || filters.isEmpty())
-			return false;
-		if (!filters.isEmpty()) {
-			// source-site distance
-			double distance = source.getMinDistance(site);
-			
-			for (SourceFilter filter : filters)
-				if (filter.canSkipSource(source, site, distance))
-					return true;
-		}
-		return false;
-	}
-	
-	public static boolean canSkipRupture(Collection<SourceFilter> filters, EqkRupture rupture, Site site) {
-		if (filters == null || filters.isEmpty())
-			return false;
-		if (!filters.isEmpty()) {
-			for (SourceFilter filter : filters)
-				if (filter.canSkipRupture(rupture, site))
-					return true;
-		}
-		return false;
-	}
 
 	@Override
 	public DiscretizedFunc getAverageEventSetHazardCurve(DiscretizedFunc hazFunction,
 			Site site, ScalarIMR imr, 
 			ERF eqkRupForecast) {
+		signalReset();
 
 //		System.out.println("Haz Curv Calc: maxDistanceParam.getValue()="+maxDistanceParam.getValue().toString());
 //		System.out.println("Haz Curv Calc: numStochEventSetRealizationsParam.getValue()="+numStochEventSetRealizationsParam.getValue().toString());
@@ -504,17 +468,32 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		initDiscretizeValues(hazFunction, 0);
 		int numPts=hazCurve.size();
 		// for progress bar
-		currRuptures=0;
+		currProgress=0;
 		//	  totRuptures=numEventSets;
 
 		for(int i=0;i<numEventSets;i++) {
+			if (isCancelled()) return null;
 			List<EqkRupture> events = eqkRupForecast.drawRandomEventSet(site, getSourceFilters());
-			if(i==0) totRuptures = events.size()*numEventSets; // this is an approximate total number of events
-			currRuptures+=events.size();
+			// update totProgress with our current best estimate
+			if (i == 0) {
+				// first one, all we know is the size of the first event set
+				totProgress = events.size()*numEventSets;
+			} else {
+				// what we know so far
+				int totProgress = currProgress + events.size();
+				if (i < numEventSets-1) {
+					// assume future are the same as the average encountered so far
+					double curAvg = (double)totProgress/(double)(i+1);
+					totProgress += (int)(curAvg*(numEventSets-2));
+				}
+				this.totProgress = totProgress;
+			}
 			getEventSetHazardCurve( hazCurve,site, imr, events, false);
 			for(int x=0; x<numPts; x++)
 				hazFunction.set(x, hazFunction.getY(x)+hazCurve.getY(x));
+			currProgress += events.size();
 		}
+		currProgress = totProgress;
 		for(int x=0; x<numPts; x++)
 			hazFunction.set(x, hazFunction.getY(x)/numEventSets);
 		return hazFunction;
@@ -524,7 +503,7 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 	public DiscretizedFunc getEventSetHazardCurve(DiscretizedFunc hazFunction,
 			Site site, ScalarIMR imr, 
 			List<EqkRupture> eqkRupList, boolean updateCurrRuptures) {
-
+		signalReset();
 
 		DiscretizedFunc condProbFunc = hazFunction.deepClone();
 
@@ -533,7 +512,7 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		//parameter changes.
 		((AttenuationRelationship)imr).resetParameterEventListeners();
 
-		// declare some varibles used in the calculation
+		// declare some variables used in the calculation
 		int k;
 
 		// get the number of points
@@ -549,8 +528,8 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		int totRups = eqkRupList.size();
 		// progress bar stuff
 		if(updateCurrRuptures) {
-			totRuptures = totRups;
-			currRuptures = 0;
+			totProgress = totRups;
+			currProgress = 0;
 		}
 
 		// initialize the hazard function to 1.0 (initial total non-exceedance probability)
@@ -562,30 +541,22 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		if (D) System.out.println(C+": starting hazard curve calculation");
 
 		//	  System.out.println("totRuptures="+totRuptures);
-		
-		PtSrcDistCorr.Type distCorrType = getPtSrcDistCorrType();
 
 
 		// loop over ruptures
 		for(int n=0; n < totRups ; n++) {
+			if (isCancelled()) return null;
 
-			if(updateCurrRuptures)++currRuptures;
+			if(updateCurrRuptures)++currProgress;
 
 			EqkRupture rupture = eqkRupList.get(n);
 			
 			// apply any filters
-			if (canSkipRupture(filters, rupture, site))
+			if (SourceFilterUtils.canSkipRupture(filters, rupture, site))
 				continue;
-			
-			// set point-source distance correction type (& mag) if it's a pointSurface
-			if(rupture.getRuptureSurface() instanceof PointSurface)
-				((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
-
-			// set the EqkRup in the IMR
-			imr.setEqkRupture(rupture);
 
 			// get the conditional probability of exceedance from the IMR
-			condProbFunc=imr.getExceedProbabilities(condProbFunc);
+			imr.getExceedProbabilities(rupture, condProbFunc);
 
 			// multiply this into the total non-exceedance probability
 			// (get the product of all non-eceedance probabilities)
@@ -621,7 +592,7 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 	 */
 	public DiscretizedFunc getEventSetExpNumExceedCurve(DiscretizedFunc hazFunction,
 			Site site, ScalarIMR imr, List<EqkRupture> eqkRupList, boolean updateCurrRuptures) {
-
+		signalReset();
 
 		DiscretizedFunc condProbFunc = hazFunction.deepClone();
 
@@ -646,8 +617,8 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		int totRups = eqkRupList.size();
 		// progress bar stuff
 		if(updateCurrRuptures) {
-			totRuptures = totRups;
-			currRuptures = 0;
+			totProgress = totRups;
+			currProgress = 0;
 		}
 
 		// initialize the hazard function to 1.0 (initial total non-exceedance probability)
@@ -659,25 +630,19 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		if (D) System.out.println(C+": starting hazard curve calculation");
 
 		//	  System.out.println("totRuptures="+totRuptures);
-		
-		PtSrcDistCorr.Type distCorrType = getPtSrcDistCorrType();
 
 
 		// loop over ruptures
 		for(int n=0; n < totRups ; n++) {
-
-			if(updateCurrRuptures)++currRuptures;
+			if (isCancelled()) return null;
+			
+			if(updateCurrRuptures)++currProgress;
 
 			EqkRupture rupture = eqkRupList.get(n);
 			
 			// apply any filters
-			if (canSkipRupture(filters, rupture, site))
+			if (SourceFilterUtils.canSkipRupture(filters, rupture, site))
 				continue;
-			
-			// set point-source distance correction type (& mag) if it's a pointSurface
-			if(rupture.getRuptureSurface() instanceof PointSurface)
-				((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
-
 
 			/*
     		// apply mag-dist cutoff filter
@@ -689,11 +654,8 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
     		}
 			 */
 
-			// set the EqkRup in the IMR
-			imr.setEqkRupture(rupture);
-
 			// get the conditional probability of exceedance from the IMR
-			condProbFunc=imr.getExceedProbabilities(condProbFunc);
+			imr.getExceedProbabilities(rupture, condProbFunc);
 
 			// add this cond prob to hazard function
 			for(k=0;k<numPoints;k++) 
@@ -721,6 +683,7 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 	 */
 	public DiscretizedFunc getEventSetHazardCurveRandomIML(DiscretizedFunc hazFunction,
 			Site site, ScalarIMR imr, List<EqkRupture> eqkRupList, boolean updateCurrRuptures, Random random) {
+		signalReset();
 
 		if(random == null)
 			random = new Random();
@@ -729,9 +692,6 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		//parameters. This allows the Server version of our application to listen to the
 		//parameter changes.
 		((AttenuationRelationship)imr).resetParameterEventListeners();
-
-		// declare some varibles used in the calculation
-		int k;
 
 		// get the number of points
 		int numPoints = hazFunction.size();
@@ -746,8 +706,8 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		int totRups = eqkRupList.size();
 		// progress bar stuff
 		if(updateCurrRuptures) {
-			totRuptures = totRups;
-			currRuptures = 0;
+			totProgress = totRups;
+			currProgress = 0;
 		}
 
 		// set the Site in IMR
@@ -756,26 +716,20 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		if (D) System.out.println(C+": starting hazard curve calculation");
 
 		//	  System.out.println("totRuptures="+totRuptures);
-		
-		PtSrcDistCorr.Type distCorrType = getPtSrcDistCorrType();
 
 		double maxIML = Double.NEGATIVE_INFINITY;
 		
 		// loop over ruptures
 		for(int n=0; n < totRups ; n++) {
+			if (isCancelled()) return null;
 
-			if(updateCurrRuptures)++currRuptures;
+			if(updateCurrRuptures)++currProgress;
 
 			EqkRupture rupture = eqkRupList.get(n);
 			
 			// apply any filters
-			if (canSkipRupture(filters, rupture, site))
+			if (SourceFilterUtils.canSkipRupture(filters, rupture, site))
 				continue;
-			
-			// set point-source distance correction type (& mag) if it's a pointSurface
-			if(rupture.getRuptureSurface() instanceof PointSurface)
-				((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
-
 
 			/*
     		// apply mag-dist cutoff filter
@@ -787,10 +741,7 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
     		}
 			 */
 
-			// set the EqkRup in the IMR
-			imr.setEqkRupture(rupture);
-
-			double randIML = imr.getRandomIML(random);
+			double randIML = imr.getRandomIML(rupture, random);
 			if(maxIML < randIML)
 				maxIML = randIML;
 
@@ -817,7 +768,7 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 	 */
 	public DiscretizedFunc getEventSetNumExceedCurveRandomIML(DiscretizedFunc hazFunction,
 			Site site, ScalarIMR imr, List<EqkRupture> eqkRupList, boolean updateCurrRuptures, Random random) {
-
+		signalReset();
 
 		//resetting the Parameter change Listeners on the AttenuationRelationship
 		//parameters. This allows the Server version of our application to listen to the
@@ -834,8 +785,8 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		int totRups = eqkRupList.size();
 		// progress bar stuff
 		if(updateCurrRuptures) {
-			totRuptures = totRups;
-			currRuptures = 0;
+			totProgress = totRups;
+			currProgress = 0;
 		}
 
 		// set the Site in IMR
@@ -844,23 +795,18 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		if (D) System.out.println(C+": starting hazard curve calculation");
 
 		//	  System.out.println("totRuptures="+totRuptures);
-		
-		PtSrcDistCorr.Type distCorrType = getPtSrcDistCorrType();
 
 		// loop over ruptures
 		for(int n=0; n < totRups ; n++) {
+			if (isCancelled()) return null;
 
-			if(updateCurrRuptures)++currRuptures;
+			if(updateCurrRuptures)++currProgress;
 
 			EqkRupture rupture = eqkRupList.get(n);
 			
 			// apply any filters
-			if (canSkipRupture(filters, rupture, site))
+			if (SourceFilterUtils.canSkipRupture(filters, rupture, site))
 				continue;
-			
-			// set point-source distance correction type (& mag) if it's a pointSurface
-			if(rupture.getRuptureSurface() instanceof PointSurface)
-				((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
 
 
 			/*
@@ -873,10 +819,7 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
     		}
 			 */
 
-			// set the EqkRup in the IMR
-			imr.setEqkRupture(rupture);
-
-			double randIML = imr.getRandomIML(random);
+			double randIML = imr.getRandomIML(rupture, random);
 			
 			for(int i=0;i<hazFunction.size();++i) {
 				if(hazFunction.getX(i) < randIML)
@@ -903,7 +846,7 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		
 		List<SourceFilter> filters = getSourceFilters();
 
-		if (canSkipRupture(filters, rupture, site)) {
+		if (SourceFilterUtils.canSkipRupture(filters, rupture, site)) {
 			hazFunction.scale(0.0);
 			return hazFunction;
 		}
@@ -911,10 +854,6 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		// resetting the Parameter change Listeners on the AttenuationRelationship parameters,
 		// allowing the Server version of our application to listen to the parameter changes.
 		( (AttenuationRelationship) imr).resetParameterEventListeners();
-		
-		// set point-source distance correction type (& mag) if it's a pointSurface
-		if(rupture.getRuptureSurface() instanceof PointSurface)
-			((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), getPtSrcDistCorrType());
 
 
 		// set the Site in IMR
@@ -922,11 +861,8 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 
 		if (D) System.out.println(C + ": starting hazard curve calculation");
 
-		// set the EqkRup in the IMR
-		imr.setEqkRupture(rupture);
-
 		// get the conditional probability of exceedance from the IMR
-		hazFunction = imr.getExceedProbabilities(hazFunction);
+		imr.getExceedProbabilities(rupture, hazFunction);
 
 		if (D) System.out.println(C + "hazFunction.toString" + hazFunction.toString());
 
@@ -934,18 +870,13 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 	}
 
 	@Override
-	public int getCurrRuptures(){
-		return this.currRuptures;
+	public int getCurrentProgress() {
+		return this.currProgress;
 	}
 
 	@Override
-	public int getTotRuptures(){
-		return this.totRuptures;
-	}
-
-	@Override
-	public void stopCalc(){
-		sourceIndex = numSources;
+	public int getTotalProgressCount() {
+		return this.totProgress;
 	}
 
 	/**
@@ -976,6 +907,8 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		magDependentFilter = (MagDependentDistCutoffFilter) sourceFilters.getFilterInstance(SourceFilters.MAG_DIST_CUTOFFS);
 		trtDependentFilter = (TectonicRegionDistCutoffFilter) sourceFilters.getFilterInstance(SourceFilters.TRT_DIST_CUTOFFS);
 		minMagFilter = (MinMagFilter) sourceFilters.getFilterInstance(SourceFilters.MIN_MAG);
+		this.pointSourceOptimizations = 
+			(PointSourceOptimizationsParam)paramList.getParameter(PointSourceOptimizationsParam.NAME);
 		this.numStochEventSetRealizationsParam =
 			(NumStochasticEventSetsParam)paramList.getParameter(NumStochasticEventSetsParam.NAME);
 		this.setTRTinIMR_FromSourceParam =
@@ -1005,9 +938,8 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		imr.setIntensityMeasure("PGA");
 
 		Site site = new Site();
-		ListIterator<Parameter<?>> it = imr.getSiteParamsIterator();
-		while(it.hasNext())
-			site.addParameter(it.next());
+		for (Parameter<?> param : imr.getSiteParams())
+			site.addParameter(param);
 		site.setLocation(new Location(34,-118));
 
 		AbstractERF eqkRupForecast = new Frankel96_EqkRupForecast();
@@ -1052,6 +984,12 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 	// added this and the associated API implementation to instantiate BJF_1997_AttenRel in the above
 	public void parameterChangeWarning( ParameterChangeWarningEvent event ) {};
 
+	@Override
+	protected boolean isCancelled() {
+		boolean cancelled = super.isCancelled();
+		if (D && cancelled) System.out.println("Signal caught in " + C);
+		return cancelled;
+	}
 
 	// this is temporary for testing purposes
 	public static void main(String[] args) {

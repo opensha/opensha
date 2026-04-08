@@ -1,8 +1,6 @@
 package org.opensha.nshmp2.imr;
 
-import static org.opensha.sha.imr.PropagationEffect.NSHMP_PT_SRC_CORR_PARAM_NAME;
-import static org.opensha.sha.imr.PropagationEffect.POINT_SRC_CORR_PARAM_NAME;
-import static org.opensha.sha.util.TectonicRegionType.*;
+import static org.opensha.sha.util.TectonicRegionType.SUBDUCTION_SLAB;
 
 import java.util.List;
 import java.util.Map;
@@ -18,19 +16,15 @@ import org.opensha.commons.param.constraint.impl.DoubleDiscreteConstraint;
 import org.opensha.commons.param.constraint.impl.StringConstraint;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
-import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.nshmp2.imr.impl.AB2003_AttenRel;
 import org.opensha.nshmp2.imr.impl.YoungsEtAl_1997_AttenRel;
-import org.opensha.nshmp2.util.CurveTable;
-import org.opensha.nshmp2.util.FaultCode;
 import org.opensha.nshmp2.util.Period;
 import org.opensha.nshmp2.util.Utils;
 import org.opensha.sha.earthquake.EqkRupture;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
-import org.opensha.sha.imr.PropagationEffect;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.EqkRuptureParams.MagParam;
 import org.opensha.sha.imr.param.EqkRuptureParams.RupTopDepthParam;
@@ -200,11 +194,7 @@ public class NSHMP08_SUB_Slab extends AttenuationRelationship implements
 		otherParams.addParameter(componentParam);
 
 		// TRT, uneditable and no connection to TRT in child imrs
-		StringConstraint trtConst = new StringConstraint();
-		String trtDefault = SUBDUCTION_SLAB.toString();
-		trtConst.addString(trtDefault);
-		tectonicRegionTypeParam = new TectonicRegionTypeParam(trtConst,
-			trtDefault);
+		tectonicRegionTypeParam = new TectonicRegionTypeParam(SUBDUCTION_SLAB);
 		otherParams.replaceParameter(
 			TectonicRegionTypeParam.NAME,
 			tectonicRegionTypeParam);
@@ -258,19 +248,26 @@ public class NSHMP08_SUB_Slab extends AttenuationRelationship implements
 	
 	@Override
 	public void setEqkRupture(EqkRupture eqkRupture) {
-		this.eqkRupture = eqkRupture;
-		magParam.setValueIgnoreWarning(eqkRupture.getMag()); // needed at getExceedProbs()
-		for (ScalarIMR imr : imrMap.keySet()) {
-			imr.setEqkRupture(eqkRupture);
+		super.setEqkRupture(eqkRupture);
+		if (eqkRupture != null) {
+			magParam.setValueIgnoreWarning(eqkRupture.getMag()); // needed at getExceedProbs()
+			for (ScalarIMR imr : imrMap.keySet()) {
+				imr.setEqkRupture(eqkRupture);
+			}
+			setPropagationEffectParams();
 		}
-		setPropagationEffectParams();
 	}
 	
 	@Override
 	protected void setPropagationEffectParams() {
 		if (site != null && eqkRupture != null) {
-			distanceRupParam.setValue(eqkRupture, site);
+			setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
 		}
+	}
+	
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
+			distanceRupParam.setValue(eqkRupture, site, distances);
 	}
 
 	@Override
@@ -345,12 +342,6 @@ public class NSHMP08_SUB_Slab extends AttenuationRelationship implements
 	public DiscretizedFunc getSA_IML_AtExceedProbSpectrum(double exceedProb)
 			throws ParameterException, IMRException {
 		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public double getTotExceedProbability(PointEqkSource ptSrc, double iml) {
-		throw new UnsupportedOperationException(
-			"getTotExceedProbability is unsupported for " + C);
 	}
 
 	@Override

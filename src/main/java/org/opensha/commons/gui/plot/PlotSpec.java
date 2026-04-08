@@ -22,6 +22,7 @@ import org.jfree.chart.title.LegendTitle;
 import org.jfree.chart.title.Title;
 import org.jfree.chart.ui.RectangleAnchor;
 import org.jfree.chart.ui.RectangleEdge;
+import org.jfree.chart.ui.RectangleInsets;
 import org.jfree.data.Range;
 import org.opensha.commons.data.function.DiscretizedFunc;
 
@@ -59,6 +60,9 @@ public class PlotSpec implements Serializable {
 	private double insetLegendRelY = 0.975;
 	private double insetLegendMaxWidth = 0.35;
 	private boolean insetLegendSingleColumn = true;
+	
+	private boolean xAxisInverted = false;
+	private boolean yAxisInverted = false;
 	
 	/**
 	 * 
@@ -297,6 +301,24 @@ public class PlotSpec implements Serializable {
 		}
 	}
 	
+	
+	
+	public boolean isXAxisInverted() {
+		return xAxisInverted;
+	}
+
+	public void setXAxisInverted(boolean xAxisInverted) {
+		this.xAxisInverted = xAxisInverted;
+	}
+
+	public boolean isYAxisInverted() {
+		return yAxisInverted;
+	}
+
+	public void setYAxisInverted(boolean yAxisInverted) {
+		this.yAxisInverted = yAxisInverted;
+	}
+
 	/**
 	 * Creates a legend that is inset in the plot. Function names will be used to populate the legend
 	 * (null names will be skipped unless you call setLegendSkipBlank(true)). Coordinates are relative
@@ -343,8 +365,13 @@ public class PlotSpec implements Serializable {
 		Font legendFont = lt.getItemFont();
 		lt.setItemFont(new Font(legendFont.getName(), legendFont.getStyle(), plotPrefs.getLegendFontSize()));
 		lt.setBackgroundPaint(plotPrefs.getInsetLegendBackground());
-		if (plotPrefs.getInsetLegendBorder() != null)
-			lt.setFrame(new BlockBorder(plotPrefs.getInsetLegendBorder()));
+		if (plotPrefs.getInsetLegendBorder() != null) {
+			double thickness = plotPrefs.getLegendBorderThickness();
+			lt.setFrame(new BlockBorder(thickness, thickness, thickness, thickness, plotPrefs.getInsetLegendBorder()));
+		}
+		lt.setPadding(plotPrefs.getLegendPadding());
+		lt.setItemLabelPadding(plotPrefs.getLegendItemLabelPadding());
+		lt.setLegendItemGraphicPadding(plotPrefs.getLegendItemGraphicPadding());
 		RectangleEdge edge;
 		if (insetLegendLocation == RectangleAnchor.BOTTOM
 				|| insetLegendLocation == RectangleAnchor.BOTTOM_LEFT
@@ -355,9 +382,13 @@ public class PlotSpec implements Serializable {
 		lt.setPosition(edge);
 		
 		double relX = insetLegendRelX;
+		if (xAxisInverted)
+			relX = 1d - relX;
 		if (xLog)
 			relX = relLogPos(relX, xRange);
 		double relY = insetLegendRelY;
+		if (yAxisInverted)
+			relY = 1d - relY;
 		if (yLog)
 			relY = relLogPos(relY, yRange);
 		

@@ -903,7 +903,7 @@ public class RSQSimSubSectionMapper {
 				mappedIDs.add((double)sect.getSectionId());
 		}
 		
-		CompoundSurface surfaceToOutline = new CompoundSurface(sectSurfs);
+		CompoundSurface surfaceToOutline = CompoundSurface.get(sectSurfs);
 		
 		double[] dasScalars = new double[mappedElements.size()];
 		

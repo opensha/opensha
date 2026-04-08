@@ -194,6 +194,17 @@ public class DisaggregationPlotViewerWindow extends JFrame implements HyperlinkL
 				infoTabPane.addTab("Consolidated Source List Data", consolidatedSourceListDataScrollPane);
 				consolidatedSourceListDataScrollPane.getViewport().add(consolidatedSourceListDataPane, null);
 //				consolidatedSourceListDataPane.setForeground(Color.blue);
+
+               String contributeExceedMsg = "NOTE: Consolidated entries represent summed contributions across sources that share a common " +
+                           "underlying feature (as defined by the ERF). A single source from the Source List Data tab may " +
+                           "contribute to multiple entries in this list, and the sum of contribution percentages across all consolidated " +
+                           "entries may exceed 100%.\n" +
+                           "\n" +
+                           "A common example is an ERF with multi-fault ruptures, where individual sources represent different combinations of " +
+                           "faults rupturing together. In that case, the consolidated list reports the summed contribution of each individual " +
+                           "fault across all ruptures in which it participates.\n\n";
+                consolidatedSourceDataText = contributeExceedMsg.concat(consolidatedSourceDataText);
+
 				consolidatedSourceListDataPane.setText(consolidatedSourceDataText);
 				consolidatedSourceListDataPane.setEditable(false);
 			}

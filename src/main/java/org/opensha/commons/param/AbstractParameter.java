@@ -184,8 +184,8 @@ public abstract class AbstractParameter<E> implements Parameter<E> {
 		// do not fire the event if new value is same as current value
 		if (this.value != null && this.value.equals(value)) return;
 
-		org.opensha.commons.param.event.ParameterChangeEvent event = new org.opensha.commons.param.event.ParameterChangeEvent(
-			this, getName(), getValue(), value);
+		ParameterChangeEvent event =
+				new ParameterChangeEvent(this, getName(), getValue(), value);
 
 		this.value = value;
 
@@ -346,7 +346,6 @@ public abstract class AbstractParameter<E> implements Parameter<E> {
 	 *        be different.
 	 */
 	public void firePropertyChange(ParameterChangeEvent event) {
-
 		String S = C + ": firePropertyChange(): ";
 		if (D)
 			System.out.println(S + "Firing change event for parameter = " +
@@ -773,9 +772,14 @@ public abstract class AbstractParameter<E> implements Parameter<E> {
 	public String getDependentParamMetadataString() {
 		if (independentParameters.size() > 0) {
 			StringBuffer metadata = new StringBuffer();
-			metadata.append(getName() + " [ ");
+			metadata.append(getName()).append(" [ ");
+			boolean first = true;
 			for (Parameter<?> tempParam : getIndependentParameterList()) {
-				metadata.append(tempParam.getMetadataString() + " ; ");
+				if (first)
+					first = false;
+				else
+					metadata.append(" ; ");
+				metadata.append(tempParam.getMetadataString());
 				/*
 				 * Note that the getmetadatSring is called here rather than the
 				 * getDependentParamMetadataString() method becuase the former
@@ -783,7 +787,7 @@ public abstract class AbstractParameter<E> implements Parameter<E> {
 				 * independent parameters; we may want to change this later on.
 				 */
 			}
-			metadata.replace(metadata.length() - 2, metadata.length(), " ]");
+			metadata.append(" ]");
 			metadataString = metadata.toString();
 		}
 		return metadataString;

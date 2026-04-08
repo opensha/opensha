@@ -16,6 +16,7 @@ import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.io.archive.ArchiveInput;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -161,7 +162,7 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 				if (avgFile.exists()) {
 					// it was
 					debug("AsyncLogicTree: loading external average from "+avgFile.getAbsolutePath());
-					sol = FaultSystemSolution.load(avgFile);
+					sol = FaultSystemSolution.load(new ArchiveInput.ApacheZipFileInput(avgFile));
 				} else {
 					// need to build it here
 					debug("AsyncLogicTree: building average for "+branch);
@@ -172,7 +173,7 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 					sol.write(avgFile);
 				}
 			} else {
-				sol = FaultSystemSolution.load(solFiles.get(0));
+				sol = FaultSystemSolution.load(new ArchiveInput.ApacheZipFileInput(solFiles.get(0)));
 			}
 			return sol;
 		}

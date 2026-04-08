@@ -4,9 +4,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.rmi.RemoteException;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.ListIterator;
 
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -15,6 +13,7 @@ import javax.swing.Timer;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.data.function.WeightedFuncListforPlotting;
 import org.opensha.commons.data.function.XY_DataSetList;
 import org.opensha.commons.gui.DisclaimerDialog;
@@ -24,7 +23,7 @@ import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.impl.DoubleDiscreteParameter;
 import org.opensha.commons.util.bugReports.BugReport;
 import org.opensha.commons.util.bugReports.BugReportDialog;
-import org.opensha.commons.util.bugReports.DefaultExceptoinHandler;
+import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 import org.opensha.sha.calc.SpectrumCalculator;
 import org.opensha.sha.calc.SpectrumCalculatorAPI;
 import org.opensha.sha.earthquake.ERF;
@@ -36,6 +35,7 @@ import org.opensha.sha.gui.beans.IMT_NewGuiBean;
 import org.opensha.sha.gui.controls.ERF_EpistemicListControlPanel;
 import org.opensha.sha.gui.controls.PlottingOptionControl;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
+import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.gui.util.IconFetcher;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.event.ScalarIMRChangeEvent;
@@ -45,9 +45,9 @@ import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
  * @author nitingupta
  *
  */
-public class HazardSpectrumApplication
-extends HazardCurveApplication {
+public class HazardSpectrumApplication extends HazardCurveApplication {
 
+	private static final long serialVersionUID = 1L;
 	public static final String APP_NAME = "Hazard Spectrum Application";
 	public static final String APP_SHORT_NAME = "HazardSpectrumLocal";
 
@@ -60,9 +60,6 @@ extends HazardCurveApplication {
 	private static final String X_AXIS_LABEL = "Period (sec)";
 
 	private IMLorProbSelectorGuiBean imlProbGuiBean;
-
-	//ArrayList that stores the SA Period values for the IMR
-	private List saPeriodVector;
 
 	//Graph Title
 	protected static final String DEFAULT_TITLE = new String("Response Spectra Curves");
@@ -85,6 +82,19 @@ extends HazardCurveApplication {
 		if (calc == null)
 			createCalcInstance();
 		return calc.getAdjustableParams();
+	}
+	
+	/**
+	 *
+	 * @return the Metadata string for the Calculation Settings Adjustable Params
+	 */
+	public String getCalcParamMetadataString(){
+		if (calc == null)
+			return "";
+		ParameterList params = getCalcAdjustableParams();
+		if (params == null)
+			return "";
+		return params.getParameterListMetadataString();
 	}
 
 	/**
@@ -144,7 +154,7 @@ extends HazardCurveApplication {
 			BugReportDialog bugDialog = new BugReportDialog(this, bug, true);
 			bugDialog.setVisible(true);
 		}
-		this.setTitle("Hazard Spectrum Application ("+getAppVersion()+")");
+		this.setTitle("Hazard Spectrum Application ("+getAppVersion().getDisplayString()+")");
 		startAppProgressClass.dispose();
 		( (JPanel) getContentPane()).updateUI();
 		graphWidget.setPlotLabel(DEFAULT_TITLE);
@@ -157,20 +167,17 @@ extends HazardCurveApplication {
 	 * is required for it.
 	 */
 	protected void createCalcInstance(){
-		try{
-			if(calc == null) {
+		try {
+			if (calc == null) {
 				calc = new SpectrumCalculator();
 			}
-
 			/*if(disaggregationFlag)
         if(disaggCalc == null)
           disaggCalc = new DisaggregationCalculator();*/
-		}catch(Exception e){
-
+		} catch (Exception e) {
 			BugReport bug = new BugReport(e, getParametersInfoAsString(), appShortName, getAppVersion(), this);
 			BugReportDialog bugDialog = new BugReportDialog(this, bug, true);
 			bugDialog.setVisible(true);
-			//     e.printStackTrace();
 		}
 	}
 
@@ -187,6 +194,10 @@ extends HazardCurveApplication {
 		numERFsInEpistemicList = 0;
 		BaseERF forecast = null;
 		EqkRupture rupture = null;
+
+		// Check for interrupts before updating the forecast
+		if (isCancelled()) return;
+
 		if (!this.isProbabilisticCurve)
 			rupture = this.erfRupSelectorGuiBean.getRupture();
 
@@ -201,27 +212,31 @@ extends HazardCurveApplication {
 		}
 		catch (Exception e) {
 			e.printStackTrace();
-			JOptionPane.showMessageDialog(this, e.getMessage(), "Incorrect Values",
-					JOptionPane.ERROR_MESSAGE);
+			String message = (e.getMessage() != null)
+					? e.getMessage()
+					: e.toString();
+			JOptionPane.showMessageDialog(this, message,
+					"Incorrect Values", JOptionPane.ERROR_MESSAGE);
 			setButtonsEnable(true);
 			return;
 		}
 		if (this.progressCheckBox.isSelected()) {
 			progressClass = new CalcProgressBar("Response-Spectrum Calc Status",
 			"Beginning Calculation ");
-			progressClass.displayProgressBar();
 			timer.start();
 		}
+
+		// Check for interrupts after updating the forecast
+		if (isCancelled()) return;
 
 		// get the selected IMR
 		ScalarIMR imr = imrGuiBean.getSelectedIMR();
 
-		getSA_PeriodForIMR(imr);
+//		getSA_PeriodForIMR(imr);
 
 		// make a site object to pass to IMR
 		Site site = siteGuiBean.getSite();
 
-		//initialize the values in condProbfunc with log values as passed in hazFunction
 		// intialize the hazard function
 		DiscretizedFunc hazFunction =null;
 
@@ -283,22 +298,24 @@ extends HazardCurveApplication {
 					if(probAtIML)
 						hazFunction = (DiscretizedFunc) calc.getSpectrumCurve(
 								site, imr, (ERF) forecast,
-								imlProbValue,saPeriodVector);
+								Math.log(imlProbValue));
 					else{
-						hazFunction = new ArbitrarilyDiscretizedFunc();
 
-						// initialize the values in condProbfunc with log values as passed in hazFunction
-						initX_Values(hazFunction);
+						// initialize the values hazard curve x values, log domain
+						hazFunction = initX_Values();
 						try {
 
 							hazFunction = calc.getIML_SpectrumCurve(hazFunction,site,imr,
-									(ERF)forecast,imlProbValue,saPeriodVector);
+									(ERF)forecast, imlProbValue);
+							convertLogYtoLinear(hazFunction);
 						}
 						catch (RuntimeException e) {
 							e.printStackTrace();
-							JOptionPane.showMessageDialog(this, e.getMessage(),
-									"Parameters Invalid",
-									JOptionPane.INFORMATION_MESSAGE);
+							if (!isCancelled()) {
+								JOptionPane.showMessageDialog(this, e.getMessage(),
+										"Parameters Invalid",
+										JOptionPane.INFORMATION_MESSAGE);
+							}
 							return;
 						}
 					}
@@ -312,12 +329,14 @@ extends HazardCurveApplication {
 							progressCheckBox.setEnabled(false);
 						}
 					});
-					if (probAtIML)//if the user has selected prob@IML
+					if (probAtIML) {//if the user has selected prob@IML
 						hazFunction = (DiscretizedFunc) calc.getDeterministicSpectrumCurve(
-								site, imr,rupture,  probAtIML, imlProbValue);
-					else //if the user has selected IML@prob
+								site, imr,rupture,  probAtIML, Math.log(imlProbValue));
+					} else {//if the user has selected IML@prob
 						hazFunction = (DiscretizedFunc) calc.getDeterministicSpectrumCurve(
 								site, imr,rupture,probAtIML, imlProbValue);
+						convertLogYtoLinear(hazFunction);
+					}
 					runInEDT(new Runnable() {
 						
 						@Override
@@ -335,12 +354,14 @@ extends HazardCurveApplication {
 				BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
 				bugDialog.setVisible(true);
 			}
-			((ArbitrarilyDiscretizedFunc)hazFunction).setInfo(getParametersInfoAsString());
+			hazFunction.setInfo(getParametersInfoAsString());
 		}
 		catch (RuntimeException e) {
-			JOptionPane.showMessageDialog(this, e.getMessage(),
-					"Parameters Invalid",
-					JOptionPane.INFORMATION_MESSAGE);
+			if (!isCancelled()) {
+				JOptionPane.showMessageDialog(this, e.getMessage(),
+						"Parameters Invalid",
+						JOptionPane.INFORMATION_MESSAGE);
+			}
 			e.printStackTrace();
 			setButtonsEnable(true);
 			return;
@@ -349,6 +370,31 @@ extends HazardCurveApplication {
 
 		// add the function to the function list
 		functionList.add(hazFunction);
+	}
+	
+	/**
+	 * set x values in log space for Hazard Function to be passed to IMR if the
+	 * selected IMT are SA , PGA , PGV or FaultDispl It accepts 1 parameters
+	 * 
+	 * @param originalFunc
+	 *            : this is the function with X values set
+	 */
+	protected LightFixedXFunc initX_Values() {
+
+		// if not using custom values get the function according to IMT.
+		if (!useCustomX_Values)
+			function = imtInfo.getDefaultHazardCurve(SA_Param.NAME);
+
+		double[] xVals = new double[function.size()];
+		for (int i = 0; i < function.size(); ++i)
+			xVals[i] = Math.log(function.getX(i));
+		
+		return new LightFixedXFunc(xVals, new double[xVals.length]);
+	}
+	
+	private void convertLogYtoLinear(DiscretizedFunc func) {
+		for (int i=0; i<func.size(); i++)
+			func.set(i, Math.exp(func.getY(i)));
 	}
 
 	/**
@@ -361,6 +407,7 @@ extends HazardCurveApplication {
 	/**
 	 * Initialize the items to be added to the control list
 	 */
+	@Override
 	protected void initControlList() {
 		initCommonControlList();
 	}
@@ -406,10 +453,11 @@ extends HazardCurveApplication {
 		String name1 = event.getParameterName();
 
 		if (name1.equalsIgnoreCase(this.erfGuiBean.ERF_PARAM_NAME)) {
-
 			String plottingOption = null;
-			if (plotOptionControl != null)
+			if (plotOptionControl != null) {
 				plottingOption = this.plotOptionControl.getSelectedOption();
+			}
+
 			// add the Epistemic control panel option if Epistemic ERF is selected
 			if (erfGuiBean.isEpistemicList()) {
 				showControlPanel(ERF_EpistemicListControlPanel.NAME);
@@ -427,90 +475,77 @@ extends HazardCurveApplication {
 		}
 	}
 
-
 	/**
-	 * this function is called to draw the graph
+	 * Must override the timer to read progress from SpectrumCalculatorAPI
+	 * instead of HazardCurveCalculatorAPI.
 	 */
-	protected void calculate() {
-		setButtonsEnable(false);
-		// do not show warning messages in IMR gui bean. this is needed
-		// so that warning messages for site parameters are not shown when Add graph is clicked
-		//		imrGuiBean.showWarningMessages(false); // TODO need to add this back in
-		if(plotOptionControl !=null){
-			if(this.plotOptionControl.getSelectedOption().equals(PlottingOptionControl.PLOT_ON_TOP))
-				addData = true;
-			else
-				addData = false;
-		}
-		try{
-			createCalcInstance();
-		}catch(Exception e){
-			setButtonsEnable(true);
-			BugReport bug = new BugReport(e, getParametersInfoAsString(), appShortName, getAppVersion(), this);
-			BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
-			bugDialog.setVisible(true);
-		}
-
-		// check if progress bar is desired and set it up if so
-		if(this.progressCheckBox.isSelected())  {
-
-			timer = new Timer(500, new ActionListener() {
-				public void actionPerformed(ActionEvent evt) {
-					try{
-						if(!isEqkList){
-
-							int totRupture = calc.getTotRuptures();
-							int currRupture = calc.getCurrRuptures();
-							if (currRupture != -1)
-								progressClass.updateProgress(currRupture, totRupture);
-
-						}
-						else{
-							if((numERFsInEpistemicList+1) !=0 && !isHazardCalcDone)
-								progressClass.updateProgress(currentERFInEpistemicListForHazardCurve,numERFsInEpistemicList);
-						}
-						if (isHazardCalcDone) {
-							timer.stop();
-							progressClass.dispose();
-							drawGraph();
-						}
-					}catch(Exception e){
-						//e.printStackTrace();
+	@Override
+	protected void startPrimaryTimer() {
+		timer = new Timer(200, new ActionListener() {
+			public void actionPerformed(ActionEvent evt) {
+				try {
+					if (!isEqkList) {
+						int totProgress = calc.getTotalProgressCount();
+						int currProgress = calc.getCurrentProgress();
+						boolean totCurCalculated = currProgress >= 0 && currProgress > 0;
+						if (!isHazardCalcDone && totCurCalculated)
+							progressClass.updateProgress(currProgress,
+									totProgress);
+					} else {
+						if ((numERFsInEpistemicList) != 0)
+							progressClass
+							.updateProgress(
+									currentERFInEpistemicListForHazardCurve,
+									numERFsInEpistemicList);
+					}
+					if (isHazardCalcDone) {
 						timer.stop();
-						setButtonsEnable(true);
-						e.printStackTrace();
-						BugReport bug = new BugReport(e, getParametersInfoAsString(), APP_NAME,
-								getAppVersion(), getApplicationComponent());
-						BugReportDialog bugDialog = new BugReportDialog(getApplicationComponent(), bug, false);
-						bugDialog.setVisible(true);
+						progressClass.dispose();
+						drawGraph();
 					}
-				}
-			});
-
-			calcThread = new Thread(this);
-			calcThread.start();
-		}
-		else {
-			this.computeHazardCurve();
-			this.drawGraph();
-		}
-	}
-
-	/**
-	 * Gets the SA Period Values for the IMR
-	 * @param imr
-	 */
-	private void getSA_PeriodForIMR(ScalarIMR imr) {
-		for (Parameter<?> tempParam : imr.getSupportedIntensityMeasures()) {
-			if (tempParam.getName().equalsIgnoreCase(SA_NAME)) {
-				for (Parameter<?> independentParam: tempParam.getIndependentParameterList()) {
-					if (independentParam.getName().equalsIgnoreCase(SA_PERIOD)) {
-						saPeriodVector = ( (DoubleDiscreteParameter) independentParam).
-						getAllowedDoubles();
-						return;
-					}
+				} catch (Exception e) {
+					timer.stop();
+					setButtonsEnable(true);
+					e.printStackTrace();
+					BugReport bug = new BugReport(e, getParametersInfoAsString(), APP_NAME,
+							getAppVersion(), getApplicationComponent());
+					BugReportDialog bugDialog = new BugReportDialog(getApplicationComponent(), bug, false);
+					bugDialog.setVisible(true);
 				}
 			}
+		});
+	}
+
+//	/**
+//	 * Gets the SA Period Values for the IMR
+//	 * @param imr
+//	 */
+//	private void getSA_PeriodForIMR(ScalarIMR imr) {
+//		for (Parameter<?> tempParam : imr.getSupportedIntensityMeasures()) {
+//			if (tempParam.getName().equalsIgnoreCase(SA_NAME)) {
+//				for (Parameter<?> independentParam: tempParam.getIndependentParameterList()) {
+//					if (independentParam.getName().equalsIgnoreCase(SA_PERIOD)) {
+//						saPeriodVector = ( (DoubleDiscreteParameter) independentParam).
+//						getAllowedDoubles();
+//						return;
+//					}
+//				}
+//			}
+//		}
+//	}
+	
+	@Override
+	protected void cancelCalculation() {
+		super.cancelCalculation();
+		try {
+			if (calc != null) {
+				calc.stopCalc();
+			}
+		} catch (RuntimeException ee) {
+			ee.printStackTrace();
+			BugReport bug = new BugReport(ee, getParametersInfoAsString(), appShortName, getAppVersion(), this);
+			BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
+			bugDialog.setVisible(true);
 		}
 	}
 
@@ -542,7 +577,8 @@ extends HazardCurveApplication {
 
 		XY_DataSetList hazardFuncList = new XY_DataSetList();
 		for (int i = 0; i < numERFsInEpistemicList; ++i) {
-			//current ERF's being used to calculated Hazard Curve
+			if (isCancelled()) return;
+			// current ERF's being used to calculated Hazard Curve
 			currentERFInEpistemicListForHazardCurve = i;
 			DiscretizedFunc hazFunction = null;
 
@@ -551,26 +587,27 @@ extends HazardCurveApplication {
 				if (probAtIML)
 					hazFunction = (DiscretizedFunc) calc.getSpectrumCurve(
 							site, imr, erfList.getERF(i),
-							imlProbValue, saPeriodVector);
+							Math.log(imlProbValue));
 				else {
 					hazFunction = new ArbitrarilyDiscretizedFunc();
 
 					// initialize the values in condProbfunc with log values as passed in hazFunction
-					initX_Values(hazFunction);
+					LightFixedXFunc hazardXVals = initX_Values();
 
-
-					hazFunction = calc.getIML_SpectrumCurve(hazFunction, site, imr,
+					hazFunction = calc.getIML_SpectrumCurve(hazardXVals, site, imr,
 							erfList.getERF(i),
-							imlProbValue, saPeriodVector);
-
-
+							imlProbValue);
+					convertLogYtoLinear(hazFunction);
 				}
 			} catch (RuntimeException e) {
 				//e.printStackTrace();
 				setButtonsEnable(true);
-				JOptionPane.showMessageDialog(this, e.getMessage(),
-						"Parameters Invalid",
-						JOptionPane.INFORMATION_MESSAGE);
+
+				if (!isCancelled()) {
+					JOptionPane.showMessageDialog(this, e.getMessage(),
+							"Parameters Invalid",
+							JOptionPane.INFORMATION_MESSAGE);
+				}
 				return;
 			}
 			//System.out.println("Num points:" +hazFunction.toString());
@@ -618,25 +655,6 @@ extends HazardCurveApplication {
 	}
 
 	/**
-	 * set x values in linear space for Hazard Function to be passed to IMR as IMT is
-	 * always SA
-	 * It accepts 1 parameters
-	 *
-	 * @param originalFunc :  this is the function with X values set
-	 */
-	private void initX_Values(DiscretizedFunc arb){
-
-		//iml@Prob then we have to interpolate over a range of X-Values
-		if (!useCustomX_Values)
-			function = imtInfo.getDefaultHazardCurve(SA_Param.NAME);
-
-
-		for (int i = 0; i < function.size(); ++i)
-			arb.set(function.getX(i), 1);
-	}
-
-
-	/**
 	 *
 	 * @return the String containing the values selected for different parameters
 	 */
@@ -677,13 +695,13 @@ extends HazardCurveApplication {
 	//Main method
 	public static void main(String[] args) throws IOException {
 		new DisclaimerDialog(APP_NAME, APP_SHORT_NAME, getAppVersion());
-		DefaultExceptoinHandler exp = new DefaultExceptoinHandler(
+		DefaultExceptionHandler exp = new DefaultExceptionHandler(
 				APP_SHORT_NAME, getAppVersion(), null, null);
 		Thread.setDefaultUncaughtExceptionHandler(exp);
 		launch(exp);
 	}
 	
-	public static HazardSpectrumApplication launch(DefaultExceptoinHandler handler) {
+	public static HazardSpectrumApplication launch(DefaultExceptionHandler handler) {
 		HazardSpectrumApplication applet = new
 				HazardSpectrumApplication(APP_SHORT_NAME);
 		if (handler != null) {

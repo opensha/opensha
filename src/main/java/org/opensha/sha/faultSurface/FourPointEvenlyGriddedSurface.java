@@ -95,6 +95,11 @@ public class FourPointEvenlyGriddedSurface extends AbstractEvenlyGriddedSurface 
 	}
 
 	@Override
+	public double getAveRupBottomDepth() {
+		return (get(1,0).getDepth()+get(1,1).getDepth())/2;
+	}
+
+	@Override
 	public double getAveStrike() {
 		return getUpperEdge().getAveStrike();
 	}

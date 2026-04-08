@@ -28,6 +28,7 @@ public class EdgeRuptureSurface extends AbstractEvenlyGriddedSurface {
 	
 	private double aveDip;
 	private double aveStrike;
+	private double aveDipDir;
 	private double upperDepth;
 	private double lowerDepth;
 
@@ -121,6 +122,7 @@ public class EdgeRuptureSurface extends AbstractEvenlyGriddedSurface {
 		sameGridSpacing = (float)gridSpacingAlong == (float)gridSpacingDown;
 		aveDip = StatUtils.mean(Doubles.toArray(dips));
 		aveStrike = discrUpperTrace.getAveStrike();
+		aveDipDir = aveStrike + 90d;
 		upperDepth = StatUtils.mean(Doubles.toArray(upperDepths));
 		lowerDepth = StatUtils.mean(Doubles.toArray(lowerDepths));
 		if (D) {
@@ -149,8 +151,13 @@ public class EdgeRuptureSurface extends AbstractEvenlyGriddedSurface {
 	}
 
 	@Override
-	public double getAveDipDirection() {
+	public double getAveRupBottomDepth() {
 		return lowerDepth;
+	}
+
+	@Override
+	public double getAveDipDirection() {
+		return aveDipDir;
 	}
 
 	@Override

@@ -71,6 +71,12 @@ public abstract class WrappedRuptureSurface implements RuptureSurface {
 	}
 
 	@Override
+	public double getAveHorizontalWidth() {
+		// passthrough
+		return surf.getAveHorizontalWidth();
+	}
+
+	@Override
 	public double getArea() {
 		// passthrough
 		return surf.getArea();
@@ -125,12 +131,6 @@ public abstract class WrappedRuptureSurface implements RuptureSurface {
 	}
 
 	@Override
-	public double getDistanceSeis(Location siteLoc) {
-		// passthrough
-		return surf.getDistanceSeis(siteLoc);
-	}
-
-	@Override
 	public double getDistanceX(Location siteLoc) {
 		// passthrough
 		return surf.getDistanceX(siteLoc);
@@ -140,6 +140,12 @@ public abstract class WrappedRuptureSurface implements RuptureSurface {
 	public double getAveRupTopDepth() {
 		// passthrough
 		return surf.getAveRupTopDepth();
+	}
+
+	@Override
+	public double getAveRupBottomDepth() {
+		// passthrough
+		return surf.getAveRupBottomDepth();
 	}
 
 	@Override
@@ -164,6 +170,18 @@ public abstract class WrappedRuptureSurface implements RuptureSurface {
 	public Location getLastLocOnUpperEdge() {
 		// passthrough
 		return surf.getLastLocOnUpperEdge();
+	}
+
+	@Override
+	public Location getFirstLocOnLowerEdge() {
+		// passthrough
+		return surf.getFirstLocOnLowerEdge();
+	}
+
+	@Override
+	public Location getLastLocOnLowerEdge() {
+		// passthrough
+		return surf.getLastLocOnLowerEdge();
 	}
 
 	@Override

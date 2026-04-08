@@ -133,14 +133,14 @@ public class RunInversion {
 //		gen.generateInputs(SparseDoubleMatrix2D.class);
 		
 		// write solution to disk (optional)
-		if (writeMatrixZipFiles) {
-			try {
-				gen.writeZipFile(new File(precomputedDataDir, fileName+"_inputs.zip"), precomputedDataDir, false, true);
-			} catch (IOException e) {
-				// a failure here is actually not the end of the world. just print the trace and move on
-				e.printStackTrace();
-			}
-		}
+//		if (writeMatrixZipFiles) {
+//			try {
+//				gen.writeZipFile(new File(precomputedDataDir, fileName+"_inputs.zip"), precomputedDataDir, false, true);
+//			} catch (IOException e) {
+//				// a failure here is actually not the end of the world. just print the trace and move on
+//				e.printStackTrace();
+//			}
+//		}
 		
 		// column compress it for fast annealing!
 		gen.columnCompress();

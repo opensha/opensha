@@ -10,6 +10,7 @@ import java.util.List;
 
 import org.opensha.commons.data.Point2DToleranceComparator;
 import org.opensha.commons.exceptions.InvalidRangeException;
+import org.opensha.commons.util.Interpolate;
 
 import com.google.common.base.Preconditions;
 
@@ -99,7 +100,8 @@ public class ArbDiscrEmpiricalDistFunc extends ArbitrarilyDiscretizedFunc
      * This returns the x-axis value where the interpolated normalized cumulative
      * distribution equals the specified fraction.  If the fraction is below the Y-
      * value of the first point, then the X value of the first point is returned
-     * (since there is nothing below to interpolate with)
+     * (since there is nothing below to interpolate with).  If there are no points the
+     * zero is returned.
      * @param fraction - a value between 0 and 1.
      * @return
      */
@@ -107,6 +109,9 @@ public class ArbDiscrEmpiricalDistFunc extends ArbitrarilyDiscretizedFunc
 
       if(fraction < 0 || fraction > 1)
         throw new InvalidRangeException("fraction value must be between 0 and 1");
+      
+      if(size()==0)
+    	  return 0.0;
 
       DiscretizedFunc tempCumDist = getNormalizedCumDist();
 
@@ -382,17 +387,17 @@ public class ArbDiscrEmpiricalDistFunc extends ArbitrarilyDiscretizedFunc
 	 * Quick way to get a normalized CDF if that's all you need, which will be faster for large datasets
 	 * than using an actual {@link ArbDiscrEmpiricalDistFunc}.
 	 * @param values
-	 * @param weights
+	 * @param weights (can be null for even-weighting)
 	 * @return
 	 */
 	public static LightFixedXFunc calcQuickNormCDF(double[] values, double[] weights) {
-		Preconditions.checkState(values.length == weights.length);
+		Preconditions.checkState(weights == null || values.length == weights.length);
 		Preconditions.checkState(values.length > 0);
 		
 		ValWeights[] valWeights = new ValWeights[values.length];
 		double totWeight = 0d;
 		for (int j=0; j<valWeights.length; j++) {
-			double weight = weights[j];
+			double weight = weights == null ? 1d : weights[j];
 			totWeight += weight;
 			valWeights[j] = new ValWeights(values[j], weight);
 		}
@@ -435,6 +440,51 @@ public class ArbDiscrEmpiricalDistFunc extends ArbitrarilyDiscretizedFunc
 		}
 
 		return new LightFixedXFunc(xVals, yVals);
+	}
+	
+	/**
+	 * Calculates the value at the given fractile from the given normalized CDF.
+	 * <p>
+	 * Returns NaN if the ncdf only has 1 value, unless the fractile is exactly 0.5 in which case
+	 * the sole value will be returned.
+	 * 
+	 * @param ncdf
+	 * @param fractile
+	 * @return
+	 */
+	public static double calcFractileFromNormCDF(LightFixedXFunc ncdf, double fractile) {
+		int len = ncdf.size();
+		Preconditions.checkState(len > 0, "NormCDF is empty");
+		if (len == 1) {
+			if ((float)fractile == 0.5f)
+				return ncdf.getX(0);
+			return Double.NaN;
+		}
+		double[] yVals = ncdf.getYVals();
+		if (fractile == 0d || fractile <= yVals[0]) {
+			return ncdf.getX(0);
+		} else if (fractile == 1d || fractile >= yVals[len-1]) {
+			return ncdf.getX(len-1);
+		} else {
+			int index = Arrays.binarySearch(yVals, fractile);
+			if (index >= 0) {
+				// unlikely to actually happen with real data
+				return ncdf.getX(index);
+			} else {
+				// insertion index, value below this will be < fractile, value at will be >
+				index = -(index + 1);
+				// these cases should have been taken care of above
+				Preconditions.checkState(index > 0 && index < len,
+						"Unexpected insertion index=%s with len=%s, fractile=%s", index, len, fractile);
+				double v1 = ncdf.getX(index-1);
+				double v2 = ncdf.getX(index);
+				double f1 = ncdf.getY(index-1);
+				double f2 = ncdf.getY(index);
+				Preconditions.checkState(f1<fractile);
+				Preconditions.checkState(f2>fractile);
+				return Interpolate.findX(v1, f1, v2, f2, fractile);
+			}
+		}
 	}
 	
 	private static class ValWeights implements Comparable<ValWeights> {

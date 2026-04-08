@@ -2,41 +2,48 @@ package org.opensha.sha.earthquake.rupForecastImpl;
 
 import static com.google.common.io.Resources.getResource;
 import static com.google.common.io.Resources.readLines;
-import static java.lang.Math.ceil;
-import static java.lang.Math.cos;
 import static java.lang.Math.floor;
 import static java.lang.Math.min;
 import static java.lang.Math.round;
 import static java.lang.Math.sin;
-import static java.lang.Math.sqrt;
-import static java.lang.Math.tan;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.opensha.commons.geo.GeoTools.TO_RAD;
-import static org.opensha.nshmp2.util.NSHMP_Utils.rateToProb;
-import static org.opensha.sha.util.FocalMech.NORMAL;
-import static org.opensha.sha.util.FocalMech.REVERSE;
 import static org.opensha.sha.util.FocalMech.STRIKE_SLIP;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.Iterator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
+import org.apache.commons.math3.util.Precision;
 import org.opensha.commons.calc.magScalingRelations.MagLengthRelationship;
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_MagLengthRelationship;
 import org.opensha.commons.data.Site;
+import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.geo.Location;
-import org.opensha.commons.geo.LocationList;
-import org.opensha.commons.geo.LocationUtils;
-import org.opensha.sha.earthquake.ProbEqkRupture;
+import org.opensha.commons.geo.Region;
+import org.opensha.sha.earthquake.FocalMechanism;
+import org.opensha.sha.earthquake.PointSource;
+import org.opensha.sha.earthquake.PointSource.PoissonPointSource;
 import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.earthquake.rupForecastImpl.PointSource13b.PointSurface13b;
+import org.opensha.sha.earthquake.SiteAdaptiveSource;
+import org.opensha.sha.earthquake.util.GridCellSuperSamplingPoissonPointSourceData;
+import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
+import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
+import org.opensha.sha.faultSurface.utils.PointSurfaceBuilder;
+import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrection;
+import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrections;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
+import org.opensha.sha.util.TectonicRegionType;
 
+import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Iterables;
 
@@ -77,400 +84,339 @@ import com.google.common.collect.Iterables;
  * @author P. Powers
  * @version: $Id$
  */
-public class PointSourceNshm extends ProbEqkSource {
+public class PointSourceNshm extends PoissonPointSource {
 
-  // TODO class will eventually be reconfigured to supply distance metrics
-  // at which point M_FINITE_CUT will be used (and set on invocation)
+	// TODO class will eventually be reconfigured to supply distance metrics
+	// at which point M_FINITE_CUT will be used (and set on invocation)
+	
+	private static final TectonicRegionType trt = TectonicRegionType.ACTIVE_SHALLOW;
 
-  private static final String NAME = "NSHMP Point Source";
-  private static final double M_DEPTH_CUT = 6.5;
-  private static final double[] DEPTHS = new double[] { 5.0, 1.0 };
+	private static final String NAME = "NSHMP Point Source";
+	public static final double M_DEPTH_CUT_DEFAULT = 6.5;
+	public static final double DEPTH_BELOW_M_CUT_DEFAULT = 5d;
+	public static final double DEPTH_ABOVE_M_CUT_DEFAULT = 1d;
+	
+	public static final SurfaceBuilder SURF_BUILDER_DEFAULT = new SurfaceBuilder(
+			M_DEPTH_CUT_DEFAULT, DEPTH_BELOW_M_CUT_DEFAULT, DEPTH_ABOVE_M_CUT_DEFAULT);
 
-  /** Minimum magnitude for finite fault representation. */
-  // public static final double M_FINITE_CUT = 6.0;
+	/** Minimum magnitude for finite fault representation. */
+	// public static final double M_FINITE_CUT = 6.0;
 
-  private static final MagLengthRelationship WC94 =
-      new WC1994_MagLengthRelationship();
+	private static final MagLengthRelationship WC94 = new WC1994_MagLengthRelationship();
+	
+	public PointSourceNshm(Location loc,
+			IncrementalMagFreqDist mfd,
+			double duration,
+			Map<FocalMech, Double> mechWtMap,
+			PointSourceDistanceCorrection distCorr,
+			double minMagForDistCorr) {
+		this(loc, mfd, duration, mechWtMap, SURF_BUILDER_DEFAULT, distCorr, minMagForDistCorr, null);
+	}
+	
+	public PointSourceNshm(Location loc,
+			IncrementalMagFreqDist mfd,
+			double duration,
+			Map<FocalMech, Double> mechWtMap,
+			PointSourceDistanceCorrection distCorr,
+			double minMagForDistCorr,
+			GridCellSupersamplingSettings supersamplingSettings) {
+		this(loc, mfd, duration, mechWtMap, SURF_BUILDER_DEFAULT, distCorr, minMagForDistCorr, supersamplingSettings);
+	}
+	
+	public PointSourceNshm(Location loc,
+			IncrementalMagFreqDist mfd,
+			double duration,
+			Map<FocalMech, Double> mechWtMap,
+			double magCut,
+			double depthBelowMagCut,
+			double depthAboveMagCut,
+			PointSourceDistanceCorrection distCorr,
+			double minMagForDistCorr) {
+		this(loc, mfd, duration, mechWtMap, new SurfaceBuilder(magCut, depthBelowMagCut, depthAboveMagCut), distCorr, minMagForDistCorr, null);
+	}
+	
+	private PointSourceNshm(Location loc,
+			IncrementalMagFreqDist mfd,
+			double duration, 
+			Map<FocalMech, Double> mechWtMap,
+			SurfaceBuilder surfaceBuilder,
+			PointSourceDistanceCorrection distCorr,
+			double minMagForDistCorr,
+			GridCellSupersamplingSettings supersamplingSettings) {
+		super(loc, duration,
+				buildData(loc, mfd, mechWtMap, surfaceBuilder, supersamplingSettings), distCorr, minMagForDistCorr);
+		this.name = NAME;
+	}
+	
+	private static PoissonPointSourceData buildData(Location loc, IncrementalMagFreqDist mfd,
+			Map<FocalMech, Double> mechWtMap, SurfaceBuilder surfaceBuilder,
+			GridCellSupersamplingSettings supersamplingSettings) {
+		PoissonPointSourceData data = PointSource.dataForMFDs(loc, trt, mfd, weightsMap(mechWtMap), surfaceBuilder);
+		if (supersamplingSettings != null) {
+			// assume 0.1 degree gridding (but verify)
+			Preconditions.checkState(multipleOf0p1(loc.lat) && multipleOf0p1(loc.lon),
+					"Assuming gridding of 0.1 degrees for supersampling, but not all locations are on a 0.1 degree grid: %s", loc);
+			Region cell = new Region(new Location(loc.lat-0.05, loc.lon-0.05), new Location(loc.lat+0.05, loc.lon+0.05));
+			data = new GridCellSuperSamplingPoissonPointSourceData(data, loc, cell, supersamplingSettings);
+		}
+		return data;
+	}
+	
+	private static boolean multipleOf0p1(double number) {
+		double factor = number / 0.1;
+		double roundedFactor = Math.round(factor);
+		double reconstructed = roundedFactor * 0.1;
+		return Math.abs(number - reconstructed) < 0.001;
+	}
+	
+	private static Map<FocalMechanism, Double> weightsMap(Map<FocalMech, Double> map) {
+		Map<FocalMechanism, Double> ret = new HashMap<>(map.size());
+		for (FocalMech mech : map.keySet())
+			ret.put(mech.mechanism, map.get(mech));
+		return ret;
+	}
+	
+	public static class SurfaceBuilder implements FocalMechRuptureSurfaceBuilder {
 
-  private Location loc;
-  private IncrementalMagFreqDist mfd;
-  private double duration;
-  private double lgMagDepth;
-  private double smMagDepth;
-  private Map<FocalMech, Double> mechWts;
+		private double depthBelowMagCut;
+		private double depthAboveMagCut;
+		private double magCut;
 
-  private int mechCount; // mechs with weight 1-3;
-  private int ssIdx, revIdx; // normal not needed
-  private int fwIdxLo, fwIdxHi;
+		private SurfaceBuilder(double magCut, double depthBelowMagCut, double depthAboveMagCut) {
+			super();
+			this.magCut = magCut;
+			this.depthBelowMagCut = depthBelowMagCut;
+			this.depthAboveMagCut = depthAboveMagCut;
+		}
 
-  // Rupture indexing: no array index out of bounds are checked, it is assumed
-  // that users will only request values in the range getNumRuptures()-1
-  // Focal mech is determined using the max indices for each type of mech
-  // determined using the Math.ceil(wt) [scales to 1] * num_M
+		@Override
+		public int getNumSurfaces(double magnitude, FocalMech mech) {
+			// this used to return 2, but splitting out FW/HW is now done in the distance correction
+			return 1;
+		}
 
-  /**
-   * Constructs a new point earthquake source.
-   *
-   * @param loc <code>Location</code> of the point source
-   * @param mfd magnitude frequency distribution of the source
-   * @param duration of the parent forecast
-   * @param depths 2 element array of rupture top depths; <code>depths[0]</code>
-   *        used for M&lt;6.5, <code>depths[1]</code> used for M&ge;6.5
-   * @param mechWtMap <code>Map</code> of focal mechanism weights
-   */
-  public PointSourceNshm(Location loc, IncrementalMagFreqDist mfd,
-      double duration, Map<FocalMech, Double> mechWtMap) {
+		@Override
+		public RuptureSurface getSurface(Location loc, double magnitude, FocalMech mech, int surfaceIndex) {
+			Preconditions.checkState(surfaceIndex < 2);
 
-    name = NAME; // super
-    this.loc = loc;
-    this.mfd = mfd;
-    this.duration = duration;
-    smMagDepth = DEPTHS[0];
-    lgMagDepth = DEPTHS[1];
-    this.mechWts = mechWtMap;
+			double zTop = depthForMag(magnitude);
+			double dipRad = mech.dip() * TO_RAD;
+			double widthDD = calcWidth(magnitude, zTop, dipRad);
+			
+			PointSurfaceBuilder builder = new PointSurfaceBuilder(loc);
+			builder.upperDepthWidthAndDip(zTop, widthDD, mech.dip());
+			builder.magnitude(magnitude);
+			builder.length(calcLength(magnitude));
+			
+			return builder.buildPointSurface();
+		}
 
-    // rupture indexing
-    mechCount = countMechs(mechWtMap);
-    setIndices();
+		@Override
+		public double getSurfaceWeight(double magnitude, FocalMech mech, int surfaceIndex) {
+			// splitting out FW/HW is now done in the distance correction
+			return 1d;
+		}
 
-  }
+		@Override
+		public boolean isSurfaceFinite(double magnitude, FocalMech mech, int surfaceIndex) {
+			// always point source
+			return false;
+		}
 
-  @Override
-  public ProbEqkRupture getRupture(int idx) {
-    if (idx > getNumRuptures() - 1 || idx < 0)
-      throw new RuntimeException("index out of bounds");
-    ProbEqkRupture probEqkRupture = new ProbEqkRupture();
-    PointSurfaceNshm surface = new PointSurfaceNshm(loc); // mutable, possibly
-    // depth varying
+		@Override
+		public Location getHypocenter(Location sourceLoc, RuptureSurface rupSurface) {
+			double depth = 0.5*(rupSurface.getAveRupTopDepth() + rupSurface.getAveRupBottomDepth());
+			return new Location(sourceLoc.lat, sourceLoc.lon, depth);
+		}
 
-    FocalMech mech = mechForIndex(idx);
-    double wt = mechWts.get(mech);
-    if (mech != STRIKE_SLIP) wt *= 0.5;
-    int magIdx = idx % mfd.size();
-    double mag = mfd.getX(magIdx);
-    double zTop = depthForMag(mag);
-    double dipRad = mech.dip() * TO_RAD;
-    double widthDD = calcWidth(mag, zTop, dipRad);
-    double zHyp = zTop + sin(dipRad) * widthDD / 2.0;
+		/**
+		 * Returns the rupture depth to use for the supplied magnitude.
+		 * @param mag of interest
+		 * @return the associated depth of rupture
+		 */
+		public double depthForMag(double mag) {
+			return (mag >= magCut) ? depthAboveMagCut : depthBelowMagCut;
+		}
+		
+		public double calcLength(double mag) {
+			return WC94.getMedianLength(mag);
+		}
 
-    surface.setAveDip(mech.dip()); // technically not needed
-    surface.widthDD = widthDD;
-    surface.widthH = widthDD * cos(dipRad);
-    surface.zTop = zTop;
-    surface.zBot = zTop + widthDD * sin(dipRad);
-    surface.footwall = isOnFootwall(idx);
-    surface.mag = mag; // KLUDGY needed for distance correction
+		/**
+		 * Returns the minimum of the aspect ratio width (based on WC94) length and
+		 * the allowable down-dip width.
+		 *
+		 * @param mag
+		 * @param depth
+		 * @param dipRad (in radians)
+		 * @return
+		 */
+		public double calcWidth(double mag, double depth, double dipRad) {
+			double length = calcLength(mag);
+			double aspectWidth = length / 1.5;
+			double ddWidth = (14.0 - depth) / sin(dipRad);
+			return min(aspectWidth, ddWidth);
+		}
+		
+	}
 
-    probEqkRupture.setPointSurface(surface);
-    probEqkRupture.setMag(mag);
-    probEqkRupture.setAveRake(mech.rake());
-    double rate = wt * mfd.getY(magIdx);
-    probEqkRupture.setProbability(rateToProb(rate, duration));
-    probEqkRupture.setHypocenterLocation(new Location(loc.getLatitude(),
-        loc.getLongitude(), zHyp));
+	private static final Splitter SPLITTER = Splitter.on(" ").omitEmptyStrings().trimResults();
 
-    return probEqkRupture;
-  }
+	private static final String MAG_ID = "#Mag";
+	private static final String COMMENT_ID = "#";
+	private static final double RJB_M_MIN = 6.05;
+	private static final double RJB_M_CUTOFF = 6.0;
+	private static final double RJB_M_DELTA = 0.1;
+	private static final int RJB_M_SIZE = 26;
+	private static final int RJB_M_MAX_INDEX = RJB_M_SIZE - 1;
+	private static final int RJB_R_SIZE = 1001;
+	private static final int RJB_R_MAX_INDEX = RJB_R_SIZE - 1;
+	private static final String RJB_DAT_DIR = "data/nshmp/";
+	private static final double[][] RJB_WC94LENGTH = readRjb("rjb_wc94length.dat");
 
-  /*
-   * Overriden due to uncertainty on how getRuptureList() is constructed in
-   * parent. Looks clunky and uses cloning which can be error prone if
-   * implemented incorrectly. Was building custom NSHMP calculator using
-   * enhanced for-loops and was losing class information when iterating over
-   * sources and ruptures.
-   */
-  @Override
-  public List<ProbEqkRupture> getRuptureList() {
-    throw new UnsupportedOperationException(
-        "A PointSource does not allow access to the list " + "of all possible ruptures.");
-  }
-
-  @Override
-  public Iterator<ProbEqkRupture> iterator() {
-    // @formatter:off
-		return new Iterator<ProbEqkRupture>() {
-			int size = getNumRuptures();
-			int caret = 0;
-			@Override public boolean hasNext() {
-				return caret < size;
+	/* package visibility for testing */
+	static double[][] readRjb(String resource) {
+		double[][] rjbs = new double[RJB_M_SIZE][RJB_R_SIZE];
+		URL url = getResource(RJB_DAT_DIR + resource);
+		List<String> lines = null;
+		try {
+			lines = readLines(url, UTF_8);
+		} catch (IOException ioe) {
+			throw new RuntimeException(ioe);
+		}
+		int magIndex = -1;
+		int rIndex = 0;
+		for (String line : lines) {
+			if (line.trim().isEmpty()) {
+				continue;
 			}
-			@Override public ProbEqkRupture next() {
-				return getRupture(caret++);
+			if (line.startsWith(MAG_ID)) {
+				magIndex++;
+				rIndex = 0;
+				continue;
 			}
-			@Override public void remove() {
-				throw new UnsupportedOperationException();
+			if (line.startsWith(COMMENT_ID)) {
+				continue;
 			}
-		};
-		// @formatter:on
-  }
+			rjbs[magIndex][rIndex++] = readDouble(line, 1);
+		}
+		return rjbs;
+	}
 
-  @Override
-  public LocationList getAllSourceLocs() {
-    LocationList locList = new LocationList();
-    locList.add(loc);
-    return locList;
-  }
+	private static double readDouble(String s, int position) {
+		return Double.valueOf(Iterables.get(SPLITTER.split(s), position));
+	}
 
-  @Override
-  public RuptureSurface getSourceSurface() {
-    return new PointSurface13b(loc);
-  }
+	/**
+	 * The rjb lookup tables span the magnitude range [6.05..8.55] and distance
+	 * range [0..1000] km. For M<6 and distances > 1000, lookups return the
+	 * supplied distance. For M>8.6, lookups return the corrected distance for
+	 * M=8.55. NOTE that no NaN or ±INFINITY checking is done in this class. This
+	 * would have to be added for a public api, but we are operating on the
+	 * assumption that data from mfds and upstream distance calculations and
+	 * dimensioning will have already been checked for odd values.
+	 */
+	public static class DistanceCorrection2013 implements PointSourceDistanceCorrection {
 
-  @Override
-  public int getNumRuptures() {
-    return mfd.size() * mechCount;
-  }
+		public double getCorrectedDistanceJB(Location siteLoc, double mag, PointSurface surf, double horzDist) {
+			if (mag < RJB_M_CUTOFF) {
+				return horzDist;
+			}
+			int mIndex = min((int) round((mag - RJB_M_MIN) / RJB_M_DELTA), RJB_M_MAX_INDEX);
+			int rIndex = min(RJB_R_MAX_INDEX, (int) floor(horzDist));
+			return RJB_WC94LENGTH[mIndex][rIndex];
+		}
+		
+		public double getCorrectedDistanceRup(double rJB, double zTop, double zBot, double dipRad, double horzWidth, boolean footwall) {
+			// this is the (buggy) distance correction used by the USGS NSHM in 2013 and at least through 2023; it is labeled
+			// 2013 because it was implemented in OpenSHA for the 2013 update.
+			// It can return unphysical values, e.g., where rRup < zTop. See https://github.com/opensha/opensha/issues/124
+			if (footwall) return hypot2(rJB, zTop);
 
-  @Override
-  public double getMinDistance(Site site) {
-    return LocationUtils.horzDistanceFast(site.getLocation(), loc);
-  }
+			double rCut = zBot * Math.tan(dipRad);
 
-  /**
-   * Returns ths <code>Location</code> of this source.
-   * @return the source <code>Location</code>
-   */
-  public Location getLocation() {
-    return loc;
-  }
+			if (rJB > rCut) return hypot2(rJB, zBot);
 
-  /**
-   * Returns the minimum of the aspect ratio width (based on WC94) length and
-   * the allowable down-dip width.
-   *
-   * @param mag
-   * @param depth
-   * @param dipRad (in radians)
-   * @return
-   */
-  private double calcWidth(double mag, double depth, double dipRad) {
-    double length = WC94.getMedianLength(mag);
-    double aspectWidth = length / 1.5;
-    double ddWidth = (14.0 - depth) / sin(dipRad);
-    return min(aspectWidth, ddWidth);
-  }
+			// rRup when rJB is 0 -- we take the minimum of the site-to-top-edge
+			// and site-to-normal of rupture for the site being directly over
+			// the down-dip edge of the rupture
+			double rRup0 = Math.min(hypot2(horzWidth, zTop), zBot * Math.cos(dipRad));
+			// rRup at cutoff rJB
+			double rRupC = zBot / Math.cos(dipRad);
+			// scale linearly with rJB distance
+			return (rRupC - rRup0) * rJB / rCut + rRup0;
+		}
+		
+		@Override
+		public String toString() {
+			return PointSourceDistanceCorrections.NSHM_2013.getName();
+		}
 
-  /**
-   * Returns the focal mechanism of the rupture at the supplied index.
-   * @param idx of the rupture of interest
-   * @return the associated focal mechanism
-   */
-  private FocalMech mechForIndex(int idx) {
-    // iteration order is always SS -> REV -> NOR
-    return (idx < ssIdx) ? STRIKE_SLIP : (idx < revIdx) ? REVERSE : NORMAL;
-  }
-
-  /**
-   * Returns whether the rupture at index should be on the footwall (i.e. have
-   * its rX value set negative). Strike-slip mechs are marked as footwall to
-   * potentially short circuit GMPE calcs. Because the index order is SS-FW
-   * RV-FW RV-HW NR-FW NR-HW
-   */
-  private boolean isOnFootwall(int idx) {
-    return (idx < fwIdxLo) ? true : (idx < revIdx) ? false : (idx < fwIdxHi) ? true : false;
-  }
-
-  /**
-   * Returns the rupture depth to use for the supplied magnitude.
-   * @param mag of interest
-   * @return the associated depth of rupture
-   */
-  private double depthForMag(double mag) {
-    return (mag >= M_DEPTH_CUT) ? lgMagDepth : smMagDepth;
-  }
-
-  /**
-   * This is misnamed; we're double counting reverse and normal mechs because
-   * they will have hanging wall and footwall representations.
-   */
-  private static int countMechs(Map<FocalMech, Double> map) {
-    int count = 0;
-    for (FocalMech mech : map.keySet()) {
-      double wt = map.get(mech);
-      if (wt == 0.0) continue;
-      count += (mech == STRIKE_SLIP) ? 1 : 2;
-    }
-    return count;
-  }
-
-  private void setIndices() {
-    int nMag = mfd.size();
-    int ssCount = (int) ceil(mechWts.get(STRIKE_SLIP)) * nMag;
-    int revCount = (int) ceil(mechWts.get(REVERSE)) * nMag * 2;
-    int norCount = (int) ceil(mechWts.get(NORMAL)) * nMag * 2;
-    ssIdx = ssCount;
-    revIdx = ssCount + revCount;
-    fwIdxLo = ssCount + revCount / 2;
-    fwIdxHi = ssCount + revCount + norCount / 2;
-  }
-
-  /*
-   * Overrides using point location for depth information
-   */
-  public static class PointSurfaceNshm extends PointSurface {
-
-    private double widthH; // horizontal width (surface projection)
-    private double widthDD; // down-dip width
-    private double zTop;
-    private double zBot; // base of rupture; may be less than 14km
-
-    private double mag;
-
-    private boolean footwall;
-
-    public PointSurfaceNshm(Location loc) {
-      super(loc);
-    }
-
-    @Override
-    public double getAveRupTopDepth() {
-      return getDepth();
-    }
-
-    @Override
-    public double getDepth() {
-      // overridden to not key depth to point location
-      return zTop;
-    }
-
-    @Override
-    public void setDepth(double depth) {
-      // overridden to not cause creation of new Location in parent
-      zTop = depth;
-    }
-
-    @Override
-    public double getAveWidth() {
-      return widthDD;
-    }
-
-    @Override
-    public double getDistanceJB(Location loc) {
-      /*
-       * In debugging point sources, found that updated PointSourceNshm had
-       * synchronization issues with respect to setting rupture properties on a
-       * single shared instance of the corrsponding surface. Reverted to
-       * PointSource13b-like implementation that creates a new surface for each
-       * rupture when iterating.
-       *
-       * Also found that an update to the point source distance correction
-       * algorithm (by Steve Harmsen) never made it's way into OpenSHA. This
-       * class now loads and uses the updated rjb correction file instead of
-       * delegating to the parent class as before. This could be refactored as a
-       * new PtSrcDistanceCorr type.
-       */
-      double djb = LocationUtils.horzDistanceFast(getLocation(), loc);
-      return correctedRjb(mag, djb);
-    }
-
-    @Override
-    public double getDistanceX(Location loc) {
-      double rJB = getDistanceJB(loc);
-      return footwall ? -rJB : rJB + widthH;
-    }
-
-    @Override
-    public double getDistanceRup(Location loc) {
-      double rJB = getDistanceJB(loc);
-
-      return getDistanceRup(rJB);
-    }
-    
-    public double getDistanceRup(double rJB) {
-        if (footwall) return hypot2(rJB, zTop);
-
-        double dipRad = aveDip * TO_RAD;
-        double rCut = zBot * tan(dipRad);
-
-        if (rJB > rCut) return hypot2(rJB, zBot);
-
-        // rRup when rJB is 0 -- we take the minimum the site-to-top-edge
-        // and site-to-normal of rupture for the site being directly over
-        // the down-dip edge of the rupture
-        double rRup0 = min(hypot2(widthH, zTop), zBot * cos(dipRad));
-        // rRup at cutoff rJB
-        double rRupC = zBot / cos(dipRad);
-        // scale linearly with rJB distance
-        return (rRupC - rRup0) * rJB / rCut + rRup0;
-    }
-
-    public boolean isOnFootwall() {
-      return footwall;
-    }
-
-    /**
-     * Same as {@code Math.hypot()} without regard to under/over flow.
-     */
-    private static final double hypot2(double v1, double v2) {
-      return sqrt(v1 * v1 + v2 * v2);
-    }
-
-  }
-
-  private static final Splitter SPLITTER = Splitter.on(" ").omitEmptyStrings().trimResults();
-
-  private static final String MAG_ID = "#Mag";
-  private static final String COMMENT_ID = "#";
-  private static final double RJB_M_MIN = 6.05;
-  private static final double RJB_M_CUTOFF = 6.0;
-  private static final double RJB_M_DELTA = 0.1;
-  private static final int RJB_M_SIZE = 26;
-  private static final int RJB_M_MAX_INDEX = RJB_M_SIZE - 1;
-  private static final int RJB_R_SIZE = 1001;
-  private static final int RJB_R_MAX_INDEX = RJB_R_SIZE - 1;
-  private static final String RJB_DAT_DIR = "data/nshmp/";
-  private static final double[][] RJB_WC94LENGTH = readRjb("rjb_wc94length.dat");
-
-  /* package visibility for testing */
-  static double[][] readRjb(String resource) {
-    double[][] rjbs = new double[RJB_M_SIZE][RJB_R_SIZE];
-    URL url = getResource(RJB_DAT_DIR + resource);
-    List<String> lines = null;
-    try {
-      lines = readLines(url, UTF_8);
-    } catch (IOException ioe) {
-      throw new RuntimeException(ioe);
-    }
-    int magIndex = -1;
-    int rIndex = 0;
-    for (String line : lines) {
-      if (line.trim().isEmpty()) {
-        continue;
-      }
-      if (line.startsWith(MAG_ID)) {
-        magIndex++;
-        rIndex = 0;
-        continue;
-      }
-      if (line.startsWith(COMMENT_ID)) {
-        continue;
-      }
-      rjbs[magIndex][rIndex++] = readDouble(line, 1);
-    }
-    return rjbs;
-  }
-
-  private static double readDouble(String s, int position) {
-    return Double.valueOf(Iterables.get(SPLITTER.split(s), position));
-  }
-
-  /*
-   * The rjb lookup tables span the magnitude range [6.05..8.55] and distance
-   * range [0..1000] km. For M<6 and distances > 1000, lookups return the
-   * supplied distance. For M>8.6, lookups return the corrected distance for
-   * M=8.55. NOTE that no NaN or ±INFINITY checking is done in this class. This
-   * would have to be added for a public api, but we are operating on the
-   * assumption that data from mfds and upstream distance calulations and
-   * dimensioning will have already been checked for odd values.
-   */
-
-  public static double correctedRjb(double m, double r) {
-    if (m < RJB_M_CUTOFF) {
-      return r;
-    }
-    int mIndex = min((int) round((m - RJB_M_MIN) / RJB_M_DELTA), RJB_M_MAX_INDEX);
-    int rIndex = min(RJB_R_MAX_INDEX, (int) floor(r));
-    return RJB_WC94LENGTH[mIndex][rIndex];
-  }
+		@Override
+		public WeightedList<SurfaceDistances> getCorrectedDistances(Location siteLoc, PointSurface surf,
+				TectonicRegionType trt, double mag, double horzDist) {
+			if (trt == TectonicRegionType.SUBDUCTION_SLAB) {
+				// NSHM13 always treats slab ruptures as true point sources
+				double corrJB = horzDist;
+				double zTop = surf.getAveRupTopDepth();
+				double rRup = hypot2(corrJB, zTop);
+				double rX = -corrJB;
+				return WeightedList.evenlyWeighted(
+						new SurfaceDistances.Precomputed(siteLoc, rRup, corrJB, rX));
+			}
+			// note: nshmp-haz still uses all of this logic for M<6, just with corrJB == horzDist, which will happen
+			// in getCorrectedDistanceJB
+			double corrJB = getCorrectedDistanceJB(siteLoc, mag, surf, horzDist);
+			
+			double dip = surf.getAveDip();
+			
+			double zTop = surf.getAveRupTopDepth();
+			
+			if (Precision.equals(90d, dip, 0.1)) {
+				// vertical, simple case
+				
+				double rRup = getCorrectedDistanceRup(corrJB, zTop, Double.NaN, PI_HALF, Double.NaN, true);
+				
+				double rX = -corrJB; // footwall is set to 'true' for SS ruptures in order to short-circuit GMPE calcs
+				
+//				System.out.println("CORR13 vertical for rEpi="+horzDist+"; rJB="+corrJB
+//						+"; rRup="+rRup+", rX="+rX);
+				
+				return WeightedList.evenlyWeighted(
+						new SurfaceDistances.Precomputed(siteLoc, rRup, corrJB, rX));
+			} else {
+				// dipping, return one on and one off the footwall
+				double zBot = surf.getAveRupBottomDepth();
+				double horzWidth = surf.getAveHorizontalWidth();
+				
+				double dipRad = Math.toRadians(dip);
+				
+				double rRupFW = getCorrectedDistanceRup(corrJB, zTop, zBot, dipRad, horzWidth, true);
+				double rRupHW = getCorrectedDistanceRup(corrJB, zTop, zBot, dipRad, horzWidth, false);
+				
+				double rX_FW = -corrJB;
+				double rX_HW = corrJB + horzWidth;
+				
+//				System.out.println("CORR13 dipping for rEpi="+horzDist+"; rJB="+corrJB
+//						+"; footwall rRup="+rRupFW+", rX="+rX_FW+"; hanging wall rRup="+rRupHW+", rX="+rX_HW);
+				
+				// evenly-weight them. this is valid if rJB is large but a bad approximation close in, but it's what is
+				// (hopefully to become 'was') done in the NSHM
+				return WeightedList.evenlyWeighted(
+						new SurfaceDistances.Precomputed(siteLoc, rRupFW, corrJB, rX_FW),
+						new SurfaceDistances.Precomputed(siteLoc, rRupHW, corrJB, rX_HW));
+			}
+		}
+		
+	}
+	
+	private static final double PI_HALF = Math.PI/2d; // 90 degrees
+	
+	/**
+	 * Same as {@code Math.hypot()} without regard to under/over flow.
+	 */
+	private static final double hypot2(double v1, double v2) {
+		return Math.sqrt(v1 * v1 + v2 * v2);
+	}
 
 }

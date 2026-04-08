@@ -62,7 +62,7 @@ public class BugReportDialog extends JDialog implements ActionListener, Hyperlin
 	private static final String submitButtonTextKnownBug = "<html><center><b>I read the above and still want to " +
 			"submit a report.</font></b><br><font size=-1>(will open in web browser)</center></html>";
 	private JButton submitBugButton = new JButton(submitButtonTextDefault);
-	private JButton technicalButton = new JButton("View Techical Details");
+	private JButton technicalButton = new JButton("View Technical Details");
 	
 	private boolean canIgnore = false;
 	

@@ -16,6 +16,7 @@ public class UnmodifiableDiscrFunc extends AbstractDiscretizedFunc {
 	public UnmodifiableDiscrFunc(DiscretizedFunc func) {
 		this.func = func.deepClone();
 		setName(func.getName());
+		setInfo(func.getInfo());
 	}
 
 	@Override

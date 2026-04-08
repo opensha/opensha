@@ -2,17 +2,11 @@ package org.opensha.commons.gui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Container;
-import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.URL;
-import java.util.ArrayList;
 import java.util.prefs.Preferences;
 
 import javax.swing.Box;
@@ -24,9 +18,7 @@ import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
 import javax.swing.JTextPane;
-import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.event.HyperlinkEvent;
@@ -35,7 +27,6 @@ import javax.swing.event.HyperlinkListener;
 
 import org.opensha.commons.util.ApplicationVersion;
 import org.opensha.commons.util.BrowserUtils;
-import org.opensha.commons.util.FileUtils;
 import org.opensha.ui.components.Resources;
 
 /**
@@ -152,8 +143,8 @@ public class DisclaimerDialog extends JDialog implements ActionListener {
 		sb.append("<html><body style='font: sans-serif;'>");
 		sb.append("<div style='text-align: center'>");
 		sb.append("<br/><br/><br/><br/>Please see:<br/><br/>");
-		sb.append("<a href='http://www.opensha.org/license'>");
-		sb.append("http://www.opensha.org/license");
+		sb.append("<a href='https://opensha.org/License-Disclaimer'>");
+		sb.append("https://opensha.org/License-Disclaimer");
 		sb.append("</a><br/><br/>for license and disclaimer information.");
 		sb.append("</div></body></html>");
 		return sb.toString();
@@ -190,48 +181,6 @@ public class DisclaimerDialog extends JDialog implements ActionListener {
 		scroller.setOpaque(false);
 		return scroller;
 	}
-	
-// TODO clean
-//	public static String getLicense() {
-//		String license;
-//		try {
-//			license = loadLicense();
-//		} catch (Exception e) {
-//			e.printStackTrace();
-//			license = "Could not load License/Disclaimer. Please see http://www.opensha.org to obtain" +
-//					" the latest License/Disclaimer.";
-//		}
-//		return license;
-//	}
-//	
-//	private static String loadLicense() throws IOException {
-//		String license = "";
-//		
-//		String fileName = "LICENSE.html";
-//		ArrayList<String> lines = null;
-//		if (new File(fileName).exists()) {
-//			// this will work from a working copy
-//			lines = FileUtils.loadFile(fileName, false);
-//		} else {
-//			// this will work from a jar
-//			URL url = DisclaimerDialog.class.getResource("/"+fileName);
-//			if (url == null)
-//				throw new FileNotFoundException("could not load license!");
-//			lines = FileUtils.loadFile(url);
-//		}
-//		for (String line : lines) {
-//			line = line.trim();
-//			license += line + "\n";
-//		}
-//		
-//		if (D) System.out.println("----- Loaded license -----\n"+license);
-//		
-//		return license;
-//	}
-	
-//	private String getPrefKey() {
-//		return getPrefKey(shortName);
-//	}
 	
 	private static String getPrefKey(String shortName) {
 		return prefPrefix + shortName;

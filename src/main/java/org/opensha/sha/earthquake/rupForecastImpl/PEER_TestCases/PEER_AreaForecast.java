@@ -10,11 +10,14 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.sha.earthquake.AbstractERF;
+import org.opensha.sha.earthquake.FocalMechanism;
+import org.opensha.sha.earthquake.PointSource;
+import org.opensha.sha.earthquake.PointSource.PoissonPointSource;
 import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.param.MagFreqDistParameter;
+import org.opensha.sha.util.TectonicRegionType;
 
 
 /**
@@ -32,6 +35,8 @@ public class PEER_AreaForecast extends AbstractERF{
   //for Debug purposes
   private static String  C = new String("PEER_AreaForecast");
   private boolean D = false;
+  
+  private static final TectonicRegionType TRT = TectonicRegionType.ACTIVE_SHALLOW;
 
   //name for this classs
   public final static String  NAME = "PEER Area Forecast";
@@ -40,7 +45,7 @@ public class PEER_AreaForecast extends AbstractERF{
   private GutenbergRichterMagFreqDist dist_GR;
 
   // this is the source
-  private PointEqkSource pointPoissonEqkSource;
+  private PoissonPointSource pointPoissonEqkSource;
 
 
   /**
@@ -117,6 +122,9 @@ public class PEER_AreaForecast extends AbstractERF{
 
   //Mag Freq Dist Parameter
   MagFreqDistParameter magDistParam ;
+private IncrementalMagFreqDist dist;
+private double rake;
+private double dip;
 
 
   /**
@@ -197,7 +205,7 @@ public class PEER_AreaForecast extends AbstractERF{
 //      System.out.println(((GutenbergRichterMagFreqDist)magDistParam.getValue()).getName());
 //      dist_GR = (GutenbergRichterMagFreqDist) ((GutenbergRichterMagFreqDist)magDistParam.getValue()).deepClone();
       dist_GR = (GutenbergRichterMagFreqDist)magDistParam.getValue();
-      IncrementalMagFreqDist dist = new IncrementalMagFreqDist(dist_GR.getMinX(), dist_GR.getMaxX(), dist_GR.size());
+      dist = new IncrementalMagFreqDist(dist_GR.getMinX(), dist_GR.getMaxX(), dist_GR.size());
 
 //      double cumRate = dist_GR.getCumRate((int) 0);
 //      cumRate /= numLocs;
@@ -205,12 +213,12 @@ public class PEER_AreaForecast extends AbstractERF{
     	  dist.set(i, dist_GR.getY(i)/numLocs);
  //     dist_GR.scaleToCumRate(0,cumRate);
 
-      double rake = ((Double) rakeParam.getValue()).doubleValue();
-      double dip = ((Double) dipParam.getValue()).doubleValue();
+      rake = ((Double) rakeParam.getValue()).doubleValue();
+      dip = ((Double) dipParam.getValue()).doubleValue();
 
       // Dip is hard wired at 90 degrees
-      pointPoissonEqkSource = new PointEqkSource(new Location(0,0,0),
-          dist, timeSpan.getDuration(), rake, dip);
+//      pointPoissonEqkSource = new PointEqkSource(new Location(0,0,0),
+//          dist, timeSpan.getDuration(), rake, dip);
 
       if (D) System.out.println(C+" updateForecast(): rake="+pointPoissonEqkSource.getRupture(0).getAveRake() +
                           "; dip="+ pointPoissonEqkSource.getRupture(0).getRuptureSurface().getAveDip());
@@ -224,9 +232,9 @@ public class PEER_AreaForecast extends AbstractERF{
 
 
   /**
-   * Return the earhthquake source at index i. This methos returns the reference to
+   * Return the earthquake source at index i. This method returns the reference to
    * the class variable. So, when you call this method again, result from previous
-   * method call may no longer bevalid.
+   * method call may no longer be valid.
    * this is secret, fast but dangerous method
    *
    * @param iSource : index of the source needed
@@ -236,7 +244,11 @@ public class PEER_AreaForecast extends AbstractERF{
    */
   public ProbEqkSource getSource(int iSource) {
 
-    pointPoissonEqkSource.setLocation(locationList.get(iSource));
+	  pointPoissonEqkSource = PointSource.poissonBuilder(locationList.get(iSource))
+    		  .truePointSources()
+    		  .forMFDAndFocalMech(dist, new FocalMechanism(Double.NaN, dip, rake), TRT)
+    		  .duration(timeSpan.getDuration())
+    		  .build();
     pointPoissonEqkSource.setDuration(timeSpan.getDuration());
 
     if (D) System.out.println(iSource + "th source location: "+ locationList.get(iSource).toString() +

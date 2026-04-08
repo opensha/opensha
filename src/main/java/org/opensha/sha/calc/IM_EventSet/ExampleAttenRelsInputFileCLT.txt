@@ -1,0 +1,30 @@
+# "Abrahamson, Silva & Kamai (2014)"
+# "Boore, Stewart, Seyhan & Atkinson (2014)"
+# "Campbell & Bozorgnia (2014)"
+# "Chiou & Youngs (2014)"
+# "Idriss (2014)"
+# "Campbell & Bozorgnia (2008)"
+# "Boore & Atkinson (2008)"
+# "Abrahamson & Silva (2008)"
+# "Chiou & Youngs (2008)"
+# "Boore & Atkinson (2006)"
+# "Chiou & Youngs (2006)"
+# "Campbell & Bozorgnia (2006)"
+# "Abrahamson & Silva (1997)"
+# "Boore, Joyner & Fumal (1997)"
+# "Campbell (1997) w/ erratum (2000) changes"
+# "Campbell and Bozorgnia (2003)"
+# "Field (2000)"
+# "Sadigh et al (1997)"
+# "SEA (Spudich et al., 1997)"
+# "ShakeMap (2003)"
+# "Choi & Stewart (2005)"
+# "Abrahamson (2000)"
+# "Baturay and Stewart (2003)"
+# "Bazzuro and Cornell (2004)"
+# "Goulet Et. Al. (2006)"
+# Click links at the side of the following link for some details:
+# https://www.opensha.org/Glossary#attenuation-relationship
+Boore & Atkinson (2008)
+Chiou & Youngs (2008)
+Campbell & Bozorgnia (2008)

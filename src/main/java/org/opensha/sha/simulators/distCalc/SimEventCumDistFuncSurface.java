@@ -42,6 +42,7 @@ public class SimEventCumDistFuncSurface implements CacheEnabledSurface {
 	
 	private double dip = Double.NaN;
 	private double zTOR = Double.NaN;
+	private double zBOT = Double.NaN;
 	private double ddw = Double.NaN;
 	private double area = Double.NaN;
 	private LocationElementDistanceCacheFactory locCacheFactory;
@@ -115,8 +116,10 @@ public class SimEventCumDistFuncSurface implements CacheEnabledSurface {
 					double sectDip = sectDipsMap.values().iterator().next() / sectWeights.values().iterator().next();
 					zTOR = depths[0];
 					ddw = (depths[1]-depths[0])/Math.sin(sectDip*Math.PI/ 180);
+					zBOT = depths[1];
 				} else {
 					double sumZtors = 0d;
+					double sumZbots = 0d;
 					double sumDDWs = 0d;
 					double sumWeights = 0d;
 					for (int id : sectDepthsMap.keySet()) {
@@ -124,13 +127,15 @@ public class SimEventCumDistFuncSurface implements CacheEnabledSurface {
 						double weight = sectWeights.get(id);
 						double dip = sectDipsMap.get(id)/weight;
 						double ddw = (depths[1]-depths[0])/Math.sin(dip*Math.PI/ 180);
-						
+
 						sumZtors += depths[0]*weight;
+						sumZbots += depths[1]*weight;
 						sumDDWs += ddw*weight;
 						sumWeights += weight;
 					}
 					zTOR = sumZtors/sumWeights;
 					ddw = sumDDWs/sumWeights;
+					zBOT = sumZbots/sumWeights;
 				}
 				this.area = area*1e-6;
 				if (zTOR < 0.01 && zTOR > -0.01)
@@ -157,10 +162,6 @@ public class SimEventCumDistFuncSurface implements CacheEnabledSurface {
 				DistanceType.R_RUP, scalar);
 		double distanceRup = calcDistance(rRupFunc);
 		
-		DiscretizedFunc rSeisFunc = SimRuptureDistCalcUtils.calcDistScalarFunc(event, loc, siteLocDistCache,
-				DistanceType.R_SEIS, scalar);
-		double distanceSeis = rSeisFunc == null ? Double.NaN : calcDistance(rSeisFunc);
-		
 		double maxDistJBforX = calcDistance(rJBFunc, fractThresholdX, Double.NaN);
 		
 		double wtFootwall = 0d;
@@ -180,7 +181,7 @@ public class SimEventCumDistFuncSurface implements CacheEnabledSurface {
 		boolean footwall = (float)wtFootwall >= (float)wtHangingwall;
 		
 		FootwallAwareSurfaceDistances dists = new FootwallAwareSurfaceDistances(
-				distanceRup, distanceJB, distanceSeis, footwall);
+				loc, distanceRup, distanceJB, footwall);
 		
 		return dists;
 	}
@@ -241,11 +242,6 @@ public class SimEventCumDistFuncSurface implements CacheEnabledSurface {
 	}
 
 	@Override
-	public double calcDistanceX(Location loc) {
-		return getDistanceX(loc);
-	}
-
-	@Override
 	public void clearCache() {
 		cache.clearCache();
 	}
@@ -270,6 +266,13 @@ public class SimEventCumDistFuncSurface implements CacheEnabledSurface {
 	public double getAveWidth() {
 		checkInitAvgQuantities();
 		return ddw;
+	}
+
+	@Override
+	public double getAveHorizontalWidth() {
+		if (dip == 90d)
+			return 0d;
+		return getAveWidth()*Math.cos(Math.toRadians(dip));
 	}
 
 	@Override
@@ -319,20 +322,25 @@ public class SimEventCumDistFuncSurface implements CacheEnabledSurface {
 	}
 
 	@Override
-	public double getDistanceSeis(Location siteLoc) {
-		return cache.getSurfaceDistances(siteLoc).getDistanceSeis();
-	}
-
-	@Override
 	public double getDistanceX(Location siteLoc) {
-		FootwallAwareSurfaceDistances dists = (FootwallAwareSurfaceDistances)cache.getSurfaceDistances(siteLoc);
-		return dists.isOnFootfall() ? -dists.getDistanceJB() : dists.getDistanceJB();
+		return cache.getSurfaceDistances(siteLoc).getDistanceX();
+	}
+	
+	@Override
+	public SurfaceDistances getDistances(Location siteLoc) {
+		return cache.getSurfaceDistances(siteLoc);
 	}
 
 	@Override
 	public double getAveRupTopDepth() {
 		checkInitAvgQuantities();
 		return zTOR;
+	}
+
+	@Override
+	public double getAveRupBottomDepth() {
+		checkInitAvgQuantities();
+		return zBOT;
 	}
 
 	@Override
@@ -352,6 +360,16 @@ public class SimEventCumDistFuncSurface implements CacheEnabledSurface {
 
 	@Override
 	public Location getLastLocOnUpperEdge() {
+		throw new UnsupportedOperationException("Not yet implemented");
+	}
+
+	@Override
+	public Location getFirstLocOnLowerEdge() {
+		throw new UnsupportedOperationException("Not yet implemented");
+	}
+
+	@Override
+	public Location getLastLocOnLowerEdge() {
 		throw new UnsupportedOperationException("Not yet implemented");
 	}
 

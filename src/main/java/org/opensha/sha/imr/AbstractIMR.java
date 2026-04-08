@@ -259,7 +259,10 @@ implements IntensityMeasureRelationship {
 	 */
 	public void setIntensityMeasure(Parameter intensityMeasure) throws
 	ParameterException, ConstraintException {
-
+		if (im == intensityMeasure) {
+			// already the same, don't bother setting
+			return;
+		}
 		if (isIntensityMeasureSupported(intensityMeasure)) {
 			setIntensityMeasure(intensityMeasure.getName());
 			for (Parameter<?> param : intensityMeasure.getIndependentParameterList())
@@ -278,7 +281,7 @@ implements IntensityMeasureRelationship {
 	 *  passed in; no value (level) is set, nor are any of the IM's independent
 	 *  parameters set (since it's only given the name).
 	 *
-	 * @param  intensityMeasure  The new intensityMeasureParameter name
+	 * @param  intensityMeasureName The new intensityMeasure Parameter name
 	 */
 	public void setIntensityMeasure(String intensityMeasureName) throws
 	ParameterException {

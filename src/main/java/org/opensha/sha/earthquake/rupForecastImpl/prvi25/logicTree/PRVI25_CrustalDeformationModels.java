@@ -1,48 +1,67 @@
 package org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.text.DecimalFormat;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
-import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionBuilder;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Table;
 
 @Affects(FaultSystemRupSet.SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
+@DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
+@DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
+//@Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME) // if rate balancing enabled
+@DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME) // if rate balancing disabled
 public enum PRVI25_CrustalDeformationModels implements RupSetDeformationModel {
-	GEOLOGIC("Geologic Preferred", "Geologic", 0.9) {
+	GEOLOGIC("Geologic Preferred", "Preferred", 0.9d) {
 		@Override
-		protected void applySlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) {
-			applyGeologicSlipRates(subSects, fullSects, GeoJSONFaultSection.SLIP_RATE);
+		protected void applySlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) throws IOException {
+			applyGeologicSlipRates(subSects, fullSects, RateType.PREF);
 		}
 	},
-	GEOLOGIC_HIGH("Geologic High", "HighGeologic", 0.05) {
+	GEOLOGIC_HIGH("Geologic High", "High", 0.05) {
 		@Override
-		protected void applySlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) {
-			applyGeologicSlipRates(subSects, fullSects, "HighRate");
+		protected void applySlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) throws IOException {
+			applyGeologicSlipRates(subSects, fullSects, RateType.HIGH);
 		}
 	},
-	GEOLOGIC_LOW("Geologic Low", "LowGeologic", 0.05) {
+	GEOLOGIC_LOW("Geologic Low", "Low", 0.05) {
+		@Override
+		protected void applySlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) throws IOException {
+			applyGeologicSlipRates(subSects, fullSects, RateType.LOW);
+		}
+	},
+	GEOLOGIC_DIST_AVG("Geologic Distribution Average", "GeologicDistAvg", 0.0d) {
 		@Override
 		protected void applySlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) {
-			applyGeologicSlipRates(subSects, fullSects, "LowRate");
+			try {
+				PRVI25_CrustalRandomlySampledDeformationModels.applyDistAvgSlipRates(subSects, fullSects);
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
 		}
 	};
 	
@@ -86,6 +105,45 @@ public enum PRVI25_CrustalDeformationModels implements RupSetDeformationModel {
 	 */
 	public static double CREEP_FRACT_DEFAULT = 0.1;
 	
+	private static Table<String, RateType, Double> csvRateTable = null;
+	
+	private enum RateType {
+		PREF(GeoJSONFaultSection.SLIP_RATE, 1),
+		LOW(PRVI25_CrustalFaultModels.LOW_RATE_PROP_NAME, 2),
+		HIGH(PRVI25_CrustalFaultModels.HIGH_RATE_PROP_NAME, 3);
+		
+		private String propName;
+		private int csvColumn;
+
+		private RateType(String propName, int csvColumn) {
+			this.propName = propName;
+			this.csvColumn = csvColumn;
+			
+		}
+	};
+	
+	public static boolean USE_DM_CSV_FILE = true;
+	private static final String CSV_FILE_PATH = "/data/erf/prvi25/def_models/crustal/BinRanges_RakeDipProjected_Out_PrefRate.csv";
+	
+	private static synchronized Table<String, RateType, Double> checkLoadCSVRates() throws IOException {
+		if (csvRateTable == null) {
+			InputStream is = PRVI25_CrustalDeformationModels.class.getResourceAsStream(CSV_FILE_PATH);
+			Preconditions.checkNotNull(is, "Couldn't locate CSV: %s", CSV_FILE_PATH);
+			CSVFile<String> csv = CSVFile.readStream(is, true);
+			Table<String, RateType, Double> table = HashBasedTable.create();
+			for (int row=1; row<csv.getNumRows(); row++) {
+				String name = csv.get(row, 0);
+				for (RateType type : RateType.values()) {
+					double val = csv.getDouble(row, type.csvColumn);
+					Preconditions.checkState(Double.isFinite(val) && val >= 0d);
+					table.put(name, type, val);
+				}
+			}
+			csvRateTable = table;
+		}
+		return csvRateTable;
+	}
+	
 	private String name;
 	private String shortName;
 	private double weight;
@@ -120,36 +178,25 @@ public enum PRVI25_CrustalDeformationModels implements RupSetDeformationModel {
 	public boolean isApplicableTo(RupSetFaultModel faultModel) {
 		return faultModel instanceof PRVI25_CrustalFaultModels;
 	}
-
+	
 	@Override
-	public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
-		return build(faultModel, 2, 0.5, Double.NaN);
-	}
-
-	@Override
-	public List<? extends FaultSection> build(RupSetFaultModel faultModel, int minPerFault, double ddwFract,
-			double fixedLen) throws IOException {
-		List<? extends FaultSection> fullSects = faultModel.getFaultSections();
-		return buildDefModel(SubSectionBuilder.buildSubSects(faultModel.getFaultSections(), minPerFault, ddwFract, fixedLen), fullSects);
-	}
-
-	@Override
-	public List<? extends FaultSection> buildForSubsects(RupSetFaultModel faultModel,
+	public List<? extends FaultSection> apply(RupSetFaultModel faultModel,
+			LogicTreeBranch<? extends LogicTreeNode> branch, List<? extends FaultSection> fullSects,
 			List<? extends FaultSection> subSects) throws IOException {
-		List<? extends FaultSection> fullSects = faultModel.getFaultSections();
 		return buildDefModel(subSects, fullSects);
 	}
-	
-	private List<? extends FaultSection> buildDefModel(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) {
+
+	private List<? extends FaultSection> buildDefModel(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) throws IOException {
 		applySlipRates(subSects, fullSects);
 		applyStdDevDefaults(subSects);
 		applyCreepDefaults(subSects);
 		return subSects;
 	}
 	
-	protected abstract void applySlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects);
+	protected abstract void applySlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) throws IOException;
 	
-	protected static void applyGeologicSlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects, String propertyName) {
+	protected static void applyGeologicSlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects, RateType type)
+			throws IOException {
 		Map<Integer, FaultSection> idMapped = new HashMap<>();
 		for (FaultSection sect : fullSects)
 			idMapped.put(sect.getSectionId(), sect);
@@ -159,11 +206,22 @@ public enum PRVI25_CrustalDeformationModels implements RupSetDeformationModel {
 			Preconditions.checkNotNull(origSect);
 			Preconditions.checkState(origSect.getSectionName().equals(subSect.getParentSectionName()));
 			
-			Preconditions.checkState(origSect instanceof GeoJSONFaultSection);
-			double slip = ((GeoJSONFaultSection)origSect).getProperties().getDouble(propertyName, Double.NaN);
-			Preconditions.checkState(Double.isFinite(slip));
+			double slip = getSlipRate(origSect, type);
 			subSect.setAveSlipRate(slip);
 		}
+	}
+	
+	protected static double getSlipRate(FaultSection origSect, RateType type) throws IOException {
+		double slip;
+		if (USE_DM_CSV_FILE) {
+			checkLoadCSVRates();
+			slip = csvRateTable.get(origSect.getSectionName(), type);
+		} else {
+			Preconditions.checkState(origSect instanceof GeoJSONFaultSection);
+			slip = ((GeoJSONFaultSection)origSect).getProperties().getDouble(type.propName, Double.NaN);
+		}
+		Preconditions.checkState(Double.isFinite(slip));
+		return slip;
 	}
 	
 	public static boolean isHardcodedFractionalStdDev() {
@@ -265,9 +323,15 @@ public enum PRVI25_CrustalDeformationModels implements RupSetDeformationModel {
 	
 	public static void main(String[] args) throws IOException {
 		PRVI25_CrustalFaultModels fm = PRVI25_CrustalFaultModels.PRVI_CRUSTAL_FM_V1p1;
-		for (PRVI25_CrustalDeformationModels dm : values()) {
-			List<? extends FaultSection> subSects = dm.build(fm);
-			GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+fm.getFilePrefix()+"_"+dm.getFilePrefix()+"_subSects.geojson"), subSects);
+//		for (PRVI25_CrustalDeformationModels dm : values()) {
+//			List<? extends FaultSection> subSects = dm.build(fm);
+//			GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+fm.getFilePrefix()+"_"+dm.getFilePrefix()+"_subSects.geojson"), subSects);
+//		}
+		
+		for (FaultSection sect : fm.getFaultSections()) {
+			System.out.println(sect.getSectionName());
+			System.out.println("\tPref:\t"+(float)getSlipRate(sect, RateType.PREF));
+			System.out.println("\tBounds:\t["+(float)getSlipRate(sect, RateType.LOW)+", "+(float)getSlipRate(sect, RateType.HIGH)+"]");
 		}
 	}
 

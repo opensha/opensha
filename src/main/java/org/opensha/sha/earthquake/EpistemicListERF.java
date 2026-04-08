@@ -10,9 +10,7 @@ import java.util.ArrayList;
  * @version 1.0
  */
 
-public interface EpistemicListERF extends BaseERF{
-
-
+public interface EpistemicListERF extends BaseERF {
 
   /**
    * get the ERF in the list with the specified index

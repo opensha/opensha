@@ -22,6 +22,8 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
@@ -400,8 +402,8 @@ public class NSHM23_FaultCubeAssociations implements FaultCubeAssociations, Arch
 				// build buffered polygon
 				Location topRight = new Location(proxyReg.getMaxLat(), proxyReg.getMaxLon());
 				Location botLeft = new Location(proxyReg.getMinLat(), proxyReg.getMinLon());
-				topRight = LocationUtils.location(topRight, Math.PI*0.25, maxFaultNuclDist);
-				botLeft = LocationUtils.location(botLeft, Math.PI*1.25, maxFaultNuclDist);
+				topRight = LocationUtils.location(topRight, Math.PI*0.25, 2d*maxFaultNuclDist);
+				botLeft = LocationUtils.location(botLeft, Math.PI*1.25, 2d*maxFaultNuclDist);
 				Region bufferedPoly = new Region(botLeft, topRight);
 				GriddedRegion griddedPolygonReg = new GriddedRegion(bufferedPoly, cgr.getCubeLatLonSpacing(), cgr.getCubeLocationForIndex(0));
 				
@@ -422,7 +424,7 @@ public class NSHM23_FaultCubeAssociations implements FaultCubeAssociations, Arch
 						if (depth <= upperDepth)
 							vertDist = upperDepth - depth;
 						else if (depth >= lowerDepth)
-							vertDist = depth = lowerDepth;
+							vertDist = depth - lowerDepth;
 						else
 							vertDist = 0d;
 						double dist;
@@ -506,12 +508,12 @@ public class NSHM23_FaultCubeAssociations implements FaultCubeAssociations, Arch
 	}
 
 	@Override
-	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
-		new FaultCubeAssociations.Precomputed(this).writeToArchive(zout, entryPrefix);
+	public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
+		new FaultCubeAssociations.Precomputed(this).writeToArchive(output, entryPrefix);
 	}
 
 	@Override
-	public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+	public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 		throw new IllegalStateException("Should be serialized back in as Precomputed");
 	}
 

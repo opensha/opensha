@@ -2,14 +2,18 @@ package org.opensha.sha.earthquake.faultSysSolution.inversion;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.math3.stat.StatUtils;
 import org.opensha.commons.data.CSVFile;
-import org.opensha.commons.util.FileUtils;
+import org.opensha.commons.data.CSVWriter;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
+import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
@@ -18,6 +22,9 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 
 import cern.colt.function.tdouble.IntIntDoubleFunction;
+import cern.colt.list.tdouble.DoubleArrayList;
+import cern.colt.list.tint.IntArrayList;
+import cern.colt.map.tdouble.AbstractLongDoubleMap;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.SparseCCDoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.SparseDoubleMatrix2D;
@@ -331,55 +338,142 @@ public class InversionInputGenerator {
 		return solution;
 	}
 	
-	public void writeZipFile(File file, boolean verbose) throws IOException {
-		File tempDir = FileUtils.createTempDir();
-		writeZipFile(file, FileUtils.createTempDir(), true, verbose);
-		tempDir.delete();
+	private static void writeDoubleArrayCSV(double[] array, OutputStream out, String indexHeader, String dataHeader)
+			throws IOException {
+		CSVWriter csv = new CSVWriter(out, true);
+		csv.write(List.of(indexHeader, dataHeader));
+		
+		for (int i=0; i<array.length; i++)
+			csv.write(List.of(i+"", array[i]+""));
+		
+		csv.flush();
 	}
 	
-	/**
-	 * Writes the inputs to the given zip file, storing the binary files
-	 * in the given directory and optionally cleaning up (deleting them)
-	 * when done.
-	 * 
-	 * @param file target zip file
-	 * @param storeDir directory where they should be saved
-	 * @param cleanup if true, deletes input files after zipping
-	 * @param verbose print progress
-	 */
-	public void writeZipFile(File zipFile, File storeDir, boolean cleanup, boolean verbose)
+	private static void writeSparseCSV(DoubleMatrix2D mat, OutputStream out)
 			throws IOException {
-		if(verbose) System.out.println("Saving to files...");
-		ArrayList<String> fileNames = new ArrayList<String>();
+		CSVWriter csv = new CSVWriter(out, true);
+		csv.write(List.of("Row Index", "Column Index", "Value"));
 		
-		fileNames.add("d.bin");			
-		MatrixIO.doubleArrayToFile(d, new File(storeDir, "d.bin"));
-		if(verbose) System.out.println("d.bin saved");
+		if (mat instanceof SparseDoubleMatrix2D) {
+			AbstractLongDoubleMap map = ((SparseDoubleMatrix2D)mat).elements();
+			int nnz = mat.cardinality();
+			long[] keys = map.keys().elements();
+			double[] values = map.values().elements();
+			
+			int columns = mat.columns();
+			for (int i = 0; i < nnz; i++) {
+				int row = (int) (keys[i] / columns);
+				int column = (int) (keys[i] % columns);
+				//				A.setQuick(row, column, values[i]);
+				csv.write(List.of(row+"", column+"", values[i]+""));
+			}
+		} else {
+			IntArrayList rowList = new IntArrayList();
+			IntArrayList colList = new IntArrayList();
+			DoubleArrayList valList = new DoubleArrayList();
+			
+			mat.getNonZeros(rowList, colList, valList);
+			
+			Preconditions.checkState(rowList.size()>0, "rowList is empty!");
+			Preconditions.checkState(rowList.size() == colList.size() && colList.size() == valList.size(),
+			"array sizes incorrect!");
+			
+			for (int i=0; i<valList.size(); i++) {
+				int row = rowList.get(i);
+				int col = colList.get(i);
+				double val = valList.get(i);
+
+				csv.write(List.of(row+"", col+"", val+""));
+			}
+		}
 		
-		fileNames.add("a.bin");			
-		MatrixIO.saveSparse(A, new File(storeDir, "a.bin"));
-		if(verbose) System.out.println("a.bin saved");
+		csv.flush();
+	}
+	
+	public void writeArchive(File file, boolean binary) throws IOException {
+		writeArchive(file, null, binary);
+	}
+	
+	public void writeArchive(File file, double[] solution, boolean binary) throws IOException {
+		writeArchive(ArchiveOutput.getDefaultOutput(file), solution, binary);
+	}
+	
+	public void writeArchive(ArchiveOutput out, boolean binary) throws IOException {
+		writeArchive(out, null, binary);
+	}
+	
+	public void writeArchive(ArchiveOutput out, double[] solution, boolean binary) throws IOException {
+		if (binary) {
+			out.putNextEntry("d.bin");
+			MatrixIO.doubleArrayToStream(d, out.getOutputStream());
+		} else {
+			out.putNextEntry("d.csv");
+			writeDoubleArrayCSV(d, out.getOutputStream(), "Constraint Index", "Constraint Target");
+		}
+		out.closeEntry();
 		
-		fileNames.add("initial.bin");	
-		MatrixIO.doubleArrayToFile(initialSolution, new File(storeDir, "initial.bin"));
-		if(verbose) System.out.println("initial.bin saved");
+		if (binary) {
+			out.putNextEntry("a.bin");
+			MatrixIO.saveSparse(A, out.getOutputStream());
+		} else {
+			out.putNextEntry("a.csv");
+			writeSparseCSV(A, out.getOutputStream());
+		}
+		out.closeEntry();
+		
+		if (initialSolution != null && StatUtils.max(initialSolution) > 0d) {
+			if (binary) {
+				out.putNextEntry("initial.bin");
+				MatrixIO.doubleArrayToStream(initialSolution, out.getOutputStream());
+			} else {
+				out.putNextEntry("initial.csv");
+				writeDoubleArrayCSV(initialSolution, out.getOutputStream(), "Rupture Index", "Initial Value");
+			}
+			out.closeEntry();
+		}
+		
+		if (solution != null) {
+			if (binary) {
+				out.putNextEntry("solution.bin");
+				MatrixIO.doubleArrayToStream(solution, out.getOutputStream());
+			} else {
+				out.putNextEntry("solution.csv");
+				writeDoubleArrayCSV(solution, out.getOutputStream(), "Rupture Index", "Solution Value (Annual Rate)");
+			}
+			out.closeEntry();
+		}
 		
 		if (d_ineq != null) {
-			fileNames.add("d_ineq.bin");	
-			MatrixIO.doubleArrayToFile(d_ineq, new File(storeDir, "d_ineq.bin"));
-			if(verbose) System.out.println("d_ineq.bin saved");
+			if (binary) {
+				out.putNextEntry("d_ineq.bin");
+				MatrixIO.doubleArrayToStream(d_ineq, out.getOutputStream());
+			} else {
+				out.putNextEntry("d_ineq.csv");
+				writeDoubleArrayCSV(d_ineq, out.getOutputStream(), "Constraint Index", "Constraint Target");
+			}
+			out.closeEntry();
 		}
 		
 		if (A_ineq != null) {
-			fileNames.add("a_ineq.bin");	
-			MatrixIO.saveSparse(A_ineq,new File(storeDir, "a_ineq.bin"));
-			if(verbose) System.out.println("a_ineq.bin saved");
+			if (binary) {
+				out.putNextEntry("a_ineq.bin");
+				MatrixIO.saveSparse(A_ineq, out.getOutputStream());
+			} else {
+				out.putNextEntry("a_ineq.csv");
+				writeSparseCSV(A_ineq, out.getOutputStream());
+			}
+			out.closeEntry();
 		}
 		
 		if (waterLevelRates != null) {
-			fileNames.add("minimumRuptureRates.bin");	
-			MatrixIO.doubleArrayToFile(waterLevelRates,new File(storeDir, "minimumRuptureRates.bin"));
-			if(verbose) System.out.println("minimumRuptureRates.bin saved");
+			if (binary) {
+				out.putNextEntry("waterLevelRates.bin");
+				MatrixIO.doubleArrayToStream(waterLevelRates, out.getOutputStream());
+			} else {
+				out.putNextEntry("waterLevelRates.csv");
+				writeDoubleArrayCSV(waterLevelRates, out.getOutputStream(), "Rupture Index", "Water-level Value");
+			}
+			out.closeEntry();
 		}
 		
 		CSVFile<String> rangeCSV = new CSVFile<String>(true);
@@ -389,18 +483,10 @@ public class InversionInputGenerator {
 		for (ConstraintRange range : constraintRowRanges)
 			rangeCSV.addLine(range.name, range.shortName, range.inequality+"",
 					range.startRow+"", range.endRow+"");
-		fileNames.add("constraintRanges.csv");
-		rangeCSV.writeToFile(new File(storeDir, "constraintRanges.csv"));
-		if(verbose) System.out.println("constraintRanges.csv saved");
 		
-		FileUtils.createZipFile(zipFile.getAbsolutePath(), storeDir.getAbsolutePath(), fileNames);
-		if(verbose) System.out.println("Zip file saved");
-		if (cleanup) {
-			if(verbose) System.out.println("Cleaning up");
-			for (String fileName : fileNames) {
-				new File(storeDir, fileName).delete();
-			}
-		}
+		CSV_BackedModule.writeToArchive(rangeCSV, out, "", "constraintRanges.csv");
+		
+		out.close();
 	}
 	
 	public DoubleMatrix2D getA() {

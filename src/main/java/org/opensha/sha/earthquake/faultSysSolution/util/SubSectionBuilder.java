@@ -9,8 +9,10 @@ import java.util.List;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
+import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetSubsectioningModel;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
@@ -26,6 +28,41 @@ public class SubSectionBuilder {
 	static final double DOWN_DIP_FRACT_DEFAULT = 0.5;
 	static final double MAX_LEN_DEFAULT = Double.NaN;
 	static final int MIN_SUB_SECTS_PER_FAULT_DEFAULT = 2;
+	
+	public static final RupSetSubsectioningModel DEAFULT_BUILDER = getModel(MIN_SUB_SECTS_PER_FAULT_DEFAULT,
+			DOWN_DIP_FRACT_DEFAULT, MAX_LEN_DEFAULT);
+	
+	public static final RupSetSubsectioningModel getModel(final int minPerFault,
+			final double ddwFract, final double fixedLen) {
+		return new RupSetSubsectioningModel() {
+			
+			@Override
+			public String getName() {
+				return "Default Subsectioning Model";
+			}
+			
+			@Override
+			public String getShortName() {
+				return "Default";
+			}
+			
+			@Override
+			public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+				return 1d;
+			}
+			
+			@Override
+			public String getFilePrefix() {
+				return getShortName();
+			}
+			
+			@Override
+			public List<? extends FaultSection> buildSubSects(RupSetFaultModel faultModel,
+					List<? extends FaultSection> fullSections) {
+				return SubSectionBuilder.buildSubSects(fullSections, minPerFault, ddwFract, fixedLen);
+			}
+		};
+	}
 
 	/**
 	 * Builds a subsection list with default subsection lengths. These defaults could change over time, so it is best
@@ -70,6 +107,20 @@ public class SubSectionBuilder {
 		}
 		System.out.println("Built "+subSects.size()+" subsections");
 		return subSects;
+	}
+	
+	/**
+	 * Validates subsection list, ensuring that each subsection has the ID set to the 0-based index.
+	 * 
+	 * @param subSects
+	 */
+	public static void validateSubSects(List<? extends FaultSection> subSects) throws IllegalStateException {
+		for (int s=0; s<subSects.size(); s++) {
+			FaultSection subSect = subSects.get(s);
+			Preconditions.checkState(subSect.getSectionId() == s, "Subsection ID mismatch; subsections must be "
+					+ "indexed starting with 0 with no holes. Subsection at index=%s does not match ID=%s.",
+					s, subSect.getSectionId());
+		}
 	}
 	
 	private enum Models {
@@ -319,7 +370,7 @@ public class SubSectionBuilder {
 			
 			if (dm != null) {
 				System.out.println("Applying deformation model: "+dm);
-				subSects = dm.buildForSubsects(fm, subSects);
+				subSects = dm.apply(fm, null, sects, subSects);
 			}
 			
 			if (model != null)

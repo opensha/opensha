@@ -1,0 +1,85 @@
+ext.getGitHash = { ->
+    try {
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'rev-parse', '--short', 'HEAD'
+            standardOutput = stdout
+        }
+        return stdout.toString().trim()
+    } catch (Exception e) {
+        return ""
+    }
+}
+
+ext.getGitLongHash = { ->
+    try {
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'rev-parse', 'HEAD'
+            standardOutput = stdout
+        }
+        return stdout.toString().trim()
+    } catch (Exception e) {
+        return ""
+    }
+}
+
+ext.getGitBranch = { ->
+    try {
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'rev-parse', '--abbrev-ref', 'HEAD'
+            standardOutput = stdout
+        }
+        return stdout.toString().trim()
+    } catch (Exception e) {
+        return ""
+    }
+}
+
+ext.getGitRemoteUrl = { ->
+    try {
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'name-rev', '--name-only', 'HEAD'
+            standardOutput = stdout
+        }
+        def branch = stdout.toString().trim()
+
+        stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'config', 'branch.' + branch + '.remote'
+            standardOutput = stdout
+        }
+        def remote = stdout.toString().trim()
+
+        stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'config', 'remote.' + remote + '.url'
+            standardOutput = stdout
+        }
+        return stdout.toString().trim()
+    } catch (Exception e) {
+        return ""
+    }
+}
+
+ext.writeBuildFiles = { prefix='build' ->
+    logger.info("Writing build.date file")
+    new File(projectDir, prefix+".date").text = new Date().toString()+"\n"+System.currentTimeMillis()+"\n"
+    String hash = getGitLongHash()
+    if (hash?.trim()) {
+        logger.info("Writing build.githash file: "+hash)
+        new File(projectDir, prefix+".githash").text = hash+"\n"
+    }
+    String branch = getGitBranch()
+    if (branch?.trim()) {
+        logger.info("Writing build.gitbranch file: "+branch)
+        new File(projectDir, prefix+".gitbranch").text = branch+"\n"
+    }
+    String remoteUrl = getGitRemoteUrl()
+    if (remoteUrl?.trim()) {
+        logger.info("Writing build.gitremoteurl file: "+remoteUrl)
+        new File(projectDir, prefix+".gitremoteurl").text = remoteUrl+"\n"
+    }
+}

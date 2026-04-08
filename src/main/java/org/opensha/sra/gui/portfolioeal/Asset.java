@@ -487,14 +487,14 @@ public class Asset implements Cloneable {
 	 * @return The total amount of ruptures in a hazard calculation.
 	 */
 	public int getTotalRuptures() {
-		return calc.getTotRuptures();
+		return calc.getTotalProgressCount();
 	}
 
 	/**
 	 * @return The current amount of ruptures in a hazard calculation.
 	 */
 	public int getCurrentRuptures() {
-		return calc.getCurrRuptures();
+		return calc.getCurrentProgress();
 	}
 
 	/**

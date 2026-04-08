@@ -46,6 +46,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Table;
 import com.google.common.collect.Table.Cell;
 import com.google.common.primitives.Ints;
+import scratch.UCERF3.utils.UCERF3_Downloader;
 
 /**
  * This class handles the various ways to combine ruptures from a true mean UCERF3 solution
@@ -68,7 +69,7 @@ public class RuptureCombiner {
 	 * @param useAvgUpperDepth if true the average upper depth will be used, else the shallowest will be used.
 	 * Note that if true, a regular average is used (not weighted by, for example, nucleation rate).
 	 * @param combineRakes if true, rakes will be merged for otherwise identical ruptures
-	 * @param rake basis map from hashset of subsection names to rakes, or null to use weighted average rakes
+	 * @param rakesBasis map from hashset of subsection names to rakes, or null to use weighted average rakes
 	 * @return
 	 */
 	public static FaultSystemSolution getCombinedSolution(FaultSystemSolution meanSol,
@@ -904,7 +905,7 @@ public class RuptureCombiner {
 	}
 	
 	public static void main(String[] args) throws IOException, DocumentException {
-		File cacheDir = MeanUCERF3.getStoreDir();
+		File cacheDir = UCERF3_Downloader.getStoreDir();
 		FaultSystemSolution trueMean = U3FaultSystemIO.loadSol(new File(cacheDir, "mean_ucerf3_sol.zip"));
 		FaultSystemSolution reduced = getCombinedSolution(trueMean, 1e-10, true, false, null);
 //		FaultSystemSolution reduced = FaultSystemIO.loadSol(new File(cacheDir, "cached_dep1.0E-10_depShallow_rakeAll.zip"));

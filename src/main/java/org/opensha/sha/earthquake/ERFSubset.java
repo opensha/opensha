@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Set;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.TimeSpan;
@@ -13,7 +14,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
-import org.opensha.sha.calc.params.filters.SourceFilter;
+import org.opensha.sha.calc.sourceFilters.SourceFilter;
 import org.opensha.sha.util.TectonicRegionType;
 
 /**
@@ -48,7 +49,7 @@ public class ERFSubset implements ERF {
 	}
 
 	@Override
-	public ArrayList<TectonicRegionType> getIncludedTectonicRegionTypes() {
+	public Set<TectonicRegionType> getIncludedTectonicRegionTypes() {
 		return baseERF.getIncludedTectonicRegionTypes();
 	}
 

@@ -21,6 +21,7 @@ import java.util.Random;
 
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.logicTree.BranchWeightProvider.OriginalWeights;
+import org.opensha.commons.logicTree.LogicTreeLevel.FileBackedLevel;
 import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 
@@ -427,7 +428,12 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 				Integer sampleCount = sampledNodeCounts.get(node);
 				if (sampleCount == null)
 					sampleCount = 0;
-				double sampledWeight = sampledNodeWeights.get(node);
+				Double sampledWeight = sampledNodeWeights.get(node);
+				if (sampledWeight == null) {
+					System.out.println("\t\t"+node.getShortName()+":\tORIG count="+countDF.format(origCount)
+						+" weight="+weightDF.format(origWeight)+";\tNO SAMPLES");
+					continue;
+				}
 				System.out.println("\t\t"+node.getShortName()+":\tORIG count="+countDF.format(origCount)
 							+" weight="+weightDF.format(origWeight)+";\tSAMPLED count="+countDF.format(sampleCount)
 							+" weight="+weightDF.format(sampledWeight));
@@ -618,8 +624,16 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	
 	public static class Adapter<E extends LogicTreeNode> extends TypeAdapter<LogicTree<E>> {
 
-		private final LogicTreeLevel.Adapter<E> levelAdapter = new LogicTreeLevel.Adapter<>();
+		private final LogicTreeLevel.Adapter<E> levelAdapter;
 		private final BranchWeightProvider.Adapter weightAdapter = new BranchWeightProvider.Adapter();
+		
+		public Adapter() {
+			this(new LogicTreeLevel.Adapter<>());
+		}
+		
+		public Adapter(LogicTreeLevel.Adapter<E> levelAdapter) {
+			this.levelAdapter = levelAdapter;
+		}
 
 		@Override
 		public void write(JsonWriter out, LogicTree<E> value) throws IOException {
@@ -679,6 +693,8 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			List<Double> origWeights = null;
 			BranchWeightProvider weightProvider = null;
 			
+			List<Map<String, E>> nodeMatchCache = null;
+			
 			while (in.hasNext()) {
 				switch (in.nextName()) {
 				case "type":
@@ -691,8 +707,25 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 				case "levels":
 					levels = new ArrayList<>();
 					in.beginArray();
-					while (in.hasNext())
-						levels.add(levelAdapter.read(in));
+					nodeMatchCache = new ArrayList<>();
+					while (in.hasNext()) {
+						LogicTreeLevel<E> level = levelAdapter.read(in);
+						Map<String, E> cache = new HashMap<>();
+						// prepolulate the cache with the perfect match (file prefix) to avoid having to look
+						// through the whole list for fuzzy matches (unless needed)
+						for (E node : level.getNodes()) {
+							String perfectMatch = node.getFilePrefix();
+							if (cache.containsKey(perfectMatch)) {
+								// duplicates, bad things will happen, don't precache
+								cache.clear();
+								break;
+							} else {
+								cache.put(perfectMatch, node);
+							}
+						}
+						nodeMatchCache.add(cache);
+						levels.add(level);
+					}
 					in.endArray();
 					break;
 				case "weightProvider":
@@ -724,35 +757,44 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 						while (in.hasNext()) {
 							LogicTreeLevel<? extends E> level = levels.get(index);
 							String choice = in.nextString();
-							String modChoice = simplifyChoiceString(choice);
-							int numFuzzyMatches = 0;
-							boolean perfectMatch = false;
-							E node = null;
-							for (E possible : level.getNodes()) {
-								if (choice.equals(possible.getFilePrefix())) {
-									// perfect match
-									Preconditions.checkState(!perfectMatch, "Multiple choices for %s match %s",
-											level.getName(), choice);
-									node = possible;
-									perfectMatch = true;
-								} else if (!perfectMatch) {
-									// look for a partial match
-									boolean match = modChoice.equals(simplifyChoiceString(possible.getShortName()));
-									match = match || modChoice.equals(simplifyChoiceString(possible.getFilePrefix()));
-									match = match || (possible instanceof Enum<?> &&
-											modChoice.equals(simplifyChoiceString(((Enum<?>)possible).name())));
-									if (match) {
-//										System.out.println(possible.getShortName()+" matches "+choice);
-//										System.out.println("\t"+possible.getShortName()+"\t"+possible.getFilePrefix()+"\t"+((Enum<?>)node).name());
+							Map<String, E> matchCache = nodeMatchCache.get(index);
+							E node = matchCache.get(choice);
+							if (node == null) {
+								// first time we've encountered this string
+								String modChoice = simplifyChoiceString(choice);
+								int numFuzzyMatches = 0;
+								boolean perfectMatch = false;
+								for (E possible : level.getNodes()) {
+									if (choice.equals(possible.getFilePrefix())) {
+										// perfect match
+										Preconditions.checkState(!perfectMatch, "Multiple choices for %s match %s",
+												level.getName(), choice);
 										node = possible;
-										numFuzzyMatches++;
+										perfectMatch = true;
 									}
 								}
+								if (!perfectMatch) {
+									// look for partial matches
+									for (E possible : level.getNodes()) {
+										// look for a partial match
+										boolean match = modChoice.equals(simplifyChoiceString(possible.getShortName()));
+										match = match || modChoice.equals(simplifyChoiceString(possible.getFilePrefix()));
+										match = match || (possible instanceof Enum<?> &&
+												modChoice.equals(simplifyChoiceString(((Enum<?>)possible).name())));
+										if (match) {
+//											System.out.println(possible.getShortName()+" matches "+choice);
+//											System.out.println("\t"+possible.getShortName()+"\t"+possible.getFilePrefix()+"\t"+((Enum<?>)node).name());
+											node = possible;
+											numFuzzyMatches++;
+										}
+									}
+								}
+								Preconditions.checkNotNull(node, "No matching node found for intputName=%s for level %s",
+										choice, level.getName());
+								Preconditions.checkState(perfectMatch || numFuzzyMatches == 1,
+										"%s choices for %s match %s", numFuzzyMatches, level.getName(), choice);
+								matchCache.put(choice, node);
 							}
-							Preconditions.checkNotNull(node, "No matching node found for intputName=%s for level %s",
-									choice, level.getName());
-							Preconditions.checkState(perfectMatch || numFuzzyMatches == 1,
-									"%s choices for %s match %s", numFuzzyMatches, level.getName(), choice);
 							branch.setValue(index, node);
 							index++;
 						}
@@ -794,6 +836,23 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	private static String simplifyChoiceString(String str) {
 		str = str.replace(" ", "").replace("_", "").replace(",", "").toLowerCase();
 		return str;
+	}
+	
+	public static LogicTree<LogicTreeNode> readFileBacked(File jsonFile) throws IOException {
+		Reader reader = new BufferedReader(new FileReader(jsonFile));
+		return readFileBacked(reader);
+	}
+	
+	public static LogicTree<LogicTreeNode> readFileBacked(Reader jsonReader) throws IOException {
+		LogicTreeLevel.Adapter<LogicTreeNode> levelAdapter = new LogicTreeLevel.Adapter<LogicTreeNode>(true, true); // force file backed
+		Adapter<LogicTreeNode> treeAdapter = new Adapter<>(levelAdapter);
+		Gson gson = new GsonBuilder().setPrettyPrinting()
+				.registerTypeAdapter(LogicTreeLevel.class, levelAdapter)
+				.registerTypeHierarchyAdapter(LogicTreeLevel.class, levelAdapter)
+				.registerTypeAdapter(LogicTree.class, treeAdapter)
+				.registerTypeHierarchyAdapter(LogicTree.class, treeAdapter)
+				.create();
+		return gson.fromJson(jsonReader, TypeToken.getParameterized(LogicTree.class, LogicTreeNode.class).getType());
 	}
 
 }

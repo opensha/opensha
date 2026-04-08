@@ -5,6 +5,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 
 /**
  * This interface defines a rupture surfaces. This does not specify how a rupture 
@@ -40,12 +41,36 @@ public interface RuptureSurface extends Surface3D {
 	 * @return
 	 */
 	public double getAveWidth();
+
+	/**
+	 * Horizontal component of the down-dip width (km) of rupture surface, 0 for vertical faults
+	 * @return
+	 */
+	public double getAveHorizontalWidth();
 	
     /**
      * This returns the surface area in km-sq
      * @return double
      */
     public double getArea();
+
+	/**
+	 * Average depth (km) to top of rupture (always a positive number)
+	 * @return
+	 */
+	public double getAveRupTopDepth();
+
+	/**
+	 * Average depth (km) to bottom of rupture (always a positive number)
+	 * @return
+	 */
+	public double getAveRupBottomDepth();
+
+	/**
+	 * Average dip direction (degrees) of rupture surface
+	 * @return
+	 */
+	public double getAveDipDirection();
     
     /**
      * This returns the surface area in km-sq that lies within the given region
@@ -125,14 +150,6 @@ public interface RuptureSurface extends Surface3D {
 	public double getDistanceJB(Location siteLoc);
 
 	/**
-	 * This returns "distance seis" (shortest distance in km to point on rupture 
-	 * deeper than 3 km), assuming the location has zero depth (for numerical 
-	 * expediency).
-	 * @return
-	 */
-	public double getDistanceSeis(Location siteLoc);
-
-	/**
 	 * This returns distance X (the shortest distance in km to the rupture 
 	 * upper edge extended to infinity), where values >= 0 are on the hanging wall
 	 * and values < 0 are on the foot wall.  The location is assumed to be at zero
@@ -140,18 +157,13 @@ public interface RuptureSurface extends Surface3D {
 	 * @return
 	 */
 	public double getDistanceX(Location siteLoc);
-
+	
 	/**
-	 * Average depth (km) to top of rupture (always a positive number)
+	 * Gets standard distances all at once.
+	 * @param loc
 	 * @return
 	 */
-	public double getAveRupTopDepth();
-
-	/**
-	 * Average dip direction (degrees) of rupture surface
-	 * @return
-	 */
-	public double getAveDipDirection();
+	public SurfaceDistances getDistances(Location loc);
 	
 	/**
 	 * This returns the upper edge of the rupture surface (where the 
@@ -172,6 +184,18 @@ public interface RuptureSurface extends Surface3D {
 	 * @return
 	 */
 	public Location getLastLocOnUpperEdge();
+	
+	/**
+	 * This returns the first location on the upper edge of the surface
+	 * @return
+	 */
+	public Location getFirstLocOnLowerEdge();
+	
+	/**
+	 * This returns the last location on the upper edge of the surface
+	 * @return
+	 */
+	public Location getLastLocOnLowerEdge();
 	
 	/**
 	 * The is returns the fraction of this rupture surface 

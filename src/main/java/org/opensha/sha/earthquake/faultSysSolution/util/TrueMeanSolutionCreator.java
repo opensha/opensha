@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.zip.ZipFile;
 
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
@@ -23,6 +22,7 @@ import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
@@ -390,8 +390,11 @@ public class TrueMeanSolutionCreator {
 		System.out.println("\t"+numNewNonzeroRups+"/"+rupMappings.length+" new unique ruptures with nonzero rates");
 		System.out.println("\t"+numNewMags+"/"+rupMappings.length+" new unique rupture magnitudes");
 		
-		if (gridProvAvg != null)
+		if (gridProvAvg != null) {
+			if (gridProv instanceof GridSourceList)
+				gridProv = GridSourceList.remapAssociations((GridSourceList)gridProv, sectMappings);
 			gridProvAvg.process(gridProv, weight);
+		}
 		
 		branches.add(branch);
 		
@@ -466,7 +469,7 @@ public class TrueMeanSolutionCreator {
 		
 		FaultSystemRupSet avgRupSet = new FaultSystemRupSet(uniqueSects, globalSectsForRups, avgMags, rakes, areas, lengths);
 		if (allSingleStranded)
-			avgRupSet.addModule(ClusterRuptures.singleStranged(avgRupSet));
+			avgRupSet.addModule(ClusterRuptures.singleStranded(avgRupSet));
 		
 		if (rupTRTs != null)
 			avgRupSet.addModule(new RupSetTectonicRegimes(avgRupSet, rupTRTs.toArray(new TectonicRegionType[0])));
@@ -537,7 +540,7 @@ public class TrueMeanSolutionCreator {
 				cRups = sol.getRupSet().getModule(ClusterRuptures.class);
 				if (cRups == null) {
 					System.err.println("WARNING: Building ClusterRuptures and assuming single-stranded");
-					cRups = ClusterRuptures.singleStranged(sol.getRupSet());
+					cRups = ClusterRuptures.singleStranded(sol.getRupSet());
 					sol.getRupSet().addModule(cRups);
 				}
 			} else {

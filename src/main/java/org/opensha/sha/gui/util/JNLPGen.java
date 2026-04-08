@@ -21,7 +21,6 @@ import org.opensha.commons.util.IconGen;
 import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.commons.util.ServerPrefs;
 import org.opensha.commons.util.XMLUtils;
-import org.opensha.sha.gcim.ui.GCIM_HazardCurveApp;
 import org.opensha.sha.gui.HazardCurveApplication;
 import org.opensha.sha.gui.HazardSpectrumApplication;
 import org.opensha.sha.gui.ScenarioShakeMapApp;
@@ -241,9 +240,6 @@ public class JNLPGen {
 		}
 		ArrayList<JNLPGen> appsToBuild = new ArrayList<JNLPGen>();
 		/*		Hazard Curve				*/
-		appsToBuild.add(new JNLPGen(GCIM_HazardCurveApp.class,
-				GCIM_HazardCurveApp.APP_SHORT_NAME, 
-				GCIM_HazardCurveApp.APP_NAME, "GC", true));
 		appsToBuild.add(new JNLPGen(HazardCurveApplication.class,
 				HazardCurveApplication.APP_SHORT_NAME, 
 				HazardCurveApplication.APP_NAME, "HC", true));

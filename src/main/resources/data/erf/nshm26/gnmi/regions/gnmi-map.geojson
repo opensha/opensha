@@ -1,0 +1,26 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "fill": "#AA0078",
+        "stroke": "#AA0078",
+        "title": "NSHM GNMI Map Extents",
+        "spacing": 0.1
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [144.0, 12.5],
+            [147.0, 12.5],
+            [147.0, 21.0],
+            [144.0, 21.0],
+            [144.0, 12.5]
+          ]
+        ]
+      }
+    }
+  ]
+}

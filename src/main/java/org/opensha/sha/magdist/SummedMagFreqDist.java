@@ -117,6 +117,18 @@ public class SummedMagFreqDist extends IncrementalMagFreqDist {
 	 * @param magFreqDist the Magnitude Frequency distribution to be added
 	 */
 	public void addIncrementalMagFreqDist(EvenlyDiscretizedFunc magFreqDist) {
+		addIncrementalMagFreqDist(magFreqDist, 1d);
+	}
+
+
+	/**
+	 * This function adds the given magnitude frequency distribution to the present one.
+	 * The deltas must be within tolerance of each other, and values outside the
+	 * range of this distribution are ignored.
+	 * @param magFreqDist the Magnitude Frequency distribution to be added
+	 * @param scalar for the given mfd, usually a branch weight when summing
+	 */
+	public void addIncrementalMagFreqDist(EvenlyDiscretizedFunc magFreqDist, double scalar) {
 		// check that deltas are within tolerance
 		if(magFreqDist.size() > 1 && Math.abs(getDelta()-magFreqDist.getDelta()) > tolerance)
 			throw new IllegalArgumentException("SummedMagFreqDist.addIncrementalMagFreqDist() error: "+
@@ -128,7 +140,7 @@ public class SummedMagFreqDist extends IncrementalMagFreqDist {
 			double xVal = magFreqDist.getX(i);
 			int indexHere = getXIndex(xVal);
 			if(indexHere != -1) {
-				super.set(xVal, getY(indexHere)+magFreqDist.getY(i));
+				super.set(xVal, getY(indexHere)+magFreqDist.getY(i)*scalar);
 			}
 			//		   else {
 			//			   System.out.println(xVal+"\t"+getMinX()+"\t"+getMaxX()+"\t"+getDelta());

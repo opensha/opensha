@@ -43,7 +43,7 @@ public class AbstractNthRupERFTest {
 				sourceList.add(source);
 			}
 			
-			setAllNthRupRelatedArrays();
+			sourceRupIndexesChanged();
 		}
 
 		@Override

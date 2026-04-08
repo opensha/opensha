@@ -1,11 +1,22 @@
 package org.opensha.commons.gui.plot;
 
 import java.awt.BasicStroke;
+import java.awt.Graphics2D;
+import java.awt.Paint;
 import java.awt.Shape;
 import java.awt.Stroke;
+import java.awt.geom.Line2D;
+import java.awt.geom.Path2D;
+import java.awt.geom.Rectangle2D;
 import java.util.NoSuchElementException;
 
+import org.jfree.chart.LegendItem;
+import org.jfree.chart.axis.ValueAxis;
+import org.jfree.chart.plot.CrosshairState;
+import org.jfree.chart.plot.PlotRenderingInfo;
+import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.*;
+import org.jfree.data.xy.XYDataset;
 
 import com.google.common.base.Preconditions;
 
@@ -20,6 +31,7 @@ public enum PlotLineType {
 	SOLID("Solid"),
 	DOTTED("Dotted"),
 	DASHED("Dashed"),
+	SHORT_DASHED("Short Dashed"),
 	DOTTED_AND_DASHED("Dotted & Dashed"),
 	HISTOGRAM("Histogram"),
 	STACKED_BAR("Stacked Bar"),
@@ -49,18 +61,29 @@ public enum PlotLineType {
 	}
 	
 	public Stroke buildStroke(float lineWidth) {
+		return buildStroke(lineWidth, PlotPreferences.DEFAULT);
+	}
+	
+	public Stroke buildStroke(float lineWidth, PlotPreferences prefs) {
 		Preconditions.checkArgument(lineWidth>0, "Line width must be >0");
+		float lenScalar = (float)prefs.getSizeScalar();
 		if (this == SOLID)
-			return new BasicStroke(lineWidth);
+			// 2026 note: this uses cap square by default; it overshoots for large thickness, but often better than
+			// undershooting when separate lines meet at sharp angles. It's been the OpenSHA default for ages.
+			return new BasicStroke(lineWidth, prefs.getSolidLineCap(), prefs.getSolidLineJoin());
+//			return new BasicStroke(lineWidth);
 		else if (this == DOTTED)
-			return new BasicStroke(lineWidth, BasicStroke.CAP_BUTT,
-					BasicStroke.JOIN_BEVEL,0,new float[] {Float.min(6, Float.max(lineWidth*0.7f, 1))},0);
+			return new BasicStroke(lineWidth, prefs.getDashedLineCap(), prefs.getDashedLineJoin(),
+					0,new float[] {Float.min(6, Float.max(lineWidth*0.7f, 1))*lenScalar},0);
 		else if (this == DASHED)
-			return new BasicStroke(lineWidth, BasicStroke.CAP_BUTT,
-					BasicStroke.JOIN_BEVEL,0,new float[] {9},0);
+			return new BasicStroke(lineWidth, prefs.getDashedLineCap(), prefs.getDashedLineJoin(),
+					0,new float[] {9*lenScalar},0);
+		else if (this == SHORT_DASHED)
+			return new BasicStroke(lineWidth, prefs.getDashedLineCap(), prefs.getDashedLineJoin(),
+					0,new float[] {4*lenScalar},0);
 		else if (this == DOTTED_AND_DASHED)
-			return new BasicStroke(lineWidth, BasicStroke.CAP_BUTT,
-					BasicStroke.JOIN_BEVEL,0,new float[] {5,3,2,3},0);
+			return new BasicStroke(lineWidth, prefs.getDashedLineCap(), prefs.getDashedLineJoin(),
+					0,new float[] {5*lenScalar,3*lenScalar,2*lenScalar,3*lenScalar},0);
 		else
 			throw new IllegalStateException("Stroke not applicable for lineType: "+this);
 	}
@@ -117,6 +140,26 @@ public enum PlotLineType {
 	 */
 	public static XYItemRenderer buildRenderer(PlotLineType plt, PlotSymbol sym, float lineWidth, float symWidth)
 	throws IllegalStateException {
+		return buildRenderer(plt, sym, lineWidth, symWidth, PlotPreferences.DEFAULT);
+	}
+	
+	/**
+	 * Builds a render for the given <code>PlotLineType</code> and/or <code>PlotSymbol</code>.
+	 * 
+	 * @param plt plot line type, or null for none
+	 * @param sym plot symbol type, or null for none
+	 * @param lineWidth width of the line, if not null
+	 * @param symWidth width of the symbols, if not null
+	 * @throws IllegalStateException when both plt and sym are null
+	 * @return
+	 */
+	public static XYItemRenderer buildRenderer(PlotLineType plt, PlotSymbol sym, float lineWidth, float symWidth,
+			PlotPreferences prefs) throws IllegalStateException {
+		double scalar = prefs.getSizeScalar();
+		if (scalar != 1d) {
+			lineWidth = (float)(lineWidth*scalar);
+			symWidth = (float)(symWidth*scalar);
+		}
 		checkValidConfiguration(plt, sym);
 		XYItemRenderer renderer = null;
 		// will usually use this
@@ -141,10 +184,18 @@ public enum PlotLineType {
 			} else if (plt == SHADED_UNCERTAIN_TRANS) {
 				renderer = new XYShadedUncertainLineRenderer(0.5);
 			} else if (plt == POLYGON_SOLID){
-				renderer = new XYAreaRenderer(XYAreaRenderer.AREA);
+//				renderer = new XYAreaRenderer(XYAreaRenderer.AREA);
+				renderer = new CustomXYAreaRenderer();
 			} else {
+				Stroke stroke = plt.buildStroke(lineWidth, prefs);
+				if (plt == SOLID && stroke instanceof BasicStroke && ((BasicStroke)stroke).getEndCap() == BasicStroke.CAP_SQUARE) {
+					// fix for weird shorter lines with cap_square
+					lineShpRend = new LegendButtCapXYRenderer(plt != null, sym != null);
+					lineShpRend.setDrawSeriesLineAsPath(true);
+				}
 				renderer = lineShpRend;
-				Stroke stroke = plt.buildStroke(lineWidth);
+				lineShpRend.setLegendLine(new Line2D.Float(-(float)(0.5*prefs.getLegendLineLength()), 0f,
+						(float)(0.5*prefs.getLegendLineLength()), 0f));
 //				renderer.setStroke(stroke);
 //				renderer.setDefaultStroke(stroke);
 				renderer.setSeriesStroke(0, stroke);
@@ -159,17 +210,130 @@ public enum PlotLineType {
 						"Renderer already exists but isn't correct type for plt="+plt+" and sym="+sym);
 			}
 			Preconditions.checkArgument(symWidth > 0, "symbol widht must be >0");
+			if (!prefs.isTrueSymbolSizing())
+				symWidth = sym.getOriginalSymbolSize(symWidth);
 			Shape shape = sym.buildShape(symWidth);
 			Preconditions.checkNotNull(shape, "Couldn't build shape for symbol: "+sym);
 //			renderer.setShape(shape);
 			renderer.setSeriesShape(0, shape);
+			if (scalar != 1d)
+				lineShpRend.setSeriesOutlineStroke(0, new BasicStroke((float)scalar));
 //			stdRend.setBaseShape(shape);
 //			lineShpRend.setShapesFilled(sym.isFilled());
-			lineShpRend.setSeriesShapesFilled(0, sym.isFilled());
+			if (sym.isFilled()) {
+				lineShpRend.setSeriesShapesFilled(0, true);
+				lineShpRend.setDrawOutlines(false);
+			} else {
+				lineShpRend.setSeriesShapesFilled(0, false);
+				lineShpRend.setDrawOutlines(true);
+				float strokeWidth = Float.max(0.1f, Float.min(1f, 0.1f*symWidth));
+				lineShpRend.setDefaultOutlineStroke(new BasicStroke(strokeWidth,
+						BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER));
+			}
 //			stdRend.setBaseShapesFilled(sym.isFilled());
 			
 		}
 		return renderer;
+	}
+	
+	/**
+	 * The default JFreeChart XYAreaRenderer is meant to fill areas down to the baseline axis, as in you're defining
+	 * the top of the polygon and the bottom is always the axis. That makes sense for some charts, but not as we're
+	 * using it. This just draws the passed in polygon instead.
+	 */
+	public static class CustomXYAreaRenderer extends XYLineAndShapeRenderer {
+
+		@Override
+		public void drawItem(Graphics2D g2, XYItemRendererState state,
+				Rectangle2D dataArea, PlotRenderingInfo info,
+				XYPlot plot, ValueAxis domainAxis, ValueAxis rangeAxis,
+				XYDataset dataset, int series, int item,
+				CrosshairState crosshairState, int pass) {
+			// Only render once per series (on the first item)
+			if (item != 0) {
+				return;
+			}
+			// this will be called twice, only plot on first pass
+			if (pass != 0) {
+				return;
+			}
+
+			// Prepare the path for the polygon
+			Path2D polygon = new Path2D.Double();
+			boolean firstPoint = true;
+
+			int pointCount = dataset.getItemCount(series);
+			double firstX = Double.NaN, firstY = Double.NaN;
+
+			for (int i = 0; i < pointCount; i++) {
+				double xValue = dataset.getXValue(series, i);
+				double yValue = dataset.getYValue(series, i);
+
+				// Convert data to screen coordinates
+				double xScreen = domainAxis.valueToJava2D(xValue, dataArea, plot.getDomainAxisEdge());
+				double yScreen = rangeAxis.valueToJava2D(yValue, dataArea, plot.getRangeAxisEdge());
+
+				if (firstPoint) {
+					polygon.moveTo(xScreen, yScreen);
+					firstX = xScreen;
+					firstY = yScreen;
+					firstPoint = false;
+				} else {
+					polygon.lineTo(xScreen, yScreen);
+				}
+			}
+
+			// Ensure the polygon is closed
+			if (pointCount > 2) {
+				polygon.closePath();
+			}
+
+			// Get the series paint for the fill color
+			Paint seriesPaint = getItemPaint(series, 0);
+			g2.setPaint(seriesPaint);
+
+			// Fill the polygon
+			g2.fill(polygon);
+		}
+	}
+	
+
+	/**
+	 * For some reason CAP_SQUARE basic strokes render to a different length in the legend; this fixes that,
+	 * but only for the legend.
+	 */
+	private static class LegendButtCapXYRenderer extends XYLineAndShapeRenderer {
+
+		public LegendButtCapXYRenderer(boolean lines, boolean shapes) {
+			super(lines, shapes);
+		}
+
+		@Override
+		public LegendItem getLegendItem(int datasetIndex, int series) {
+			LegendItem item = super.getLegendItem(datasetIndex, series);
+			if (item == null)
+				return null;
+
+			Stroke s = lookupSeriesStroke(series);
+			if (s instanceof BasicStroke) {
+				BasicStroke bs = (BasicStroke)s;
+
+				// Only change the legend cap; leave plot rendering unchanged.
+				if (bs.getEndCap() != BasicStroke.CAP_BUTT) {
+					BasicStroke legendStroke = new BasicStroke(
+							bs.getLineWidth(),
+							BasicStroke.CAP_BUTT,
+							bs.getLineJoin(),
+							bs.getMiterLimit(),
+							bs.getDashArray(),
+							bs.getDashPhase()
+							);
+					item.setLineStroke(legendStroke);
+				}
+			}
+
+			return item;
+		}
 	}
 
 }

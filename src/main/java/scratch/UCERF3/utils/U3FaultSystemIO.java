@@ -212,7 +212,7 @@ public class U3FaultSystemIO {
 	 * @throws ZipException 
 	 * @throws DocumentException 
 	 */
-	private static U3FaultSystemRupSet loadRupSetAsApplicable(File file) throws ZipException, IOException, DocumentException {
+	public static U3FaultSystemRupSet loadRupSetAsApplicable(File file) throws ZipException, IOException, DocumentException {
 		return loadRupSetAsApplicable(new ZipFile(file), null);
 	}
 	
@@ -566,7 +566,7 @@ public class U3FaultSystemIO {
 	 * @throws DocumentException 
 	 * @throws IOException 
 	 */
-	private static U3FaultSystemSolution loadSolAsApplicable(File file) throws IOException, DocumentException {
+	public static U3FaultSystemSolution loadSolAsApplicable(File file) throws IOException, DocumentException {
 		return loadSolAsApplicable(file, null);
 	}
 	

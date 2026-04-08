@@ -359,7 +359,7 @@ public class RateDistributionPlot extends AbstractSolutionPlot {
 				
 				PlotSpec spec = new PlotSpec(funcs, chars, title,
 						getTruncatedTitle(meta.primary.name)+" Rate", getTruncatedTitle(meta.comparison.name)+" Rate");
-				HeadlessGraphPanel gp = PlotUtils.initHeadless();
+				HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 				
 				gp.drawGraphPanel(spec, true, true, range, range);
 				
@@ -555,7 +555,7 @@ public class RateDistributionPlot extends AbstractSolutionPlot {
 
 			@Override
 			public ClusterRuptures call() throws Exception {
-				return ClusterRuptures.singleStranged(sol1.getRupSet());
+				return ClusterRuptures.singleStranded(sol1.getRupSet());
 			}
 		}, ClusterRuptures.class);
 	

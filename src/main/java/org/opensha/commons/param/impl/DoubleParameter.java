@@ -451,7 +451,9 @@ public class DoubleParameter extends AbstractParameter<Double> {
 	 * @return      True if the value is allowed
 	 */
 	public boolean isAllowed( Double d ) {
-		return super.isAllowed(d);
+		if (constraint != null)
+			return constraint.isAllowed(d);
+		return true;
 	}
 
 	/**

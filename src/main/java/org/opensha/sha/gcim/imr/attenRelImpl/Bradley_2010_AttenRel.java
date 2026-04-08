@@ -16,6 +16,7 @@ import org.opensha.commons.param.event.ParameterChangeWarningListener;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.param.EqkRuptureParams.DipParam;
 import org.opensha.sha.imr.param.EqkRuptureParams.FaultTypeParam;
@@ -152,7 +153,7 @@ public class Bradley_2010_AttenRel extends AttenuationRelationship implements
 	private double depthTo1pt0kmPerSec;  // defined this way to support null values
 	protected double lnYref;
 	protected boolean lnYref_is_not_fresh;
-	private String tecRegType;
+	private TectonicRegionType tecRegType;
 
 	
 	protected final static double MAG_WARN_MIN = 4.0;
@@ -176,10 +177,6 @@ public class Bradley_2010_AttenRel extends AttenuationRelationship implements
 	public final static String FLT_TYPE_STRIKE_SLIP = "Strike-Slip";
 	public final static String FLT_TYPE_REVERSE = "Reverse";
 	public final static String FLT_TYPE_NORMAL = "Normal";
-	
-	//Tectonic regions
-	public final static String FLT_TEC_ENV_CRUSTAL = TectonicRegionType.ACTIVE_SHALLOW.toString();
-	public final static String FLT_TEC_ENV_VOLCANIC = TectonicRegionType.VOLCANIC.toString();
 
 	/**
 	 * Constructs a new instance of this attenuation relationship.
@@ -207,36 +204,39 @@ public class Bradley_2010_AttenRel extends AttenuationRelationship implements
 	@Override
 	public void setEqkRupture(EqkRupture eqkRupture)
 			throws InvalidRangeException {
-		this.eqkRupture = eqkRupture;
-		magParam.setValueIgnoreWarning(eqkRupture.getMag());
-		setFaultTypeFromRake(eqkRupture.getAveRake());
-		RuptureSurface surface = eqkRupture.getRuptureSurface();
-		dipParam.setValue(surface.getAveDip());
-		rupTopDepthParam.setValueIgnoreWarning(surface.getAveRupTopDepth());
-		setPropagationEffectParams();
+		super.setEqkRupture(eqkRupture);
+		if (eqkRupture != null) {
+			magParam.setValueIgnoreWarning(eqkRupture.getMag());
+			setFaultTypeFromRake(eqkRupture.getAveRake());
+			RuptureSurface surface = eqkRupture.getRuptureSurface();
+			dipParam.setValue(surface.getAveDip());
+			rupTopDepthParam.setValueIgnoreWarning(surface.getAveRupTopDepth());
+			setPropagationEffectParams();
+		}
 	}
 
 	@Override
 	public void setSite(Site site) throws ParameterException {
-		this.site = site;
-		vs30Param.setValueIgnoreWarning((Double) site.getParameter(Vs30_Param.NAME)
-			.getValue());
-		depthTo1pt0kmPerSecParam.setValueIgnoreWarning((Double) site.getParameter(
-			DepthTo1pt0kmPerSecParam.NAME).getValue());
-		vs30_TypeParam.setValue((String) site.getParameter(Vs30_TypeParam.NAME)
-			.getValue());
-		setPropagationEffectParams();
+		if (site != null) {
+			vs30Param.setValueIgnoreWarning((Double) site.getParameter(Vs30_Param.NAME)
+					.getValue());
+			depthTo1pt0kmPerSecParam.setValueIgnoreWarning((Double) site.getParameter(
+					DepthTo1pt0kmPerSecParam.NAME).getValue());
+			vs30_TypeParam.setValue((String) site.getParameter(Vs30_TypeParam.NAME)
+					.getValue());
+		}
+		super.setSite(site); // will call setPropagationEffectParams
 	}
 
 	@Override
 	protected void setPropagationEffectParams() {
 		if (site != null && eqkRupture != null) {
-			propEffectUpdate();
+			setPropagationEffectParams(eqkRupture.getRuptureSurface().getDistances(site.getLocation()));
 		}
 	}
-	
-	
-	private void propEffectUpdate() {
+
+	@Override
+	public void setPropagationEffectParams(SurfaceDistances distances) {
 		
 		/*
 		 * This sets the two propagation-effect parameters (distanceRupParam and
@@ -248,10 +248,10 @@ public class Bradley_2010_AttenRel extends AttenuationRelationship implements
 		 * specifications were determined from a series of discussions between
 		 * Ned Field, Norm Abrahamson, and Ken Campbell.
 		 */
-		
-		distanceRupParam.setValueIgnoreWarning(eqkRupture.getRuptureSurface().getDistanceRup(site.getLocation())); // this sets rRup too
-		double dist_jb = eqkRupture.getRuptureSurface().getDistanceJB(site.getLocation());
-		double distX = eqkRupture.getRuptureSurface().getDistanceX(site.getLocation());
+		distanceRupParam.setValue(eqkRupture, site, distances);
+		double rRup = distances.getDistanceRup();
+		double dist_jb = distances.getDistanceJB();
+		double distX = distances.getDistanceX();
 		if(rRup>0.0) {
 			distRupMinusJB_OverRupParam.setValueIgnoreWarning((rRup-dist_jb)/rRup);
 			if(distX >= 0.0) {  // sign determines whether it's on the hanging wall (distX is always >= 0 in distRupMinusDistX_OverRupParam)
@@ -270,7 +270,7 @@ public class Bradley_2010_AttenRel extends AttenuationRelationship implements
 		}
 		
 		//Get the rupture distance through the TVZ
-		if (tecRegType.equals(FLT_TEC_ENV_VOLCANIC)) {
+		if (tecRegType.equals(TectonicRegionType.VOLCANIC)) {
 	    	rTvz = rRup; //Presently conservatively assumed consistent with NSHM impl
 		} else {
 			rTvz = 0;
@@ -374,7 +374,7 @@ public class Bradley_2010_AttenRel extends AttenuationRelationship implements
 		hangingWallFlagParam.setValueAsDefault();
 
 		componentParam.setValueAsDefault();
-		tecRegType = tectonicRegionTypeParam.getValue().toString();
+		tecRegType = tectonicRegionTypeParam.getValue();
 		stdDevTypeParam.setValueAsDefault();
 
 		saParam.setValueAsDefault();
@@ -783,7 +783,7 @@ public class Bradley_2010_AttenRel extends AttenuationRelationship implements
 			}
 		}
 		else if (pName.equals(TectonicRegionTypeParam.NAME)) {
-			tecRegType = tectonicRegionTypeParam.getValue().toString();
+			tecRegType = tectonicRegionTypeParam.getValue();
 	    }
 		else if (pName.equals(RupTopDepthParam.NAME)) {
 			depthTop = ( (Double) val).doubleValue();

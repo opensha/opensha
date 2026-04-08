@@ -23,6 +23,7 @@ import org.apache.commons.cli.ParseException;
 import org.dom4j.DocumentException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.util.ClassUtils;
+import org.opensha.commons.util.FileNameUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -392,14 +393,7 @@ public class ETAS_ConfigBuilder {
 		namePrefix = namePrefix.replaceAll("\\(", "_");
 		namePrefix = namePrefix.replaceAll("\\)", "_");
 		namePrefix = namePrefix.replaceAll(",", "_");
-		namePrefix = namePrefix.replaceAll("\\W+", "");
-		while (namePrefix.startsWith("_"))
-			namePrefix = namePrefix.substring(1);
-		while (namePrefix.endsWith("_"))
-			namePrefix = namePrefix.substring(0, namePrefix.length()-1);
-		while (namePrefix.contains("__"))
-			namePrefix = namePrefix.replaceAll("__", "_");
-		return namePrefix;
+		return FileNameUtils.simplify(namePrefix);
 	}
 	
 	public static void checkWriteHPC(ETAS_Config config, File configFile, CommandLine cmd) throws IOException {

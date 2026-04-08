@@ -400,6 +400,22 @@ public class CaliforniaRegions {
 		}
 	}
 	
+	/** 
+	 * A box defining the region of the CyberShake Bay Area (smaller version) map region
+	 */
+	public static final class CYBERSHAKE_BAY_AREA_SMALL_MAP_REGION extends CA_Region {
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = 1L;
+
+		/** New instance of region. */
+		public CYBERSHAKE_BAY_AREA_SMALL_MAP_REGION() {
+			super("CyberShake_Map_BayAreaSmall");
+			this.setName("CyberShake Bay Area Map Region (small)");
+		}
+	}
+	
 	private static Gson gson;
 	private synchronized static Gson getGson() {
 		if (gson == null) {
@@ -488,6 +504,7 @@ public class CaliforniaRegions {
 				new CYBERSHAKE_MAP_REGION(),
 				new CYBERSHAKE_CCA_MAP_REGION(),
 				new CYBERSHAKE_BAY_AREA_MAP_REGION(),
+				new CYBERSHAKE_BAY_AREA_SMALL_MAP_REGION(),
 		};
 		
 		for (Region region : regions) {

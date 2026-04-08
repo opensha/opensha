@@ -31,6 +31,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetSubsectioningModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
@@ -39,6 +40,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultRea
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
+import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.AnalysisRegions;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.SeismicityRegions;
@@ -56,7 +58,7 @@ import com.google.gson.reflect.TypeToken;
 @Affects(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
-public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
+public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel, RupSetSubsectioningModel {
 	
 	WUS_FM_v1p4("NSHM23 WUS Fault Model v1.4", "WUS FM v1.4", NSHM23_DeformationModels.GEOLOGIC, 0d) {
 		@Override
@@ -280,6 +282,17 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 		return new NamedFaults(null, namedFaults);
 	}
 	
+	static final double DOWN_DIP_FRACT_DEFAULT = 0.5;
+	static final double MAX_LEN_DEFAULT = Double.NaN;
+	static final int MIN_SUB_SECTS_PER_FAULT_DEFAULT = 2;
+
+	@Override
+	public List<? extends FaultSection> buildSubSects(RupSetFaultModel faultModel,
+			List<? extends FaultSection> fullSections) {
+		return SubSectionBuilder.buildSubSects(fullSections,
+				MIN_SUB_SECTS_PER_FAULT_DEFAULT, DOWN_DIP_FRACT_DEFAULT, MAX_LEN_DEFAULT);
+	}
+
 	private static UncertainBoundedIncrMagFreqDist getRegionalMFD(Region region, SeismicityRegions seisRegion,
 			LogicTreeBranch<?> branch) throws IOException {
 		NSHM23_DeclusteringAlgorithms declustering = NSHM23_DeclusteringAlgorithms.AVERAGE;

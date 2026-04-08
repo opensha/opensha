@@ -572,10 +572,14 @@ public class ClusterRupture {
 	
 	@Override
 	public String toString() {
+		return toString(false);
+	}
+	
+	public String toString(boolean verbose) {
 		StringBuilder str = new StringBuilder();
 		if (singleStrand) {
 			for (FaultSubsectionCluster cluster : clusters)
-				str.append(cluster.toString());
+				str.append(cluster.toString(verbose));
 		} else {
 			RuptureTreeNavigator nav = getTreeNavigator();
 			for (int i=0; i<clusters.length; i++) {
@@ -584,15 +588,17 @@ public class ClusterRupture {
 					int toID = nav.getJump(clusters[i-1], cluster).toSection.getSectionId();
 					if (toID == cluster.subSects.get(0).getSectionId())
 						toID = -1;
-					str.append(cluster.toString(toID));
+					str.append(cluster.toString(verbose, toID));
 				} else {
-					str.append(cluster.toString());
+					str.append(cluster.toString(verbose));
 				}
 			}
 		}
 		for (Jump jump : splays.keySet()) {
 			ClusterRupture splay = splays.get(jump);
 			str.append("\n\t--splay from [").append(jump.fromCluster.parentSectionID);
+			if (verbose)
+				str.append(". ").append(jump.fromCluster.parentSectionName);
 			str.append(":").append(jump.fromSection.getSectionId()).append("]: "+splay);
 		}
 		return str.toString();
