@@ -2247,6 +2247,14 @@ public class LogicTreeHazardCompare {
 					table.finalizeLine();
 					table.addLine(mapStats(firstHalfDiff), mapStats(secondHalfDiff));
 					
+					GriddedGeoDataSet theCOV = cov;
+					if (meanIsFromCurves) {
+						// need to recalculate COV using map mean
+						theCOV = new GriddedGeoDataSet(region);
+						for (int i=0; i<theCOV.size(); i++)
+							theCOV.set(i, sd.get(i)/mapMean.get(i));
+					}
+					
 					GriddedGeoDataSet sdPdiff1 = buildPDiff(sd, firstHalfSD);
 					GriddedGeoDataSet sdPdiff2 = buildPDiff(sd, secondHalfSD);
 					table.addLine("__SD__", "");
@@ -2260,8 +2268,8 @@ public class LogicTreeHazardCompare {
 					table.finalizeLine();
 					table.addLine(mapStats(sdPdiff1), mapStats(sdPdiff2));
 					
-					GriddedGeoDataSet covPdiff1 = buildPDiff(cov, firstHalfCOV);
-					GriddedGeoDataSet covPdiff2 = buildPDiff(cov, secondHalfCOV);
+					GriddedGeoDataSet covPdiff1 = buildPDiff(theCOV, firstHalfCOV);
+					GriddedGeoDataSet covPdiff2 = buildPDiff(theCOV, secondHalfCOV);
 					table.addLine("__COV__", "");
 					table.initNewLine();
 					plot = submitMapFuture(mapper, exec, futures, resourcesDir, half1Prefix+"_cov_pdiff", covPdiff1, tightPDiffCPT,
