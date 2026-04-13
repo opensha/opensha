@@ -2218,7 +2218,7 @@ public class LogicTreeHazardCompare {
 					
 					lines.add("This section shows how hazard changes between the first and second halfs of the "
 							+ "randomly-sampled logic tree compared to the full tree. If differences are minimal, then "
-							+ "the total sample count of "+branches.size()+" is likely sufficient.");
+							+ "the total sample count of "+branches.size()+" may be sufficient.");
 					lines.add("");
 					
 					table = MarkdownUtils.tableBuilder(TableTextAlignment.CENTER);
@@ -2235,7 +2235,7 @@ public class LogicTreeHazardCompare {
 							TITLES ? name : " ", "2nd Half / Full, % Change, "+unitlessLabel, true);
 					table.addColumn("![Second half Diff]("+resourcesDir.getName()+"/"+plot.getName()+")");
 					table.finalizeLine();
-					table.addLine(mapStats(firstHalfPDiff), mapStats(secondHalfPDiff));
+					table.addLine(mapStats(firstHalfPDiff, true), mapStats(secondHalfPDiff, true));
 					
 					table.initNewLine();
 					plot = submitMapFuture(mapper, exec, futures, resourcesDir, half1Prefix+"_mean_diff", firstHalfDiff, diffCPT,
@@ -2245,7 +2245,7 @@ public class LogicTreeHazardCompare {
 							TITLES ? name : " ", "2nd Half - Full, "+label, true);
 					table.addColumn("![Second half Diff]("+resourcesDir.getName()+"/"+plot.getName()+")");
 					table.finalizeLine();
-					table.addLine(mapStats(firstHalfDiff), mapStats(secondHalfDiff));
+					table.addLine(mapStats(firstHalfDiff, true), mapStats(secondHalfDiff, true));
 					
 					GriddedGeoDataSet theCOV = cov;
 					if (meanIsFromCurves) {
@@ -2266,7 +2266,7 @@ public class LogicTreeHazardCompare {
 							TITLES ? name : " ", "2nd Half SD / Full SD, % Change, "+unitlessLabel, true);
 					table.addColumn("![Second half Diff]("+resourcesDir.getName()+"/"+plot.getName()+")");
 					table.finalizeLine();
-					table.addLine(mapStats(sdPdiff1), mapStats(sdPdiff2));
+					table.addLine(mapStats(sdPdiff1, true), mapStats(sdPdiff2, true));
 					
 					GriddedGeoDataSet covPdiff1 = buildPDiff(theCOV, firstHalfCOV);
 					GriddedGeoDataSet covPdiff2 = buildPDiff(theCOV, secondHalfCOV);
@@ -2279,7 +2279,7 @@ public class LogicTreeHazardCompare {
 							TITLES ? name : " ", "2nd Half COV / Full COV, % Change, "+unitlessLabel, true);
 					table.addColumn("![Second half Diff]("+resourcesDir.getName()+"/"+plot.getName()+")");
 					table.finalizeLine();
-					table.addLine(mapStats(covPdiff1), mapStats(covPdiff2));
+					table.addLine(mapStats(covPdiff1, true), mapStats(covPdiff2, true));
 					
 					lines.addAll(table.build());
 					lines.add("");
@@ -3394,12 +3394,26 @@ public class LogicTreeHazardCompare {
 		table.addLine(MarkdownUtils.boldCentered("Primary "+type), MarkdownUtils.boldCentered("Comparison "+type),
 				MarkdownUtils.boldCentered("Difference"), MarkdownUtils.boldCentered("% Change"));
 		
+		GriddedGeoDataSet primaryForStats = primary;
+		GriddedGeoDataSet comparisonForStats = comparison;
+		if (compReg != null && compReg.getNodeCount() < primary.getRegion().getNodeCount()) {
+			// If the comparison is on a coarser grid with matching node locations, use that common grid for
+			// plotting and stats so padded edge cells from remapping don't skew results.
+			GriddedGeoDataSet remappedPrimary = new GriddedGeoDataSet(compReg, false);
+			if (checkShrinkToComparison(primary, remappedPrimary)) {
+				GriddedGeoDataSet remappedComparison = new GriddedGeoDataSet(compReg, false);
+				Preconditions.checkState(checkShrinkToComparison(comparison, remappedComparison));
+				primaryForStats = remappedPrimary;
+				comparisonForStats = remappedComparison;
+			}
+		}
+		
 		table.initNewLine();
 		File map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix,
-				primary, cpt, name, label);
+				primaryForStats, cpt, name, label);
 		table.addColumn("!["+type+"]("+resourcesDir.getName()+"/"+map.getName()+")");
 		map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp",
-				comparison, cpt, compName, label);
+				comparisonForStats, cpt, compName, label);
 		table.addColumn("!["+type+"]("+resourcesDir.getName()+"/"+map.getName()+")");
 		
 		GriddedGeoDataSet diffForStats = null;
@@ -3421,7 +3435,6 @@ public class LogicTreeHazardCompare {
 				diffLabel = "Primary / Comparison, % Change, "+unitlessLabel;
 				diffPrefix = prefix+"_comp_pDiff";
 				myDiffCPT = pDiffCPT;
-				pDiffForStats = diff;
 			}
 			
 			if (compReg != null && compReg.getNodeCount() < primary.getRegion().getNodeCount()) {
@@ -3430,6 +3443,10 @@ public class LogicTreeHazardCompare {
 				if (checkShrinkToComparison(diff, remappedDiff))
 					diff = remappedDiff;
 			}
+			if (difference)
+				diffForStats = diff;
+			else
+				pDiffForStats = diff;
 			
 			map = submitMapFuture(mapper, exec, futures, resourcesDir, diffPrefix, diff, myDiffCPT,
 					name+" vs "+compName, diffLabel, !difference);
@@ -3437,7 +3454,8 @@ public class LogicTreeHazardCompare {
 		}
 		
 		table.finalizeLine();
-		table.addLine(mapStats(primary), mapStats(comparison), mapStats(diffForStats), mapStats(pDiffForStats, true));
+		table.addLine(mapStats(primaryForStats), mapStats(comparisonForStats),
+				mapStats(diffForStats), mapStats(pDiffForStats, true));
 	}
 	
 	public void writeCombinedBranchMap(File resourcesDir, String prefix, String fullTitle, MapPlot meanMap,
