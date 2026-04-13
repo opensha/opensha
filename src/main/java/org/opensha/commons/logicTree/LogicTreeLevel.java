@@ -714,16 +714,48 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		
 	}
 	
-	public enum SamplingMethod {
+	public enum SamplingMethod implements ShortNamed {
 		/**
 		 * Purely random-sampling
 		 */
-		MONTE_CARLO,
+		MONTE_CARLO("Monte Carlo", "MCS"),
 		/**
 		 * Stratify the uncertainties into equal-probability bins, sample a value from each bin, and then shuffle the
 		 * order. This ensures the full marginal distribution is sampled for each level
 		 */
-		LATIN_HYPERCUBE
+		LATIN_HYPERCUBE("Latin Hypercube", "LCS"),
+		/**
+		 * Extension of {@link #LATIN_HYPERCUBE} in which samples are balanced between pairs of choices and not just
+		 * their own marginal distributions. This is done iteratively.
+		 */
+		PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE("Pairwise-Optimized Latin Hypercube", "Pairwise-LCS");
+		
+		private String name;
+		private String shortName;
+
+		private SamplingMethod(String name, String shortName) {
+			this.name = name;
+			this.shortName = shortName;
+			
+		}
+		
+		public boolean isMC() {
+			return !isLHS();
+		}
+		
+		public boolean isLHS() {
+			return this == LATIN_HYPERCUBE || this == PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE;
+		}
+
+		@Override
+		public String getName() {
+			return name;
+		}
+
+		@Override
+		public String getShortName() {
+			return shortName;
+		}
 	}
 	
 	public static abstract class RandomLevel<E, N extends ValuedLogicTreeNode<E>> extends IndexedValuedLevel<E,N> {
@@ -877,7 +909,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 
 		@Override
 		protected void doBuild(long seed, int numSamples, SamplingMethod samplingMethod) {
-			if (samplingMethod == SamplingMethod.LATIN_HYPERCUBE) {
+			if (samplingMethod.isLHS()) {
 				doBuildLHS(seed, numSamples);
 			} else {
 				// monte-carlo otherwise
@@ -926,7 +958,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		}
 		
 		protected void build(UniformRandomProvider rand, int numSamples, SamplingMethod samplingMethod) {
-			if (samplingMethod == SamplingMethod.LATIN_HYPERCUBE)
+			if (samplingMethod.isLHS())
 				buildLHS(rand, numSamples);
 			else
 				// fallback

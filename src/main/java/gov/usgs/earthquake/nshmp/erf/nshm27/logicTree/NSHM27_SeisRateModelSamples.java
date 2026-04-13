@@ -92,7 +92,7 @@ implements BinnableLevel<PureGR, NSHM27_SiesRateModelSample, BinnedSamplesLevel>
 		List<PureGR> origSamples = loadOrigSamples();
 		Random rand = new Random(seed);
 		ArrayDeque<PureGR> samples = new ArrayDeque<>(numNodes);
-		if (samplingMethod == SamplingMethod.LATIN_HYPERCUBE) {
+		if (samplingMethod.isLHS()) {
 			// sort by rate
 			origSamples.sort((o1,o2) -> {
 				int cmp = Double.compare(o1.rateAboveM1, o2.rateAboveM1);

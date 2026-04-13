@@ -21,6 +21,7 @@ import java.util.Random;
 
 import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
+import org.opensha.commons.logicTree.LogicTreeLevel.BinnableLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.BinnedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.SamplingMethod;
@@ -602,7 +603,8 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	}
 	
 	public static <E extends LogicTreeNode> LogicTree<E> buildSampled(
-			List<LogicTreeLevel<? extends E>> levels, int numSamples, long seed, SamplingMethod samplingMethod, LogicTreeNode... required) {
+			List<LogicTreeLevel<? extends E>> levels, int numSamples, long seed,
+			SamplingMethod samplingMethod, LogicTreeNode... required) {
 		Preconditions.checkState(numSamples > 0, "NumSamples must be positive");
 		Preconditions.checkState(!levels.isEmpty(), "Must supply at least 1 level");
 		Random r = new Random(seed);
@@ -615,6 +617,13 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			branches.add(branch);
 		}
 		LogicTreeBranch<?> branch0 = branches.get(0);
+		boolean allFixedWeights = true;
+		List<double[]> levelFixedWeights = null;
+		if (samplingMethod == SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE) {
+			levelFixedWeights = new ArrayList<>(levels.size());
+			for (int i=0; i<levels.size(); i++)
+				levelFixedWeights.add(null);
+		}
 		for (int l=0; l<levels.size(); l++) {
 			LogicTreeLevel<?> level = levels.get(l);
 			List<? extends LogicTreeNode> samples;
@@ -660,16 +669,21 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 					if (fixedWeights) {
 						// fixed weights, simple
 						WeightedList<LogicTreeNode> weightedNodes = new WeightedList<>(nodes.size());
-						for (LogicTreeNode node : nodes) {
+						double[] myWeights = new double[nodes.size()];
+						for (int n=0; n<nodes.size(); n++) {
+							LogicTreeNode node = nodes.get(n);
 							double weight = node instanceof FixedWeightNode ? ((FixedWeightNode)node).getNodeWeight() : node.getNodeWeight(branch0);
+							myWeights[n] = weight;
 							if (weight > 0d)
 								weightedNodes.add(node, weight);
 						}
 						Preconditions.checkState(!weightedNodes.isEmpty());
+						if (levelFixedWeights != null)
+							levelFixedWeights.set(l, myWeights);
 						if (weightedNodes.size() == 1) {
 							for (int i=0; i<numSamples; i++)
 								mySamples.add(weightedNodes.get(0).value);
-						} else if (samplingMethod == SamplingMethod.LATIN_HYPERCUBE) {
+						} else if (samplingMethod.isLHS()) {
 							mySamples.addAll(weightedNodes.sampleEvenly(numSamples, r));
 						} else {
 							mySamples.addAll(weightedNodes.sampleMonteCarlo(numSamples, r));
@@ -677,8 +691,9 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 					} else {
 						// weights vary based on upstream
 						// this implies monte carlo
+						allFixedWeights = false;
 						IntegerPDF_FunctionSampler sampler = null;
-						if (samplingMethod == SamplingMethod.LATIN_HYPERCUBE)
+						if (samplingMethod.isLHS())
 							System.err.println("WARNING: Latin hypercube sampling selected but nodes of "+level.getName()
 									+" vary based on upstream choices; will revert to Monte Carlo sampling for this level");
 						double[] curWeights = new double[nodes.size()];
@@ -720,6 +735,15 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			Preconditions.checkState(samples.size() == numSamples);
 			for (int i=0; i<numSamples; i++)
 				branches.get(i).setValue(l, (E)samples.get(i));
+		}
+		
+		if (samplingMethod == SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE) {
+			Preconditions.checkState(numSamples > 1, "Must have >1 samples for pairwise-iteration");
+			Preconditions.checkState(allFixedWeights,
+					"Cannot (yet) do pairwise-iteration on a logic tree with branch-dependent weighting");
+			LogicTreePairwiseLHSIteration<E> iteration = new LogicTreePairwiseLHSIteration<>(levels, branches, levelFixedWeights);
+			int nIters = Integer.max(10000, numSamples*100);
+			iteration.iterate(nIters, r, true);
 		}
 		
 		LogicTree<E> tree = fromExisting(levels, branches);

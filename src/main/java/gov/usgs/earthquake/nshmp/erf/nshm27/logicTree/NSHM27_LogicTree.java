@@ -317,6 +317,9 @@ public class NSHM27_LogicTree {
 	}
 	
 	public static void main(String[] args) throws IOException {
+//		buildLogicTree(NSHM27_SeismicityRegions.AMSAM, TectonicRegionType.SUBDUCTION_INTERFACE, 2000, 123456789l,
+//				SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE);
+//		System.exit(0);
 		SamplingMethod samplingMethod = SamplingMethod.MONTE_CARLO;
 		TectonicRegionType[] trts = {TectonicRegionType.SUBDUCTION_INTERFACE, TectonicRegionType.SUBDUCTION_SLAB, TectonicRegionType.ACTIVE_SHALLOW};
 		for (NSHM27_SeismicityRegions seisReg : NSHM27_SeismicityRegions.values()) {
