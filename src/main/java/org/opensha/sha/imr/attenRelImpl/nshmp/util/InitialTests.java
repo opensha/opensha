@@ -49,21 +49,23 @@ class InitialTests {
 //				Gmm.COMBINED_INTERFACE_2023_SEATTLE
 //		};
 		
-		Gmm[] gmms = {
-				Gmm.PRVI_2025_ACTIVE_CRUST,
-				Gmm.PRVI_2025_ACTIVE_CRUST_ADJUSTED,
-				Gmm.PRVI_2025_INTERFACE,
-				Gmm.PRVI_2025_INTERFACE_ADJUSTED,
-				Gmm.PRVI_2025_INTRASLAB,
-				Gmm.PRVI_2025_INTRASLAB_ADJUSTED,
-				Gmm.TOTAL_TREE_PRVI_ACTIVE_CRUST_2025,
-				Gmm.TOTAL_TREE_PRVI_INTERFACE_2025,
-				Gmm.TOTAL_TREE_PRVI_INTRASLAB_2025,
-				Gmm.COMBINED_PRVI_ACTIVE_CRUST_2025,
-				Gmm.COMBINED_PRVI_INTERFACE_2025,
-				Gmm.COMBINED_PRVI_INTRASLAB_2025,
-		};
+//		Gmm[] gmms = {
+//				Gmm.PRVI_2025_ACTIVE_CRUST,
+//				Gmm.PRVI_2025_ACTIVE_CRUST_ADJUSTED,
+//				Gmm.PRVI_2025_INTERFACE,
+//				Gmm.PRVI_2025_INTERFACE_ADJUSTED,
+//				Gmm.PRVI_2025_INTRASLAB,
+//				Gmm.PRVI_2025_INTRASLAB_ADJUSTED,
+//				Gmm.TOTAL_TREE_PRVI_ACTIVE_CRUST_2025,
+//				Gmm.TOTAL_TREE_PRVI_INTERFACE_2025,
+//				Gmm.TOTAL_TREE_PRVI_INTRASLAB_2025,
+//				Gmm.COMBINED_PRVI_ACTIVE_CRUST_2025,
+//				Gmm.COMBINED_PRVI_INTERFACE_2025,
+//				Gmm.COMBINED_PRVI_INTRASLAB_2025,
+//		};
 //		filter = new GroundMotionLogicTreeFilter.StringMatching(GroundMotions.EPI_LO, UsgsPrviBackbone2025.SIGMA_PRVI_ID);
+		
+		Gmm[] gmms = { Gmm.TOTAL_TREE_CONUS_STABLE_CRUST_2023 };
 		
 //		GroundMotionModel gmm = Gmm.ASK_14.instance(Imt.PGA);
 //		GroundMotionModel gmm = Gmm.ASK_14_BASE.instance(Imt.PGA);
@@ -94,11 +96,11 @@ class InitialTests {
 				continue;
 			}
 		}
-		System.exit(0);
+//		System.exit(0);
 		
-		wrappers.add((NSHMP_GMM_Wrapper)AttenRelRef.USGS_NSHM23_ACTIVE.get());
-		
-		GmmInput input = GmmInput.builder().withDefaults().build();
+//		wrappers.add((NSHMP_GMM_Wrapper)AttenRelRef.USGS_NSHM23_ACTIVE.get());
+//		
+//		GmmInput input = GmmInput.builder().withDefaults().build();
 		
 		for (NSHMP_GMM_Wrapper wrapper : wrappers) {
 			System.out.println("GMM: "+wrapper.getName());
@@ -181,6 +183,8 @@ class InitialTests {
 			for (Parameter<?> param : wrapper.getSiteParams())
 				System.out.println("\t\t"+param.getName()+":\tdefault="+param.getValue());
 			
+			System.out.println("\tCurrent input: "+wrapper.getCurrentGmmInput());
+			
 			System.out.print("\tCalculating for "+wrapper.getIntensityMeasure().getName()+" defaults...");
 			try {
 				result = wrapper.getGroundMotionTree();
@@ -204,6 +208,8 @@ class InitialTests {
 				String id = gmBranch.id();
 				System.out.println("\t\t"+id+" (weight="+(float)weight+"): "+value);
 			}
+			// use this if you want Peter's default formatting:
+//			System.out.println(result);
 			
 			System.out.println();
 		}
