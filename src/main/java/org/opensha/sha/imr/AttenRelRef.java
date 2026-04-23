@@ -249,6 +249,17 @@ public enum AttenRelRef implements AttenRelSupplier {
 	},
 
 	// DEVELOPMENT
+
+	USGS_NSHM23_STABLE(null, "USGS NSHM23 Stable Crustal",
+			"NSHM23-Stable", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_CONUS_STABLE_CRUST_2023, getName(), getShortName(), false, null);
+		}
+		
+	},
 	
 	WRAPPED_ASK_2014(null, "NSHMP-Haz ASK (2014) Base",
 			"WrapedASK2014", DEVELOPMENT) {
