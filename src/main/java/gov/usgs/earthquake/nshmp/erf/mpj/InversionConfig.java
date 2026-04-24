@@ -56,7 +56,7 @@ public final class InversionConfig {
 		return extraArgs;
 	}
 
-	int resolveInversionJobMinutes(int nodeRounds) {
+	int resolvePerInversionMinutes() {
 		if (explicitWallTimeMinutes != null)
 			return explicitWallTimeMinutes;
 		double numIters = estimatedAvgNumRups*estimatedRounds;
@@ -64,6 +64,13 @@ public final class InversionConfig {
 		int invMins = (int)(invSecs/60d + 0.5);
 		if (ClusterSpecificInversionConfigurationFactory.class.isAssignableFrom(factoryClass))
 			invMins *= 2;
+		return invMins;
+	}
+
+	int resolveInversionJobMinutes(int nodeRounds) {
+		if (explicitWallTimeMinutes != null)
+			return explicitWallTimeMinutes;
+		int invMins = resolvePerInversionMinutes();
 		int mins = (int)(nodeRounds*invMins);
 		mins += Integer.max(60, invMins);
 		mins += Integer.max(0, nodeRounds-1)*10;

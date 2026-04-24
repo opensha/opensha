@@ -78,6 +78,20 @@ public class MPJ_LogicTreeInversionScriptWriter {
 		InversionConfigurationFactory factory = instantiateFactory(request.inversion().factoryClass());
 		NodeCalcConfig calcConfig = resolveNodeCalcConfig(request.hpc(), request.inversion(), logicTree.size());
 		String resultsPath = dirPath+"/results";
+		
+		System.out.println("Directory name: "+dirName);
+		System.out.println("Local output dir: "+localDir.getAbsolutePath());
+		System.out.println("Factory: "+request.inversion().factoryClass().getName());
+		System.out.println("Built "+logicTree.size()+" logic tree branches"
+				+(analysisTree != null ? " ("+analysisTree.size()+" analysis branches)" : ""));
+		System.out.println("Calculations: "+calcConfig.numCalcs()+" total, "
+				+calcConfig.nodeRounds()+" rounds on "+calcConfig.nodes()+" nodes");
+		System.out.println("Estimate "+calcConfig.perInversionMins()+" minutes per inversion");
+		System.out.println("Inversion job time: "+calcConfig.inversionMins()+" mins = "
+				+(float)((double)calcConfig.inversionMins()/60d)+" hours");
+		if (hazard != null)
+			System.out.println("Hazard job time: "+calcConfig.hazardMins()+" mins = "
+					+(float)((double)calcConfig.hazardMins()/60d)+" hours");
 
 		writeInversionJob(localDir, batchWriter, mpjWriter, request, logicTreePath, resultsPath, calcConfig);
 		Map<String, File> baFiles = AbstractAsyncLogicTreeWriter.getBranchAverageSolutionFileMap(new File("results"), logicTree);
@@ -167,6 +181,9 @@ public class MPJ_LogicTreeInversionScriptWriter {
 		int numCalcs = gridTree.size()*logicTree.size();
 		int nodeRounds = (int)Math.ceil((double)numCalcs/(double)calcConfig.nodes);
 		int mins = capWeek(Integer.max(60*10, 45*nodeRounds));
+		System.out.println("Grid source tree has "+gridTree.size()+" branches; fault x grid calculations = "
+				+numCalcs+"; estimated grid/follow-up time = "+mins+" mins = "
+				+(float)((double)mins/60d)+" hours");
 
 		String fullLTPath = "$DIR/logic_tree_full_gridded.json";
 		String randLTPath = "$DIR/logic_tree_full_gridded_sampled.json";
@@ -463,8 +480,10 @@ public class MPJ_LogicTreeInversionScriptWriter {
 		nodes = Integer.min(nodes, (int)calcNodes);
 		if (origNodes > 1 && nodes < 2)
 			nodes = 2;
+		int perInversionMins = inversion.resolvePerInversionMinutes();
 		int hazardMins = capWeek(Integer.max(60*10, 45*nodeRounds));
-		return new NodeCalcConfig(nodes, nodeRounds, inversion.resolveInversionJobMinutes(nodeRounds), hazardMins);
+		return new NodeCalcConfig(nodes, nodeRounds, numCalcs, perInversionMins,
+				inversion.resolveInversionJobMinutes(nodeRounds), hazardMins);
 	}
 
 	private InversionConfigurationFactory instantiateFactory(
@@ -511,7 +530,8 @@ public class MPJ_LogicTreeInversionScriptWriter {
 		return Integer.min(mins, 60*24*7 - 1);
 	}
 
-	private record NodeCalcConfig(int nodes, int nodeRounds, int inversionMins, int hazardMins) {}
+	private record NodeCalcConfig(int nodes, int nodeRounds, int numCalcs, int perInversionMins,
+			int inversionMins, int hazardMins) {}
 
 	private record HazardRegion(String arg) {}
 

@@ -218,6 +218,8 @@ public final class LogicTreeConfig {
 			List<LogicTreeLevel<? extends LogicTreeNode>> resolvedLevels = new ArrayList<>(levels);
 
 			if (!randomLevels.isEmpty()) {
+				System.out.println("Building tree with "+randomLevels.size()+" random levels & sampling multiplier: "
+						+samplingBranchCountMultiplier);
 				Preconditions.checkState(samplingBranchCountMultiplier >= 1,
 						"samplingBranchCountMultiplier must be >= 1");
 				List<LogicTreeLevel<? extends LogicTreeNode>> modLevels = new ArrayList<>(resolvedLevels);
@@ -250,9 +252,12 @@ public final class LogicTreeConfig {
 				logicTree = LogicTree.fromExisting(modLevels, modBranches);
 				logicTree.setWeightProvider(new BranchWeightProvider.OriginalWeights());
 			}
+			System.out.println("Built "+logicTree.size()+" branches");
 
-			if (downsampleCount != null && downsampleCount > 0 && downsampleCount < logicTree.size())
+			if (downsampleCount != null && downsampleCount > 0 && downsampleCount < logicTree.size()) {
 				logicTree = logicTree.sample(downsampleCount, true, randomSeed);
+				System.out.println("Downsampled to "+logicTree.size()+" branches");
+			}
 
 			if (sortBy != null)
 				logicTree = logicTree.sorted(new LogicTreeBranchSorter(sortBy));

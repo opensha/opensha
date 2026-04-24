@@ -10,7 +10,7 @@ public class PRVI25_CrustalRandomlySampledDeformationModelLevel extends Randomly
 	public static String SHORT_NAME = "DMSample";
 
 	public PRVI25_CrustalRandomlySampledDeformationModelLevel() {
-		super(NAME, SHORT_NAME);
+		super(NAME, SHORT_NAME, "Deformation Model Sample ", "DMSample", "DMSample");
 	}
 	
 	public PRVI25_CrustalRandomlySampledDeformationModelLevel(int numSamples) {
@@ -18,7 +18,7 @@ public class PRVI25_CrustalRandomlySampledDeformationModelLevel extends Randomly
 	}
 	
 	public PRVI25_CrustalRandomlySampledDeformationModelLevel(int numSamples, long seed) {
-		super(NAME, SHORT_NAME, "Deformation Model Sample ", "DMSample", "DMSample");
+		this();
 		build(seed, numSamples);
 	}
 
