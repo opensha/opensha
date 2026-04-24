@@ -48,7 +48,7 @@ public class LogicTreeInputFileGen {
 		List<String> script = writer.buildScript(MPJ_EAL_Calc.class.getName(), args);
 		
 		USC_HPCC_ScriptWriter usc = new USC_HPCC_ScriptWriter();
-		script = usc.buildScript(script, mins, nodes, 8, queue);
+		script = usc.buildScript(script, mins, nodes, 8, -1, queue);
 		usc.writeScript(jobFile, script);
 	}
 

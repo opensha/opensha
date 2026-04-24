@@ -66,7 +66,7 @@ public class MPJ_WeeklyPostProcessorScriptGen {
 		argz += " "+remoteBatchDir.getAbsolutePath();
 		
 		pbsWrite.writeScript(jobFile, mpjWrite.buildScript(MPJ_WeeklyPostProcessor.class.getName(), argz),
-				mins, nodes, ppn, queue);
+				mins, nodes, ppn, -1, queue);
 	}
 
 }

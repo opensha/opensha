@@ -83,7 +83,8 @@ public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigur
 	
 	private static final File[] POSSIBLE_DATA_DIRS = {
 			new File("/home/kevin/OpenSHA/nshm27/data/"),
-			new File("/project2/scec_608/kmilner/nshms/nshm27/data")
+			new File("/project2/scec_608/kmilner/nshms/nshm27/data"),
+			new File("/caldera/hovenweep/projects/usgs/hazards/ehp/kmilner/nshm27/data")
 	};
 	public static File locateDataDirectory() {
 		for (File dir : POSSIBLE_DATA_DIRS)

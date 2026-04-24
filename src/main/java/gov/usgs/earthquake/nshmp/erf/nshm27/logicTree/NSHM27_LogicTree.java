@@ -259,6 +259,7 @@ public class NSHM27_LogicTree {
 		if (deterministicSeed) {
 			List<Integer> seedComponents = new ArrayList<>();
 			seedComponents.add(seisReg.name().hashCode());
+			seedComponents.add(samplingMethod.name().hashCode());
 			seedComponents.add(numSamples);
 			seed = RandomSeedUtils.uniqueSeedCombination(RandomSeedUtils.getMixed64(seedComponents));
 		} else {

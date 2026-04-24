@@ -718,25 +718,26 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		/**
 		 * Purely random-sampling
 		 */
-		MONTE_CARLO("Monte Carlo", "MCS"),
+		MONTE_CARLO("Monte Carlo", "MCS", "mcs"),
 		/**
 		 * Stratify the uncertainties into equal-probability bins, sample a value from each bin, and then shuffle the
 		 * order. This ensures the full marginal distribution is sampled for each level
 		 */
-		LATIN_HYPERCUBE("Latin Hypercube", "LCS"),
+		LATIN_HYPERCUBE("Latin Hypercube", "LHS", "lhs"),
 		/**
 		 * Extension of {@link #LATIN_HYPERCUBE} in which samples are balanced between pairs of choices and not just
 		 * their own marginal distributions. This is done iteratively.
 		 */
-		PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE("Pairwise-Optimized Latin Hypercube", "Pairwise-LCS");
+		PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE("Pairwise-Optimized Latin Hypercube", "Pairwise-LHS", "lhs_pairwise");
 		
 		private String name;
 		private String shortName;
+		private String filePrefix;
 
-		private SamplingMethod(String name, String shortName) {
+		private SamplingMethod(String name, String shortName, String filePrefix) {
 			this.name = name;
 			this.shortName = shortName;
-			
+			this.filePrefix = filePrefix;
 		}
 		
 		public boolean isMC() {
@@ -755,6 +756,10 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		@Override
 		public String getShortName() {
 			return shortName;
+		}
+		
+		public String getFilePrefix() {
+			return filePrefix;
 		}
 	}
 	

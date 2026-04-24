@@ -46,7 +46,7 @@ public class USC_HPCC_ScriptWriter extends BatchScriptWriter {
 
 	@Override
 	public List<String> getBatchHeader(int mins, int nodes,
-			int ppn, String queue) {
+			int ppn, int memGBperNode, String queue) {
 		ArrayList<String> pbs = new ArrayList<String>();
 		
 //		if (queue != null && !queue.isEmpty())
