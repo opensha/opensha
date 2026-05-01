@@ -1,6 +1,5 @@
 package org.opensha.commons.data.siteData;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 
 import org.slf4j.Logger;
@@ -12,6 +11,9 @@ import java.awt.GraphicsEnvironment;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -34,14 +36,14 @@ public abstract class AbstractGitLabDownloader {
     private static final boolean D = false;
 
     protected final VersionResolver version;
-    protected final File outputDir;
+    protected final Path outputDir;
 
     /**
      * Constructor collects data on which version to download and where to download to.
      * @param version Which version of the data to download from GitLab
      * @param outputDir Where the downloaded data will be stored.
      */
-    public AbstractGitLabDownloader(VersionResolver version, File outputDir) {
+    public AbstractGitLabDownloader(VersionResolver version, Path outputDir) {
         this.version = version;
         this.outputDir = outputDir;
     }
@@ -74,11 +76,11 @@ public abstract class AbstractGitLabDownloader {
      * Extracted archive name is same as `getSiteDataEntry`
      * @return path to extracted archive
      */
-    private File extractArchive() {
+    private Path extractArchive() throws IOException {
         // Check if file exists or throw error
-        File archive = new File(outputDir.getAbsolutePath(), getArchiveName());
+        Path archive = outputDir.resolve(getArchiveName());
         String errTitle = "Extraction Failed";
-        if (!outputDir.exists() || !archive.exists()) {
+        if (!Files.exists(archive)) {
             String errMsg = "Failed to extract archive " + archive + ". Does not exist.";
             log.error(errMsg);
             if (!GraphicsEnvironment.isHeadless()) {
@@ -86,15 +88,15 @@ public abstract class AbstractGitLabDownloader {
             }
             return null;
         }
-        File target = new File(outputDir.getAbsolutePath(), getSiteDataEntry());
+        Path target = outputDir.resolve(getSiteDataEntry());
 
         // Create target directory if it doesn't exist
-        if (!target.exists()) {
-            target.mkdirs();
+        if (!Files.exists(target)) {
+            Files.createDirectories(target);
         }
 
         // Extract the zip file
-        try (ZipFile zipFile = new ZipFile(archive)) {
+        try (ZipFile zipFile = new ZipFile(archive.toFile())) {
             Enumeration<? extends ZipEntry> entries = zipFile.entries();
 
             // The subdirectory we want to extract data from into `outputDir`
@@ -110,18 +112,18 @@ public abstract class AbstractGitLabDownloader {
                     // Remove the prefix to get the relative path within site-data
                     String relativePath = entryPath.substring(extractPrefix.length());
 
-                    File entryFile = new File(target, relativePath);
+                    Path entryFile = target.resolve(relativePath);
 
                     // Create parent directories if they don't exist
                     if (entry.isDirectory()) {
-                        entryFile.mkdirs();
+                        Files.createDirectories(entryFile);
                     } else {
                         // Create parent directories for the file
-                        entryFile.getParentFile().mkdirs();
+                        Files.createDirectories(entryFile.getParent());
 
                         // Extract the file
                         try (InputStream is = zipFile.getInputStream(entry);
-                             FileOutputStream fos = new FileOutputStream(entryFile)) {
+                             OutputStream fos = Files.newOutputStream(entryFile)) {
                             IOUtils.copy(is, fos);
                         }
                     }
@@ -129,13 +131,13 @@ public abstract class AbstractGitLabDownloader {
                 // Skip all other entries (like the top-level directory and anything outside site-data)
             }
         } catch (java.util.zip.ZipException e) {
-            String errMsg = "Invalid or corrupted zip file: " + archive.getName() + " - " + e.getMessage();
+            String errMsg = "Invalid or corrupted zip file: " + archive.getFileName() + " - " + e.getMessage();
             log.error(errMsg, e);
             if (!GraphicsEnvironment.isHeadless()) {
                 JOptionPane.showMessageDialog(null, errMsg, errTitle, JOptionPane.ERROR_MESSAGE);
             }
         } catch (IOException e) {
-            String errMsg = "Failed to read zip file: " + archive.getName() + " - " + e.getMessage();
+            String errMsg = "Failed to read zip file: " + archive.getFileName() + " - " + e.getMessage();
             log.error(errMsg, e);
             if (!GraphicsEnvironment.isHeadless()) {
                 JOptionPane.showMessageDialog(null, errMsg, errTitle, JOptionPane.ERROR_MESSAGE);
@@ -143,9 +145,9 @@ public abstract class AbstractGitLabDownloader {
         }
 
         // Delete the archive after extraction
-        archive.delete();
+        Files.delete(archive);
 
-        return (target.exists()) ? target : null;
+        return (Files.exists(target)) ? target : null;
     }
 
     /**
@@ -208,12 +210,12 @@ public abstract class AbstractGitLabDownloader {
      * Attempts to download and extract the data for specified versions.
      * @return path to the extracted archive where data can be found
      */
-    public File downloadSiteData() {
+    public Path downloadSiteData() {
         // Simply returns the path if data was already downloaded.
         // Check for the extracted archive to determine if the data exists.
-        File target = new File(outputDir.getAbsolutePath(), getSiteDataEntry());
-        if (D) System.out.println("Check if data already exists at " + target.getAbsolutePath());
-        if (target.exists()) {
+        Path target = outputDir.resolve(getSiteDataEntry());
+        if (D) System.out.println("Check if data already exists at " + target);
+        if (Files.exists(target)) {
             return target;
         }
         // Download the archive to the outputDir, then extract it and erase the archive.
@@ -224,9 +226,9 @@ public abstract class AbstractGitLabDownloader {
             throw new RuntimeException(e);
         }
         System.out.println("Downloading data for " + version.getDisplayName() + " from " + url);
-        try {
-            File downloadPath = new File(outputDir.getAbsolutePath(), getArchiveName());
-            FileUtils.copyURLToFile(url, downloadPath);
+        try (InputStream in = url.openStream()) {
+            Path downloadPath = outputDir.resolve(getArchiveName());
+            Files.copy(in, downloadPath, StandardCopyOption.REPLACE_EXISTING);
             if (D) System.out.println("Done downloading to " + downloadPath);
             return extractArchive();
         } catch (IOException e) {

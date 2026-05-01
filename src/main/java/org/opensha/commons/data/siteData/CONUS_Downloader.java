@@ -22,7 +22,7 @@ public class CONUS_Downloader extends AbstractGitLabDownloader {
      * @param version Which site data to download from the USGS GitLab
      * @param outputDir Where the downloaded data will be stored
      */
-    CONUS_Downloader(CONUS_Versions version, File outputDir) {
+    CONUS_Downloader(CONUS_Versions version, Path outputDir) {
         super(version, outputDir);
     }
 
@@ -55,7 +55,7 @@ public class CONUS_Downloader extends AbstractGitLabDownloader {
      * Get the default store directory for CONUS file downloads
      * @return	Default store directory to use in default constructor.
      */
-    public static File getStoreDir() {
+    public static Path getStoreDir() {
         Path storeDir = Paths.get(
                 System.getProperty("user.home"), ".site_data", "conus");
         try {
@@ -64,7 +64,7 @@ public class CONUS_Downloader extends AbstractGitLabDownloader {
             log.error("e: ", e);
             System.err.println("CONUS_Downloader failed to create storeDir at " + storeDir);
         }
-        return storeDir.toFile();
+        return storeDir;
     }
 
     /**
