@@ -101,7 +101,8 @@ public class NSHM27_InversionScriptWriter {
 
 		InversionConfig inversion = InversionConfig.builder()
 				.factoryClass(NSHM27_InvConfigFactory.class)
-				.estimateWallTimeMinutes(200000d, 2000, 200000d)
+//				.estimateWallTimeMinutes(200000d, 2000, 200000d)
+				.wallTimeMinutes(10)
 				.parallelBranchAverage(true)
 				.build();
 
