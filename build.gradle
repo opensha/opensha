@@ -2,6 +2,10 @@
  * opensha dependencies
  */
 
+import org.gradle.api.tasks.testing.TestDescriptor
+import org.gradle.api.tasks.testing.TestListener
+import org.gradle.api.tasks.testing.TestResult
+
 apply plugin: 'java-library'
 apply plugin: 'eclipse'
 
@@ -51,18 +55,27 @@ task testVerbose(type: Test) {
 	testLogging {
 		events "failed"
 	}
-	beforeSuite { descr ->
-		println("Executing SUITE: $descr.className > $descr.displayName")
-	}
-	afterTest { descr, result ->
-		def time = (result.endTime - result.startTime)/1000.0
-		if (time > 1)
-			println("\t$descr.className > $descr.displayName: $result.resultType in $time s")
-	}
-	afterSuite { descr, result ->
-		def time = (result.endTime - result.startTime)/1000.0
-		println("SUITE $descr.className: $result.resultType in $time s")
-	}
+
+	addTestListener([
+		beforeSuite: { TestDescriptor descr ->
+			println("Executing SUITE: $descr.className > $descr.displayName")
+		},
+		beforeTest: { TestDescriptor descr ->
+			// no-op
+		},
+		afterTest: { TestDescriptor descr, TestResult result ->
+			def time = (result.endTime - result.startTime)/1000.0
+			if (time > 1)
+				println("\t$descr.className > $descr.displayName: $result.resultType in $time s")
+		},
+		afterSuite: { TestDescriptor descr, TestResult result ->
+			if (descr.className != null) {
+				def time = (result.endTime - result.startTime)/1000.0
+				println("SUITE $descr.className: $result.resultType in $time s")
+			}
+		}
+	] as TestListener)
+
 	minHeapSize = "128m"
 	maxHeapSize = "2048m"
 
