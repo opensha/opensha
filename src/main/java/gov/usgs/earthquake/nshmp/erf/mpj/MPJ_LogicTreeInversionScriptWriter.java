@@ -37,7 +37,7 @@ import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
 
 public class MPJ_LogicTreeInversionScriptWriter {
 
-	public File writeScripts(InversionScriptWriteRequest request) throws IOException {
+	public File writeScripts(Request request) throws IOException {
 		LogicTreeConfig.Resolution resolved = request.logicTree().source().resolve();
 		LogicTree<LogicTreeNode> logicTree = resolved.logicTree();
 		LogicTree<LogicTreeNode> analysisTree = resolved.analysisTree();
@@ -101,7 +101,7 @@ public class MPJ_LogicTreeInversionScriptWriter {
 					resultsPath, calcConfig);
 		}
 
-		GridSourcePostProcessConfig gridConfig = request.postProcess().gridSourcePostProcess();
+		PostProcessConfig.GridSourceConfig gridConfig = request.postProcess().gridSourcePostProcess();
 		if (gridConfig != null) {
 			Preconditions.checkState(factory instanceof GridSourceProviderFactory,
 					"Grid-source post-processing requires a GridSourceProviderFactory");
@@ -127,7 +127,7 @@ public class MPJ_LogicTreeInversionScriptWriter {
 	}
 
 	private void writeInversionJob(File localDir, BatchScriptWriter batchWriter, JavaShellScriptWriter mpjWriter,
-			InversionScriptWriteRequest request, String logicTreePath, String resultsPath, NodeCalcConfig calcConfig)
+			Request request, String logicTreePath, String resultsPath, NodeCalcConfig calcConfig)
 			throws IOException {
 		int annealingThreads = request.hpc().threadsPerNode()/request.hpc().inversionsPerBundle();
 		StringBuilder args = new StringBuilder();
@@ -153,7 +153,7 @@ public class MPJ_LogicTreeInversionScriptWriter {
 	}
 
 	private void writeBaseHazardJob(File localDir, BatchScriptWriter batchWriter, JavaShellScriptWriter mpjWriter,
-			InversionScriptWriteRequest request, LogicTree<LogicTreeNode> logicTree,
+			Request request, LogicTree<LogicTreeNode> logicTree,
 			List<LogicTreeLevel<? extends LogicTreeNode>> levels, String analysisTreePath, String resultsPath,
 			NodeCalcConfig calcConfig) throws IOException {
 		HazardArgs hazardArgs = buildHazardArgs(localDir, request.hazard(), logicTree, levels, analysisTreePath,
@@ -167,10 +167,10 @@ public class MPJ_LogicTreeInversionScriptWriter {
 	}
 
 	private void writeGridSourceJobs(File localDir, BatchScriptWriter batchWriter, JavaShellScriptWriter mpjWriter,
-			JavaShellScriptWriter javaWriter, InversionScriptWriteRequest request, InversionConfigurationFactory factory,
+			JavaShellScriptWriter javaWriter, Request request, InversionConfigurationFactory factory,
 			LogicTree<LogicTreeNode> logicTree, String analysisTreePath, String logicTreePath, String resultsPath,
 			List<LogicTreeLevel<? extends LogicTreeNode>> levels, Map<String, File> baFiles,
-			NodeCalcConfig calcConfig, GridSourcePostProcessConfig gridConfig) throws IOException {
+			NodeCalcConfig calcConfig, PostProcessConfig.GridSourceConfig gridConfig) throws IOException {
 		HazardConfig hazard = request.hazard();
 		LogicTree<?> gridTree = ((GridSourceProviderFactory)factory).getGridSourceTree(logicTree);
 		boolean allLevelsAffected = true;
@@ -241,7 +241,7 @@ public class MPJ_LogicTreeInversionScriptWriter {
 	}
 
 	private void writeSiteHazardJobs(File localDir, BatchScriptWriter batchWriter, JavaShellScriptWriter mpjWriter,
-			InversionScriptWriteRequest request, String logicTreePath, String analysisTreePath, String resultsPath,
+			Request request, String logicTreePath, String analysisTreePath, String resultsPath,
 			int nodes, boolean hasGridSourcePostProcess) throws IOException {
 		File sitesFile = new File(localDir, "hazard_sites.csv");
 		writeSitesFile(sitesFile, request.hazard().sites());
@@ -280,7 +280,7 @@ public class MPJ_LogicTreeInversionScriptWriter {
 	}
 
 	private void writeNodeBranchAverageJobs(File localDir, BatchScriptWriter batchWriter, JavaShellScriptWriter mpjWriter,
-			InversionScriptWriteRequest request, LogicTree<LogicTreeNode> logicTree, LogicTree<LogicTreeNode> analysisTree,
+			Request request, LogicTree<LogicTreeNode> logicTree, LogicTree<LogicTreeNode> analysisTree,
 			String logicTreePath, String analysisTreePath, String resultsPath, Map<String, File> baFiles, int nodes,
 			int mins) throws IOException {
 		LogicTree<?> baTree = analysisTree == null ? logicTree : analysisTree;
@@ -348,7 +348,7 @@ public class MPJ_LogicTreeInversionScriptWriter {
 	}
 
 	private void writeGridHazardJobs(File localDir, BatchScriptWriter batchWriter, JavaShellScriptWriter mpjWriter,
-			InversionScriptWriteRequest request, HazardArgs hazardArgs, int nodes, int mins, String fullLTPath,
+			Request request, HazardArgs hazardArgs, int nodes, int mins, String fullLTPath,
 			String randLTPath, String onlyLTPath, String resultsPath, String griddedBAName, int logicTreeSize)
 			throws IOException {
 		for (int i=0; i<5; i++) {
@@ -528,6 +528,101 @@ public class MPJ_LogicTreeInversionScriptWriter {
 
 	private static int capWeek(int mins) {
 		return Integer.min(mins, 60*24*7 - 1);
+	}
+
+	public static final class Request {
+
+		private final RunConfig run;
+		private final HPCConfig hpc;
+		private final LogicTreeConfig logicTree;
+		private final InversionConfig inversion;
+		private final HazardConfig hazard;
+		private final PostProcessConfig postProcess;
+
+		private Request(Builder builder) {
+			this.run = builder.run;
+			this.hpc = builder.hpc;
+			this.logicTree = builder.logicTree;
+			this.inversion = builder.inversion;
+			this.hazard = builder.hazard;
+			this.postProcess = builder.postProcess;
+		}
+
+		public static Builder builder() {
+			return new Builder();
+		}
+
+		public RunConfig run() {
+			return run;
+		}
+
+		public HPCConfig hpc() {
+			return hpc;
+		}
+
+		public LogicTreeConfig logicTree() {
+			return logicTree;
+		}
+
+		public InversionConfig inversion() {
+			return inversion;
+		}
+
+		public HazardConfig hazard() {
+			return hazard;
+		}
+
+		public PostProcessConfig postProcess() {
+			return postProcess;
+		}
+
+		public static final class Builder {
+			private RunConfig run;
+			private HPCConfig hpc;
+			private LogicTreeConfig logicTree;
+			private InversionConfig inversion;
+			private HazardConfig hazard;
+			private PostProcessConfig postProcess = PostProcessConfig.defaults();
+
+			public Builder run(RunConfig run) {
+				this.run = run;
+				return this;
+			}
+
+			public Builder hpc(HPCConfig hpc) {
+				this.hpc = hpc;
+				return this;
+			}
+
+			public Builder logicTree(LogicTreeConfig logicTree) {
+				this.logicTree = logicTree;
+				return this;
+			}
+
+			public Builder inversion(InversionConfig inversion) {
+				this.inversion = inversion;
+				return this;
+			}
+
+			public Builder hazard(HazardConfig hazard) {
+				this.hazard = hazard;
+				return this;
+			}
+
+			public Builder postProcess(PostProcessConfig postProcess) {
+				this.postProcess = postProcess;
+				return this;
+			}
+
+			public Request build() {
+				Preconditions.checkNotNull(run, "run config is required");
+				Preconditions.checkNotNull(hpc, "HPC config is required");
+				Preconditions.checkNotNull(logicTree, "logic tree config is required");
+				Preconditions.checkNotNull(inversion, "inversion config is required");
+				Preconditions.checkNotNull(postProcess, "post-process config is required");
+				return new Request(this);
+			}
+		}
 	}
 
 	private record NodeCalcConfig(int nodes, int nodeRounds, int numCalcs, int perInversionMins,

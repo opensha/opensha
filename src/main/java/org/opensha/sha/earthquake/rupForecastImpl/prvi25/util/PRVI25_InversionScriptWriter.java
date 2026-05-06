@@ -17,12 +17,9 @@ import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_Crusta
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_LogicTree;
 import org.opensha.sha.imr.AttenRelRef;
 
-import gov.usgs.earthquake.nshmp.erf.mpj.GridSourcePostProcessConfig;
 import gov.usgs.earthquake.nshmp.erf.mpj.HPCConfig;
-import gov.usgs.earthquake.nshmp.erf.mpj.HPCSite;
 import gov.usgs.earthquake.nshmp.erf.mpj.HazardConfig;
 import gov.usgs.earthquake.nshmp.erf.mpj.InversionConfig;
-import gov.usgs.earthquake.nshmp.erf.mpj.InversionScriptWriteRequest;
 import gov.usgs.earthquake.nshmp.erf.mpj.LogicTreeConfig;
 import gov.usgs.earthquake.nshmp.erf.mpj.MPJ_LogicTreeInversionScriptWriter;
 import gov.usgs.earthquake.nshmp.erf.mpj.PostProcessConfig;
@@ -31,7 +28,7 @@ import gov.usgs.earthquake.nshmp.erf.mpj.RunConfig;
 public class PRVI25_InversionScriptWriter {
 
 	public static void main(String[] args) throws IOException {
-		HPCSite hpcSite = HPCSite.USC_CARC_FMPJ;
+		HPCConfig.HPCSite hpcSite = HPCConfig.HPCSite.USC_CARC_FMPJ;
 
 		File localMainDir = new File("/home/kevin/OpenSHA/fss_inversions");
 		File remoteMainDir = new File("/project2/scec_608/kmilner/fss_inversions");
@@ -112,10 +109,10 @@ public class PRVI25_InversionScriptWriter {
 				.writeNodeBranchAverages(true)
 				.nodeBAAsyncThreads(2)
 				.nodeBASkipSectBySect(false)
-				.gridSourcePostProcess(GridSourcePostProcessConfig.builder().build())
+				.gridSourcePostProcess(PostProcessConfig.GridSourceConfig.builder().build())
 				.build();
 
-		InversionScriptWriteRequest request = InversionScriptWriteRequest.builder()
+		MPJ_LogicTreeInversionScriptWriter.Request request = MPJ_LogicTreeInversionScriptWriter.Request.builder()
 				.run(run)
 				.hpc(hpc)
 				.logicTree(logicTreeConfig)

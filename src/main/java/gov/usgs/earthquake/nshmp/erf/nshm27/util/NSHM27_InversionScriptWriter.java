@@ -14,10 +14,8 @@ import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.imr.AttenRelRef;
 
 import gov.usgs.earthquake.nshmp.erf.mpj.HPCConfig;
-import gov.usgs.earthquake.nshmp.erf.mpj.HPCSite;
 import gov.usgs.earthquake.nshmp.erf.mpj.HazardConfig;
 import gov.usgs.earthquake.nshmp.erf.mpj.InversionConfig;
-import gov.usgs.earthquake.nshmp.erf.mpj.InversionScriptWriteRequest;
 import gov.usgs.earthquake.nshmp.erf.mpj.LogicTreeConfig;
 import gov.usgs.earthquake.nshmp.erf.mpj.MPJ_LogicTreeInversionScriptWriter;
 import gov.usgs.earthquake.nshmp.erf.mpj.PostProcessConfig;
@@ -58,7 +56,7 @@ public class NSHM27_InversionScriptWriter {
 			args = new String[] {
 					"--region", NSHM27_SeismicityRegions.AMSAM.name(),
 					
-					"--hpc-site", HPCSite.USC_CARC_FMPJ.name(),
+					"--hpc-site", HPCConfig.HPCSite.USC_CARC_FMPJ.name(),
 					
 					"--local-dir", "/home/kevin/OpenSHA/fss_inversions",
 					"--remote-dir", "/project2/scec_608/kmilner/fss_inversions",
@@ -127,7 +125,7 @@ public class NSHM27_InversionScriptWriter {
 				.nodeBASkipSectBySect(false)
 				.build();
 
-		InversionScriptWriteRequest request = InversionScriptWriteRequest.builder()
+		MPJ_LogicTreeInversionScriptWriter.Request request = MPJ_LogicTreeInversionScriptWriter.Request.builder()
 				.run(run)
 				.hpc(hpc)
 				.logicTree(logicTreeConfig)
