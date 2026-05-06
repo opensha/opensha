@@ -1,5 +1,6 @@
 package org.opensha.commons.data.siteData;
 
+import org.apache.commons.compress.utils.Lists;
 import org.opensha.commons.data.CSVReader;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.*;
@@ -35,18 +36,21 @@ public abstract class AbstractGriddedSiteDataLoader extends AbstractSiteData<Dou
 
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
-    private String type; // Z1.0, Z2.5, Zsed
-    private final Path siteDataPath;
+    private final String type;
+    private final List<GriddedGeoDataSet> dataSets;
+    private final Map<String, String> dataTypesMap;
+    private double resolution; // smallest spacing encountered
 
-    private double minLat;
-    private double maxLat;
-    private double minLon;
-    private double maxLon;
+    private final double minLat;
+    private final double maxLat;
+    private final double minLon;
+    private final double maxLon;
 
     /**
      * Constructor for the AbstractGriddedSiteDataLoader.
-     * Invokes the downlaoder to retrieve site data if not already downloaded.
-     * Defines the region where this site data is applicable
+     * Invokes the downloader to retrieve site data if not already downloaded.
+     * Defines the region where this site data is applicable.
+     * Loads site data into memory.
      * @param type See `org.opensha.commons.data.siteData` for list of types
      * @param downloader Instance of downloader for site data from GitLab
      */
@@ -57,16 +61,111 @@ public abstract class AbstractGriddedSiteDataLoader extends AbstractSiteData<Dou
         super();
 
         this.type = type;
-        this.siteDataPath = downloader.downloadSiteData();
         this.minLat = minLat;
         this.maxLat = maxLat;
         this.minLon = minLon;
         this.maxLon = maxLon;
-        // TODO: We need to hardcode the min/max lat/lon for each known NSHM version
-        //       inside our concrete impls
+        this.resolution = Double.MAX_VALUE;
+        this.dataSets = new ArrayList<>();
+
+        // Map the selected data type to the representation in the CSV headers.
+        // CSV must have a header to be readable.
+        // Comments before the header denoted with `#` will be ignored.
+        // NOTE: If you attempt to load a SiteData type without declaring here what
+        //       column the data is stored under, the values can't be retrieved.
+        this.dataTypesMap = Map.of(
+                SiteData.TYPE_DEPTH_TO_1_0, "z1p0",
+                SiteData.TYPE_DEPTH_TO_2_5, "z2p5",
+                SiteData.TYPE_SEDIMENT_THICKNESS, "zsed"
+        );
+
+        // Download the site data if it hasn't been downloaded already
+        Path siteDataPath = downloader.downloadSiteData();
+        // Load geodata into memory
+        try (Stream<Path> csvStream = Files.walk(siteDataPath)) {
+            csvStream.filter(Files::isRegularFile)
+                    .filter(p -> p.toString().toLowerCase().endsWith(".csv"))
+                    .forEach(csv -> {
+                        try {
+                            // If there is no GeoJson for the CSV, it's locs are skipped.
+                            Path gj = getGeoJsonFromCsv(csv);
+                            GriddedGeoDataSet gds = new GriddedGeoDataSet(loadRegion(gj));
+                            // Read data from CSV into memory
+                            populateValues(gds, csv);
+                            this.dataSets.add(gds);
+                        } catch (IOException e) {
+                            log.warn("Error locating GeoJSON for CSV " + csv.getFileName() +
+                                    ": " + e.getMessage());
+                        }
+                    });
+        } catch (IOException e) {
+
+            throw new RuntimeException(e);
+        }
     }
 
     /**
+     * Populates data grid with values of `type`.
+     * If there is no data to load, the values remain as `NaN`
+     * @param gds data structure to populate with site data
+     * @param csv Path to CSV file containing site data to load from
+     */
+    private void populateValues(GriddedGeoDataSet gds, Path csv) throws IOException {
+        gds.scale(Double.NaN); // Clear all values
+        try (InputStream in = Files.newInputStream(csv)) {
+            CSVReader reader = new CSVReader(in);
+            int latCol = -1;
+            int lonCol = -1;
+            int datCol = -1;
+            // Ignore comments at start of CSV and get header
+            CSVReader.Row header;
+            do {
+                header = reader.read();
+            } while (header.toString().startsWith("#"));
+            for (int i = 0; i < header.columns(); i++) {
+                if (header.get(i).equals("lat")) {
+                    latCol = i;
+                } else if (header.get(i).equals("lon")) {
+                    lonCol = i;
+                } else if (header.get(i).equals(dataTypesMap.get(type))) {
+                    datCol = i;
+                }
+            }
+            Preconditions.checkState(latCol != -1,
+                    "CSV \"" + csv.getFileName() + "\"" + " is missing latitude column");
+            Preconditions.checkState(lonCol != -1,
+                    "CSV \"" + csv.getFileName() + "\"" + " is missing longitude column");
+
+            if (datCol != -1) {
+                for (CSVReader.Row row : reader) {
+                    double dat = row.getDouble(datCol);
+                    if (type.equals(SiteData.TYPE_SEDIMENT_THICKNESS)) {
+                       dat /= 1000; // Convert m to km
+                    }
+                    double lat = row.getDouble(latCol);
+                    double lon = row.getDouble(lonCol);
+
+                    Location loc = new Location(lat, lon);
+                    int index = gds.indexOf(loc);
+                    Preconditions.checkState(index >= 0,
+                            "CSV location not found in GDS: %s", loc);
+
+                    Location gridLoc = gds.getLocation(index);
+                    Preconditions.checkState(LocationUtils.areSimilar(loc, gridLoc),
+                            "CSV and GDS locs differ: %s != %s", loc, gridLoc);
+
+                    double prevVal = gds.get(index);
+                    Preconditions.checkState(Double.isNaN(prevVal),
+                            "Value at index %s for location %s was previously set: %s",
+                            index, gds.getLocation(index), dat);
+
+                    gds.set(index, dat);
+                }
+            }
+        }
+    }
+
+        /**
      * This gives the applicable region for this data set.
      *
      * @return Region
@@ -103,8 +202,15 @@ public abstract class AbstractGriddedSiteDataLoader extends AbstractSiteData<Dou
                 throw new IllegalStateException("Expected Feature or FeatureCollection, have "+type);
             }
         }
-        // TODO: How do I validate gridding matches?
-        return GriddedRegion.fromFeature(feature);
+
+        // TODO: Test to confirm spacing is retrieved correctly
+        double spacing = feature.properties.getDouble("spacing", 0);
+        if (spacing < resolution) {
+            resolution = spacing;
+        }
+        Region region = Region.fromFeature(feature);
+        // If anchor at (0,0) is invalid, we could use the first location in region
+        return new GriddedRegion(region, spacing, GriddedRegion.ANCHOR_0_0);
     }
 
     /**
@@ -119,25 +225,12 @@ public abstract class AbstractGriddedSiteDataLoader extends AbstractSiteData<Dou
      * @throws FileNotFoundException
      */
     private Path getGeoJsonFromCsv(Path csvFile) throws IOException, FileNotFoundException {
-       // 1. First checks if the file is in the same directory as the CSV file
+       // Checks in same directory for a .geojson file of the same name as the .csv file
        String gjFileName = FileNameUtils.getBaseName(csvFile)+".geojson";
        Path geojson = csvFile.getParent().resolve(gjFileName);
        if (Files.exists(geojson))
            return geojson;
 
-       // 2. If not found in the same directory, search recursively from the `siteDataPath`
-        // TODO: Test this behavior
-        try (Stream<Path> paths = Files.walk(siteDataPath)) {
-            Optional<Path> foundPath = paths
-                    .filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName().toString().equalsIgnoreCase(gjFileName))
-                    .findFirst();
-
-            if (foundPath.isPresent())
-                return foundPath.get();
-        }
-
-       // 3. If the corresponding GeoJSON file for the CSV is not found, then simply return null.
         return null;
     }
 
@@ -150,8 +243,7 @@ public abstract class AbstractGriddedSiteDataLoader extends AbstractSiteData<Dou
      */
     @Override
     public double getResolution() {
-        // TODO
-        return 0;
+        return resolution;
     }
 
 //    /**
@@ -197,64 +289,22 @@ public abstract class AbstractGriddedSiteDataLoader extends AbstractSiteData<Dou
     }
 
     /**
-     * Get the location of the closest data point
+     * Get the location of the closest data point.
+     * This assumes the location does exist in the data set.
+     * Enables a fuzzy search accounting for grid spacing and precision.
      *
      * @param loc
      * @return
      */
     @Override
-    public Location getClosestDataLocation(Location loc) throws IOException {
-        // Collect closest locations in each region
-        LocationList closestLocs = new LocationList();
-
-        // Recursively find all CSV files for locations
-        try (Stream<Path> csvStream = Files.walk(siteDataPath)) {
-            csvStream.filter(Files::isRegularFile)
-                    .filter(p -> p.toString().toLowerCase().endsWith(".csv"))
-                    .forEach(csv -> {
-                        try {
-                            // If there is no GeoJson for the CSV, it's locs are skipped.
-                            Path gj = getGeoJsonFromCsv(csv);
-                            GriddedGeoDataSet gds = new GriddedGeoDataSet(loadRegion(gj));
-                            // Within a region, we can use the more efficient distance formula
-                            Location regionalClosest = getClosestInList(loc,
-                                    gds.getLocationList(), LocationUtils::horzDistanceFast);
-                            closestLocs.add(regionalClosest);
-                        } catch (IOException e) {
-                            log.warn("Error locating GeoJSON for CSV " + csv.getFileName() +
-                                    ": " + e.getMessage());
-                        }
-                    });
-        }
-        // Location distances may be greater across regions, so use Haversine formula
-        return getClosestInList(loc, closestLocs, LocationUtils::horzDistance);
-    }
-
-    /**
-     * Finds the closest location in a list of locations.
-     * @param loc the location to find the closest point for.
-     * @param locs list of locations to consider
-     * @param distCalc function that takes two locations and returns the distance
-     * @return
-     */
-    private Location getClosestInList(Location loc, LocationList locs,
-                                      BiFunction<Location, Location, Double> distCalc) {
-        // Calculate distances between loc and each location of locs
-        double[] distances = new double[locs.size()];
-        Arrays.setAll(distances, i -> distCalc.apply(loc, locs.get(i)));
-        // Find the shortest distance
-        double min = Double.MAX_VALUE;
-        int idx = -1;
-        for (int i = 0; i < distances.length; i++) {
-           double d = distances[i];
-           if (d < min) {
-               idx = i;
-               min = d;
-           }
-        }
-        // Return the corresponding location
-        if (idx == -1) return null;
-        return locs.get(idx);
+    public Location getClosestDataLocation(Location loc) {
+       for (GriddedGeoDataSet grid : dataSets) {
+           if (!grid.contains(loc)) continue;
+           int index = grid.indexOf(loc);
+           return grid.getLocation(index);
+       }
+       log.warn("Failed to find location {}", loc);
+       return null;
     }
 
     /**
@@ -265,73 +315,14 @@ public abstract class AbstractGriddedSiteDataLoader extends AbstractSiteData<Dou
      */
     @Override
     public Double getValue(Location loc) throws IOException {
-        // Find the closest location in the dataset
-        Location closestLoc = getClosestDataLocation(loc);
-
-        // Map the selected data type to the representation in the CSV headers.
-        // CSV must have a header to be readable.
-        // Comments before the header denoted with `#` will be ignored.
-        // NOTE: If you attempt to load a SiteData type without declaring here what
-        //       column the data is stored under, the values can't be retrieved.
-        Map<String, String> dataTypesMap = Map.of(
-                SiteData.TYPE_DEPTH_TO_1_0, "z1p0",
-                SiteData.TYPE_DEPTH_TO_2_5, "z2p5",
-                SiteData.TYPE_SEDIMENT_THICKNESS, "zsed"
-        );
-
-        List<Double> matches = new ArrayList<>();
-        // Search all CSV files until the location is found
-        try (Stream<Path> csvStream = Files.walk(siteDataPath)) {
-            csvStream.filter(Files::isRegularFile)
-                    .filter(p -> p.toString().toLowerCase().endsWith(".csv"))
-                    .forEach(csv -> {
-                        try {
-                            // If there is no GeoJson for the CSV, it's locs are skipped.
-                            Path gj = getGeoJsonFromCsv(csv);
-                            GriddedGeoDataSet gds = new GriddedGeoDataSet(loadRegion(gj));
-                            if (gds.contains(closestLoc)) {
-                                try (InputStream in = Files.newInputStream(csv)) {
-                                    CSVReader reader = new CSVReader(in);
-                                    int latCol = -1;
-                                    int lonCol = -1;
-                                    int datCol = -1;
-                                    // Ignore comments at start of CSV and get header
-                                    CSVReader.Row header;
-                                    do {
-                                        header = reader.read();
-                                    } while (header.toString().startsWith("#"));
-                                    for (int i = 0; i < header.columns(); i++) {
-                                        if (header.get(i).equals("lat")) {
-                                            latCol = i;
-                                        } else if (header.get(i).equals("lon")) {
-                                            lonCol = i;
-                                        } else if (header.get(i).equals(dataTypesMap.get(type))) {
-                                            datCol = i;
-                                        }
-                                    }
-                                    assert (latCol != -1);
-                                    assert (lonCol != -1);
-
-                                    if (datCol != -1) {
-                                        for (CSVReader.Row row : reader) {
-                                            if (Double.compare(row.getDouble(lonCol), closestLoc.getLongitude()) == 0
-                                                    && Double.compare(row.getDouble(latCol), closestLoc.getLatitude()) == 0) {
-                                                matches.add(row.getDouble(datCol));
-                                            }
-                                        }
-                                    } else {
-                                        log.warn("Location was found, but requested data type is unavailable");
-                                    }
-                                }
-                            }
-                        } catch (IOException e) {
-                            log.warn("Error locating GeoJSON for CSV " + csv.getFileName() +
-                                    ": " + e.getMessage());
-                        }
-                    });
-            if (matches.isEmpty()) return NaN; // Should never happen
-            return matches.get(0);
+        for (GriddedGeoDataSet grid : dataSets) {
+            if (!grid.contains(loc)) continue;
+            int index = grid.indexOf(loc);
+            Location gridLoc = grid.getLocation(index);
+            return grid.get(gridLoc);
         }
+        log.warn("Failed to find a value for location {}", loc);
+        return Double.NaN;
     }
 
     /**
@@ -342,12 +333,7 @@ public abstract class AbstractGriddedSiteDataLoader extends AbstractSiteData<Dou
      */
     @Override
     public boolean isValueValid(Double el) {
-        if (type.equals(SiteData.TYPE_DEPTH_TO_1_0)
-            || type.equals(SiteData.TYPE_DEPTH_TO_2_5)
-            || type.equals(SiteData.TYPE_SEDIMENT_THICKNESS)) {
-           return !el.isNaN() && !el.isInfinite() && el >= 0;
-        }
-        return false;
+       return !el.isNaN() && !el.isInfinite() && el >= 0;
     }
 
 //    /**
