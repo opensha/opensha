@@ -37,7 +37,7 @@ public abstract class AbstractGriddedSiteDataLoader extends AbstractSiteData<Dou
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
     private final String type;
-    private final List<GriddedGeoDataSet> dataSets;
+    private List<GriddedGeoDataSet> dataSets;
     private final Map<String, String> dataTypesMap;
     private double resolution; // smallest spacing encountered
 
@@ -65,8 +65,6 @@ public abstract class AbstractGriddedSiteDataLoader extends AbstractSiteData<Dou
         this.maxLat = maxLat;
         this.minLon = minLon;
         this.maxLon = maxLon;
-        this.resolution = Double.MAX_VALUE;
-        this.dataSets = new ArrayList<>();
 
         // Map the selected data type to the representation in the CSV headers.
         // CSV must have a header to be readable.
@@ -79,6 +77,18 @@ public abstract class AbstractGriddedSiteDataLoader extends AbstractSiteData<Dou
                 SiteData.TYPE_SEDIMENT_THICKNESS, "zsed"
         );
 
+        loadSiteData(downloader);
+    }
+
+    /**
+     * Downloads and loads site data.
+     * Concrete classes may call this method to change which site data should be loaded.
+     * This is called with a default downloader at construction.
+     * @param downloader
+     */
+    protected void loadSiteData(AbstractGitLabDownloader downloader) {
+        this.resolution = Double.MAX_VALUE;
+        this.dataSets = new ArrayList<>();
         // Download the site data if it hasn't been downloaded already
         Path siteDataPath = downloader.downloadSiteData();
         // Load geodata into memory
@@ -99,7 +109,6 @@ public abstract class AbstractGriddedSiteDataLoader extends AbstractSiteData<Dou
                         }
                     });
         } catch (IOException e) {
-
             throw new RuntimeException(e);
         }
     }
@@ -246,28 +255,6 @@ public abstract class AbstractGriddedSiteDataLoader extends AbstractSiteData<Dou
         return resolution;
     }
 
-//    /**
-//     * Get the name of this dataset
-//     *
-//     * @return
-//     */
-//    @Override
-//    public String getName() {
-//        // TODO
-//        return "";
-//    }
-
-//    /**
-//     * Get the short name of this dataset
-//     *
-//     * @return
-//     */
-//    @Override
-//    public String getShortName() {
-//        // TODO
-//        return "";
-//    }
-
     /**
      * Get the data type of this dataset
      *
@@ -335,15 +322,4 @@ public abstract class AbstractGriddedSiteDataLoader extends AbstractSiteData<Dou
     public boolean isValueValid(Double el) {
        return !el.isNaN() && !el.isInfinite() && el >= 0;
     }
-
-//    /**
-//     * Returns the metadata for this dataset.
-//     *
-//     * @return
-//     */
-//    @Override
-//    public String getMetadata() {
-//        // TODO
-//        return "";
-//    }
 }

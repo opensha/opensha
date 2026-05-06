@@ -18,5 +18,10 @@ public enum CONUS_Versions implements VersionResolver {
     public String getTag() {
         return tag;
     }
+
+    @Override
+    public String toString() {
+        return displayName;
+    }
 }
 

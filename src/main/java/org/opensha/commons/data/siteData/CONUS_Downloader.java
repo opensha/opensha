@@ -22,7 +22,7 @@ public class CONUS_Downloader extends AbstractGitLabDownloader {
      * @param version Which site data to download from the USGS GitLab
      * @param outputDir Where the downloaded data will be stored
      */
-    CONUS_Downloader(CONUS_Versions version, Path outputDir) {
+    public CONUS_Downloader(CONUS_Versions version, Path outputDir) {
         super(version, outputDir);
     }
 
@@ -31,7 +31,7 @@ public class CONUS_Downloader extends AbstractGitLabDownloader {
      * (Recommended Constructor)
      * @param version Which site data to download from the USGS GitLab
      */
-    CONUS_Downloader(CONUS_Versions version) {
+    public CONUS_Downloader(CONUS_Versions version) {
         this(version, getStoreDir());
     }
 
