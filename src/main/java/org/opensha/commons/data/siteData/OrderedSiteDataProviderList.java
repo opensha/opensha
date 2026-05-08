@@ -12,29 +12,7 @@ import javax.swing.event.ChangeListener;
 import org.dom4j.Document;
 import org.dom4j.Element;
 import org.opensha.commons.data.Site;
-import org.opensha.commons.data.siteData.impl.US_3secTopography;
-import org.opensha.commons.data.siteData.impl.CS_Study18_8_BasinDepth;
-import org.opensha.commons.data.siteData.impl.CVM2BasinDepth;
-import org.opensha.commons.data.siteData.impl.CVM4BasinDepth;
-import org.opensha.commons.data.siteData.impl.CVM4i26BasinDepth;
-import org.opensha.commons.data.siteData.impl.CVM4i26_M01_TaperBasinDepth;
-import org.opensha.commons.data.siteData.impl.CVMHBasinDepth;
-import org.opensha.commons.data.siteData.impl.CVM_CCAi6BasinDepth;
-import org.opensha.commons.data.siteData.impl.CVM_Vs30;
-import org.opensha.commons.data.siteData.impl.MeanTopoSlope;
-import org.opensha.commons.data.siteData.impl.SRTM30PlusTopoSlope;
-import org.opensha.commons.data.siteData.impl.SRTM30PlusTopography;
-import org.opensha.commons.data.siteData.impl.SRTM30TopoSlope;
-import org.opensha.commons.data.siteData.impl.SRTM30Topography;
-import org.opensha.commons.data.siteData.impl.ThompsonVs30_2018;
-import org.opensha.commons.data.siteData.impl.ThompsonVs30_2022;
-import org.opensha.commons.data.siteData.impl.USGSBayAreaBasinDepth;
-import org.opensha.commons.data.siteData.impl.USGS_SFBay_BasinDepth_v21p1;
-import org.opensha.commons.data.siteData.impl.WaldAllenGlobalVs30;
-import org.opensha.commons.data.siteData.impl.WillsMap2000;
-import org.opensha.commons.data.siteData.impl.WillsMap2000TranslatedVs30;
-import org.opensha.commons.data.siteData.impl.WillsMap2006;
-import org.opensha.commons.data.siteData.impl.WillsMap2015;
+import org.opensha.commons.data.siteData.impl.*;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
@@ -373,6 +351,20 @@ public class OrderedSiteDataProviderList implements Iterable<SiteData<?>>, XMLSa
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+        try {
+            providers.add(new ThompsonVs30_2022());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try {
+            providers.add(new ThompsonVs30_2022());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        /*      NSHM CONUS          */
+        providers.add(new CONUS_SiteDataProvider(SiteData.TYPE_DEPTH_TO_1_0));
+        providers.add(new CONUS_SiteDataProvider(SiteData.TYPE_DEPTH_TO_2_5));
+        providers.add(new CONUS_SiteDataProvider(SiteData.TYPE_SEDIMENT_THICKNESS));
 		/*		Wills 2015			*/
 		try {
 			providers.add(new WillsMap2015());

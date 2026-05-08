@@ -75,7 +75,7 @@ public class CONUS_SiteDataProvider extends AbstractGriddedSiteDataLoader implem
      */
     @Override
     public String getMetadata() {
-        return "TODO"; // TODO
+        return "Conterminous U.S. (CONUS) Site Data from the National Seismic Hazard Model (NSHM)";
     }
 
     /**
@@ -86,7 +86,9 @@ public class CONUS_SiteDataProvider extends AbstractGriddedSiteDataLoader implem
      */
     @Override
     public void parameterChange(ParameterChangeEvent event) {
-        // TODO: Adjustable param for version
-        // TODO: On selection of a new version, we need to force retrieval again and reload site data
+        if (event.getParameter() == versionParam) {
+            CONUS_Versions newVersion = versionParam.getValue();
+            loadSiteData(new CONUS_Downloader(newVersion));
+        }
     }
 }
