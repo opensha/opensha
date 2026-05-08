@@ -324,20 +324,27 @@ public class OrderedSiteDataProviderList implements Iterable<SiteData<?>>, XMLSa
 	 * Creates the default list of site data providers:
 	 * 
 	 * <UL>
-	 * <LI> 1. Wills 2006 (servlet access)
-	 * <LI> 2. Topographic Slope Vs30 (Wald and Allen 2007/2008) (servlet access)
-	 * <LI> 3. CVM 4 Iteration 26 Depth 2.5 (servlet access)
-	 * <LI> 4. CVM 4 Iteration 26 Depth 1.0 (servlet access)
-	 * <LI> 5. CVM CCA Iteration 6 Depth 2.5 (servlet access)
-	 * <LI> 6. CVM CCA Iteration 6 Depth 1.0 (servlet access)
-	 * <LI> 7. CVM 4 Depth 2.5 (servlet access)
-	 * <LI> 8. CVM 4 Depth 1.0 (servlet access)
-	 * <LI> 9. CVM H 11.9.1 Depth 2.5
-	 * <LI> 10. CVM H 11.9.1 Depth 1.0
-	 * <LI> 11. USGS Bay Area Depth 2.5 (servlet access)
-	 * <LI> 12. USGS Bay Area Depth 1.0 (servlet access)
-	 * <LI> 13. Vs30 from CVMs (servlet access)
-	 * <LI> 14. CVM 2 Depth 2.5 (servlet access)
+     * <LI> 1. Thompson 2022 (servlet access) </LI>
+     * <LI> 1. NSHM CONUS Depth 1.0 (USGS GitLab access) </LI>
+     * <LI> 1. NSHM CONUS Depth 2.5 (USGS GitLab access) </LI>
+     * <LI> 1. NSHM CONUS Sediment Thickness (USGS GitLab access) </LI>
+     * <LI> 1. Wills 2015 (servlet access) </LI>
+     * <LI> 1. Thompson 2018 (servlet access) </LI>
+     * <LI> 1. Wills 2006 (servlet access) </LI>
+	 * <LI> 2. Topographic Slope Vs30 (Wald and Allen 2007/2008) (servlet access) </LI>
+	 * <LI> 3. CVM 4 Iteration 26 Depth 2.5 (servlet access) </LI>
+	 * <LI> 4. CVM 4 Iteration 26 Depth 1.0 (servlet access) </LI>
+	 * <LI> 5. CVM CCA Iteration 6 Depth 2.5 (servlet access) </LI>
+	 * <LI> 6. CVM CCA Iteration 6 Depth 1.0 (servlet access) </LI>
+	 * <LI> 7. CVM 4 Depth 2.5 (servlet access) </LI>
+	 * <LI> 8. CVM 4 Depth 1.0 (servlet access) </LI>
+	 * <LI> 9. CVM H 11.9.1 Depth 2.5 </LI>
+	 * <LI> 10. CVM H 11.9.1 Depth 1.0 </LI>
+	 * <LI> 11. USGS Bay Area Depth 2.5 (servlet access) </LI>
+	 * <LI> 12. USGS Bay Area Depth 1.0 (servlet access) </LI>
+	 * <LI> 13. Vs30 from CVMs (servlet access) </LI>
+	 * <LI> 14. CVM 2 Depth 2.5 (servlet access) </LI>
+     * <LI> 1. Wills 2000 (servlet access) </LI>
 	 * </UL>
 	 * 
 	 * @return
@@ -351,16 +358,6 @@ public class OrderedSiteDataProviderList implements Iterable<SiteData<?>>, XMLSa
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-        try {
-            providers.add(new ThompsonVs30_2022());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        try {
-            providers.add(new ThompsonVs30_2022());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
         /*      NSHM CONUS          */
         providers.add(new CONUS_SiteDataProvider(SiteData.TYPE_DEPTH_TO_1_0));
         providers.add(new CONUS_SiteDataProvider(SiteData.TYPE_DEPTH_TO_2_5));
@@ -434,18 +431,6 @@ public class OrderedSiteDataProviderList implements Iterable<SiteData<?>>, XMLSa
 		/*		CVM H Depth 1.0		*/
 		try {
 			providers.add(new CVMHBasinDepth(SiteData.TYPE_DEPTH_TO_1_0));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		/*		CCA i6 Depth 2.5		*/
-		try {
-			providers.add(new CVM_CCAi6BasinDepth(SiteData.TYPE_DEPTH_TO_2_5));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		/*		CCA i6 Depth 1.0		*/
-		try {
-			providers.add(new CVM_CCAi6BasinDepth(SiteData.TYPE_DEPTH_TO_1_0));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
