@@ -299,7 +299,7 @@ public abstract class AbstractGriddedSiteDataLoader extends AbstractSiteData<Dou
     public Location getClosestDataLocation(Location loc) {
         for (GriddedRegion region : regions) {
             Location closestLoc = GriddedSiteDataUtil.snapToGrid(loc, region.getSpacing());
-            if (region.contains(closestLoc))
+            if (region.contains(loc))
                 return closestLoc;
         }
         return null;
