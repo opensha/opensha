@@ -6,204 +6,204 @@
  */
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+	sourceCompatibility = JavaVersion.VERSION_17
+	targetCompatibility = JavaVersion.VERSION_17
 }
 compileJava.options.encoding = "UTF-8"
 
 repositories {
-    mavenCentral()
-    maven {
-        url "https://code.usgs.gov/api/v4/groups/1352/-/packages/maven"
-        name "NSHMP GitLab Group"
-    }
+	mavenCentral()
+	maven {
+		url = "https://code.usgs.gov/api/v4/groups/1352/-/packages/maven"
+		name = "NSHMP GitLab Group"
+	}
 }
 
 configurations {
-    apiResolvable {
-        description 'resolvable view of the api classpath'
-        canBeResolved=true
+	apiResolvable {
+		description = 'resolvable view of the api classpath'
+		canBeResolved = true
 
-        extendsFrom api
-    }
+		extendsFrom api
+	}
 }
 
 configurations {
-    implResolvable {
-        description 'resolvable view of the implementation classpath'
-        canBeResolved=true
+	implResolvable {
+		description = 'resolvable view of the implementation classpath'
+		canBeResolved = true
 
-        extendsFrom implementation
-    }
+		extendsFrom implementation
+	}
 }
 
 ext.getDate = {
-    new Date().format('yyyy_MM_dd')
+	new Date().format('yyyy_MM_dd')
 }
 
 logger.info('running settings with project='+project.name+' and rootProject.name='+rootProject.name)
 if (project.parentProject != null) {
-    logger.info(project.name+" is a child of: "+project.parentProject)
+	logger.info(project.name+" is a child of: "+project.parentProject)
 	apply from: '../opensha/build-git.gradle'
 } else {
-    logger.info(project.name+" is top level")
+	logger.info(project.name+" is top level")
 	apply from: 'build-git.gradle'
 }
 
 if (project.parentProject != null) {
-    jar {
-        // include version files
-        from(project(':opensha').projectDir) {
-            include 'build.version'
-        }
-        from(project.projectDir) {
-            include 'build.githash'
-            include 'build.gitbranch'
-            include 'build.gitremoteurl'
-            include 'build.date'
-        }
-    }
-    logger.info('Defining fatJar task in '+project.name+" that depends on "+project.parentProject)
-    task fatJar(type: Jar, dependsOn: ':'+project.parentProject+':fatJar') {
-        doFirst {
-            writeBuildFiles()
-        }
-        archiveBaseName = project.name + '-all'
-        // include all 'api' dependencies
-        from {
-            configurations.apiResolvable.collect { it.isDirectory() ? it : zipTree(it).matching {
-                exclude { it.path.contains('META-INF') }
-            }}
-        }
-        // include compiled source from this project
-        from sourceSets.main.allJava
-        // include upstream project fat jar
-        from zipTree(file('../'+project.parentProject+'/build/libs/'+project.parentProject+'-all.jar')).matching {
-            exclude 'build.githash'
-            exclude 'build.gitbranch'
-            exclude 'build.gitremoteurl'
-            exclude 'build.date'
-        }
-    
-        duplicatesStrategy = 'exclude'
-        with jar
-    }
+	jar {
+		// include version files
+		from(project(':opensha').projectDir) {
+			include 'build.version'
+		}
+		from(project.projectDir) {
+			include 'build.githash'
+			include 'build.gitbranch'
+			include 'build.gitremoteurl'
+			include 'build.date'
+		}
+	}
+	logger.info('Defining fatJar task in '+project.name+" that depends on "+project.parentProject)
+	task fatJar(type: Jar, dependsOn: ':'+project.parentProject+':fatJar') {
+		doFirst {
+			writeBuildFiles()
+		}
+		archiveBaseName = project.name + '-all'
+		// include all 'api' dependencies
+		from {
+			configurations.apiResolvable.collect { it.isDirectory() ? it : zipTree(it).matching {
+				exclude { it.path.contains('META-INF') }
+			}}
+		}
+		// include compiled source from this project
+		from sourceSets.main.allJava
+		// include upstream project fat jar
+		from zipTree(file('../'+project.parentProject+'/build/libs/'+project.parentProject+'-all.jar')).matching {
+			exclude 'build.githash'
+			exclude 'build.gitbranch'
+			exclude 'build.gitremoteurl'
+			exclude 'build.date'
+		}
+	
+		duplicatesStrategy = 'exclude'
+		with jar
+	}
 } else {
-    jar {
+	jar {
 	// include version files
-        from(project.projectDir) {
-            include 'build.version'
-            include 'build.githash'
-            include 'build.gitbranch'
-            include 'build.gitremoteurl'
-            include 'build.date'
-        }
-    }
-    task fatJar(type: Jar) {
-        doFirst {
-            writeBuildFiles()
-        }
-        doLast {
-            delete new File(projectDir, "build.githash")
-            delete new File(projectDir, "build.gitbranch")
-            delete new File(projectDir, "build.gitremoteurl")
-            delete new File(projectDir, "build.date")
-        }
-        archiveBaseName = project.name + '-all'
-        // include all 'api' dependencies
-        from {
-            configurations.apiResolvable.collect { it.isDirectory() ? it : zipTree(it).matching {
-                exclude { it.path.contains('META-INF') }
-            }}
-        }
-        // include compiled source from this project
-        from sourceSets.main.allJava
-    
-        duplicatesStrategy = 'exclude'
-        with jar
-    }
+		from(project.projectDir) {
+			include 'build.version'
+			include 'build.githash'
+			include 'build.gitbranch'
+			include 'build.gitremoteurl'
+			include 'build.date'
+		}
+	}
+	task fatJar(type: Jar) {
+		doFirst {
+			writeBuildFiles()
+		}
+		doLast {
+			delete new File(projectDir, "build.githash")
+			delete new File(projectDir, "build.gitbranch")
+			delete new File(projectDir, "build.gitremoteurl")
+			delete new File(projectDir, "build.date")
+		}
+		archiveBaseName = project.name + '-all'
+		// include all 'api' dependencies
+		from {
+			configurations.apiResolvable.collect { it.isDirectory() ? it : zipTree(it).matching {
+				exclude { it.path.contains('META-INF') }
+			}}
+		}
+		// include compiled source from this project
+		from sourceSets.main.allJava
+	
+		duplicatesStrategy = 'exclude'
+		with jar
+	}
 }
 
 void createAppTask(String taskName, String prefix, String mainClass) {
-    // old default prefix was: prefix+'-'+getDate()+'-'+getGitHash()
-    if (project.parentProject != null) {
-        task (taskName, type: Jar, dependsOn: ':'+project.parentProject+':fatJar') {
-            doFirst {
-                writeBuildFiles()
-            }
-            archiveBaseName = prefix
-            from { configurations.apiResolvable.collect {
-                it.isDirectory() ? it : zipTree(it).matching {
-                    exclude { it.path.contains('META-INF') }
-                }
-            }}
-            // include compiled source from this project
-            from sourceSets.main.allJava
-            // include upstream project fat jar
-            from zipTree(file('../'+project.parentProject+'/build/libs/'+project.parentProject+'-all.jar')).matching {
-                exclude 'build.githash'
-                exclude 'build.gitbranch'
-                exclude 'build.gitremoteurl'
-                exclude 'build.date'
-                exclude { it.path.contains('META-INF') }
-            }
-            // include version files
-            from(project(':opensha').projectDir) {
-                include 'build.version'
-            }
-            from(project.projectDir) {
-                include 'build.githash'
-                include 'build.gitbranch'
-                include 'build.gitremoteurl'
-                include 'build.date'
-            }
-            manifest {
-                attributes(
-                    'Class-Path': configurations.apiResolvable.collect { it.getName() }.join(' '),
-                    'Main-Class': mainClass
-                )
-            }
-            
-            duplicatesStrategy = 'exclude'
-            with jar
-        }
-    } else {
-        task (taskName, type: Jar) {
-            doFirst {
-                writeBuildFiles()
-            }
-            archiveBaseName = prefix
-            from { configurations.apiResolvable.collect {
-                it.isDirectory() ? it : zipTree(it).matching {
-                    exclude { it.path.contains('META-INF') }
-                }
-            }}
-            // include compiled source from this project
-            from sourceSets.main.allJava
-            // include version files
-            from(project.projectDir) {
-                include 'build.version'
-            }
-            from(project.projectDir) {
-                include 'build.githash'
-                include 'build.gitbranch'
-                include 'build.gitremoteurl'
-                include 'build.date'
-            }
-            manifest {
-                attributes(
-                    'Class-Path': configurations.apiResolvable.collect { it.getName() }.join(' '),
-                    'Main-Class': mainClass
-                )
-            }
-            
-            duplicatesStrategy = 'exclude'
-            with jar
-        }
-    }
+	// old default prefix was: prefix+'-'+getDate()+'-'+getGitHash()
+	if (project.parentProject != null) {
+		task (taskName, type: Jar, dependsOn: ':'+project.parentProject+':fatJar') {
+			doFirst {
+				writeBuildFiles()
+			}
+			archiveBaseName = prefix
+			from { configurations.apiResolvable.collect {
+				it.isDirectory() ? it : zipTree(it).matching {
+					exclude { it.path.contains('META-INF') }
+				}
+			}}
+			// include compiled source from this project
+			from sourceSets.main.allJava
+			// include upstream project fat jar
+			from zipTree(file('../'+project.parentProject+'/build/libs/'+project.parentProject+'-all.jar')).matching {
+				exclude 'build.githash'
+				exclude 'build.gitbranch'
+				exclude 'build.gitremoteurl'
+				exclude 'build.date'
+				exclude { it.path.contains('META-INF') }
+			}
+			// include version files
+			from(project(':opensha').projectDir) {
+				include 'build.version'
+			}
+			from(project.projectDir) {
+				include 'build.githash'
+				include 'build.gitbranch'
+				include 'build.gitremoteurl'
+				include 'build.date'
+			}
+			manifest {
+				attributes(
+					'Class-Path': configurations.apiResolvable.collect { it.getName() }.join(' '),
+					'Main-Class': mainClass
+				)
+			}
+			
+			duplicatesStrategy = 'exclude'
+			with jar
+		}
+	} else {
+		task (taskName, type: Jar) {
+			doFirst {
+				writeBuildFiles()
+			}
+			archiveBaseName = prefix
+			from { configurations.apiResolvable.collect {
+				it.isDirectory() ? it : zipTree(it).matching {
+					exclude { it.path.contains('META-INF') }
+				}
+			}}
+			// include compiled source from this project
+			from sourceSets.main.allJava
+			// include version files
+			from(project.projectDir) {
+				include 'build.version'
+			}
+			from(project.projectDir) {
+				include 'build.githash'
+				include 'build.gitbranch'
+				include 'build.gitremoteurl'
+				include 'build.date'
+			}
+			manifest {
+				attributes(
+					'Class-Path': configurations.apiResolvable.collect { it.getName() }.join(' '),
+					'Main-Class': mainClass
+				)
+			}
+			
+			duplicatesStrategy = 'exclude'
+			with jar
+		}
+	}
 }
 
 // make that method visible
 ext {
-    createAppTask = this.&createAppTask
+	createAppTask = this.&createAppTask
 }

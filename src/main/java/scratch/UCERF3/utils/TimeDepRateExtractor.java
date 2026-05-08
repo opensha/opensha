@@ -196,14 +196,19 @@ public class TimeDepRateExtractor {
 		} else {
 			erf.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.U3_BPT);
 			MagDependentAperiodicityOptions cov;
-			if (probModel.equals("BPT_LOW")) 
+			if (probModel.equals("BPT_LOW")) {
 				cov = MagDependentAperiodicityOptions.LOW_VALUES;
-			else if (probModel.equals("BPT_MID")) 
+			} else if (probModel.equals("BPT_MID")) { 
 				cov = MagDependentAperiodicityOptions.MID_VALUES;
-			else if (probModel.equals("BPT_HIGH")) 
+			} else if (probModel.equals("BPT_HIGH")) { 
 				cov = MagDependentAperiodicityOptions.HIGH_VALUES;
-			else
-				throw new IllegalArgumentException("Unknown prob model: "+probModel);
+			} else {
+				try {
+					cov = MagDependentAperiodicityOptions.valueOf(probModel);
+				} catch (Exception e) {
+					throw new IllegalArgumentException("Unknown prob model: "+probModel);
+				}
+			}
 			erf.setParameter(MagDependentAperiodicityParam.NAME, cov);
 		}
 		
@@ -334,11 +339,12 @@ public class TimeDepRateExtractor {
 	public static void main(String[] args) {
 		if (args.length == 1 && args[0].equals("TEST_FROM_ECLIPSE")) {
 			args = new String[] {"--duration", "5", "--solution",
-					"/home/kevin/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/InversionSolutions/"
-							+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip",
-					"--prob-model", "U3_PREF_BLEND,POISSON,BPT_LOW,BPT_MID,BPT_HIGH",
-//					"--output-file", "/tmp/td_output.csv"};
-					"--binary", "--output-file", "/tmp/td_output.bin"};
+//					"/home/kevin/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/InversionSolutions/"
+//							+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip",
+					"/home/kevin/.opensha/ucerf3/cached_FM3_1_dep100.0_depMean_rakeMean.zip",
+					"--prob-model", "U3_PREF_BLEND,POISSON,BPT_LOW,BPT_MID,BPT_HIGH,ALL_PT5_VALUES",
+					"--output-file", "/tmp/td_output.csv"};
+//					"--binary", "--output-file", "/tmp/td_output.bin"};
 		}
 		try {
 			Options options = createOptions();

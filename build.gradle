@@ -2,124 +2,156 @@
  * opensha dependencies
  */
 
+import org.gradle.api.tasks.testing.TestDescriptor
+import org.gradle.api.tasks.testing.TestListener
+import org.gradle.api.tasks.testing.TestResult
+
 apply plugin: 'java-library'
 apply plugin: 'eclipse'
 
 ext {
-    parentProject = null
+	parentProject = null
 }
 
 apply from: 'build-common.gradle'
 
 // added any resource exclusions here that we don't need in builds
 sourceSets {
-    main {
-        resources {
-            exclude '**/doc'
-            exclude '**/data/ngaWest'
-            exclude '**/data/site'
-            exclude '**/scratchData'
-            exclude '**/data/erf/new_zealand_2010'
-            exclude '**/data/erf/step/AllCal96ModelDaily.txt'
-            exclude '**/data/erf/ucerf3/EarthquakeCatalog'
-            exclude '**/data/erf/nshm23/seismicity/spatial_seis_pdfs/*/CONUS_EAST'
-        }
-    }
+	main {
+		resources {
+			exclude '**/doc'
+			exclude '**/data/ngaWest'
+			exclude '**/data/site'
+			exclude '**/scratchData'
+			exclude '**/data/erf/new_zealand_2010'
+			exclude '**/data/erf/step/AllCal96ModelDaily.txt'
+			exclude '**/data/erf/ucerf3/EarthquakeCatalog'
+			exclude '**/data/erf/nshm23/seismicity/spatial_seis_pdfs/*/CONUS_EAST'
+		}
+	}
 }
 
 test {
-    minHeapSize = "128m"
-    maxHeapSize = "2048m"
-    filter {
-        includeTestsMatching "*Suite*"
-    }
+	useJUnit()
+
+	minHeapSize = "128m"
+	maxHeapSize = "2048m"
+
+	// Preserve current default behavior: plain './gradlew test' only runs suites.
+	// But allow './gradlew test --tests SomeSpecificTest' to bypass the Suite-only filter.
+	doFirst {
+		if (filter.commandLineIncludePatterns.empty) {
+			filter.includeTestsMatching "*Suite*"
+		}
+	}
 }
 
-task testVerbose (type: Test) {
-    testLogging {
-        events "failed"
-    }
-    beforeSuite { descr ->
-        println("Executing SUITE: $descr.className > $descr.displayName")
-    }
-    afterTest { descr, result ->
-        def time = (result.endTime - result.startTime)/1000.0
-        if (time > 1)
-            println("\t$descr.className > $descr.displayName: $result.resultType in $time s")
-    }
-    afterSuite { descr, result ->
-        def time = (result.endTime - result.startTime)/1000.0
-        println("SUITE $descr.className: $result.resultType in $time s")
-    }
-    minHeapSize = "128m"
-    maxHeapSize = "2048m"
-    filter {
-        includeTestsMatching "*Suite*"
-    }
+task testVerbose(type: Test) {
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+
+	useJUnit()
+
+	testLogging {
+		events "failed"
+	}
+
+	addTestListener([
+		beforeSuite: { TestDescriptor descr ->
+			println("Executing SUITE: $descr.className > $descr.displayName")
+		},
+		beforeTest: { TestDescriptor descr ->
+			// no-op
+		},
+		afterTest: { TestDescriptor descr, TestResult result ->
+			def time = (result.endTime - result.startTime)/1000.0
+			if (time > 1)
+				println("\t$descr.className > $descr.displayName: $result.resultType in $time s")
+		},
+		afterSuite: { TestDescriptor descr, TestResult result ->
+			if (descr.className != null) {
+				def time = (result.endTime - result.startTime)/1000.0
+				println("SUITE $descr.className: $result.resultType in $time s")
+			}
+		}
+	] as TestListener)
+
+	minHeapSize = "128m"
+	maxHeapSize = "2048m"
+
+	doFirst {
+		if (filter.commandLineIncludePatterns.empty) {
+			filter.includeTestsMatching "*Suite*"
+		}
+	}
 }
 
-task testOperational (type: Test) {
-    // this forces it to always be rerun
-    systemProperty "random.testing.seed", new Random().nextInt()
-    testLogging {
-        events "passed", "skipped", "failed"
-    }
-    filter {
-        includeTestsMatching "*Operational*"
-    }
+task testOperational(type: Test) {
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+
+	useJUnit()
+
+	systemProperty "random.testing.seed", new Random().nextInt()
+	testLogging {
+		events "passed", "skipped", "failed"
+	}
+	filter {
+		includeTestsMatching "*Operational*"
+	}
 }
 
 dependencies {
 
 	api "ghsc:nshmp-gmm:1.7.15" // when you update this, also update nshmp-haz in dev to match
 
-    api 'com.google.guava:guava:31.1-jre'
-    api 'com.google.code.gson:gson:2.8.9'
-    api 'org.jfree:jfreechart:1.5.3'
-    api 'org.jfree:org.jfree.chart3d:2.1.0'
-    api 'org.dom4j:dom4j:2.1.1'
-    api 'edu.stanford.ejalbert:BrowserLauncher2:1.3'
-    api 'com.itextpdf:itextpdf:5.5.13.2'
-    api 'gov.nist.math:jama:1.0.3'
-    api 'javax.servlet:javax.servlet-api:3.1.0'
-    api 'javax.mail:mail:1.4.7'
-    api 'org.apache.poi:poi:3.16'
-    api 'net.mahdilamb:colormap:0.9.511'
-    
-    /* apache commons */
-    api 'org.apache.commons:commons-lang3:3.11'
-    api 'org.apache.commons:commons-text:1.8'
-    api 'commons-codec:commons-codec:1.10'
-    api 'commons-cli:commons-cli:1.4'
-    api 'commons-io:commons-io:2.5'
-    api 'org.apache.commons:commons-math3:3.6.1'
-    api 'org.apache.commons:commons-compress:1.27.1'
-    
-    /* Atlassan commonmark - Markdown utilities */
-    api 'com.atlassian.commonmark:commonmark:0.10.0'
-    api 'com.atlassian.commonmark:commonmark-ext-gfm-tables:0.10.0'
-    api 'com.atlassian.commonmark:commonmark-ext-heading-anchor:0.10.0'
-    
-    /* no remote repo */
-    api files('lib/ncCore-4.0.jar')
-    implementation files('lib/mpj-0.38.jar') // MPJ API
-    api files('lib/getfile-all.jar')
-    api files('lib/f2jutil.jar') // used by NNLS code
-    api files('lib/mpj-task-calculator-1.1.jar') // MPJTaskCalculator
-    api files('lib/parallelcolt-0.9.4.jar')
-    api files('lib/csparsej.jar')
-    api files('lib/ojdbc5.jar')
-    api files('lib/sdoapi.jar')
-    api files('lib/EventWebService.jar')
-    api files('lib/jpedal.jar')
+	api 'com.google.guava:guava:31.1-jre'
+	api 'com.google.code.gson:gson:2.8.9'
+	api 'org.jfree:jfreechart:1.5.3'
+	api 'org.jfree:org.jfree.chart3d:2.1.0'
+	api 'org.dom4j:dom4j:2.1.1'
+	api 'edu.stanford.ejalbert:BrowserLauncher2:1.3'
+	api 'com.itextpdf:itextpdf:5.5.13.2'
+	api 'gov.nist.math:jama:1.0.3'
+	api 'javax.servlet:javax.servlet-api:3.1.0'
+	api 'javax.mail:mail:1.4.7'
+	api 'org.apache.poi:poi:3.16'
+	api 'net.mahdilamb:colormap:0.9.511'
+	
+	/* apache commons */
+	api 'org.apache.commons:commons-lang3:3.11'
+	api 'org.apache.commons:commons-text:1.8'
+	api 'commons-codec:commons-codec:1.10'
+	api 'commons-cli:commons-cli:1.4'
+	api 'commons-io:commons-io:2.5'
+	api 'org.apache.commons:commons-math3:3.6.1'
+	api 'org.apache.commons:commons-compress:1.27.1'
+	
+	/* Atlassan commonmark - Markdown utilities */
+	api 'com.atlassian.commonmark:commonmark:0.10.0'
+	api 'com.atlassian.commonmark:commonmark-ext-gfm-tables:0.10.0'
+	api 'com.atlassian.commonmark:commonmark-ext-heading-anchor:0.10.0'
+	
+	/* no remote repo */
+	api files('lib/ncCore-4.0.jar')
+	implementation files('lib/mpj-0.38.jar') // MPJ API
+	api files('lib/getfile-all.jar')
+	api files('lib/f2jutil.jar') // used by NNLS code
+	api files('lib/mpj-task-calculator-1.1.jar') // MPJTaskCalculator
+	api files('lib/parallelcolt-0.9.4.jar')
+	api files('lib/csparsej.jar')
+	api files('lib/ojdbc5.jar')
+	api files('lib/sdoapi.jar')
+	api files('lib/EventWebService.jar')
+	api files('lib/jpedal.jar')
 
-    testImplementation 'junit:junit:4.12'
-    testImplementation 'org.mockito:mockito-core:3.5.13'
+	testImplementation 'junit:junit:4.12'
+	testImplementation 'org.mockito:mockito-core:3.5.13'
 }
 
 // application build tasks
 ext {
-    appSuffix = '-'+getDate()+'-'+getGitHash()
+	appSuffix = '-'+getDate()+'-'+getGitHash()
 }
 createAppTask("appJarHC", "HazardCurveGUI"+appSuffix, "org.opensha.sha.gui.HazardCurveApplication")
 createAppTask("appJarHS", "HazardSpectrumGUI"+appSuffix, "org.opensha.sha.gui.HazardSpectrumApplication")
@@ -131,21 +163,21 @@ createAppTask("appJarIM-CLT", "IMEventSetCalculatorCLT"+appSuffix, "org.opensha.
 createAppTask("appJarIM-GUI", "IMEventSetCalculatorGUI"+appSuffix, "org.opensha.sha.calc.IM_EventSet.gui.IMEventSetCalculatorGUI")
 
 task appZipIM(type: Zip) {
-    dependsOn 'appJarIM-CLT'
-    from ('build/libs/') {
-        include 'IMEventSetCalculatorCLT-'+getDate()+'-'+getGitHash()+'.jar'
-        rename (('IMEventSetCalculatorCLT-'+getDate()+'-'+getGitHash()+'.jar'), 'IMEventSetCalculatorCLT.jar')
-    }
-    from ('src/main/java/org/opensha/sha/calc/IM_EventSet/') {
-        include '*.txt'
-        include '*.csv'
-    }
-    archiveFileName = 'IMEventSetCalculatorCLT.zip'
-    doFirst {
-        System.out.println("Assembling IM Event Set zip file: ./build/distributions/IMEventSetCalculatorCLT.zip")
-    }
+	dependsOn 'appJarIM-CLT'
+	from ('build/libs/') {
+		include 'IMEventSetCalculatorCLT-'+getDate()+'-'+getGitHash()+'.jar'
+		rename (('IMEventSetCalculatorCLT-'+getDate()+'-'+getGitHash()+'.jar'), 'IMEventSetCalculatorCLT.jar')
+	}
+	from ('src/main/java/org/opensha/sha/calc/IM_EventSet/') {
+		include '*.txt'
+		include '*.csv'
+	}
+	archiveFileName = 'IMEventSetCalculatorCLT.zip'
+	doFirst {
+		System.out.println("Assembling IM Event Set zip file: ./build/distributions/IMEventSetCalculatorCLT.zip")
+	}
 }
 
-task appJars(type: GradleBuild) {
-     tasks = ['appJarHC', 'appJarHS', 'appJarAR', 'appJarSM', 'appJarSD', 'appJarGMT', 'appZipIM', 'appJarIM-GUI']
+tasks.register('appJars') {
+	dependsOn 'appJarHC', 'appJarHS', 'appJarAR', 'appJarSM', 'appJarSD', 'appJarGMT', 'appZipIM', 'appJarIM-GUI'
 }
