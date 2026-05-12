@@ -11,9 +11,12 @@ import java.awt.GraphicsEnvironment;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
+import java.time.Duration;
 import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -226,12 +229,35 @@ public abstract class AbstractGitLabDownloader {
             throw new RuntimeException(e);
         }
         System.out.println("Downloading data for " + version.getDisplayName() + " from " + url);
-        try (InputStream in = url.openStream()) {
-            Path downloadPath = outputDir.resolve(getArchiveName());
-            Files.copy(in, downloadPath, StandardCopyOption.REPLACE_EXISTING);
-            if (D) System.out.println("Done downloading to " + downloadPath);
-            return extractArchive();
-        } catch (IOException e) {
+        // Create an HttpClient that follows redirects and keeps custom headers on each hop.
+        HttpClient client = HttpClient.newBuilder()
+                .followRedirects(HttpClient.Redirect.NORMAL)   // follow 3xx
+                .connectTimeout(Duration.ofSeconds(30))
+                .build();
+        try {
+            // Build the request with the required headers.
+            //    - User‑Agent: anything non‑Java works for GitLab/CDN
+            //    - Accept: */* (or application/zip) – must be present on *every*
+            //                request, including redirects.
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(url.toURI())
+                    .GET()
+                    .header("User-Agent", "OpenSHA-Downloader/1.0 (https://github.com/opensha/opensha)")
+                    .header("Accept", "*/*")
+                    // The CDN sometimes rejects gzip encoding for binary files
+                    .header("Accept-Encoding", "identity")
+                    .timeout(Duration.ofSeconds(120))
+                    .build();
+
+            HttpResponse<Path> response = client.send(request,
+                    HttpResponse.BodyHandlers.ofFile(outputDir.resolve(getArchiveName())));
+            int code = response.statusCode();
+            if (code >= 200 && code < 300) {
+                Path downloadPath = response.body(); // already saved by the handler
+                if (D) System.out.println("Done downloading to " + downloadPath);
+                return extractArchive();
+            }
+        } catch (Exception e) {
             log.error("e: ", e);
             String errMsg = "Failed to download data for " + version.getDisplayName() + " at " + getDownloadURL() + ".\n"
                     + "The GitLab server must be down for maintenance. Please try again later.";
