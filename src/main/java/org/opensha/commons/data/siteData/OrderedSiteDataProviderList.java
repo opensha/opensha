@@ -359,9 +359,21 @@ public class OrderedSiteDataProviderList implements Iterable<SiteData<?>>, XMLSa
 			e.printStackTrace();
 		}
         /*      NSHM CONUS          */
-        providers.add(new CONUS_SiteDataProvider(SiteData.TYPE_DEPTH_TO_1_0));
-        providers.add(new CONUS_SiteDataProvider(SiteData.TYPE_DEPTH_TO_2_5));
-        providers.add(new CONUS_SiteDataProvider(SiteData.TYPE_SEDIMENT_THICKNESS));
+        try {
+            providers.add(new CONUS_SiteDataProvider(SiteData.TYPE_DEPTH_TO_1_0));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try {
+            providers.add(new CONUS_SiteDataProvider(SiteData.TYPE_DEPTH_TO_2_5));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try {
+            providers.add(new CONUS_SiteDataProvider(SiteData.TYPE_SEDIMENT_THICKNESS));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 		/*		Wills 2015			*/
 		try {
 			providers.add(new WillsMap2015());

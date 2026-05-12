@@ -36,11 +36,7 @@ public abstract class AbstractGriddedSiteDataLoader extends AbstractSiteData<Dou
     private List<GriddedRegion> regions;
     private Map<Location, Double> siteData;
     private double resolution; // smallest spacing encountered
-
-    private final double minLat;
-    private final double maxLat;
-    private final double minLon;
-    private final double maxLon;
+    private final Region applicableRegion;
 
     /**
      * Constructor for the AbstractGriddedSiteDataLoader.
@@ -49,18 +45,15 @@ public abstract class AbstractGriddedSiteDataLoader extends AbstractSiteData<Dou
      * Loads site data into memory.
      * @param type See `org.opensha.commons.data.siteData` for list of types
      * @param downloader Instance of downloader for site data from GitLab
+     * @param applicableRegion Boundary where the site data is applicable
      */
     public AbstractGriddedSiteDataLoader(String type,
                                          AbstractGitLabDownloader downloader,
-                                         double minLat, double maxLat,
-                                         double minLon, double maxLon) {
+                                         Region applicableRegion) {
         super();
 
         this.type = type;
-        this.minLat = minLat;
-        this.maxLat = maxLat;
-        this.minLon = minLon;
-        this.maxLon = maxLon;
+        this.applicableRegion = applicableRegion;
 
         // Map the selected data type to the representation in the CSV headers.
         // CSV must have a header to be readable.
@@ -195,9 +188,7 @@ public abstract class AbstractGriddedSiteDataLoader extends AbstractSiteData<Dou
      */
     @Override
     public Region getApplicableRegion() {
-        return new Region(
-                new Location(minLat,minLon),
-                new Location(maxLat,maxLon));
+        return applicableRegion;
     }
 
     /**

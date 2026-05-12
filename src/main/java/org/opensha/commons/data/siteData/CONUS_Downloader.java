@@ -57,7 +57,7 @@ public class CONUS_Downloader extends AbstractGitLabDownloader {
      */
     public static Path getStoreDir() {
         Path storeDir = Paths.get(
-                System.getProperty("user.home"), ".site_data", "conus");
+                System.getProperty("user.home"), ".opensha", "site_data", "conus");
         try {
             Files.createDirectories(storeDir);
         } catch (IOException e) {
