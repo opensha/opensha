@@ -50,7 +50,8 @@ public class ETAS_ConfigBuilder {
 	public enum HPC_Sites {
 		USC_CARC("usc_carc_mpj_express.slurm", "usc_carc_plot.slurm"),
 		TACC_STAMPEDE3("tacc_stampede3_fastmpj.slurm", "tacc_stampede3_plot.slurm"),
-		TACC_FRONTERA("tacc_frontera_fastmpj.slurm", "tacc_frontera_plot.slurm");
+		TACC_FRONTERA("tacc_frontera_fastmpj.slurm", "tacc_frontera_plot.slurm"),
+        SDSC_EXPANSE("sdsc_expanse_mpj_express.slurm", "sdsc_expanse_plot.slurm");
 
 		private String plotFileName;
 		private String fileName;
@@ -215,7 +216,7 @@ public class ETAS_ConfigBuilder {
 		/*
 		 * HPC options
 		 */
-		Option hpcSite = new Option("hpc", "hpc-site", true, "HPC site to configure for. Either 'USC_HPC' or 'TACC_STAMPEDE2'");
+		Option hpcSite = new Option("hpc", "hpc-site", true, "HPC site to configure for");
 		hpcSite.setRequired(false);
 		ops.addOption(hpcSite);
 		
@@ -442,9 +443,9 @@ public class ETAS_ConfigBuilder {
 			int origTasks = -1;
 			for (String line : inLines) {
 				String tline = line.trim();
-				if (tline.startsWith("#SBATCH -N") && nodes != null)
+				if ((tline.startsWith("#SBATCH -N") || tline.startsWith(("#SBATCH --nodes"))) && nodes != null)
 					origNodes = Integer.parseInt(tline.substring(tline.lastIndexOf(" ")+1));
-				else if (tline.startsWith("#SBATCH -n") && nodes != null)
+				else if ((tline.startsWith("#SBATCH -n") || tline.startsWith(("#SBATCH --ntasks"))) && nodes != null)
 					origTasks = Integer.parseInt(tline.substring(tline.lastIndexOf(" ")+1));
 			}
 			if (origNodes > 0 && origTasks > 0 && origTasks >= origNodes) {
@@ -455,13 +456,13 @@ public class ETAS_ConfigBuilder {
 		
 		for (String line : inLines) {
 			String tline = line.trim();
-			if (tline.startsWith("#SBATCH -t") && hours != null)
-				line = "#SBATCH -t "+hours+":00:00";
+			if ((tline.startsWith("#SBATCH -t") || tline.startsWith("#SBATCH --time")) && hours != null)
+				line = "#SBATCH --time "+hours+":00:00";
 			
-			if (tline.startsWith("#SBATCH -N") && nodes != null)
-				line = "#SBATCH -N "+nodes;
+			if ((tline.startsWith("#SBATCH -N") || tline.startsWith(("#SBATCH --nodes"))) && nodes != null)
+				line = "#SBATCH --nodes "+nodes;
 			
-			if (tline.startsWith("#SBATCH -n ") && nodes != null) {
+			if (tline.startsWith("#SBATCH -n") && nodes != null) {
 				int cores = nodeThreads == null ? nodes : nodes*nodeThreads;
 				line = "#SBATCH -n "+cores;
 			}
@@ -478,7 +479,7 @@ public class ETAS_ConfigBuilder {
 					}
 				}
 				if (spaceIndex >= 0) {
-					// we have something after --ntasks, probaly --cpus-per-task, keep it
+					// we have something after --ntasks, probably --cpus-per-task, keep it
 					suffix = " "+suffix.substring(spaceIndex).trim();
 				} else {
 					suffix = "";
@@ -486,10 +487,10 @@ public class ETAS_ConfigBuilder {
 				line = prefix+nodes+suffix;
 			}
 			
-			if (tline.startsWith("#SBATCH -p")) {
+			if (tline.startsWith("#SBATCH -p") || tline.startsWith("#SBATCH --partition")) {
 				nodeLineFound = true;
 				if (queue != null)
-					line = "#SBATCH -p "+queue;
+					line = "#SBATCH --partition "+queue;
 			}
 			
 			if (tline.startsWith("ETAS_CONF_JSON="))
@@ -508,7 +509,7 @@ public class ETAS_ConfigBuilder {
 		
 		if (queue != null && !nodeLineFound) {
 			// need to add it
-			lines.add(lastIndexSBATCH+1, "#SBATCH -p "+queue);
+			lines.add(lastIndexSBATCH+1, "#SBATCH --partition "+queue);
 		}
 		
 		FileWriter fw = new FileWriter(outputFile);
