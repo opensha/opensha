@@ -12,29 +12,7 @@ import javax.swing.event.ChangeListener;
 import org.dom4j.Document;
 import org.dom4j.Element;
 import org.opensha.commons.data.Site;
-import org.opensha.commons.data.siteData.impl.US_3secTopography;
-import org.opensha.commons.data.siteData.impl.CS_Study18_8_BasinDepth;
-import org.opensha.commons.data.siteData.impl.CVM2BasinDepth;
-import org.opensha.commons.data.siteData.impl.CVM4BasinDepth;
-import org.opensha.commons.data.siteData.impl.CVM4i26BasinDepth;
-import org.opensha.commons.data.siteData.impl.CVM4i26_M01_TaperBasinDepth;
-import org.opensha.commons.data.siteData.impl.CVMHBasinDepth;
-import org.opensha.commons.data.siteData.impl.CVM_CCAi6BasinDepth;
-import org.opensha.commons.data.siteData.impl.CVM_Vs30;
-import org.opensha.commons.data.siteData.impl.MeanTopoSlope;
-import org.opensha.commons.data.siteData.impl.SRTM30PlusTopoSlope;
-import org.opensha.commons.data.siteData.impl.SRTM30PlusTopography;
-import org.opensha.commons.data.siteData.impl.SRTM30TopoSlope;
-import org.opensha.commons.data.siteData.impl.SRTM30Topography;
-import org.opensha.commons.data.siteData.impl.ThompsonVs30_2018;
-import org.opensha.commons.data.siteData.impl.ThompsonVs30_2022;
-import org.opensha.commons.data.siteData.impl.USGSBayAreaBasinDepth;
-import org.opensha.commons.data.siteData.impl.USGS_SFBay_BasinDepth_v21p1;
-import org.opensha.commons.data.siteData.impl.WaldAllenGlobalVs30;
-import org.opensha.commons.data.siteData.impl.WillsMap2000;
-import org.opensha.commons.data.siteData.impl.WillsMap2000TranslatedVs30;
-import org.opensha.commons.data.siteData.impl.WillsMap2006;
-import org.opensha.commons.data.siteData.impl.WillsMap2015;
+import org.opensha.commons.data.siteData.impl.*;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
@@ -346,20 +324,27 @@ public class OrderedSiteDataProviderList implements Iterable<SiteData<?>>, XMLSa
 	 * Creates the default list of site data providers:
 	 * 
 	 * <UL>
-	 * <LI> 1. Wills 2006 (servlet access)
-	 * <LI> 2. Topographic Slope Vs30 (Wald and Allen 2007/2008) (servlet access)
-	 * <LI> 3. CVM 4 Iteration 26 Depth 2.5 (servlet access)
-	 * <LI> 4. CVM 4 Iteration 26 Depth 1.0 (servlet access)
-	 * <LI> 5. CVM CCA Iteration 6 Depth 2.5 (servlet access)
-	 * <LI> 6. CVM CCA Iteration 6 Depth 1.0 (servlet access)
-	 * <LI> 7. CVM 4 Depth 2.5 (servlet access)
-	 * <LI> 8. CVM 4 Depth 1.0 (servlet access)
-	 * <LI> 9. CVM H 11.9.1 Depth 2.5
-	 * <LI> 10. CVM H 11.9.1 Depth 1.0
-	 * <LI> 11. USGS Bay Area Depth 2.5 (servlet access)
-	 * <LI> 12. USGS Bay Area Depth 1.0 (servlet access)
-	 * <LI> 13. Vs30 from CVMs (servlet access)
-	 * <LI> 14. CVM 2 Depth 2.5 (servlet access)
+     * <LI> 01. Thompson 2022 (servlet access) </LI>
+     * <LI> 02. NSHM CONUS Depth 1.0 (USGS GitLab access) </LI>
+     * <LI> 03. NSHM CONUS Depth 2.5 (USGS GitLab access) </LI>
+     * <LI> 04. NSHM CONUS Sediment Thickness (USGS GitLab access) </LI>
+     * <LI> 05. Wills 2015 (servlet access) </LI>
+     * <LI> 06. Thompson 2018 (servlet access) </LI>
+     * <LI> 07. Wills 2006 (servlet access) </LI>
+	 * <LI> 08. Topographic Slope Vs30 (Wald and Allen 2007/2008) (servlet access) </LI>
+	 * <LI> 09. CVM 4 Iteration 26 Depth 2.5 (servlet access) </LI>
+	 * <LI> 10. CVM 4 Iteration 26 Depth 1.0 (servlet access) </LI>
+	 * <LI> 11. CVM CCA Iteration 6 Depth 2.5 (servlet access) </LI>
+	 * <LI> 12. CVM CCA Iteration 6 Depth 1.0 (servlet access) </LI>
+	 * <LI> 13. CVM 4 Depth 2.5 (servlet access) </LI>
+	 * <LI> 14. CVM 4 Depth 1.0 (servlet access) </LI>
+	 * <LI> 15. CVM H 11.9.1 Depth 2.5 </LI>
+	 * <LI> 16. CVM H 11.9.1 Depth 1.0 </LI>
+	 * <LI> 17. USGS Bay Area Depth 2.5 (servlet access) </LI>
+	 * <LI> 18. USGS Bay Area Depth 1.0 (servlet access) </LI>
+	 * <LI> 19. Vs30 from CVMs (servlet access) </LI>
+	 * <LI> 20. CVM 2 Depth 2.5 (servlet access) </LI>
+     * <LI> 21. Wills 2000 (servlet access) </LI>
 	 * </UL>
 	 * 
 	 * @return
@@ -373,6 +358,22 @@ public class OrderedSiteDataProviderList implements Iterable<SiteData<?>>, XMLSa
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+        /*      NSHM CONUS          */
+        try {
+            providers.add(new CONUS_SiteDataProvider(SiteData.TYPE_DEPTH_TO_1_0));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try {
+            providers.add(new CONUS_SiteDataProvider(SiteData.TYPE_DEPTH_TO_2_5));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try {
+            providers.add(new CONUS_SiteDataProvider(SiteData.TYPE_SEDIMENT_THICKNESS));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 		/*		Wills 2015			*/
 		try {
 			providers.add(new WillsMap2015());
@@ -442,18 +443,6 @@ public class OrderedSiteDataProviderList implements Iterable<SiteData<?>>, XMLSa
 		/*		CVM H Depth 1.0		*/
 		try {
 			providers.add(new CVMHBasinDepth(SiteData.TYPE_DEPTH_TO_1_0));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		/*		CCA i6 Depth 2.5		*/
-		try {
-			providers.add(new CVM_CCAi6BasinDepth(SiteData.TYPE_DEPTH_TO_2_5));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		/*		CCA i6 Depth 1.0		*/
-		try {
-			providers.add(new CVM_CCAi6BasinDepth(SiteData.TYPE_DEPTH_TO_1_0));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
