@@ -251,7 +251,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 	// DEVELOPMENT
 
 	USGS_NSHM23_STABLE(null, "USGS NSHM23 Stable Crustal",
-			"NSHM23-Stable", DEVELOPMENT) {
+			"NSHM23-Stable", EXPERIMENTAL) {
 		
 		@Override
 		public AttenuationRelationship instance(
