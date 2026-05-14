@@ -44,7 +44,7 @@ public class SedimentThicknessParam extends WarningDoubleParameter {
 	/**
 	 * This uses the given default and warning-constraint limits, and sets 
 	 * everything as non-editable.
-	 * @param defaultDepth
+	 * @param defaultThickness
 	 * @param warnMin
 	 * @param warnMax
 	 * @param nullAllowed - tells whether null values are to be allowed
