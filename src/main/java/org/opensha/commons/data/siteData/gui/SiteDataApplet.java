@@ -31,7 +31,7 @@ public class SiteDataApplet extends JPanel implements ActionListener {
 	private JTextField latField = new JTextField("34.053", 8);
 	private JTextField lonField = new JTextField("-118.243", 8);
 	
-	private JButton prefButton = new JButton("View Preffered Data");
+	private JButton prefButton = new JButton("View Preferred Data");
 	private String prefButtonInfo = "<html>This retrieves and displays the first valid value of each data type<br>" +
 			"from the currently enabled data sources, in order of priority.</html>";
 	
