@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Random;
 
 import org.apache.commons.statistics.distribution.ContinuousDistribution;
-import org.apache.commons.statistics.distribution.CorrTruncatedNormalDistribution;
+import org.apache.commons.statistics.distribution.TruncatedNormalDistribution;
 import org.apache.commons.statistics.distribution.UniformContinuousDistribution;
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.logicTree.LogicTree;
@@ -70,7 +70,7 @@ public class NSHM27_LogicTree {
 	 * missing/TODO:
 	 */
 	public static final double INTRASLAB_MMAX_OFF_SINGLE_DEFAULT = 8;
-	public static final ContinuousDistribution INTRASLAB_MMAX_OFF_DIST = CorrTruncatedNormalDistribution.of(8, 0.2, 7.45, 8.55);
+	public static final ContinuousDistribution INTRASLAB_MMAX_OFF_DIST = TruncatedNormalDistribution.of(8, 0.2, 7.45, 8.55);
 	
 	/*
 	 * Crustal branch levels (FSS & gridded)
@@ -87,7 +87,7 @@ public class NSHM27_LogicTree {
 	public static final double CRUSTAL_B_SINGLE_DEFAULT = 0.5d;
 	public static final ContinuousDistribution CRUSTAL_B_DIST = UniformContinuousDistribution.of(0d, 1d);
 	public static final double CRUSTAL_MMAX_OFF_SINGLE_DEFAULT = 7.6;
-	public static final ContinuousDistribution CRUSTAL_MMAX_OFF_DIST = CorrTruncatedNormalDistribution.of(7.6, 0.134, 7.15, 8.05);
+	public static final ContinuousDistribution CRUSTAL_MMAX_OFF_DIST = TruncatedNormalDistribution.of(7.6, 0.134, 7.15, 8.05);
 	
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> buildLevels(NSHM27_SeismicityRegions seisReg,
 			TectonicRegionType trt, boolean sampled) {

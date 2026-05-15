@@ -23,7 +23,7 @@ import javax.imageio.ImageIO;
 import javax.swing.JPanel;
 
 import org.apache.commons.statistics.distribution.ContinuousDistribution;
-import org.apache.commons.statistics.distribution.CorrTruncatedNormalDistribution;
+import org.apache.commons.statistics.distribution.TruncatedNormalDistribution;
 import org.apache.commons.statistics.distribution.LogNormalDistribution;
 import org.apache.commons.statistics.distribution.NormalDistribution;
 import org.apache.commons.statistics.distribution.TriangularDistribution;
@@ -285,8 +285,8 @@ public class LogicTreeFigureWriter extends JPanel {
 							NormalDistribution norm = (NormalDistribution)dist;
 							distStr = "𝑁(μ="+distParamStr(norm.getMean())
 									+", σ="+distParamStr(norm.getStandardDeviation())+")";
-						} else if (dist instanceof CorrTruncatedNormalDistribution) {
-							CorrTruncatedNormalDistribution tNorm = (CorrTruncatedNormalDistribution)dist;
+						} else if (dist instanceof TruncatedNormalDistribution) {
+							TruncatedNormalDistribution tNorm = (TruncatedNormalDistribution)dist;
 							distStr = "Trunc𝑁(μ="+distParamStr(tNorm.getParentMean())
 									+", σ="+distParamStr(tNorm.getParentStandardDeviation())
 									+", "+rangeStr+")";

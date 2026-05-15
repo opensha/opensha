@@ -8,7 +8,6 @@ import org.apache.commons.statistics.distribution.BetaDistribution;
 import org.apache.commons.statistics.distribution.CauchyDistribution;
 import org.apache.commons.statistics.distribution.ChiSquaredDistribution;
 import org.apache.commons.statistics.distribution.ContinuousDistribution;
-import org.apache.commons.statistics.distribution.CorrTruncatedNormalDistribution;
 import org.apache.commons.statistics.distribution.ExponentialDistribution;
 import org.apache.commons.statistics.distribution.FDistribution;
 import org.apache.commons.statistics.distribution.FoldedNormalDistribution;
@@ -63,11 +62,7 @@ public class ContinuousDistributionTypeAdapter extends TypeAdapter<ContinuousDis
 		out.beginObject();
 
 		if (value instanceof TruncatedNormalDistribution) {
-			throw new IllegalStateException("TruncatedNormalDistribution serialization is unsupported in this temporary "
-					+ "compatibility layer; use CorrTruncatedNormalDistribution until Apache "
-					+ "commons-statistics-distribution includes parent getters in a release.");
-		} else if (value instanceof CorrTruncatedNormalDistribution) {
-			CorrTruncatedNormalDistribution dist = (CorrTruncatedNormalDistribution)value;
+			TruncatedNormalDistribution dist = (TruncatedNormalDistribution)value;
 			writeType(out, "TruncatedNormalDistribution");
 			out.name("parentMean").value(dist.getParentMean());
 			out.name("parentStandardDeviation").value(dist.getParentStandardDeviation());
@@ -212,7 +207,7 @@ public class ContinuousDistributionTypeAdapter extends TypeAdapter<ContinuousDis
 
 		switch (type) {
 		case "TruncatedNormalDistribution":
-			return CorrTruncatedNormalDistribution.of(
+			return TruncatedNormalDistribution.of(
 					getRequiredDouble(params, "parentMean"),
 					getRequiredDouble(params, "parentStandardDeviation"),
 					getRequiredDouble(params, "lower"),
