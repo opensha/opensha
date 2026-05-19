@@ -14,7 +14,6 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 import org.apache.commons.math3.stat.StatUtils;
-import org.jfree.chart.plot.DatasetRenderingOrder;
 import org.jfree.data.Range;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -33,8 +32,6 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
-import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
-import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -52,7 +49,6 @@ import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
-import scratch.UCERF3.erf.ETAS.ETAS_Utils;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
@@ -80,6 +76,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 	private FaultStats[] subSectStats;
 	private Map<Integer, FaultStats> parentSectStats;
 	private Map<Integer, HashSet<FaultStats>> fssIndexToStatsMap;
+    private final int parentSectCount;
 	
 	private boolean hasAny = false;
 	private boolean[] hasMags;
@@ -96,11 +93,12 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 	
 	private TD_CalcThread tdCalcThread;
 
-	public ETAS_FaultParticipationPlot(ETAS_Config config, ETAS_Launcher launcher, String prefix, boolean annualize, boolean skipMaps) {
+	public ETAS_FaultParticipationPlot(ETAS_Config config, ETAS_Launcher launcher, String prefix, boolean annualize, boolean skipMaps, int parentSectCount) {
 		super(config, launcher);
 		this.prefix = prefix;
 		this.annualize = annualize;
 		this.skipMaps = skipMaps;
+        this.parentSectCount = parentSectCount;
 		
 		this.hasTriggered = config.hasTriggers();
 		this.hasSpont = config.isIncludeSpontaneous()
@@ -1100,7 +1098,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 			
 			Preconditions.checkState(numParentsWith > 0);
 			
-			int numParentsToPlot = Integer.min(10, numParentsWith);
+			int numParentsToPlot = Integer.min(parentSectCount, numParentsWith);
 			
 			TableBuilder builder = MarkdownUtils.tableBuilder();
 			builder.initNewLine();
@@ -1205,7 +1203,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 			int maxNumCatalogs = -1;
 			
 			ETAS_FaultParticipationPlot plot = new ETAS_FaultParticipationPlot(config, launcher, "fault_participation",
-					false, false);
+					false, false, 25);
 			File outputDir = new File(simDir, "plots");
 			Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 			
