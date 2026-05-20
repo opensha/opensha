@@ -46,39 +46,83 @@ public class InterfaceDeformationProjection {
 	}
 	
 	/**
-	 * 
+	 * Applies a Gaussian smoothing kernel to the deformation front slip rates with sigma specified in km. Default
+	 * behavior uses maxDist=3*sigma.
 	 * @param deformationFront
 	 * @param deformationFrontSlipRates
-	 * @param smoothingDist distance to average/smooth (in either direction)
+	 * @param sigma smoothing kernel sigma (km)
 	 * @return
 	 */
-	public static double[] getSmoothedDeformationFrontSlipRates(LocationList deformationFront,
-			double[] deformationFrontSlipRates, double smoothingDist) {
-		double[] distsAlong = new double[deformationFrontSlipRates.length];
-		double distSum = 0;
-		for (int i=1; i<deformationFrontSlipRates.length; i++) {
-			distSum += LocationUtils.horzDistanceFast(deformationFront.get(i-1), deformationFront.get(i));
-			distsAlong[i] = distSum;
+	public static double[] getSmoothedDeformationFrontSlipRates(
+			LocationList deformationFront,
+			double[] deformationFrontSlipRates,
+			double sigma) {
+		return getSmoothedDeformationFrontSlipRates(deformationFront, deformationFrontSlipRates, sigma, sigma*3d);
+	}
+	
+	/**
+	 * Applies a Gaussian smoothing kernel to the deformation front slip rates with sigma and maximum distance specified
+	 * in km.
+	 * @param deformationFront
+	 * @param deformationFrontSlipRates
+	 * @param sigma smoothing kernel sigma (km)
+	 * @param maxDist maximum distance (km)
+	 * @return
+	 */
+	public static double[] getSmoothedDeformationFrontSlipRates(
+			LocationList deformationFront,
+			double[] deformationFrontSlipRates,
+			double sigma,
+			double maxDist) {
+		Preconditions.checkState(deformationFront.size() == deformationFrontSlipRates.length);
+		Preconditions.checkState(sigma > 0d);
+		Preconditions.checkState(maxDist > 0d);
+
+		int n = deformationFrontSlipRates.length;
+
+		double[] distsAlong = new double[n];
+		for (int i=1; i<n; i++) {
+			distsAlong[i] = distsAlong[i-1]
+					+ LocationUtils.horzDistanceFast(deformationFront.get(i-1), deformationFront.get(i));
 		}
-		
-		double[] smoothed = new double[deformationFrontSlipRates.length];
-		
-		System.out.println("\tSmoothing deformation front using smoothing distance="+(float)smoothingDist
-				+" (in either direction) for length="+(float)smoothingDist);
-		
-		for (int i=0; i<deformationFrontSlipRates.length; i++) {
-			double min = distsAlong[i]-smoothingDist;
-			double max = distsAlong[i]+smoothingDist;
-			int count = 0;
-			for (int j=0; j<deformationFrontSlipRates.length && distsAlong[j]<=max; j++) {
+
+		double[] lengthWeights = new double[n];
+		if (n == 1) {
+			lengthWeights[0] = 1d;
+		} else {
+			lengthWeights[0] = 0.5*distsAlong[1];
+			lengthWeights[n-1] = 0.5*(distsAlong[n-1] - distsAlong[n-2]);
+
+			for (int i=1; i<n-1; i++) {
+				lengthWeights[i] = 0.5*(distsAlong[i+1] - distsAlong[i-1]);
+			}
+		}
+
+		double[] smoothed = new double[n];
+		double twoSigmaSq = 2d*sigma*sigma;
+
+		for (int i=0; i<n; i++) {
+			double weightedSum = 0d;
+			double weightSum = 0d;
+
+			double min = distsAlong[i] - maxDist;
+			double max = distsAlong[i] + maxDist;
+
+			for (int j=0; j<n && distsAlong[j] <= max; j++) {
 				if (distsAlong[j] >= min) {
-					smoothed[i] += deformationFrontSlipRates[j];
-					count++;
+					double dist = distsAlong[j] - distsAlong[i];
+					double kernelWeight = Math.exp(-(dist*dist)/twoSigmaSq);
+					double weight = kernelWeight*lengthWeights[j];
+
+					weightedSum += deformationFrontSlipRates[j]*weight;
+					weightSum += weight;
 				}
 			}
-			Preconditions.checkState(count > 0);
-			smoothed[i] /= (double)count;
+
+			Preconditions.checkState(weightSum > 0d);
+			smoothed[i] = weightedSum/weightSum;
 		}
+
 		return smoothed;
 	}
 	
