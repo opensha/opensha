@@ -34,6 +34,23 @@ public enum AperiodicityModels {
 			return new AperiodicityModel.MagnitudeBinned(fltSysSolution.getRupSet(), aperValues, aperMagBoundaries);
 		}
 	},
+	NSHM26_LOW("NSHM (2026) Low") {
+		@Override
+		public AperiodicityModel instance(FaultSystemSolution fltSysSolution) {
+			// TODO. this is an example stub
+			// these could, e.g., be magnitude-dependent
+			EnumMap<TectonicRegionType, AperiodicityModel> models = new EnumMap<>(TectonicRegionType.class);
+			models.put(TectonicRegionType.ACTIVE_SHALLOW, UCERF3_LOW.instance(fltSysSolution));
+			models.put(TectonicRegionType.STABLE_SHALLOW, models.get(TectonicRegionType.ACTIVE_SHALLOW)); // same instance
+			models.put(TectonicRegionType.SUBDUCTION_INTERFACE, new AperiodicityModel.SingleValued(0.25, false));
+			// used if a rupture of an unexpected or unknown TRT is passed in
+			AperiodicityModel fallback = models.get(TectonicRegionType.ACTIVE_SHALLOW);
+			// they could also have shared adjustable params
+			ParameterList params = null;
+			return new AperiodicityModel.TRT_Dependent(fltSysSolution.getRupSet(),
+					models, fallback, params);
+		}
+	},
 	NSHM26_MIDDLE("NSHM (2026) Middle") {
 		@Override
 		public AperiodicityModel instance(FaultSystemSolution fltSysSolution) {
@@ -41,6 +58,23 @@ public enum AperiodicityModels {
 			// these could, e.g., be magnitude-dependent
 			EnumMap<TectonicRegionType, AperiodicityModel> models = new EnumMap<>(TectonicRegionType.class);
 			models.put(TectonicRegionType.ACTIVE_SHALLOW, UCERF3_MIDDLE.instance(fltSysSolution));
+			models.put(TectonicRegionType.STABLE_SHALLOW, models.get(TectonicRegionType.ACTIVE_SHALLOW)); // same instance
+			models.put(TectonicRegionType.SUBDUCTION_INTERFACE, new AperiodicityModel.SingleValued(0.4, false));
+			// used if a rupture of an unexpected or unknown TRT is passed in
+			AperiodicityModel fallback = models.get(TectonicRegionType.ACTIVE_SHALLOW);
+			// they could also have shared adjustable params
+			ParameterList params = null;
+			return new AperiodicityModel.TRT_Dependent(fltSysSolution.getRupSet(),
+					models, fallback, params);
+		}
+	},
+	NSHM26_HIGH("NSHM (2026) High") {
+		@Override
+		public AperiodicityModel instance(FaultSystemSolution fltSysSolution) {
+			// TODO. this is an example stub
+			// these could, e.g., be magnitude-dependent
+			EnumMap<TectonicRegionType, AperiodicityModel> models = new EnumMap<>(TectonicRegionType.class);
+			models.put(TectonicRegionType.ACTIVE_SHALLOW, UCERF3_HIGH.instance(fltSysSolution));
 			models.put(TectonicRegionType.STABLE_SHALLOW, models.get(TectonicRegionType.ACTIVE_SHALLOW)); // same instance
 			models.put(TectonicRegionType.SUBDUCTION_INTERFACE, new AperiodicityModel.SingleValued(0.55, false));
 			// used if a rupture of an unexpected or unknown TRT is passed in
@@ -51,6 +85,25 @@ public enum AperiodicityModels {
 					models, fallback, params);
 		}
 	},
+	NSHM26_SLIPRATE_TEST("NSHM (2026) Slip-Rate-Dep Test") {
+		@Override
+		public AperiodicityModel instance(FaultSystemSolution fltSysSolution) {
+			// TODO. this is an example stub
+			// these could, e.g., be magnitude-dependent
+			EnumMap<TectonicRegionType, AperiodicityModel> models = new EnumMap<>(TectonicRegionType.class);
+			models.put(TectonicRegionType.ACTIVE_SHALLOW, new AperiodicityModel.SlipRateBinned(fltSysSolution.getRupSet()));
+			models.put(TectonicRegionType.STABLE_SHALLOW, models.get(TectonicRegionType.ACTIVE_SHALLOW)); // same instance
+			models.put(TectonicRegionType.SUBDUCTION_INTERFACE, new AperiodicityModel.SingleValued(0.4, false));
+			// used if a rupture of an unexpected or unknown TRT is passed in
+			AperiodicityModel fallback = models.get(TectonicRegionType.ACTIVE_SHALLOW);
+			// they could also have shared adjustable params
+			ParameterList params = null;
+			return new AperiodicityModel.TRT_Dependent(fltSysSolution.getRupSet(),
+					models, fallback, params);
+		}
+	},
+
+
 	SINGLE_VALUED("Single Value") {
 		@Override
 		public AperiodicityModel instance(FaultSystemSolution fltSysSolution) {

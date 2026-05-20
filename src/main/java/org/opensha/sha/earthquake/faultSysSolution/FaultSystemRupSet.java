@@ -92,6 +92,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	private double[] rupAreas;
 	private double[] rupLengths;
 	private List<List<Integer>> sectionForRups;
+	private double[] rupAveSlipRates;
 	
 	// archive that this came from
 	ModuleArchive<OpenSHA_Module> archive;
@@ -965,7 +966,32 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	public double getAveRakeForRup(int rupIndex) {
 		return rakes[rupIndex];
 	}
+	
+	/**
+	 * SI units (m/yr), weight averaged by section areas
+	 * @param rupIndex
+	 * @return
+	 */
+	public double getAveSlipRateForRup(int rupIndex) {
+		if(rupAveSlipRates == null)
+			computeAveSlipRateForRups();
+		return rupAveSlipRates[rupIndex];
+	}
 
+	public void computeAveSlipRateForRups() {
+		rupAveSlipRates = new double[getNumRuptures()];
+		for(int i=0;i<getNumRuptures();i++) {
+			List<Integer> sectForRupIDs = getSectionsIndicesForRup(i);
+			double slipRate=0;
+			double wt = 0;
+			for(int s:sectForRupIDs) {
+				slipRate+= getAreaForSection(s)*getSlipRateForSection(s);
+				wt += getAreaForSection(s);
+			}
+			rupAveSlipRates[i] = slipRate/wt;
+		}
+	}
+	
 	/**
 	 * @return Area (SI units: sq-m)
 	 */

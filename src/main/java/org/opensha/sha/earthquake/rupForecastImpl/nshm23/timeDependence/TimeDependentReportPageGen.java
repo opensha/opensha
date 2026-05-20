@@ -15,14 +15,20 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.ui.RectangleAnchor;
+import org.jfree.data.Range;
+import org.opensha.commons.data.function.DefaultXY_DataSet;
+import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.commons.gui.plot.GeographicMapMaker;
+import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
+import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.ExceptionUtils;
@@ -720,6 +726,7 @@ public class TimeDependentReportPageGen {
 		// build DOLE map
 		GeographicMapMaker mapMaker = new GeographicMapMaker(subSects);
 		mapMaker.setWriteGeoJSON(true);
+		mapMaker.setDefaultPlotWidthPixels(1200);
 		
 		double minYear = -10000;
 		double maxYear = 2024;
@@ -951,7 +958,9 @@ public class TimeDependentReportPageGen {
 		mapMaker.plotSectScalars(Mgt6pt7_prob_ratioToReference, probGainCPT, "M≥6.7 Prob. Ratio to Reference");
 		mapMaker.plot(resourcesDir, probReferenceRatioPrefix, " ");
 
-		
+		double[] magForRupArray = new double[erf.getNumFaultSystemSources()];
+		double[] aperForRupArray = new double[erf.getNumFaultSystemSources()];
+		double[] aveSlipRateForRupArray = new double[erf.getNumFaultSystemSources()];
 		
 		// make the rupture data file (e.g., for verification) if U3 methodology (WG02 does not yet have getDebugString())
 		if (probModel instanceof UCERF3_ProbabilityModel) {
@@ -974,6 +983,9 @@ public class TimeDependentReportPageGen {
 			headerString += "fractRupAreaWithDateOfLast,";
 			headerString += "aper,";
 			headerString += "numSubsectForRup,";
+			headerString += "extrapolated,";
+			headerString += "rupAveSlipRate,";
+			headerString += "srcName,";
 			
 			FileWriter fw_rups;
 			try {
@@ -991,10 +1003,20 @@ public class TimeDependentReportPageGen {
 						testRate+=prob/duration;
 					}
 					testRate /= probGainTest;
-					if((float)testRate != (float)sol.getRateForRup(fsrIndex))
-						throw new RuntimeException("long-term rate discrepancy for srcID="+s);
-					String line = s+","+testRate+","+probGainTest+","+erf.getSource(s).getNumRuptures()+
-							","+((UCERF3_ProbabilityModel)probModel).getDebugString()+"\n";
+					double rupAveSlipRate = rupSet.getAveSlipRateForRup(fsrIndex);
+					String srcName = erf.getSource(s).getName();
+					String calcDebugString = ((UCERF3_ProbabilityModel)probModel).getDebugString();
+					String[] strParseArray = StringUtils.split(calcDebugString,",");
+					magForRupArray[s] = Double.parseDouble(strParseArray[3]);
+					aperForRupArray[s] = Double.parseDouble(strParseArray[11]);
+					aveSlipRateForRupArray[s] = rupAveSlipRate;
+					String line = s+","+sol.getRateForRup(fsrIndex)+","+probGainTest+","+erf.getSource(s).getNumRuptures()+
+							","+calcDebugString+","+rupAveSlipRate+
+							","+srcName.replace(",", "")+"\n";
+					double testRateNormDiff = Math.abs(testRate-sol.getRateForRup(fsrIndex))/testRate;
+					if(probGainTest > 1e-16 && testRateNormDiff>1e-6) {
+						throw new RuntimeException("long-term rate discrepancy for srcID="+s+"; "+((float)testRate)+" vs "+((float)sol.getRateForRup(fsrIndex))+"; probGainTest="+probGainTest);
+					}
 					fw_rups.write(line); 
 				}
 				fw_rups.close();
@@ -1002,11 +1024,16 @@ public class TimeDependentReportPageGen {
 				// write section data
 				((UCERF3_ProbabilityModel)probModel).writeCurrentSectDataToCSV_File(outputDir, "sectionDataFile.csv");
 				
+				
+				
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 		}
 
+		// Make aper scatter plots
+		makeRupAperScatterPlots(aperForRupArray, magForRupArray, 
+				aveSlipRateForRupArray, resourcesDir);
 		
 		// Make solution report
 		
@@ -1146,6 +1173,125 @@ public class TimeDependentReportPageGen {
 	}
 
 	
+	public static void makeRupAperScatterPlots(double[] aperForRupArray, double[] magForRupArray, 
+			double[] aveSlipRateForRupArray, File resourcesDir) {
+		
+
+		DefaultXY_DataSet aperVsMagFunc = new DefaultXY_DataSet(magForRupArray,aperForRupArray);
+		aperVsMagFunc.setName("aperVsMagFunc");
+		File fileNamePrefix1 = new File(resourcesDir, "aperVsMagFunc");
+		ArrayList<XY_DataSet> funcs1 = new ArrayList<XY_DataSet>();
+		funcs1.add(aperVsMagFunc);
+		ArrayList<PlotCurveCharacterstics> plotChars = new ArrayList<PlotCurveCharacterstics>();
+		plotChars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 0.5f, Color.RED));
+
+		Range xAxisRange = null;
+		Range yAxisRange = new Range (0.1,0.55);
+		boolean logX = false;
+		boolean logY = false;
+		double widthInches = 7.0; // inches
+		double heightInches = 6.0; // inches
+		boolean integerYaxisTickLabeIncrements = false;
+
+		PlotSpec spec = new PlotSpec(funcs1, plotChars, "", "Rup Magnitude", "Aperiodicity/COV");
+		
+		HeadlessGraphPanel gp = new HeadlessGraphPanel();
+		gp.setUserBounds(xAxisRange, yAxisRange);
+		gp.setTickLabelFontSize(16);
+		gp.setAxisLabelFontSize(22);
+		gp.setPlotLabelFontSize(16);
+		gp.setBackgroundColor(Color.WHITE);
+		gp.drawGraphPanel(spec, logX, logY); // spec can be a list
+		int width = (int)(widthInches*72.);
+		int height = (int)(heightInches*72.);
+		gp.getChartPanel().setSize(width, height); 
+
+		if(integerYaxisTickLabeIncrements)
+			gp.getChartPanel().getChart().getXYPlot().getRangeAxis().setStandardTickUnits(NumberAxis.createIntegerTickUnits());
+			
+//			XYTextAnnotation annotation = new XYTextAnnotation("here",xAxisRange.getCentralValue(),yAxisRange.getCentralValue());
+//			gp.getChartPanel().getChart().getXYPlot().addAnnotation(annotation);	
+//
+		try {
+			gp.saveAsPNG(fileNamePrefix1+".png");
+			gp.saveAsPDF(fileNamePrefix1+".pdf");
+			gp.saveAsTXT(fileNamePrefix1+".txt");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		double[] slipRateMilimeters = new double[aveSlipRateForRupArray.length];
+		for(int i=0;i<aveSlipRateForRupArray.length;i++)
+			slipRateMilimeters[i]=1000*aveSlipRateForRupArray[i];
+		DefaultXY_DataSet aperVsAveSlipRateFunc = new DefaultXY_DataSet(slipRateMilimeters,aperForRupArray);
+		aperVsAveSlipRateFunc.setName("aperVsAveSlipRateFunc");
+		File fileNamePrefix2 = new File(resourcesDir, "aperVsAveSlipRateFunc");
+		ArrayList<XY_DataSet> funcs2 = new ArrayList<XY_DataSet>();
+		funcs2.add(aperVsAveSlipRateFunc);
+
+		logX = true;
+
+		PlotSpec spec2 = new PlotSpec(funcs2, plotChars, "", "Rup Ave Slip Rate (mm/yr)", "Aperiodicity/COV");
+		
+		gp = new HeadlessGraphPanel();
+		gp.setUserBounds(xAxisRange, yAxisRange);
+		gp.setTickLabelFontSize(16);
+		gp.setAxisLabelFontSize(22);
+		gp.setPlotLabelFontSize(16);
+		gp.setBackgroundColor(Color.WHITE);
+		gp.drawGraphPanel(spec2, logX, logY); // spec can be a list
+		gp.getChartPanel().setSize(width, height); 
+
+		if(integerYaxisTickLabeIncrements)
+			gp.getChartPanel().getChart().getXYPlot().getRangeAxis().setStandardTickUnits(NumberAxis.createIntegerTickUnits());
+			
+//			XYTextAnnotation annotation = new XYTextAnnotation("here",xAxisRange.getCentralValue(),yAxisRange.getCentralValue());
+//			gp.getChartPanel().getChart().getXYPlot().addAnnotation(annotation);	
+//
+		try {
+			gp.saveAsPNG(fileNamePrefix2+".png");
+			gp.saveAsPDF(fileNamePrefix2+".pdf");
+			gp.saveAsTXT(fileNamePrefix2+".txt");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		DefaultXY_DataSet magVsAveSlipRateFunc = new DefaultXY_DataSet(slipRateMilimeters,magForRupArray);
+		magVsAveSlipRateFunc.setName("magVsAveSlipRateFunc");
+		File fileNamePrefix3 = new File(resourcesDir, "magVsAveSlipRateFunc");
+		ArrayList<XY_DataSet> funcs3 = new ArrayList<XY_DataSet>();
+		funcs3.add(magVsAveSlipRateFunc);
+
+		logX = true;
+
+		PlotSpec spec3 = new PlotSpec(funcs3, plotChars, "", "Rup Ave Slip Rate (mm/yr)", "Rup Magnitude");
+		
+		gp = new HeadlessGraphPanel();
+		gp.setUserBounds(xAxisRange, new Range(5,9.5));
+		gp.setTickLabelFontSize(16);
+		gp.setAxisLabelFontSize(22);
+		gp.setPlotLabelFontSize(16);
+		gp.setBackgroundColor(Color.WHITE);
+		gp.drawGraphPanel(spec3, logX, logY); // spec can be a list
+		gp.getChartPanel().setSize(width, height); 
+
+		if(integerYaxisTickLabeIncrements)
+			gp.getChartPanel().getChart().getXYPlot().getRangeAxis().setStandardTickUnits(NumberAxis.createIntegerTickUnits());
+			
+//			XYTextAnnotation annotation = new XYTextAnnotation("here",xAxisRange.getCentralValue(),yAxisRange.getCentralValue());
+//			gp.getChartPanel().getChart().getXYPlot().addAnnotation(annotation);	
+//
+		try {
+			gp.saveAsPNG(fileNamePrefix3+".png");
+			gp.saveAsPDF(fileNamePrefix3+".pdf");
+			gp.saveAsTXT(fileNamePrefix3+".txt");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+
+
+	}
 
 
 	public static void main(String[] args) throws IOException {

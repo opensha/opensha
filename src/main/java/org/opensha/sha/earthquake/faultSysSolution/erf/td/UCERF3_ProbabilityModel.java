@@ -197,10 +197,14 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 					probGain, aveCondRecurInterval, aveTimeSinceLastWhereKnownYears, histOpenInterval, durationYears, expNum, condProb, aperiodicity);
 		} else if (noSectionsHadDateOfLast) {
 			condProb = computeCondProbForUnknownDateOfLastFast(normProbDistCalc, aveCondRecurInterval, histOpenInterval, durationYears, aperiodicity);
+			if(Double.isNaN(condProb) && extrapolateCondProbs) { // zero probability of making it to histOpenInterval; use histOpenInterval or last viable cond prob
+				condProb = computeCondProbFast(normProbDistCalc, aveCondRecurInterval, histOpenInterval, durationYears, aperiodicity, true);
+				extrapolated = true;
+			}
 			probGain = condProb/expNum;	
 
 			
-			
+// FOLLOWING IS DEBUGGING OLD CODE; DELETE?
 //if(condProb<0 || Double.isInfinite(condProb) || Double.isNaN(condProb)) {
 //	double cdfVal = normProbDistCalc.getCDF().getInterpolatedY(histOpenInterval/aveCondRecurInterval);
 //	String name = fltSysRupSet.getFaultSectionDataForRupture(fltSysRupIndex).get(0).getName();
@@ -308,8 +312,7 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 			} else {
 				// deal with case where there was no viable time since last (model implies it definitely should have
 				// occurred in hist open interval); use exactly historic open interval
-				if (totWeight<=0) throw new RuntimeException("Finally got here - note how this happened");
-//probCase = true;
+//	if (totWeight<=0) throw new RuntimeException("Finally got here - note how this happened");
 				if (aveNormTimeSinceLast) {
 					double normTimeSinceYearsUnknown = histOpenInterval/condRecurIntWhereUnknown;
 					double aveNormTS = (normTimeSinceYearsUnknown*areaWithOutDateOfLast + aveNormTimeSinceLastEventWhereKnown*totRupAreaWithDateOfLast)/totRupArea;
@@ -318,7 +321,6 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 						condProb = computeCondProbFast(normProbDistCalc, 1.0, aveNormTS, durationYears/aveCondRecurInterval, aperiodicity, true);
 						extrapolated = true;
 					}
-
 					probGain = condProb/expNum;
 					Preconditions.checkState(probGain > 0d, "Bad probGain=%s where some (but not all) sections have date of last.\n"
 							+ "\tcondProb=%s\texpNum=%s\tnormTimeSinceYearsUnknown=%s\taveNormTS=%s\n"
@@ -358,14 +360,6 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 			str += rupSubSects.size()+",";
 			str += extrapolated;
 			this.debugString = str;
-
-//if(probCase) System.out.println("ProbCase:\t"+debugString);
-
-// DEBUGGING
-			//if(fltSysRupIndex==513447) {
-//						System.out.println(str);
-//						System.exit(0);
-			//}
 		}
 		
 		if(Double.isNaN(probGain))

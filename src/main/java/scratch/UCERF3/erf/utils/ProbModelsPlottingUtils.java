@@ -32,6 +32,7 @@ import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.cpt.CPTVal;
 import org.opensha.sha.earthquake.calc.recurInterval.BPT_DistCalc;
+import org.opensha.sha.earthquake.calc.recurInterval.EqkProbDistCalc;
 import org.opensha.sha.earthquake.calc.recurInterval.LognormalDistCalc;
 import org.opensha.sha.earthquake.calc.recurInterval.WeibullDistCalc;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -50,15 +51,27 @@ public class ProbModelsPlottingUtils {
 	
 	final static boolean integerYaxisTickLabeIncrements = false;
 
+	/**
+	 * This utility returns a histogram of normalized recurrence intervals from normRI_List, 
+	 * along with best-fit BPT, Lognormal, and Weibull distributions.  This assumes the target/
+	 * comparison renewal model is BPT.
+	 * @param normRI_List
+	 * @param plotTitle
+	 * @param bptAperForComparison - this will add a BPT dist with mean=1 and given aper for comparison (set as Double.NaN if not desired), but only if renewalForCompCalc != null
+	 */
+	public static ArrayList<EvenlyDiscretizedFunc> getNormRI_DistributionWithFits(ArrayList<Double> normRI_List, double bptAperForComparison) {
+		return getNormRI_DistributionWithFits(normRI_List, bptAperForComparison, new BPT_DistCalc());
+	}
 	
 	/**
 	 * This utility returns a histogram of normalized recurrence intervals from normRI_List, 
 	 * along with best-fit BPT, Lognormal, and Weibull distributions.  
 	 * @param normRI_List
 	 * @param plotTitle
-	 * @param bptAperForComparison - this will add a BPT dist with mean=1 and given aper for comparison (set as Double.NaN if not desired)
+	 * @param bptAperForComparison - this will add a BPT dist with mean=1 and given aper for comparison (set as Double.NaN if not desired), but only if renewalForCompCalc != null
+	 * @param renewalForCompCalc - this specified the target renewal model for comparison
 	 */
-	public static ArrayList<EvenlyDiscretizedFunc> getNormRI_DistributionWithFits(ArrayList<Double> normRI_List, double bptAperForComparison) {
+	public static ArrayList<EvenlyDiscretizedFunc> getNormRI_DistributionWithFits(ArrayList<Double> normRI_List, double bptAperForComparison, EqkProbDistCalc renewalForCompCalc) {
 		
 		// get the normalized RI dist
 		double delta=0.1;
@@ -89,11 +102,11 @@ public class ProbModelsPlottingUtils {
 		dist.setInfo(info);
 
 		
-		if(!Double.isNaN(bptAperForComparison)) {
-			BPT_DistCalc bpt_calc = new BPT_DistCalc();
-			bpt_calc.setAll(1.0, bptAperForComparison, funcList.get(1).getDelta(), funcList.get(1).size());	// not the first one because that's the obs histogram
-			EvenlyDiscretizedFunc bpt_func = bpt_calc.getPDF();
-			bpt_func.setName("BPT Dist for comparison");
+		if(!Double.isNaN(bptAperForComparison) && renewalForCompCalc != null) {
+//			BPT_DistCalc bpt_calc = new BPT_DistCalc();
+			renewalForCompCalc.setAll(1.0, bptAperForComparison, funcList.get(1).getDelta(), funcList.get(1).size());	// not the first one because that's the obs histogram
+			EvenlyDiscretizedFunc bpt_func = renewalForCompCalc.getPDF();
+			bpt_func.setName(renewalForCompCalc.getName()+" Dist for comparison");
 			bpt_func.setInfo("(mean="+1.0+", aper="+bptAperForComparison+")");
 			funcList.add(bpt_func);
 		}
@@ -291,21 +304,41 @@ public class ProbModelsPlottingUtils {
 				logX,logY,widthInches,heightInches, new File(outputDir,fileNamePrefix), popupWindow);
 	}
 
-	
-	
-	
+	/**
+	 * This assumes the target is BPT
+	 * @param normRI_List
+	 * @param bptAperForComparison
+	 * @param outputDir
+	 * @param plotTitle
+	 * @param fileNamePrefix
+	 * @return
+	 */
 	public static String writeNormalizedDistPlotWithFits(ArrayList<Double> normRI_List, double bptAperForComparison, 
 			File outputDir, String plotTitle, String fileNamePrefix) {
+
+			return writeNormalizedDistPlotWithFits(normRI_List, bptAperForComparison, 
+					new BPT_DistCalc(), outputDir, plotTitle, fileNamePrefix);
+	}
+	
+	/**
+	 * 
+	 * @param normRI_List
+	 * @param bptAperForComparison
+	 * @param renewalForCompCalc
+	 * @param outputDir
+	 * @param plotTitle
+	 * @param fileNamePrefix
+	 * @return
+	 */
+	public static String writeNormalizedDistPlotWithFits(ArrayList<Double> normRI_List, double bptAperForComparison, 
+			EqkProbDistCalc renewalForCompCalc, File outputDir, String plotTitle, String fileNamePrefix) {
 		
-		ArrayList<EvenlyDiscretizedFunc> funcList = ProbModelsPlottingUtils.getNormRI_DistributionWithFits(normRI_List, bptAperForComparison);
+		ArrayList<EvenlyDiscretizedFunc> funcList = ProbModelsPlottingUtils.getNormRI_DistributionWithFits(normRI_List, bptAperForComparison, renewalForCompCalc);
 
 		writeNormalizedDistPlotWithFits(funcList, outputDir, plotTitle, fileNamePrefix);
 
-		// make info string
 		String infoString = "\n\nNorm "+funcList.get(0).getName()+" for "+fileNamePrefix+":\n";
 		infoString += "\n"+funcList.get(0).getInfo();
-//		infoString += "\n\n"+funcList.get(1).getName(); // this BPT fit is included right above
-//		infoString += "\n"+funcList.get(1).getInfo();
 		
 		return infoString;
 	}

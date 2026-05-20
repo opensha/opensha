@@ -112,6 +112,54 @@ public interface AperiodicityModel extends ParameterizedModel {
 		public double[] getSectionAperiodicity();
 	}
 	
+	public static class SlipRateBinned implements AperiodicityModel {
+		
+		private double[] aperValues = {0.5,0.4,0.3,0.2};
+		private double[] aperSlipRateBoundaries = {1e-4,1e-3,1e-2}; // SI (m/yr)
+		private FaultSystemRupSet rupSet;
+
+
+		public SlipRateBinned(FaultSystemRupSet rupSet) {
+			this.rupSet = rupSet;
+			Preconditions.checkState(aperValues.length == aperSlipRateBoundaries.length+1,
+					"Should have 1 more aperiodicity value than slip-rate bin edge");
+			// make sure slip-rate bins are monotonically increasing
+			for (int m=1; m<aperSlipRateBoundaries.length; m++)
+				Preconditions.checkState(aperSlipRateBoundaries[m] > aperSlipRateBoundaries[m-1],
+						"Slip-rates must be monotonically increasing");
+		}
+		
+		@Override
+		public double getRuptureAperiodicity(int ruptureIndex) {
+			double aveSlipRate = rupSet.getAveSlipRateForRup(ruptureIndex);
+			for (int i=0; i<aperSlipRateBoundaries.length; i++) {
+				if (aveSlipRate <= aperSlipRateBoundaries[i])
+					return aperValues[i];
+			}
+			return aperValues[aperValues.length-1];
+		}
+
+		@Override
+		public String getName() {
+			return "Slip-Rate-Binned";
+		}
+		
+		@Override
+		public String toString() {
+			StringBuilder name = new StringBuilder();
+			name.append("(");
+			for (int i=0; i<aperValues.length; i++) {
+				if (i > 0)
+					name.append(",");
+				name.append((float)aperValues[i]);
+			}
+			name.append(")");
+			return getMetadataString(name.toString());
+		}
+		
+	}
+
+	
 	public static abstract class SlipRateDependent implements SectionDependent {
 		
 		private FaultSystemRupSet rupSet;
