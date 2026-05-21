@@ -981,7 +981,7 @@ public class ComcatReportPageGen {
 		
 		String faultPrefix = "etas_fault_prefix";
 		ETAS_FaultParticipationPlot faultPlot = new ETAS_FaultParticipationPlot(
-				config, launcher, faultPrefix, false, true);
+				config, launcher, faultPrefix, false, true, 10);
 		plots.add(faultPlot);
 		
 		boolean filterSpontaneous = false;
