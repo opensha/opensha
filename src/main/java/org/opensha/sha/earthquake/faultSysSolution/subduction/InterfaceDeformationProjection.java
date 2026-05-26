@@ -208,12 +208,12 @@ public class InterfaceDeformationProjection {
 				double distAfter = Math.abs(traceDists[flipIndex]);
 				double sumDist = distBefore+distAfter;
 				slip = Interpolate.findY(0d, deformationFrontSlipRates[flipIndex-1],
-						distBefore+distAfter, deformationFrontSlipRates[flipIndex], distBefore);
+						sumDist, deformationFrontSlipRates[flipIndex], distBefore);
 				if (convergenceAngles == null)
 					angle = Double.NaN;
 				else
 					angle = Interpolate.findY(0d, convergenceAngles[flipIndex-1],
-							distBefore+distAfter, convergenceAngles[flipIndex], distBefore);
+							sumDist, convergenceAngles[flipIndex], distBefore);
 			}
 			
 			// before projecting down-dip, see if we need to correct for oblique 

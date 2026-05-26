@@ -50,7 +50,7 @@ public enum NSHM27_InterfaceFaultModels implements RupSetFaultModel, RupSetSubse
 	AMSAM_V1("Amarican Samoa (Interface FM v1)", "AmSam-Inter-v1",
 			"/data/erf/nshm27/amsam/fault_models/subduction/", NSHM27_SeismicityRegions.AMSAM, 0d),
 	GNMI_V1("Guam & Northern Mariana Islands (Interface FM v1)", "GNMI-Inter-v1",
-			"/data/erf/nshm27/gnmi/fault_models/subduction/", NSHM27_SeismicityRegions.GNMI, 100d);
+			"/data/erf/nshm27/gnmi/fault_models/subduction/", NSHM27_SeismicityRegions.GNMI, 50d);
 	
 	public static NSHM27_InterfaceFaultModels regionDefault(NSHM27_SeismicityRegions region) {
 		for (NSHM27_InterfaceFaultModels fm : values())
