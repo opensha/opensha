@@ -1,23 +1,38 @@
 package gov.usgs.earthquake.nshmp.erf.seismicity;
 
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.math3.stat.StatUtils;
+import org.apache.commons.math3.util.Precision;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.geo.CubedGriddedRegion;
 import org.opensha.commons.geo.GriddedRegion;
+import org.opensha.commons.geo.Location;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList.FiniteRuptureConverter;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList.GriddedRupture;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList.GriddedRupturePropertiesCache;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
+import org.opensha.sha.util.FocalMech;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
+import com.google.common.primitives.Doubles;
+import com.google.common.primitives.Ints;
 
 public class CrustalGridSourceBuilder {
 
@@ -257,18 +272,220 @@ public class CrustalGridSourceBuilder {
 	 */
 	public interface RuptureBuilder {
 		
-		public List<GriddedRupture> buildFiniteRuptures(int gridCellIndex, IncrementalMagFreqDist cellTotalMFD,
-				FaultCubeAssociations cubeAssoc, int[] cubeIndexes, IncrementalMagFreqDist[] cubeMFDs);
+		/**
+		 * 
+		 * @param gridCellIndex grid cell index in the gridded region
+		 * @param cellTotalMFD total MFD for this grid cell
+		 * @param cubeAssoc fault cube associations
+		 * @param cubeIndexes cube indexes for this cell, can be used with the cubeUnassocMFDs and cubeAssocMFDs arrays
+		 * @param cubeUnassocMFDs unassociated MFDs for each cube across all cells; if null, full cube weight should be
+		 * used to scale cell MFD.
+		 * @param cubeAssocMFDs assocated MFDs for each cube; if non-null, associated MFDs for each cube will be in
+		 * order of faultCubeAssociations.getSectsAtCube(c)
+		 * @return list of ruptures for this grid cell for each relevant TRT
+		 */
+		public Map<TectonicRegionType, List<GriddedRupture>> buildFiniteRuptures(int gridCellIndex, IncrementalMagFreqDist cellTotalMFD,
+				FaultCubeAssociations cubeAssoc, int[] cubeIndexes, IncrementalMagFreqDist[] cubeUnassocMFDs,
+				IncrementalMagFreqDist[][] cubeAssocMFDs);
 	}
 	
+	public static class SingleRupPerMechRuptureBuilder implements RuptureBuilder {
+		
+		private GriddedRegion gridReg;
+		private double[] fractStrikeSlip;
+		private double[] fractNormal;
+		private double[] fractReverse;
+		private double[] fractStable;
+		private double minMag;
+		
+		private GriddedRupturePropertiesCache cache;
+		
+		private FiniteRuptureConverter converter;
+		
+		public SingleRupPerMechRuptureBuilder(FiniteRuptureConverter converter, GriddedRegion gridReg,
+				double[] fractStrikeSlip, double[] fractNormal, double[] fractReverse, double[] fractStable, double minMag) {
+			Preconditions.checkNotNull(converter);
+			this.converter = converter;
+			this.minMag = minMag;
+			Preconditions.checkState(fractStrikeSlip.length == gridReg.getNodeCount());
+			Preconditions.checkState(fractStrikeSlip.length == fractNormal.length);
+			Preconditions.checkState(fractStrikeSlip.length == fractReverse.length);
+			Preconditions.checkState(fractStrikeSlip.length == fractStable.length);
+			for (int i=0; i<fractStrikeSlip.length; i++) {
+				double sum = fractNormal[i]+fractStrikeSlip[i]+fractReverse[i];
+				Preconditions.checkState(Precision.equals(1d, sum, 0.001));
+				Preconditions.checkState(fractStable[i] >= 0d && fractStable[i] <= 1.001);
+			}
+			this.gridReg = gridReg;
+			this.fractStrikeSlip = fractStrikeSlip;
+			this.fractNormal = fractNormal;
+			this.fractReverse = fractReverse;
+			this.fractStable = fractStable;
+			this.cache = new GriddedRupturePropertiesCache();
+		}
+
+		@Override
+		public Map<TectonicRegionType, List<GriddedRupture>> buildFiniteRuptures(int gridCellIndex, IncrementalMagFreqDist cellTotalMFD,
+				FaultCubeAssociations cubeAssoc, int[] cubeIndexes, IncrementalMagFreqDist[] cubeUnassocMFDs,
+				IncrementalMagFreqDist[][] cubeAssocMFDs) {
+			double fractSS = fractStrikeSlip[gridCellIndex];
+			double fractN = fractNormal[gridCellIndex];
+			double fractR = fractReverse[gridCellIndex];
+			double fractStable = this.fractStable[gridCellIndex];
+			
+			TectonicRegionType[] trts;
+			double[] trtWeights;
+			if (fractStable == 0d) {
+				trts = new TectonicRegionType[] {TectonicRegionType.ACTIVE_SHALLOW};
+				trtWeights = new double[] {1d};
+			} else if (fractStable == 1d) {
+				trts = new TectonicRegionType[] {TectonicRegionType.STABLE_SHALLOW};
+				trtWeights = new double[] {1d};
+			} else {
+				trts = new TectonicRegionType[] {TectonicRegionType.ACTIVE_SHALLOW, TectonicRegionType.STABLE_SHALLOW};
+				trtWeights = new double[] {1d-fractStable, fractStable};
+			}
+			
+			Map<Integer, double[]> assocSectRates = null;
+			if (cubeAssocMFDs != null && cubeIndexes != null) {
+				// we potentially have associated sections; figure out which are associated with each cube, and then
+				// sum the associated MFDs for each section in order to calculate rupture association fractions
+				for (int c : cubeIndexes) {
+					if (cubeAssocMFDs[c] != null) {
+						Preconditions.checkNotNull(cubeAssoc, "Have associated cube MFDs but cubeAssoc is null?");
+						int[] sects = cubeAssoc.getSectsAtCube(c);
+						Preconditions.checkState(cubeAssocMFDs != null);
+						if (assocSectRates == null)
+							// linked for consistent ordering
+							assocSectRates = new LinkedHashMap<>(sects.length);
+						for (int s=0; s<sects.length; s++) {
+							int sectIndex = sects[s];
+							if (!assocSectRates.containsKey(sectIndex))
+								assocSectRates.put(sectIndex, new double[cellTotalMFD.size()]);
+							double[] rates = assocSectRates.get(sectIndex);
+							for (int m=0; m<rates.length; m++)
+								rates[m] += cubeAssocMFDs[c][s].getY(m);
+						}
+					}
+				}
+			}
+			
+			Location loc = gridReg.getLocation(gridCellIndex);
+			EnumMap<TectonicRegionType, List<GriddedRupture>> trtRuptureLists = new EnumMap<>(TectonicRegionType.class);
+			for (TectonicRegionType trt : trts)
+				trtRuptureLists.put(trt, new ArrayList<>());
+			for (int m=0; m<cellTotalMFD.size(); m++) {
+				double mag = cellTotalMFD.getX(m);
+				double totRate = cellTotalMFD.getY(m);
+				if (totRate == 0d || (float)mag < (float)minMag)
+					continue;
+				
+				double associatedRate = 0d;
+				int[] associatedSections = null;
+				double[] associatedSectionFracts = null;
+				if (assocSectRates != null) {
+					List<Integer> associatedSectionsList = new ArrayList<>(assocSectRates.size());
+					List<Double> associatedSectionFractsList = new ArrayList<>(assocSectRates.size());
+					for (int sectID : assocSectRates.keySet()) {
+						double[] sectAssocRates = assocSectRates.get(sectID);
+						double sectAssocRate = sectAssocRates[m];
+						if (sectAssocRate > 0d) {
+							associatedRate += sectAssocRate;
+							associatedSectionsList.add(sectID);
+							associatedSectionFractsList.add(sectAssocRate/totRate);
+						}
+					}
+					if (!associatedSectionFractsList.isEmpty()) {
+						Preconditions.checkState((float)associatedRate <= (float)totRate,
+								"Associated rate (%s) exceeds the total rate (%s) for gridIndex=%s, M=%s",
+								associatedRate, totRate, gridCellIndex, mag);
+						associatedSections = Ints.toArray(associatedSectionsList);
+						associatedSectionFracts = Doubles.toArray(associatedSectionFractsList);
+					}
+				}
+				for (int t=0; t<trts.length; t++) {
+					List<GriddedRupture> ruptureList = trtRuptureLists.get(trts[t]);
+					for (FocalMech mech : FocalMech.values()) {
+						double mechRate;
+						switch (mech) {
+						case STRIKE_SLIP:
+							mechRate = totRate*fractSS;
+							break;
+						case NORMAL:
+							mechRate = totRate*fractN;
+							break;
+						case REVERSE:
+							mechRate = totRate*fractR;
+							break;
+
+						default:
+							throw new IllegalStateException();
+						}
+						if (mechRate == 0d)
+							continue;
+						
+						double rupRate = mechRate * trtWeights[t];
+						
+						ruptureList.add(converter.buildFiniteRupture(gridCellIndex, loc, mag, rupRate, mech,
+								trts[t], associatedSections, associatedSectionFracts, cache));
+					}
+				}
+			}
+			return trtRuptureLists;
+		}
+		
+	}
+	
+	/**
+	 * Builds a {@link GridSourceList} for the given {@link FaultSystemSolution}, total MFD (before any carve-outs),
+	 * 3D fault-cube associations, 3D nucleation PDF for those cubes, rate balancing & near-fault carveout models,
+	 * and rupture builder.
+	 * @param fss fault system solution
+	 * @param totalMFD total regional MFD, usually directly from an observed seismicity rate estimate
+	 * @param faultCubeAssociations associations between fault sections in the solution and 3D cubes
+	 * @param nucleationPDF nucleation PDF for each 3D cube
+	 * @param rateBalancingModel overall regional rate balancing model to determine the gridded seismicity MFD from
+	 * the total MFD and solution rupture rates, or null to disable rate balancing and use the full regional MFD
+	 * for gridded seismicity
+	 * @param nearFaultCarveout near-fault carveout model to remove double-counting between gridded seismicity and nearby
+	 * associated faults 
+	 * @param ruptureBuilder rupture builder that converts rupture rates and magnitudes at a grid cell (and potentially
+	 * for each cube) to {@link GriddedRupture} instances.
+	 * @return gridded seismicity model
+	 */
 	public static GridSourceList build(FaultSystemSolution fss, IncrementalMagFreqDist totalMFD,
 			FaultCubeAssociations faultCubeAssociations, NucleationPDF_3D nucleationPDF,
 			RuptureRateBalancingModel rateBalancingModel, NearFaultCarveOutModel nearFaultCarveout,
 			RuptureBuilder ruptureBuilder) {
+
 		GriddedRegion gridReg = faultCubeAssociations.getRegion();
 		CubedGriddedRegion cgr = faultCubeAssociations.getCubedGriddedRegion();
+		return doBuild(fss, totalMFD, faultCubeAssociations, nucleationPDF, rateBalancingModel, nearFaultCarveout,
+				ruptureBuilder, gridReg, cgr);
+	}
+	
+	/**
+	 * Builds a {@link GridSourceList} for the given MFD without accounting any faults contained within the region.
+	 * @param gridReg gridded region
+	 * @param gridMFD total MFD for gridded seismicity
+	 * @param cgr cubed gridded region corresponding to the 3D PDF
+	 * @param nucleationPDF nucleation PDF for each 3D cube
+	 * @param ruptureBuilder rupture builder that converts rupture rates and magnitudes at a grid cell (and potentially
+	 * for each cube) to {@link GriddedRupture} instances.
+	 * @return gridded seismicity model
+	 */
+	public static GridSourceList buildGriddedOnly(GriddedRegion gridReg, IncrementalMagFreqDist gridMFD,
+			CubedGriddedRegion cgr, NucleationPDF_3D nucleationPDF, RuptureBuilder ruptureBuilder) {
+		return doBuild(null, gridMFD, null, nucleationPDF, null, null,
+				ruptureBuilder, gridReg, cgr);
+	}
+	
+	private static GridSourceList doBuild(FaultSystemSolution fss, IncrementalMagFreqDist totalMFD,
+			FaultCubeAssociations faultCubeAssociations, NucleationPDF_3D nucleationPDF,
+			RuptureRateBalancingModel rateBalancingModel, NearFaultCarveOutModel nearFaultCarveout,
+			RuptureBuilder ruptureBuilder, GriddedRegion gridReg, CubedGriddedRegion cgr) {
 		
-		FaultSystemRupSet rupSet = fss.getRupSet();
+		FaultSystemRupSet rupSet = fss == null ? null : fss.getRupSet();
 		double minGridMag = totalMFD.getMinX() - 0.5*totalMFD.getDelta();
 		double maxGridMag = totalMFD.getMaxX() + 0.5*totalMFD.getDelta();
 		
@@ -279,6 +496,7 @@ public class CrustalGridSourceBuilder {
 			IncrementalMagFreqDist totalGriddedMFD;
 			if (rateBalancingModel != null) {
 				// uniform regional rate balancing
+				Preconditions.checkNotNull(fss, "Rate balancing model supplied but no fault-system solution");
 				IncrementalMagFreqDist solNuclMFD = fss.calcNucleationMFD_forRegion(
 						gridReg, totalMFD.getMinX(), totalMFD.getMaxX(), totalMFD.size(), false);
 				totalGriddedMFD = new IncrementalMagFreqDist(totalMFD.getMinX(), totalMFD.getMaxX(), totalMFD.size());
@@ -304,6 +522,7 @@ public class CrustalGridSourceBuilder {
 			}
 		} else {
 			// spatially-variable rate balancing model
+			Preconditions.checkNotNull(fss, "Rate balancing model supplied but no fault-system solution");
 			
 			// start with the total MFD scaled by each grid cell prob
 			for (int l=0; l<gridReg.getNodeCount(); l++) {
@@ -357,6 +576,8 @@ public class CrustalGridSourceBuilder {
 		IncrementalMagFreqDist[][] cubeAssocMFDs = null;
 		if (nearFaultCarveout != null) {
 			// now carve out rates in the immediate vicinity of faults, according to the fault cube associations
+			Preconditions.checkNotNull(faultCubeAssociations, "Must supply fault-cube associations when near-fault carveout is active");
+			Preconditions.checkNotNull(fss, "Near-fault carveout model supplied but no fault-system solution");
 			
 			IncrementalMagFreqDist carvedOutSum = null;
 			// keep track of what we carved out
@@ -429,7 +650,8 @@ public class CrustalGridSourceBuilder {
 			double totalUnassocMass = 0d;
 			for (int l=0; l<gridCellMFDs.length; l++)
 				totalUnassocMass += nucleationPDF.getGridCellNucleationProb(l) * (1d-cellAssocFracts[l]);
-			
+			boolean redistributeCarvedOut = carvedOutSum != null && totalUnassocMass > 0d;
+				
 			// recalculate their MFDs as needed (if associated, or if redistributing)
 			for (int l=0; l<gridCellMFDs.length; l++) {
 				if (cellAssocFracts[l] > 0) {
@@ -443,14 +665,14 @@ public class CrustalGridSourceBuilder {
 							int depIndex = cgr.getDepthIndexForCubeIndex(c);
 							double cubeNormWt = nucleationPDF.getGridCellNormalizedCubeNucleationProb(c, gridIndex, depIndex);
 							newCellMFD.addIncrementalMagFreqDist(origCellMFD, cubeNormWt);
-							if (carvedOutSum != null)
+							if (redistributeCarvedOut)
 								newCellMFD.addIncrementalMagFreqDist(carvedOutSum, nucleationPDF.getCubeNucleationProb(c, gridIndex, depIndex)/totalUnassocMass);
 						} else {
 							for (IncrementalMagFreqDist mfd : cubeAssocMFDs[c])
 								newCellMFD.addIncrementalMagFreqDist(mfd);
 							if (cubeUnassocMFDs[c] != null) {
 								newCellMFD.addIncrementalMagFreqDist(cubeUnassocMFDs[c]);
-								if (carvedOutSum != null) {
+								if (redistributeCarvedOut) {
 									int gridIndex = cgr.getRegionIndexForCubeIndex(c);
 									int depIndex = cgr.getDepthIndexForCubeIndex(c);
 									newCellMFD.addIncrementalMagFreqDist(carvedOutSum,
@@ -460,7 +682,7 @@ public class CrustalGridSourceBuilder {
 						}
 					}
 					gridCellMFDs[l]  = newCellMFD;
-				} else if (carvedOutSum != null) {
+				} else if (redistributeCarvedOut) {
 					// redistribute carved out portion
 					double cellWtScalar = nucleationPDF.getGridCellNucleationProb(l)/totalUnassocMass;
 					for (int m=0; m<gridCellMFDs[l].size(); m++)
@@ -468,8 +690,38 @@ public class CrustalGridSourceBuilder {
 				}
 			}
 		}
+
+		EnumMap<TectonicRegionType, List<List<GriddedRupture>>> trtRupLists = new EnumMap<>(TectonicRegionType.class);
+		for (int l=0; l<gridReg.getNodeCount(); l++) {
+			IncrementalMagFreqDist cellMFD = gridCellMFDs[l];
+			
+			double sumRate = cellMFD.calcSumOfY_Vals();
+			if (sumRate == 0d)
+				continue;
+			
+			int[] cubeIndexes = cgr.getCubeIndicesForGridCell(l);
+			
+			Map<TectonicRegionType, List<GriddedRupture>> trtRups = ruptureBuilder.buildFiniteRuptures(l, cellMFD,
+					faultCubeAssociations, cubeIndexes, cubeUnassocMFDs, cubeAssocMFDs);
+			Preconditions.checkState(!trtRups.isEmpty(), "No ruptures built for cell %s with rate=%s", l, (Double)sumRate);
+			int numAdded = 0;
+			for (TectonicRegionType trt : trtRups.keySet()) {
+				List<GriddedRupture> cellRupsForTRT = trtRups.get(trt);
+				numAdded += cellRupsForTRT.size();
+				List<List<GriddedRupture>> rupsListForTRT = trtRupLists.get(trt);
+				if (rupsListForTRT == null) {
+					rupsListForTRT = new ArrayList<>(gridReg.getNodeCount());
+					for (int i=0; i<gridReg.getNodeCount(); i++)
+						rupsListForTRT.add(null);
+					trtRupLists.put(trt, rupsListForTRT);
+				}
+				
+				rupsListForTRT.set(l, cellRupsForTRT);
+			}
+			Preconditions.checkState(numAdded > 0, "No ruptures built for cell %s with rate=%s", l, (Double)sumRate);
+		}
+		Preconditions.checkState(!trtRupLists.isEmpty(), "No ruptures built");
 		
-		// TODO build the ruptures
-		return null;
+		return new GridSourceList.Precomputed(gridReg, trtRupLists);
 	}
 }
