@@ -1039,12 +1039,30 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 		return getEvenlyDiscritizedListOfLocsOnSurface().listIterator();
 	}
 	
+	@Override
+	public int getEvenlyDiscretizedNumLocs() {
+		int numLocs = 0;
+		for(RuptureSurface surf:surfaces)
+			numLocs += surf.getEvenlyDiscretizedNumLocs();
+		return numLocs;
+	}
 
+	@Override
+	public Location getEvenlyDiscretizedLocation(int index) {
+		int prevNum = 0;
+		for (RuptureSurface surf : surfaces) {
+			int myNum = surf.getEvenlyDiscretizedNumLocs();
+			if (index < prevNum + myNum)
+				return surf.getEvenlyDiscretizedLocation(index - prevNum);
+			prevNum += myNum;
+		}
+		throw new IllegalStateException("No point at index "+index+", have "+getEvenlyDiscretizedNumLocs());
+	}
 
 	@Override
 	public LocationList getEvenlyDiscritizedListOfLocsOnSurface() {
 		// modified to use an expected size
-		// not caching in order to avoid memory bloat, but individual surfaces should already be cached, making this quick'
+		// not caching in order to avoid memory bloat, but individual surfaces should already be cached, making this quick
 		int count = 0;
 		List<LocationList> surfLists = new ArrayList<>(surfaces.size());
 		for(RuptureSurface surf:surfaces) {
