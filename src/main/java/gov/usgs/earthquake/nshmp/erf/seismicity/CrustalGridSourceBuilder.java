@@ -185,8 +185,27 @@ public class CrustalGridSourceBuilder {
 		
 	}
 	
+	/**
+	 * This interface defines local carveouts for faults that are associated with individual 3D cubes. If supplied,
+	 * it can prevent local double-counting with the on-fault model for cubes assocated with fault sections.
+	 */
 	public interface NearFaultCarveOutModel {
 		
+		/**
+		 * This will be called for each cube and associated fault section. It returns the portion of the gridded
+		 * seismicity MFD that remains associated with that fault section after applying any carveout to remove double
+		 * counting with the on-fault model.
+		 * <p>
+		 * In other words, returning {@code cellGridMFD} scaled by {@code assocCubeWt} is equivalent to applying no
+		 * carveout. Any reductions beyond that represent gridded rate removed to avoid overlap with the on-fault model.
+		 *
+		 * @param cellGridMFD the full MFD for the grid cell
+		 * @param assocCubeWt the fraction of the grid-cell MFD associated with this section in this cube
+		 * @param sectMinMag the minimum on-fault magnitude for the section
+		 * @param sectMaxMag the maximum on-fault magnitude for the section
+		 * @param sectMappedToCubeSupraMFD the section supra-seismogenic MFD scaled to this cube
+		 * @return the remaining associated gridded cube MFD after carveout
+		 */
 		public IncrementalMagFreqDist getAssociatedCubeMFD(IncrementalMagFreqDist cellGridMFD, double assocCubeWt,
 				double sectMinMag, double sectMaxMag, IncrementalMagFreqDist sectMappedToCubeSupraMFD);
 	}
@@ -273,6 +292,11 @@ public class CrustalGridSourceBuilder {
 	public interface RuptureBuilder {
 		
 		/**
+		 * @return the minimum total rate below which a grid cell will be skipped (no rupture built)
+		 */
+		public double getMinimumCellRateThreshold();
+		
+		/**
 		 * 
 		 * @param gridCellIndex grid cell index in the gridded region
 		 * @param cellTotalMFD total MFD for this grid cell
@@ -301,9 +325,21 @@ public class CrustalGridSourceBuilder {
 		private GriddedRupturePropertiesCache cache;
 		
 		private FiniteRuptureConverter converter;
+		private double minCellRateThreshold;
+		private double minRupRateThreshold;
 		
 		public SingleRupPerMechRuptureBuilder(FiniteRuptureConverter converter, GriddedRegion gridReg,
-				double[] fractStrikeSlip, double[] fractNormal, double[] fractReverse, double[] fractStable, double minMag) {
+				double[] fractStrikeSlip, double[] fractNormal, double[] fractReverse, double[] fractStable,
+				double minMag) {
+			this(converter, gridReg, fractStrikeSlip, fractNormal, fractReverse, fractStable, minMag,
+					1e-10, 1e-20);
+		}
+		
+		public SingleRupPerMechRuptureBuilder(FiniteRuptureConverter converter, GriddedRegion gridReg,
+				double[] fractStrikeSlip, double[] fractNormal, double[] fractReverse, double[] fractStable,
+				double minMag, double minCellRateThreshold, double minRupRateThreshold) {
+			this.minCellRateThreshold = minCellRateThreshold;
+			this.minRupRateThreshold = minRupRateThreshold;
 			Preconditions.checkNotNull(converter);
 			this.converter = converter;
 			this.minMag = minMag;
@@ -313,7 +349,8 @@ public class CrustalGridSourceBuilder {
 			Preconditions.checkState(fractStrikeSlip.length == fractStable.length);
 			for (int i=0; i<fractStrikeSlip.length; i++) {
 				double sum = fractNormal[i]+fractStrikeSlip[i]+fractReverse[i];
-				Preconditions.checkState(Precision.equals(1d, sum, 0.001));
+				Preconditions.checkState(Precision.equals(1d, sum, 0.001), "fSS + fN + fR = %s + %s + %s = %s != 1",
+						fractStrikeSlip[i], fractNormal[i], fractReverse[i], sum);
 				Preconditions.checkState(fractStable[i] >= 0d && fractStable[i] <= 1.001);
 			}
 			this.gridReg = gridReg;
@@ -425,13 +462,18 @@ public class CrustalGridSourceBuilder {
 							continue;
 						
 						double rupRate = mechRate * trtWeights[t];
-						
-						ruptureList.add(converter.buildFiniteRupture(gridCellIndex, loc, mag, rupRate, mech,
-								trts[t], associatedSections, associatedSectionFracts, cache));
+						if (rupRate > minRupRateThreshold)
+							ruptureList.add(converter.buildFiniteRupture(gridCellIndex, loc, mag, rupRate, mech,
+									trts[t], associatedSections, associatedSectionFracts, cache));
 					}
 				}
 			}
 			return trtRuptureLists;
+		}
+
+		@Override
+		public double getMinimumCellRateThreshold() {
+			return minCellRateThreshold;
 		}
 		
 	}
@@ -476,6 +518,11 @@ public class CrustalGridSourceBuilder {
 	 */
 	public static GridSourceList buildGriddedOnly(GriddedRegion gridReg, IncrementalMagFreqDist gridMFD,
 			CubedGriddedRegion cgr, NucleationPDF_3D nucleationPDF, RuptureBuilder ruptureBuilder) {
+		Preconditions.checkNotNull(gridReg);
+		Preconditions.checkNotNull(cgr);
+		Preconditions.checkState(gridReg.equals(cgr.getGriddedRegion()),
+				"Supplied GriddedRegion doesn't match the CubedGriddedRegion's grid: %s != %s",
+				gridReg.getName(), cgr.getGriddedRegion().getName());
 		return doBuild(null, gridMFD, null, nucleationPDF, null, null,
 				ruptureBuilder, gridReg, cgr);
 	}
@@ -484,6 +531,14 @@ public class CrustalGridSourceBuilder {
 			FaultCubeAssociations faultCubeAssociations, NucleationPDF_3D nucleationPDF,
 			RuptureRateBalancingModel rateBalancingModel, NearFaultCarveOutModel nearFaultCarveout,
 			RuptureBuilder ruptureBuilder, GriddedRegion gridReg, CubedGriddedRegion cgr) {
+		Preconditions.checkNotNull(gridReg, "GriddedRegion cannot be null");
+		Preconditions.checkNotNull(cgr, "Cubed gridded region cannot be null");
+		Preconditions.checkNotNull(totalMFD, "Total MFD cannot be null");
+		Preconditions.checkNotNull(nucleationPDF, "Nucleation PDF cannot be null");
+		Preconditions.checkNotNull(ruptureBuilder, "Rupture builder cannot be null");
+		Preconditions.checkState(gridReg.equals(cgr.getGriddedRegion()),
+				"Supplied GriddedRegion doesn't match the CubedGriddedRegion's grid: %s != %s",
+				gridReg.getName(), cgr.getGriddedRegion().getName());
 		
 		FaultSystemRupSet rupSet = fss == null ? null : fss.getRupSet();
 		double minGridMag = totalMFD.getMinX() - 0.5*totalMFD.getDelta();
@@ -692,11 +747,12 @@ public class CrustalGridSourceBuilder {
 		}
 
 		EnumMap<TectonicRegionType, List<List<GriddedRupture>>> trtRupLists = new EnumMap<>(TectonicRegionType.class);
+		double minRateThresh = ruptureBuilder.getMinimumCellRateThreshold();
 		for (int l=0; l<gridReg.getNodeCount(); l++) {
 			IncrementalMagFreqDist cellMFD = gridCellMFDs[l];
 			
 			double sumRate = cellMFD.calcSumOfY_Vals();
-			if (sumRate == 0d)
+			if (sumRate < minRateThresh)
 				continue;
 			
 			int[] cubeIndexes = cgr.getCubeIndicesForGridCell(l);
