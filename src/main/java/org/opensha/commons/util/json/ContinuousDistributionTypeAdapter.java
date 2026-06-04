@@ -27,9 +27,14 @@ import org.apache.commons.statistics.distribution.TriangularDistribution;
 import org.apache.commons.statistics.distribution.TruncatedNormalDistribution;
 import org.apache.commons.statistics.distribution.UniformContinuousDistribution;
 import org.apache.commons.statistics.distribution.WeibullDistribution;
+import org.opensha.commons.data.function.EvenlyDiscrFuncEmpiricalDistribution;
+import org.opensha.commons.data.function.EvenlyDiscrFuncEmpiricalDistribution.DiscretizationType;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.TypeAdapter;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
@@ -51,6 +56,13 @@ public class ContinuousDistributionTypeAdapter extends TypeAdapter<ContinuousDis
 	private ContinuousDistributionTypeAdapter() {}
 
 	private static final String TYPE = "type";
+	
+	// special serialization constants from EvenlyDiscrFuncEmpiricalDistribution
+	private static final String EVENLY_DISCR_FUNC_EMPIRICAL_DISTRIBUTION = "EvenlyDiscrFuncEmpiricalDistribution";
+	private static final String FUNCTION = "function";
+	private static final String DISCRETIZATION_TYPE = "discretizationType";
+	
+	private static final Gson GSON = new GsonBuilder().serializeSpecialFloatingPointValues().create();
 
 	@Override
 	public void write(JsonWriter out, ContinuousDistribution value) throws IOException {
@@ -61,7 +73,13 @@ public class ContinuousDistributionTypeAdapter extends TypeAdapter<ContinuousDis
 
 		out.beginObject();
 
-		if (value instanceof TruncatedNormalDistribution) {
+		if (value instanceof EvenlyDiscrFuncEmpiricalDistribution) {
+			EvenlyDiscrFuncEmpiricalDistribution dist = (EvenlyDiscrFuncEmpiricalDistribution)value;
+			writeType(out, EVENLY_DISCR_FUNC_EMPIRICAL_DISTRIBUTION);
+			out.name(DISCRETIZATION_TYPE).value(dist.getDiscretizationType().name());
+			out.name(FUNCTION);
+			GSON.getAdapter(EvenlyDiscretizedFunc.class).write(out, dist.getFunc());
+		} else if (value instanceof TruncatedNormalDistribution) {
 			TruncatedNormalDistribution dist = (TruncatedNormalDistribution)value;
 			writeType(out, "TruncatedNormalDistribution");
 			out.name("parentMean").value(dist.getParentMean());
@@ -188,6 +206,8 @@ public class ContinuousDistributionTypeAdapter extends TypeAdapter<ContinuousDis
 		}
 
 		String type = null;
+		DiscretizationType discretizationType = null;
+		EvenlyDiscretizedFunc func = null;
 		Map<String, Double> params = new HashMap<>();
 
 		in.beginObject();
@@ -195,6 +215,10 @@ public class ContinuousDistributionTypeAdapter extends TypeAdapter<ContinuousDis
 			String name = in.nextName();
 			if (TYPE.equals(name)) {
 				type = in.nextString();
+			} else if (DISCRETIZATION_TYPE.equals(name)) {
+				discretizationType = DiscretizationType.valueOf(in.nextString());
+			} else if (FUNCTION.equals(name)) {
+				func = GSON.getAdapter(EvenlyDiscretizedFunc.class).read(in);
 			} else if (in.peek() == JsonToken.NUMBER) {
 				params.put(name, in.nextDouble());
 			} else {
@@ -206,6 +230,10 @@ public class ContinuousDistributionTypeAdapter extends TypeAdapter<ContinuousDis
 		Preconditions.checkNotNull(type, "Continuous distribution type was not supplied");
 
 		switch (type) {
+		case EVENLY_DISCR_FUNC_EMPIRICAL_DISTRIBUTION:
+			Preconditions.checkNotNull(func, "Required parameter '%s' was not supplied", FUNCTION);
+			Preconditions.checkNotNull(discretizationType, "Required parameter '%s' was not supplied", DISCRETIZATION_TYPE);
+			return new EvenlyDiscrFuncEmpiricalDistribution(func, discretizationType);
 		case "TruncatedNormalDistribution":
 			return TruncatedNormalDistribution.of(
 					getRequiredDouble(params, "parentMean"),
