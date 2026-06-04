@@ -187,7 +187,7 @@ public class CrustalGridSourceBuilder {
 	
 	/**
 	 * This interface defines local carveouts for faults that are associated with individual 3D cubes. If supplied,
-	 * it can prevent local double-counting with the on-fault model for cubes assocated with fault sections.
+	 * it can prevent local double-counting with the on-fault model for cubes associated with fault sections.
 	 */
 	public interface NearFaultCarveOutModel {
 		
