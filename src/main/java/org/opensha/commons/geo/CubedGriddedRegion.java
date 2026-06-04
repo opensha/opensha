@@ -120,10 +120,9 @@ public class CubedGriddedRegion {
 			System.out.println("numCubes = "+numCubes);
 		}
 		
-		// a couple testsl:
+		// a couple tests:
 		testNumCubesInEachCell();
 		testGetCubeIndicesForGridCell();
-		
 	}
 	
 	

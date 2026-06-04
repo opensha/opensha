@@ -1,16 +1,21 @@
 package gov.usgs.earthquake.nshmp.erf.nshm27;
 
 import java.awt.Color;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.StringTokenizer;
 import java.util.function.Function;
 
 import org.apache.commons.math3.stat.StatUtils;
+import org.apache.commons.numbers.core.Precision;
 import org.opensha.commons.calc.magScalingRelations.MagAreaRelationship;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.HistogramFunction;
@@ -38,8 +43,10 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList.FiniteRuptureConverter;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList.GriddedRupture;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList.GriddedRuptureProperties;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList.GriddedRupturePropertiesCache;
 import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
@@ -50,6 +57,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SingleRe
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionScalingRelationships;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.util.FocalMech;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -65,6 +73,11 @@ import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisRateModel;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisSmoothingAlgorithms;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.InterfaceGridAssociations;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_SeisPDF_Loader;
+import gov.usgs.earthquake.nshmp.erf.seismicity.CrustalGridSourceBuilder;
+import gov.usgs.earthquake.nshmp.erf.seismicity.CrustalGridSourceBuilder.NearFaultCarveOutModel;
+import gov.usgs.earthquake.nshmp.erf.seismicity.CrustalGridSourceBuilder.NucleationPDF_3D;
+import gov.usgs.earthquake.nshmp.erf.seismicity.CrustalGridSourceBuilder.RuptureBuilder;
+import gov.usgs.earthquake.nshmp.erf.seismicity.CrustalGridSourceBuilder.RuptureRateBalancingModel;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
 import scratch.UCERF3.erf.ETAS.SeisDepthDistribution;
 
@@ -94,6 +107,8 @@ public class NSHM27_GridSourceBuilder {
 	public static final double CRUSTAL_FRACT_SS = 0.5d;
 	public static final double CRUSTAL_FRACT_REV = 0d; // TODO
 	public static final double CRUSTAL_FRACT_NORM = 0.5d;
+	
+	public static boolean ADJUST_CRUSTAL_DEPTHS_TO_BATHYMETRY = true;
 	
 	public static void doPreGridBuildHook(FaultSystemSolution sol, LogicTreeBranch<?> faultBranch) throws IOException {
 		doPreGridBuildHook(sol == null ? null : sol.getRupSet(), faultBranch);
@@ -161,6 +176,41 @@ public class NSHM27_GridSourceBuilder {
 		} catch (IOException e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
+	}
+	
+	public static GriddedGeoDataSet loadBathymetry(NSHM27_SeismicityRegions seisReg) throws IOException {
+		GriddedRegion gridReg = initGridReg(seisReg);
+		
+		String mapPath = seisReg.getResourcePath();
+		Preconditions.checkState(mapPath.endsWith(".geojson"));
+		String depthPath = mapPath.substring(0, mapPath.lastIndexOf(".geojson"))+"-depths.xyz";
+		InputStream depthIS = NSHM27_SeismicityRegions.class.getResourceAsStream(depthPath);
+		Preconditions.checkNotNull(depthIS, "Bathymetry data could not be located: %s", depthPath);
+		BufferedReader bRead = new BufferedReader(new InputStreamReader(depthIS));
+		String line = null;
+		int index = 0;
+		GriddedGeoDataSet ret = new GriddedGeoDataSet(gridReg);
+		// init all to NaN
+		ret.scale(Double.NaN);
+		while ((line = bRead.readLine()) != null) {
+			line = line.trim();
+			if (line.isBlank() || line.startsWith("#"))
+				continue;
+			StringTokenizer tok = new StringTokenizer(line);
+			Preconditions.checkState(tok.countTokens() == 3);
+			double lon = Double.parseDouble(tok.nextToken());
+			double lat = Double.parseDouble(tok.nextToken());
+			double depth = Double.parseDouble(tok.nextToken());
+			Location loc = new Location(lat, lon);
+			Preconditions.checkState(gridReg.indexForLocation(loc) == index);
+			
+			ret.set(index, depth);
+			
+			index++;
+		}
+		Preconditions.checkState(index == ret.size());
+		bRead.close();
+		return ret;
 	}
 	
 	public static GriddedGeoDataSet loadInterfaceDepths(NSHM27_SeismicityRegions seisReg) throws IOException {
@@ -621,41 +671,17 @@ public class NSHM27_GridSourceBuilder {
 				pdfVals[i] *= scalar;
 		}
 		
-		FaultGridAssociations assoc;
-		MFDGridSourceProvider mfdGridProv;
+		FiniteRuptureConverter finiteRupConv = new NSHM23_WUS_FiniteRuptureConverter();
+		if (ADJUST_CRUSTAL_DEPTHS_TO_BATHYMETRY)
+			finiteRupConv = new BathymetryModFiniteRupConverter(loadBathymetry(seisReg), finiteRupConv);
 		if (sol == null) {
-			mfdGridProv = new NoFaultMFDGridProv(gridReg, TectonicRegionType.ACTIVE_SHALLOW, totalGR, pdfVals, fractStrikeSlip, fractReverse, fractNormal);
-			assoc = null;
+			NoFaultMFDGridProv mfdProv = new NoFaultMFDGridProv(gridReg, TectonicRegionType.ACTIVE_SHALLOW,
+					totalGR, pdfVals, fractStrikeSlip, fractReverse, fractNormal);
+			return GridSourceList.convert(mfdProv, null, finiteRupConv);
 		} else {
 			FaultCubeAssociations cubeAssociations = sol.getRupSet().requireModule(FaultCubeAssociations.class);
 			Preconditions.checkState(gridReg.equals(cubeAssociations.getRegion()));
-			assoc = cubeAssociations;
-			// figure out what's left for gridded seismicity
-			IncrementalMagFreqDist totalGridded = new IncrementalMagFreqDist(
-					totalGR.getMinX(), totalGR.size(), totalGR.getDelta());
 			
-			IncrementalMagFreqDist solNuclMFD = sol.calcNucleationMFD_forRegion(
-					gridReg, totalGR.getMinX(), totalGR.getMaxX(), totalGR.size(), false);
-			for (int i=0; i<totalGR.size(); i++) {
-				double totalRate = totalGR.getY(i);
-				if (totalRate > 0) {
-					if (RATE_BALANCE_CRUSTAL_GRIDDED) {
-						double solRate = solNuclMFD.getY(i);
-						if (solRate > totalRate) {
-							System.err.println("WARNING: MFD bulge at M="+(float)totalGR.getX(i)
-							+"\tGR="+(float)totalRate+"\tsol="+(float)solRate);
-						} else {
-							totalGridded.set(i, totalRate - solRate);
-						}
-					} else {
-						totalGridded.set(i, totalRate);
-					}
-				}
-			}
-			
-			// seismicity depth distribution
-
-			// TODO still using UCERF3
 			SeisDepthDistribution seisDepthDistribution = new SeisDepthDistribution();
 			double delta=2;
 			HistogramFunction binnedDepthDistFunc = new HistogramFunction(1d, 12,delta);
@@ -663,17 +689,20 @@ public class NSHM27_GridSourceBuilder {
 				double prob = seisDepthDistribution.getProbBetweenDepths(binnedDepthDistFunc.getX(i)-delta/2d,binnedDepthDistFunc.getX(i)+delta/2d);
 				binnedDepthDistFunc.set(i,prob);
 			}
-			//				EvenlyDiscretizedFunc depthNuclDistFunc = NSHM23_SeisDepthDistributions.load(region);
-
-			// only preserve the total MFD (i.e., re-distribute carved out near fault ruptures in the supra mag range to other grid nodes)
-			// if we're doing rate balancing. in that case, the passed in MFD already accounts for faults and should be preserved exactly.
-			// otherwise if we're not rate balancing, just lop off the gridded rate near faults without redistributing
-			boolean preserveTotalMFD = RATE_BALANCE_CRUSTAL_GRIDDED;
-			mfdGridProv = new NSHM23_SingleRegionGridSourceProvider(sol, cubeAssociations, pdfVals, totalGridded, preserveTotalMFD, binnedDepthDistFunc,
-					fractStrikeSlip, fractNormal, fractReverse, null); // last null means all active
+			
+			NucleationPDF_3D pdf3D = new CrustalGridSourceBuilder.DepthDistAnd2D_PDF_NucleationPDF(
+					cubeAssociations.getCubedGriddedRegion(), binnedDepthDistFunc, pdfVals);
+			// no spatial-dependence of regional rate balancing
+			RuptureRateBalancingModel rateBalancingModel = new CrustalGridSourceBuilder.UniformRateBalancingModel();
+//			// on-fault can't reduce seismicity-based PDF at any mag
+//			NearFaultCarveOutModel nearFaultCarveout = new CrustalGridSourceBuilder.NearFaultCarveGriddedRateFloor();
+			// retain gridded above supra-mmax
+			NearFaultCarveOutModel nearFaultCarveout = new CrustalGridSourceBuilder.NearFaultCarveOutInSupraRange();
+			
+			RuptureBuilder rupBuilder = new CrustalGridSourceBuilder.SingleRupPerMechRuptureBuilder(
+					finiteRupConv, gridReg, fractStrikeSlip, fractNormal, fractReverse, new double[pdfVals.length], OVERALL_MMIN);
+			return CrustalGridSourceBuilder.build(sol, totalGR, cubeAssociations, pdf3D, rateBalancingModel, nearFaultCarveout, rupBuilder);
 		}
-		
-		return GridSourceList.convert(mfdGridProv, assoc, new NSHM23_WUS_FiniteRuptureConverter());
 	}
 	
 	private static class NoFaultMFDGridProv extends NSHM23_AbstractGridSourceProvider.Abstract {
@@ -765,6 +794,50 @@ public class NSHM27_GridSourceBuilder {
 		Preconditions.checkState(interfaceProv.getGriddedRegion().equals(crustalProv.getGriddedRegion()));
 		
 		return GridSourceList.combine(interfaceProv, intraslabProv, crustalProv);
+	}
+	
+	private static class BathymetryModFiniteRupConverter implements FiniteRuptureConverter {
+		
+		private GriddedGeoDataSet bathymetry;
+		private FiniteRuptureConverter conv;
+		private int precisionScale;
+
+		public BathymetryModFiniteRupConverter(GriddedGeoDataSet bathymetry, FiniteRuptureConverter conv) {
+			this(bathymetry, conv, 0);
+		}
+
+		public BathymetryModFiniteRupConverter(GriddedGeoDataSet bathymetry, FiniteRuptureConverter conv, int precisionScale) {
+			this.bathymetry = bathymetry;
+			this.conv = conv;
+			this.precisionScale = precisionScale;
+		}
+
+		@Override
+		public GriddedRupture buildFiniteRupture(int gridIndex, Location loc, double magnitude, double rate,
+				FocalMech focalMech, TectonicRegionType trt, int[] associatedSections, double[] associatedSectionFracts,
+				GriddedRupturePropertiesCache cache) {
+			double bathyDepth = Double.max(0d, Precision.round(bathymetry.get(gridIndex), precisionScale));
+			
+			GriddedRupture rup = conv.buildFiniteRupture(gridIndex, loc, magnitude, rate, focalMech, trt,
+					associatedSections, associatedSectionFracts, cache);
+			if (bathyDepth > 0d) {
+				// push it down below the local bathymetry
+				GriddedRuptureProperties origProps = rup.properties;
+				double upperDepth = bathyDepth + origProps.upperDepth;
+				double lowerDepth = bathyDepth + origProps.lowerDepth;
+				double hypoDepth = bathyDepth + origProps.hypocentralDepth;
+				GriddedRuptureProperties modProps = new GriddedRuptureProperties(
+						origProps.magnitude, origProps.rake, origProps.dip, origProps.strike, origProps.strikeRange,
+						upperDepth, lowerDepth, origProps.length, hypoDepth,
+						origProps.hypocentralDAS, origProps.tectonicRegionType);
+				if (cache != null)
+					modProps = cache.getCached(modProps);
+				rup = new GriddedRupture(gridIndex, loc, modProps, rate,
+						rup.associatedSections, rup.associatedSectionFracts);
+			}
+			return rup;
+		}
+		
 	}
 	
 	public static void main(String[] args) throws IOException {
