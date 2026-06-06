@@ -6,6 +6,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.stream.StreamSupport;
 
 import static scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.getBinaryCatalogsIterable;
 import static scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
@@ -41,25 +42,38 @@ public class ETAS_BinaryAnalysis {
      * @return
      */
     private int getAftershockCount(int fssIndex) {
+        // TODO: We should rename the fssIndex to rupId
         // In how many of the simulations does the aftershock scenario actually occur?
         int matches = 0; // We typically run under 500k simulations in total
+//        int i = 0;
         for (ETAS_Catalog catalog : getBinaryCatalogsIterable(binFile, MIN_MAG)) {
+//            System.out.println("#"+ (i++) +": "+catalog.toArray().length+" ruptures");;
             if (catalogHasAftershock(catalog, fssIndex)) matches++;
         }
         return matches;
     }
 
+    /**
+     * Total number of simulated catalogs found in the ETAS binary
+     * @return
+     */
     private int getAllCatalogsCount() {
         return getBinaryCatalogsIterable(binFile, 0).getNumCatalogs();
     }
 
+    /**
+     * Simulated catalogs in the ETAS binary with a magnitude ≥ MIN_MAG
+     * @return
+     */
     private int getSignificantCatalogsCount() {
-        return getBinaryCatalogsIterable(binFile, MIN_MAG).getNumCatalogs();
+        return (int)StreamSupport.stream(getBinaryCatalogsIterable(binFile, MIN_MAG).spliterator(), false)
+                .filter(catalog -> !catalog.isEmpty()).count();
     }
 
     private boolean catalogHasAftershock(ETAS_Catalog catalog, int fssIndex) {
         for (ETAS_EqkRupture rupture : catalog) {
-            if (rupture.getFSSIndex() == fssIndex) {
+//            if (rupture.getFSSIndex() == fssIndex) {
+            if (rupture.getID() == fssIndex) {
                 return true;
             }
         }
@@ -71,10 +85,12 @@ public class ETAS_BinaryAnalysis {
         int totalCount = getAllCatalogsCount();
         int sigCount = getSignificantCatalogsCount();
         int aftershocksCount = getAftershockCount(aftershock);
+        System.out.println("== Counts ==");
         System.out.println("Total number of simulations: " + totalCount);
-        System.out.println("Total number of simulations ≥ M"+MIN_MAG+": " + sigCount);
+        System.out.println("Total number of simulations M≥"+MIN_MAG+": " + sigCount);
         System.out.println("Total number of simulations with aftershock occurrence: " + aftershocksCount);
-        System.out.println("Total %: " + aftershocksCount/totalCount + "," + " Sig %: " + aftershocksCount/sigCount);
+        System.out.println("== Probabilities ==");
+        System.out.printf("Total: %.2E, Sig: %.2E\n", (double)aftershocksCount/totalCount, (double)aftershocksCount/sigCount);
         // TODO: Generate markdown report
     }
 
@@ -134,19 +150,18 @@ public class ETAS_BinaryAnalysis {
 
     public static void main(String[] args) {
         if (args.length == 1 && args[0].equals("--hardcoded")) {
-            String argz = "";
-            argz += "--fss /Users/bhatthal/git/ucerf3-etas-launcher/inputs/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip ";
-            argz += "--bin /Users/bhatthal/Downloads/2026_05_27-FSS_Rupture_201887_M7p8_Start_2026_10_15_1_yr_kCOV_1p5_MaxPtSrcM_6/results_m5_preserve_chain.bin ";
-            argz += "--idx 201887";
-
-            args = argz.trim().split(" ");
+            args = new String[]{
+                    "--fss", "/Users/bhatthal/git/ucerf3-etas-launcher/inputs/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip",
+                    "--bin", "/Users/bhatthal/Downloads/2026_05_27-FSS_Rupture_201887_M7p8_Start_2026_10_15_1_yr_kCOV_1p5_MaxPtSrcM_6/results_m5_preserve_chain.bin",
+                    "--idx", "201887"
+            };
         }
         System.setProperty("java.awt.headless", "true");
         Options options = createOptions();
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = null;
         try {
-            cmd = parser.parse(options, args, true); // Stop at non-option
+            cmd = parser.parse(options, args, false);
         } catch (ParseException e) {
             System.err.println("Error parsing command line: " + e.getMessage());
             printUsage(options);
@@ -155,10 +170,9 @@ public class ETAS_BinaryAnalysis {
         try {
             ETAS_BinaryAnalysis binAnalysis = new ETAS_BinaryAnalysis(cmd);
             binAnalysis.generateReport();
+            System.exit(0);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
-        // TODO: Invoke constructor and pass args
     }
 }
