@@ -77,6 +77,14 @@ public interface RuptureTreeNavigator {
 	public FaultSubsectionCluster locateCluster(FaultSection section);
 	
 	/**
+	 * Locate the cluster(s) corresponding to the given parent section ID
+	 * @param parentID
+	 * @return cluster(s) for this parentID
+	 * @throws IllegalStateException if the rupture does not contain this parentID
+	 */
+	public FaultSubsectionCluster[] locateClustersForParent(int parentID);
+	
+	/**
 	 * Locate the jump to the given cluster, or null if this is the first cluster in a rupture
 	 * @param cluster
 	 * @return the jump to the given cluster (or null if no such jump)

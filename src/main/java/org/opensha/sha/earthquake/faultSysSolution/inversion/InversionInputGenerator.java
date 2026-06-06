@@ -267,7 +267,7 @@ public class InversionInputGenerator {
 	
 	private static final DecimalFormat oneDigit = new DecimalFormat("0.0");
 	
-	protected static String getTimeStr(Stopwatch watch) {
+	public static String getTimeStr(Stopwatch watch) {
 		long millis = watch.elapsed(TimeUnit.MILLISECONDS);
 		if (millis < 1000)
 			return millis+" ms";
@@ -299,7 +299,7 @@ public class InversionInputGenerator {
 			A_ineq = getColumnCompressed(A_ineq);
 	}
 	
-	private static SparseCCDoubleMatrix2D getColumnCompressed(DoubleMatrix2D mat) {
+	public static SparseCCDoubleMatrix2D getColumnCompressed(DoubleMatrix2D mat) {
 		if (mat instanceof SparseCCDoubleMatrix2D)
 			return (SparseCCDoubleMatrix2D)mat;
 		if (mat instanceof SparseRCDoubleMatrix2D)

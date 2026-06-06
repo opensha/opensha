@@ -124,6 +124,8 @@ public class NSHM23_ConstraintBuilder {
 	private double proxyFaultMagCorner = Double.NaN;
 	private double proxyFaultBValue = Double.NaN;
 	
+	private SectNucleationMFD_Estimator customTargetAdjust;
+	
 	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, double supraSeisB) {
 		this(rupSet, supraSeisB, null);
 	}
@@ -293,10 +295,6 @@ public class NSHM23_ConstraintBuilder {
 		return segModel;
 	}
 	
-	public SegmentationMFD_Adjustment getSegmentationAdjustmentMethod() {
-		return segAdjMethod;
-	}
-	
 	public NSHM23_ConstraintBuilder excludeRuptures(BinaryRuptureProbabilityCalc rupExclusionModel) {
 		this.rupExclusionModel = rupExclusionModel;
 		targetCache = null;
@@ -317,6 +315,11 @@ public class NSHM23_ConstraintBuilder {
 	public NSHM23_ConstraintBuilder adjustForActualRupSlips(boolean adjustForActualRupSlips, boolean adjustForSlipAlong) {
 		this.adjustForActualRupSlips = adjustForActualRupSlips;
 		this.adjustForSlipAlong = adjustForSlipAlong;
+		return this;
+	}
+	
+	public NSHM23_ConstraintBuilder applyCustomMFDAdjustment(SectNucleationMFD_Estimator customTargetAdjust) {
+		this.customTargetAdjust = customTargetAdjust;
 		return this;
 	}
 	
@@ -389,6 +392,8 @@ public class NSHM23_ConstraintBuilder {
 			builder.forBinaryRupProbModel(rupExclusionModel, false);
 		if (adjustForActualRupSlips)
 			builder.adjustTargetsForData(new ScalingRelSlipRateMFD_Estimator(adjustForSlipAlong));
+		if (customTargetAdjust != null)
+			builder.adjustTargetsForData(customTargetAdjust);
 		if (adjustForIncompatibleData) {
 			UncertaintyBoundType dataWithinType = UncertaintyBoundType.ONE_SIGMA;
 			List<SectNucleationMFD_Estimator> dataConstraints = new ArrayList<>();
