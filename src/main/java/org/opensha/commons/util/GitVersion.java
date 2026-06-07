@@ -48,7 +48,7 @@ public class GitVersion {
             return FileUtils.loadStream(p.getInputStream());
         } catch (Exception e) {
             System.err.println("Exception executing command " + String.join(" ", command) + " : " + e.getMessage());
-            e.printStackTrace();
+//            e.printStackTrace();
             return null;
         }
     }
