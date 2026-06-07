@@ -1587,9 +1587,17 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		return InversionTargetMFDs.Precomputed.class;
 	}
 	
+	public List<BitSet> getSectRupUtilizationsList() {
+		return sectRupUtilizations;
+	}
+	
+	public BitSet getSectRupUtilizations(int sectIndex) {
+		return sectRupUtilizations.get(sectIndex);
+	}
+	
 	public List<Integer> getRupturesForSect(int sectIndex) {
 		BitSet utilization = sectRupUtilizations.get(sectIndex);
-		List<Integer> rups = new ArrayList<>();
+		List<Integer> rups = new ArrayList<>(utilization.cardinality());
 		for (int r = utilization.nextSetBit(0); r >= 0; r = utilization.nextSetBit(r+1))
 		   rups.add(r);
 		return rups;

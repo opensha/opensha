@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
 
 import org.apache.commons.math3.stat.StatUtils;
@@ -62,9 +63,23 @@ public class GRParticRateEstimator implements SectParticipationRateEstimator {
 	public GRParticRateEstimator(FaultSystemRupSet rupSet, InversionTargetMFDs targetMFDs) {
 		init(rupSet, targetMFDs);
 	}
+
+	public GRParticRateEstimator(FaultSystemRupSet rupSet, List<? extends IncrementalMagFreqDist> sectSupraMFDs,
+			List<BitSet> sectRupUtilizations) {
+		init(rupSet, sectSupraMFDs, sectRupUtilizations);
+	}
 	
 	private void init(FaultSystemRupSet rupSet, InversionTargetMFDs targetMFDs) {
-		List<? extends IncrementalMagFreqDist> sectSupraMFDs = targetMFDs.getOnFaultSupraSeisNucleationMFDs();
+		List<BitSet> sectRupUtilizations = null;
+		if (targetMFDs instanceof SupraSeisBValInversionTargetMFDs)
+			sectRupUtilizations = ((SupraSeisBValInversionTargetMFDs)targetMFDs).getSectRupUtilizationsList();
+		init(rupSet, targetMFDs.getOnFaultSupraSeisNucleationMFDs(), sectRupUtilizations);
+	}
+	
+
+	
+	private void init(FaultSystemRupSet rupSet, List<? extends IncrementalMagFreqDist> sectSupraMFDs,
+			List<BitSet> sectRupUtilizations) {
 		
 		estParticRates = new double[rupSet.getNumSections()];
 		estRupRates = new double[rupSet.getNumRuptures()];
@@ -73,10 +88,14 @@ public class GRParticRateEstimator implements SectParticipationRateEstimator {
 			IncrementalMagFreqDist nuclGR = sectSupraMFDs.get(s);
 			
 			List<Integer> rups;
-			if (targetMFDs instanceof SupraSeisBValInversionTargetMFDs)
-				rups = ((SupraSeisBValInversionTargetMFDs)targetMFDs).getRupturesForSect(s);
-			else
+			if (sectRupUtilizations != null) {
+				BitSet utilization = sectRupUtilizations.get(s);
+				rups = new ArrayList<>(utilization.cardinality());
+				for (int r = utilization.nextSetBit(0); r >= 0; r = utilization.nextSetBit(r+1))
+				   rups.add(r);
+			} else {
 				rups = rupSet.getRupturesForSection(s);
+			}
 			List<Double> rupMags = new ArrayList<>();
 			int[] rupsPerBin = new int[nuclGR.size()];
 			for (int r : rups) {
