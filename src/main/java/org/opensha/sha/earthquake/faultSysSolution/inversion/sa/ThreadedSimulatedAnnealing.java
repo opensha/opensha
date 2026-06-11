@@ -443,7 +443,6 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 				double[] newE = null;
 				double[] newX = null;
 				double[] newMisfit = null;
-				double[] newMisfitIneq = null;
 
 				long prevPerturbs = perturbs;
 				long prevWorseKept = worseKept;
@@ -460,22 +459,17 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 					double[] E = sa.getBestEnergy();
 					double[] xbest = sa.getBestSolution();
 					double[] misfit = sa.getBestMisfit();
-					double[] misfit_ineq = sa.getBestInequalityMisfit();
 					
 					if (newE == null) {
 						newE = new double[4];
 						newX = new double[xbest.length];
 						if (misfit != null)
 							newMisfit = new double[misfit.length];
-						if (misfit_ineq != null)
-							newMisfitIneq = new double[misfit_ineq.length];
 					}
 					addScaled(newE, E, rateMult);
 					addScaled(newX, xbest, rateMult);
 					if (newMisfit != null)
 						addScaled(newMisfit, misfit, rateMult);
-					if (newMisfitIneq != null)
-						addScaled(newMisfitIneq, misfit_ineq, rateMult);
 
 					perturbs += (thread.endState.numPerturbsKept-prevPerturbs);
 					worseKept += (thread.endState.numWorseValuesKept-prevWorseKept);
@@ -483,6 +477,20 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 					// now set the current iteration count to the max iteration achieved
 					iter = Long.max(thread.endState.iterations, iter);
 				}
+				double[] newMisfitIneq = null;
+				if (inequalityData != null) {
+					// inequality misfits are not a linear combination of the original solutions
+					// have to manually recalculate inequality misfits and energy
+					DoubleMatrix2D A_ineq = getA_ineq();
+					double[] d_ineq = getD_ineq();
+					newMisfitIneq = new double[d_ineq.length];
+					SerialSimulatedAnnealing.calculateMisfit(A_ineq, d_ineq, newX, newMisfitIneq);
+					double E_ineq = SerialSimulatedAnnealing.sumSquaresIneq(newMisfitIneq, d_ineq.length);
+					// E is [ total, equality, entropy, inequality ]
+					newE[3] = E_ineq;
+					newE[0] = newE[1] + newE[2] + newE[3];
+				}
+				
 				numNonZero = 0;
 				for (double x : newX)
 					if (x > 0)
@@ -654,11 +662,18 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 			}
 			str += (float)Ebest[i]+"";
 			if (prev != null) {
+				// include percent change
 				double diff = Ebest[i]-prev[i];
 				str += " (";
 				if (diff > 0)
 					str += "+";
 				str += pDF.format(diff/prev[i])+")";
+			} else if (i > 0) {
+				// include percentage of total
+				str += " ("+pDF.format(Ebest[i]/Ebest[0])+")";
+			}
+			if (prev != null) {
+				
 			}
 			strs.add(str);
 		}
@@ -683,7 +698,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	
 	private static void addScaled(double[] dest, double[] source, double scale) {
 		for (int i=0; i<dest.length; i++)
-			dest[i] += source[i]*scale;
+			dest[i] = Math.fma(source[i], scale, dest[i]);
 	}
 	
 	private static DecimalFormat tDF = new DecimalFormat("0.#");

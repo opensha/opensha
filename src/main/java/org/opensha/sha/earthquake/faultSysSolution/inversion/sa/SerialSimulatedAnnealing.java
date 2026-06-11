@@ -453,7 +453,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		return ret;
 	}
 	
-	private static double sumSquaresIneq(final double[] values, final int NUM) {
+	public static double sumSquaresIneq(final double[] values, final int NUM) {
 		double ret = 0d;
 		double val;
 		for (int i=0; i<NUM; i++) {
