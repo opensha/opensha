@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.timeDependence;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
@@ -24,6 +26,9 @@ import org.opensha.commons.geo.json.Geometry.LineString;
 import org.opensha.commons.geo.json.Geometry.MultiLineString;
 import org.opensha.commons.geo.json.Geometry.Point;
 import org.opensha.commons.util.FaultUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ConnectivityClusters;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.ConnectivityCluster;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader;
@@ -686,6 +691,51 @@ public class DOLE_SubsectionMapper {
 		System.err.println("WARNING: "+warning);
 		System.err.println();
 		System.err.flush();
+	}
+	
+	private static void writePaleoMappingCSV() throws IOException {
+		List<? extends FaultSection> subSects = NSHM23_DeformationModels.GEOLOGIC.build(NSHM23_FaultModels.WUS_FM_v3);
+
+		System.out.println("Loading Paleo DOLE data");
+		List<PaleoDOLE_Data> paleoData = loadPaleoDOLE();
+		List<HistoricalRupture> histRupData = new ArrayList<>();
+		
+		mapDOLE(subSects, histRupData, paleoData, PaleoMappingAlgorithm.CLOSEST_SECT, true);
+		
+		// mapping CSV for morgan
+		CSVFile<String> mappingCSV = new CSVFile<>(false);
+		mappingCSV.addLine("Fault Name", "Fault ID", "Site Name", "Calendar Year", "Reference", "Latitude", "Longitude", "Mapped Section 1", "Mapped Section 2 (if equidistant)");
+		for (PaleoDOLE_Data data : paleoData) {
+			List<String> line = new ArrayList<>();
+			line.add(data.faultName);
+			line.add(data.faultID+"");
+			line.add(data.siteName);
+			line.add(data.year+"");
+			line.add(data.reference);
+			line.add((float)data.location.lat+"");
+			line.add((float)data.location.lon+"");
+			for (FaultSection sect : data.getMappedSubSects())
+				line.add(sect.getSectionId()+"");
+			mappingCSV.addLine(line);
+		}
+		mappingCSV.writeToFile(new File("/tmp/paleo_mappings_closest.csv"));
+		
+		// connected cluster CSV for morgan
+		FaultSystemRupSet rupSet = FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/fss_inversions/"
+				+ "2024_02_02-nshm23_branches-WUS_FM_v3/results_WUS_FM_v3_branch_averaged.zip"));
+		ConnectivityClusters clusters = ConnectivityClusters.build(rupSet);
+		CSVFile<String> clustersCSV = new CSVFile<>(true);
+		clustersCSV.addLine("Section ID", "Section Name", "Cluster Index");
+		for (int s=0; s<rupSet.getNumSections(); s++) {
+			FaultSection sect = rupSet.getFaultSectionData(s);
+			clustersCSV.addLine(s+"", sect.getSectionName()+"", "-1");
+		}
+		for (int c=0; c<clusters.size(); c++) {
+			ConnectivityCluster cluster = clusters.get(c);
+			for (int sectID : cluster.getSectIDs())
+				clustersCSV.set(sectID+1, 2, c+"");
+		}
+		clustersCSV.writeToFile(new File("/tmp/clusters.csv"));
 	}
 
 	public static void main(String[] args) throws IOException {
