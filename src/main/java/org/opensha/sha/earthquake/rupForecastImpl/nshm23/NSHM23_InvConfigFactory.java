@@ -98,6 +98,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_Combined
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_FaultCubeAssociations;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_GridFocalMechs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SingleRegionGridSourceProvider;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SingleRegionGridSourceProvider.NSHM23_WUS_FiniteRuptureConverter;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeclusteringAlgorithms;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
@@ -143,6 +144,11 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 
+import gov.usgs.earthquake.nshmp.erf.seismicity.CrustalGridSourceBuilder;
+import gov.usgs.earthquake.nshmp.erf.seismicity.CrustalGridSourceBuilder.NearFaultCarveOutModel;
+import gov.usgs.earthquake.nshmp.erf.seismicity.CrustalGridSourceBuilder.NucleationPDF_3D;
+import gov.usgs.earthquake.nshmp.erf.seismicity.CrustalGridSourceBuilder.RuptureBuilder;
+import gov.usgs.earthquake.nshmp.erf.seismicity.CrustalGridSourceBuilder.RuptureRateBalancingModel;
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
@@ -1233,6 +1239,82 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		}
 		
 		return ret;
+	}
+
+	public static GridSourceList buildUpdatedGridSourceProv(FaultSystemSolution sol, LogicTreeBranch<?> branch) throws IOException {
+		doPreGridBuildHook(sol, branch);
+		FaultSystemRupSet rupSet = sol.getRupSet();
+		SeismicityRegionsListModule seisRegionsModule = rupSet.getModule(SeismicityRegionsListModule.class);
+		SeismicityRegions region;
+		if (seisRegionsModule == null) {
+			Preconditions.checkState(branch.hasValue(NSHM23_FaultModels.class));
+			region = SeismicityRegions.CONUS_WEST;
+		} else {
+			Preconditions.checkState(seisRegionsModule.seisRegions.size() == 1);
+			region = seisRegionsModule.seisRegions.get(0);
+		}
+		FaultCubeAssociations cubeAssociations = rupSet.requireModule(FaultCubeAssociations.class);
+		GriddedRegion gridReg = cubeAssociations.getRegion();
+		
+		double maxMagOff = branch.requireValue(MaxMagOffFaultBranchNode.class).getMaxMagOffFault();
+		
+		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(
+				Math.max(maxMagOff, sol.getRupSet().getMaxMag()));
+		
+		NSHM23_RegionalSeismicity seisBranch = branch.requireValue(NSHM23_RegionalSeismicity.class);
+		NSHM23_DeclusteringAlgorithms declusteringAlg = branch.requireValue(NSHM23_DeclusteringAlgorithms.class);
+		NSHM23_SeisSmoothingAlgorithms seisSmooth = branch.requireValue(NSHM23_SeisSmoothingAlgorithms.class);
+		
+		// total G-R up to Mmax
+		IncrementalMagFreqDist totalGR = seisBranch.build(region, refMFD, maxMagOff);
+
+		// focal mechanisms
+		double[] fractStrikeSlip = NSHM23_GridFocalMechs.getFractStrikeSlip(region, gridReg);
+		double[] fractReverse = NSHM23_GridFocalMechs.getFractReverse(region, gridReg);
+		double[] fractNormal = NSHM23_GridFocalMechs.getFractNormal(region, gridReg);
+
+		// spatial seismicity PDF
+		double[] pdf = seisSmooth.load(region, declusteringAlg);
+		
+		double[] fractStable = new double[pdf.length];
+		EnumMap<TectonicRegionType, Region> trtRegions = getTRT_Regions();
+		for (int i=0; i<fractStable.length; i++) {
+			TectonicRegionType trt = null;
+			Location loc = gridReg.getLocation(i);
+			for (TectonicRegionType testTRT : trtRegions.keySet()) {
+				if (trtRegions.get(testTRT).contains(loc)) {
+					trt = testTRT;
+					break;
+				}
+			}
+			if (trt == null || trt == TectonicRegionType.ACTIVE_SHALLOW) {
+				fractStable[i] = 0d;
+			} else {
+				Preconditions.checkState(trt == TectonicRegionType.STABLE_SHALLOW);
+				// TODO: partial weighting for stable in WUS
+				fractStable[i] = 1d;
+			}
+		}
+
+		// seismicity depth distribution
+
+		// we used UCERF3
+		SeisDepthDistribution seisDepthDistribution = new SeisDepthDistribution();
+		double delta=2;
+		HistogramFunction binnedDepthDistFunc = new HistogramFunction(1d, 12,delta);
+		for(int i=0;i<binnedDepthDistFunc.size();i++) {
+			double prob = seisDepthDistribution.getProbBetweenDepths(binnedDepthDistFunc.getX(i)-delta/2d,binnedDepthDistFunc.getX(i)+delta/2d);
+			binnedDepthDistFunc.set(i,prob);
+		}
+		//				EvenlyDiscretizedFunc depthNuclDistFunc = NSHM23_SeisDepthDistributions.load(region);
+		
+		NucleationPDF_3D nuclPDF = new CrustalGridSourceBuilder.DepthDistAnd2D_PDF_NucleationPDF(
+				cubeAssociations.getCubedGriddedRegion(), binnedDepthDistFunc, pdf);
+		RuptureRateBalancingModel rateBalancing = new CrustalGridSourceBuilder.UniformRateBalancingModel();
+		NearFaultCarveOutModel carveOut = new CrustalGridSourceBuilder.NearFaultCarveOutAboveSupraMmin();
+		RuptureBuilder builder = new CrustalGridSourceBuilder.SingleRupPerMechRuptureBuilder(
+				new NSHM23_WUS_FiniteRuptureConverter(), gridReg, fractStrikeSlip, fractNormal, fractReverse, fractStable, 2.55);
+		return CrustalGridSourceBuilder.build(sol, totalGR, cubeAssociations, nuclPDF, rateBalancing, carveOut, builder);
 	}
 	
 	private static EnumMap<TectonicRegionType, Region> trtRegions = null;

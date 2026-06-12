@@ -2,9 +2,9 @@ package org.opensha.sha.imr.attenRelImpl.nshmp.util;
 
 import java.io.IOException;
 
-import org.opensha.commons.logicTree.JsonAdapterHelper;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode.AdapterBackedNode;
+import org.opensha.commons.util.json.JsonAdapterHelper;
 import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.attenRelImpl.nshmp.GroundMotionLogicTreeFilter;
 import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_AttenRelSupplier;

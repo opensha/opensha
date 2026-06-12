@@ -3,24 +3,49 @@ package org.opensha.commons.logicTree;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
+import java.util.function.Supplier;
 
+import org.apache.commons.numbers.core.Precision;
+import org.apache.commons.rng.UniformRandomProvider;
+import org.apache.commons.rng.simple.RandomSource;
+import org.apache.commons.statistics.distribution.ContinuousDistribution;
+import org.apache.commons.statistics.distribution.ContinuousDistribution.Sampler;
 import org.opensha.commons.data.ShortNamed;
+import org.opensha.commons.data.WeightedList;
+import org.opensha.commons.data.WeightedValue;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.logicTree.Affects.Affected;
 import org.opensha.commons.logicTree.DoesNotAffect.NotAffected;
 import org.opensha.commons.logicTree.LogicTreeBranch.NodeTypeAdapter;
 import org.opensha.commons.logicTree.LogicTreeNode.FileBackedNode;
-import org.opensha.commons.logicTree.LogicTreeNode.RandomlySampledNode;
+import org.opensha.commons.logicTree.LogicTreeNode.RandomlyGeneratedNode;
+import org.opensha.commons.logicTree.LogicTreeNode.SimpleValuedNode;
+import org.opensha.commons.logicTree.LogicTreeNode.ValuedLogicTreeNode;
 import org.opensha.commons.util.FileNameUtils;
+import org.opensha.commons.util.json.ContinuousDistributionTypeAdapter;
+import org.opensha.commons.util.json.DoubleRangeAdapter;
+import org.opensha.commons.util.json.JsonAdapterHelper;
+import org.opensha.commons.util.json.JsonObjectSerializable;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Range;
+import com.google.common.primitives.Doubles;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 
 public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNamed {
@@ -217,6 +242,21 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		}
 	}
 	
+	public void overrideIndividualAffected(String name, boolean toAffected) {
+		checkParseAnnotations();
+		Preconditions.checkState(!affectsAll, "Can't override an individual affected for %s when affectsAll=true", getShortName());
+		Preconditions.checkState(!affectsNone, "Can't override an individual affected for %s when affectsNone=true", getShortName());
+		if (toAffected) {
+			this.notAffected.remove(name);
+			if (!this.affected.contains(name))
+				this.affected.add(name);
+		} else {
+			this.affected.remove(name);
+			if (!this.notAffected.contains(name))
+				this.notAffected.add(name);
+		}
+	}
+	
 	public void setAffectsAll() {
 		this.affected = List.of();
 		this.notAffected = List.of();
@@ -333,6 +373,9 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		
 	}
 
+	/**
+	 * This is a LogicTreeLevel where the nodes have a custom adapter (not the data itself)
+	 */
 	public static abstract class AdapterBackedLevel extends LogicTreeLevel<LogicTreeNode>{
 		String name;
 		String shortName;
@@ -480,63 +523,970 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		
 	}
 	
-	public static abstract class RandomlySampledLevel<E extends RandomlySampledNode> extends LogicTreeLevel<E> {
+	
+	/**
+	 * Abstract class for a {@link LogicTreeLevel} with underlying data that can be serialized/deserialized as a
+	 * {@link JsonObject} via the {@link JsonObjectSerializable} interface.
+	 * @param <E>
+	 */
+	public static abstract class DataBackedLevel<E extends LogicTreeNode> extends LogicTreeLevel<E> implements JsonObjectSerializable {
 		
-		private List<? extends E> nodes;
+		private String levelName;
+		private String levelShortName;
 		
-		public void buildNodes(Random rand, int num) {
-			double weightEach = 1d/(double)num;
-			buildNodes(rand, num, weightEach);
+		protected DataBackedLevel() {}
+		
+		protected DataBackedLevel(String levelName, String levelShortName) {
+			this.levelName = levelName;
+			this.levelShortName = levelShortName;
+		}
+
+		@Override
+		public final String getShortName() {
+			return levelShortName;
+		}
+
+		@Override
+		public final String getName() {
+			return levelName;
+		}
+	}
+	
+	/**
+	 * Abstract implementation of {@link IndexedLevel} where node names are built by prepending prefixes to the index
+	 * @param <E>
+	 */
+	public static abstract class IndexedLevel<E extends LogicTreeNode> extends DataBackedLevel<E> {
+		
+		private String nodeNamePrefix;
+		private String nodeShortNamePrefix;
+		private String nodeFilePrefix;
+		
+		protected IndexedLevel() {}
+		
+		protected IndexedLevel(String levelName, String levelShortName) {
+			super(levelName, levelShortName);
 		}
 		
-		public void buildNodes(Random rand, int num, double weightEach) {
+		protected IndexedLevel(String levelName, String levelShortName,
+				String nodeNamePrefix, String nodeShortNamePrefix, String nodeFilePrefix) {
+			super(levelName, levelShortName);
+			this.nodeNamePrefix = nodeNamePrefix;
+			this.nodeShortNamePrefix = nodeShortNamePrefix;
+			this.nodeFilePrefix = nodeFilePrefix;
+		}
+		
+		protected final String getNodeNamePrefix() {
+			return nodeNamePrefix;
+		}
+
+		protected final String getNodeShortNamePrefix() {
+			return nodeShortNamePrefix;
+		}
+
+		protected final String getNodeFilePrefix() {
+			return nodeFilePrefix;
+		}
+		
+		public final String getNodeName(int index) {
+			return getNodeNamePrefix()+index;
+		}
+		public final String getNodeShortName(int index) {
+			return getNodeShortNamePrefix()+index;
+		}
+		public final String getNodeFilePrefix(int index) {
+			return getNodeFilePrefix()+index;
+		}
+
+		@Override
+		public JsonObject toJsonObject() {
+			JsonObject json = new JsonObject();
+			json.add("nodeType", new JsonPrimitive(getType().getName()));
+			json.add("nodeNamePrefix", new JsonPrimitive(getNodeNamePrefix()));
+			json.add("nodeShortNamePrefix", new JsonPrimitive(getNodeShortNamePrefix()));
+			json.add("nodeFilePrefix", new JsonPrimitive(getNodeFilePrefix()));
+			return json;
+		}
+
+		@Override
+		public void initFromJsonObject(JsonObject jsonObj) {
+			if (jsonObj.has("nodeNamePrefix"))
+				nodeNamePrefix = jsonObj.get("nodeNamePrefix").getAsString();
+			if (jsonObj.has("nodeShortNamePrefix"))
+				nodeShortNamePrefix = jsonObj.get("nodeShortNamePrefix").getAsString();
+			if (jsonObj.has("nodeFilePrefix"))
+				nodeFilePrefix = jsonObj.get("nodeFilePrefix").getAsString();
+		}
+		
+	}
+	
+	/**
+	 * {@link LogicTreeLevel} where nodes are of the {@link ValuedLogicTreeNode} type and can have a custom type
+	 * adapter.
+	 * 
+	 * @param <E>
+	 * @param <N>
+	 */
+	public static interface ValueBackedLevel<E, N extends ValuedLogicTreeNode<E>> {
+		
+		public abstract Class<? extends E> getValueType();
+		
+		@SuppressWarnings("unchecked")
+		public default TypeAdapter<E> getValueTypeAdapter() {
+			return JsonAdapterHelper.initTypeAdapter(getValueType(), true);
+		}
+		
+		public N build(E value, double weight, String name, String shortName, String filePrefix);
+		
+		public default N buildUnchecked(Object value, double weight, String name, String shortName, String filePrefix) {
+			return build((E)value, weight, name, shortName, filePrefix);
+		}
+	}
+	
+	/**
+	 * {@link LogicTreeLevel} that is both indexed and value-backed; for these types, individual nodes do not need
+	 * to be serialized (only their values)
+	 * @param <E>
+	 * @param <N>
+	 */
+	public static abstract class IndexedValuedLevel<E, N extends ValuedLogicTreeNode<E>> extends IndexedLevel<N>
+	implements ValueBackedLevel<E,N> {
+		
+		protected IndexedValuedLevel(String levelName, String levelShortName) {
+			super(levelName, levelShortName);
+		}
+		
+		protected IndexedValuedLevel(String levelName, String levelShortName,
+				String nodeNamePrefix, String nodeShortNamePrefix, String nodeFilePrefix) {
+			super(levelName, levelShortName, nodeNamePrefix, nodeShortNamePrefix, nodeFilePrefix);
+		}
+		
+		public N build(int index, E value, double weight) {
+			return build(value, weight, getNodeName(index), getNodeShortName(index), getNodeFilePrefix(index));
+		}
+		
+		protected abstract void setNodes(List<N> nodes);
+		
+		@SuppressWarnings("unchecked")
+		void setNodesUnchecked(List<?> nodes) {
+			setNodes((List<N>)nodes);
+		}
+		
+		protected void init(List<E> values, List<Double> weights) {
+			Preconditions.checkState(values.size() == weights.size());
+			List<N> nodes = new ArrayList<>(values.size());
+			for (int i=0; i<values.size(); i++)
+				nodes.add(build(i, values.get(i), weights.get(i)));
+			setNodes(nodes);
+		}
+		
+		@SuppressWarnings("unchecked")
+		private void initUnchecked(List<Object> values, List<Double> weights) {
+			init((List<E>)values, weights);
+		}
+		
+	}
+	
+	/**
+	 * Valued {@link LogicTreeLevel} that can be fully reconstructed from an index and weight
+	 * @param <E>
+	 * @param <N>
+	 */
+	public static abstract class ValueByIndexLevel<E, N extends ValuedLogicTreeNode<E>> extends IndexedValuedLevel<E,N> {
+		
+		protected ValueByIndexLevel(String levelName, String levelShortName) {
+			super(levelName, levelShortName);
+		}
+		
+		protected ValueByIndexLevel(String levelName, String levelShortName,
+				String nodeNamePrefix, String nodeShortNamePrefix, String nodeFilePrefix) {
+			super(levelName, levelShortName, nodeNamePrefix, nodeShortNamePrefix, nodeFilePrefix);
+		}
+		
+		public abstract E valueForIndex(int index);
+		
+		protected void init(List<Double> weights) {
+			List<N> nodes = new ArrayList<>(weights.size());
+			for (int i=0; i<weights.size(); i++)
+				nodes.add(build(i, valueForIndex(i), weights.get(i)));
+			setNodes(nodes);
+		}
+		
+	}
+	
+	public enum SamplingMethod implements ShortNamed {
+		/**
+		 * Purely random-sampling
+		 */
+		MONTE_CARLO("Monte Carlo", "MCS", "mcs"),
+		/**
+		 * Stratify the uncertainties into equal-probability bins, sample a value from each bin, and then shuffle the
+		 * order. This ensures the full marginal distribution is sampled for each level
+		 */
+		LATIN_HYPERCUBE("Latin Hypercube", "LHS", "lhs"),
+		/**
+		 * Extension of {@link #LATIN_HYPERCUBE} in which samples are balanced between pairs of choices and not just
+		 * their own marginal distributions. This is done iteratively.
+		 */
+		PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE("Pairwise-Optimized Latin Hypercube", "Pairwise-LHS", "lhs_pairwise");
+		
+		private String name;
+		private String shortName;
+		private String filePrefix;
+
+		private SamplingMethod(String name, String shortName, String filePrefix) {
+			this.name = name;
+			this.shortName = shortName;
+			this.filePrefix = filePrefix;
+		}
+		
+		public boolean isMC() {
+			return !isLHS();
+		}
+		
+		public boolean isLHS() {
+			return this == LATIN_HYPERCUBE || this == PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE;
+		}
+
+		@Override
+		public String getName() {
+			return name;
+		}
+
+		@Override
+		public String getShortName() {
+			return shortName;
+		}
+		
+		public String getFilePrefix() {
+			return filePrefix;
+		}
+	}
+	
+	public static abstract class RandomLevel<E, N extends ValuedLogicTreeNode<E>> extends IndexedValuedLevel<E,N> {
+		
+		private long origSeed = -1l;
+		
+		protected List<N> nodes;
+		
+		protected RandomLevel(String levelName, String levelShortName) {
+			super(levelName, levelShortName);
+		}
+		
+		protected RandomLevel(String levelName, String levelShortName,
+				String nodeNamePrefix, String nodeShortNamePrefix, String nodeFilePrefix) {
+			super(levelName, levelShortName, nodeNamePrefix, nodeShortNamePrefix, nodeFilePrefix);
+		}
+		
+		public final void build(long seed, int numNodes) {
+			build(seed, numNodes, SamplingMethod.MONTE_CARLO);
+		}
+		
+		public final void build(long seed, int numNodes, SamplingMethod samplingMethod) {
+			this.origSeed = seed;
+			doBuild(seed, numNodes, samplingMethod);
+		}
+		
+		protected abstract void doBuild(long seed, int numNodes, SamplingMethod samplingMethod);
+
+		public final boolean isBuilt() {
+			return nodes != null;
+		}
+		
+		@Override
+		protected void setNodes(List<N> nodes) {
+			this.nodes = nodes;
+		}
+
+		public final long getOriginalSeed() {
+			return origSeed;
+		}
+
+		@Override
+		public JsonObject toJsonObject() {
+			JsonObject json = super.toJsonObject();
+			json.add("nodeType", new JsonPrimitive(getType().getName()));
+			if (origSeed != -1l)
+				json.add("originalSeed", new JsonPrimitive(origSeed));
+			return json;
+		}
+
+		@Override
+		public void initFromJsonObject(JsonObject jsonObj) {
+			super.initFromJsonObject(jsonObj);
+			if (jsonObj.has("originalSeed"))
+				origSeed = jsonObj.get("originalSeed").getAsLong();
+		}
+		
+	}
+	
+	public static abstract class AbstractRandomlySampledLevel<E, N extends ValuedLogicTreeNode<E>> extends RandomLevel<E,N> {
+		
+		protected AbstractRandomlySampledLevel(String levelName, String levelShortName) {
+			super(levelName, levelShortName);
+		}
+
+		public AbstractRandomlySampledLevel(String levelName, String levelShortName,
+				String nodeNamePrefix, String nodeShortNamePrefix, String nodeFilePrefix) {
+			super(levelName, levelShortName, nodeNamePrefix, nodeShortNamePrefix, nodeFilePrefix);
+		}
+		
+		protected void build(Supplier<E> randomValueSupplier, int numValues, double weightEach) {
+			nodes = new ArrayList<>(numValues);
+			for (int i=0; i<numValues; i++) {
+				nodes.add(build(i, randomValueSupplier.get(), weightEach));
+			}
+		}
+		
+		void setValuesUnchecked(List<Object> values, double weightEach) {
+			nodes = new ArrayList<>(values.size());
+			int numValues = values.size();
+			for (int i=0; i<numValues; i++) {
+				nodes.add(build(i, (E)values.get(i), weightEach));
+			}
+		}
+		
+		public void setValues(List<? extends E> values, double weightEach) {
+			nodes = new ArrayList<>(values.size());
+			int numValues = values.size();
+			for (int i=0; i<numValues; i++) {
+				nodes.add(build(i, values.get(i), weightEach));
+			}
+		}
+
+		@Override
+		public List<? extends N> getNodes() {
+			Preconditions.checkNotNull(nodes, "Nodes have not yet been built/set");
+			return Collections.unmodifiableList(nodes);
+		}
+		
+		@Override
+		public boolean isMember(LogicTreeNode node) {
+			return getType().isInstance(node);
+		}
+		
+		public abstract Class<? extends E> getValueType();
+		
+		@SuppressWarnings("unchecked")
+		public TypeAdapter<E> getValueTypeAdapter() {
+			return JsonAdapterHelper.initTypeAdapter(getValueType(), true);
+		}
+		
+	}
+	
+	public static abstract class RandomlySampledLevel<E> extends AbstractRandomlySampledLevel<E, SimpleValuedNode<E>> {
+		
+		protected RandomlySampledLevel(String levelName, String levelShortName) {
+			super(levelName, levelShortName);
+		}
+
+		public RandomlySampledLevel(String levelName, String levelShortName,
+				String nodeNamePrefix, String nodeShortNamePrefix, String nodeFilePrefix) {
+			super(levelName, levelShortName, nodeNamePrefix, nodeShortNamePrefix, nodeFilePrefix);
+		}
+
+		@Override
+		public SimpleValuedNode<E> build(E value, double weight, String name, String shortName, String filePrefix) {
+			return new SimpleValuedNode<E>(value, getValueType(), weight, name, shortName, filePrefix);
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public Class<? extends SimpleValuedNode<E>> getType() {
+			return (Class<? extends SimpleValuedNode<E>>) (Class<?>) SimpleValuedNode.class;
+		}
+		
+	}
+	
+	public static abstract class WeightedListSampledLevel<E> extends RandomlySampledLevel<E> {
+
+		private WeightedList<E> weightedValues;
+		
+		protected WeightedListSampledLevel(String levelName, String levelShortName) {
+			super(levelName, levelShortName);
+		}
+
+		public WeightedListSampledLevel(String levelName, String levelShortName, WeightedList<E> weightedValues,
+				String nodeNamePrefix, String nodeShortNamePrefix, String nodeFilePrefix) {
+			super(levelName, levelShortName, nodeNamePrefix, nodeShortNamePrefix, nodeFilePrefix);
+			this.weightedValues = weightedValues;
+		}
+
+		@Override
+		protected void doBuild(long seed, int numSamples, SamplingMethod samplingMethod) {
+			if (samplingMethod.isLHS()) {
+				doBuildLHS(seed, numSamples);
+			} else {
+				// monte-carlo otherwise
+				Random rand = new Random(seed);
+				build(()->{return weightedValues.sample(rand);}, numSamples, 1d/numSamples);
+			}
+		}
+		
+		protected void doBuildLHS(long seed, int numSamples) {
+			List<E> samples = weightedValues.sampleEvenly(numSamples, new Random(seed));
+			
+			Iterator<E> it = samples.iterator();
+			build(() -> {
+				return it.next();
+			}, numSamples, 1d / numSamples);
+		}
+	}
+	
+	public static abstract class AbstractContinuousDistributionSampledLevel<N extends ValuedLogicTreeNode<Double>>
+	extends AbstractRandomlySampledLevel<Double, N> implements BinnableLevel<Double, N, ContinuousDistributionBinnedLevel> {
+
+		private ContinuousDistribution dist;
+		private int precisionScale;
+		private String units;
+		
+		protected AbstractContinuousDistributionSampledLevel(String levelName, String levelShortName) {
+			super(levelName, levelShortName);
+		}
+		
+		public AbstractContinuousDistributionSampledLevel(String levelName, String levelShortName,
+				ContinuousDistribution dist, String nodeNamePrefix, String nodeShortNamePrefix, String nodeFilePrefix) {
+			this(levelName, levelShortName, dist, -1, nodeNamePrefix, nodeShortNamePrefix, nodeFilePrefix);
+		}
+
+		public AbstractContinuousDistributionSampledLevel(String levelName, String levelShortName,
+				ContinuousDistribution dist, int precisionScale,
+				String nodeNamePrefix, String nodeShortNamePrefix, String nodeFilePrefix) {
+			super(levelName, levelShortName, nodeNamePrefix, nodeShortNamePrefix, nodeFilePrefix);
+			this.dist = dist;
+			this.precisionScale = precisionScale;
+		}
+		
+		@Override
+		protected void doBuild(long seed, int numSamples, SamplingMethod samplingMethod) {
+			build(RandomSource.XO_RO_SHI_RO_128_PP.create(seed), numSamples, samplingMethod);
+		}
+		
+		protected void build(UniformRandomProvider rand, int numSamples, SamplingMethod samplingMethod) {
+			if (samplingMethod.isLHS())
+				buildLHS(rand, numSamples);
+			else
+				// fallback
+				buildMonteCarlo(rand, numSamples);
+		}
+		
+		protected void buildLHS(UniformRandomProvider rand, int numSamples) {
+			double[] samples = new double[numSamples];
+			for (int i=0; i<numSamples; i++) {
+				double binStart = (double)i / numSamples;
+				double binEnd = (double)(i + 1) / numSamples;
+				double p = rand.nextDouble(binStart, binEnd);
+				samples[i] = getRoundedToPrecision(dist.inverseCumulativeProbability(p));
+			}
+			// shuffle them according to the uniform random provider
+			// Fisher–Yates shuffle
+			for (int i = numSamples - 1; i > 0; i--) {
+				int j = rand.nextInt(i + 1);
+				double tmp = samples[i];
+				samples[i] = samples[j];
+				samples[j] = tmp;
+			}
+			
+			build(new Supplier<Double>() {
+				int index = 0;
+				@Override
+				public Double get() {
+					if (index >= samples.length)
+						throw new IllegalStateException("No more LHS samples available");
+					return samples[index++];
+				}
+			}, numSamples, 1d/numSamples);
+		}
+		
+		protected void buildMonteCarlo(UniformRandomProvider rand, int numSamples) {
+			double weightEach = 1d/(double)numSamples;
+			Sampler sampler = dist.createSampler(rand);
+			build(()->{
+				double sample = getRoundedToPrecision(sampler.sample());
+				return sample;
+			}, numSamples, weightEach);
+		}
+		
+		public ContinuousDistribution getDistribution() {
+			return dist;
+		}
+		
+		public int getPrecisionScale() {
+			return precisionScale;
+		}
+		
+		public void setUnits(String units) {
+			this.units = units;
+		}
+		
+		public String getUnits() {
+			return units;
+		}
+		
+		public double getRoundedToPrecision(double value) {
+			if (precisionScale > 0)
+				return Precision.round(value, precisionScale);
+			return value;
+		}
+		
+		public double getLowerBound() {
+			double lower = dist.getSupportLowerBound();
+			if (precisionScale < 1 || !Double.isFinite(lower))
+				return lower;
+			double binWidth = 1d/Math.pow(10, precisionScale);
+			// round edges up
+			return getRoundedToPrecision(lower + 0.01*binWidth);
+		}
+		
+		public double getUpperBound() {
+			double upper = dist.getSupportUpperBound();
+			if (precisionScale < 1 || !Double.isFinite(upper))
+				return upper;
+			double binWidth = 1d/Math.pow(10, precisionScale);
+			// round edges down
+			return getRoundedToPrecision(upper - 0.01*binWidth);
+		}
+		
+		public void setDistribution(ContinuousDistribution dist) {
+			Preconditions.checkState(!isBuilt(), "Cannot change the distribution after random nodes have been built");
+		}
+
+		@Override
+		public Class<? extends Double> getValueType() {
+			return Double.class;
+		}
+
+		@Override
+		public JsonObject toJsonObject() {
+			JsonObject json = super.toJsonObject();
+			
+			if (dist != null)
+				json.add("distribution", ContinuousDistributionTypeAdapter.get().toJsonTree(dist));
+			if (precisionScale > 0)
+				json.add("precisionScale", new JsonPrimitive(precisionScale));
+			if (units != null && !units.isBlank())
+				json.add("units", new JsonPrimitive(units));
+			
+			return json;
+		}
+
+		@Override
+		public void initFromJsonObject(JsonObject jsonObj) {
+			super.initFromJsonObject(jsonObj);
+			
+			if (jsonObj.has("distribution"))
+				dist = ContinuousDistributionTypeAdapter.get().fromJsonTree(jsonObj.get("distribution"));
+			if (jsonObj.has("precisionScale"))
+				precisionScale = jsonObj.get("precisionScale").getAsInt();
+			else
+				precisionScale = -1;
+			if (jsonObj.has("units"))
+				units = jsonObj.get("units").getAsString();
+		}
+		
+		private static DecimalFormat oDF = new DecimalFormat("0.##");
+		
+		@Override
+		public ContinuousDistributionBinnedLevel toBinnedLevel() {
+			return toBinnedLevel(3);
+		}
+		
+		@Override
+		public ContinuousDistributionBinnedLevel toBinnedLevel(int numBins) {
+			Preconditions.checkState(numBins > 0);
+			List<Double> binEdges = new ArrayList<>(numBins+1);
+			List<String> names = new ArrayList<>(numBins);
+			List<String> shortNames = new ArrayList<>(numBins);
+			
+			binEdges.add(getLowerBound());
+			double probEach = 1d/(double)numBins;
+			double startP = 0d;
+			for (int i=0; i<numBins; i++) {
+				double lower = binEdges.get(i);
+				double upper;
+				double endP;
+				if (i == numBins-1) {
+					// last
+					endP = 1d;
+					upper = dist.getSupportUpperBound();
+				} else {
+					// intermediate
+					endP = startP + probEach;
+					upper = dist.inverseCumulativeProbability(endP);
+				}
+				
+				double lowerForStr = lower;
+				double upperForStr = upper;
+				
+				if (precisionScale > 0) {
+					double binWidth = 1d/Math.pow(10, precisionScale);
+//					System.out.println("raw lower="+lower+", upper="+upper+", binWidth="+binWidth);
+					
+					if (numBins == 3) {
+						// expand center bin to precision edges
+						if (i == 0) {
+							// we're working on the left edge of the center bin
+							upper = Precision.round(upper, precisionScale) - 0.5*binWidth;
+						} else if (i == 1) {
+							// we're working on the right edge of the center bin
+							upper = Precision.round(upper, precisionScale) + 0.5*binWidth;
+						}
+//						System.out.println("mod lower="+lower+", upper="+upper);
+					}
+					
+					// make it round up
+					lowerForStr = Precision.round(lower + 0.01*binWidth, precisionScale);
+					// make it round down
+					upperForStr = Precision.round(upper - 0.01*binWidth, precisionScale);
+//					System.out.println("Building bin "+i+"; lower="+lower+", lowerForStr="+lowerForStr+", upper="+upper+", upperForStr="+upperForStr);
+				}
+				
+				binEdges.add(upper);
+				
+				String binStr;
+				if (Double.isInfinite(lower) && Double.isInfinite(upper))
+					binStr = "["+Double.POSITIVE_INFINITY+"]";
+				else if (Double.isInfinite(lowerForStr))
+					binStr = "<"+formatVal(upperForStr);
+				else if (Double.isInfinite(upperForStr))
+					binStr = ">"+formatVal(lowerForStr);
+				else
+					binStr = "["+formatVal(lowerForStr)+", "+formatVal(upperForStr)+"]";
+				
+				String name;
+				if (numBins == 1 || numBins > 3) {
+					name = binStr;
+				} else if (i == 0) {
+					name = "Low: "+binStr;
+				} else if (i == numBins-1) {
+					name = "High: "+binStr;
+				} else {
+					name = "Middle: "+binStr;
+				}
+				names.add(name);
+				shortNames.add(binStr);
+				
+				startP = endP;
+			}
+			
+			return toBinnedLevel(binEdges, names, shortNames);
+		}
+
+		private double cumulativeProbabilityForBound(double value) {
+			if (Double.isInfinite(value) || value >= dist.getSupportUpperBound())
+				return 1d;
+			if (value <= dist.getSupportLowerBound())
+				return 0d;
+			return dist.cumulativeProbability(value);
+		}
+
+		private double discretizedLowerBound(double value, double step, double lowerSupport) {
+			return Math.max(lowerSupport, value - 0.5d * step);
+		}
+
+		private double discretizedUpperBound(double value, double step, double upperSupport) {
+			return Math.min(upperSupport, value + 0.5d * step);
+		}
+
+		private String[] buildBinLabels(int numBins, int binIndex, double lower, double upper) {
+			String binStr;
+			if (Double.isInfinite(lower) && Double.isInfinite(upper))
+				binStr = "["+Double.POSITIVE_INFINITY+"]";
+			else if (Double.isInfinite(lower))
+				binStr = "<"+formatVal(upper);
+			else if (Double.isInfinite(upper))
+				binStr = ">"+formatVal(lower);
+			else
+				binStr = "["+formatVal(lower)+", "+formatVal(upper)+"]";
+			
+			String name;
+			if (numBins == 1 || numBins > 3) {
+				name = binStr;
+			} else if (binIndex == 0) {
+				name = "Low: "+binStr;
+			} else if (binIndex == numBins-1) {
+				name = "High: "+binStr;
+			} else {
+				name = "Middle: "+binStr;
+			}
+			return new String[] {name, binStr};
+		}
+		
+		private static String formatVal(double val) {
+			if (Double.isInfinite(val))
+				return val+"";
+			if (Math.abs(val) < 1e-1)
+				return (float)val+"";
+			if (val >= 999.9) {
+				if (val > 1e5)
+					return (float)val+"";
+				return (int)val+"";
+			}
+			return oDF.format(val);
+		}
+		
+		public ContinuousDistributionBinnedLevel toBinnedLevel(List<Double> binEdges, List<String> names, List<String> shortNames) {
+			Preconditions.checkState(binEdges.size() > 1);
+			int numBins = binEdges.size()-1;
+			Preconditions.checkState(names.size() == numBins,
+					"Must have exactly one name per bin (numBins=%s, edges=%s, names=%s)", numBins, binEdges, names);
+			Preconditions.checkState(shortNames == null || shortNames.size() == numBins);
+			List<SimpleValuedNode<Range<Double>>> nodes = new ArrayList<>();
+			
+			for (int i=0; i<numBins; i++) {
+				double lower = binEdges.get(i);
+				double upper = binEdges.get(i+1);
+				Range<Double> range;
+				if (numBins == 1 || i == numBins -1)
+					range = Range.closed(lower, upper);
+				else
+					range = Range.closedOpen(lower, upper);
+				String name = names.get(i);
+				String shortName = shortNames == null ? name : shortNames.get(i);
+				double cdf0;
+				if (Double.isInfinite(lower) || lower <= dist.getSupportLowerBound())
+					cdf0 = 0;
+				else
+					cdf0 = dist.cumulativeProbability(lower);
+				double cdf1;
+				if (Double.isInfinite(upper) || upper >= dist.getSupportUpperBound())
+					cdf1 = 1d;
+				else
+					cdf1 = dist.cumulativeProbability(upper);
+				double weight = cdf1 - cdf0;
+				SimpleValuedNode<Range<Double>> node = new SimpleValuedNode<Range<Double>>(
+						range, ContinuousDistributionBinnedLevel.VALUE_TYPE, weight, name, shortName, "Bin"+i);
+				nodes.add(node);
+			}
+			
+			return new ContinuousDistributionBinnedLevel(this, nodes);
+		}
+		
+	}	
+	
+	public interface BinnableLevel<E, N extends ValuedLogicTreeNode<E>, B extends LogicTreeLevel<?> & BinnedLevel<?,?>> extends ValueBackedLevel<E, N> {
+		
+		public B toBinnedLevel();
+		
+		public B toBinnedLevel(int numBins);
+		
+	}
+	
+	public interface BinnedLevel<E, N extends LogicTreeNode> {
+		
+		@SuppressWarnings("unchecked")
+		public default N getBinUnchecked(LogicTreeNode node) {
+			return getBin((ValuedLogicTreeNode<E>)node);
+		}
+		
+		public default N getBin(ValuedLogicTreeNode<E> node) {
+			return getBin(node.getValue());
+		}
+		
+		public N getBin(E value);
+		
+	}
+	
+	public static class ContinuousDistributionBinnedLevel extends DataBackedLevel<SimpleValuedNode<Range<Double>>> 
+	implements ValueBackedLevel<Range<Double>, SimpleValuedNode<Range<Double>>>,
+	BinnedLevel<Double, SimpleValuedNode<Range<Double>>> {
+		
+		private List<SimpleValuedNode<Range<Double>>> nodes;
+		
+		// this extra cast to Class<?> resolves compile errors that don't show up in eclipse, which is annoying
+		private static Class<? extends SimpleValuedNode<Range<Double>>> TYPE =
+				(Class<SimpleValuedNode<Range<Double>>>) (Class<?>) SimpleValuedNode.class;
+		private static Class<? extends Range<Double>> VALUE_TYPE =
+				(Class<? extends Range<Double>>) (Class<?>) Range.class;
+		
+		@SuppressWarnings("unused") // deserialization
+		private ContinuousDistributionBinnedLevel() {};
+		
+		public ContinuousDistributionBinnedLevel(
+				AbstractContinuousDistributionSampledLevel<? extends ValuedLogicTreeNode<Double>> samplingLevel,
+				List<SimpleValuedNode<Range<Double>>> nodes) {
+			super(samplingLevel.getName(), samplingLevel.getShortName());
+			this.nodes = nodes;
+			setAffected(samplingLevel.getAffected(), samplingLevel.getNotAffected(), false);
+		}
+
+		@Override
+		public Class<? extends SimpleValuedNode<Range<Double>>> getType() {
+			return TYPE;
+		}
+
+		@Override
+		public List<? extends SimpleValuedNode<Range<Double>>> getNodes() {
+			return nodes;
+		}
+
+		@Override
+		public boolean isMember(LogicTreeNode node) {
+			return nodes.contains(node);
+		}
+		
+		public SimpleValuedNode<Range<Double>> getBin(ValuedLogicTreeNode<Double> node) {
+			return getBin(node.getValue());
+		}
+		
+		public SimpleValuedNode<Range<Double>> getBin(Double value) {
+			for (SimpleValuedNode<Range<Double>> bin : nodes)
+				if (bin.getValue().contains(value))
+					return bin;
+			return null;
+		}
+
+		@Override
+		public Class<? extends Range<Double>> getValueType() {
+			return VALUE_TYPE;
+		}
+
+		@Override
+		public TypeAdapter<Range<Double>> getValueTypeAdapter() {
+			return new DoubleRangeAdapter();
+		}
+
+		@Override
+		public SimpleValuedNode<Range<Double>> build(Range<Double> value, double weight, String name, String shortName,
+				String filePrefix) {
+			return new SimpleValuedNode<Range<Double>>(value, VALUE_TYPE, weight, name, shortName, filePrefix);
+		}
+
+		@Override
+		public JsonObject toJsonObject() {
+			JsonObject json = new JsonObject();
+			
+			JsonArray binsArray = new JsonArray();
+			
+			DoubleRangeAdapter rangeAdapter = new DoubleRangeAdapter();
+			
+			for (SimpleValuedNode<Range<Double>> node : nodes) {
+				JsonObject binObj = new JsonObject();
+
+				binObj.add("range", rangeAdapter.toJsonTree(node.getValue()));
+				binObj.add("name", new JsonPrimitive(node.getName()));
+				binObj.add("shortName", new JsonPrimitive(node.getShortName()));
+				binObj.add("filePrefix", new JsonPrimitive(node.getFilePrefix()));
+				binObj.add("weight", new JsonPrimitive(node.getNodeWeight()));
+				
+				binsArray.add(binObj);
+			}
+			
+			json.add("bins", binsArray);
+			return json;
+			
+		}
+
+		@Override
+		public void initFromJsonObject(JsonObject jsonObj) {
+			JsonArray bins = jsonObj.getAsJsonArray("bins");
+			
+			DoubleRangeAdapter rangeAdapter = new DoubleRangeAdapter();
+			
+			nodes = new ArrayList<>(bins.size());
+			for (int i=0; i<bins.size(); i++) {
+				JsonObject binObj = bins.get(i).getAsJsonObject();
+				Range<Double> range = rangeAdapter.fromJsonTree(binObj.get("range"));
+				String name = binObj.get("name").getAsString();
+				String shortName = binObj.get("shortName").getAsString();
+				String filePrefix = binObj.get("filePrefix").getAsString();
+				double weight = binObj.get("weight").getAsDouble();
+				nodes.add(build(range, weight, name, shortName, filePrefix));
+			}
+		}
+		
+	}
+	
+	public static class ContinuousDistributionSampledLevel
+	extends AbstractContinuousDistributionSampledLevel<SimpleValuedNode<Double>> {
+		
+		protected ContinuousDistributionSampledLevel(String levelName, String levelShortName) {
+			super(levelName, levelShortName);
+		}
+
+		public ContinuousDistributionSampledLevel(String levelName, String levelShortName, ContinuousDistribution dist,
+				String nodeNamePrefix, String nodeShortNamePrefix, String nodeFilePrefix) {
+			super(levelName, levelShortName, dist, nodeNamePrefix, nodeShortNamePrefix, nodeFilePrefix);
+		}
+
+		public ContinuousDistributionSampledLevel(String levelName, String levelShortName,
+				ContinuousDistribution dist, int precisionScale,
+				String nodeNamePrefix, String nodeShortNamePrefix, String nodeFilePrefix) {
+			super(levelName, levelShortName, dist, precisionScale, nodeNamePrefix, nodeShortNamePrefix, nodeFilePrefix);
+		}
+
+		@Override
+		public SimpleValuedNode<Double> build(Double value, double weight, String name, String shortName,
+				String filePrefix) {
+			return new SimpleValuedNode<Double>(value, Double.class, weight, name, shortName, filePrefix);
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public Class<? extends SimpleValuedNode<Double>> getType() {
+			// this extra cast to Class<?> resolves compile errors that don't show up in eclipse, which is annoying
+			return (Class<? extends SimpleValuedNode<Double>>) (Class<?>) SimpleValuedNode.class;
+		}
+		
+	}
+	
+	public static abstract class RandomlyGeneratedLevel<E extends RandomlyGeneratedNode> extends RandomLevel<Long, E> {
+		
+		protected RandomlyGeneratedLevel(String levelName, String levelShortName) {
+			super(levelName, levelShortName);
+		}
+		
+		protected RandomlyGeneratedLevel(String levelName, String levelShortName,
+				String nodeNamePrefix, String nodeShortNamePrefix, String nodeFilePrefix) {
+			super(levelName, levelShortName, nodeNamePrefix, nodeShortNamePrefix, nodeFilePrefix);
+		}
+		
+		@Override
+		protected void doBuild(long seed, int num, SamplingMethod samplingMethod) {
+			// sampling method currently ignored for randomly-generated (always Monte Carlo)
+			buildNodes(new Random(seed), num, 1d/(double)num);
+		}
+		
+		protected void buildNodes(Random rand, int num, double weightEach) {
 			List<E> nodes = new ArrayList<>(num);
 			
 			Preconditions.checkState(num >= 1);
 			for (int i=0; i<num; i++)
-				nodes.add(buildNodeInstance(i, rand.nextLong(), weightEach));
+				nodes.add(build(i, rand.nextLong(), weightEach));
 			
 			this.nodes = nodes;
 		}
 		
-		public void buildNodes(List<Long> seeds, double weightEach) {
+		protected void buildNodes(List<Long> seeds, double weightEach) {
 			List<E> nodes = new ArrayList<>(seeds.size());
 			
 			Preconditions.checkState(seeds.size() >= 1);
 			for (int i=0; i<seeds.size(); i++)
-				nodes.add(buildNodeInstance(i, seeds.get(i), weightEach));
+				nodes.add(build(i, seeds.get(i), weightEach));
 			
 			this.nodes = nodes;
 		}
 		
-		@SuppressWarnings("unchecked")
-		public void setNodes(List<? extends LogicTreeNode> nodes) {
-			List<E> cast = new ArrayList<>(nodes.size());
-			for (LogicTreeNode node : nodes) {
-				Preconditions.checkState(node instanceof RandomlySampledNode);
-				Preconditions.checkState(getType().isInstance(node));
-				cast.add((E)node);
-			}
-			this.nodes = cast;
-		}
-
 		@Override
 		public List<E> getNodes() {
 			Preconditions.checkNotNull(nodes, "Nodes have not yet been built/set");
 			return Collections.unmodifiableList(nodes);
 		}
 		
-		public abstract E buildNodeInstance(int index, long seed, double weight);
-		
 		@Override
 		public boolean isMember(LogicTreeNode node) {
-			if (!(node instanceof RandomlySampledNode))
+			if (!(node instanceof RandomlyGeneratedNode))
 				return false;
-			long seed = ((RandomlySampledNode)node).getSeed();
+			long seed = ((RandomlyGeneratedNode)node).getSeed();
 			for (E nodeTest : getNodes())
 				if (node.equals(nodeTest) || seed == nodeTest.getSeed())
 					return true;
 			return false;
+		}
+
+		@Override
+		public Class<? extends Long> getValueType() {
+			return Long.class;
 		}
 	}
 	
@@ -590,8 +1540,55 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 				out.name("affectsAll").value(true);
 			if (level.affectsNone)
 				out.name("affectsNone").value(true);
-			if (writeNodes) {
-				out.name("nodes").beginArray();;
+			if (level instanceof JsonObjectSerializable) {
+				JsonObject data = ((JsonObjectSerializable)level).toJsonObject();
+				if (data != null) {
+					out.name("data");
+					JsonObjectSerializable.writeJsonObjectToWriter(data, out);
+				}
+			}
+			if (level instanceof DataBackedLevel<?>) {
+				// don't need to write node data
+				// (there's no method to set them were we to deserialize them anyway)
+				
+				if (level instanceof IndexedValuedLevel) {
+					// do need to write values/weights
+					out.name("values").beginObject();
+					boolean allSameWeight = true;
+					List<? extends E> nodes = level.getNodes();
+					double[] weights = new double[nodes.size()];
+					for (int i=0; i<weights.length; i++) {
+						weights[i] = ((ValuedLogicTreeNode<?>)nodes.get(i)).getNodeWeight();
+						allSameWeight &= weights[i] == weights[0];
+					}
+					ValueBackedLevel<?,?> valueLevel = (ValueBackedLevel<?,?>)level;
+					out.name("valueClass").value(valueLevel.getValueType().getName());
+					out.name("count").value(nodes.size());
+					if (allSameWeight) {
+						out.name("weightEach").value(weights[0]);
+					} else {
+						out.name("weights").beginArray();
+						for (double weight : weights)
+							out.value(weight);
+						out.endArray();
+					}
+					if (!(level instanceof ValueByIndexLevel)) {
+						// write the values themselves
+						out.name("values").beginArray();
+						TypeAdapter valueAdapter = valueLevel.getValueTypeAdapter();
+						for (E node : nodes) {
+							Object value = ((ValuedLogicTreeNode<?>)node).getValue();
+							if (value == null)
+								out.nullValue();
+							else
+								valueAdapter.write(out, value);
+						}
+						out.endArray();
+					}
+					out.endObject();
+				}
+			} else if (writeNodes) {
+				out.name("nodes").beginArray();
 				for (LogicTreeNode node : level.getNodes())
 					nodeAdapter.write(out, node);
 				out.endArray();
@@ -612,6 +1609,10 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			boolean affectsNone = false;
 			List<LogicTreeNode> nodes = new ArrayList<>();
 			in.beginObject();
+			
+			// for JsonObjectSerializable levels
+			JsonObject data = null;
+			JsonObject valueData = null;
 			
 			while (in.hasNext()) {
 				switch (in.nextName()) {
@@ -646,10 +1647,29 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					affectsNone = in.nextBoolean();
 					break;
 				case "nodes":
+					Preconditions.checkState(nodes.isEmpty(), "Nodes already supplied?");
 					in.beginArray();
 					while (in.hasNext())
 						nodes.add(nodeAdapter.read(in));
 					in.endArray();
+					break;
+				case "data":
+					if (in.peek() == JsonToken.NULL) {
+						in.skipValue();
+						continue;
+					}
+					JsonElement dataElem = JsonParser.parseReader(in);
+					Preconditions.checkState(dataElem.isJsonObject(), "Level data must be a JsonObject");
+					data = dataElem.getAsJsonObject();
+					break;
+				case "values":
+					if (in.peek() == JsonToken.NULL) {
+						in.skipValue();
+						continue;
+					}
+					JsonElement valueElem = JsonParser.parseReader(in);
+					Preconditions.checkState(valueElem.isJsonObject(), "Level values must be a JsonObject");
+					valueData = valueElem.getAsJsonObject();
 					break;
 
 				default:
@@ -702,13 +1722,120 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 				try {
 					Class<?> rawClass = Class.forName(className);
 					Class<? extends LogicTreeLevel<E>> clazz = (Class<? extends LogicTreeLevel<E>>)rawClass;
-					Constructor<? extends LogicTreeLevel<E>> constructor = clazz.getDeclaredConstructor();
-					constructor.setAccessible(true);
 					
-					level = constructor.newInstance();
+					if (DataBackedLevel.class.isAssignableFrom(clazz)) {
+						// try first with level name and short name
+						try {
+							Constructor<? extends LogicTreeLevel<E>> constructor = clazz.getDeclaredConstructor(String.class, String.class);
+							constructor.setAccessible(true);
+							
+							level = constructor.newInstance(name, shortName);
+							Preconditions.checkState(name == null || level.getName().equals(name));
+							Preconditions.checkState(shortName == null || level.getShortName().equals(shortName));
+						} catch (NoSuchMethodException e) {
+							// fall back to no arg constructor
+							Constructor<? extends LogicTreeLevel<E>> constructor = clazz.getDeclaredConstructor();
+							constructor.setAccessible(true);
+							
+							level = constructor.newInstance();
+							if (name != null)
+								((DataBackedLevel<?>)level).levelName = name;
+							if (shortName != null)
+								((DataBackedLevel<?>)level).levelShortName = shortName;
+						}
+					} else {
+						Constructor<? extends LogicTreeLevel<E>> constructor = clazz.getDeclaredConstructor();
+						constructor.setAccessible(true);
+						
+						level = constructor.newInstance();
+					}
 					
-					if (level instanceof RandomlySampledLevel<?>)
-						((RandomlySampledLevel<?>)level).setNodes(nodes);
+					if (data != null || JsonObjectSerializable.class.isAssignableFrom(clazz)) {
+						if (data == null) {
+							// no data
+							if (nodes != null && level instanceof RandomlyGeneratedLevel<?>) {
+								System.err.println("Warning: old (pre-JsonObjectSerializable) JSON for class "+clazz
+										+" encounterd, will load nodes directly");
+								Preconditions.checkState(!nodes.isEmpty(), "Nodes are empty");
+								LogicTreeNode node0 = nodes.get(0);
+								RandomlyGeneratedLevel<?> randLevel = ((RandomlyGeneratedLevel<?>)level);
+								randLevel.setNodesUnchecked(nodes);
+								IndexedLevel<?> indexedLevel = ((IndexedLevel<?>)level);
+								String name0 = node0.getName();
+								indexedLevel.nodeNamePrefix = name0.substring(0, name0.lastIndexOf('0'));
+								String shortName0 = node0.getShortName();
+								indexedLevel.nodeShortNamePrefix = shortName0.substring(0, shortName0.lastIndexOf('0'));
+								String filePrefix0 = node0.getFilePrefix();
+								indexedLevel.nodeFilePrefix = filePrefix0.substring(0, filePrefix0.lastIndexOf('0'));
+							} else {
+								System.err.println("Warning: class "+clazz+" is an instance of JsonObjectSerializable but "
+										+ "no data was found");
+							}
+						} else if (!JsonObjectSerializable.class.isAssignableFrom(clazz)) {
+							// not an JsonObjectSerializable instance
+							System.err.println("Warning: class "+clazz+" is not an instance of JsonObjectSerializable "
+									+ "but we encountered a data object, reverting to file-backed");
+							level = null;
+						} else {
+							// have both
+							((JsonObjectSerializable)level).initFromJsonObject(data);
+						}
+					}
+					
+					if (valueData != null || IndexedValuedLevel.class.isAssignableFrom(clazz)) {
+						if (valueData == null) {
+							// no values
+							System.err.println("Warning: class "+clazz+" is an IndexedValuedLevel instance but no value"
+									+ " data was found");
+						} else if (!IndexedValuedLevel.class.isAssignableFrom(clazz)) {
+							System.err.println("Warning: class "+clazz+" is not an instance of IndexedValuedLevel "
+									+ "but we encountered a values object, reverting to file-backed");
+							level = null;
+						} else {
+							// have both
+							List<Double> weights = null;
+							Double weightEach = null;
+							if (valueData.has("weightEach")) {
+								weightEach = valueData.get("weightEach").getAsDouble();
+							} else if (valueData.has("weights")) {
+								JsonArray weightsArray = valueData.getAsJsonArray("weights");
+								weights = new ArrayList<>(weightsArray.size());
+								for (int i=0; i<weightsArray.size(); i++)
+									weights.add(weightsArray.get(i).getAsDouble());
+							} else {
+								throw new IllegalStateException("Value data has neither weights nor weightEach");
+							}
+							if (valueData.has("values")) {
+								IndexedValuedLevel<?, ?> valueLevel = (IndexedValuedLevel<?, ?>)level;
+								TypeAdapter<?> adapter = valueLevel.getValueTypeAdapter();
+								JsonArray valuesArray = valueData.getAsJsonArray("values");
+								List<Object> values = new ArrayList<>(valuesArray.size());
+								if (weights == null)
+									weights = new ArrayList<>(valuesArray.size());
+								for (int i=0; i<valuesArray.size(); i++) {
+									JsonElement valueElem = valuesArray.get(i);
+									if (valueElem.isJsonNull())
+										values.add(null);
+									else
+										values.add(adapter.fromJsonTree(valueElem));
+									if (weightEach != null)
+										weights.add(weightEach);
+								}
+								Preconditions.checkState(weights.size() == values.size());
+								valueLevel.initUnchecked(values, weights);
+							} else if (level instanceof ValueByIndexLevel<?,?>) {
+								if (weights == null) {
+									Preconditions.checkState(valueData.has("count"), "Have weightEach but no count and not values array");
+									int count = valueData.get("count").getAsInt();
+									weights = new ArrayList<>(count);
+									for (int i=0; i<count; i++)
+										weights.add(weightEach);
+								}
+								((ValueByIndexLevel<?,?>)level).init(weights);
+							}
+						}
+					}
+					
 					if (affectsAll)
 						level.setAffectsAll();
 					else if (affectsNone)
@@ -716,6 +1843,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					else if (!affected.isEmpty() || !notAffected.isEmpty())
 						// set the serialzed affected/unaffected levels
 						level.setAffected(affected, notAffected, true);
+//					System.out.println("Built a level of type "+level.getClass().getName()+" and name="+level.getName()+", shortName="+level.getShortName());
 				} catch (ClassNotFoundException e) {
 					System.err.println("WARNING: couldn't locate logic tree branch node class '"+className+"', "
 							+ "loading plain/hardcoded version instead");
@@ -723,8 +1851,9 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					System.err.println("WARNING: logic tree branch node class '"+className+"' is of the wrong type, "
 							+ "loading plain/hardcoded version instead");
 				} catch (Exception e) {
+					e.printStackTrace();
 					System.err.println("Couldn't instantiate default no-arg constructor of declared logic tree node class, "
-								+ "loading plain/hardcoded version instead");
+								+ "loading plain/hardcoded version instead: "+e.getMessage());
 				}
 			}
 			if (level == null) {
@@ -737,16 +1866,37 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 				else
 					fileLevel.setAffected(affected, notAffected, false);
 				level = (LogicTreeLevel<E>) fileLevel;
-				if (nodes != null) {
-					for (LogicTreeNode node : nodes) {
-						FileBackedNode fileNode;
-						if (node instanceof FileBackedNode)
-							fileNode = (FileBackedNode)node;
-						else
-							fileNode = new FileBackedNode(node.getName(), node.getShortName(),
-									node.getNodeWeight(null), node.getFilePrefix());
-						fileLevel.addChoice(fileNode);
+				if (nodes.isEmpty() && data != null && valueData != null) {
+					// failed valued/random load
+					String nodeNamePrefix = data.get("nodeNamePrefix").getAsString();
+					String nodeShortNamePrefix = data.get("nodeShortNamePrefix").getAsString();
+					String nodeFilePrefix = data.get("nodeFilePrefix").getAsString();
+					List<Double> weights = null;
+					Double weightEach = null;
+					if (valueData.has("weightEach")) {
+						weightEach = valueData.get("weightEach").getAsDouble();
+					} else if (valueData.has("weights")) {
+						JsonArray weightsArray = valueData.getAsJsonArray("weights");
+						weights = new ArrayList<>(weightsArray.size());
+						for (int i=0; i<weightsArray.size(); i++)
+							weights.add(weightsArray.get(i).getAsDouble());
+					} else {
+						throw new IllegalStateException("Value data has neither weights nor weightEach");
 					}
+					int num = data.has("count") ? data.get("count").getAsInt() : data.getAsJsonArray("values").size();
+					for (int i=0; i<num; i++) {
+						double weight = weights == null ? weightEach : weights.get(i);
+						nodes.add(new FileBackedNode(nodeNamePrefix+i, nodeShortNamePrefix+i, weight, nodeFilePrefix+i));
+					}
+				}
+				for (LogicTreeNode node : nodes) {
+					FileBackedNode fileNode;
+					if (node instanceof FileBackedNode)
+						fileNode = (FileBackedNode)node;
+					else
+						fileNode = new FileBackedNode(node.getName(), node.getShortName(),
+								node.getNodeWeight(null), node.getFilePrefix());
+					fileLevel.addChoice(fileNode);
 				}
 			}
 			

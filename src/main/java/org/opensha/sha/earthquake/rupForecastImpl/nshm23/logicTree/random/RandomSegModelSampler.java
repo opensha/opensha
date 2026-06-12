@@ -15,7 +15,7 @@ import org.opensha.commons.calc.WeightedSampler;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
-import org.opensha.commons.logicTree.LogicTreeLevel.RandomlySampledLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.RandomlyGeneratedLevel;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
@@ -356,10 +356,12 @@ public class RandomSegModelSampler implements BranchDependentSampler<RandomSegMo
 	public static class Node extends AbstractSamplingNode<RandomSegModelSampler> implements SegmentationModelBranchNode {
 		
 		@SuppressWarnings("unused") // deserialization
-		private Node() {}
+		private Node() {
+			super();
+		}
 		
-		public Node(int index, long seed, double weight) {
-			super("Segmentation Model Sample "+index, "SegSample"+index, "SegSample"+index, weight, seed);
+		public Node(String name, String shortName, String filePrefix, long seed, double weight) {
+			super(name, shortName, filePrefix, weight, seed);
 		}
 
 		@Override
@@ -412,38 +414,30 @@ public class RandomSegModelSampler implements BranchDependentSampler<RandomSegMo
 
 	}
 	
-	public static class Level extends RandomlySampledLevel<Node> {
+	public static class Level extends RandomlyGeneratedLevel<Node> {
 		
-		public Level() {
-			
+		public Level(String name, String shortName) {
+			super(name, shortName);
 		}
 		
 		public Level(int numSamples) {
-			this(numSamples, new Random());
+			this(numSamples, new Random().nextLong());
 		}
 		
-		public Level(int numSamples, Random rand) {
-			buildNodes(rand, numSamples);
-		}
-
-		@Override
-		public String getShortName() {
-			return "SegSamples";
-		}
-
-		@Override
-		public String getName() {
-			return "Segmentation Model Samples";
-		}
-
-		@Override
-		public Node buildNodeInstance(int index, long seed, double weight) {
-			return new Node(index, seed, weight);
+		public Level(int numSamples, long seed) {
+			super("Segmentation Model Samples", "SegSamples",
+					"Segmentation Model Sample ", "SegSample", "SegSample");
+			build(seed, numSamples);
 		}
 
 		@Override
 		public Class<? extends Node> getType() {
 			return Node.class;
+		}
+
+		@Override
+		public Node build(Long seed, double weight, String name, String shortName, String filePrefix) {
+			return new Node(name, shortName, filePrefix, seed, weight);
 		}
 		
 	}

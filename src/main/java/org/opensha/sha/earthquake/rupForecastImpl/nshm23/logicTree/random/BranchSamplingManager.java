@@ -9,7 +9,7 @@ import java.util.Random;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
-import org.opensha.commons.logicTree.LogicTreeNode.RandomlySampledNode;
+import org.opensha.commons.logicTree.LogicTreeNode.RandomlyGeneratedNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionSolver;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSetSplitMappings;
@@ -56,9 +56,9 @@ public class BranchSamplingManager implements SplittableRuptureModule<BranchSamp
 			LogicTreeNode node = branch.getValue(l);
 			// determine a random seed for each branch that is repeatable and unique
 			long nodeSeed;
-			if (node instanceof RandomlySampledNode)
+			if (node instanceof RandomlyGeneratedNode)
 				// use the assigned random seed for this node
-				nodeSeed = ((RandomlySampledNode)node).getSeed();
+				nodeSeed = ((RandomlyGeneratedNode)node).getSeed();
 			else
 				// generate one using the level and node names
 				nodeSeed = Objects.hash(level.getName(), node.getName());

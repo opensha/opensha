@@ -68,12 +68,16 @@ public class LogicTreeBranchPlot extends AbstractRupSetPlot {
 			LogicTreeNode choice = choices.get(name);
 			if (choice == null)
 				table.addColumn(na);
+			else if (choice instanceof LogicTreeNode.ValuedLogicTreeNode<?>)
+				table.addColumn(choice.getName()+" ("+((LogicTreeNode.ValuedLogicTreeNode<?>)choice).getValue()+")");
 			else
 				table.addColumn(choice.getName());
 			if (compBranch != null) {
 				LogicTreeNode compChoice = compChoices.get(name);
 				if (compChoice == null)
 					table.addColumn(na);
+				else if (compChoice instanceof LogicTreeNode.ValuedLogicTreeNode<?>)
+					table.addColumn(compChoice.getName()+" ("+((LogicTreeNode.ValuedLogicTreeNode<?>)compChoice).getValue()+")");
 				else
 					table.addColumn(compChoice.getName());
 			}

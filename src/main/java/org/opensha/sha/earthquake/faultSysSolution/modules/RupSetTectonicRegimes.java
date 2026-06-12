@@ -17,6 +17,7 @@ import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.util.MergedSolutionCreator.MergedRupSetMappings;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.util.TectonicRegionType;
@@ -24,8 +25,8 @@ import org.opensha.sha.util.TectonicRegionType;
 import com.google.common.base.Preconditions;
 
 public class RupSetTectonicRegimes implements CSV_BackedModule, SubModule<FaultSystemRupSet>,
-BranchAverageableModule<RupSetTectonicRegimes>, AverageableModule.ConstantAverageable<RupSetTectonicRegimes>,
-SplittableRuptureModule<RupSetTectonicRegimes>{
+	BranchAverageableModule<RupSetTectonicRegimes>, AverageableModule.ConstantAverageable<RupSetTectonicRegimes>,
+	SplittableRuptureModule<RupSetTectonicRegimes>, MergeableRuptureModule<RupSetTectonicRegimes> {
 	
 	private FaultSystemRupSet rupSet;
 	private TectonicRegionType[] regimes;
@@ -222,6 +223,22 @@ SplittableRuptureModule<RupSetTectonicRegimes>{
 		for (int r=0; r<trts.length; r++)
 			trts[r] = this.regimes[mappings.getOrigRupID(r)];
 		return new RupSetTectonicRegimes(splitRupSet, trts);
+	}
+
+	@Override
+	public RupSetTectonicRegimes getForMergedRuptureSet(FaultSystemRupSet mergedRupSet, MergedRupSetMappings mappings,
+			List<RupSetTectonicRegimes> originalModules) {
+		Preconditions.checkState(originalModules.size() == mappings.getNumInputRupSets());
+		TectonicRegionType[] trts = new TectonicRegionType[mergedRupSet.getNumRuptures()];
+		for (int i=0; i<originalModules.size(); i++) {
+			RupSetTectonicRegimes module = originalModules.get(i);
+			if (module == null)
+				return null;
+			Map<Integer, Integer> rupMappings = mappings.getRuptureMappingsOldToNew(i);
+			for (Map.Entry<Integer, Integer> entry : rupMappings.entrySet())
+				trts[entry.getValue()] = module.regimes[entry.getKey()];
+		}
+		return new RupSetTectonicRegimes(mergedRupSet, trts);
 	}
 
 }

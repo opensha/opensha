@@ -51,6 +51,35 @@ public class LightFixedXFunc extends AbstractDiscretizedFunc {
 	}
 
 	@Override
+	public int getClosestXIndex(double x) {
+		int n = size();
+		if (n == 0)
+			return -1;
+
+		if (x <= getMinX())
+			return 0;
+
+		if (x >= getMaxX())
+			return n - 1;
+
+		int ind = Arrays.binarySearch(xVals, x);
+		if (ind >= 0)
+			// exact match
+			return ind;
+
+		int ip = -ind - 1; // insertion point: first index with x_i > x
+		// valid because we already excluded x<=min and x>=max, so 0 < ip < n
+		int lo = ip - 1;
+		int hi = ip;
+
+		double xLo = getX(lo);
+		double xHi = getX(hi);
+
+		// tie-break: choose lower index if exactly midway
+		return (x - xLo) <= (xHi - x) ? lo : hi;
+	}
+
+	@Override
 	public int getXIndex(double x) {
 		return Arrays.binarySearch(xVals, x);
 	}

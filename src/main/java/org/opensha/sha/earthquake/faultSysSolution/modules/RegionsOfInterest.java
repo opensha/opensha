@@ -12,6 +12,8 @@ import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.commons.geo.json.FeatureCollection.FeatureCollectionAdapter;
 import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.helpers.JSON_TypeAdapterBackedModule;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.util.MergedSolutionCreator.MergedRupSetMappings;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -27,7 +29,7 @@ import com.google.gson.GsonBuilder;
  *
  */
 public class RegionsOfInterest implements JSON_TypeAdapterBackedModule<FeatureCollection>,
-BranchAverageableModule<RegionsOfInterest> {
+BranchAverageableModule<RegionsOfInterest>, MergeableRuptureModule<RegionsOfInterest> {
 	
 	private List<Region> regions;
 	private List<IncrementalMagFreqDist> regionalMFDs;
@@ -156,15 +158,6 @@ BranchAverageableModule<RegionsOfInterest> {
 	 */
 	public List<TectonicRegionType> getTRTs() {
 		return regionalTRTs == null ? null : Collections.unmodifiableList(regionalTRTs);
-	}
-	
-	public boolean areRegionsIdenticalTo(RegionsOfInterest o) {
-		if (regions.size() != o.regions.size())
-			return false;
-		for (int i=0; i<regions.size(); i++)
-			if (!regions.get(i).equalsRegion(o.regions.get(i)))
-				return false;
-		return true;
 	}
 
 	@Override
@@ -309,6 +302,57 @@ BranchAverageableModule<RegionsOfInterest> {
 			}
 			
 		};
+	}
+
+	@Override
+	public RegionsOfInterest getForMergedRuptureSet(FaultSystemRupSet mergedRupSet, MergedRupSetMappings mappings,
+			List<RegionsOfInterest> originalModules) {
+		Preconditions.checkState(originalModules.size() == mappings.getNumInputRupSets());
+		List<Region> mergedRegions = new ArrayList<>();
+		List<IncrementalMagFreqDist> mergedRegionalMFDs = null;
+		List<TectonicRegionType> mergedRegionalTRTs = null;
+		
+		for (RegionsOfInterest roi : originalModules) {
+			if (roi == null)
+				continue;
+			for (int r=0; r<roi.regions.size(); r++) {
+				Region reg = roi.regions.get(r);
+				TectonicRegionType trt = roi.regionalTRTs == null ? null : roi.regionalTRTs.get(r);
+				IncrementalMagFreqDist mfd = roi.regionalMFDs == null ? null : roi.regionalMFDs.get(r);
+				int prevIndex = mergedRegions.indexOf(reg);
+				boolean add = prevIndex < 0;;
+				if (prevIndex >= 0) {
+					// duplicate region, but could be a different TRT
+					TectonicRegionType prevTRT = mergedRegionalTRTs == null ? null : mergedRegionalTRTs.get(prevIndex);
+					if (Objects.equal(trt, prevTRT))
+						// skip if both null, or both non-null and equal
+						// TODO we could consider checking the MFDs (if present); add them? add them only if different?
+						continue;
+					// it's not identical, add it
+					add = true;
+				}
+				if (add) {
+					mergedRegions.add(reg);
+					if (trt != null || mergedRegionalTRTs != null) {
+						if (mergedRegionalTRTs == null)
+							mergedRegionalTRTs = new ArrayList<>();
+						while (mergedRegionalTRTs.size() < mergedRegions.size()-1)
+							mergedRegionalTRTs.add(null);
+						mergedRegionalTRTs.add(trt);
+					}
+					if (mfd != null || mergedRegionalMFDs != null) {
+						if (mergedRegionalMFDs == null)
+							mergedRegionalMFDs = new ArrayList<>();
+						while (mergedRegionalMFDs.size() < mergedRegions.size()-1)
+							mergedRegionalMFDs.add(null);
+						mergedRegionalMFDs.add(mfd);
+					}
+				}
+			}
+		}
+		if (mergedRegions.isEmpty())
+			return null;
+		return new RegionsOfInterest(mergedRegions, mergedRegionalMFDs, mergedRegionalTRTs);
 	}
 
 }

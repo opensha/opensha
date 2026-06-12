@@ -46,6 +46,11 @@ public class BranchSectParticMFDs extends AbstractBranchMFDs {
 				EvenlyDiscretizedFunc refMFD) {
 			return sol.calcParticipationMFD_forSect(sectID, refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
 		}
+
+		@Override
+		public Class<? extends BranchSectParticMFDs> getBuiltType() {
+			return BranchSectParticMFDs.class;
+		}
 	}
 	
 	public static void combine(List<BranchSectParticMFDs> mfdsList, List<Double> weights) {

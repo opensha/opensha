@@ -624,7 +624,7 @@ public abstract class AbstractLogicTreeCombiner {
 			
 			// redraw duplicates if we have almost as many (or more) samples than exist in the outer tree
 			boolean redrawDuplicates = numOuterSamples < (int)(0.95*outerTree.size());
-			LogicTree<?> sampledOuterTree = outerTree.sample(numOuterSamples, redrawDuplicates, pairwiseSampleRand, false);
+			LogicTree<?> sampledOuterTree = outerTree.sample(numOuterSamples, redrawDuplicates, pairwiseSampleRand.nextLong(), false);
 			Preconditions.checkState(sampledOuterTree.size() == numOuterSamples,
 					"Resampled outer tree from %s to %s, but asked for %s samples",
 					outerTree.size(), sampledOuterTree.size(), numOuterSamples);
@@ -648,7 +648,7 @@ public abstract class AbstractLogicTreeCombiner {
 		Map<LogicTreeBranch<?>, Integer> origIndexes = new HashMap<>(combTree.size());
 		for (int i=0; i<combTree.size(); i++)
 			origIndexes.put(combTree.getBranch(i), i);
-		combTree = combTree.sample(maxNumCombinations, true, new Random(randSeed));
+		combTree = combTree.sample(maxNumCombinations, true, randSeed);
 		
 		// rebuild the lists
 		List<LogicTreeBranch<LogicTreeNode>> modCombBranches = new ArrayList<>(maxNumCombinations);

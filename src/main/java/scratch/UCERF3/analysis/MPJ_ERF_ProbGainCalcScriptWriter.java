@@ -74,9 +74,9 @@ public class MPJ_ERF_ProbGainCalcScriptWriter {
 		mpjWrite.setHeadless(true);
 		
 		BatchScriptWriter batchWrite = site.forBranch(null);
-		if (site == RunSites.HPCC) {
-			((USC_HPCC_ScriptWriter)batchWrite).setNodesAddition(null);
-		}
+//		if (site == RunSites.HPCC) {
+//			((USC_HPCC_ScriptWriter)batchWrite).setNodesAddition(null);
+//		}
 		
 //		List<BPTAveragingTypeOptions> calcOpsList = Lists.newArrayList(BPTAveragingTypeOptions.AVE_RI_AVE_NORM_TIME_SINCE);
 		List<BPTAveragingTypeOptions> calcOpsList = Lists.newArrayList(BPTAveragingTypeOptions.values());
@@ -105,7 +105,7 @@ public class MPJ_ERF_ProbGainCalcScriptWriter {
 				
 				List<String> script = mpjWrite.buildScript(className, classArgs);
 				
-				batchWrite.writeScript(new File(writeDir, pbsName), script, jobMins, nodes, site.getPPN(null), null);
+				batchWrite.writeScript(new File(writeDir, pbsName), script, jobMins, nodes, site.getPPN(null), -1, null);
 			}
 		}
 	}

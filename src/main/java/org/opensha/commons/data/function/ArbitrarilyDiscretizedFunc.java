@@ -273,11 +273,42 @@ implements Serializable {
 	}
 
 	@Override
-	int getXIndexBefore(double x) {
+	public int getXIndexBefore(double x) {
 		int ind = points.binarySearch(new Point2D.Double(x, 0));
 		if (ind < 0)
+			// not an exact match
 			return -ind-2;
-		return ind-1;
+		// exact match
+		return ind;
+	}
+
+	@Override
+	public int getClosestXIndex(double x) {
+		int n = size();
+		if (n == 0)
+			return -1;
+
+		if (x <= getMinX())
+			return 0;
+
+		if (x >= getMaxX())
+			return n - 1;
+
+		int ind = points.binarySearch(new Point2D.Double(x, 0d));
+		if (ind >= 0)
+			// exact match
+			return ind;
+
+		int ip = -ind - 1; // insertion point: first index with x_i > x
+		// valid because we already excluded x<=min and x>=max, so 0 < ip < n
+		int lo = ip - 1;
+		int hi = ip;
+
+		double xLo = getX(lo);
+		double xHi = getX(hi);
+
+		// tie-break: choose lower index if exactly midway
+		return (x - xLo) <= (xHi - x) ? lo : hi;
 	}
 
 	private double extrapolate(double x1, double x2, double y1, double y2,

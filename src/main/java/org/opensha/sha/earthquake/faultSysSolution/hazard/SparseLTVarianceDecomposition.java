@@ -23,14 +23,15 @@ import com.google.common.primitives.Doubles;
 
 public class SparseLTVarianceDecomposition extends AbstractLTVarianceDecomposition {
 
-	public SparseLTVarianceDecomposition(LogicTree<?> tree, List<LogicTreeLevel<?>> uniqueSamplingLevels, ExecutorService exec) {
-		super(tree, uniqueSamplingLevels, exec);
+	public SparseLTVarianceDecomposition(List<? extends LogicTreeLevel<?>> levels, List<? extends LogicTreeBranch<?>> branches,
+			List<LogicTreeLevel<?>> uniqueSamplingLevels, ExecutorService exec) {
+		super(levels, branches, uniqueSamplingLevels, exec);
 	}
 
 	@Override
 	public VarianceContributionResult calcMapVarianceContributionForLevel(int levelIndex, LogicTreeLevel<?> level,
 			Map<LogicTreeNode, List<GriddedGeoDataSet>> choiceMaps, Map<LogicTreeNode, List<Double>> choiceMapWeights) {
-		Preconditions.checkState(allMaps.length == tree.size());
+		Preconditions.checkState(allMaps.length == branches.size());
 		Preconditions.checkState(allMaps.length == allWeights.size());
 		
 		if (uniqueSamplingLevels.contains(level)) {
@@ -134,7 +135,7 @@ public class SparseLTVarianceDecomposition extends AbstractLTVarianceDecompositi
 		
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		table.addLine("Branch Level", "Average Variance Contribution", "Maximum Variance Contribution");
-		int numLevels = tree.getLevels().size();
+		int numLevels = levels.size();
 		Preconditions.checkState(results.size() == numLevels);
 		int numWithResults = 0;
 		for (int l=0; l<numLevels; l++) {
@@ -143,7 +144,7 @@ public class SparseLTVarianceDecomposition extends AbstractLTVarianceDecompositi
 				continue;
 			numWithResults++;
 			
-			LogicTreeLevel<?> level = tree.getLevels().get(l);
+			LogicTreeLevel<?> level = levels.get(l);
 			
 			String levelName = level.getName();
 			if (uniqueSamplingLevels.size() > 1 && uniqueSamplingLevels.get(0) == level) {

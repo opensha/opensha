@@ -62,7 +62,7 @@ public enum PRVI25_SubductionBValues implements SectionSupraSeisBValues.Constant
 	}
 
 	@Override
-	public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+	public double getNodeWeight() {
 		return weight;
 	}
 

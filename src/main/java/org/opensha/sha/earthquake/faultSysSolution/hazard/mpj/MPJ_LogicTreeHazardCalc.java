@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -63,18 +64,21 @@ import org.opensha.sha.imr.logicTree.ScalarIMRsLogicTreeNode;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
+import com.google.common.io.Files;
 import com.google.common.primitives.Doubles;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import edu.usc.kmilner.mpj.taskDispatch.AsyncPostBatchHook;
 import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
+import mpi.MPI;
 
 public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 
 	private File outputDir;
 
 	private SolutionLogicTree solTree;
+	private LogicTree<?> analysisTree;
 	
 	static final double GRID_SPACING_DEFAULT = 0.1d;
 	private double gridSpacing = GRID_SPACING_DEFAULT;
@@ -125,6 +129,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 
 	private boolean noMFDs;
 	private boolean noProxyRups;
+	
+	public static final String ORIG_LOGIC_TREE_FILE_NAME = "solution_logic_tree.json";
 
 	public MPJ_LogicTreeHazardCalc(CommandLine cmd) throws IOException {
 		super(cmd);
@@ -153,6 +159,13 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			} else {
 				solTree = SolutionLogicTree.load(inputFile);
 			}
+		}
+		if (cmd.hasOption("analysis-logic-tree")) {
+			File logicTreeFile = new File(cmd.getOptionValue("analysis-logic-tree"));
+			Preconditions.checkArgument(logicTreeFile.exists(), "Logic tree file doesn't exist: %s",
+					logicTreeFile.getAbsolutePath());
+			analysisTree = LogicTree.read(logicTreeFile);
+			Preconditions.checkState(analysisTree.size() == solTree.getLogicTree().size());
 		}
 		
 		if (rank == 0)
@@ -304,11 +317,15 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		if (rank == 0) {
 			if (nodesAverageDir.exists()) {
 				// delete anything preexisting
-				for (File file : nodesAverageDir.listFiles())
-					Preconditions.checkState(FileUtils.deleteRecursive(file));
-			} else {
-				Preconditions.checkState(nodesAverageDir.mkdir() || nodesAverageDir.exists());
+				File delDir = new File(outputDir, nodesAverageDir.getName()+"_delete_"+(new Random().nextInt()));
+				Files.move(nodesAverageDir, delDir);
+				Preconditions.checkState(FileUtils.deleteRecursive(delDir));
+				try {
+					Thread.sleep(1000);
+				} catch (Exception e) {}
+				Preconditions.checkState(!nodesAverageDir.exists());
 			}
+			Preconditions.checkState(nodesAverageDir.mkdir() || nodesAverageDir.exists());
 		}
 		myAverageDir = new File(nodesAverageDir, "rank_"+rank);
 	}
@@ -362,6 +379,11 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						
 						File rankDir = new File(nodesAverageDir, "rank_"+rank);
 						debug("Async: Merging in p="+(float)periods[p]+" mean curves from "+rank+": "+rankDir.getAbsolutePath());
+						if (!rankDir.exists()) {
+							try {
+								Thread.sleep(1000);
+							} catch (InterruptedException e) {}
+						}
 						Preconditions.checkState(rankDir.exists(), "Dir doesn't exist: %s", rankDir.getAbsolutePath());
 						
 						LogicTreeCurveAverager rankCurves = LogicTreeCurveAverager.readRawCacheDir(rankDir, periods[p], loadExec);
@@ -407,14 +429,27 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				zout.closeEntry();
 				
 				// write logic tree
-				LogicTree<?> tree = solTree.getLogicTree();
-				zout.putNextEntry(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME);
-				writer = new BufferedWriter(new OutputStreamWriter(zout.getOutputStream()));
 				Gson gson = new GsonBuilder().setPrettyPrinting()
 						.registerTypeAdapter(LogicTree.class, new LogicTree.Adapter<>()).create();
-				gson.toJson(tree, LogicTree.class, writer);
-				writer.flush();
-				zout.closeEntry();
+				if (analysisTree != null) {
+					zout.putNextEntry(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME);
+					writer = new BufferedWriter(new OutputStreamWriter(zout.getOutputStream()));
+					gson.toJson(analysisTree, LogicTree.class, writer);
+					writer.flush();
+					zout.closeEntry();
+					
+					zout.putNextEntry(ORIG_LOGIC_TREE_FILE_NAME);
+					writer = new BufferedWriter(new OutputStreamWriter(zout.getOutputStream()));
+					gson.toJson(solTree.getLogicTree(), LogicTree.class, writer);
+					writer.flush();
+					zout.closeEntry();
+				} else {
+					zout.putNextEntry(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME);
+					writer = new BufferedWriter(new OutputStreamWriter(zout.getOutputStream()));
+					gson.toJson(solTree.getLogicTree(), LogicTree.class, writer);
+					writer.flush();
+					zout.closeEntry();
+				}
 				
 				zout.close();
 				
@@ -468,7 +503,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		if (runningMeanCurves == null) {
 			HashSet<LogicTreeNode> variableNodes = new HashSet<>();
 			HashMap<LogicTreeNode, LogicTreeLevel<?>> nodeLevels = new HashMap<>();
-			LogicTreeCurveAverager.populateVariableNodes(solTree.getLogicTree(), variableNodes, nodeLevels);
+			LogicTreeCurveAverager.populateVariableNodes(analysisTree == null ? solTree.getLogicTree() : analysisTree, variableNodes, nodeLevels);
 			runningMeanCurves = new LogicTreeCurveAverager[periods.length];
 			for (int p=0; p<periods.length; p++)
 				runningMeanCurves[p] = new LogicTreeCurveAverager(gridRegion.getNodeList(), variableNodes, nodeLevels);
@@ -558,7 +593,14 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			}
 		}
 		
+		// wait for everyone to write them out
+		if (!SINGLE_NODE_NO_MPJ)
+			MPI.COMM_WORLD.Barrier();
+		
 		if (rank == 0) {
+			try {
+				Thread.sleep(5000);
+			} catch (InterruptedException e) {}
 			debug("waiting for any post batch hook operations to finish");
 			((AsyncPostBatchHook)postBatchHook).shutdown();
 			debug("post batch hook done");
@@ -937,10 +979,11 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 //			}
 			
 			double branchWeight = solTree.getLogicTree().getBranchWeight(branch);
+			LogicTreeBranch<?> analysisBranch = analysisTree == null ? branch : analysisTree.getBranch(index);
 			for (int p=0; p<periods.length; p++) {
 				DiscretizedFunc[] curves = calc.getCurves(periods[p]);
 				
-				runningMeanCurves[p].processBranchCurves(branch, branchWeight, curves);
+				runningMeanCurves[p].processBranchCurves(analysisBranch, branchWeight, curves);
 			}
 			
 			for (ReturnPeriods rp : rps) {
@@ -991,6 +1034,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		ops.addRequiredOption("if", "input-file", true, "Path to input file (solution logic tree zip)");
 		ops.addOption("lt", "logic-tree", true, "Path to logic tree JSON file, required if a results directory is "
 				+ "supplied with --input-file");
+		ops.addOption(null, "analysis-logic-tree", true, "Path to separate logic tree used for analysis that should be used "
+				+ "for writing the hazard results.");
 		ops.addRequiredOption("od", "output-dir", true, "Path to output directory");
 		ops.addOption("of", "output-file", true, "Path to output zip file. Default will be based on the output directory");
 		ops.addOption("sp", "grid-spacing", true, "Grid spacing in decimal degrees. Default: "+(float)GRID_SPACING_DEFAULT);

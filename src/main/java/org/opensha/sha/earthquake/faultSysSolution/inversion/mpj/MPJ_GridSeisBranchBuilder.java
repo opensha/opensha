@@ -1429,8 +1429,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 					fullTree.write(writeFullTreeFile);
 				}
 				if (writeRandTreeFile != null && numSamples > 0) {
-					Random rand = new Random((long)fullTree.size()*numSamples);
-					LogicTree<?> sampled = fullTree.sample(numSamples, false, rand);
+					LogicTree<?> sampled = fullTree.sample(numSamples, false, (long)fullTree.size()*numSamples);
 					debug("Writing "+sampled.size()+" sampled branches to "+writeRandTreeFile.getAbsolutePath());
 					sampled.write(writeRandTreeFile);
 				}

@@ -45,6 +45,11 @@ public class BranchParentSectParticMFDs extends AbstractBranchMFDs {
 				EvenlyDiscretizedFunc refMFD) {
 			return sol.calcParticipationMFD_forParentSect(sectID, refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
 		}
+
+		@Override
+		public Class<? extends BranchParentSectParticMFDs> getBuiltType() {
+			return BranchParentSectParticMFDs.class;
+		}
 	}
 	
 	/**

@@ -1,16 +1,20 @@
 package org.opensha.sha.earthquake.faultSysSolution.modules;
 
+import java.util.List;
+import java.util.Map;
+
 import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.util.MergedSolutionCreator.MergedRupSetMappings;
 
 import com.google.common.base.Preconditions;
 
 public abstract class SectSlipRates implements SubModule<FaultSystemRupSet>, BranchAverageableModule<SectSlipRates>,
-SplittableRuptureModule<SectSlipRates>{
+SplittableRuptureModule<SectSlipRates>, MergeableRuptureModule<SectSlipRates> {
 	
 	protected FaultSystemRupSet parent;
 
@@ -155,6 +159,19 @@ SplittableRuptureModule<SectSlipRates>{
 		@Override
 		public SectSlipRates getForSplitRuptureSet(FaultSystemRupSet splitRupSet, RuptureSetSplitMappings mappings) {
 			return this.copy(splitRupSet);
+		}
+
+		@Override
+		public SectSlipRates getForMergedRuptureSet(FaultSystemRupSet mergedRupSet, MergedRupSetMappings mappings,
+				List<SectSlipRates> originalModules) {
+			for (SectSlipRates orig : originalModules) {
+				if (orig == null)
+					return null;
+				if (!(orig instanceof Default))
+					return new Precomputed(mergedRupSet, getSlipRates(), getSlipRateStdDevs())
+							.getForMergedRuptureSet(mergedRupSet, mappings, originalModules);
+			}
+			return new Default(mergedRupSet);
 		}
 		
 	}
@@ -318,6 +335,31 @@ SplittableRuptureModule<SectSlipRates>{
 					filteredSlipRateStdDevs[s] = weight*this.slipRateStdDevs[origID];
 			}
 			return new Precomputed(splitRupSet, filteredSlipRates, filteredSlipRateStdDevs);
+		}
+
+		@Override
+		public SectSlipRates getForMergedRuptureSet(FaultSystemRupSet mergedRupSet, MergedRupSetMappings mappings,
+				List<SectSlipRates> originalModules) {
+			double[] mergedSlipRates = null;
+			double[] mergedSlipRateStdDevs = null;
+			for (int i=0; i<originalModules.size(); i++) {
+				SectSlipRates orig = originalModules.get(i);
+				if (orig == null)
+					return null;
+				Map<Integer, Integer> sectMappings = mappings.getSectMappingsOldToNew(i);
+				if (mergedSlipRates == null && orig.getSlipRates() != null)
+					mergedSlipRates = new double[mergedRupSet.getNumSections()];
+				if (mergedSlipRateStdDevs == null && orig.getSlipRateStdDevs() != null)
+					mergedSlipRateStdDevs = new double[mergedRupSet.getNumSections()];
+				for (int origSectIndex : sectMappings.keySet()) {
+					int mergedSectIndex = sectMappings.get(origSectIndex);
+					if (mergedSlipRates != null)
+						mergedSlipRates[mergedSectIndex] = orig.getSlipRate(origSectIndex);
+					if (mergedSlipRateStdDevs != null)
+						mergedSlipRateStdDevs[mergedSectIndex] = orig.getSlipRateStdDev(origSectIndex);
+				}
+			}
+			return new Precomputed(mergedRupSet, mergedSlipRates, mergedSlipRateStdDevs);
 		}
 
 	}

@@ -102,7 +102,7 @@ public class UCERF3_EAL_ScriptWriter {
 		
 		File pbsFile = new File(localDir, jobName+".pbs");
 		USC_HPCC_ScriptWriter usc = new USC_HPCC_ScriptWriter();
-		script = usc.buildScript(script, mins, nodes, 8, queue);
+		script = usc.buildScript(script, mins, nodes, 8, -1, queue);
 		usc.writeScript(pbsFile, script);
 	}
 

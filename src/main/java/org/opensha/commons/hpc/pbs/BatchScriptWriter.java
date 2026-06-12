@@ -9,11 +9,11 @@ import com.google.common.collect.Lists;
 
 public abstract class BatchScriptWriter {
 	
-	public abstract List<String> getBatchHeader(int mins, int nodes, int ppn, String queue);
+	public abstract List<String> getBatchHeader(int mins, int nodes, int ppn, int memGBperNode, String queue);
 	
-	public List<String> buildScript(List<String> script, int mins, int nodes, int ppn, String queue) {
+	public List<String> buildScript(List<String> script, int mins, int nodes, int ppn, int memGBperNode, String queue) {
 		script = Lists.newArrayList(script);
-		List<String> pbs = getBatchHeader(mins, nodes, ppn, queue);
+		List<String> pbs = getBatchHeader(mins, nodes, ppn, memGBperNode, queue);
 		
 		if (!pbs.get(pbs.size()-1).isEmpty())
 			pbs.add("");
@@ -23,9 +23,9 @@ public abstract class BatchScriptWriter {
 		return script;
 	}
 	
-	public void writeScript(File file, List<String> script, int mins, int nodes, int ppn, String queue)
+	public void writeScript(File file, List<String> script, int mins, int nodes, int ppn, int memGBperNode, String queue)
 	throws IOException {
-		List<String> pbs = buildScript(script, mins, nodes, ppn, queue);
+		List<String> pbs = buildScript(script, mins, nodes, ppn, memGBperNode, queue);
 		writeScript(file, pbs);
 	}
 	

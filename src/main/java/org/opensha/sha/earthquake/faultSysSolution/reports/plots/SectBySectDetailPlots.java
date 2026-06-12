@@ -2151,7 +2151,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		return riRateStr(1d/func.getInterpolatedY(mag));
 	}
 	
-	private static String riRateStr(double ri) {
+	private synchronized static String riRateStr(double ri) {
 		if (ri > 1d)
 			return riDF.format(ri);
 		return (float)ri+"";

@@ -42,6 +42,10 @@ public class GriddedGeoDataSet extends AbstractGeoDataSet {
 		this(region, false);
 	}
 	
+	public GriddedGeoDataSet(GriddedRegion region, double[] values) {
+		this(region, false, values);
+	}
+	
 	public GriddedGeoDataSet(GriddedRegion region, boolean latitudeX) {
 		this(region, latitudeX, new double[region.getNodeCount()]);
 	}

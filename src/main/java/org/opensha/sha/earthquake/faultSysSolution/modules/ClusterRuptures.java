@@ -32,6 +32,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.Plausib
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureConnectionSearch;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.earthquake.faultSysSolution.util.MergedSolutionCreator.MergedRupSetMappings;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -228,7 +229,7 @@ SplittableRuptureModule<ClusterRuptures> {
 		return new SingleStranded(rupSet, null);
 	}
 
-	public static class SingleStranded extends ClusterRuptures implements ArchivableModule {
+	public static class SingleStranded extends ClusterRuptures implements ArchivableModule, MergeableRuptureModule<SingleStranded> {
 		
 		private List<ClusterRupture> clusterRuptures;
 		
@@ -364,6 +365,17 @@ SplittableRuptureModule<ClusterRuptures> {
 		public ClusterRuptures getForSplitRuptureSet(FaultSystemRupSet splitRupSet, RuptureSetSplitMappings mappings) {
 			// don't keep cache, new ruptures will have new IDs and FaultSection indexes
 			return new SingleStranded(splitRupSet, null);
+		}
+
+		@Override
+		public SingleStranded getForMergedRuptureSet(FaultSystemRupSet mergedRupSet, MergedRupSetMappings mappings,
+				List<SingleStranded> originalModules) {
+			// don't keep cache, new ruptures will have new IDs and FaultSection indexes
+			for (ClusterRuptures orig : originalModules) {
+				if (orig == null || !(orig instanceof SingleStranded))
+					return null;
+			}
+			return new SingleStranded(mergedRupSet, null);
 		}
 		
 	}

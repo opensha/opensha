@@ -26,7 +26,7 @@ public class StampedeScriptWriter extends BatchScriptWriter {
 
 	@Override
 	public List<String> getBatchHeader(int mins, int nodes,
-			int ppn, String queue) {
+			int ppn, int memGBperNode, String queue) {
 		ArrayList<String> pbs = new ArrayList<String>();
 		
 		if (queue == null || queue.isEmpty())
@@ -43,6 +43,7 @@ public class StampedeScriptWriter extends BatchScriptWriter {
 			pbs.add("#SBATCH -N "+nodes);
 		pbs.add("#SBATCH -n "+cpus);
 		pbs.add("#SBATCH -p "+queue);
+		pbs.add("#SBATCH --mem="+memGBperNode+"G");
 		pbs.add("");
 		pbs.add("PBS_NODEFILE=\"/tmp/${USER}-hostfile-${SLURM_JOBID}\"");
 		pbs.add("echo \"creating PBS_NODEFILE: $PBS_NODEFILE\"");

@@ -2,7 +2,11 @@ package org.opensha.sha.earthquake.faultSysSolution.util;
 
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
+import java.awt.image.BufferedImage;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -23,9 +27,13 @@ import java.util.zip.GZIPOutputStream;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
+import org.jfree.chart.ChartRenderingInfo;
 import org.jfree.chart.annotations.XYTextAnnotation;
+import org.jfree.chart.axis.AxisSpace;
+import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.ui.RectangleEdge;
+import org.jfree.chart.ui.RectangleInsets;
 import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.Range;
 import org.opensha.commons.data.CSVFile;
@@ -906,7 +914,8 @@ public class SolHazardMapCalc {
 	
 	public void plotMultiMap(File outputDir, String prefix, List<GriddedGeoDataSet> xyzs, CPT cpt,
 			String title, int titleFontSize, List<String> subtitles, int subtitleFontSize,
-			String zLabel, boolean horizontal, int shorterDimension, boolean axisLables, boolean axesTicks) throws IOException {
+			String zLabel, boolean horizontal, int targetShorterDimension, int minIndividualDimension,
+			boolean axisLables, boolean axesTicks) throws IOException {
 		GriddedGeoDataSet refXYZ = xyzs.get(0);		
 		Range lonRange, latRange;
 		if (mapPlotRegion == null) {
@@ -964,8 +973,9 @@ public class SolHazardMapCalc {
 		
 		gp.drawGraphPanel(specs, false, false, lonRanges, latRanges);
 		
+		Font subtitleFont = null;
 		if (subtitles != null) {
-			Font subtitleFont = new Font(Font.SANS_SERIF, Font.PLAIN, subtitleFontSize);
+			subtitleFont = new Font(Font.SANS_SERIF, Font.PLAIN, subtitleFontSize);
 			PlotUtils.addSubplotTitles(gp, subtitles, subtitleFont);
 		}
 		
@@ -993,11 +1003,91 @@ public class SolHazardMapCalc {
 		int width;
 		int height;
 		if (horizontal) {
-			width = -1;
-			height = shorterDimension;
+			height = targetShorterDimension;
+			PlotUtils.fixAspectRatio(gp, height, false, true);
+			width = gp.getChartPanel().getWidth();
 		} else {
-			width = shorterDimension;
-			height = -1;
+			width = targetShorterDimension;
+			PlotUtils.fixAspectRatio(gp, width, true);
+			height = gp.getChartPanel().getHeight();
+		}
+		
+		if (minIndividualDimension > 0) {
+			ChartRenderingInfo ci = PlotUtils.getRenderingInfo(gp, width, height);
+			Rectangle2D subplotArea = ci.getPlotInfo().getSubplotInfo(0).getPlotArea();
+			if (horizontal) {
+				if (subplotArea.getWidth() < minIndividualDimension) {
+					double widthEach = subplotArea.getWidth();
+					double padding = ci.getPlotInfo().getPlotArea().getWidth() - widthEach*specs.size();
+					Preconditions.checkState(padding >= 0d);
+					width = (int)(minIndividualDimension*specs.size() + padding + 0.5);
+					height = -1;
+				}
+			} else {
+				if (subplotArea.getHeight() < minIndividualDimension) {
+					double heightEach = subplotArea.getHeight();
+					double padding = ci.getPlotInfo().getPlotArea().getHeight() - heightEach*specs.size();
+					Preconditions.checkState(padding >= 0d);
+					height = (int)(minIndividualDimension*specs.size() + padding + 0.5);
+					width = -1;
+				}
+			}
+		}
+		
+		if (subtitles != null && horizontal) {
+			// check for subtitle overflow
+			if (height < 0) {
+				PlotUtils.fixAspectRatio(gp, width, true);
+				height = gp.getChartPanel().getHeight();
+			}
+			ChartRenderingInfo ci = PlotUtils.getRenderingInfo(gp, width, height);
+			Rectangle2D subplotArea = ci.getPlotInfo().getSubplotInfo(0).getPlotArea();
+			Rectangle2D subplotDataArea = ci.getPlotInfo().getSubplotInfo(0).getDataArea();
+			// extend by most of a subplot gap (have half on each side available
+			double subplotWidth = subplotArea.getWidth() + 0.95*gp.getPlotPrefs().getSubplotGap();
+			BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+			Graphics2D g2 = image.createGraphics();
+			boolean anyReduced = false;
+			boolean allReduced = true;
+			FontMetrics fm = g2.getFontMetrics(subtitleFont);
+			
+			List<XYPlot> subplots = PlotUtils.getSubPlots(gp);
+			
+			for (int i=0; i<subplots.size(); i++) {
+				String subtitle = subtitles.get(i);
+				XYPlot subplot = subplots.get(i);
+				Rectangle2D textBounds = fm.getStringBounds(subtitle, g2);
+				double subtitleWidth = textBounds.getWidth();
+				if (subtitleWidth > subplotWidth) {
+					int newSize = (int)((subtitleFontSize * subplotWidth)/subtitleWidth);
+					System.out.println("Scaling subtitle font size down from "+subtitleFontSize+" to "+newSize
+							+" for '"+subtitle+"' with subtitleWidth="+subtitleWidth+" and subplotWidth="+subplotWidth);
+					Font font = new Font(Font.SANS_SERIF, Font.PLAIN, newSize);
+					NumberAxis titleAxis = ((NumberAxis)subplot.getDomainAxis(1));
+					RectangleInsets insets = titleAxis.getLabelInsets();
+					Rectangle2D newTextBounds = g2.getFontMetrics(font).getStringBounds(subtitle, g2);
+					double extraVertical = textBounds.getHeight() - newTextBounds.getHeight();
+					titleAxis.setLabelFont(font);
+					if (extraVertical > 0)
+						titleAxis.setLabelInsets(new RectangleInsets(insets.getTop()+0.5*extraVertical, insets.getLeft(),
+								insets.getBottom()+0.5*extraVertical, insets.getRight()));
+					anyReduced = true;
+				} else {
+					allReduced = false;
+				}
+			}
+			if (anyReduced && !allReduced) {
+				// don't let it change the space used
+				double topSpace = subplotDataArea.getMinY() - subplotArea.getMinY();
+				double bottomSpace = subplotArea.getMaxY() - subplotDataArea.getMaxY();
+
+				AxisSpace fixed = new AxisSpace();
+				fixed.setTop(topSpace);
+				fixed.setBottom(bottomSpace);
+				for (XYPlot subplot : subplots) {
+					subplot.setFixedDomainAxisSpace(fixed);
+				}
+			}
 		}
 		
 		PlotUtils.writePlots(outputDir, prefix, gp, width, height, true, true, 1d, PDFS, 1d, false);

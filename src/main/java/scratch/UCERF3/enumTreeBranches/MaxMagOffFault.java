@@ -5,6 +5,7 @@ import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
+import org.opensha.sha.util.TectonicRegionType;
 
 import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 
@@ -73,5 +74,10 @@ public enum MaxMagOffFault implements U3LogicTreeBranchNode<MaxMagOffFault>, Max
 	@Override
 	public String getShortBranchLevelName() {
 		return "MMaxOFf";
+	}
+
+	@Override
+	public TectonicRegionType getTectonicRegime() {
+		return TectonicRegionType.ACTIVE_SHALLOW;
 	}
 }
