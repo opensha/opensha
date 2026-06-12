@@ -583,6 +583,10 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		return state;
 	}
 	
+	public void setExecutorService(ExecutorService exec) {
+		this.exec = exec;
+	}
+	
 	/**
 	 * Shuts down the thread pool.
 	 */

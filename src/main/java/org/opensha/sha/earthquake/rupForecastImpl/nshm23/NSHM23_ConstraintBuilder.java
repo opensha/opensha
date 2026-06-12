@@ -383,7 +383,7 @@ public class NSHM23_ConstraintBuilder {
 			if (segModel instanceof BinaryRuptureProbabilityCalc) {
 				builder.forBinaryRupProbModel((BinaryRuptureProbabilityCalc)segModel);
 			} else {
-				SectNucleationMFD_Estimator adjustment = segAdjMethod.getAdjustment(segModel);
+				SectNucleationMFD_Estimator adjustment = segAdjMethod.getAdjustment(segModel, Integer.min(16, FaultSysTools.defaultNumThreads()));
 				if (adjustment != null)
 					builder.adjustTargetsForData(adjustment);
 			}

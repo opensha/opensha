@@ -54,7 +54,7 @@ public class GRParticRateEstimator implements SectParticipationRateEstimator {
 			if (segModel instanceof BinaryJumpProbabilityCalc)
 				builder.forBinaryRupProbModel((BinaryJumpProbabilityCalc)segModel);
 			else
-				builder.adjustTargetsForData(NSHM23_ConstraintBuilder.SEG_ADJ_METHOD_DEFAULT.getAdjustment(segModel));
+				builder.adjustTargetsForData(NSHM23_ConstraintBuilder.SEG_ADJ_METHOD_DEFAULT.getAdjustment(segModel, 1));
 		}
 		builder.applyDefModelUncertainties(false);
 		init(rupSet, builder.build());
