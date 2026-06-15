@@ -1,8 +1,12 @@
 package gov.usgs.earthquake.nshmp.erf.nshm27.util;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
+import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.ShortNamed;
+import org.opensha.commons.data.Site;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
@@ -123,6 +127,21 @@ public class NSHM27_RegionLoader {
 		default:
 			throw new IllegalStateException("Unexpected TRT: "+trt);
 		};
+	}
+	
+	public static List<Site> loadHazardSites(NSHM27_SeismicityRegions reg) throws IOException {
+		String regPrefix = reg.name().toLowerCase();
+		CSVFile<String> csv = CSVFile.readStream(NSHM27_RegionLoader.class.getResourceAsStream(
+				"/data/erf/nshm27/"+regPrefix+"/regions/sites-"+regPrefix+".csv"), true);
+		List<Site> sites = new ArrayList<>(csv.getNumRows()-1);
+		for (int row=1; row<csv.getNumRows(); row++) {
+			String name = csv.get(row, 0);
+			Location loc = new Location(csv.getDouble(row, 2), csv.getDouble(row, 1));
+			if (loc.lon < 0)
+				loc = new Location(loc.lat, loc.lon+360);
+			sites.add(new Site(loc, name));
+		}
+		return sites;
 	}
 
 }
