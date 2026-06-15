@@ -1407,11 +1407,11 @@ public class SolSiteHazardCalc {
 								table.addColumn("");
 							table.finalizeLine();
 							
-							for (int i=0; i<numDisaggSources; i++) {
+							for (int i=0; i<myNumSources; i++) {
 								table.initNewLine();
 								for (int d=0; d<numDisagg; d++) {
 									List<DisaggregationSourceRuptureInfo> sources = results[p][d].consolidatedSourceInfo;
-									if (sources == null || sources.size() < i) {
+									if (sources == null || sources.size() <= i) {
 										table.addColumn("");
 										continue;
 									}
@@ -1874,7 +1874,11 @@ public class SolSiteHazardCalc {
 				
 				FaultSysHazardCalcSettings.setIMforPeriod(gmms, task.period);
 				
-				calc.getHazardCurve(logCurve, task.site, gmms, erf, exceedCalc);
+				// point source optimizations can mutate the site, make sure we have our own
+				Site site = new Site(task.site.getLocation());
+				site.addParameterList(task.site);
+				
+				calc.getHazardCurve(logCurve, site, gmms, erf, exceedCalc);
 				
 				LightFixedXFunc linearCurve = new LightFixedXFunc(linearXVals, logCurve.getYVals());
 				task.setResult(linearCurve);
@@ -2380,6 +2384,10 @@ public class SolSiteHazardCalc {
 			while (task != null) {
 				FaultSysHazardCalcSettings.setIMforPeriod(gmms, task.period);
 				
+				// point source optimizations can mutate the site, make sure we have our own
+				Site site = new Site(task.site.getLocation());
+				site.addParameterList(task.site);
+				
 				DisaggResult[] results = new DisaggResult[numDisagg];
 				for (int i=0; i<numDisagg; i++) {
 					double prob, iml;
@@ -2411,7 +2419,7 @@ public class SolSiteHazardCalc {
 					} else {
 						calc.setSkipCalculateSourceExceedanceCurves();
 					}
-					calc.disaggregate(Math.log(iml), task.site, gmms, erf, sourceFilters, calcParams);
+					calc.disaggregate(Math.log(iml), site, gmms, erf, sourceFilters, calcParams);
 					List<DisaggregationSourceRuptureInfo> consolidatedNucleationSourceInfo = null;
 					if (i == 0) {
 						// calculate nucleation
