@@ -228,8 +228,8 @@ public class MFD_ScaledInversionAdjustment extends SectNucleationMFD_Estimator {
 		double[] initial = new double[columns];
 		// starting with unity scale factors will give quicker inversions and slightly better solutions for trivial cases
 		// starting with zeros is slower but seems to give better solutions for complex cases
-//		for (int i=0; i<columns; i++)
-//			initial[i] = 1d;
+		for (int i=0; i<columns; i++)
+			initial[i] = 1d;
 		
 		IntegerSampler sampler = null;
 		
@@ -270,9 +270,9 @@ public class MFD_ScaledInversionAdjustment extends SectNucleationMFD_Estimator {
 			int subIterScalar = 1;
 			
 			long maxTotalIters = minTotalIters * maxRoundScalar;
-			// require at least minTotalIters and convergence (change <1% for 2 consecutive rounds)
+			// require at least minTotalIters and convergence (change <1% for 4 consecutive rounds)
 			CompletionCriteria minCompletion = new CompoundCompletionCriteria(
-					List.of(new EnergyChangeVsPrevCompletionCriteria(0.01, 2),
+					List.of(new EnergyChangeVsPrevCompletionCriteria(0.01, 4),
 							new IterationCompletionCriteria(minTotalIters)), true); // true here means logical and
 			// but bail if we hit maxTotalIters
 			completion = new CompoundCompletionCriteria(
@@ -1342,7 +1342,7 @@ public class MFD_ScaledInversionAdjustment extends SectNucleationMFD_Estimator {
 		// never let a weight exceed this value, happens if rupture probability or section rate estimate is exceedingly low 
 		private static final double MAX_WEIGHT_SCALAR = 1e5;
 		
-		private final static boolean D = true;
+		private final static boolean D = false;
 		
 		private transient RupSetCoruptureMFDStructure structure;
 		private transient FaultSystemRupSet rupSet;
