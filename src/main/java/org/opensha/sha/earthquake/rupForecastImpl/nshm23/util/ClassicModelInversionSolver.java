@@ -151,7 +151,7 @@ public class ClassicModelInversionSolver extends ClusterSpecificInversionSolver 
 			// build rupture set only with analytical sections
 			FaultSystemRupSet analyticalRupSet = rupSet.getForSectionSubSet(analyticalSects, exclusionModel);
 			// inversion configuration for it (required for target MFDs, and then to calc misfits)
-			InversionConfiguration config = factory .buildInversionConfig(analyticalRupSet, branch, threads);
+			InversionConfiguration config = factory.buildInversionConfig(analyticalRupSet, branch, threads);
 			AnalyticalSingleFaultInversionSolver analytical = getAnalyiticalSolver(false); // don't include exclusion model as we'll sent filtered rupture sets
 			FaultSystemSolution analyticalSol = analytical.run(analyticalRupSet, config);
 			double[] analyticalRates = analyticalSol.getRateForAllRups();
