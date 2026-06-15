@@ -16,12 +16,14 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertainBoundedDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertainIncrMagFreqDist;
+import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.util.io.archive.ArchiveInput;
 import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.util.MergedSolutionCreator.MergedRupSetMappings;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
@@ -46,7 +48,7 @@ import scratch.UCERF3.utils.MFD_InversionConstraint;
  *
  */
 public abstract class InversionTargetMFDs implements ArchivableModule, SubModule<FaultSystemRupSet>,
-BranchAverageableModule<InversionTargetMFDs> {
+BranchAverageableModule<InversionTargetMFDs>, MergeableRuptureModule<InversionTargetMFDs> {
 	
 	private FaultSystemRupSet rupSet;
 
@@ -634,6 +636,118 @@ BranchAverageableModule<InversionTargetMFDs> {
 		}
 		if (dest instanceof UncertainIncrMagFreqDist)
 			scaleToTotWeight(((UncertainIncrMagFreqDist)dest).getStdDevs(), totWeight);
+	}
+
+	@Override
+	public InversionTargetMFDs getForMergedRuptureSet(FaultSystemRupSet mergedRupSet, MergedRupSetMappings mappings,
+			List<InversionTargetMFDs> originalModules) {
+		UncertAwareMFDSummation totalRegionalMFD = new UncertAwareMFDSummation();
+		UncertAwareMFDSummation onFaultSupraSeisMFD = new UncertAwareMFDSummation();
+		UncertAwareMFDSummation onFaultSubSeisMFD = new UncertAwareMFDSummation();
+		UncertAwareMFDSummation trulyOffFaultMFD = new UncertAwareMFDSummation();
+		
+		int numSections = mergedRupSet.getNumSections();
+		MFDListBuilder mfdConstraints = new MFDListBuilder(numSections);
+		MFDListBuilder subSeismoOnFaultMFDsList = new MFDListBuilder(numSections);
+		MFDListBuilder supraSeisOnFaultNuclMFDs = new MFDListBuilder(numSections);
+		
+		for (int i=0; i<originalModules.size(); i++) {
+			InversionTargetMFDs target = originalModules.get(i);
+			totalRegionalMFD.add(target.getTotalRegionalMFD());
+			onFaultSupraSeisMFD.add(target.getTotalOnFaultSupraSeisMFD());
+			onFaultSubSeisMFD.add(target.getTotalOnFaultSubSeisMFD());
+			trulyOffFaultMFD.add(target.getTrulyOffFaultMFD());
+			
+			List<? extends IncrementalMagFreqDist> myMFDConstraints = target.getMFD_Constraints();
+			SubSeismoOnFaultMFDs mySubSeismoOnFaultMFDs = target.getOnFaultSubSeisMFDs();
+			List<? extends IncrementalMagFreqDist> mySupraSeisOnFaultNuclMFDs = target.getOnFaultSupraSeisNucleationMFDs();
+			
+			for (int origSectIndex : mappings.getSectMappingsOldToNew(i).keySet()) {
+				int newSectIndex = mappings.getNewSectIndex(i, origSectIndex);
+
+				if (myMFDConstraints != null)
+					mfdConstraints.set(newSectIndex, myMFDConstraints.get(origSectIndex));
+				if (mySubSeismoOnFaultMFDs != null)
+					subSeismoOnFaultMFDsList.set(newSectIndex, mySubSeismoOnFaultMFDs.get(origSectIndex));
+				if (mySupraSeisOnFaultNuclMFDs != null)
+					supraSeisOnFaultNuclMFDs.set(newSectIndex, mySupraSeisOnFaultNuclMFDs.get(origSectIndex));
+			}
+		}
+		
+		SubSeismoOnFaultMFDs subSeisOnFaultMFDs = subSeismoOnFaultMFDsList == null ?
+				null : new SubSeismoOnFaultMFDs(subSeismoOnFaultMFDsList.get());
+		 
+		return new Precomputed(mergedRupSet, totalRegionalMFD.get(), onFaultSupraSeisMFD.get(), onFaultSubSeisMFD.get(),
+				trulyOffFaultMFD.get(), mfdConstraints.get(), subSeisOnFaultMFDs, supraSeisOnFaultNuclMFDs.get());
+	}
+	
+	private static class UncertAwareMFDSummation {
+		
+		private int count = 0;
+		private SummedMagFreqDist pref;
+		private SummedMagFreqDist low;
+		private SummedMagFreqDist high;
+		private UncertaintyBoundType boundType;
+		
+		public void add(IncrementalMagFreqDist mfd) {
+			Preconditions.checkNotNull(mfd);
+			
+			if (count == 0) {
+				pref = new SummedMagFreqDist(mfd.getMinX(), mfd.getMaxX(), mfd.size());
+				if (mfd instanceof UncertainBoundedIncrMagFreqDist) {
+					low = new SummedMagFreqDist(mfd.getMinX(), mfd.getMaxX(), mfd.size());
+					high = new SummedMagFreqDist(mfd.getMinX(), mfd.getMaxX(), mfd.size());
+					boundType = ((UncertainBoundedIncrMagFreqDist)mfd).getBoundType();
+				}
+			} else {
+				Preconditions.checkState(EvenlyDiscretizedFunc.areXValuesIdentical(mfd, pref));
+			}
+			
+			if (low != null && high != null && mfd instanceof UncertainBoundedIncrMagFreqDist) {
+				UncertainBoundedIncrMagFreqDist uncertMFD = (UncertainBoundedIncrMagFreqDist)mfd;
+				Preconditions.checkState(boundType == uncertMFD.getBoundType());
+				low.addIncrementalMagFreqDist(uncertMFD.getLower());
+				high.addIncrementalMagFreqDist(uncertMFD.getUpper());
+			} else {
+				low = null;
+				high = null;
+			}
+			pref.addIncrementalMagFreqDist(mfd);
+		}
+		
+		public IncrementalMagFreqDist get() {
+			if (low == null)
+				return pref;
+			return new UncertainBoundedIncrMagFreqDist(pref, low, high, boundType);
+		}
+		
+	}
+	
+	private static class MFDListBuilder {
+		
+		private int numSections;
+		
+		private List<IncrementalMagFreqDist> mfds;
+
+		public MFDListBuilder(int numSections) {
+			this.numSections = numSections;
+		}
+		
+		public void set(int index, IncrementalMagFreqDist mfd) {
+			if (mfd != null) {
+				if (mfds != null) {
+					mfds = new ArrayList<>(numSections);
+					for (int i=0; i<numSections; i++)
+						mfds.add(null);
+				}
+				mfds.set(index, mfd);
+			}
+		}
+		
+		public List<? extends IncrementalMagFreqDist> get() {
+			return mfds;
+		}
+		
 	}
 
 }

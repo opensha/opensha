@@ -52,6 +52,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
+import org.opensha.sha.earthquake.faultSysSolution.util.MergedSolutionCreator.MergedRupSetMappings;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues;
@@ -2024,6 +2025,35 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		equivB = SectBValuePlot.estBValue(minMag, maxMag, totRate, particMFD.getTotalMomentRate());
 		info += "\nTotal Participation Rate: "+(float)totRate+"\n\tb-value: "+(float)equivB;
 		mfd.setInfo(info);
+	}
+
+	@Override
+	public InversionTargetMFDs getForMergedRuptureSet(FaultSystemRupSet mergedRupSet,
+			MergedRupSetMappings mappings, List<InversionTargetMFDs> originalModules) {
+		InversionTargetMFDs ret = super.getForMergedRuptureSet(mergedRupSet, mappings, originalModules);
+		if (ret == null)
+			return null;
+		
+		// supra seis MFDs can override slip rates, so lets override those as well
+		double[] slipRates = new double[mergedRupSet.getNumSections()];
+		double[] slipRateStdDevs = new double[mergedRupSet.getNumSections()];
+		for (int i=0; i<originalModules.size(); i++) {
+			InversionTargetMFDs targets = originalModules.get(i);
+			if (!(targets instanceof SupraSeisBValInversionTargetMFDs))
+				return ret;
+			SectSlipRates subSlips = ((SupraSeisBValInversionTargetMFDs)targets).getSectSlipRates();
+			if (subSlips == null)
+				return ret;
+			for (int s=0; s<subSlips.size(); s++) {
+				int newIndex = mappings.getNewSectIndex(i, s);
+				slipRates[newIndex] = subSlips.getSlipRate(s);
+				slipRateStdDevs[newIndex] = subSlips.getSlipRateStdDev(s);
+			}
+		}
+		
+		mergedRupSet.addModule(SectSlipRates.precomputed(mergedRupSet, slipRates, slipRateStdDevs));
+		
+		return ret;
 	}
 
 }

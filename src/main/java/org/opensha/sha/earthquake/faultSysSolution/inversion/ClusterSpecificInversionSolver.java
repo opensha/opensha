@@ -113,6 +113,8 @@ public class ClusterSpecificInversionSolver extends InversionSolver.Default {
 			List<InversionMisfits> solMisfits = new ArrayList<>();
 			Map<ConnectivityCluster, InversionMisfitStats> clusterMisfitsMap = new HashMap<>();
 			InversionMisfitProgress largestProgress = null;
+			
+			// TODO: deal with mergeable modules
 
 			for (int i=0; i<solutions.size(); i++) {
 				ConnectivityCluster cluster = clusters.get(i);

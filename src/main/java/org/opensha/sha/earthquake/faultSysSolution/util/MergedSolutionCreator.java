@@ -138,7 +138,15 @@ public class MergedSolutionCreator {
 		return mergedSol;
 	}
 	
-	private static Map<Class<? extends OpenSHA_Module>, OpenSHA_Module> getMergeableRuptureModules(FaultSystemSolution... sols) {
+	public static Map<Class<? extends OpenSHA_Module>, OpenSHA_Module> getMergeableRuptureModules(FaultSystemRupSet... rupSets) {
+		Map<Class<? extends OpenSHA_Module>, OpenSHA_Module> ret = new LinkedHashMap<>();
+		for (FaultSystemRupSet rupSet : rupSets)
+			for (OpenSHA_Module module : rupSet.getModulesAssignableTo(MergeableRuptureModule.class, true))
+				ret.putIfAbsent(module.getClass(), module);
+		return ret;
+	}
+	
+	public static Map<Class<? extends OpenSHA_Module>, OpenSHA_Module> getMergeableRuptureModules(FaultSystemSolution... sols) {
 		Map<Class<? extends OpenSHA_Module>, OpenSHA_Module> ret = new LinkedHashMap<>();
 		for (FaultSystemSolution sol : sols)
 			for (OpenSHA_Module module : sol.getRupSet().getModulesAssignableTo(MergeableRuptureModule.class, true))
@@ -147,7 +155,7 @@ public class MergedSolutionCreator {
 	}
 	
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	private static OpenSHA_Module mergeRuptureModule(OpenSHA_Module module, FaultSystemRupSet mergedRupSet,
+	public static OpenSHA_Module mergeRuptureModule(OpenSHA_Module module, FaultSystemRupSet mergedRupSet,
 			MergedRupSetMappings mappings, FaultSystemSolution... sols) {
 		Class moduleClass = module.getClass();
 		List<OpenSHA_Module> originalModules = new ArrayList<>(sols.length);
@@ -156,7 +164,7 @@ public class MergedSolutionCreator {
 		return ((MergeableRuptureModule)module).getForMergedRuptureSet(mergedRupSet, mappings, originalModules);
 	}
 	
-	private static Map<Class<? extends OpenSHA_Module>, OpenSHA_Module> getMergeableSolutionModules(FaultSystemSolution... sols) {
+	public static Map<Class<? extends OpenSHA_Module>, OpenSHA_Module> getMergeableSolutionModules(FaultSystemSolution... sols) {
 		Map<Class<? extends OpenSHA_Module>, OpenSHA_Module> ret = new LinkedHashMap<>();
 		for (FaultSystemSolution sol : sols)
 			for (OpenSHA_Module module : sol.getModulesAssignableTo(MergeableSolutionModule.class, true))
