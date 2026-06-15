@@ -982,9 +982,14 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 	
 	private SectAreas getSectAreas() {
-		if (!hasModule(SectAreas.class))
-			addModule(SectAreas.fromFaultSectData(this));
-		return requireModule(SectAreas.class);
+		SectAreas areas = getModule(SectAreas.class);
+		if (areas == null) {
+			// offer it, don't set it directly, because another thread could be trying to add it as well
+			// offerAvailableModule synchronizes and will prevent race conditions
+			offerAvailableModule(()->SectAreas.fromFaultSectData(this), SectAreas.class);
+			areas = requireModule(SectAreas.class);
+		}
+		return areas;
 	}
 
 	/**
@@ -1149,9 +1154,14 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @return section slip rates
 	 */
 	public SectSlipRates getSectSlipRates() {
-		if (!hasModule(SectSlipRates.class))
-			addModule(SectSlipRates.fromFaultSectData(this));
-		return requireModule(SectSlipRates.class);
+		SectSlipRates slips = getModule(SectSlipRates.class);
+		if (slips == null) {
+			// offer it, don't set it directly, because another thread could be trying to add it as well
+			// offerAvailableModule synchronizes and will prevent race conditions
+			offerAvailableModule(()->SectSlipRates.fromFaultSectData(this), SectSlipRates.class);
+			slips = requireModule(SectSlipRates.class);
+		}
+		return slips;
 	}
 
 	/**
