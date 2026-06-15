@@ -13,7 +13,7 @@ import com.google.common.base.Preconditions;
  * interface. Multiple {@link DiscretizationType}'s are supported, which define the shape of the PDF from the supplied
  * function.
  */
-public class EvenlyDiscrFuncEmpiricalDistribution implements ContinuousDistribution {
+public class EvenlyDiscrFuncContinuousDistribution implements ContinuousDistribution {
 	
 	public enum DiscretizationType {
 		/**
@@ -58,7 +58,7 @@ public class EvenlyDiscrFuncEmpiricalDistribution implements ContinuousDistribut
 	 * {@link DiscretizationType#FLAT_WITHIN_BIN} discretization.
 	 * @param func
 	 */
-	public EvenlyDiscrFuncEmpiricalDistribution(EvenlyDiscretizedFunc func) {
+	public EvenlyDiscrFuncContinuousDistribution(EvenlyDiscretizedFunc func) {
 		this(func, DiscretizationType.FLAT_WITHIN_BIN);
 	}
 
@@ -68,7 +68,7 @@ public class EvenlyDiscrFuncEmpiricalDistribution implements ContinuousDistribut
 	 * @param func
 	 * @param type
 	 */
-	public EvenlyDiscrFuncEmpiricalDistribution(EvenlyDiscretizedFunc func, DiscretizationType type) {
+	public EvenlyDiscrFuncContinuousDistribution(EvenlyDiscretizedFunc func, DiscretizationType type) {
 		Preconditions.checkNotNull(func);
 		Preconditions.checkNotNull(type);
 		// don't allow it to be changed externally

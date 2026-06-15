@@ -10,13 +10,13 @@ import java.io.StringWriter;
 import org.apache.commons.rng.simple.RandomSource;
 import org.apache.commons.statistics.distribution.ContinuousDistribution;
 import org.junit.Test;
-import org.opensha.commons.data.function.EvenlyDiscrFuncEmpiricalDistribution.DiscretizationType;
+import org.opensha.commons.data.function.EvenlyDiscrFuncContinuousDistribution.DiscretizationType;
 import org.opensha.commons.util.json.ContinuousDistributionTypeAdapter;
 
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
-public class EvenlyDiscrFuncEmpiricalDistributionTest {
+public class EvenlyDiscrFuncContinuousDistributionTest {
 
 	private static final double TOL = 1e-12;
 
@@ -29,7 +29,7 @@ public class EvenlyDiscrFuncEmpiricalDistributionTest {
 
 	@Test
 	public void testPointMass() {
-		ContinuousDistribution dist = new EvenlyDiscrFuncEmpiricalDistribution(
+		ContinuousDistribution dist = new EvenlyDiscrFuncContinuousDistribution(
 				twoPointMassFunc(), DiscretizationType.POINT_MASS);
 
 		assertEquals(0d, dist.getSupportLowerBound(), TOL);
@@ -54,7 +54,7 @@ public class EvenlyDiscrFuncEmpiricalDistributionTest {
 
 	@Test
 	public void testFlatWithinBin() {
-		ContinuousDistribution dist = new EvenlyDiscrFuncEmpiricalDistribution(
+		ContinuousDistribution dist = new EvenlyDiscrFuncContinuousDistribution(
 				twoPointMassFunc(), DiscretizationType.FLAT_WITHIN_BIN);
 
 		assertEquals(-0.5, dist.getSupportLowerBound(), TOL);
@@ -78,7 +78,7 @@ public class EvenlyDiscrFuncEmpiricalDistributionTest {
 
 	@Test
 	public void testSnapToCenterSampler() {
-		ContinuousDistribution dist = new EvenlyDiscrFuncEmpiricalDistribution(
+		ContinuousDistribution dist = new EvenlyDiscrFuncContinuousDistribution(
 				twoPointMassFunc(), DiscretizationType.SNAP_TO_CENTER);
 
 		assertEquals(-0.5, dist.getSupportLowerBound(), TOL);
@@ -99,7 +99,7 @@ public class EvenlyDiscrFuncEmpiricalDistributionTest {
 		func.set(0, 0d);
 		func.set(1, 1d);
 		func.set(2, 0d);
-		ContinuousDistribution dist = new EvenlyDiscrFuncEmpiricalDistribution(func, DiscretizationType.INTERPOLATE);
+		ContinuousDistribution dist = new EvenlyDiscrFuncContinuousDistribution(func, DiscretizationType.INTERPOLATE);
 
 		assertEquals(0d, dist.getSupportLowerBound(), TOL);
 		assertEquals(2d, dist.getSupportUpperBound(), TOL);
@@ -122,7 +122,7 @@ public class EvenlyDiscrFuncEmpiricalDistributionTest {
 	}
 	@Test
 	public void testJsonRoundTrip() throws IOException {
-		EvenlyDiscrFuncEmpiricalDistribution dist = new EvenlyDiscrFuncEmpiricalDistribution(
+		EvenlyDiscrFuncContinuousDistribution dist = new EvenlyDiscrFuncContinuousDistribution(
 				twoPointMassFunc(), DiscretizationType.FLAT_WITHIN_BIN);
 		StringWriter stringWriter = new StringWriter();
 		ContinuousDistributionTypeAdapter.get().write(new JsonWriter(stringWriter), dist);

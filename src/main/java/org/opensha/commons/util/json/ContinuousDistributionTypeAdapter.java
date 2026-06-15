@@ -27,8 +27,8 @@ import org.apache.commons.statistics.distribution.TriangularDistribution;
 import org.apache.commons.statistics.distribution.TruncatedNormalDistribution;
 import org.apache.commons.statistics.distribution.UniformContinuousDistribution;
 import org.apache.commons.statistics.distribution.WeibullDistribution;
-import org.opensha.commons.data.function.EvenlyDiscrFuncEmpiricalDistribution;
-import org.opensha.commons.data.function.EvenlyDiscrFuncEmpiricalDistribution.DiscretizationType;
+import org.opensha.commons.data.function.EvenlyDiscrFuncContinuousDistribution;
+import org.opensha.commons.data.function.EvenlyDiscrFuncContinuousDistribution.DiscretizationType;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 
 import com.google.common.base.Preconditions;
@@ -57,8 +57,8 @@ public class ContinuousDistributionTypeAdapter extends TypeAdapter<ContinuousDis
 
 	private static final String TYPE = "type";
 	
-	// special serialization constants from EvenlyDiscrFuncEmpiricalDistribution
-	private static final String EVENLY_DISCR_FUNC_EMPIRICAL_DISTRIBUTION = "EvenlyDiscrFuncEmpiricalDistribution";
+	// special serialization constants from EvenlyDiscrFuncContinuousDistribution
+	private static final String EVENLY_DISCR_FUNC_EMPIRICAL_DISTRIBUTION = "EvenlyDiscrFuncContinuousDistribution";
 	private static final String FUNCTION = "function";
 	private static final String DISCRETIZATION_TYPE = "discretizationType";
 	
@@ -73,8 +73,8 @@ public class ContinuousDistributionTypeAdapter extends TypeAdapter<ContinuousDis
 
 		out.beginObject();
 
-		if (value instanceof EvenlyDiscrFuncEmpiricalDistribution) {
-			EvenlyDiscrFuncEmpiricalDistribution dist = (EvenlyDiscrFuncEmpiricalDistribution)value;
+		if (value instanceof EvenlyDiscrFuncContinuousDistribution) {
+			EvenlyDiscrFuncContinuousDistribution dist = (EvenlyDiscrFuncContinuousDistribution)value;
 			writeType(out, EVENLY_DISCR_FUNC_EMPIRICAL_DISTRIBUTION);
 			out.name(DISCRETIZATION_TYPE).value(dist.getDiscretizationType().name());
 			out.name(FUNCTION);
@@ -233,7 +233,7 @@ public class ContinuousDistributionTypeAdapter extends TypeAdapter<ContinuousDis
 		case EVENLY_DISCR_FUNC_EMPIRICAL_DISTRIBUTION:
 			Preconditions.checkNotNull(func, "Required parameter '%s' was not supplied", FUNCTION);
 			Preconditions.checkNotNull(discretizationType, "Required parameter '%s' was not supplied", DISCRETIZATION_TYPE);
-			return new EvenlyDiscrFuncEmpiricalDistribution(func, discretizationType);
+			return new EvenlyDiscrFuncContinuousDistribution(func, discretizationType);
 		case "TruncatedNormalDistribution":
 			return TruncatedNormalDistribution.of(
 					getRequiredDouble(params, "parentMean"),

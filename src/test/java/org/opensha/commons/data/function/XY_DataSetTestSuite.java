@@ -8,7 +8,7 @@ import org.junit.runners.Suite;
 	ArbitrarilyDiscretizedFunctionTest.class,
 	EvenlyDiscretizedFuncTest.class,
 	XY_JSONDeserializationTests.class,
-	EvenlyDiscrFuncEmpiricalDistributionTest.class
+	EvenlyDiscrFuncContinuousDistributionTest.class
 })
 
 public class XY_DataSetTestSuite {
