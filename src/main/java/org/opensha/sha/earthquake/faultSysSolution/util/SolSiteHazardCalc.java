@@ -1407,11 +1407,11 @@ public class SolSiteHazardCalc {
 								table.addColumn("");
 							table.finalizeLine();
 							
-							for (int i=0; i<numDisaggSources; i++) {
+							for (int i=0; i<myNumSources; i++) {
 								table.initNewLine();
 								for (int d=0; d<numDisagg; d++) {
 									List<DisaggregationSourceRuptureInfo> sources = results[p][d].consolidatedSourceInfo;
-									if (sources == null || sources.size() < i) {
+									if (sources == null || sources.size() <= i) {
 										table.addColumn("");
 										continue;
 									}
