@@ -35,8 +35,8 @@ import com.google.common.base.Preconditions;
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
-//@Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME) // if rate balancing enabled
-@DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME) // if rate balancing disabled
+@Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME) // if rate balancing enabled
+//@DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME) // if rate balancing disabled
 public class NSHM27_CrustalRandomlySampledDeformationModels extends RandomlyGeneratedNode implements RupSetDeformationModel {
 	
 	private static final String PATH = "/data/erf/nshm27/gnmi/deformation_models/crustal/2026_03_02";
