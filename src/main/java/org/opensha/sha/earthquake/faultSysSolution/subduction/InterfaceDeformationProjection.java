@@ -16,10 +16,18 @@ import org.opensha.sha.faultSurface.RuptureSurface;
 import com.google.common.base.Preconditions;
 
 /**
- * Utilities for projecting horizontal deformation at the top of a subduction zone onto subsections
+ * Utilities for projecting horizontal convergence rates at the top of a subduction zone onto subsections
  */
 public class InterfaceDeformationProjection {
 	
+	/**
+	 * Checks the direction of the supplied deformation front against the direction of the supplied trace. If they are
+	 * flipped, then the deformation front and it's slip rates will be reversed in place to match the trace.
+	 * 
+	 * @param trace
+	 * @param deformationFront
+	 * @param deformationFrontSlipRates
+	 */
 	public static void checkForTraceDirection(FaultTrace trace, LocationList deformationFront,
 			double[] deformationFrontSlipRates) {
 		double deformationDirection = LocationUtils.azimuth(deformationFront.first(), deformationFront.last());
@@ -126,16 +134,44 @@ public class InterfaceDeformationProjection {
 		return smoothed;
 	}
 	
+	/**
+	 * Projects the supplied deformation front and slip rates onto each subsection. This version assumes that the
+	 * deformation front is perfectly trench-normal to each subsection, and the supplied slip rates are applied fully
+	 * to each mapped subsection
+	 * 
+	 * @param subSections
+	 * @param deformationFront
+	 * @param deformationFrontSlipRates
+	 */
 	public static void projectSlipRates(List<? extends FaultSection> subSections, LocationList deformationFront,
 			double[] deformationFrontSlipRates) {
-		projectSlipRates(subSections, deformationFront, deformationFrontSlipRates, null, false);
+		projectSlipRates(subSections, deformationFront, deformationFrontSlipRates, null, false, false);
 	}
 	
+	/**
+	 * Projects the supplied deformation front and slip rates onto each subsection. This version supports oblique
+	 * convergence angles, which can either be reduced to their trench-normal component or retained.
+	 * 
+	 * This version also supports projection onto a dipping plane assuming a triangular block structure if projectForDip
+	 * is true. That is likely not the correct choice for a curved interface, however, and is disabled by default.
+	 * 
+	 * @param subSections subsections to which slip rates will be added
+	 * @param deformationFront the locations of the deformation front data
+	 * @param deformationFrontSlipRates slip rates at each deformation front location
+	 * @param convergenceAngles convergence angles for projection; if omitted, deformation front slip rates are assumed
+	 * to be perfectly trench-normal to the mapped subsection
+	 * @param includeObliquePortion if true, the oblique portion of the slip rate vector will be included in subseciton
+	 * slip rates and the rake will be adjusted to match
+	 * @param projectForDip if true, increase slip with subsections dip assuming a triangular block motion; probably not
+	 * the correct choice for a curved interface
+	 */
 	public static void projectSlipRates(List<? extends FaultSection> subSections, LocationList deformationFront,
-			double[] deformationFrontSlipRates, double[] convergenceAngles, boolean includeOblique) {
+			double[] deformationFrontSlipRates, double[] convergenceAngles, boolean includeObliquePortion,
+			boolean projectForDip) {
 		Preconditions.checkState(deformationFront.size() > 1);
 		Preconditions.checkState(deformationFront.size() == deformationFrontSlipRates.length);
 		Preconditions.checkState(convergenceAngles == null || convergenceAngles.length == deformationFront.size());
+		Preconditions.checkState(!includeObliquePortion || convergenceAngles != null);
 		
 		for (FaultSection sect : subSections) {
 			RuptureSurface surf = sect.getFaultSurface(1d);
@@ -232,7 +268,7 @@ public class InterfaceDeformationProjection {
 						+ "upDip=%s, convergence=%s, flippedConvergence=%s, diff=%s",
 						upDipDirection, angle, reverseAngle, angleDiffFromNormal);
 				
-				if (includeOblique) {
+				if (includeObliquePortion) {
 					// keep the full oblique slip, adjust rake angle
 					
 					// positive angleDiff means that the slip angle is right of the up-dip direction
@@ -246,10 +282,14 @@ public class InterfaceDeformationProjection {
 				rake = 90; 
 			}
 			
-			// now project for dip
-			// cos(dip) = horizontal / on-plane
-			// on-plane = horizontal / cos(dip)
-			slip *= 1d/Math.cos(Math.toRadians(sect.getAveDip()));
+			if (projectForDip) {
+				double dip = sect.getAveDip();
+				Preconditions.checkState(dip < 90d, "Dip must be <90 to project horizontal onto a dipping plane");
+				// now project for dip
+				// cos(dip) = horizontal / on-plane
+				// on-plane = horizontal / cos(dip)
+				slip *= 1d/Math.cos(Math.toRadians(dip));
+			}
 			
 			sect.setAveSlipRate(slip);
 			sect.setAveRake(rake);
