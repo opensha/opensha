@@ -267,9 +267,6 @@ public class JointRuptureExperimentalIMR extends NSHMP_GMM_Wrapper {
 		return builder.build();
 	}
 	
-//	private static final double RHO = 0.5;
-	private static final double RHO = 1;
-	
 	/**
 	 * Combines separate crustal and subduction-interface GMM results into a single
 	 * joint-rupture distribution.
@@ -303,6 +300,8 @@ public class JointRuptureExperimentalIMR extends NSHMP_GMM_Wrapper {
 		double wc = mc2 / power;
 		double wi = mi2 / power;
 
+		// this was Claude's first suggestion, but it can get weird and even less than both of the original sigma values
+//		double rho = 0.5
 //		double varJ = wc * wc * sc * sc
 //				+ wi * wi * si * si
 //				+ 2.0 * RHO * wc * wi * sc * si;
@@ -310,12 +309,13 @@ public class JointRuptureExperimentalIMR extends NSHMP_GMM_Wrapper {
 //		// First-order var is non-negative for rho in [-1,1]; clamp for safety.
 //		double sigma = Math.sqrt(Math.max(varJ, 0.0));
 		
+		// this is the same as above if rho=1
 		double sigma = wc * sc + wi * si;
 		GroundMotion jointGM = GroundMotion.create(lnMean, sigma);
-		System.out.println("JointGM:\t"+jointGM);
-		System.out.println("\tCrustal:\t"+crustalGM);
-		System.out.println("\tInterface:\t"+interfaceGM);
-		System.out.println();
+//		System.out.println("JointGM:\t"+jointGM);
+//		System.out.println("\tCrustal:\t"+crustalGM);
+//		System.out.println("\tInterface:\t"+interfaceGM);
+//		System.out.println();
 		return jointGM;
 	}
 	
