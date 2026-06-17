@@ -982,7 +982,10 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 		}
 		
 		Type type = getType();
-		if (type != null) {
+		if (type == null) {
+			if (otherParams.containsParameter(tectonicRegionTypeParam))
+				otherParams.removeParameter(tectonicRegionTypeParam);
+		} else {
 			// tectonic region type
 			TectonicRegionType trt = trtForType(type);
 			tectonicRegionTypeParam.setOptions(EnumSet.of(trt));
