@@ -291,14 +291,18 @@ public class JointRuptureExperimentalIMR extends NSHMP_GMM_Wrapper {
 		double sc = crustalGM.sigma();
 		double si = interfaceGM.sigma();
 
-		// SRSS median; guard the degenerate zero-motion case.
+		// SRSS median
 		double linearMean = Math.sqrt(power);
-		Preconditions.checkState(linearMean > 0d, "linearMean=%s for crustal=%s and interface=%s", linearMean, crustalGM, interfaceGM);
+		Preconditions.checkState(linearMean > 0d,
+				"linearMean=%s for crustal=%s and interface=%s", linearMean, crustalGM, interfaceGM);
 		double lnMean = Math.log(linearMean);
 
 		// Energy (squared-median) weights; these slide with IM, M, R.
 		double wc = mc2 / power;
 		double wi = mi2 / power;
+		
+		// this is the same as below if rho=1
+		double sigma = wc * sc + wi * si;
 
 		// this was Claude's first suggestion, but it can get weird and even less than both of the original sigma values
 //		double rho = 0.5
@@ -308,9 +312,6 @@ public class JointRuptureExperimentalIMR extends NSHMP_GMM_Wrapper {
 //
 //		// First-order var is non-negative for rho in [-1,1]; clamp for safety.
 //		double sigma = Math.sqrt(Math.max(varJ, 0.0));
-		
-		// this is the same as above if rho=1
-		double sigma = wc * sc + wi * si;
 		GroundMotion jointGM = GroundMotion.create(lnMean, sigma);
 //		System.out.println("JointGM:\t"+jointGM);
 //		System.out.println("\tCrustal:\t"+crustalGM);
