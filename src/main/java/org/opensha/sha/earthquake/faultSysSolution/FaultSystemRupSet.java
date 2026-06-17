@@ -2021,15 +2021,17 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				double[] finalRakes = rakes;
 				double[] finalRupAreas = rupAreas;
 				IntStream.range(0, numRups).parallel().forEach(r -> {
-					List<Double> mySectAreas = new ArrayList<>();
-					List<Double> mySectRakes = new ArrayList<>();
+					List<Integer> sects = sectionForRups.get(r);
+					int numSects = sectionForRups.get(r).size();
+					double[] mySectAreas = new double[numSects];
+					double[] mySectRakes = new double[numSects];
 					double totArea = 0d;
-					for (int s : sectionForRups.get(r)) {
-						FaultSection sect = faultSectionData.get(s);
+					for (int i=0; i<numSects; i++) {
+						FaultSection sect = faultSectionData.get(sects.get(i));
 						double area = sect.getArea(true);	// sq-m
 						totArea += area;
-						mySectAreas.add(area);
-						mySectRakes.add(sect.getAveRake());
+						mySectAreas[i] = area;
+						mySectRakes[i] = sect.getAveRake();
 					}
 					if (Double.isNaN(finalRupAreas[r]))
 						finalRupAreas[r] = totArea;
