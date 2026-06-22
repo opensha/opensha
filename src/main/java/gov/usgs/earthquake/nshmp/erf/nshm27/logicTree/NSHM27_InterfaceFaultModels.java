@@ -137,8 +137,8 @@ public enum NSHM27_InterfaceFaultModels implements RupSetFaultModel, RupSetSubse
 	}
 
 	@Override
-	public NSHM27_InterfaceDeformationModels getDefaultDeformationModel() {
-		return NSHM27_InterfaceDeformationModels.PREF_COUPLING;
+	public NSHM27_InterfaceDeformationModels.Aggregated getDefaultDeformationModel() {
+		return NSHM27_InterfaceDeformationModels.Aggregated.PREF_COUPLING;
 	}
 
 	@Override

@@ -99,7 +99,7 @@ public enum NSHM27_CrustalFaultModels implements RupSetFaultModel, RupSetSubsect
 
 	@Override
 	public RupSetDeformationModel getDefaultDeformationModel() {
-		return NSHM27_CrustalAggregatedDeformationModels.AVERAGE;
+		return NSHM27_CrustalDeformationModels.Aggregated.AVERAGE;
 	}
 
 	@Override

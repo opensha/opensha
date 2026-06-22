@@ -627,7 +627,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 	 * @param <E>
 	 * @param <N>
 	 */
-	public static interface ValueBackedLevel<E, N extends ValuedLogicTreeNode<E>> {
+	public static interface ValueBackedLevel<E, N extends ValuedLogicTreeNode<? super E>> {
 		
 		public abstract Class<? extends E> getValueType();
 		
@@ -649,7 +649,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 	 * @param <E>
 	 * @param <N>
 	 */
-	public static abstract class IndexedValuedLevel<E, N extends ValuedLogicTreeNode<E>> extends IndexedLevel<N>
+	public static abstract class IndexedValuedLevel<E, N extends ValuedLogicTreeNode<? super E>> extends IndexedLevel<N>
 	implements ValueBackedLevel<E,N> {
 		
 		protected IndexedValuedLevel(String levelName, String levelShortName) {
@@ -763,7 +763,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		}
 	}
 	
-	public static abstract class RandomLevel<E, N extends ValuedLogicTreeNode<E>> extends IndexedValuedLevel<E,N> {
+	public static abstract class RandomLevel<E, N extends ValuedLogicTreeNode<? super E>> extends IndexedValuedLevel<E,N> {
 		
 		private long origSeed = -1l;
 		
@@ -820,7 +820,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		
 	}
 	
-	public static abstract class AbstractRandomlySampledLevel<E, N extends ValuedLogicTreeNode<E>> extends RandomLevel<E,N> {
+	public static abstract class AbstractRandomlySampledLevel<E, N extends ValuedLogicTreeNode<? super E>> extends RandomLevel<E,N> {
 		
 		protected AbstractRandomlySampledLevel(String levelName, String levelShortName) {
 			super(levelName, levelShortName);
@@ -1264,7 +1264,8 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		
 	}	
 	
-	public interface BinnableLevel<E, N extends ValuedLogicTreeNode<E>, B extends LogicTreeLevel<?> & BinnedLevel<?,?>> extends ValueBackedLevel<E, N> {
+	public interface BinnableLevel<E, N extends ValuedLogicTreeNode<? super E>,
+	B extends LogicTreeLevel<?> & BinnedLevel<?,?>> extends ValueBackedLevel<E, N> {
 		
 		public B toBinnedLevel();
 		

@@ -48,8 +48,8 @@ public class NSHM27_LogicTree {
 			LogicTreeLevel.forEnum(NSHM27_InterfaceFaultModels.class, "Interface Fault Model", "InterfaceFM");
 	public static final LogicTreeLevel<NSHM27_InterfaceCouplingDepthModels> INTERFACE_DEPTH_COUPLING =
 			LogicTreeLevel.forEnum(NSHM27_InterfaceCouplingDepthModels.class, "Interface Depth Coupling Taper", "InterfaceDepthCoupling");
-	public static final LogicTreeLevel<NSHM27_InterfaceDeformationModels> INTERFACE_DM =
-			LogicTreeLevel.forEnum(NSHM27_InterfaceDeformationModels.class, "Interface Deformation Model", "InterfaceDM");
+	public static final LogicTreeLevel<NSHM27_InterfaceDeformationModels.Aggregated> INTERFACE_AGG_DM =
+			LogicTreeLevel.forEnum(NSHM27_InterfaceDeformationModels.Aggregated.class, "Interface Aggregated Deformation Model", "InterfaceAggDM");
 	public static final LogicTreeLevel<PRVI25_SubductionScalingRelationships> INTERFACE_SCALE = 
 			LogicTreeLevel.forEnum(PRVI25_SubductionScalingRelationships.class, "Interface Scaling Relationship", "InterfaceScale");
 	public static final LogicTreeLevel<NSHM27_InterfaceObsSeisDMAdjustment> INTERFACE_OBS_SEIS_DM_ADJ =
@@ -78,8 +78,8 @@ public class NSHM27_LogicTree {
 	 */
 	public static final LogicTreeLevel<NSHM27_CrustalFaultModels> CRUSTAL_FM =
 			LogicTreeLevel.forEnum(NSHM27_CrustalFaultModels.class, "Crustal Fault Model", "CrustalFM");
-	public static final LogicTreeLevel<NSHM27_CrustalAggregatedDeformationModels> CRUSTAL_AGG_DM =
-			LogicTreeLevel.forEnum(NSHM27_CrustalAggregatedDeformationModels.class, "Crustal Aggregated Deformation Model", "CrustalAggDM");
+	public static final LogicTreeLevel<NSHM27_CrustalDeformationModels.Aggregated> CRUSTAL_AGG_DM =
+			LogicTreeLevel.forEnum(NSHM27_CrustalDeformationModels.Aggregated.class, "Crustal Aggregated Deformation Model", "CrustalAggDM");
 	public static final LogicTreeLevel<NSHM23_ScalingRelationships> CRUSTAL_SCALE =
 			LogicTreeLevel.forEnum(NSHM23_ScalingRelationships.class, "Crustal Scaling Relationship", "CrustalScale");
 	public static final LogicTreeLevel<NSHM23_SegmentationModels> SEG =
@@ -109,7 +109,10 @@ public class NSHM27_LogicTree {
 			if (trt == TectonicRegionType.SUBDUCTION_INTERFACE) {
 				levels.add(INTERFACE_FM);
 				levels.add(INTERFACE_DEPTH_COUPLING);
-				levels.add(INTERFACE_DM);
+				if (sampled)
+					levels.add(new NSHM27_InterfaceDeformationModels.SamplingLevel());
+				else
+					levels.add(INTERFACE_AGG_DM);
 				levels.add(INTERFACE_SCALE);
 				if (sampled)
 					levels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(supraBname, supraBshortName, INTERFACE_B_DIST));
@@ -127,7 +130,7 @@ public class NSHM27_LogicTree {
 				// have crustal on-fault
 				levels.add(CRUSTAL_FM);
 				if (sampled)
-					levels.add(new NSHM27_CrustalRandomlySampledDeformationModelLevel());
+					levels.add(new NSHM27_CrustalDeformationModels.SamplingLevel());
 				else
 					levels.add(CRUSTAL_AGG_DM);
 				levels.add(CRUSTAL_SCALE);
@@ -191,14 +194,15 @@ public class NSHM27_LogicTree {
 		if (trt == TectonicRegionType.SUBDUCTION_INTERFACE) {
 			branch.setValue(NSHM27_InterfaceFaultModels.regionDefault(seisReg));
 			branch.setValue(NSHM27_InterfaceCouplingDepthModels.DEEP_TAPER);
-			branch.setValue(NSHM27_InterfaceDeformationModels.PREF_COUPLING);
+			if (!sampled)
+				branch.setValue(NSHM27_InterfaceDeformationModels.Aggregated.PREF_COUPLING);
 			branch.setValue(PRVI25_SubductionScalingRelationships.LOGA_C4p0);
 			branch.setValue(NSHM27_InterfaceObsSeisDMAdjustment.AVERAGE); // TODO
 			branch.setValue(NSHM27_InterfaceMinSubSects.FOUR); // TODO
 		} else if (trt == TectonicRegionType.ACTIVE_SHALLOW && seisReg == NSHM27_SeismicityRegions.GNMI) {
 			branch.setValue(NSHM27_CrustalFaultModels.GNMI_V1);
 			if (!sampled)
-				branch.setValue(NSHM27_CrustalAggregatedDeformationModels.AVERAGE);
+				branch.setValue(NSHM27_CrustalDeformationModels.Aggregated.AVERAGE);
 			branch.setValue(NSHM23_ScalingRelationships.LOGA_C4p2);
 			branch.setValue(NSHM23_SegmentationModels.MID);
 		}
