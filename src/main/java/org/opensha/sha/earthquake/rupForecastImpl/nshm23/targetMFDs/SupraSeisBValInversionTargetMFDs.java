@@ -710,9 +710,9 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				
 				fractSuprasTrack = new MinMaxAveTracker();
 				
-				sectSubSeisMFDs = new ArrayList<>();
+				sectSubSeisMFDs = new ArrayList<>(numSects);
 				
-				sectSupraSeisMFDs = new ArrayList<>();
+				sectSupraSeisMFDs = new ArrayList<>(numSects);
 				
 				sectRupInBinCounts = new int[numSects][refMFD.size()];
 				sectMinMagIndexes = new int[numSects];
