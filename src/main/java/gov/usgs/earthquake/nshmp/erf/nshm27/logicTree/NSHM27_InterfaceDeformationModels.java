@@ -1,10 +1,17 @@
 package gov.usgs.earthquake.nshmp.erf.nshm27.logicTree;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.text.DecimalFormat;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.statistics.distribution.ContinuousDistribution;
+import org.apache.commons.statistics.distribution.TriangularDistribution;
+import org.opensha.commons.data.AffineTransformedContinuousDistribution;
+import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
@@ -138,7 +145,7 @@ public class NSHM27_InterfaceDeformationModels extends RupSetDeformationModelDis
 	 * if standard deviation is zero, default to this fraction of the slip rate. if DEFAULT_STD_DEV_USE_GEOLOGIC is
 	 * true, then this will only be used if the geologic slip rate standard deviation is also zero 
 	 */
-	private static final double DEFAULT_FRACT_SLIP_STD_DEV = 0.1;
+	public static final double DEFAULT_FRACT_SLIP_STD_DEV = 0.1;
 	/**
 	 * minimum allowed slip rate standart deviation, in mm/yr
 	 */
@@ -159,9 +166,20 @@ public class NSHM27_InterfaceDeformationModels extends RupSetDeformationModelDis
 		return faultModel instanceof NSHM27_InterfaceFaultModels;
 	}
 	
-	public record DeformationFront(FaultTrace trace, double[] convergence, ContinuousDistribution[] couplingDists) {}
+	public record DeformationFront(FaultTrace trace, double[] convergence, ContinuousDistribution[] couplingDists,
+			ContinuousDistribution[] coupledSlipDists) {}
 	
-	public static DeformationFront getDeformationFront(NSHM27_InterfaceFaultModels fm) throws IOException {
+	private static Map<NSHM27_InterfaceFaultModels, DeformationFront> dfCache = new EnumMap<>(NSHM27_InterfaceFaultModels.class);
+	public static synchronized DeformationFront getDeformationFront(NSHM27_InterfaceFaultModels fm) throws IOException {
+		DeformationFront df = dfCache.get(fm);
+		if (df == null) {
+			df = loadDeformationFront(fm);
+			dfCache.put(fm, df);
+		}
+		return df;
+	}
+	
+	private static DeformationFront loadDeformationFront(NSHM27_InterfaceFaultModels fm) throws IOException {
 		String csvPath;
 		if (fm == NSHM27_InterfaceFaultModels.AMSAM_V1) {
 			csvPath = "/data/erf/nshm27/amsam/deformation_models/subduction/ker_trace_dm.csv";
@@ -170,49 +188,61 @@ public class NSHM27_InterfaceDeformationModels extends RupSetDeformationModelDis
 		} else {
 			throw new IllegalStateException("Unexpected FM: "+fm);
 		}
-//		InputStream is = NSHM27_InterfaceDeformationModels.class.getResourceAsStream(csvPath);
-//		Preconditions.checkNotNull(is, "Couldn't load CSV: %s", csvPath);
-//		CSVFile<String> csv = CSVFile.readStream(is, true);
-//		FaultTrace trace = new FaultTrace(fm.getName(), csv.getNumRows()-1);
-//		double[] slips = new double[csv.getNumRows()-1];
-//		int column;
-//		switch (this) {
-//		case LOW_COUPLING:
-//			column = 6;
-//			break;
-//		case PREF_COUPLING:
-//			column = 7;
-//			break;
-//		case HIGH_COUPLING:
-//			column = 8;
-//			break;
-//
-//		default:
-//			throw new IllegalStateException("Unexpected model: "+this);
-//		}
-//		
-//		List<? extends FaultSection> fullSects = fm.getFaultSections();
-//		Preconditions.checkState(fullSects.size() == 1);
-//		FaultSection fullSect = fullSects.get(0);
-//		
-//		for (int i=0; i<slips.length; i++) {
-//			int row = i+1;
-//			Location loc = new Location(csv.getDouble(row, 1), csv.getDouble(row, 0));
-//			if (loc.lon < 0)
-//				loc = new Location(loc.lat, loc.lon+360d);
-//			trace.add(loc);
-//			slips[i] = csv.getDouble(row, column);
-//			Preconditions.checkState(Double.isFinite(slips[i]) && slips[i] >= 0, "Bad slip rate: %s", slips[i]);
-//		}
-//		
+		InputStream is = NSHM27_InterfaceDeformationModels.class.getResourceAsStream(csvPath);
+		Preconditions.checkNotNull(is, "Couldn't load CSV: %s", csvPath);
+		CSVFile<String> csv = CSVFile.readStream(is, true);
+		FaultTrace trace = new FaultTrace(fm.getName(), csv.getNumRows()-1);
+		double[] convergence = new double[csv.getNumRows()-1];
+		ContinuousDistribution[] couplingDists = new ContinuousDistribution[convergence.length];
+		
+		List<? extends FaultSection> fullSects = fm.getFaultSections();
+		Preconditions.checkState(fullSects.size() == 1);
+		FaultSection fullSect = fullSects.get(0);
+		
+		for (int i=0; i<convergence.length; i++) {
+			int row = i+1;
+			Location loc = new Location(csv.getDouble(row, 1), csv.getDouble(row, 0));
+			if (loc.lon < 0)
+				loc = new Location(loc.lat, loc.lon+360d);
+			trace.add(loc);
+			convergence[i] = csv.getDouble(row, 2);
+			Preconditions.checkState(Double.isFinite(convergence[i]) && convergence[i] >= 0, "Bad convergence rate: %s", convergence[i]);
+			// TODO: using old file w/ triangular dist
+			double couplingLow = csv.getDouble(row, 3);
+			double couplingPref = csv.getDouble(row, 4);
+			double couplingHigh = csv.getDouble(row, 5);
+			couplingDists[i] = TriangularDistribution.of(couplingLow, couplingPref, couplingHigh);
+		}
+		
+		if (InterfaceDeformationProjection.areTracesFlipped(fullSect.getFaultTrace(), trace)) {
+			System.out.println("Deformation trace for "+fm+" is reversed, flipping; deformation strike="
+					+trace.getStrikeDirection()+", trace strike="+fullSect.getFaultTrace().getStrikeDirection());
+			// flip them
+			double[] convergeFlipped = new double[convergence.length];
+			ContinuousDistribution[] couplingDistsFlipped = new ContinuousDistribution[convergence.length];
+			for (int i=0; i<convergence.length; i++) {
+				int origIndex = convergence.length - 1 - i;
+				convergeFlipped[i] = convergence[origIndex];
+				couplingDistsFlipped[i] = couplingDists[origIndex];
+			}
+			convergence = convergeFlipped;
+			couplingDists = couplingDistsFlipped;
+			trace.reverse();
+		}
+		
+		// coupled slip = convergence * coupling
+		ContinuousDistribution[] coupledSlipDists = new ContinuousDistribution[convergence.length];
+		for (int i=0; i<convergence.length; i++)
+			coupledSlipDists[i] = AffineTransformedContinuousDistribution.scaled(couplingDists[i], convergence[i]);
+		
 //		InterfaceDeformationProjection.checkForTraceDirection(fullSect.getFaultTrace(), trace, slips);
-//		
-//		if (fm.getSlipSmoothingDistance() > 0)
-//			slips = InterfaceDeformationProjection.getSmoothedDeformationFrontSlipRates(trace, slips, fm.getSlipSmoothingDistance());
-//		
-//		return new DeformationFront(trace, slips);
-		// TODO
-		return null;
+		
+		if (fm.getSlipSmoothingDistance() > 0)
+			// smooth the coupled slip distributions themselves
+			coupledSlipDists = InterfaceDeformationProjection.getSmoothedDeformationFrontDistributions(
+					trace, coupledSlipDists, fm.getSlipSmoothingDistance());
+		
+		return new DeformationFront(trace, convergence, couplingDists, coupledSlipDists);
 	}
 
 	@Override
@@ -225,6 +255,10 @@ public class NSHM27_InterfaceDeformationModels extends RupSetDeformationModelDis
 		
 		FixedSampler sampler = getValue();
 		
+		if (branch.hasValue(NSHM27_InterfaceObsSeisDMAdjustment.EXTRAPOLATE))
+			// we're extrapolating from observed seismicity, use average coupling as the starting point
+			sampler = new AverageSampler();
+		
 		NSHM27_InterfaceCouplingDepthModels depthCoupling = branch.getValue(
 				NSHM27_InterfaceCouplingDepthModels.class);
 		
@@ -233,10 +267,9 @@ public class NSHM27_InterfaceDeformationModels extends RupSetDeformationModelDis
 	
 	public static double[] getCoupledSlipRates(DeformationFront df, FixedSampler sampler) {
 		double[] slips = new double[df.trace.size()];
-		Preconditions.checkState(df.trace.size() == df.convergence.length);
-		Preconditions.checkState(df.trace.size() == df.couplingDists.length);
+		Preconditions.checkState(df.trace.size() == df.coupledSlipDists.length);
 		for (int i=0; i<slips.length; i++)
-			slips[i] = df.convergence[i] * sampler.getValue(df.couplingDists[i]);
+			slips[i] = sampler.getValue(df.coupledSlipDists[i]);
 		return slips;
 	}
 	
