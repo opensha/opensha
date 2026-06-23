@@ -108,7 +108,7 @@ public enum NSHM27_SeisRateModelBranch implements NSHM27_SeisRateModel, LogicTre
 //			yield 7.6;
 			yield 8d;
 		case SUBDUCTION_INTERFACE:
-			yield 8d;
+			yield 9d;
 		case SUBDUCTION_SLAB:
 			yield 8d;
 		default:
@@ -117,14 +117,15 @@ public enum NSHM27_SeisRateModelBranch implements NSHM27_SeisRateModel, LogicTre
 	}
 	
 	public static final String getRateModelDate(NSHM27_SeismicityRegions region) {
-		return switch (region) {
-			case AMSAM:
-				yield "2026_02_27-v1";
-			case GNMI:
-				yield "2026_02_27-v1";
-			default:
-				throw new IllegalArgumentException("Unexpected region: "+region);
-		};
+		return "2026_06_10";
+//		return switch (region) {
+//			case AMSAM:
+//				yield "2026_02_27-v1";
+//			case GNMI:
+//				yield "2026_02_27-v1";
+//			default:
+//				throw new IllegalArgumentException("Unexpected region: "+region);
+//		};
 	}
 	
 	public static final String getRateModelPath(NSHM27_SeismicityRegions region) {

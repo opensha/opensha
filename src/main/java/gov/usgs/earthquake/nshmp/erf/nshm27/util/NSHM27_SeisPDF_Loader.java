@@ -52,13 +52,14 @@ public class NSHM27_SeisPDF_Loader {
 	
 	private static final DecimalFormat pDF = new DecimalFormat("0.00%");
 	
-	public static final String DATA_DATE = "2026_03_27-v1";
+	public static final String DATA_DATE_2D = "2026_06_15-2D";
+	public static final String DATA_DATE_3D = "2026_06_15-3D";
 	
 	public static GriddedGeoDataSet load2D(NSHM27_SeismicityRegions region, TectonicRegionType trt,
 			NSHM27_DeclusteringAlgorithms decluster, NSHM27_SeisSmoothingAlgorithms smooth) throws IOException {
 		File dataDir = NSHM27_InvConfigFactory.locateDataDirectory();
 		File baseDir = new File(dataDir, "spatial_seis_pdfs/"+region.name().toLowerCase()
-				+"/"+DATA_DATE+"_2D/"+NSHM27_RegionLoader.getNameForTRT(trt).toUpperCase()+"/");
+				+"/"+DATA_DATE_2D+"/"+NSHM27_RegionLoader.getNameForTRT(trt).toUpperCase()+"/");
 		return load2D(baseDir, region, decluster, smooth);
 	}
 	
@@ -185,7 +186,7 @@ public class NSHM27_SeisPDF_Loader {
 			NSHM27_DeclusteringAlgorithms decluster, NSHM27_SeisSmoothingAlgorithms smooth) throws IOException {
 		File dataDir = NSHM27_InvConfigFactory.locateDataDirectory();
 		File baseDir = new File(dataDir, "spatial_seis_pdfs/"+region.name().toLowerCase()
-				+"/"+DATA_DATE+"_3D/"+NSHM27_RegionLoader.getNameForTRT(trt).toUpperCase()+"/");
+				+"/"+DATA_DATE_3D+"/"+NSHM27_RegionLoader.getNameForTRT(trt).toUpperCase()+"/");
 		return load3D(baseDir, region, decluster, smooth);
 	}
 	
@@ -350,7 +351,15 @@ public class NSHM27_SeisPDF_Loader {
 	}
 
 	public static void main(String[] args) throws IOException {
-		boolean twoD = false;
+//		TectonicRegionType[] trts = {TectonicRegionType.ACTIVE_SHALLOW, TectonicRegionType.SUBDUCTION_SLAB, TectonicRegionType.SUBDUCTION_INTERFACE};
+//		boolean twoD = false;
+		
+//		TectonicRegionType[] trts = {TectonicRegionType.SUBDUCTION_SLAB};
+//		boolean twoD = false;
+		
+		TectonicRegionType[] trts = {TectonicRegionType.ACTIVE_SHALLOW, TectonicRegionType.SUBDUCTION_INTERFACE};
+		boolean twoD = true;
+		
 //		NSHM27_SeismicityRegions region = NSHM27_SeismicityRegions.GNMI;
 		NSHM27_SeismicityRegions region = NSHM27_SeismicityRegions.AMSAM;
 		File plotDir = new File("/tmp/pdf_plots");
@@ -370,7 +379,6 @@ public class NSHM27_SeisPDF_Loader {
 		NSHM27_DeclusteringAlgorithms[] declusters = { NSHM27_DeclusteringAlgorithms.AVERAGE };
 		NSHM27_SeisSmoothingAlgorithms[] smooths = { NSHM27_SeisSmoothingAlgorithms.AVERAGE };
 		
-		TectonicRegionType[] trts = {TectonicRegionType.ACTIVE_SHALLOW, TectonicRegionType.SUBDUCTION_SLAB, TectonicRegionType.SUBDUCTION_INTERFACE};
 		for (TectonicRegionType trt : trts) {
 			String trtName = NSHM27_RegionLoader.getNameForTRT(trt);
 			for (NSHM27_DeclusteringAlgorithms decluster : declusters) {

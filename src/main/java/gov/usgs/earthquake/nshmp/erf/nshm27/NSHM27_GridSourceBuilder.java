@@ -98,7 +98,8 @@ public class NSHM27_GridSourceBuilder {
 	public static final double INTERFACE_MAX_HYOPCENTRAL_DEPTH = 60d;
 	public static final double INTERFACE_MAX_GRID_FINITE_DEPTH = Double.POSITIVE_INFINITY;
 	
-	public static double[] SLAB_DEPTH_REDISCRETIZATION = { 10, 20, 30, 40, 60, 80, 100, 150, 200, 250, 350, 450, 550 };
+//	public static double[] SLAB_DEPTH_REDISCRETIZATION = { 10, 20, 30, 40, 60, 80, 100, 150, 200, 250, 350, 450, 550 };
+	public static double[] SLAB_DEPTH_REDISCRETIZATION = { 10, 20, 40, 60, 100, 150, 250, 350, 450, 550 };
 	
 	public static final double MIN_RATE_THRESHOLD = 1e-10; // approximately 1 in the age of the known universe
 	
@@ -362,10 +363,28 @@ public class NSHM27_GridSourceBuilder {
 		
 		IncrementalMagFreqDist refMFD;
 		Function<Double, IncrementalMagFreqDist> mfdBuilderFunc;
+		// this function will build target MFDs that match the rate model up to a given gridded Mmax; the question is whether to:
+		// 1. scale total rate to gridded Mmax, i.e., the gridded model will match the observed rate
+		// 2. scale total rate to full on-fault Mmax, such that the whole model would match the observed rate if the
+		// interface DM happened to perfectly match the obs rate model (or if explicitly set to extrapolate from it)
+		
+		// make the gridded seismicity model always match the full observed rate within it's magnitude range (always overcounts total rate)
+//		boolean rateToFullMmax = false;
+		
+		// same as above, except when on the extrapolate branch, the true rate will be preserved across both
+//		boolean rateToFullMmax = fullBranch.hasValue(NSHM27_InterfaceObsSeisDMAdjustment.EXTRAPOLATE);
+		
+		// do for all branches except for the no-adjustment branch
+		// will only under-count total rate if the DM is below extrapolation from observed seismicity, which is rarely the case
+		// for these regions (only extreme lower tail DM samples would do this). On all other branches (unless
+		// EXTRAPOLATE is chosen), there will still be a net overcount relative to observed seismicity but it will be
+		// slightly smaller than if rateToFullMmax was false
+		NSHM27_InterfaceObsSeisDMAdjustment obsMethod = fullBranch.getValue(NSHM27_InterfaceObsSeisDMAdjustment.class);
+		boolean rateToFullMmax = obsMethod != null && obsMethod != NSHM27_InterfaceObsSeisDMAdjustment.NONE;
+		
 		Map<Double, IncrementalMagFreqDist> mMaxMFDCache = new HashMap<>();
-		if (fullBranch.hasValue(NSHM27_InterfaceObsSeisDMAdjustment.EXTRAPOLATE)) {
+		if (rateToFullMmax) {
 			// we need the MFD with total rate up to full Mmax, but then with rates removed above gridded Mmax
-			// TODO: could make an argument that we should be doing this for all except for NONE
 			double fullMMax = NSHM27_InvConfigFactory.getIncludeRuptureMmax(rupSet, fullBranch);
 			refMFD = FaultSysTools.initEmptyMFD(OVERALL_MMIN, fullMMax+0.1);
 			final double snappedFullMMax = refMFD.getX(refMFD.getClosestXIndex(fullMMax));
