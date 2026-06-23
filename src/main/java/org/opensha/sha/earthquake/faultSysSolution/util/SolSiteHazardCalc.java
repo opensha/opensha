@@ -776,7 +776,7 @@ public class SolSiteHazardCalc {
 			magRange = disaggRange(minMag, maxMag, 0.5, false);
 			
 			double disaggMaxDist = cmd.hasOption("disagg-max-dist") ?
-					Double.parseDouble(cmd.getOptionValue("disagg-max-dist")) : Math.min(largestMaxDist, 200d);
+					Double.parseDouble(cmd.getOptionValue("disagg-max-dist")) : Math.max(largestMaxDist, 200d);
 			double minDist, distDelta;
 			if (disaggMaxDist > 150d) {
 				minDist = 10d;
