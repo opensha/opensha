@@ -3,6 +3,9 @@ package org.opensha.sha.earthquake.faultSysSolution.subduction;
 import java.util.List;
 
 import org.apache.commons.math3.stat.StatUtils;
+import org.apache.commons.statistics.distribution.ContinuousDistribution;
+import org.opensha.commons.data.WeightedContinuousDistribution;
+import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
@@ -21,36 +24,18 @@ import com.google.common.base.Preconditions;
 public class InterfaceDeformationProjection {
 	
 	/**
-	 * Checks the direction of the supplied deformation front against the direction of the supplied trace. If they are
-	 * flipped, then the deformation front and it's slip rates will be reversed in place to match the trace.
+	 * Utility method to detect flipped traces, e.g., if the deformation model was supplied in the opposite order.
+	 * This just checks the direction of the supplied deformation front against the strike direction of the supplied
+	 * trace and returns true if they are more than 90 degrees apart.
 	 * 
 	 * @param trace
 	 * @param deformationFront
-	 * @param deformationFrontSlipRates
+	 * @return true if the traces are flipped, false if they are in the same direction
 	 */
-	public static void checkForTraceDirection(FaultTrace trace, LocationList deformationFront,
-			double[] deformationFrontSlipRates) {
+	public static boolean areTracesFlipped(FaultTrace trace, LocationList deformationFront) {
 		double deformationDirection = LocationUtils.azimuth(deformationFront.first(), deformationFront.last());
 		double traceDirection = trace.getStrikeDirection();
-		if (FaultUtils.getAbsAngleDiff(traceDirection, deformationDirection) > 90d) {
-			// reverse
-			System.out.println("Deformation trace is reversed, flipping; deformation strike="+deformationDirection+", trace strike="+traceDirection);
-			deformationFront.reverse();
-			
-			int start = 0;
-			int end = deformationFrontSlipRates.length - 1;
-			double temp;
-			while (start < end) {
-				// Swap elements at start and end
-				temp = deformationFrontSlipRates[start];
-				deformationFrontSlipRates[start] = deformationFrontSlipRates[end];
-				deformationFrontSlipRates[end] = temp;
-
-				// Move toward the center
-				start++;
-				end--;
-			}
-		}
+		return FaultUtils.getAbsAngleDiff(traceDirection, deformationDirection) > 90d;
 	}
 	
 	/**
@@ -83,10 +68,78 @@ public class InterfaceDeformationProjection {
 			double sigma,
 			double maxDist) {
 		Preconditions.checkState(deformationFront.size() == deformationFrontSlipRates.length);
+		int n = deformationFront.size();
+		double[][] weights = getGaussianSmoothingWeights(deformationFront, sigma, maxDist);
+
+		double[] smoothed = new double[n];
+
+		for (int i=0; i<n; i++)
+			for (int j=0; j<n; j++)
+				if (weights[i][j] > 0d)
+					smoothed[i] = Math.fma(deformationFrontSlipRates[j], weights[i][j], smoothed[i]);
+
+		return smoothed;
+	}
+	
+	/**
+	 * Applies a Gaussian smoothing kernel to the deformation front slip rate distributions with sigma specified in km. Default
+	 * behavior uses maxDist=2*sigma.
+	 * @param deformationFront
+	 * @param deformationFrontDists
+	 * @param sigma smoothing kernel sigma (km)
+	 * @return
+	 */
+	public static ContinuousDistribution[] getSmoothedDeformationFrontDistributions(
+			LocationList deformationFront,
+			ContinuousDistribution[] deformationFrontDists,
+			double sigma) {
+		return getSmoothedDeformationFrontDistributions(deformationFront, deformationFrontDists, sigma, sigma*2d);
+	}
+	
+	/**
+	 * Applies a Gaussian smoothing kernel to the deformation front slip rate distributions with sigma and maximum distance specified
+	 * in km.
+	 * @param deformationFront
+	 * @param deformationFrontDists
+	 * @param sigma smoothing kernel sigma (km)
+	 * @param maxDist maximum distance (km)
+	 * @return
+	 */
+	public static ContinuousDistribution[] getSmoothedDeformationFrontDistributions(
+			LocationList deformationFront,
+			ContinuousDistribution[] deformationFrontDists,
+			double sigma,
+			double maxDist) {
+		Preconditions.checkState(deformationFront.size() == deformationFrontDists.length);
+		int n = deformationFront.size();
+		double[][] weights = getGaussianSmoothingWeights(deformationFront, sigma, maxDist);
+
+		ContinuousDistribution[] smoothed = new ContinuousDistribution[n];
+
+		for (int i=0; i<n; i++) {
+			WeightedList<ContinuousDistribution> dists = new WeightedList<>();
+			for (int j=0; j<n; j++)
+				if (weights[i][j] > 0d)
+					dists.add(deformationFrontDists[j], weights[i][j]);
+			Preconditions.checkState(!dists.isEmpty());
+			if (dists.size() == 1)
+				smoothed[i] = dists.getValue(0);
+			else
+				smoothed[i] = new WeightedContinuousDistribution(dists);
+		}
+
+		return smoothed;
+	}
+	
+	private static double[][] getGaussianSmoothingWeights(
+			LocationList deformationFront,
+			double sigma,
+			double maxDist) {
+		Preconditions.checkState(deformationFront.size() > 1);
 		Preconditions.checkState(sigma > 0d);
 		Preconditions.checkState(maxDist > 0d);
 
-		int n = deformationFrontSlipRates.length;
+		int n = deformationFront.size();
 
 		double[] distsAlong = new double[n];
 		for (int i=1; i<n; i++) {
@@ -106,11 +159,10 @@ public class InterfaceDeformationProjection {
 			}
 		}
 
-		double[] smoothed = new double[n];
+		double[][] weights = new double[n][n];
 		double twoSigmaSq = 2d*sigma*sigma;
 
 		for (int i=0; i<n; i++) {
-			double weightedSum = 0d;
 			double weightSum = 0d;
 
 			double min = distsAlong[i] - maxDist;
@@ -122,16 +174,17 @@ public class InterfaceDeformationProjection {
 					double kernelWeight = Math.exp(-(dist*dist)/twoSigmaSq);
 					double weight = kernelWeight*lengthWeights[j];
 
-					weightedSum += deformationFrontSlipRates[j]*weight;
+					weights[i][j] = weight;
 					weightSum += weight;
 				}
 			}
 
 			Preconditions.checkState(weightSum > 0d);
-			smoothed[i] = weightedSum/weightSum;
+			for (int j=0; j<n && distsAlong[j] <= max; j++)
+				weights[i][j] /= weightSum;
 		}
 
-		return smoothed;
+		return weights;
 	}
 	
 	/**
