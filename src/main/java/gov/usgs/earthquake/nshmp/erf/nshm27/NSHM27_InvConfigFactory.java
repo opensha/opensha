@@ -312,7 +312,13 @@ public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigur
 		RandomBValSampler.Node bValNode = branch.getValue(RandomBValSampler.Node.class);
 		double bVal;
 		double[] sectSpecificBValues = null;
-		if (bValNode != null) {
+		if (branch.hasValue(NSHM27_InterfaceObsSeisDMAdjustment.EXTRAPOLATE)) {
+			// use obs seis b-value
+			NSHM27_SeismicityRegions reg = branch.requireValue(NSHM27_InterfaceFaultModels.class).getSeisReg();
+			RateRecord rateModel = branch.requireValue(NSHM27_SeisRateModel.class).getRateRecord(reg, TectonicRegionType.SUBDUCTION_INTERFACE);
+			Preconditions.checkState(rateModel instanceof PureGR);
+			bVal = ((PureGR)rateModel).b;
+		} else if (bValNode != null) {
 			RandomBValSampler sampler = rupSet.requireModule(BranchSamplingManager.class).getSampler(bValNode);
 			sectSpecificBValues = sampler.getBValues();
 			Preconditions.checkState(sectSpecificBValues.length == rupSet.getNumSections(),
@@ -327,8 +333,6 @@ public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigur
 				bVal = SectionSupraSeisBValues.momentWeightedAverage(rupSet, sectSpecificBValues);
 		}
 		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal, sectSpecificBValues);
-		
-		
 		
 		if (branch.hasValue(NSHM27_InterfaceObsSeisDMAdjustment.class)) {
 			NSHM27_InterfaceObsSeisDMAdjustment adjustment = branch.requireValue(NSHM27_InterfaceObsSeisDMAdjustment.class);
@@ -513,6 +517,22 @@ public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigur
 		System.out.println("Combining "+exclusionModels.size()+" exclusion models");
 		
 		return new RuptureProbabilityCalc.LogicalAnd(exclusionModels.toArray(new BinaryRuptureProbabilityCalc[0]));
+	}
+	
+	public static double getIncludeRuptureMmax(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+		ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
+		BinaryRuptureProbabilityCalc rupExclusionModel = getExclusionModel(rupSet, branch, cRups);
+		double mMax = 0d;
+		for (int rupIndex=0; rupIndex<rupSet.getNumRuptures(); rupIndex++) {
+			double mag = rupSet.getMagForRup(rupIndex);
+			if (mag > mMax) {
+				if (rupExclusionModel != null && !rupExclusionModel.isRupAllowed(cRups.get(rupIndex), false))
+					continue;
+				mMax = mag;
+			}
+		}
+		Preconditions.checkState(mMax > 0d);
+		return mMax;
 	}
 
 	private static ExclusionIntegerSampler getExcludeSampler(ClusterRuptures cRups,

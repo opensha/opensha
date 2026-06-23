@@ -68,6 +68,7 @@ import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_CrustalFaultModels;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_DeclusteringAlgorithms;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_InterfaceFaultModels;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_InterfaceMinSubSects;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_InterfaceObsSeisDMAdjustment;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_LogicTree;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisRateModel;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisSmoothingAlgorithms;
@@ -359,11 +360,30 @@ public class NSHM27_GridSourceBuilder {
 		NSHM27_DeclusteringAlgorithms decluster = fullBranch.requireValue(NSHM27_DeclusteringAlgorithms.class);
 		NSHM27_SeisSmoothingAlgorithms smooth = fullBranch.requireValue(NSHM27_SeisSmoothingAlgorithms.class);
 		
-		IncrementalMagFreqDist refMFD = FaultSysTools.initEmptyMFD(OVERALL_MMIN, StatUtils.max(sectMinMags)+0.1);
+		IncrementalMagFreqDist refMFD;
+		Function<Double, IncrementalMagFreqDist> mfdBuilderFunc;
 		Map<Double, IncrementalMagFreqDist> mMaxMFDCache = new HashMap<>();
-		Function<Double, IncrementalMagFreqDist> mfdBuilderFunc = mMax-> {
-			return rateBranch.build(seisRegion, TectonicRegionType.SUBDUCTION_INTERFACE, refMFD, mMax);
-		};
+		if (fullBranch.hasValue(NSHM27_InterfaceObsSeisDMAdjustment.EXTRAPOLATE)) {
+			// we need the MFD with total rate up to full Mmax, but then with rates removed above gridded Mmax
+			// TODO: could make an argument that we should be doing this for all except for NONE
+			double fullMMax = NSHM27_InvConfigFactory.getIncludeRuptureMmax(rupSet, fullBranch);
+			refMFD = FaultSysTools.initEmptyMFD(OVERALL_MMIN, fullMMax+0.1);
+			final double snappedFullMMax = refMFD.getX(refMFD.getClosestXIndex(fullMMax));
+			mfdBuilderFunc = mMax-> {
+				IncrementalMagFreqDist mfd = rateBranch.build(seisRegion, TectonicRegionType.SUBDUCTION_INTERFACE, refMFD, snappedFullMMax);
+				// now zero out above mMax
+				for (int i=mfd.getClosestXIndex(mMax)+1; i<mfd.size(); i++)
+					mfd.set(i, 0d);
+				return mfd;
+			};
+		} else {
+			// we're only going to gridded Mmax, but include a small buffer
+			refMFD = FaultSysTools.initEmptyMFD(OVERALL_MMIN, StatUtils.max(sectMinMags)+0.1);
+			// gridded rates only up to our gridded Mmax
+			mfdBuilderFunc = mMax-> {
+				return rateBranch.build(seisRegion, TectonicRegionType.SUBDUCTION_INTERFACE, refMFD, mMax);
+			};
+		}
 		
 		GriddedGeoDataSet depths = loadInterfaceDepths(seisRegion);
 		GriddedGeoDataSet dips = loadInterfaceDips(seisRegion);

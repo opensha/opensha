@@ -1,11 +1,8 @@
 package gov.usgs.earthquake.nshmp.erf.nshm27.logicTree;
 
 import java.io.IOException;
-import java.util.Map;
+import java.text.DecimalFormat;
 
-import org.apache.commons.math3.stat.StatUtils;
-import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
-import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
@@ -14,9 +11,11 @@ import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList.GriddedRupture;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
@@ -27,8 +26,7 @@ import org.opensha.sha.util.TectonicRegionType;
 import com.google.common.base.Preconditions;
 
 import gov.usgs.earthquake.nshmp.erf.nshm27.NSHM27_GridSourceBuilder;
-import gov.usgs.earthquake.nshmp.erf.nshm27.util.InterfaceGridAssociations;
-import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_SeisPDF_Loader;
+import gov.usgs.earthquake.nshmp.erf.nshm27.NSHM27_InvConfigFactory;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
 
 @Affects(FaultSystemRupSet.SECTS_FILE_NAME)
@@ -40,8 +38,9 @@ import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_Seis
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode.FixedWeightNode {
 	NONE("No Adjustment", "None", 1d),
-	AVERAGE("Average Observed Seismicity", "Average", 1d),
-	SECTION_SPECIFIC("Section-Specific Observed Seismicity", "Sect-Specific", 1d);
+	AVERAGE("Average Observed Seismicity Sub-Seis Reduction", "Avg-Sub-Seis", 1d),
+	SECTION_SPECIFIC("Section-Specific Observed Seismicity", "Sect-Sub-Seis", 1d),
+	EXTRAPOLATE("Match Extrapolated Observed Seismicity", "Extrapolate-Observed", 1d);
 	
 	private String name;
 	private String shortName;
@@ -143,7 +142,7 @@ public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode.FixedWe
 		case AVERAGE: {
 			if (avgReduction >= 1d) {
 				System.err.println("WARNING: associated interface moment ("+(float)assocFaultMoment+") is less than "
-						+ "associated gridded moment (%s) for branch "+branch+", setting all slip rates to 0");
+						+ "associated gridded moment ("+(float)assocGridMoment+") for branch "+branch+", setting all slip rates to 0");
 				yield SectSlipRates.precomputed(rupSet, new double[moments.length], slipSDs);
 			}
 			double[] reducedSlipRates = new double[moments.length];
@@ -185,6 +184,80 @@ public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode.FixedWe
 					+"\n\tfinal="+finalTrack+" w/ avgReduction="+(float)avgReduction+" applied to unassociated; "
 					+numAbove+"/"+moments.length+" fully reduced");
 			yield SectSlipRates.precomputed(rupSet, reducedSlipRates, slipSDs);
+		}
+		case EXTRAPOLATE: {
+			// figure out Mmax
+			double mMax = NSHM27_InvConfigFactory.getIncludeRuptureMmax(rupSet, branch);
+			Preconditions.checkState(mMax > 0d);
+			
+			// build a GR up to full Mmax
+			IncrementalMagFreqDist refMFD = FaultSysTools.initEmptyMFD(NSHM27_GridSourceBuilder.OVERALL_MMIN, mMax);
+			NSHM27_SeisRateModel rateModel = branch.requireValue(NSHM27_SeisRateModel.class);
+			int mMaxIndex = refMFD.getClosestXIndex(mMax);
+			IncrementalMagFreqDist totalGR = rateModel.build(seisReg, TectonicRegionType.SUBDUCTION_INTERFACE,
+					refMFD, refMFD.getX(mMaxIndex));
+			
+			System.out.println("Building extrapolated DM with mMax="+(float)mMax);
+			
+			// figure out how much moment from the total GR is >= the section minimum mags (which can vary by sect)
+			double sumAvailMoment = 0d;
+			for (int s=0; s<rupSet.getNumSections(); s++) {
+				double fractAssoc = assoc.getSectionFractInRegion(s);
+				if (fractAssoc > 0d) {
+					// what fraction of the total associated moment does this section represent
+					double sectFract = fractAssoc * moments[s]/assocFaultMoment;
+					int sectMminIndex = refMFD.getClosestXIndex(sectMmins[s]);
+					for (int m=sectMminIndex; m<=mMaxIndex; m++)
+						sumAvailMoment += sectFract*totalGR.getMomentRate(m);
+				}
+			}
+			
+			System.out.println("Total GR has "+totalGR.getTotalMomentRate());
+			System.out.println("Supra-available moment is "+sumAvailMoment+" ("
+					+new DecimalFormat("0.00%").format(sumAvailMoment/totalGR.getTotalMomentRate())+" of total GR)");
+			
+			double dmScale = sumAvailMoment / assocFaultMoment;
+			System.out.println("DM scale = "+(float)sumAvailMoment+" / "+(float)assocFaultMoment+" = "+(float)dmScale);
+			
+			double[] reducedSlipRates = new double[moments.length];
+			double[] reducedSlipSDs = new double[moments.length];
+			for (int s=0; s<reducedSlipRates.length; s++) {
+				// this is with coupling already applied
+				double inputSlipRate = origSlipRates.getSlipRate(s);
+				
+				double scaledCoupledSlip = inputSlipRate * dmScale;
+				reducedSlipRates[s] = scaledCoupledSlip;
+				
+				FaultSection sect = rupSet.getFaultSectionData(s);
+				double coupling = sect.getCouplingCoeff();
+				// this is the reduced slip rate, but without coupling applied
+				double withoutCouplingApplied = scaledCoupledSlip / coupling;
+				
+				// keep the SD as the fractional value of the original before coupling was applied
+				// we always use un-reduced SD, and this is the value that would show up as the SD if our
+				// DM-scaled slip rate had always been present
+				
+				// our DM slip rates std devs are all hardcoded, so use that
+				double slipSD;
+				if (NSHM27_InterfaceDeformationModels.isHardcodedFractionalStdDev())
+					slipSD = NSHM27_InterfaceDeformationModels.HARDCODED_FRACTIONAL_STD_DEV*withoutCouplingApplied;
+				else
+					slipSD = NSHM27_InterfaceDeformationModels.DEFAULT_FRACT_SLIP_STD_DEV*withoutCouplingApplied;
+				slipSD = Math.min(slipSD, NSHM27_InterfaceDeformationModels.STD_DEV_FLOOR);
+				reducedSlipSDs[s] = slipSD;
+				
+				
+//				// could also reset the original fault section's slip rate in order to get apparent sub-seis reductions
+//				// coupled moment, but this doesn't work because this code can be called multiple times, which 
+//				// would then affect the target slip rates on subsequent calls.
+//				double supraCoupledMoment = dmScale * moments[s];
+//				double fullCoupledMoment = impliedMoments[s] + supraCoupledMoment;
+//				double subSeisAddScalar = fullCoupledMoment / supraCoupledMoment;
+//				// m/yr -> mm/yr
+//				sect.setAveSlipRate(withoutCouplingApplied * subSeisAddScalar * 1e3);
+//				sect.setSlipRateStdDev(reducedSlipSDs[s] * 1e3);
+			}
+			yield SectSlipRates.precomputed(rupSet, reducedSlipRates, reducedSlipSDs);
 		}
 		default:
 			throw new IllegalArgumentException("Unexpected value: " + this);
