@@ -934,7 +934,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 							// compare before applying slipAddStdScalar
 							fractSupra = supraSlipRate/creepReducedSlipRateNoScale;
 
-							Preconditions.checkState(fractSupra > 0d && fractSupra <= 1d,
+							Preconditions.checkState((float)fractSupra > 0f && (float)fractSupra <= 1f,
 									"Bad fractSupra = %s / %s = %s; sect[%s] origSlip=%s, origSd=%s, coupling=%s, "
 									+ "inputSD=%s, slipAddStdScalar=%s",
 									supraSlipRate, creepReducedSlipRateNoScale, fractSupra, s, sect.getOrigAveSlipRate(),
