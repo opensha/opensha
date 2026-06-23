@@ -9,7 +9,6 @@ import java.util.Random;
 import org.apache.commons.statistics.distribution.ContinuousDistribution;
 import org.apache.commons.statistics.distribution.TruncatedNormalDistribution;
 import org.apache.commons.statistics.distribution.UniformContinuousDistribution;
-import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
@@ -21,7 +20,6 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxRuptureLengthBranchNode;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues;
@@ -29,11 +27,11 @@ import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_Subduc
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
-import com.google.common.primitives.Doubles;
 
 import gov.usgs.earthquake.nshmp.erf.logicTree.TectonicRegionBranchTreeNode;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
+import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.PureGR;
 
 public class NSHM27_LogicTree {
 	
@@ -60,10 +58,41 @@ public class NSHM27_LogicTree {
 			new NSHM27_SeisRateModelSamples(NSHM27_SeismicityRegions.GNMI, TectonicRegionType.SUBDUCTION_INTERFACE);
 	public static final NSHM27_SeisRateModelSamples AMSAM_INTERFACE_RATE_SAMPLES =
 			new NSHM27_SeisRateModelSamples(NSHM27_SeismicityRegions.AMSAM, TectonicRegionType.SUBDUCTION_INTERFACE);
+
 	public static final double INTERFACE_B_SINGLE_DEFAULT = 1d;
-	public static final ContinuousDistribution INTERFACE_B_DIST = UniformContinuousDistribution.of(0.5d, 1d); // TODO
-	public static final double INTERFACE_MAX_LEN_SINGLE_DEFAULT = 1300;
-	public static final ContinuousDistribution INTERFACE_MAX_LEN_DIST = UniformContinuousDistribution.of(1000d, 1500d); // TODO
+	private static ContinuousDistribution getInterfaceBDist(NSHM27_SeismicityRegions seisReg) {
+//		// alpha model
+//		return UniformContinuousDistribution.of(0.5d, 1d);
+		
+		PureGR rateModel = (PureGR)NSHM27_SeisRateModelBranch.PREFFERRED.getRateRecord(
+				seisReg, TectonicRegionType.SUBDUCTION_INTERFACE);
+		return UniformContinuousDistribution.of(0.5d, Math.max(1d, rateModel.b));
+	}
+
+	public static final double INTERFACE_MAX_LEN_SINGLE_DEFAULT = 750d;
+	private static ContinuousDistribution getInterfaceLMax(NSHM27_SeismicityRegions seisReg) {
+//		// alpha model
+//		return UniformContinuousDistribution.of(1000d, 1500d);
+		
+		return switch (seisReg) {
+		case AMSAM:
+			// Tonga
+			// Corresponds to: M8.67-9.24 (on middle scaling branch)
+			// Justification:
+			// 		Lower: super-high slip rate patch is ~300 km long (from ~175-475 in the length map)
+			// 		Upper: total length in our model is ~1100 km which is still shorter than Sumatra (~1300 km)
+			yield UniformContinuousDistribution.of(300d, 1100d);
+		case GNMI:
+			// Mariana
+			// Corresponds to: M8.43-9.09 (on middle scaling branch)
+			// Justification:
+			// 		Lower: highest slip rate patch is ~200 km long (from ~1075-1275 in the length map)
+			// 		Upper: whole coupled patch excluding the 0.04 coupling section is ~900 km long (from ~825-1719 in the length map)
+			yield UniformContinuousDistribution.of(200d, 900d);
+		default:
+			throw new IllegalArgumentException("Unexpected value: " + seisReg);
+		};
+	}
 	
 	/*
 	 * Subduction intraslab branch levels (gridded)
@@ -115,14 +144,14 @@ public class NSHM27_LogicTree {
 					levels.add(INTERFACE_AGG_DM);
 				levels.add(INTERFACE_SCALE);
 				if (sampled)
-					levels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(supraBname, supraBshortName, INTERFACE_B_DIST));
+					levels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(supraBname, supraBshortName, getInterfaceBDist(seisReg)));
 				else
 					levels.add(new SectionSupraSeisBValues.FixedValueLevel(supraBname, supraBshortName, INTERFACE_B_SINGLE_DEFAULT));
 				levels.add(INTERFACE_OBS_SEIS_DM_ADJ);
 				levels.add(INTERFACE_MIN_SUB_SECTS);
 				if (sampled)
 					levels.add(new MaxRuptureLengthBranchNode.DistributionSamplingLevel(
-							"Interface Maximum Rupture Length", "Interface Max. Len.", INTERFACE_MAX_LEN_DIST));
+							"Interface Maximum Rupture Length", "Interface Max. Len.", getInterfaceLMax(seisReg)));
 				else
 					levels.add(new MaxRuptureLengthBranchNode.FixedValueLevel(
 							"Interface Maximum Rupture Length", "Interface Max. Len.", INTERFACE_MAX_LEN_SINGLE_DEFAULT));
