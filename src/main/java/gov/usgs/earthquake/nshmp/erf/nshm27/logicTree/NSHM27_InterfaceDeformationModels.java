@@ -7,8 +7,9 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.numbers.core.Precision;
+import org.apache.commons.statistics.distribution.BetaDistribution;
 import org.apache.commons.statistics.distribution.ContinuousDistribution;
-import org.apache.commons.statistics.distribution.TriangularDistribution;
 import org.opensha.commons.data.AffineTransformedContinuousDistribution;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.Location;
@@ -43,6 +44,8 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public class NSHM27_InterfaceDeformationModels extends RupSetDeformationModelDistribution<FixedSampler> {
 	
+	public static final String CSV_NAME = "2026_06_23.csv";
+	
 	public static class SamplingLevel extends RupSetDeformationModelDistribution.UniformSamplingLevel<NSHM27_InterfaceDeformationModels> {
 		
 		public static String NAME = "Crustal Deformation Model Sample";
@@ -73,9 +76,9 @@ public class NSHM27_InterfaceDeformationModels extends RupSetDeformationModelDis
 	@DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 	@DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 	public static enum Aggregated implements RupSetDeformationModel, FixedWeightNode {
-		LOW_COUPLING("Low Interface Coupling", "Low", 1d, new FixedFractileSampler(0.025)),
-		PREF_COUPLING("Preferred Interface Coupling", "Preferred", 1d, new AverageSampler()),
-		HIGH_COUPLING("High Interface Coupling", "High", 1d, new FixedFractileSampler(0.975));
+		LOW_COUPLING("Low Interface Coupling (2.5 %-ile)", "Low", 1d, new FixedFractileSampler(0.025)),
+		PREF_COUPLING("Preferred Interface Coupling (Median)", "Preferred", 1d, new FixedFractileSampler(0.5)),
+		HIGH_COUPLING("High Interface Coupling (97.5 %-ile)", "High", 1d, new FixedFractileSampler(0.975));
 		
 		private String name;
 		private String shortName;
@@ -182,9 +185,9 @@ public class NSHM27_InterfaceDeformationModels extends RupSetDeformationModelDis
 	private static DeformationFront loadDeformationFront(NSHM27_InterfaceFaultModels fm) throws IOException {
 		String csvPath;
 		if (fm == NSHM27_InterfaceFaultModels.AMSAM_V1) {
-			csvPath = "/data/erf/nshm27/amsam/deformation_models/subduction/ker_trace_dm.csv";
+			csvPath = "/data/erf/nshm27/amsam/deformation_models/subduction/"+CSV_NAME;
 		} else if (fm == NSHM27_InterfaceFaultModels.GNMI_V1) {
-			csvPath = "/data/erf/nshm27/gnmi/deformation_models/subduction/izu_trace_dm.csv";
+			csvPath = "/data/erf/nshm27/gnmi/deformation_models/subduction/"+CSV_NAME;
 		} else {
 			throw new IllegalStateException("Unexpected FM: "+fm);
 		}
@@ -201,17 +204,26 @@ public class NSHM27_InterfaceDeformationModels extends RupSetDeformationModelDis
 		
 		for (int i=0; i<convergence.length; i++) {
 			int row = i+1;
-			Location loc = new Location(csv.getDouble(row, 1), csv.getDouble(row, 0));
+			Location loc = new Location(csv.getDouble(row, 0), csv.getDouble(row, 1));
 			if (loc.lon < 0)
 				loc = new Location(loc.lat, loc.lon+360d);
 			trace.add(loc);
 			convergence[i] = csv.getDouble(row, 2);
 			Preconditions.checkState(Double.isFinite(convergence[i]) && convergence[i] >= 0, "Bad convergence rate: %s", convergence[i]);
-			// TODO: using old file w/ triangular dist
-			double couplingLow = csv.getDouble(row, 3);
-			double couplingPref = csv.getDouble(row, 4);
-			double couplingHigh = csv.getDouble(row, 5);
-			couplingDists[i] = TriangularDistribution.of(couplingLow, couplingPref, couplingHigh);
+			double alpha = csv.getDouble(row, 3);
+			double beta = csv.getDouble(row, 4);
+			BetaDistribution dist = BetaDistribution.of(alpha, beta);
+			double p2p5 = csv.getDouble(row, 5);
+			double p50 = csv.getDouble(row, 6);
+			double p97p5 = csv.getDouble(row, 7);
+			// validate
+			Preconditions.checkState(Precision.equals(p2p5, dist.inverseCumulativeProbability(0.025), 1e-3),
+					"Unexpected p2.5 for alpha=%s, beta=%s, mine=%s, file=%s", alpha, beta, dist.inverseCumulativeProbability(0.025), p2p5);
+			Preconditions.checkState(Precision.equals(p50, dist.inverseCumulativeProbability(0.5), 1e-3),
+					"Unexpected p50 for alpha=%s, beta=%s, mine=%s, file=%s", alpha, beta, dist.inverseCumulativeProbability(0.5), p50);
+			Preconditions.checkState(Precision.equals(p97p5, dist.inverseCumulativeProbability(0.975), 1e-3),
+					"Unexpected p97.5 for alpha=%s, beta=%s, mine=%s, file=%s", alpha, beta, dist.inverseCumulativeProbability(0.975), p97p5);
+			couplingDists[i] = dist;
 		}
 		
 		if (InterfaceDeformationProjection.areTracesFlipped(fullSect.getFaultTrace(), trace)) {
@@ -254,10 +266,6 @@ public class NSHM27_InterfaceDeformationModels extends RupSetDeformationModelDis
 		DeformationFront df = getDeformationFront(fm);
 		
 		FixedSampler sampler = getValue();
-		
-		if (branch.hasValue(NSHM27_InterfaceObsSeisDMAdjustment.EXTRAPOLATE))
-			// we're extrapolating from observed seismicity, use average coupling as the starting point
-			sampler = new AverageSampler();
 		
 		NSHM27_InterfaceCouplingDepthModels depthCoupling = branch.getValue(
 				NSHM27_InterfaceCouplingDepthModels.class);
@@ -369,4 +377,30 @@ public class NSHM27_InterfaceDeformationModels extends RupSetDeformationModelDis
 	}
 	
 	private static final DecimalFormat pDF = new DecimalFormat("0.00%");
+	
+	public static void main(String[] args) throws IOException {
+//		NSHM27_InterfaceFaultModels fm = NSHM27_InterfaceFaultModels.AMSAM_V1;
+		NSHM27_InterfaceFaultModels fm = NSHM27_InterfaceFaultModels.GNMI_V1;
+		
+		DeformationFront df = getDeformationFront(fm);
+		
+		DecimalFormat latLonDF = new DecimalFormat("0.00");
+		DecimalFormat coupleDF = new DecimalFormat("0.000");
+		DecimalFormat slipDF = new DecimalFormat("0.00");
+		for (int i=0; i<df.trace.size(); i++) {
+			Location loc = df.trace.get(i);
+			ContinuousDistribution couplingDist = df.couplingDists[i];
+			ContinuousDistribution slipDist = df.coupledSlipDists[i];
+			System.out.println(i+". ("+latLonDF.format(loc.lat)+", "+latLonDF.format(loc.lon)+")"
+					+"\tConvergence: "+slipDF.format(df.convergence[i])
+					+"\tCoupling 2.5/50/97.5: ["+coupleDF.format(couplingDist.inverseCumulativeProbability(0.025))
+					+", "+coupleDF.format(couplingDist.inverseCumulativeProbability(0.5))
+					+", "+coupleDF.format(couplingDist.inverseCumulativeProbability(0.975))+"]"
+					+"\tSlip min/2.5/50/97.50/max: ["+slipDF.format(slipDist.inverseCumulativeProbability(0d))
+					+", "+slipDF.format(slipDist.inverseCumulativeProbability(0.025))
+					+", "+slipDF.format(slipDist.inverseCumulativeProbability(0.5))
+					+", "+slipDF.format(slipDist.inverseCumulativeProbability(0.975))
+					+", "+slipDF.format(slipDist.inverseCumulativeProbability(1d))+"]");
+		}
+	}
 }
