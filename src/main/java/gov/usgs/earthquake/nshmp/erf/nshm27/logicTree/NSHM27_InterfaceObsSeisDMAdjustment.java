@@ -11,15 +11,14 @@ import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
-import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList.GriddedRupture;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -72,31 +71,39 @@ public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode.FixedWe
 		return name();
 	}
 	
-	public void adjustSlipRates(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) throws IOException {
+	public SectSlipRates adjustSlipRates(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) throws IOException {
+		final int numSections = rupSet.getNumSections();
+		double[] inputFullSlipRates = new double[numSections];
+		double[] inputReducedSlipRates = new double[numSections];
+		double[] inputFullSlipSDs = new double[numSections];
+		for (int s=0; s<numSections; s++) {
+			FaultSection sect = rupSet.getFaultSectionData(s);
+			// mm -> m
+			inputFullSlipRates[s] = sect.getOrigAveSlipRate()*1e-3;
+			inputReducedSlipRates[s] = sect.getReducedAveSlipRate()*1e-3;
+			inputFullSlipSDs[s] = sect.getOrigSlipRateStdDev()*1e-3;
+		}
 		if (this == NONE)
-			return;
+			// use reduced slip rates but full slip SDs
+			return SectSlipRates.precomputed(rupSet, inputReducedSlipRates, inputFullSlipSDs);
 		NSHM27_InterfaceFaultModels fm = branch.requireValue(NSHM27_InterfaceFaultModels.class);
 		NSHM27_SeismicityRegions seisReg = fm.getSeisReg();
 		NSHM27_GridSourceBuilder.doPreGridBuildHook(rupSet, branch);
 		GridSourceList gridList = NSHM27_GridSourceBuilder.buildInterfaceGridSourceList(rupSet, branch, seisReg);
 		
-		SectSlipRates origSlipRates = SectSlipRates.fromFaultSectData(rupSet);
 		FaultGridAssociations assoc = rupSet.requireModule(FaultGridAssociations.class);
 		
 		// just go off of average mMin
 		double[] sectMmins = NSHM27_GridSourceBuilder.getInterfaceSectMinMag(rupSet, branch);
-		double[] moments = new double[sectMmins.length];
-		double[] slipSDs = new double[sectMmins.length];
+		double[] moments = new double[numSections];
 		
 		System.out.println("Applying interface sub-seis ajustment="+this.name);
 	
 		double sectTotalMoment = 0d;
 		double sectAssocTotalMoment = 0d;
-		for (int s=0; s<sectMmins.length; s++) {
+		for (int s=0; s<numSections; s++) {
 			FaultSection sect = rupSet.getFaultSectionData(s);
 			moments[s] = sect.calcMomentRate(true);
-			// grab the original slip std dev; the default SectSlipRates below will use the reduced version
-			slipSDs[s] = sect.getOrigSlipRateStdDev()*1e-3; // mm -> m
 			sectTotalMoment += moments[s];
 			sectAssocTotalMoment += moments[s] * assoc.getSectionFractInRegion(s);
 		}
@@ -143,16 +150,16 @@ public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode.FixedWe
 			if (avgReduction >= 1d) {
 				System.err.println("WARNING: associated interface moment ("+(float)assocFaultMoment+") is less than "
 						+ "associated gridded moment ("+(float)assocGridMoment+") for branch "+branch+", setting all slip rates to 0");
-				yield SectSlipRates.precomputed(rupSet, new double[moments.length], slipSDs);
+				yield SectSlipRates.precomputed(rupSet, new double[numSections], inputFullSlipSDs);
 			}
-			double[] reducedSlipRates = new double[moments.length];
-			for (int i=0; i<reducedSlipRates.length; i++) {
-				double orig = origSlipRates.getSlipRate(i);
-				reducedSlipRates[i] = orig * (1d-avgReduction);
-				Preconditions.checkState(orig >= reducedSlipRates[i]);
+			double[] reducedSlipRates = new double[numSections];
+			for (int s=0; s<numSections; s++) {
+				double orig = inputReducedSlipRates[s];
+				reducedSlipRates[s] = orig * (1d-avgReduction);
+				Preconditions.checkState(orig >= reducedSlipRates[s]);
 			}
 			System.out.println("Interface average seis reduction for branch "+branch+": "+avgReduction);
-			yield SectSlipRates.precomputed(rupSet, reducedSlipRates, slipSDs);
+			yield SectSlipRates.precomputed(rupSet, reducedSlipRates, inputFullSlipSDs);
 		}
 		case SECTION_SPECIFIC: {
 			MinMaxAveTracker rawTrack = new MinMaxAveTracker();
@@ -160,8 +167,8 @@ public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode.FixedWe
 			double sectWtSum = 0d;
 			double gridWtSum = 0d;
 			int numAbove = 0;
-			double[] reducedSlipRates = new double[moments.length];
-			for (int s=0; s<impliedMoments.length; s++) {
+			double[] reducedSlipRates = new double[numSections];
+			for (int s=0; s<numSections; s++) {
 				double reduction = impliedMoments[s] / moments[s];
 				rawTrack.addValue(Math.min(1d, reduction));
 				double assocFract = assoc.getSectionFractInRegion(s);
@@ -172,7 +179,7 @@ public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode.FixedWe
 					numAbove++;
 					reduction = 1d;
 				} else {
-					reducedSlipRates[s] = origSlipRates.getSlipRate(s) * (1d-reduction);
+					reducedSlipRates[s] = inputReducedSlipRates[s] * (1d-reduction);
 				}
 				sectWtSum += reduction*moments[s];
 				gridWtSum += reduction*impliedMoments[s];
@@ -183,9 +190,16 @@ public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode.FixedWe
 			System.out.println("Interface obs seis reductions for branch "+branch+":\n\traw="+rawTrack
 					+"\n\tfinal="+finalTrack+" w/ avgReduction="+(float)avgReduction+" applied to unassociated; "
 					+numAbove+"/"+moments.length+" fully reduced");
-			yield SectSlipRates.precomputed(rupSet, reducedSlipRates, slipSDs);
+			yield SectSlipRates.precomputed(rupSet, reducedSlipRates, inputFullSlipSDs);
 		}
 		case EXTRAPOLATE: {
+//			if (!"asdf".isBlank()) {
+//				try {
+//					throw new IllegalStateException"*****************\n******HERE******\n****************");
+//				} catch (IllegalStateException e) {
+//					e.printStackTrace();
+//				}
+//			}
 			// figure out Mmax
 			double mMax = NSHM27_InvConfigFactory.getIncludeRuptureMmax(rupSet, branch);
 			Preconditions.checkState(mMax > 0d);
@@ -219,16 +233,23 @@ public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode.FixedWe
 			double dmScale = sumAvailMoment / assocFaultMoment;
 			System.out.println("DM scale = "+(float)sumAvailMoment+" / "+(float)assocFaultMoment+" = "+(float)dmScale);
 			
-			double[] reducedSlipRates = new double[moments.length];
-			double[] reducedSlipSDs = new double[moments.length];
-			for (int s=0; s<reducedSlipRates.length; s++) {
+			double[] reducedSlipRates = new double[numSections];
+			double[] reducedSlipSDs = new double[numSections];
+			for (int s=0; s<numSections; s++) {
 				// this is with coupling already applied
-				double inputSlipRate = origSlipRates.getSlipRate(s);
+				double inputFullSlipRate = inputFullSlipRates[s];
+				double inputCoupledSlipRate = inputReducedSlipRates[s];
+				double inputSlipRateSD = inputFullSlipSDs[s];
 				
-				double scaledCoupledSlip = inputSlipRate * dmScale;
+				double scaledCoupledSlip = inputCoupledSlipRate * dmScale;
 				reducedSlipRates[s] = scaledCoupledSlip;
 				
 				FaultSection sect = rupSet.getFaultSectionData(s);
+				Preconditions.checkState(sect instanceof GeoJSONFaultSection);
+				GeoJSONFaultSection geoSect = (GeoJSONFaultSection)sect;
+				// make sure this didn't get called multiple times; if it does, we'll be re-applying based on already reduced slip rates
+				Preconditions.checkState(!geoSect.getProperties().containsKey(GEOJSON_INPUT_SLIP_RATE_PROP_NAME),
+						"The extrapolation adjustment was already applied & baked into slip rates!");
 				double coupling = sect.getCouplingCoeff();
 				// this is the reduced slip rate, but without coupling applied
 				double withoutCouplingApplied = scaledCoupledSlip / coupling;
@@ -243,19 +264,30 @@ public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode.FixedWe
 					slipSD = NSHM27_InterfaceDeformationModels.HARDCODED_FRACTIONAL_STD_DEV*withoutCouplingApplied;
 				else
 					slipSD = NSHM27_InterfaceDeformationModels.DEFAULT_FRACT_SLIP_STD_DEV*withoutCouplingApplied;
-				slipSD = Math.min(slipSD, NSHM27_InterfaceDeformationModels.STD_DEV_FLOOR);
+				slipSD = Math.max(slipSD, NSHM27_InterfaceDeformationModels.STD_DEV_FLOOR*1e-3);
 				reducedSlipSDs[s] = slipSD;
 				
+				// reset the original fault section's slip rate in order to get apparent sub-seis reductions
+				// coupled moment
+				double supraCoupledMoment = dmScale * moments[s];
 				
-//				// could also reset the original fault section's slip rate in order to get apparent sub-seis reductions
-//				// coupled moment, but this doesn't work because this code can be called multiple times, which 
-//				// would then affect the target slip rates on subsequent calls.
-//				double supraCoupledMoment = dmScale * moments[s];
-//				double fullCoupledMoment = impliedMoments[s] + supraCoupledMoment;
-//				double subSeisAddScalar = fullCoupledMoment / supraCoupledMoment;
-//				// m/yr -> mm/yr
-//				sect.setAveSlipRate(withoutCouplingApplied * subSeisAddScalar * 1e3);
-//				sect.setSlipRateStdDev(reducedSlipSDs[s] * 1e3);
+				/*
+				 * in SupraSeisBValInversionTargetMFDs:
+				 * targetMoRate = FaultMomentCalc.getMoment(area, creepReducedSlipRate)
+				 * fractSupra = supraSlipRate/creepReducedSlipRate;
+				 * subMoRate = targetMoRate-supraMoRate;
+				 * 
+				 * translated to our variables:
+				 * impliedMoments[s] = targetMoRate - supraCoupledMoment
+				 * targetMoRate / supraCoupledMoment = (supraCoupledMoment + impliedMoments[s]) / supraCoupledMoment
+				 * newSupraSlipRate = newFullSlipRate = withoutCouplingApplied * (supraCoupledMoment + impliedMoments[s]) / supraCoupledMoment
+				 */
+				double newFullSlipRate = withoutCouplingApplied * (supraCoupledMoment + impliedMoments[s]) / supraCoupledMoment;
+				
+				sect.setAveSlipRate(newFullSlipRate * 1e3);
+				sect.setSlipRateStdDev(reducedSlipSDs[s] * 1e3);
+				geoSect.setProperty(GEOJSON_INPUT_SLIP_RATE_PROP_NAME, inputFullSlipRate*1e3);
+				geoSect.setProperty(GEOJSON_INPUT_SLIP_SD_PROP_NAME, inputSlipRateSD*1e3);
 			}
 			yield SectSlipRates.precomputed(rupSet, reducedSlipRates, reducedSlipSDs);
 		}
@@ -264,7 +296,7 @@ public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode.FixedWe
 		};
 		double modSectTotalMoment = 0d;
 		double modSectAssocTotalMoment = 0d;
-		for (int s=0; s<sectMmins.length; s++) {
+		for (int s=0; s<numSections; s++) {
 			double moment = slips.calcMomentRate(s);
 			modSectTotalMoment += moment;
 			modSectAssocTotalMoment += moment * assoc.getSectionFractInRegion(s);
@@ -274,7 +306,10 @@ public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode.FixedWe
 		System.out.println("\tSection reduced moment:\tassoc="+(float)modSectAssocTotalMoment+"\ttot="+(float)modSectTotalMoment);
 		System.out.println("\tTotal reductions:\tassoc="+(float)(sectAssocTotalMoment - modSectAssocTotalMoment)
 				+"\ttot="+(float)(sectTotalMoment - modSectTotalMoment));
-		rupSet.addModule(slips);
+		return slips;
 	}
+	
+	public static final String GEOJSON_INPUT_SLIP_RATE_PROP_NAME = "InputSlipRate";
+	public static final String GEOJSON_INPUT_SLIP_SD_PROP_NAME = "InputSlipRateStdDev";
 
 }
