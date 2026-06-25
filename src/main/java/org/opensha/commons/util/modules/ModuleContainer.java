@@ -475,10 +475,14 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * 
 	 * @param call
 	 * @param moduleClass
+	 * @return true if the available module was registered, false if a match was already present
 	 */
-	public synchronized <M extends E> void offerAvailableModule(Callable<M> call, Class<M> moduleClass) {
-		if (!hasAvailableModule(moduleClass))
+	public synchronized <M extends E> boolean offerAvailableModule(Callable<M> call, Class<M> moduleClass) {
+		if (!hasAvailableModule(moduleClass)) {
 			addAvailableModule(call, moduleClass);
+			return true;
+		}
+		return false;
 	}
 	
 	/**

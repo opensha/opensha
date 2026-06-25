@@ -33,6 +33,7 @@ import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.ExceptionUtils;
@@ -208,11 +209,11 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		
 		private List<Region> constrainedRegions;
 
-		public Builder(FaultSystemRupSet rupSet, SectionSupraSeisBValues bValues) {
+		public Builder(FaultSystemRupSet rupSet, SectionSupraSeisBValues bValues, LogicTreeBranch<? extends LogicTreeNode> branch) {
 			this.rupSet = rupSet;
-			this.sectSpecificBValues = bValues.getSectBValues(rupSet);
+			this.sectSpecificBValues = bValues.getSectBValues(rupSet, branch);
 			if (sectSpecificBValues == null)
-				this.supraSeisBValue = bValues.getB();
+				this.supraSeisBValue = bValues.getB(rupSet, branch);
 			else
 				this.supraSeisBValue = Double.NaN;
 		}

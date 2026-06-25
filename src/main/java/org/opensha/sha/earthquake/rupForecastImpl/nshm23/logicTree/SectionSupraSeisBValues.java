@@ -8,6 +8,7 @@ import org.apache.commons.statistics.distribution.ContinuousDistribution;
 import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
+import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -23,14 +24,17 @@ public interface SectionSupraSeisBValues extends LogicTreeNode {
 	
 	/**
 	 * @param rupSet
+	 * @param branch
 	 * @return section-specific b-values, or null if all b-values are the same
 	 */
-	public double[] getSectBValues(FaultSystemRupSet rupSet);
+	public double[] getSectBValues(FaultSystemRupSet rupSet, LogicTreeBranch<? extends LogicTreeNode> branch);
 	
 	/**
+	 * @param rupSet
+	 * @param branch
 	 * @return the b-value (can be NaN if {@link #getSectBValues(List)} is non-null).
 	 */
-	public double getB();
+	public double getB(FaultSystemRupSet rupSet, LogicTreeBranch<? extends LogicTreeNode> branch);
 	
 	public static interface Constant extends SectionSupraSeisBValues, ValuedLogicTreeNode<Double> {
 		
@@ -38,8 +42,14 @@ public interface SectionSupraSeisBValues extends LogicTreeNode {
 		 * @param rupSet
 		 * @return section-specific b-values, or null if all b-values are the same
 		 */
-		public default double[] getSectBValues(FaultSystemRupSet rupSet) {
+		public default double[] getSectBValues(FaultSystemRupSet rupSet, LogicTreeBranch<? extends LogicTreeNode> branc) {
 			return null;
+		}
+		
+		public double getB();
+		
+		public default double getB(FaultSystemRupSet rupSet, LogicTreeBranch<? extends LogicTreeNode> branch) {
+			return getB();
 		}
 
 		@Override

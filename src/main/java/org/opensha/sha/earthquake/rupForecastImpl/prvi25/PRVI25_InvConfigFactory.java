@@ -444,7 +444,7 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 						RandomBValSampler sampler = rupSet.requireModule(BranchSamplingManager.class).getSampler(bValNode);
 						builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet, sampler.getBValues());
 					} else {
-						builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet,  branch.requireValue(SectionSupraSeisBValues.class));
+						builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet,  branch.requireValue(SectionSupraSeisBValues.class), branch);
 					}
 					return builder.subSeisMoRateReduction(moRateRed).buildSlipRatesOnly();
 				}
@@ -617,11 +617,11 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 			bVal = NSHM23_ConstraintBuilder.momentWeightedAverage(rupSet, sectSpecificBValues);
 		} else {
 			SectionSupraSeisBValues bValues = branch.requireValue(SectionSupraSeisBValues.class);
-			sectSpecificBValues = bValues.getSectBValues(rupSet);
-			if (Double.isFinite(bValues.getB()))
-				bVal = bValues.getB();
-			else
-				bVal = SectionSupraSeisBValues.momentWeightedAverage(rupSet, sectSpecificBValues);
+			sectSpecificBValues = bValues.getSectBValues(rupSet, branch);
+			double b = bValues.getB(rupSet, branch);
+			if (!Double.isFinite(b))
+				b = SectionSupraSeisBValues.momentWeightedAverage(rupSet, sectSpecificBValues);
+			bVal = b;
 		}
 		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal, sectSpecificBValues);
 		

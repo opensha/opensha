@@ -10,6 +10,9 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 import org.opensha.commons.data.IntegerSampler.ExclusionIntegerSampler;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.geo.CubedGriddedRegion;
+import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -32,8 +35,11 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.Generatio
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
@@ -48,8 +54,11 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_FaultCubeAssociations;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SingleRegionGridSourceProvider;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.ExclusionaryLogicTreeNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SlipAlongRuptureModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
@@ -65,6 +74,8 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBVa
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.GRParticRateEstimator;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
+import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
+import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -72,10 +83,12 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Range;
 import com.google.common.collect.Table;
 
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_CrustalFaultModels;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_InterfaceFaultModels;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_InterfaceObsSeisDMAdjustment;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_ModelRegimeNode;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisRateModel;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.InterfaceGridAssociations;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.PureGR;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateRecord;
@@ -315,7 +328,7 @@ public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigur
 		double[] sectSpecificBValues = null;
 		if (branch.hasValue(NSHM27_InterfaceObsSeisDMAdjustment.EXTRAPOLATE)) {
 			// use obs seis b-value
-			NSHM27_SeismicityRegions reg = branch.requireValue(NSHM27_InterfaceFaultModels.class).getSeisReg();
+			NSHM27_SeismicityRegions reg = branch.requireValue(NSHM27_InterfaceFaultModels.class).getSeismicityRegion();
 			RateRecord rateModel = branch.requireValue(NSHM27_SeisRateModel.class).getRateRecord(reg, TectonicRegionType.SUBDUCTION_INTERFACE);
 			Preconditions.checkState(rateModel instanceof PureGR);
 			bVal = ((PureGR)rateModel).b;
@@ -327,11 +340,11 @@ public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigur
 			bVal = NSHM23_ConstraintBuilder.momentWeightedAverage(rupSet, sectSpecificBValues);
 		} else {
 			SectionSupraSeisBValues bValues = branch.requireValue(SectionSupraSeisBValues.class);
-			sectSpecificBValues = bValues.getSectBValues(rupSet);
-			if (Double.isFinite(bValues.getB()))
-				bVal = bValues.getB();
-			else
-				bVal = SectionSupraSeisBValues.momentWeightedAverage(rupSet, sectSpecificBValues);
+			sectSpecificBValues = bValues.getSectBValues(rupSet, branch);
+			double b = bValues.getB(rupSet, branch);
+			if (!Double.isFinite(b))
+				b = SectionSupraSeisBValues.momentWeightedAverage(rupSet, sectSpecificBValues);
+			bVal = b;
 		}
 		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal, sectSpecificBValues);
 		
@@ -349,7 +362,7 @@ public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigur
 				NSHM27_InterfaceFaultModels fm = branch.getValue(NSHM27_InterfaceFaultModels.class);
 				if (fm != null && branch.hasValue(NSHM27_SeisRateModel.class)) {
 					NSHM27_SeisRateModel rateModel = branch.requireValue(NSHM27_SeisRateModel.class);
-					RateRecord record = rateModel.getRateRecord(fm.getSeisReg(), TectonicRegionType.SUBDUCTION_INTERFACE);
+					RateRecord record = rateModel.getRateRecord(fm.getSeismicityRegion(), TectonicRegionType.SUBDUCTION_INTERFACE);
 					if (record instanceof PureGR)
 						constrBuilder.subSeisBOverride(((PureGR)record).b);
 					else
@@ -618,6 +631,9 @@ public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigur
 			// add inversion target MFDs
 			rupSet.offerAvailableModule(() -> getConstraintBuilder(rupSet, branch).getTargetMFDs(), SupraSeisBValInversionTargetMFDs.class);
 			
+			// add fault grid associations
+			NSHM27_GridSourceBuilder.offerAssociations(rupSet, branch);
+			
 			NSHM27_InterfaceObsSeisDMAdjustment obsAdj = branch.getValue(NSHM27_InterfaceObsSeisDMAdjustment.class);
 			if (obsAdj == null || obsAdj == NSHM27_InterfaceObsSeisDMAdjustment.NONE) {
 				// no DM adjustment (or crustal), apply default treatment with no sub-seis reduction
@@ -721,6 +737,89 @@ public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigur
 	@Override
 	public void preGridBuildHook(FaultSystemSolution sol, LogicTreeBranch<?> faultBranch) throws IOException {
 		NSHM27_GridSourceBuilder.doPreGridBuildHook(sol, faultBranch);
+	}
+	
+	/**
+	 * Calculates an interface on-fault moment-balanced GR b-value such that the incremental rate in the first
+	 * on-fault MFD bin matches the extrapolation from the observed seismicity rate model. Using this b-value to
+	 * construct the interface on-fault MFD will result in a continuous but hinged MFD, rather than a shelved one when
+	 * hitting the higher on-fault rates.
+	 * 
+	 * If the corresponding hinge b-value is negative, 0 is returned instead.
+	 * 
+	 * @param rupSet
+	 * @param branch
+	 * @return the greater of the hinge b-value and 0
+	 */
+	public static double calcInterfaceHingedBValue(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+		// figure out included rupture mMin and mMax
+		int numSects = rupSet.getNumSections();
+		int numRups = rupSet.getNumRuptures();
+		ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
+		BinaryRuptureProbabilityCalc rupExclusionModel = getExclusionModel(rupSet, branch, cRups);
+		double[] sectMmins = new double[numSects];
+		for (int s=0; s<numSects; s++)
+			sectMmins[s] = Double.POSITIVE_INFINITY;
+		double mMax = 0d;
+		for (int rupIndex=0; rupIndex<numRups; rupIndex++) {
+			if (rupExclusionModel != null && !rupExclusionModel.isRupAllowed(cRups.get(rupIndex), false))
+				continue;
+			double mag = rupSet.getMagForRup(rupIndex);
+			mMax = Math.max(mMax, mag);
+			for (int s : rupSet.getSectionsIndicesForRup(rupIndex))
+				sectMmins[s] = Math.min(sectMmins[s], mag);
+		}
+		Preconditions.checkState(mMax > 0d);
+		
+		// calculate associated moment, and moment-weighted section mMin
+		FaultGridAssociations assoc = rupSet.requireModule(FaultGridAssociations.class);
+		double momentSum = 0d;
+		double momentWeightedMminSum = 0d;
+		SectSlipRates slips = rupSet.requireModule(SectSlipRates.class);
+		for (int s=0; s<numSects; s++) {
+			double moment = slips.calcMomentRate(s) * assoc.getSectionFractInRegion(s);
+			Preconditions.checkState(Double.isFinite(moment));
+			if (moment == 0)
+				continue;
+			Preconditions.checkState(Double.isFinite(sectMmins[s]));
+			momentSum += moment;
+			momentWeightedMminSum += sectMmins[s]*moment;
+		}
+		Preconditions.checkState(momentSum > 0d);
+		double mMin = momentWeightedMminSum/momentSum;
+		
+		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(NSHM27_GridSourceBuilder.OVERALL_MMIN, mMax+0.1);
+		int mMinIndex = refMFD.getClosestXIndex(mMin);
+		Preconditions.checkState(mMinIndex > 0, "should be far from the first bin");
+		int mMaxIndex = refMFD.getClosestXIndex(mMax);
+		Preconditions.checkState(mMaxIndex > mMinIndex);
+		mMin = refMFD.getX(mMinIndex);
+		mMax = refMFD.getX(mMaxIndex);
+		
+		// obs seis MFD
+		NSHM27_SeismicityRegions seisRegion = branch.requireValue(NSHM27_InterfaceFaultModels.class).getSeismicityRegion();
+		// go all the way to mMin (not the bin before) because that's what we're pinning to
+		IncrementalMagFreqDist obsMFD = NSHM27_GridSourceBuilder.buildInterfaceGriddedMFD(
+				seisRegion, branch, refMFD,
+				mMin, // this is gridded mMax when constructing obs MFD; the returned MFD will go from 2.55->this
+				mMax); // this is fault mMax, which is used only to carve out the obs MFD
+		double rateAtMmin = obsMFD.getY(mMinIndex);
+		Preconditions.checkState(rateAtMmin > 0d);
+		// do it again to mMin-1 in case that shifts the MFD (the real gridded MFD won't include that bin, which can affect rates)
+		IncrementalMagFreqDist obsMFD2 = NSHM27_GridSourceBuilder.buildInterfaceGriddedMFD(
+				seisRegion, branch, refMFD, mMin-refMFD.getDelta(), mMax);
+		if (obsMFD2.getY(mMinIndex-1) > obsMFD.getY(mMinIndex-1))
+			rateAtMmin *= obsMFD2.getY(mMinIndex-1) / obsMFD.getY(mMinIndex-1);
+		
+		System.out.println("Calculating hinged b-value for incrRate["+(float)mMin+"]="+(float)rateAtMmin);
+		
+		GutenbergRichterMagFreqDist faultGR = new GutenbergRichterMagFreqDist(refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
+		faultGR.setAllButBvalueForIncrRate(mMin, mMax, momentSum, rateAtMmin);
+		
+		System.out.println("Calculated hinged b="+(float)faultGR.get_bValue()+"; faultIncr["+(float)mMin+"]="
+				+faultGR.getY(mMinIndex)+", faultTotal="+faultGR.calcSumOfY_Vals());
+		
+		return Math.max(0d, faultGR.get_bValue());
 	}
 
 }

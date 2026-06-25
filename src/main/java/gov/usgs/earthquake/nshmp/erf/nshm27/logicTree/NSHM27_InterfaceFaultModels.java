@@ -46,9 +46,9 @@ import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_Seis
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM27_InterfaceFaultModels implements RupSetFaultModel, RupSetSubsectioningModel, LogicTreeNode.FixedWeightNode {
+public enum NSHM27_InterfaceFaultModels implements NSHM27_FaultModel {
 	AMSAM_V1("Amarican Samoa (Interface FM v1)", "AmSam-Inter-v1",
-			"/data/erf/nshm27/amsam/fault_models/subduction/", NSHM27_SeismicityRegions.AMSAM, 0d),
+			"/data/erf/nshm27/amsam/fault_models/subduction/", NSHM27_SeismicityRegions.AMSAM, 20d),
 	GNMI_V1("Guam & Northern Mariana Islands (Interface FM v1)", "GNMI-Inter-v1",
 			"/data/erf/nshm27/gnmi/fault_models/subduction/", NSHM27_SeismicityRegions.GNMI, 50d);
 	
@@ -96,10 +96,6 @@ public enum NSHM27_InterfaceFaultModels implements RupSetFaultModel, RupSetSubse
 	public double getSlipSmoothingDistance() {
 		return slipSmoothingDist;
 	}
-	
-	public NSHM27_SeismicityRegions getSeisReg() {
-		return seisReg;
-	}
 
 	@Override
 	public List<? extends FaultSection> buildSubSects(RupSetFaultModel faultModel) throws IOException {
@@ -142,48 +138,13 @@ public enum NSHM27_InterfaceFaultModels implements RupSetFaultModel, RupSetSubse
 	}
 
 	@Override
-	public void attachDefaultModules(FaultSystemRupSet rupSet) {
-		rupSet.addAvailableModule(() -> {
-			return buildROI(seisReg);
-		}, RegionsOfInterest.class);
-		rupSet.addAvailableModule(() -> {
-			return new ModelRegion(seisReg.load());
-		}, ModelRegion.class);
-		rupSet.addAvailableModule(() -> {
-			return RupSetTectonicRegimes.constant(rupSet, TectonicRegionType.SUBDUCTION_INTERFACE);
-		}, RupSetTectonicRegimes.class);
+	public NSHM27_SeismicityRegions getSeismicityRegion() {
+		return seisReg;
 	}
-	
-	public static RegionsOfInterest buildROI(NSHM27_SeismicityRegions seisReg) throws IOException {
-		TectonicRegionType[] trts = {TectonicRegionType.SUBDUCTION_INTERFACE,
-				TectonicRegionType.SUBDUCTION_SLAB,TectonicRegionType.ACTIVE_SHALLOW};
-		List<Region> trtRegions = new ArrayList<>(trts.length*2);
-		List<IncrementalMagFreqDist> trtMFDs = new ArrayList<>(trts.length*2);
-		List<TectonicRegionType> regionTRTs = new ArrayList<>(trts.length*2);
-		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(5.01, 9.01);
-		for (TectonicRegionType trt : trts) {
-			trtRegions.add(cloneForTRT(seisReg.load(), trt));
-			double mMax = NSHM27_SeisRateModelBranch.getPlotMmax(trt);
-			trtMFDs.add(NSHM27_SeisRateModelBranch.loadRateModel(seisReg, trt).getBounded(refMFD, mMax));
-			regionTRTs.add(trt);
-		}
-		NSHM27_MapRegions mapRegion = NSHM27_MapRegions.valueOf(seisReg.name());
-		for (TectonicRegionType trt : trts) {
-			trtRegions.add(cloneForTRT(mapRegion.load(), trt));
-//			double mMax = NSHM27_SeisRateModelBranch.getPlotMmax(trt);
-//			trtMFDs.add(NSHM27_SeisRateModelBranch.loadRateModel(seisReg, trt).getBounded(refMFD, mMax));
-			// TODO remapped
-			trtMFDs.add(null);
-			regionTRTs.add(trt);
-		}
-		RegionsOfInterest roi = new RegionsOfInterest(trtRegions, trtMFDs, regionTRTs);
-		return roi;
-	}
-	
-	private static Region cloneForTRT(Region reg, TectonicRegionType trt) {
-		reg = reg.clone();
-		reg.setName(reg.getName()+" ("+NSHM27_RegionLoader.getNameForTRT(trt)+")");
-		return reg;
+
+	@Override
+	public TectonicRegionType getTectonicRegime() {
+		return TectonicRegionType.SUBDUCTION_INTERFACE;
 	}
 
 }

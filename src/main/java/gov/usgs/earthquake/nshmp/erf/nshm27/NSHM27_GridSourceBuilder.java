@@ -18,6 +18,7 @@ import org.apache.commons.math3.stat.StatUtils;
 import org.apache.commons.numbers.core.Precision;
 import org.opensha.commons.calc.magScalingRelations.MagAreaRelationship;
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.data.xyzw.GriddedGeoDepthValueDataSet;
@@ -66,6 +67,7 @@ import com.google.common.primitives.Doubles;
 
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_CrustalFaultModels;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_DeclusteringAlgorithms;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_FaultModel;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_InterfaceFaultModels;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_InterfaceMinSubSects;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_InterfaceObsSeisDMAdjustment;
@@ -117,38 +119,34 @@ public class NSHM27_GridSourceBuilder {
 	}
 	
 	public static void doPreGridBuildHook(FaultSystemRupSet rupSet, LogicTreeBranch<?> faultBranch) throws IOException {
-		if (faultBranch.hasValue(NSHM27_CrustalFaultModels.class)) {
-			// add fault cube associations and seismicity regions
+		if (!offerAssociations(rupSet, faultBranch)) {
+			// this means it was already there (nothing added this time), double check compatibility
 			
-			NSHM27_SeismicityRegions seisReg = faultBranch.requireValue(NSHM27_CrustalFaultModels.class).getSeisReg();
-			if (!rupSet.hasModule(ModelRegion.class))
-				rupSet.addModule(new ModelRegion(seisReg.load()));
+			NSHM27_FaultModel fm = faultBranch.requireValue(NSHM27_FaultModel.class);
+			NSHM27_SeismicityRegions seisReg = fm.getSeismicityRegion();
 			GriddedRegion modelGrid = initGridReg(seisReg);
 			
-			FaultCubeAssociations cubeAssociations = rupSet.getModule(FaultCubeAssociations.class);
-			if (cubeAssociations == null) {
-				cubeAssociations = new NSHM23_FaultCubeAssociations(rupSet, new CubedGriddedRegion(modelGrid),
-						NSHM23_SingleRegionGridSourceProvider.DEFAULT_MAX_FAULT_NUCL_DIST);
-				rupSet.addModule(cubeAssociations);
-			} else {
-				Preconditions.checkState(cubeAssociations.getRegion().equals(modelGrid));
-			}
-			Preconditions.checkNotNull(cubeAssociations, "Cube associations is null");
-		} else if (faultBranch.hasValue(NSHM27_InterfaceFaultModels.class)) {
-			
-			NSHM27_SeismicityRegions seisReg = faultBranch.requireValue(NSHM27_InterfaceFaultModels.class).getSeisReg();
-			if (!rupSet.hasModule(ModelRegion.class))
-				rupSet.addModule(new ModelRegion(seisReg.load()));
-			GriddedRegion modelGrid = initGridReg(seisReg);
-			
-			FaultGridAssociations assoc = rupSet.getModule(FaultGridAssociations.class);
-			if (assoc == null) {
-				assoc = new InterfaceGridAssociations(rupSet.getFaultSectionDataList(), modelGrid);
-				rupSet.addModule(assoc);
-			} else {
-				Preconditions.checkState(assoc.getRegion().equals(modelGrid));
-			}
+			FaultGridAssociations assoc = rupSet.requireModule(FaultGridAssociations.class);
+			Preconditions.checkState(assoc.getRegion().equals(modelGrid));
 		}
+	}
+	
+	public static boolean offerAssociations(FaultSystemRupSet rupSet, LogicTreeBranch<?> faultBranch) {
+		NSHM27_FaultModel fm = faultBranch.requireValue(NSHM27_FaultModel.class);
+		NSHM27_SeismicityRegions seisReg = fm.getSeismicityRegion();
+		if (fm instanceof NSHM27_CrustalFaultModels) {
+			return rupSet.offerAvailableModule(() -> {
+				GriddedRegion modelGrid = initGridReg(seisReg);
+				return new NSHM23_FaultCubeAssociations(rupSet, new CubedGriddedRegion(modelGrid),
+						NSHM23_SingleRegionGridSourceProvider.DEFAULT_MAX_FAULT_NUCL_DIST);
+			}, FaultCubeAssociations.class);
+		} else if (fm instanceof NSHM27_InterfaceFaultModels) {
+			return rupSet.offerAvailableModule(() -> {
+				GriddedRegion modelGrid = initGridReg(seisReg);
+				return new InterfaceGridAssociations(rupSet.getFaultSectionDataList(), modelGrid);
+			}, FaultGridAssociations.class);
+		}
+		throw new IllegalStateException("Unexpected fm: "+fm);
 	}
 	
 	public static double[] getInterfaceSectMinMag(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
@@ -341,6 +339,45 @@ public class NSHM27_GridSourceBuilder {
 		mapMaker.plot(outputDir, prefix+"_strikes", " ");
 	}
 	
+	private static boolean isInterfaceRateToFullMmax(LogicTreeBranch<?> fullBranch) {
+		// make the gridded seismicity model always match the full observed rate within it's magnitude range (always overcounts total rate)
+		//				boolean rateToFullMmax = false;
+
+		// same as above, except when on the extrapolate branch, the true rate will be preserved across both
+		//				boolean rateToFullMmax = fullBranch.hasValue(NSHM27_InterfaceObsSeisDMAdjustment.EXTRAPOLATE);
+
+		// do for all branches except for the no-adjustment branch
+		// will only under-count total rate if the DM is below extrapolation from observed seismicity, which is rarely the case
+		// for these regions (only extreme lower tail DM samples would do this). On all other branches (unless
+		// EXTRAPOLATE is chosen), there will still be a net overcount relative to observed seismicity but it will be
+		// slightly smaller than if rateToFullMmax was false
+		NSHM27_InterfaceObsSeisDMAdjustment obsMethod = fullBranch.getValue(NSHM27_InterfaceObsSeisDMAdjustment.class);
+		return obsMethod != null && obsMethod != NSHM27_InterfaceObsSeisDMAdjustment.NONE;
+	}
+	
+	public static IncrementalMagFreqDist buildInterfaceGriddedMFD(NSHM27_SeismicityRegions seisRegion, LogicTreeBranch<?> fullBranch,
+			EvenlyDiscretizedFunc refMFD, double gridMmax, double faultMmax) {
+		// this function will build target MFDs that match the rate model up to a given gridded Mmax; the question is whether to:
+		// 1. scale total rate to gridded Mmax, i.e., the gridded model will match the observed rate
+		// 2. scale total rate to full on-fault Mmax, such that the whole model would match the observed rate if the
+		// interface DM happened to perfectly match the obs rate model (or if explicitly set to extrapolate from it)
+
+		boolean rateToFullMmax = isInterfaceRateToFullMmax(fullBranch);
+		
+		NSHM27_SeisRateModel rateBranch = fullBranch.requireValue(NSHM27_SeisRateModel.class);
+		
+		if (rateToFullMmax) {
+			double snappedFullMMax = refMFD.getX(refMFD.getClosestXIndex(faultMmax));
+			IncrementalMagFreqDist mfd = rateBranch.build(seisRegion, TectonicRegionType.SUBDUCTION_INTERFACE, refMFD, snappedFullMMax);
+			// now zero out above mMax
+			for (int i=mfd.getClosestXIndex(gridMmax)+1; i<mfd.size(); i++)
+				mfd.set(i, 0d);
+			return mfd;
+		}
+		
+		return rateBranch.build(seisRegion, TectonicRegionType.SUBDUCTION_INTERFACE, refMFD, gridMmax);
+	}
+	
 	public static GridSourceList buildInterfaceGridSourceList(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch,
 			NSHM27_SeismicityRegions seisRegion) throws IOException {
 		return buildInterfaceGridSourceList(sol.getRupSet(), fullBranch, seisRegion);
@@ -357,52 +394,22 @@ public class NSHM27_GridSourceBuilder {
 		double[] sectMinMags = getInterfaceSectMinMag(rupSet, fullBranch);
 		double avgMinMag = StatUtils.mean(sectMinMags);
 		
-		NSHM27_SeisRateModel rateBranch = fullBranch.requireValue(NSHM27_SeisRateModel.class);
 		NSHM27_DeclusteringAlgorithms decluster = fullBranch.requireValue(NSHM27_DeclusteringAlgorithms.class);
 		NSHM27_SeisSmoothingAlgorithms smooth = fullBranch.requireValue(NSHM27_SeisSmoothingAlgorithms.class);
 		
 		IncrementalMagFreqDist refMFD;
-		Function<Double, IncrementalMagFreqDist> mfdBuilderFunc;
-		// this function will build target MFDs that match the rate model up to a given gridded Mmax; the question is whether to:
-		// 1. scale total rate to gridded Mmax, i.e., the gridded model will match the observed rate
-		// 2. scale total rate to full on-fault Mmax, such that the whole model would match the observed rate if the
-		// interface DM happened to perfectly match the obs rate model (or if explicitly set to extrapolate from it)
-		
-		// make the gridded seismicity model always match the full observed rate within it's magnitude range (always overcounts total rate)
-//		boolean rateToFullMmax = false;
-		
-		// same as above, except when on the extrapolate branch, the true rate will be preserved across both
-//		boolean rateToFullMmax = fullBranch.hasValue(NSHM27_InterfaceObsSeisDMAdjustment.EXTRAPOLATE);
-		
-		// do for all branches except for the no-adjustment branch
-		// will only under-count total rate if the DM is below extrapolation from observed seismicity, which is rarely the case
-		// for these regions (only extreme lower tail DM samples would do this). On all other branches (unless
-		// EXTRAPOLATE is chosen), there will still be a net overcount relative to observed seismicity but it will be
-		// slightly smaller than if rateToFullMmax was false
-		NSHM27_InterfaceObsSeisDMAdjustment obsMethod = fullBranch.getValue(NSHM27_InterfaceObsSeisDMAdjustment.class);
-		boolean rateToFullMmax = obsMethod != null && obsMethod != NSHM27_InterfaceObsSeisDMAdjustment.NONE;
-		
-		Map<Double, IncrementalMagFreqDist> mMaxMFDCache = new HashMap<>();
-		if (rateToFullMmax) {
+		double faultMmax;
+		if (isInterfaceRateToFullMmax(fullBranch)) {
 			// we need the MFD with total rate up to full Mmax, but then with rates removed above gridded Mmax
-			double fullMMax = NSHM27_InvConfigFactory.getIncludeRuptureMmax(rupSet, fullBranch);
-			refMFD = FaultSysTools.initEmptyMFD(OVERALL_MMIN, fullMMax+0.1);
-			final double snappedFullMMax = refMFD.getX(refMFD.getClosestXIndex(fullMMax));
-			mfdBuilderFunc = mMax-> {
-				IncrementalMagFreqDist mfd = rateBranch.build(seisRegion, TectonicRegionType.SUBDUCTION_INTERFACE, refMFD, snappedFullMMax);
-				// now zero out above mMax
-				for (int i=mfd.getClosestXIndex(mMax)+1; i<mfd.size(); i++)
-					mfd.set(i, 0d);
-				return mfd;
-			};
+			faultMmax = NSHM27_InvConfigFactory.getIncludeRuptureMmax(rupSet, fullBranch);
+			refMFD = FaultSysTools.initEmptyMFD(OVERALL_MMIN, faultMmax+0.1);
 		} else {
 			// we're only going to gridded Mmax, but include a small buffer
+			faultMmax = Double.NaN;
 			refMFD = FaultSysTools.initEmptyMFD(OVERALL_MMIN, StatUtils.max(sectMinMags)+0.1);
-			// gridded rates only up to our gridded Mmax
-			mfdBuilderFunc = mMax-> {
-				return rateBranch.build(seisRegion, TectonicRegionType.SUBDUCTION_INTERFACE, refMFD, mMax);
-			};
 		}
+		
+		Map<Double, IncrementalMagFreqDist> mMaxMFDCache = new HashMap<>();
 		
 		GriddedGeoDataSet depths = loadInterfaceDepths(seisRegion);
 		GriddedGeoDataSet dips = loadInterfaceDips(seisRegion);
@@ -476,7 +483,8 @@ public class NSHM27_GridSourceBuilder {
 			}
 			IncrementalMagFreqDist mfd = mMaxMFDCache.get(mMax);
 			if (mfd == null) {
-				mfd = mfdBuilderFunc.apply(mMax);
+//				mfd = mfdBuilderFunc.apply(mMax);
+				mfd = buildInterfaceGriddedMFD(seisRegion, fullBranch, refMFD, mMax, faultMmax);
 //				System.out.println("MFD with mMax="+mMax+":\n"+mfd);
 				mMaxMFDCache.put(mMax, mfd);
 			}

@@ -774,11 +774,25 @@ public class SolSiteHazardCalc {
 			if (cmd.hasOption("disagg-max-mag"))
 				maxMag = Double.parseDouble("disagg-max-mag");
 			magRange = disaggRange(minMag, maxMag, 0.5, false);
+			System.out.println("Mag range for m=["+(float)minMag+", "+(float)maxMag+"]: func min="
+					+(float)magRange.getMinX()+", max="+(float)magRange.getMaxX()
+					+", delta="+(float)magRange.getDelta()+", size="+magRange.size());
 			
-			double disaggMaxDist = cmd.hasOption("disagg-max-dist") ?
-					Double.parseDouble(cmd.getOptionValue("disagg-max-dist")) : Math.max(largestMaxDist, 200d);
+			double disaggMaxDist;
+			if (cmd.hasOption("")) {
+				disaggMaxDist = Double.parseDouble(cmd.getOptionValue("disagg-max-dist"));
+			} else {
+				// don't go above 500 (or below 200) unless explicitly told to (plots get weird)
+				disaggMaxDist = Math.max(Math.min(largestMaxDist, 500d), 200d);
+			}
 			double minDist, distDelta;
-			if (disaggMaxDist > 150d) {
+			if (disaggMaxDist > 550d) {
+				minDist = 20d;
+				distDelta = 40d;
+			} else if (disaggMaxDist > 350d) {
+				minDist = 10d;
+				distDelta = 20d;
+			} else if (disaggMaxDist > 150d) {
 				minDist = 10d;
 				distDelta = 20d;
 			} else {
@@ -786,8 +800,9 @@ public class SolSiteHazardCalc {
 				distDelta = 10d;
 			}
 			EvenlyDiscretizedFunc distRange = disaggRange(minDist, disaggMaxDist, distDelta, true);
-//			System.out.println("Mag range:\n"+magRange);
-//			System.out.println("Dist range:\n"+distRange);
+			System.out.println("Dist range for maxDist="+(float)disaggMaxDist+": func min="
+					+(float)distRange.getMinX()+", max="+(float)distRange.getMaxX()
+					+", delta="+(float)distRange.getDelta()+", size="+distRange.size());
 			
 			List<DisaggCalcThread> disaggThreads = new ArrayList<>(threads);
 			HazardCurveCalculator curveCalc = new HazardCurveCalculator(sourceFilters);

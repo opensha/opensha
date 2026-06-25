@@ -147,10 +147,6 @@ public class NSHM23_ConstraintBuilder {
 		return sumProduct/sumMoment;
 	}
 	
-	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, SectionSupraSeisBValues bValues) {
-		this(rupSet, bValues.getB(), bValues.getSectBValues(rupSet));
-	}
-	
 	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, double supraSeisB, double[] sectSpecificBValues) {
 		this(rupSet, supraSeisB, sectSpecificBValues, SupraSeisBValInversionTargetMFDs.APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT,
 				SupraSeisBValInversionTargetMFDs.ADD_SECT_COUNT_UNCERTAINTIES_DEFAULT, ADJ_FOR_INCOMPATIBLE_DATA_DEFAULT);

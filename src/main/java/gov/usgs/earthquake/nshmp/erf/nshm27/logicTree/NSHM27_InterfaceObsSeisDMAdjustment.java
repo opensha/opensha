@@ -87,7 +87,7 @@ public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode.FixedWe
 			// use reduced slip rates but full slip SDs
 			return SectSlipRates.precomputed(rupSet, inputReducedSlipRates, inputFullSlipSDs);
 		NSHM27_InterfaceFaultModels fm = branch.requireValue(NSHM27_InterfaceFaultModels.class);
-		NSHM27_SeismicityRegions seisReg = fm.getSeisReg();
+		NSHM27_SeismicityRegions seisReg = fm.getSeismicityRegion();
 		NSHM27_GridSourceBuilder.doPreGridBuildHook(rupSet, branch);
 		GridSourceList gridList = NSHM27_GridSourceBuilder.buildInterfaceGridSourceList(rupSet, branch, seisReg);
 		
@@ -241,9 +241,6 @@ public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode.FixedWe
 				double inputCoupledSlipRate = inputReducedSlipRates[s];
 				double inputSlipRateSD = inputFullSlipSDs[s];
 				
-				double scaledCoupledSlip = inputCoupledSlipRate * dmScale;
-				reducedSlipRates[s] = scaledCoupledSlip;
-				
 				FaultSection sect = rupSet.getFaultSectionData(s);
 				Preconditions.checkState(sect instanceof GeoJSONFaultSection);
 				GeoJSONFaultSection geoSect = (GeoJSONFaultSection)sect;
@@ -251,43 +248,48 @@ public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode.FixedWe
 				Preconditions.checkState(!geoSect.getProperties().containsKey(GEOJSON_INPUT_SLIP_RATE_PROP_NAME),
 						"The extrapolation adjustment was already applied & baked into slip rates!");
 				double coupling = sect.getCouplingCoeff();
-				// this is the reduced slip rate, but without coupling applied
-				double withoutCouplingApplied = scaledCoupledSlip / coupling;
 				
-				// keep the SD as the fractional value of the original before coupling was applied
-				// we always use un-reduced SD, and this is the value that would show up as the SD if our
-				// DM-scaled slip rate had always been present
-				
-				// our DM slip rates std devs are all hardcoded, so use that
-				double slipSD;
-				if (NSHM27_InterfaceDeformationModels.isHardcodedFractionalStdDev())
-					slipSD = NSHM27_InterfaceDeformationModels.HARDCODED_FRACTIONAL_STD_DEV*withoutCouplingApplied;
-				else
-					slipSD = NSHM27_InterfaceDeformationModels.DEFAULT_FRACT_SLIP_STD_DEV*withoutCouplingApplied;
-				slipSD = Math.max(slipSD, NSHM27_InterfaceDeformationModels.STD_DEV_FLOOR*1e-3);
-				reducedSlipSDs[s] = slipSD;
-				
-				// reset the original fault section's slip rate in order to get apparent sub-seis reductions
-				// coupled moment
-				double supraCoupledMoment = dmScale * moments[s];
-				
-				/*
-				 * in SupraSeisBValInversionTargetMFDs:
-				 * targetMoRate = FaultMomentCalc.getMoment(area, creepReducedSlipRate)
-				 * fractSupra = supraSlipRate/creepReducedSlipRate;
-				 * subMoRate = targetMoRate-supraMoRate;
-				 * 
-				 * translated to our variables:
-				 * impliedMoments[s] = targetMoRate - supraCoupledMoment
-				 * targetMoRate / supraCoupledMoment = (supraCoupledMoment + impliedMoments[s]) / supraCoupledMoment
-				 * newSupraSlipRate = newFullSlipRate = withoutCouplingApplied * (supraCoupledMoment + impliedMoments[s]) / supraCoupledMoment
-				 */
-				double newFullSlipRate = withoutCouplingApplied * (supraCoupledMoment + impliedMoments[s]) / supraCoupledMoment;
-				
-				sect.setAveSlipRate(newFullSlipRate * 1e3);
-				sect.setSlipRateStdDev(reducedSlipSDs[s] * 1e3);
-				geoSect.setProperty(GEOJSON_INPUT_SLIP_RATE_PROP_NAME, inputFullSlipRate*1e3);
-				geoSect.setProperty(GEOJSON_INPUT_SLIP_SD_PROP_NAME, inputSlipRateSD*1e3);
+				if (inputCoupledSlipRate == 0d) {
+					// zero slip rate, keep it at zero
+					reducedSlipRates[s] = 0d;
+					reducedSlipSDs[s] = inputSlipRateSD;
+					sect.setAveSlipRate(reducedSlipRates[s] * 1e3);
+					sect.setSlipRateStdDev(reducedSlipSDs[s] * 1e3);
+					geoSect.setProperty(GEOJSON_INPUT_SLIP_RATE_PROP_NAME, inputFullSlipRate*1e3);
+					geoSect.setProperty(GEOJSON_INPUT_SLIP_SD_PROP_NAME, inputSlipRateSD*1e3);
+				} else {
+					double scaledCoupledSlip = inputCoupledSlipRate * dmScale;
+					reducedSlipRates[s] = scaledCoupledSlip;
+					
+					// this is the reduced slip rate, but without coupling applied
+					double withoutCouplingApplied = scaledCoupledSlip / coupling;
+					
+					// keep the SD as the fractional value of the original before coupling was applied
+					// we always use un-reduced SD, and this is the value that would show up as the SD if our
+					// DM-scaled slip rate had always been present
+					
+					// our DM slip rates std devs are all hardcoded, so use that
+					double slipSD;
+					if (NSHM27_InterfaceDeformationModels.isHardcodedFractionalStdDev())
+						slipSD = NSHM27_InterfaceDeformationModels.HARDCODED_FRACTIONAL_STD_DEV*withoutCouplingApplied;
+					else
+						slipSD = NSHM27_InterfaceDeformationModels.DEFAULT_FRACT_SLIP_STD_DEV*withoutCouplingApplied;
+					slipSD = Math.max(slipSD, NSHM27_InterfaceDeformationModels.STD_DEV_FLOOR*1e-3);
+					reducedSlipSDs[s] = slipSD;
+					
+					// could reset the original fault section's slip rate in order to get apparent sub-seis reductions
+					// coupled moment, but it blows up if as coupling goes to zero (infinite original rates)
+//					double supraCoupledMoment = dmScale * moments[s];
+//					double newFullSlipRate = withoutCouplingApplied * (supraCoupledMoment + impliedMoments[s]) / supraCoupledMoment;
+//					sect.setAveSlipRate(newFullSlipRate * 1e3);
+					
+					// instead just set it to what we're using
+					sect.setAveSlipRate(withoutCouplingApplied * 1e3);
+					
+					sect.setSlipRateStdDev(reducedSlipSDs[s] * 1e3);
+					geoSect.setProperty(GEOJSON_INPUT_SLIP_RATE_PROP_NAME, inputFullSlipRate*1e3);
+					geoSect.setProperty(GEOJSON_INPUT_SLIP_SD_PROP_NAME, inputSlipRateSD*1e3);
+				}
 			}
 			yield SectSlipRates.precomputed(rupSet, reducedSlipRates, reducedSlipSDs);
 		}

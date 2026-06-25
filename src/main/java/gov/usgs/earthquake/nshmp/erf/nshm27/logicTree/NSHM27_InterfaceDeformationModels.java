@@ -48,7 +48,7 @@ public class NSHM27_InterfaceDeformationModels extends RupSetDeformationModelDis
 	
 	public static class SamplingLevel extends RupSetDeformationModelDistribution.UniformSamplingLevel<NSHM27_InterfaceDeformationModels> {
 		
-		public static String NAME = "Crustal Deformation Model Sample";
+		public static String NAME = "Interface Deformation Model Sample";
 		public static String SHORT_NAME = "DMSample";
 
 		public SamplingLevel() {
