@@ -4,6 +4,7 @@ import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import static scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.*;
@@ -32,15 +33,12 @@ public class ETAS_BinaryMerge {
      */
     public static void main(String[] args) throws IOException {
         if (binaries.length == 0) return;
-        // 1. Read the first binary into memory
-        List<ETAS_Catalog> merged = loadCatalogsBinary(new File(binaries[0]), MIN_MAG);
-        // 2. Iterate over all binaries and add their catalogs
-        if (binaries.length > 1) {
-            for (int i = 1; i < binaries.length; ++i) {
-                final File binFile = new File(binaries[i]);
-                List<ETAS_Catalog> catalogs = loadCatalogsBinary(binFile, MIN_MAG);
-                merged.addAll(catalogs);
-            }
+        List<ETAS_Catalog> merged = new ArrayList<>();
+        // Iterate over all binaries and add their catalogs
+        for (String binary : binaries) {
+            final File binFile = new File(binary);
+            List<ETAS_Catalog> catalogs = loadCatalogsBinary(binFile, MIN_MAG);
+            merged.addAll(catalogs);
         }
         writeCatalogsBinary(new File(outputBinary), merged);
         System.out.println("Wrote " + merged.size() + " catalogs to " + outputBinary);
