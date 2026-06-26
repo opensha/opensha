@@ -88,7 +88,7 @@ implements BinnableLevel<PureGR, NSHM27_SiesRateModelSample, BinnedSamplesLevel>
 	}
 
 	@Override
-	protected void doBuild(long seed, int numNodes, SamplingMethod samplingMethod) {
+	protected void doBuild(long seed, int numNodes, SamplingMethod samplingMethod, double weightEach) {
 		List<PureGR> origSamples = loadOrigSamples();
 		Random rand = new Random(seed);
 		ArrayDeque<PureGR> samples = new ArrayDeque<>(numNodes);
@@ -127,7 +127,7 @@ implements BinnableLevel<PureGR, NSHM27_SiesRateModelSample, BinnedSamplesLevel>
 				samples.addLast(origSamples.get(sampleIndex));
 			}
 		}
-		build(()->{ return samples.pop(); }, numNodes, 1d/numNodes);
+		build(()->{ return samples.pop(); }, numNodes, weightEach);
 	}
 
 	@Override

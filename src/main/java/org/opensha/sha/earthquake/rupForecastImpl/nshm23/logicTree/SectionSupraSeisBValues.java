@@ -162,6 +162,11 @@ public interface SectionSupraSeisBValues extends LogicTreeNode {
 			return Default.class;
 		}
 		
+		public static DistributionSamplingLevel fromJson(JsonObject json) {
+			LogicTreeLevel.Adapter<Default> adapter = new LogicTreeLevel.Adapter<>();
+			return (DistributionSamplingLevel)adapter.fromJsonTree(json);
+		}
+		
 	}
 	
 	public static class FixedValueLevel extends LogicTreeLevel.DataBackedLevel<Default>

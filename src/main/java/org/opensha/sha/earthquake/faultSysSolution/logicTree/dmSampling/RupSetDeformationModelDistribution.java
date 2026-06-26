@@ -185,9 +185,8 @@ implements RupSetDeformationModel, ValuedLogicTreeNode<S> {
 		}
 
 		@Override
-		protected void doBuild(long seed, int numNodes, SamplingMethod samplingMethod) {
+		protected void doBuild(long seed, int numNodes, SamplingMethod samplingMethod, double weightEach) {
 			List<E> nodes = new ArrayList<>(numNodes);
-			double weightEach = 1d/(double)numNodes;
 			Random rand = new Random(seed);
 			for (int i=0; i<numNodes; i++)
 				nodes.add(build(i, new GroupedFractileSampler(rand.nextLong(), groupingType), weightEach));
@@ -236,11 +235,10 @@ implements RupSetDeformationModel, ValuedLogicTreeNode<S> {
 		}
 
 		@Override
-		protected void doBuild(long seed, int numNodes, SamplingMethod samplingMethod) {
+		protected void doBuild(long seed, int numNodes, SamplingMethod samplingMethod, double weightEach) {
 			double[] samples = buildCmlProbSamples(seed, numNodes, samplingMethod);
 			
 			List<E> nodes = new ArrayList<>(numNodes);
-			double weightEach = 1d/(double)numNodes;
 			for (int i=0; i<numNodes; i++)
 				nodes.add(build(i, new FixedFractileSampler(samples[i]), weightEach));
 			this.nodes = nodes;
