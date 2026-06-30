@@ -7,9 +7,12 @@ import org.apache.commons.io.file.PathUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
+import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_SimulationMetadata;
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -40,7 +43,6 @@ public class ETAS_BinaryAnalysis {
     private final BinaryParser parser;
     private final RuptureSearcher rupSearch;
     private final FaultSystemSolution fss; // Fault System Solution as defined by the ZIP file
-
     // Smallest magnitude to consider from binary catalogs
     private static final double MIN_MAG = 2.5;
 
@@ -55,10 +57,23 @@ public class ETAS_BinaryAnalysis {
         System.out.println("Loading fault system solution...");
         this.fss = FaultSystemSolution.load(new File(cmd.getOptionValue("fss")));
 
+        File configFile = new File(cmd.getOptionValue("config"));
+        ETAS_Config config = ETAS_Config.readJSON(cmd.getOptionValue("config"));
+        Path output = Path.of(cmd.getOptionValue("out"));
+
+//        ETAS_Launcher launcher = new ETAS_Launcher(config, false);
+//        ETAS_SimulatedCatalogPlot sim = new ETAS_SimulatedCatalogPlot(config, launcher, "sim_catalog_map");
+//        SimulationMarkdownGenerator.generateMarkdown(
+//                configFile, parser.binFile, config, output.toFile(), false, parser.getAllCatalogsCount(),
+//                SimulationMarkdownGenerator.defaultNumThreads(), true, false, null, null);
+//
+        // TODO: Load config file for use in MarkdownGen
+        // TODO: Reevaluate the nested class configuration - private variable layout
+
         // Generate report for the scenario aftershock
         int aftershock = Integer.parseInt(cmd.getOptionValue("rup"));
 
-        try (MarkdownGenerator markdownGen = new MarkdownGenerator(Path.of(cmd.getOptionValue("out")))) {
+        try (MarkdownGenerator markdownGen = new MarkdownGenerator(output)) {
             System.out.println("Building ETAS Binary analysis markdown report...");
 
             markdownGen.generateReport(aftershock);
@@ -110,8 +125,6 @@ public class ETAS_BinaryAnalysis {
          * @return List of List fss indices for ruptures
          */
         public List<List<Integer>> getCandidateRuptureSets() {
-            // TODO: Add summary stats for how many ruptures found in binary occur on Hollywood, Raymond, and both together
-            // TODO: We don't care to know how many of each specific rupture occurs, except for the primary aftershock rupture
             List<List<Integer>> results = new ArrayList<>();
             FaultSystemRupSet rupSet = fss.getRupSet();
             // Add each rupture that matches one of the valid parent section combinations
@@ -190,7 +203,7 @@ public class ETAS_BinaryAnalysis {
      * Nested helper class for binary parsing logic
      */
     private class BinaryParser {
-        private final File binFile; // UCERF3-ETAS results binary
+        public final File binFile; // UCERF3-ETAS results binary
         // Map rupture ID to list of catalogs matching scenario
         public final Map<Integer, List<ETAS_Catalog>> catalogMatches = new HashMap<>();
         // Map MIN_MAG to catalog counts
@@ -199,6 +212,8 @@ public class ETAS_BinaryAnalysis {
         private final int allCatalogsCount;
         // How many of a given aftershock (FSS idx) are found across all catalogs (≥ MIN_MAG)
         public final Map<Integer, Integer> aftershocksCount = new HashMap<>();
+        // Map catalog index to map of FSS index to the first rupture that matched it
+        public final Map<Integer, Map<Integer, ETAS_EqkRupture>> rupMatches = new HashMap<>();
 
 
         BinaryParser(File binFile) {
@@ -249,6 +264,7 @@ public class ETAS_BinaryAnalysis {
         }
 
         /**
+         * TODO: Update this javadoc: It collects matching catalogs and maps the first matching rups
          * In how many of the simulations does the aftershock scenario actually occur?
          * This method checks how many simulated catalogs above a minimum magnitude
          * see a rupture matching the aftershock scenario.
@@ -264,7 +280,12 @@ public class ETAS_BinaryAnalysis {
             for (ETAS_Catalog cat : getBinaryCatalogsIterable(binFile, MIN_MAG)) {
                 for (ETAS_EqkRupture rup : cat) {
                     if (fssIdx == rup.getFSSIndex()) {
-                    catalogMatches.get(fssIdx).add(cat);
+                        catalogMatches.get(fssIdx).add(cat);
+                        int catIdx = cat.getSimulationMetadata().catalogIndex;
+                        if (!rupMatches.containsKey(catIdx)) {
+                            rupMatches.put(catIdx, new HashMap<>());
+                        }
+                        rupMatches.get(catIdx).put(fssIdx, rup);
                     }
                 }
             }
@@ -330,32 +351,44 @@ public class ETAS_BinaryAnalysis {
             write("Total number of simulations M≥"+MIN_MAG+": " + sigCount);
             write("Total number of simulations with aftershock occurrence: " + aftershocksCount);
             write(String.format("Total: %.2f%%, Sig: %.2f%%", 100. * aftershocksCount/totalCount, 100. * aftershocksCount/sigCount));
-            write("## Catalog Matches");
+            // TODO: Build plot for all the catalogs
             parser.collectCatalogsMatching(fssIndex);
+            write("## Catalog Matches");
             for (ETAS_Catalog catalog : parser.catalogMatches.get(fssIndex)) {
-                write(getCatalogMeta(catalog));
+                write(getCatalogMeta(catalog, fssIndex));
             }
+
         }
 
         // TODO: Write binary details (what was the main simulation?) and what command was used to run this CLT?
 
         /**
          * Gets markdown representation of the metadata for an ETAS catalog
+         *
          * @param catalog
+         * @param fssIndex
          * @return
          */
-        private String getCatalogMeta(ETAS_Catalog catalog) {
+        private String getCatalogMeta(ETAS_Catalog catalog, int fssIndex) {
             // TODO: We want the timing of the first rupture from start of the simulated catalog (e.g., within a day)
+            // simulationStartTime is just when the simulation was run, not when the primary rupture occurred
+            // We may need to read in the original ETAS_Config for this.
+            // Additionally, we need to iterate over the ETAS_Catalog to find the first matching ETAS_EqkRupture, .getOriginTime()
+            // TODO: Use hashmap we will build in collectCatalogsMatching
             StringBuilder output = new StringBuilder("### Catalog Index: ");
             ETAS_SimulationMetadata meta = catalog.getSimulationMetadata();
             output.append(meta.catalogIndex);
             output.append("\n");
-            output.append("Simulation Start Time: ");
-            output.append(getDate(meta.simulationStartTime));
-            output.append("\n");
-            // TODO: Why is the end time not impacted?
-            output.append("Simulation End Time: ");
-            output.append(getDate(meta.simulationEndTime));
+            output.append("Rupture Origin Time: ");
+            output.append(getDate(parser.rupMatches
+                    .get(catalog.getSimulationMetadata().catalogIndex)
+                    .get(fssIndex)
+                    .getOriginTime()));
+//            output.append("Simulation Start Time: ");
+//            output.append(getDate(meta.simulationStartTime));
+//            output.append("\n");
+//            output.append("Simulation End Time: ");
+//            output.append(getDate(meta.simulationEndTime));
             output.append("\n");
             return output.toString();
         }
@@ -384,8 +417,6 @@ public class ETAS_BinaryAnalysis {
                 writer.close();
             }
         }
-
-        // TODO: Generate plots
 
     }
 
@@ -433,6 +464,14 @@ public class ETAS_BinaryAnalysis {
                 .argName("dir-path")
                 .build());
 
+        options.addOption(Option.builder("c")
+                .longOpt("config")
+                .desc("ETAS Config JSON File")
+                .required(true)
+                .hasArg()
+                .argName("file-path")
+                .build());
+
 
         return options;
     }
@@ -455,7 +494,8 @@ public class ETAS_BinaryAnalysis {
         if (args.length == 1 && args[0].equals("--hardcoded")) {
             args = new String[]{
                     "--fss", "/Users/bhatthal/git/ucerf3-etas-launcher/inputs/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip",
-                    "--bin", "/Users/bhatthal/Downloads/2026_05_27-FSS_Rupture_201887_M7p8_Start_2026_10_15_1_yr_kCOV_1p5_MaxPtSrcM_6/results_m5_preserve_chain.bin",
+                    "--bin", "/Users/bhatthal/Downloads/Merged-FSS_Rupture_201887_M7p8_Start_2026_10_15_1_yr_kCOV_1p5_MaxPtSrcM_6/results_m5_preserve_chain.bin",
+                    "--config", "/Users/bhatthal/Downloads/Merged-FSS_Rupture_201887_M7p8_Start_2026_10_15_1_yr_kCOV_1p5_MaxPtSrcM_6/config.json",
                     "--rup", "218331",
                     "--out", "/Users/bhatthal/Desktop/etas-bin-analysis"
             };
