@@ -515,7 +515,7 @@ public class ETAS_CatalogIO {
 				out.writeInt(meta.rangeTriggerRupIDs.upperEndpoint());
 			}
 			out.writeLong(meta.simulationStartTime);
-			out.writeLong(meta.simulationStartTime);
+			out.writeLong(meta.simulationEndTime);
 			out.writeInt(meta.numSpontaneousRuptures);
 			out.writeInt(meta.numSupraSeis);
 			out.writeDouble(meta.minMag);
