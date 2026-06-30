@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
@@ -577,6 +578,17 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			this.nodeFilePrefix = nodeFilePrefix;
 		}
 		
+		protected final E getNodeForFilePrefix(String filePrefix) {
+			Preconditions.checkNotNull(nodeFilePrefix);
+			filePrefix = filePrefix.trim();
+			if (!filePrefix.startsWith(nodeFilePrefix))
+				return null;
+			int index = Integer.valueOf(filePrefix.substring(nodeFilePrefix.length()));
+			E node = getNodes().get(index);
+			Preconditions.checkState(node.getFilePrefix().equals(filePrefix));
+			return node;
+		}
+		
 		protected final String getNodeNamePrefix() {
 			return nodeNamePrefix;
 		}
@@ -603,9 +615,15 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		public JsonObject toJsonObject() {
 			JsonObject json = new JsonObject();
 			json.add("nodeType", new JsonPrimitive(getType().getName()));
-			json.add("nodeNamePrefix", new JsonPrimitive(getNodeNamePrefix()));
-			json.add("nodeShortNamePrefix", new JsonPrimitive(getNodeShortNamePrefix()));
-			json.add("nodeFilePrefix", new JsonPrimitive(getNodeFilePrefix()));
+			String namePrefix = getNodeNamePrefix();
+			if (namePrefix != null)
+				json.add("nodeNamePrefix", new JsonPrimitive(namePrefix));
+			String shortNamePrefix = getNodeShortNamePrefix();
+			if (shortNamePrefix != null)
+				json.add("nodeShortNamePrefix", new JsonPrimitive(shortNamePrefix));
+			String nodeFilePrefix = getNodeFilePrefix();
+			if (nodeFilePrefix != null)
+				json.add("nodeFilePrefix", new JsonPrimitive(nodeFilePrefix));
 			return json;
 		}
 
@@ -1447,47 +1465,87 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		
 	}
 	
-	public static abstract class AbstractCombinedSamplingLevel<E, N extends ValuedLogicTreeNode<E>>
-	extends AbstractRandomlySampledLevel<E,N> implements ValueByIndexLevel<E, N>, BinnableLevel<E, N, CombinedSampledBinnedLevel<E,N>> {
-
-		private WeightedList<? extends AbstractRandomlySampledLevel<E, ? extends N>> levels;
+	public static abstract class CombinedSamplingNode<E extends FixedWeightNode> extends SimpleValuedNode<int[]> {
 		
-		private int[][] nodeLevelIndexes;
+		private E node;
 
+		protected CombinedSamplingNode() {
+			super();
+		}
+
+		public CombinedSamplingNode(int[] indexes, E value, Class<? extends int[]> valueClass, double weight, String name,
+				String shortName, String filePrefix) {
+			super(indexes, valueClass, weight, name, shortName, filePrefix);
+			setNodeValue(value);
+		}
+
+		protected void setNodeValue(E node) {
+			this.node = node;
+		}
+		
+		protected E getNodeValue() {
+			Preconditions.checkNotNull(node, "Not value not yet set? indexes=%s", getValue());
+			return node;
+		}
+	}
+	
+	public static abstract class AbstractCombinedSamplingLevel<E extends FixedWeightNode, N extends CombinedSamplingNode<E>>
+	extends AbstractRandomlySampledLevel<int[],N> implements BinnableLevel<int[], N, CombinedSampledBinnedLevel<E,N>> {
+
+		private WeightedList<? extends LogicTreeLevel<? extends E>> levels;
+		
 		protected AbstractCombinedSamplingLevel(String levelName, String levelShortName) {
 			super(levelName, levelShortName);
 		}
-
-		protected AbstractCombinedSamplingLevel(String levelName, String levelShortName,
-				String nodeNamePrefix, String nodeShortNamePrefix, String nodeFilePrefix) {
-			super(levelName, levelShortName, nodeNamePrefix, nodeShortNamePrefix, nodeFilePrefix);
+		
+		protected AbstractCombinedSamplingLevel(String levelName, String levelShortName, String nodeFilePrefix) {
+			super(levelName, levelShortName, null, null, nodeFilePrefix);
 		}
 
-		public AbstractCombinedSamplingLevel(String levelName, String levelShortName,
-				String nodeNamePrefix, String nodeShortNamePrefix, String nodeFilePrefix,
-				WeightedList<? extends AbstractRandomlySampledLevel<E, ? extends N>> levels) {
-			super(levelName, levelShortName, nodeNamePrefix, nodeShortNamePrefix, nodeFilePrefix);
+		public AbstractCombinedSamplingLevel(String levelName, String levelShortName, String nodeFilePrefix,
+				WeightedList<? extends LogicTreeLevel<? extends E>> levels) {
+			super(levelName, levelShortName, null, null, nodeFilePrefix);
 			init(levels);
 		}
 		
-		protected void init(WeightedList<? extends AbstractRandomlySampledLevel<E, ? extends N>> levels) {
+		protected void init(WeightedList<? extends LogicTreeLevel<? extends E>> levels) {
 			Preconditions.checkState(levels.size() > 1);
 			if (!(levels instanceof WeightedList.Unmodifiable<?>))
 				levels = new WeightedList.Unmodifiable<>(levels);
 			this.levels = levels;
+			LinkedHashSet<String> affected = new LinkedHashSet<>();
+			LinkedHashSet<String> notAffected = new LinkedHashSet<>();
+			for (int l=0; l<levels.size(); l++) {
+				LogicTreeLevel<? extends E> level = levels.getValue(l);
+				for (String a : level.getAffected()) {
+					if (notAffected.contains(a))
+						notAffected.remove(a);
+					affected.add(a);
+				}
+				for (String n : level.getNotAffected()) {
+					if (!affected.contains(n))
+						notAffected.add(n);
+				}
+			}
+			setAffected(affected, notAffected, false);
 		}
 		
-		public WeightedList<? extends AbstractRandomlySampledLevel<E, ? extends N>> getSubLevels() {
+		public WeightedList<? extends LogicTreeLevel<? extends E>> getSubLevels() {
 			return levels;
 		}
 		
-		protected abstract AbstractRandomlySampledLevel<E, ? extends N> getLevelForValue(E value);
+		protected abstract N buildCombinedNode(int[] indexes, E value, double weight, String name, String shortName, String filePrefix);
 
 		@Override
-		public N build(E value, double weight, String name, String shortName, String filePrefix) {
-			AbstractRandomlySampledLevel<E, ? extends N> level = getLevelForValue(value);
-			Preconditions.checkNotNull(level, "Level could not be identified for value: %s", value);
-			return level.buildUnchecked(value, weight, name, shortName, filePrefix);
+		public N build(int[] indexes, double weight, String name, String shortName, String filePrefix) {
+			LogicTreeLevel<? extends E> level = levels.getValue(indexes[0]);
+			E node = level.getNodes().get(indexes[1]);
+			// use the downstream node names, but keep the custom file prefix
+			name = node.getShortName();
+			shortName = node.getShortName();
+			N combNode = buildCombinedNode(indexes, node, weight, name, shortName, filePrefix);
+			Preconditions.checkNotNull(combNode);
+			return combNode;
 		}
 
 		@Override
@@ -1519,31 +1577,63 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			}
 			
 			// now actually build them
-			nodeLevelIndexes = new int[numNodes][];
-			List<N> nodes = new ArrayList<>(numNodes);
+			List<int[]> nodeLevelIndexes = new ArrayList<>(numNodes);
 			for (int i=0; i<numNodes; i++)
-				nodes.add(null);
+				nodeLevelIndexes.add(null);
 			
 			for (int l=0; l<levels.size(); l++) {
 				List<Integer> indexes = levelSampleIndexes.get(l);
-				if (indexes.isEmpty())
+				int numLevelSamples = indexes.size();
+				if (numLevelSamples == 0)
 					// this level was never sampled
 					continue;
-				AbstractRandomlySampledLevel<E, ? extends N> level = levels.getValue(l);
-//				System.out.println("Building "+indexes.size()+" samples for sub-level "+l+": "+level);
-				level.build(levelSeeds[l], indexes.size(), samplingMethod, weightEach);
-				List<? extends N> levelSamples = level.getNodes();
-				Preconditions.checkState(levelSamples.size() == indexes.size());
-				
-				for (int i=0; i<levelSamples.size(); i++) {
-					N node = levelSamples.get(i);
-					int index = indexes.get(i);
-					Preconditions.checkState(nodes.set(index, node) == null);
-					nodeLevelIndexes[index] = new int[] {l,i};
+				LogicTreeLevel<? extends E> level = levels.getValue(l);
+//				System.out.println("Level "+l+". "+level.getShortName()+" has "+numLevelSamples+" samples");
+				if (level instanceof AbstractRandomlySampledLevel) {
+					AbstractRandomlySampledLevel<E, ?> randomLevel = (AbstractRandomlySampledLevel<E, ?>)level;
+					randomLevel.build(levelSeeds[l], numLevelSamples, samplingMethod, weightEach);
+					
+					for (int i=0; i<numLevelSamples; i++) {
+						int nodeIndex = indexes.get(i);
+						int[] nodeLevelIndex = {l,i};
+						Preconditions.checkState(nodeLevelIndexes.set(nodeIndex, nodeLevelIndex) == null);
+					}
+				} else if (level.getNodes().size() == 1) {
+					// single value
+					for (int i=0; i<numLevelSamples; i++) {
+						int nodeIndex = indexes.get(i);
+						int[] nodeLevelIndex = {l,0};
+						Preconditions.checkState(nodeLevelIndexes.set(nodeIndex, nodeLevelIndex) == null);
+					}
+				} else {
+					// sample values from the level
+					List<? extends E> levelNodes = level.getNodes();
+					WeightedList<Integer> weightedNodes = new WeightedList<>();
+					for (int i=0; i<levelNodes.size(); i++) {
+						E node = levelNodes.get(i);
+						double nodeWeight = node.getNodeWeight();
+						if (nodeWeight > 0d)
+							weightedNodes.add(i, nodeWeight);
+					}
+					Random levelRand = new Random(levelSeeds[l]);
+					List<Integer> levelSampledIndexes;
+					if (samplingMethod.isLHS())
+						levelSampledIndexes = weightedNodes.sampleEvenly(numLevelSamples, levelRand);
+					else
+						levelSampledIndexes = weightedNodes.sampleMonteCarlo(numLevelSamples, levelRand);
+					for (int i=0; i<numLevelSamples; i++) {
+						int nodeIndex = indexes.get(i);
+						int levelNodeIndex = levelSampledIndexes.get(i);
+						int[] nodeLevelIndex = {l,levelNodeIndex};
+						Preconditions.checkState(nodeLevelIndexes.set(nodeIndex, nodeLevelIndex) == null);
+					}
 				}
 			}
 			
-			setNodes(nodes);
+			for (int i=0; i<numNodes; i++)
+				Preconditions.checkNotNull(nodeLevelIndexes.get(i));
+			
+			setValues(nodeLevelIndexes, weightEach);
 		}
 
 		@Override
@@ -1553,25 +1643,16 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			Preconditions.checkNotNull(json);
 			
 			JsonArray levelsArray = new JsonArray();
-			Adapter<N> levelAdapter = new Adapter<>();
+			Adapter<E> levelAdapter = new Adapter<>();
 			for (int l=0; l<levels.size(); l++) {
 				double weight = levels.getWeight(l);
-				AbstractRandomlySampledLevel<E, ? extends N> level = levels.getValue(l);
+				LogicTreeLevel<? extends E> level = levels.getValue(l);
 				JsonObject levelObj = new JsonObject();
 				levelObj.add("weight", new JsonPrimitive(weight));
 				levelObj.add("level", levelAdapter.toJsonTree(level));
 				levelsArray.add(levelObj);
 			}
 			json.add("levels", levelsArray);
-			Preconditions.checkState(nodeLevelIndexes != null && nodeLevelIndexes.length > 0, "Not yet built?");
-			JsonArray indexesArray = new JsonArray(nodeLevelIndexes.length);
-			for (int[] indexes : nodeLevelIndexes) {
-				JsonArray subArray = new JsonArray(2);
-				for (int i : indexes)
-					subArray.add(i);
-				indexesArray.add(subArray);
-			}
-			json.add("sampleIndexes", indexesArray);
 			
 			return json;
 		}
@@ -1581,45 +1662,26 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			super.initFromJsonObject(jsonObj);
 			
 			JsonArray levelsArray = jsonObj.getAsJsonArray("levels");
-			WeightedList<AbstractRandomlySampledLevel<E, N>> levels = new WeightedList<>(levelsArray.size());
-			Adapter<N> levelAdapter = new Adapter<>();
+			WeightedList<LogicTreeLevel<? extends E>> levels = new WeightedList<>(levelsArray.size());
+			Adapter<E> levelAdapter = new Adapter<>();
 			for (int l=0; l<levelsArray.size(); l++) {
 				JsonObject levelObj = levelsArray.get(l).getAsJsonObject();
 				double weight = levelObj.get("weight").getAsDouble();
-				LogicTreeLevel<? extends N> level = levelAdapter.fromJsonTree(levelObj.get("level"));
-				Preconditions.checkState(level instanceof AbstractRandomlySampledLevel);
-				AbstractRandomlySampledLevel<E, N> sampleLevel = (AbstractRandomlySampledLevel<E, N>)level;
-				levels.add(sampleLevel, weight);
+				LogicTreeLevel<? extends E> level = levelAdapter.fromJsonTree(levelObj.get("level"));
+				levels.add(level, weight);
 			}
 			this.levels = new WeightedList.Unmodifiable<>(levels);
-			
-			JsonArray indexesArray = jsonObj.getAsJsonArray("sampleIndexes");
-			Preconditions.checkState(!indexesArray.isEmpty());
-			nodeLevelIndexes = new int[indexesArray.size()][];
-			for (int i=0; i<indexesArray.size(); i++) {
-				JsonArray subArray = indexesArray.get(i).getAsJsonArray();
-				Preconditions.checkState(subArray.size() == 2);
-				nodeLevelIndexes[i] = new int[subArray.size()];
-				for (int j=0; j<subArray.size(); j++)
-					nodeLevelIndexes[i][j] = subArray.get(j).getAsInt();
+		}
+
+		@Override
+		protected void setNodes(List<N> nodes) {
+			// now set the values on each node
+			for (N node : nodes) {
+				int[] indexes = node.getValue();
+				node.setNodeValue(levels.getValue(indexes[0]).getNodes().get(indexes[1]));
 			}
 			
-			// now actually build them
-			int numNodes = nodeLevelIndexes.length;
-			List<N> nodes = new ArrayList<>(numNodes);
-			
-			List<List<? extends N>> levelNodes = new ArrayList<>(levels.size());
-			for (int l=0; l<levels.size(); l++)
-				levelNodes.add(levels.getValue(l).getNodes());
-			
-			for (int[] levelIndexes : nodeLevelIndexes)
-				nodes.add(levelNodes.get(levelIndexes[0]).get(levelIndexes[1]));
-			
-//			System.out.println("Loaded "+getName()+" fropm JSON with "+nodes.size()+" nodes; first 10:");
-//			for (int i=0; i<10&&i<nodes.size(); i++)
-//				System.out.println(nodes.get(i).getName()+" "+nodes.get(i).getFilePrefix());
-
-			setNodes(nodes);
+			super.setNodes(nodes);
 		}
 
 		@Override
@@ -1631,30 +1693,21 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		public CombinedSampledBinnedLevel<E, N> toBinnedLevel(int numBins) {
 			return toBinnedLevel();
 		}
-
-		@Override
-		public E valueForIndex(int index) {
-			N node = nodes.get(index);
-			return node.getValue();
-		}
-
-		@Override
-		public void init(List<Double> weights) {
-			Preconditions.checkState(weights.size() == nodeLevelIndexes.length);
-		}
 		
 	}
 	
-	public static class CombinedSampledBinnedLevel<E, N extends ValuedLogicTreeNode<E>> extends DataBackedLevel<SimpleValuedNode<int[]>> 
-	implements ValueBackedLevel<int[], SimpleValuedNode<int[]>>, BinnedLevel<E, SimpleValuedNode<int[]>> {
+	public static class CombinedSampledBinnedLevel<E extends FixedWeightNode, N extends CombinedSamplingNode<E>>
+	extends DataBackedLevel<SimpleValuedNode<int[]>>
+	implements ValueBackedLevel<int[], SimpleValuedNode<int[]>>, BinnedLevel<int[], SimpleValuedNode<int[]>> {
 		
 		// this extra cast to Class<?> resolves compile errors that don't show up in eclipse, which is annoying
 		private static Class<? extends SimpleValuedNode<int[]>> TYPE =
 				(Class<SimpleValuedNode<int[]>>) (Class<?>) SimpleValuedNode.class;
 
 		private AbstractCombinedSamplingLevel<E, N> samplingLevel;
-		private WeightedList<? extends AbstractRandomlySampledLevel<E, ? extends N>> levels;
-		private List<BinnedLevel<E,?>> binnedLevels;
+		private WeightedList<? extends LogicTreeLevel<? extends E>> levels;
+		private List<BinnedLevel<?,?>> binnedLevels;
+		private List<List<? extends FixedWeightNode>> binnedLevelNodes;
 		private List<List<SimpleValuedNode<int[]>>> nodesByLevel;
 		private List<SimpleValuedNode<int[]>> nodes;
 		
@@ -1669,13 +1722,27 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			nodes = new ArrayList<>();
 			nodesByLevel = new ArrayList<>(levels.size());
 			binnedLevels = new ArrayList<>(levels.size());
+			binnedLevelNodes = new ArrayList<>(levels.size());
+			
+			double[] sampledLevelWeights = new double[levels.size()];
+			List<? extends N> allNodes = samplingLevel.getNodes();
+			for (N node : allNodes)
+				sampledLevelWeights[node.getValue()[0]] += node.getNodeWeight();
+//			System.out.println("Binning for "+levels.size()+" levels and "+allNodes.size()+" nodes");
+//			System.out.println("Nodes:");
+//			for (int i=0; i<allNodes.size(); i++) {
+//				N node = allNodes.get(i);
+//				int[] indexes = node.getValue();
+//				System.out.println(i+". "+indexes[0]+"-"+indexes[1]+": "+node.getShortName()+" "+(float)node.getNodeWeight());
+//			}
 			for (int l=0; l<levels.size(); l++) {
 				List<SimpleValuedNode<int[]>> levelNodes;
-				double weight = levels.getWeight(l);
-				AbstractRandomlySampledLevel<? extends E, ? extends N> level = levels.getValue(l);
+				double weight = sampledLevelWeights[l];
+				LogicTreeLevel<? extends E> level = levels.getValue(l);
+//				System.out.println("Binning sub-level "+l+". "+level+" with weight="+weight);
 				if (level instanceof BinnableLevel) {
 					// sub-level is binned, use those
-					BinnedLevel<E,?> binned = ((BinnableLevel<E, ValuedLogicTreeNode<? super E>, ?>)level).toBinnedLevel();
+					BinnedLevel<?,?> binned = ((BinnableLevel<?, ?, ?>)level).toBinnedLevel();
 					LogicTreeLevel<? extends FixedWeightNode> binnedLevel = (LogicTreeLevel<? extends FixedWeightNode>)binned;
 					List<? extends FixedWeightNode> subBins = binnedLevel.getNodes();
 					levelNodes = new ArrayList<>(subBins.size());
@@ -1686,14 +1753,35 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 						int[] indexes = {l, i};
 						FixedWeightNode subBin = subBins.get(i);
 						double binWeight = weight * subBin.getNodeWeight() / sumBinWeights;
-						levelNodes.add(build(indexes, binWeight, subBin.getName(), subBin.getShortName(), "Bin"+l+"-"+i));
+//						System.out.println("\tSummed sub-bin weights for "+subBin.getName()+": "+binWeight+"; this="+this.toString());
+						levelNodes.add(build(indexes, binWeight, subBin.getName(), subBin.getShortName(), "Level"+l+"-"+subBin.getFilePrefix()));
 					}
 					binnedLevels.add(binned);
-				} else {
+					binnedLevelNodes.add(subBins);
+				} else if (level instanceof RandomLevel || level.getNodes().size() > 3) {
 					// single bin for this level
 					int[] indexes = {l, 0};
-					levelNodes = List.of(build(indexes, weight, level.getName(), level.getShortName(), "Bin"+l));
+					levelNodes = List.of(build(indexes, weight, level.getName(), level.getShortName(), "Level"+l));
 					binnedLevels.add(null);
+					binnedLevelNodes.add(null);
+				} else {
+					// bin for each value
+					List<? extends E> subNodes = level.getNodes();
+					levelNodes = new ArrayList<>(subNodes.size());
+					double[] levelValueWeights = new double[subNodes.size()];
+					for (N node : samplingLevel.getNodes()) {
+						int[] nodeIndexes = node.getValue();
+						if (nodeIndexes[0] == l)
+							levelValueWeights[nodeIndexes[1]] += node.getNodeWeight();
+					}
+					for (int i=0; i<subNodes.size(); i++) {
+						int[] indexes = {l, i};
+						E node = subNodes.get(i);
+//						System.out.println("\tSummed weights for "+node.getName()+": "+levelValueWeights[i]+"; this="+this.toString());
+						levelNodes.add(build(indexes, levelValueWeights[i], node.getName(), node.getShortName(), "Level"+l+"-"+node.getFilePrefix()));
+					}
+					binnedLevels.add(null);
+					binnedLevelNodes.add(null);
 				}
 				nodesByLevel.add(levelNodes);
 				nodes.addAll(levelNodes);
@@ -1702,26 +1790,32 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		}
 
 		@Override
-		public SimpleValuedNode<int[]> getBin(E value) {
+		public SimpleValuedNode<int[]> getBin(int[] value) {
 			Preconditions.checkState(levels != null, "Cannot convert values to bins after deserialization");
-			AbstractRandomlySampledLevel<? extends E, ? extends N> level = samplingLevel.getLevelForValue(value);
-			Preconditions.checkNotNull(level);
-			for (int l=0; l<levels.size(); l++) {
-				if (levels.getValue(l).equals(level)) {
-					List<SimpleValuedNode<int[]>> nodes = nodesByLevel.get(l);
-					BinnedLevel<E, ?> binnedLevel = binnedLevels.get(l);
-					if (binnedLevel == null) {
-						// single bin for this level
-						return nodes.get(0);
-					}
-					LogicTreeNode bin = binnedLevel.getBin(value);
-					int binIndex = nodes.indexOf(bin);
-					Preconditions.checkState(binIndex >= 0,
-							"Bin %s not found for value %s in level %s. %s", bin, value, l, level);
-					return nodes.get(binIndex);
+			int levelIndex = value[0];
+			int nodeIndex = value[1];
+			LogicTreeLevel<? extends E> level = samplingLevel.getSubLevels().getValue(levelIndex);
+			List<? extends E> levelNodes = level.getNodes();
+			E node = levelNodes.get(nodeIndex);
+			BinnedLevel<?, ?> binnedLevel = binnedLevels.get(levelIndex);
+			List<SimpleValuedNode<int[]>> levelBins = nodesByLevel.get(levelIndex);
+			if (binnedLevel == null) {
+				if (levelBins.size() == 1) {
+					// single bin for this level
+					return levelBins.get(0);
+				} else {
+					Preconditions.checkState(levelBins.size() == levelNodes.size());
+					return levelBins.get(nodeIndex);
 				}
 			}
-			throw new IllegalStateException("Unexpected level: "+level);
+			LogicTreeNode origBin = binnedLevel.getBinUnchecked(node);
+			List<? extends FixedWeightNode> origLevelBins = binnedLevelNodes.get(levelIndex);
+			int binIndex = origLevelBins.indexOf(origBin);
+			Preconditions.checkState(binIndex >= 0,
+					"Bin %s not found for value %s in level %s. %s\n\tBins: %s", origBin, value, levelIndex, level, origLevelBins);
+			SimpleValuedNode<int[]> bin = levelBins.get(binIndex);
+			Preconditions.checkState(bin.getShortName().equals(origBin.getShortName()));
+			return bin;
 		}
 
 		@Override
@@ -1799,6 +1893,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					String shortName = binObj.get("shortName").getAsString();
 					String filePrefix = binObj.get("filePrefix").getAsString();
 					double weight = binObj.get("weight").getAsDouble();
+					System.out.println("Deserializing bin "+name+" with weight="+weight+"; this="+this.toString());
 					levelNodes.add(build(new int[] {l,i}, weight, name, shortName, filePrefix));
 				}
 				
@@ -1936,6 +2031,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					out.name("values").beginObject();
 					boolean allSameWeight = true;
 					List<? extends E> nodes = level.getNodes();
+					Preconditions.checkNotNull(nodes);
 					double[] weights = new double[nodes.size()];
 					for (int i=0; i<weights.length; i++) {
 						weights[i] = ((ValuedLogicTreeNode<?>)nodes.get(i)).getNodeWeight();
@@ -2284,11 +2380,6 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			return level;
 		}
 		
-	}
-	
-	public static void main(String[] args) throws IOException {
-		LogicTree.read(new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
-				+ "2021_12_14-nshm23_draft_branches-coulomb-ineq-FM3_1-ZENGBB-Shaw09Mod-TotNuclRate-SubB1/logic_tree.json"));
 	}
 
 }

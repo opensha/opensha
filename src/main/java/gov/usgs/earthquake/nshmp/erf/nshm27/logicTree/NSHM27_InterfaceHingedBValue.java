@@ -1,23 +1,23 @@
 package gov.usgs.earthquake.nshmp.erf.nshm27.logicTree;
 
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.statistics.distribution.ContinuousDistribution;
 import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.logicTree.Affects;
+import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
-import org.opensha.commons.logicTree.LogicTreeNode;
-import org.opensha.commons.logicTree.LogicTreeLevel.AbstractRandomlySampledLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.CombinedSamplingNode;
 import org.opensha.commons.logicTree.LogicTreeLevel.DataBackedLevel;
-import org.opensha.commons.logicTree.LogicTreeLevel.ValueByIndexLevel;
-import org.opensha.commons.logicTree.LogicTreeLevel.WeightedListSampledLevel;
-import org.opensha.commons.logicTree.LogicTreeNode.FixedWeightNode;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
@@ -27,17 +27,19 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.TypeAdapter;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonToken;
-import com.google.gson.stream.JsonWriter;
 
 import gov.usgs.earthquake.nshmp.erf.nshm27.NSHM27_GridSourceBuilder;
 import gov.usgs.earthquake.nshmp.erf.nshm27.NSHM27_InvConfigFactory;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
 
-public class NSHM27_InterfaceHingedBValue implements SectionSupraSeisBValues, FixedWeightNode {
+@DoesNotAffect(FaultSystemRupSet.SECTS_FILE_NAME)
+@DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
+@DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
+@Affects(FaultSystemSolution.RATES_FILE_NAME)
+@DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
+@DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
+@Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
+public class NSHM27_InterfaceHingedBValue implements SectionSupraSeisBValues.FixedWeight {
 	
 	private static final NSHM27_InterfaceHingedBValue HINGED_SINGLE_NODE = new NSHM27_InterfaceHingedBValue(1d);
 	
@@ -46,11 +48,11 @@ public class NSHM27_InterfaceHingedBValue implements SectionSupraSeisBValues, Fi
 	
 	public static class FixedLevel extends DataBackedLevel<NSHM27_InterfaceHingedBValue> {
 		
-		private NSHM27_InterfaceHingedBValue node;
+		@SuppressWarnings("unused") // deserialization
+		private FixedLevel() {}
 		
 		public FixedLevel(String name, String shortName) {
 			super(name, shortName);
-			node = new NSHM27_InterfaceHingedBValue(1d);
 		}
 
 		@Override
@@ -60,17 +62,17 @@ public class NSHM27_InterfaceHingedBValue implements SectionSupraSeisBValues, Fi
 
 		@Override
 		public List<? extends NSHM27_InterfaceHingedBValue> getNodes() {
-			return List.of(node);
+			return List.of(HINGED_SINGLE_NODE);
 		}
 
 		@Override
 		public boolean isMember(LogicTreeNode node) {
-			return this.node == node;
+			return HINGED_SINGLE_NODE == node;
 		}
 
 		@Override
 		public JsonObject toJsonObject() {
-			return null;
+			return new JsonObject();
 		}
 
 		@Override
@@ -78,297 +80,73 @@ public class NSHM27_InterfaceHingedBValue implements SectionSupraSeisBValues, Fi
 		
 	}
 	
-	public static class CombinedSamplingLevel extends
-	LogicTreeLevel.AbstractCombinedSamplingLevel<SectionSupraSeisBValues, CombinedValue> {
-		
-		private HingeWrappedSamplingLevel hingedLevel;
-		private DistributionWrappedSamplingLevel wrappedDistLevel;
+	public static class CombinedSampledType extends CombinedSamplingNode<SectionSupraSeisBValues.FixedWeight>
+	implements SectionSupraSeisBValues {
 
+		private FixedWeight node;
+
+		@SuppressWarnings("unused") // deserialization
+		private CombinedSampledType() {
+			super();
+		}
+
+		public CombinedSampledType(int[] indexes, FixedWeight value, double weight,
+				String name, String shortName, String filePrefix) {
+			super(indexes, value, int[].class, weight, name, shortName, filePrefix);
+		}
+
+		@Override
+		protected void setNodeValue(SectionSupraSeisBValues.FixedWeight node) {
+			this.node = node;
+		}
+
+		@Override
+		public double[] getSectBValues(FaultSystemRupSet rupSet, LogicTreeBranch<? extends LogicTreeNode> branch) {
+			return node.getSectBValues(rupSet, branch);
+		}
+
+		@Override
+		public double getB(FaultSystemRupSet rupSet, LogicTreeBranch<? extends LogicTreeNode> branch) {
+			return node.getB(rupSet, branch);
+		}
+		
+	}
+	
+	public static class CombinedSamplingLevel extends
+	LogicTreeLevel.AbstractCombinedSamplingLevel<SectionSupraSeisBValues.FixedWeight, CombinedSampledType> {
+		
 		private CombinedSamplingLevel(String levelName, String levelShortName) {
 			super(levelName, levelShortName);
 		}
 
 		public CombinedSamplingLevel(String levelName, String levelShortName, double hingedWeight,
 				ContinuousDistribution bDistribution, double distWeight) {
-			super(levelName, levelShortName, "b Sample ", "bSample", "bSample");
-			
-			hingedLevel = new HingeWrappedSamplingLevel();
+			super(levelName, levelShortName, "bCombSample");
 			
 			SectionSupraSeisBValues.DistributionSamplingLevel distLevel = new DistributionSamplingLevel("b-value Distribution", "b-dist", bDistribution);
 			
-			wrappedDistLevel = new DistributionWrappedSamplingLevel(distLevel);
+			WeightedList<LogicTreeLevel<? extends SectionSupraSeisBValues.FixedWeight>> levels = new WeightedList<>(2);
+			levels.add(new FixedLevel(NAME, SHORT_NAME), hingedWeight);
+			levels.add(distLevel, distWeight);
 			
-			WeightedList<AbstractRandomlySampledLevel<SectionSupraSeisBValues, ? extends CombinedValue>> ret = new WeightedList<>(2);
-			ret.add(hingedLevel, hingedWeight);
-			ret.add(wrappedDistLevel, distWeight);
-			
-			init(ret);
+			init(levels);
 		}
 
 		@Override
-		protected AbstractRandomlySampledLevel<SectionSupraSeisBValues, ? extends CombinedValue> getLevelForValue(
-				SectionSupraSeisBValues value) {
-			if (value instanceof NSHM27_InterfaceHingedBValue)
-				return hingedLevel;
-			else if (value instanceof SectionSupraSeisBValues.Default)
-				return wrappedDistLevel;
-			throw new IllegalStateException("Unexpected value type: "+value);
+		public Class<? extends int[]> getValueType() {
+			return int[].class;
 		}
 
 		@Override
-		public Class<? extends SectionSupraSeisBValues> getValueType() {
-			return SectionSupraSeisBValues.class;
+		public Class<? extends CombinedSampledType> getType() {
+			return CombinedSampledType.class;
 		}
 
 		@Override
-		public Class<? extends CombinedValue> getType() {
-			return CombinedValue.class;
-		}
-		
-	}
-	
-//	private static final CombinedTypeAdapter COMB_TA = new CombinedTypeAdapter();
-//	
-//	private static class CombinedTypeAdapter extends TypeAdapter<SectionSupraSeisBValues> {
-//
-//		@Override
-//		public void write(JsonWriter out, SectionSupraSeisBValues value) throws IOException {
-//			out.beginArray();
-//			if (value instanceof NSHM27_InterfaceHingedBValue)
-//				out.value(SHORT_NAME);
-//			else if (value instanceof SectionSupraSeisBValues.Default)
-//				out.value(((SectionSupraSeisBValues.Default)value).getB());
-//			throw new IllegalStateException("Unexpected value type: "+value);
-//		}
-//
-//		@Override
-//		public SectionSupraSeisBValues read(JsonReader in) throws IOException {
-//			if (in.peek() == JsonToken.STRING) {
-//				Preconditions.checkState(in.nextString().equals(SHORT_NAME));
-//				return HINGED_SINGLE_NODE;
-//			} else if (in.peek() == JsonToken.NUMBER) {
-//				return new Section
-//			}
-//			return null;
-//		}
-//		
-//	}
-	
-	private static class CombinedValue implements ValuedLogicTreeNode<SectionSupraSeisBValues>, SectionSupraSeisBValues {
-		
-		private SectionSupraSeisBValues value;
-		private double weight;
-		private String name;
-		private String shortName;
-		private String filePrefix;
-
-		public CombinedValue(SectionSupraSeisBValues value, double weight, String name, String shortName, String filePrefix) {
-			init(value, value.getClass(), weight, name, shortName, filePrefix);
-		}
-
-		@Override
-		public double[] getSectBValues(FaultSystemRupSet rupSet, LogicTreeBranch<? extends LogicTreeNode> branch) {
-			return getValue().getSectBValues(rupSet, branch);
-		}
-
-		@Override
-		public double getB(FaultSystemRupSet rupSet, LogicTreeBranch<? extends LogicTreeNode> branch) {
-			return getValue().getB(rupSet, branch);
-		}
-
-		@Override
-		public double getNodeWeight() {
-			return weight;
-		}
-
-		@Override
-		public String getFilePrefix() {
-			return filePrefix;
-		}
-
-		@Override
-		public String getShortName() {
-			return shortName;
-		}
-
-		@Override
-		public String getName() {
-			return name;
-		}
-
-		@Override
-		public SectionSupraSeisBValues getValue() {
-			return value;
-		}
-
-		@Override
-		public Class<? extends SectionSupraSeisBValues> getValueType() {
-			return SectionSupraSeisBValues.class;
-		}
-
-		@Override
-		public void init(SectionSupraSeisBValues value, Class<? extends SectionSupraSeisBValues> valueClass,
-				double weight, String name, String shortName, String filePrefix) {
-			this.value = value;
-			this.weight = weight;
-			this.name = name;
-			this.shortName = shortName;
-			this.filePrefix = filePrefix;
-		}
-		
-	}
-	
-	private static class HingeWrappedSamplingLevel extends LogicTreeLevel.AbstractRandomlySampledLevel<SectionSupraSeisBValues, CombinedValue>
-	implements ValueByIndexLevel<SectionSupraSeisBValues, CombinedValue> {
-		
-		private double weightEach;
-
-		private HingeWrappedSamplingLevel(String levelName, String levelShortName) {
-			super(levelName, levelShortName);
-		}
-
-		public HingeWrappedSamplingLevel() {
-			super(NAME, SHORT_NAME, NAME+" ", SHORT_NAME, SHORT_NAME);
-		}
-
-		@Override
-		public Class<? extends SectionSupraSeisBValues> getValueType() {
-			return SectionSupraSeisBValues.Default.class;
-		}
-
-		@Override
-		protected void doBuild(long seed, int numNodes, SamplingMethod samplingMethod, double weightEach) {
-			this.weightEach = weightEach;
-			List<CombinedValue> values = new ArrayList<>(numNodes);
-			for (int i=0; i<numNodes; i++)
-				values.add(build(i, HINGED_SINGLE_NODE, weightEach));
-			setValues(values, weightEach);
-		}
-
-		@Override
-		public JsonObject toJsonObject() {
-			JsonObject jsonObj = super.toJsonObject();
-
-			jsonObj.add("numNodes", new JsonPrimitive(getNodes().size()));
-			jsonObj.add("weightEach", new JsonPrimitive(weightEach));
-			
-			return jsonObj;
-		}
-
-		@Override
-		public void initFromJsonObject(JsonObject jsonObj) {
-			super.initFromJsonObject(jsonObj);
-
-			int numNodes = jsonObj.get("numNodes").getAsInt();
-			double weightEach = jsonObj.get("weightEach").getAsDouble();
-			doBuild(0l, numNodes, null, weightEach);
-		}
-
-		@Override
-		public CombinedValue build(SectionSupraSeisBValues value, double weight, String name, String shortName,
+		protected CombinedSampledType buildCombinedNode(int[] indexes, SectionSupraSeisBValues.FixedWeight value,
+				double weight, String name, String shortName,
 				String filePrefix) {
-			return new CombinedValue(value, weight, name, shortName, filePrefix);
-		}
-
-		@Override
-		public Class<? extends CombinedValue> getType() {
-			return CombinedValue.class;
-		}
-
-		@Override
-		public SectionSupraSeisBValues valueForIndex(int index) {
-			return nodes.get(index).getValue();
-		}
-
-		@Override
-		public void init(List<Double> weights) {
-			Preconditions.checkState(nodes.size() == weights.size());
-		}
-		
-	}
-	
-	private static class DistributionWrappedSamplingLevel extends LogicTreeLevel.AbstractRandomlySampledLevel<SectionSupraSeisBValues, CombinedValue>
-	implements ValueByIndexLevel<SectionSupraSeisBValues, CombinedValue> {
-		
-		private DistributionSamplingLevel distLevel;
-
-		private DistributionWrappedSamplingLevel(String levelName, String levelShortName) {
-			super(levelName, levelShortName);
-		}
-
-		public DistributionWrappedSamplingLevel(DistributionSamplingLevel distLevel) {
-			super(distLevel.getName(), distLevel.getShortName(), getRawNamePrefix(distLevel),
-					getRawShortNamePrefix(distLevel), getRawFilePrefix(distLevel));
-			System.out.println("Name prefix: "+getNodeNamePrefix()+"/"+getNodeShortNamePrefix()+"/"+getNodeFilePrefix());
-			this.distLevel = distLevel;
-		}
-		
-		private static String getRawNamePrefix(DistributionSamplingLevel level) {
-			String prefix = level.getNodeName(0);
-			return prefix.substring(0, prefix.length()-1);
-		}
-		private static String getRawShortNamePrefix(DistributionSamplingLevel level) {
-			String prefix = level.getNodeShortName(0);
-			return prefix.substring(0, prefix.length()-1);
-		}
-		private static String getRawFilePrefix(DistributionSamplingLevel level) {
-			String prefix = level.getNodeFilePrefix(0);
-			return prefix.substring(0, prefix.length()-1);
-		}
-
-		@Override
-		public Class<? extends SectionSupraSeisBValues> getValueType() {
-			return SectionSupraSeisBValues.Default.class;
-		}
-
-		@Override
-		protected void doBuild(long seed, int numNodes, SamplingMethod samplingMethod, double weightEach) {
-			distLevel.build(seed, numNodes, samplingMethod, weightEach);
-			
-			List<? extends Default> values = distLevel.getNodes();
-//			System.out.println("b-value built! "+values.size()+" nodes");
-			setValues(values, weightEach);
-		}
-
-		@Override
-		public JsonObject toJsonObject() {
-			LogicTreeLevel.Adapter<SectionSupraSeisBValues> adapter = new LogicTreeLevel.Adapter<>();
-			JsonObject wrappedData = adapter.toJsonTree(distLevel).getAsJsonObject();
-//			wrappedData
-//			double weightEach = jsonObj.get("weightEach").getAsDouble();
-			return wrappedData;
-		}
-
-		@Override
-		public void initFromJsonObject(JsonObject jsonObj) {
-			// sets prefixes and original seed
-			super.initFromJsonObject(jsonObj.getAsJsonObject("data"));
-//			System.out.println("Loaded name prefix: "+getNodeNamePrefix()+"/"+getNodeShortNamePrefix()+"/"+getNodeFilePrefix());
-//			System.out.println("Loaded Json:\n"+jsonObj.toString());
-			distLevel = DistributionSamplingLevel.fromJson(jsonObj);
-			List<? extends Default> values = distLevel.getNodes();
-			setValues(values, values.get(0).getNodeWeight());
-		}
-
-		@Override
-		public CombinedValue build(SectionSupraSeisBValues value, double weight, String name, String shortName,
-				String filePrefix) {
-			return new CombinedValue(value, weight, name, shortName, filePrefix);
-		}
-
-		@Override
-		public Class<? extends CombinedValue> getType() {
-			return CombinedValue.class;
-		}
-
-		@Override
-		public SectionSupraSeisBValues valueForIndex(int index) {
-			return nodes.get(index).getValue();
-		}
-
-		@Override
-		public void init(List<Double> weights) {
-			Preconditions.checkState(nodes.size() == weights.size());
+			return new CombinedSampledType(indexes, value, weight, name, shortName, filePrefix);
 		}
 		
 	}

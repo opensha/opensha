@@ -36,7 +36,9 @@ public interface SectionSupraSeisBValues extends LogicTreeNode {
 	 */
 	public double getB(FaultSystemRupSet rupSet, LogicTreeBranch<? extends LogicTreeNode> branch);
 	
-	public static interface Constant extends SectionSupraSeisBValues, ValuedLogicTreeNode<Double> {
+	public static interface FixedWeight extends SectionSupraSeisBValues, FixedWeightNode {}
+	
+	public static interface Constant extends FixedWeight, ValuedLogicTreeNode<Double> {
 		
 		/**
 		 * @param rupSet

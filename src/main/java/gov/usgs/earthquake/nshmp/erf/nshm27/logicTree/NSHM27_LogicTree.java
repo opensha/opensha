@@ -59,8 +59,8 @@ public class NSHM27_LogicTree {
 	public static final NSHM27_SeisRateModelSamples AMSAM_INTERFACE_RATE_SAMPLES =
 			new NSHM27_SeisRateModelSamples(NSHM27_SeismicityRegions.AMSAM, TectonicRegionType.SUBDUCTION_INTERFACE);
 
-	public static final double INTERFACE_B_HINGED_WEIGHT = 0.5;
-	public static final double INTERFACE_B_SINGLE_DEFAULT = 1d;
+	public static double INTERFACE_B_HINGED_WEIGHT = 0.25;
+	public static double INTERFACE_B_SINGLE_DEFAULT = 1d;
 	private static ContinuousDistribution getInterfaceBDist(NSHM27_SeismicityRegions seisReg) {
 //		// alpha model
 //		return UniformContinuousDistribution.of(0.5d, 1d);
@@ -149,7 +149,7 @@ public class NSHM27_LogicTree {
 				} else if (sampled && INTERFACE_B_HINGED_WEIGHT > 0d) {
 					Preconditions.checkState(INTERFACE_B_HINGED_WEIGHT < 1d);
 					levels.add(new NSHM27_InterfaceHingedBValue.CombinedSamplingLevel(supraBname, supraBshortName,
-							INTERFACE_B_HINGED_WEIGHT, CRUSTAL_B_DIST, 1d-INTERFACE_B_HINGED_WEIGHT));
+							INTERFACE_B_HINGED_WEIGHT, getInterfaceBDist(seisReg), 1d-INTERFACE_B_HINGED_WEIGHT));
 				} else if (sampled) {
 					levels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(supraBname, supraBshortName, getInterfaceBDist(seisReg)));
 				} else {

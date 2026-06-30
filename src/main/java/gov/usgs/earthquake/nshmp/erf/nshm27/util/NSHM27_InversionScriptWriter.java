@@ -56,18 +56,18 @@ public class NSHM27_InversionScriptWriter {
 			System.err.println("No command line arguments, using hardcoded defaults; use --help to see available options instead.");
 			
 			args = new String[] {
-					"--region", NSHM27_SeismicityRegions.AMSAM.name(),
-//					"--region", NSHM27_SeismicityRegions.GNMI.name(),
+//					"--region", NSHM27_SeismicityRegions.AMSAM.name(),
+					"--region", NSHM27_SeismicityRegions.GNMI.name(),
 					
 					"--hpc-site", HPCConfig.HPCSite.USC_CARC_FMPJ.name(),
-					"--nodes", "35",
+					"--nodes", "24",
 					
 					"--local-dir", "/home/kevin/OpenSHA/fss_inversions",
 					"--remote-dir", "/project2/scec_608/kmilner/fss_inversions",
 					
 //					"--sampling-method", SamplingMethod.MONTE_CARLO.name(),
 					"--sampling-method", SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE.name(),
-					"--samples", "1000",
+					"--samples", "3000",
 //					"--unique-seed",
 			};
 		}

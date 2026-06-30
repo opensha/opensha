@@ -122,7 +122,10 @@ public class NSHM27_GridSourceBuilder {
 		if (!offerAssociations(rupSet, faultBranch)) {
 			// this means it was already there (nothing added this time), double check compatibility
 			
-			NSHM27_FaultModel fm = faultBranch.requireValue(NSHM27_FaultModel.class);
+			NSHM27_FaultModel fm = faultBranch.getValue(NSHM27_FaultModel.class);
+			if (fm == null)
+				// probably a slab branch, skip
+				return;
 			NSHM27_SeismicityRegions seisReg = fm.getSeismicityRegion();
 			GriddedRegion modelGrid = initGridReg(seisReg);
 			
@@ -132,7 +135,10 @@ public class NSHM27_GridSourceBuilder {
 	}
 	
 	public static boolean offerAssociations(FaultSystemRupSet rupSet, LogicTreeBranch<?> faultBranch) {
-		NSHM27_FaultModel fm = faultBranch.requireValue(NSHM27_FaultModel.class);
+		NSHM27_FaultModel fm = faultBranch.getValue(NSHM27_FaultModel.class);
+		if (fm == null)
+			// nothing added
+			return false;
 		NSHM27_SeismicityRegions seisReg = fm.getSeismicityRegion();
 		if (fm instanceof NSHM27_CrustalFaultModels) {
 			return rupSet.offerAvailableModule(() -> {
