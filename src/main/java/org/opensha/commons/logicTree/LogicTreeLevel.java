@@ -1589,8 +1589,8 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					continue;
 				LogicTreeLevel<? extends E> level = levels.getValue(l);
 //				System.out.println("Level "+l+". "+level.getShortName()+" has "+numLevelSamples+" samples");
-				if (level instanceof AbstractRandomlySampledLevel) {
-					AbstractRandomlySampledLevel<E, ?> randomLevel = (AbstractRandomlySampledLevel<E, ?>)level;
+				if (level instanceof RandomLevel) {
+					RandomLevel<E, ?> randomLevel = (RandomLevel<E, ?>)level;
 					randomLevel.build(levelSeeds[l], numLevelSamples, samplingMethod, weightEach);
 					
 					for (int i=0; i<numLevelSamples; i++) {
