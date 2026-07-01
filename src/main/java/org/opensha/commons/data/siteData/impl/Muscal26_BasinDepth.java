@@ -29,10 +29,6 @@ public class Muscal26_BasinDepth extends AbstractBinarySiteDataLoader {
     public static final String DEPTH_2_5_FILE = "src/main/resources/data/site/MUSCAL26/muscal_z2.5.firstOrSecond";
     public static final String DEPTH_1_0_FILE = "src/main/resources/data/site/MUSCAL26/muscal_z1.0.firstOrSecond";
 
-    // TODO: Create servlet classes
-    //          * org.opensha.commons.data.siteData.servlet.impl.Muscal26_BasinDepthTo1_0_Servlet
-    //          * org.opensha.commons.data.siteData.servlet.impl.Muscal26_BasinDepthTo2_5_Servlet
-    // TODO: Create mapping to servlet on OpenSHA_master (conf/web.xml)
     public static final String SERVLET_2_5_URL = ServerPrefUtils.SERVER_PREFS.getServletBaseURL() + "SiteData/Muscal26_2_5";
     public static final String SERVLET_1_0_URL = ServerPrefUtils.SERVER_PREFS.getServletBaseURL() + "SiteData/Muscal26_1_0";
 
