@@ -371,10 +371,7 @@ public class ETAS_BinaryAnalysis {
          */
         private String getCatalogMeta(ETAS_Catalog catalog, int fssIndex) {
             // TODO: We want the timing of the first rupture from start of the simulated catalog (e.g., within a day)
-            // simulationStartTime is just when the simulation was run, not when the primary rupture occurred
-            // We may need to read in the original ETAS_Config for this.
-            // Additionally, we need to iterate over the ETAS_Catalog to find the first matching ETAS_EqkRupture, .getOriginTime()
-            // TODO: Use hashmap we will build in collectCatalogsMatching
+            // * Read the startTimeMillis from the config JSON for this
             StringBuilder output = new StringBuilder("### Catalog Index: ");
             ETAS_SimulationMetadata meta = catalog.getSimulationMetadata();
             output.append(meta.catalogIndex);
@@ -391,6 +388,14 @@ public class ETAS_BinaryAnalysis {
 //            output.append(getDate(meta.simulationEndTime));
             output.append("\n");
             return output.toString();
+
+            /**
+             * TODO:
+             * 1. A catalog is defined as a list of ? extends ObsEqkRup
+             * 2. We see in ETAS_SimulatedCatalogPlot::doFinalize, the functions to plot
+             *    are defined and added to inputFuncs.
+             * 3. We need to invoke ETAS_EventMapPlotUtils::buildEventPlot and figure outr what funcs etc we need
+             */
         }
 
         /**
