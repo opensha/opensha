@@ -390,10 +390,10 @@
     <url-pattern>/SiteData/CVM_CCAi6_1_0</url-pattern>
   </servlet-mapping>
 
-    <!-- * MUSCAL 26 2.5 * -->
+    <!-- * MUSCAL 2.5 * -->
     <servlet>
-        <servlet-name>Muscal26_2_5</servlet-name>
-        <servlet-class>org.opensha.commons.data.siteData.servlet.impl.Muscal26_BasinDepthTo2_5_Servlet</servlet-class>
+        <servlet-name>Muscal2_5</servlet-name>
+        <servlet-class>org.opensha.commons.data.siteData.servlet.impl.MuscalBasinDepthTo2_5_Servlet</servlet-class>
         <init-param>
             <param-name>debug</param-name>
             <param-value>2</param-value>
@@ -402,14 +402,14 @@
 
     <!-- Mapping -->
     <servlet-mapping>
-        <servlet-name>Muscal26_2_5</servlet-name>
-        <url-pattern>/SiteData/Muscal26_2_5</url-pattern>
+        <servlet-name>Muscal2_5</servlet-name>
+        <url-pattern>/SiteData/Muscal2_5</url-pattern>
     </servlet-mapping>
 
-    <!-- * MUSCAL 26 1.0 * -->
+    <!-- * MUSCAL 1.0 * -->
     <servlet>
-        <servlet-name>Muscal26_1_0</servlet-name>
-        <servlet-class>org.opensha.commons.data.siteData.servlet.impl.Muscal26_BasinDepthTo1_0_Servlet</servlet-class>
+        <servlet-name>Muscal1_0</servlet-name>
+        <servlet-class>org.opensha.commons.data.siteData.servlet.impl.MuscalBasinDepthTo1_0_Servlet</servlet-class>
         <init-param>
             <param-name>debug</param-name>
             <param-value>2</param-value>
@@ -418,8 +418,8 @@
 
     <!-- Mapping -->
     <servlet-mapping>
-        <servlet-name>Muscal26_1_0</servlet-name>
-        <url-pattern>/SiteData/Muscal26_1_0</url-pattern>
+        <servlet-name>Muscal1_0</servlet-name>
+        <url-pattern>/SiteData/Muscal1_0</url-pattern>
     </servlet-mapping>
 
   <!-- * CS 18.8 2.5 * -->

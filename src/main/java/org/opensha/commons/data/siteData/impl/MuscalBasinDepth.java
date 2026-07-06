@@ -11,10 +11,10 @@ import org.opensha.commons.util.ServerPrefUtils;
 import java.io.File;
 import java.io.IOException;
 
-public class Muscal26_BasinDepth extends AbstractBinarySiteDataLoader {
+public class MuscalBasinDepth extends AbstractBinarySiteDataLoader {
 
-    public static final String NAME = "SCEC Multi-Scale California (MUSCAL) 2026 Basin Depth";
-    public static final String SHORT_NAME = "MUSCAL26";
+    public static final String NAME = "SCEC Multi-Scale California (MUSCAL) Basin Depth";
+    public static final String SHORT_NAME = "MUSCAL";
 
     public static final double minLat = 32.2;
     public static final double minLon = -124.4;
@@ -26,11 +26,11 @@ public class Muscal26_BasinDepth extends AbstractBinarySiteDataLoader {
 
     public static final double gridSpacing = 0.005;
 
-    public static final String DEPTH_2_5_FILE = "src/main/resources/data/site/MUSCAL26/muscal_z2.5.firstOrSecond";
-    public static final String DEPTH_1_0_FILE = "src/main/resources/data/site/MUSCAL26/muscal_z1.0.firstOrSecond";
+    public static final String DEPTH_2_5_FILE = "src/main/resources/data/site/MUSCAL/muscal_z2.5.firstOrSecond";
+    public static final String DEPTH_1_0_FILE = "src/main/resources/data/site/MUSCAL/muscal_z1.0.firstOrSecond";
 
-    public static final String SERVLET_2_5_URL = ServerPrefUtils.SERVER_PREFS.getServletBaseURL() + "SiteData/Muscal26_2_5";
-    public static final String SERVLET_1_0_URL = ServerPrefUtils.SERVER_PREFS.getServletBaseURL() + "SiteData/Muscal26_1_0";
+    public static final String SERVLET_2_5_URL = ServerPrefUtils.SERVER_PREFS.getServletBaseURL() + "SiteData/Muscal2_5";
+    public static final String SERVLET_1_0_URL = ServerPrefUtils.SERVER_PREFS.getServletBaseURL() + "SiteData/Muscal1_0";
 
     /**
      * Constructor for creating a CVM accessor using servlets
@@ -38,7 +38,7 @@ public class Muscal26_BasinDepth extends AbstractBinarySiteDataLoader {
      * @param type
      * @throws IOException
      */
-    public Muscal26_BasinDepth(String type) throws IOException {
+    public MuscalBasinDepth(String type) throws IOException {
         this(type, null, true);
     }
 
@@ -48,7 +48,7 @@ public class Muscal26_BasinDepth extends AbstractBinarySiteDataLoader {
      * @param type
      * @throws IOException
      */
-    public Muscal26_BasinDepth(String type, boolean useServlet) throws IOException {
+    public MuscalBasinDepth(String type, boolean useServlet) throws IOException {
         this(type, null, useServlet);
     }
 
@@ -58,11 +58,11 @@ public class Muscal26_BasinDepth extends AbstractBinarySiteDataLoader {
      * @param type
      * @throws IOException
      */
-    public Muscal26_BasinDepth(String type, File dataFile) throws IOException {
+    public MuscalBasinDepth(String type, File dataFile) throws IOException {
         this(type, dataFile, false);
     }
 
-    public Muscal26_BasinDepth(String type, File dataFile, boolean useServlet) throws IOException {
+    public MuscalBasinDepth(String type, File dataFile, boolean useServlet) throws IOException {
         super(nx, ny, minLat, minLon, gridSpacing, true, true, type, dataFile, useServlet);
     }
 
@@ -89,7 +89,7 @@ public class Muscal26_BasinDepth extends AbstractBinarySiteDataLoader {
     }
 
     public String getMetadata() {
-        return getDataType() + ", extracted from 2026 version of the SCEC Multi-scale California 3D velocity model.";
+        return getDataType() + ", extracted from the SCEC Multi-scale California 3D velocity model.";
     }
 
     // TODO: what should we set this to?
@@ -106,7 +106,7 @@ public class Muscal26_BasinDepth extends AbstractBinarySiteDataLoader {
 //        return super.addXMLParameters(paramsEl);
 //    }
 //
-//    public static Muscal26_BasinDepth fromXMLParams(org.dom4j.Element paramsElem) throws IOException {
+//    public static MuscalBasinDepth fromXMLParams(org.dom4j.Element paramsElem) throws IOException {
 //        boolean useServlet = Boolean.parseBoolean(paramsElem.attributeValue("useServlet"));
 //        Attribute fileAtt = paramsElem.attribute("fileName");
 //        File file = null;
@@ -114,13 +114,13 @@ public class Muscal26_BasinDepth extends AbstractBinarySiteDataLoader {
 //            file = new File(fileAtt.getStringValue());
 //        String type = paramsElem.attributeValue("type");
 //
-//        return new Muscal26_BasinDepth(type, file, useServlet);
+//        return new MuscalBasinDepth(type, file, useServlet);
 //    }
 
     public static void main(String[] args) throws IOException {
         boolean servlet = true;
-        Muscal26_BasinDepth z1 = new Muscal26_BasinDepth(SiteData.TYPE_DEPTH_TO_1_0, servlet);
-        Muscal26_BasinDepth z25 = new Muscal26_BasinDepth(SiteData.TYPE_DEPTH_TO_2_5, servlet);
+        MuscalBasinDepth z1 = new MuscalBasinDepth(SiteData.TYPE_DEPTH_TO_1_0, servlet);
+        MuscalBasinDepth z25 = new MuscalBasinDepth(SiteData.TYPE_DEPTH_TO_2_5, servlet);
 
         Region reg = z1.getApplicableRegion();
         LocationList testLocs = new GriddedRegion(reg, 0.25, GriddedRegion.ANCHOR_0_0).getNodeList();

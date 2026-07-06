@@ -553,12 +553,12 @@ public class OrderedSiteDataProviderList implements Iterable<SiteData<?>>, XMLSa
 			e.printStackTrace();
 		}
         try {
-            providers.add(new Muscal26_BasinDepth(SiteData.TYPE_DEPTH_TO_2_5));
+            providers.add(new MuscalBasinDepth(SiteData.TYPE_DEPTH_TO_2_5));
         } catch (IOException e) {
             e.printStackTrace();
         }
         try {
-            providers.add(new Muscal26_BasinDepth(SiteData.TYPE_DEPTH_TO_1_0));
+            providers.add(new MuscalBasinDepth(SiteData.TYPE_DEPTH_TO_1_0));
         } catch (IOException e) {
             e.printStackTrace();
         }

@@ -1,6 +1,6 @@
-# SCEC Multi-Scale California (MUSCAL) 2026 Z files
+# SCEC Multi-Scale California (MUSCAL) Z files
 
-SCEC Multi-Scale California (MUSCAL) 2026 Z files, based off of the MUSCAL model with the nearest neighbor background 1D. Extracted by Mei-Hui Su on 06/30/2026. Generated with this command:
+SCEC Multi-Scale California (MUSCAL) Z files, based off of the MUSCAL model with the nearest neighbor background 1D. Extracted by Mei-Hui Su on 06/30/2026. Generated with this command:
 
 ```
 ./basin_query_mpi_complete TEST=basin_query_mpi_complete_cvmsi_z1.0
