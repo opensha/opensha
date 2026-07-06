@@ -2,6 +2,7 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm23.erf;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.EnumSet;
 
 import javax.swing.JOptionPane;
 
@@ -9,6 +10,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_Downloader;
+import org.opensha.sha.util.TectonicRegionType;
 
 /**
  * USGS 2023 NSHM ERF, Western U.S., Branch Averaged ERF
@@ -41,6 +43,8 @@ public class NSHM23_WUS_BranchAveragedERF extends BaseFaultSystemSolutionERF {
 			this.downloader = new NSHM23_Downloader(storeDir);
 		}
 		this.setName(NAME);
+		// set the TRTs explicitly so that getIncludedTectonicRegionTypes() knows them without updating the forecast first
+		this.erfTRTs = EnumSet.of(TectonicRegionType.ACTIVE_SHALLOW, TectonicRegionType.STABLE_SHALLOW);
 	}
 	
 	/**

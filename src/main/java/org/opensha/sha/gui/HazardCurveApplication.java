@@ -2705,7 +2705,12 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 */
 	public Set<TectonicRegionType> getIncludedTectonicRegionTypes() {
 		try {
-			BaseERF selectedERF = erfGuiBean.getSelectedERF();
+			// this one doesn't update the forecast, and may return null/hardcoded TRTs, but prevents unnecessary
+			// forecast updating on initial ERF selection
+			BaseERF selectedERF = erfGuiBean.getSelectedERF_Instance();
+			// this one updates the forecast, which can fail for ERFs that require parameterization (e.g., generic FSS
+			// ERF), but will result in correct TRTs if they require forecast updating
+//			BaseERF selectedERF = erfGuiBean.getSelectedERF();
 //			System.out.println("Getting TRTs for "+selectedERF.getName());
 			Set<TectonicRegionType> includedTectonicRegionTypes =  selectedERF.getIncludedTectonicRegionTypes();
 //			System.out.println("Returning TRTs: "+includedTectonicRegionTypes);
