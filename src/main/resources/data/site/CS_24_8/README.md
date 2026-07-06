@@ -1,4 +1,4 @@
-# CyberShake Study 14.8 Z files
+# CyberShake Study 44.8 Z files
 
 CyberShake Study 24.8 Z files, based off of the USGS Bay Area model with some custom taper parameters. Extracted by Mei-Hui Su on 10/30/2024. Second crossing, generated with this command:
 

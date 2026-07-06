@@ -31,7 +31,6 @@ public class PointSourceOptimizedExceedProbCalc extends AbstractPointSourceOptim
 	private final IMRPointSourceDistanceCache<LightFixedXFunc> exceedProbCache;
 	
 	public PointSourceOptimizedExceedProbCalc() {
-		// true here means to track the SA period
 		exceedProbCache = new IMRPointSourceDistanceCache<>(size -> {return new LightFixedXFunc[size];});
 	}
 	
@@ -42,6 +41,8 @@ public class PointSourceOptimizedExceedProbCalc extends AbstractPointSourceOptim
 			siteLoc = sourceLoc;
 		else
 			siteLoc = LocationUtils.location(sourceLoc, 0d, dist);
+		// reset to zero depth
+		siteLoc = new Location(siteLoc.lat, siteLoc.lon);
 		gmm.setEqkRupture(null); // so that the next call doesn't trigger unnecessary calculations
 		gmm.setSiteLocation(siteLoc);
 		

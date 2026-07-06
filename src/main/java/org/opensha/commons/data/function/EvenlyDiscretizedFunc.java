@@ -6,6 +6,7 @@ import java.util.Iterator;
 import java.util.ListIterator;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.math3.util.Precision;
 import org.opensha.commons.exceptions.InvalidRangeException;
 
 import com.google.common.base.Preconditions;
@@ -606,6 +607,27 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 			return EvenlyDiscretizedFunc.class;
 		}
 		
+	}
+	
+	/**
+	 * Returns true if the two functions have the same x values, within tolerance. If either function's tolerance
+	 * is zero, then 1e-4 * func1.getDelta() is used.
+	 * 
+	 * @param func1
+	 * @param func2
+	 * @return
+	 */
+	public static boolean areXValuesIdentical(EvenlyDiscretizedFunc func1, EvenlyDiscretizedFunc func2) {
+		if (func1.size() != func2.size())
+			return false;
+		double tol = Math.min(func1.getTolerance(), func2.getTolerance());
+		if (tol == 0d)
+			tol = func1.getDelta()*1e-4;
+		if (!Precision.equals(func1.getMinX(), func2.getMinX()))
+			return false;
+		if (!Precision.equals(func1.getMaxX(), func2.getMaxX()))
+			return false;
+		return true;
 	}
 
 }
