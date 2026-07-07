@@ -58,7 +58,7 @@ public class ETAS_BinaryAnalysis {
         this.fss = FaultSystemSolution.load(new File(cmd.getOptionValue("fss")));
 
         File configFile = new File(cmd.getOptionValue("config"));
-        ETAS_Config config = ETAS_Config.readJSON(cmd.getOptionValue("config"));
+        ETAS_Config config = ETAS_Config.readJSON(configFile);
         Path output = Path.of(cmd.getOptionValue("out"));
 
 //        ETAS_Launcher launcher = new ETAS_Launcher(config, false);
