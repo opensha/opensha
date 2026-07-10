@@ -9,7 +9,6 @@ import java.util.Random;
 import org.apache.commons.statistics.distribution.ContinuousDistribution;
 import org.apache.commons.statistics.distribution.TruncatedNormalDistribution;
 import org.apache.commons.statistics.distribution.UniformContinuousDistribution;
-import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
@@ -21,7 +20,6 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxRuptureLengthBranchNode;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues;
@@ -29,11 +27,11 @@ import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_Subduc
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
-import com.google.common.primitives.Doubles;
 
 import gov.usgs.earthquake.nshmp.erf.logicTree.TectonicRegionBranchTreeNode;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
+import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.PureGR;
 
 public class NSHM27_LogicTree {
 	
@@ -48,8 +46,8 @@ public class NSHM27_LogicTree {
 			LogicTreeLevel.forEnum(NSHM27_InterfaceFaultModels.class, "Interface Fault Model", "InterfaceFM");
 	public static final LogicTreeLevel<NSHM27_InterfaceCouplingDepthModels> INTERFACE_DEPTH_COUPLING =
 			LogicTreeLevel.forEnum(NSHM27_InterfaceCouplingDepthModels.class, "Interface Depth Coupling Taper", "InterfaceDepthCoupling");
-	public static final LogicTreeLevel<NSHM27_InterfaceDeformationModels> INTERFACE_DM =
-			LogicTreeLevel.forEnum(NSHM27_InterfaceDeformationModels.class, "Interface Deformation Model", "InterfaceDM");
+	public static final LogicTreeLevel<NSHM27_InterfaceDeformationModels.Aggregated> INTERFACE_AGG_DM =
+			LogicTreeLevel.forEnum(NSHM27_InterfaceDeformationModels.Aggregated.class, "Interface Aggregated Deformation Model", "InterfaceAggDM");
 	public static final LogicTreeLevel<PRVI25_SubductionScalingRelationships> INTERFACE_SCALE = 
 			LogicTreeLevel.forEnum(PRVI25_SubductionScalingRelationships.class, "Interface Scaling Relationship", "InterfaceScale");
 	public static final LogicTreeLevel<NSHM27_InterfaceObsSeisDMAdjustment> INTERFACE_OBS_SEIS_DM_ADJ =
@@ -60,10 +58,42 @@ public class NSHM27_LogicTree {
 			new NSHM27_SeisRateModelSamples(NSHM27_SeismicityRegions.GNMI, TectonicRegionType.SUBDUCTION_INTERFACE);
 	public static final NSHM27_SeisRateModelSamples AMSAM_INTERFACE_RATE_SAMPLES =
 			new NSHM27_SeisRateModelSamples(NSHM27_SeismicityRegions.AMSAM, TectonicRegionType.SUBDUCTION_INTERFACE);
-	public static final double INTERFACE_B_SINGLE_DEFAULT = 1d;
-	public static final ContinuousDistribution INTERFACE_B_DIST = UniformContinuousDistribution.of(0.5d, 1d); // TODO
-	public static final double INTERFACE_MAX_LEN_SINGLE_DEFAULT = 1300;
-	public static final ContinuousDistribution INTERFACE_MAX_LEN_DIST = UniformContinuousDistribution.of(1000d, 1500d); // TODO
+
+	public static double INTERFACE_B_HINGED_WEIGHT = 0.25;
+	public static double INTERFACE_B_SINGLE_DEFAULT = 1d;
+	private static ContinuousDistribution getInterfaceBDist(NSHM27_SeismicityRegions seisReg) {
+//		// alpha model
+//		return UniformContinuousDistribution.of(0.5d, 1d);
+		
+		PureGR rateModel = (PureGR)NSHM27_SeisRateModelBranch.PREFFERRED.getRateRecord(
+				seisReg, TectonicRegionType.SUBDUCTION_INTERFACE);
+		return UniformContinuousDistribution.of(0.5d, Math.max(1d, rateModel.b));
+	}
+
+	public static final double INTERFACE_MAX_LEN_SINGLE_DEFAULT = 750d;
+	private static ContinuousDistribution getInterfaceLMax(NSHM27_SeismicityRegions seisReg) {
+//		// alpha model
+//		return UniformContinuousDistribution.of(1000d, 1500d);
+		
+		return switch (seisReg) {
+		case AMSAM:
+			// Tonga
+			// Corresponds to: M8.67-9.24 (on middle scaling branch)
+			// Justification:
+			// 		Lower: super-high slip rate patch is ~300 km long (from ~175-475 in the length map)
+			// 		Upper: total length in our model is ~1100 km which is still shorter than Sumatra (~1300 km)
+			yield UniformContinuousDistribution.of(300d, 1100d);
+		case GNMI:
+			// Mariana
+			// Corresponds to: M8.43-9.09 (on middle scaling branch)
+			// Justification:
+			// 		Lower: highest slip rate patch is ~200 km long (from ~1075-1275 in the length map)
+			// 		Upper: whole coupled patch excluding the 0.04 coupling section is ~900 km long (from ~825-1719 in the length map)
+			yield UniformContinuousDistribution.of(200d, 900d);
+		default:
+			throw new IllegalArgumentException("Unexpected value: " + seisReg);
+		};
+	}
 	
 	/*
 	 * Subduction intraslab branch levels (gridded)
@@ -78,8 +108,8 @@ public class NSHM27_LogicTree {
 	 */
 	public static final LogicTreeLevel<NSHM27_CrustalFaultModels> CRUSTAL_FM =
 			LogicTreeLevel.forEnum(NSHM27_CrustalFaultModels.class, "Crustal Fault Model", "CrustalFM");
-	public static final LogicTreeLevel<NSHM27_CrustalAggregatedDeformationModels> CRUSTAL_AGG_DM =
-			LogicTreeLevel.forEnum(NSHM27_CrustalAggregatedDeformationModels.class, "Crustal Aggregated Deformation Model", "CrustalAggDM");
+	public static final LogicTreeLevel<NSHM27_CrustalDeformationModels.Aggregated> CRUSTAL_AGG_DM =
+			LogicTreeLevel.forEnum(NSHM27_CrustalDeformationModels.Aggregated.class, "Crustal Aggregated Deformation Model", "CrustalAggDM");
 	public static final LogicTreeLevel<NSHM23_ScalingRelationships> CRUSTAL_SCALE =
 			LogicTreeLevel.forEnum(NSHM23_ScalingRelationships.class, "Crustal Scaling Relationship", "CrustalScale");
 	public static final LogicTreeLevel<NSHM23_SegmentationModels> SEG =
@@ -109,17 +139,27 @@ public class NSHM27_LogicTree {
 			if (trt == TectonicRegionType.SUBDUCTION_INTERFACE) {
 				levels.add(INTERFACE_FM);
 				levels.add(INTERFACE_DEPTH_COUPLING);
-				levels.add(INTERFACE_DM);
-				levels.add(INTERFACE_SCALE);
 				if (sampled)
-					levels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(supraBname, supraBshortName, INTERFACE_B_DIST));
+					levels.add(new NSHM27_InterfaceDeformationModels.SamplingLevel());
 				else
+					levels.add(INTERFACE_AGG_DM);
+				levels.add(INTERFACE_SCALE);
+				if (INTERFACE_B_HINGED_WEIGHT == 1d) {
+					levels.add(new NSHM27_InterfaceHingedBValue.FixedLevel(supraBname, supraBshortName));
+				} else if (sampled && INTERFACE_B_HINGED_WEIGHT > 0d) {
+					Preconditions.checkState(INTERFACE_B_HINGED_WEIGHT < 1d);
+					levels.add(new NSHM27_InterfaceHingedBValue.CombinedSamplingLevel(supraBname, supraBshortName,
+							INTERFACE_B_HINGED_WEIGHT, getInterfaceBDist(seisReg), 1d-INTERFACE_B_HINGED_WEIGHT));
+				} else if (sampled) {
+					levels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(supraBname, supraBshortName, getInterfaceBDist(seisReg)));
+				} else {
 					levels.add(new SectionSupraSeisBValues.FixedValueLevel(supraBname, supraBshortName, INTERFACE_B_SINGLE_DEFAULT));
+				}
 				levels.add(INTERFACE_OBS_SEIS_DM_ADJ);
 				levels.add(INTERFACE_MIN_SUB_SECTS);
 				if (sampled)
 					levels.add(new MaxRuptureLengthBranchNode.DistributionSamplingLevel(
-							"Interface Maximum Rupture Length", "Interface Max. Len.", INTERFACE_MAX_LEN_DIST));
+							"Interface Maximum Rupture Length", "Interface Max. Len.", getInterfaceLMax(seisReg)));
 				else
 					levels.add(new MaxRuptureLengthBranchNode.FixedValueLevel(
 							"Interface Maximum Rupture Length", "Interface Max. Len.", INTERFACE_MAX_LEN_SINGLE_DEFAULT));
@@ -127,7 +167,7 @@ public class NSHM27_LogicTree {
 				// have crustal on-fault
 				levels.add(CRUSTAL_FM);
 				if (sampled)
-					levels.add(new NSHM27_CrustalRandomlySampledDeformationModelLevel());
+					levels.add(new NSHM27_CrustalDeformationModels.SamplingLevel());
 				else
 					levels.add(CRUSTAL_AGG_DM);
 				levels.add(CRUSTAL_SCALE);
@@ -191,14 +231,15 @@ public class NSHM27_LogicTree {
 		if (trt == TectonicRegionType.SUBDUCTION_INTERFACE) {
 			branch.setValue(NSHM27_InterfaceFaultModels.regionDefault(seisReg));
 			branch.setValue(NSHM27_InterfaceCouplingDepthModels.DEEP_TAPER);
-			branch.setValue(NSHM27_InterfaceDeformationModels.PREF_COUPLING);
+			if (!sampled)
+				branch.setValue(NSHM27_InterfaceDeformationModels.Aggregated.PREF_COUPLING);
 			branch.setValue(PRVI25_SubductionScalingRelationships.LOGA_C4p0);
 			branch.setValue(NSHM27_InterfaceObsSeisDMAdjustment.AVERAGE); // TODO
 			branch.setValue(NSHM27_InterfaceMinSubSects.FOUR); // TODO
 		} else if (trt == TectonicRegionType.ACTIVE_SHALLOW && seisReg == NSHM27_SeismicityRegions.GNMI) {
 			branch.setValue(NSHM27_CrustalFaultModels.GNMI_V1);
 			if (!sampled)
-				branch.setValue(NSHM27_CrustalAggregatedDeformationModels.AVERAGE);
+				branch.setValue(NSHM27_CrustalDeformationModels.Aggregated.AVERAGE);
 			branch.setValue(NSHM23_ScalingRelationships.LOGA_C4p2);
 			branch.setValue(NSHM23_SegmentationModels.MID);
 		}

@@ -54,7 +54,7 @@ public class InterfaceGridAssociations implements FaultGridAssociations, Archiva
 		NSHM27_InterfaceFaultModels fm = branch.requireValue(NSHM27_InterfaceFaultModels.class);
 		NSHM27_InterfaceDeformationModels dm = branch.requireValue(NSHM27_InterfaceDeformationModels.class);
 
-		NSHM27_SeismicityRegions reg = fm.getSeisReg();
+		NSHM27_SeismicityRegions reg = fm.getSeismicityRegion();
 		
 		System.out.println("Branch: "+branch+"; reg="+reg);
 		

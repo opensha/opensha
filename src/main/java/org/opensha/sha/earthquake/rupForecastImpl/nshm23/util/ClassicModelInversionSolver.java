@@ -80,7 +80,7 @@ public class ClassicModelInversionSolver extends ClusterSpecificInversionSolver 
 	private AnalyticalSingleFaultInversionSolver getAnalyiticalSolver(boolean includeExclusionModel) {
 		BinaryRuptureProbabilityCalc exclusionModel = includeExclusionModel ? this.exclusionModel : null;
 		if (branch.hasValue(SectionSupraSeisBValues.Constant.class))
-			return new AnalyticalSingleFaultInversionSolver(branch.requireValue(SectionSupraSeisBValues.class).getB(), exclusionModel);
+			return new AnalyticalSingleFaultInversionSolver(branch.requireValue(SectionSupraSeisBValues.Constant.class).getB(), exclusionModel);
 		return new AnalyticalSingleFaultInversionSolver(exclusionModel);
 	}
 

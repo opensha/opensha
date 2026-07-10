@@ -441,7 +441,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 		
 		if (this == CLASSIC && branch.hasValue(SectionSupraSeisBValues.class)) {
 			// see if we're on the b=0 branch
-			if (branch.hasValue(SupraSeisBValues.B_0p0) || branch.requireValue(SectionSupraSeisBValues.class).getB() == 0d) {
+			if (branch.hasValue(SupraSeisBValues.B_0p0) || branch.requireValue(SectionSupraSeisBValues.class).getB(rupSet, branch) == 0d) {
 				// we're on the "classic" branch and b=0: exclude all ruptures that don't rupture a full section,
 				// except on special faults
 				boolean excludeNamed, excludeProxies;

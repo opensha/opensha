@@ -841,17 +841,19 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 //				System.out.println("declared value class: "+((ValuedLogicTreeNode<?>)value).getValueType().getName());
 //				System.out.println("value: "+theValue);
 //				System.out.println("value class: "+theValue.getClass());
-				if (theValue == null) {
-					out.nullValue();
-				} else {
-					TypeAdapter adapter;
-					if (level != null && level instanceof LogicTreeLevel.ValueBackedLevel)
-						adapter = ((LogicTreeLevel.ValueBackedLevel)level).getValueTypeAdapter();
-					else
-						adapter = JsonAdapterHelper.getTypeAdapter(theValue, true);
-//					System.out.println("adapter class: "+adapter.getClass());
+				if (!(level instanceof ValueByIndexLevel)) {
 					out.name("value");
-					adapter.write(out, theValue);
+					if (theValue == null) {
+						out.nullValue();
+					} else {
+						TypeAdapter adapter;
+						if (level != null && level instanceof LogicTreeLevel.ValueBackedLevel)
+							adapter = ((LogicTreeLevel.ValueBackedLevel)level).getValueTypeAdapter();
+						else
+							adapter = JsonAdapterHelper.getTypeAdapter(theValue, true);
+//						System.out.println("adapter class: "+adapter.getClass());
+						adapter.write(out, theValue);
+					}
 				}
 			} else if (!(value instanceof FileBackedNode)) {
 				out.name("class").value(value.getClass().getName());

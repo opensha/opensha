@@ -624,6 +624,12 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 			return surfDists.getDistanceX();
 		}
 		
+		@Override
+		public SurfaceDistances getDistances(Location siteLoc) {
+			assertSameLocation(siteLoc);
+			return surfDists;
+		}
+
 		private void assertSameLocation(Location siteLoc) {
 			if (this.siteLoc == siteLoc || this.siteLoc.equals(siteLoc) || LocationUtils.areSimilar(siteLoc, this.siteLoc))
 				return;

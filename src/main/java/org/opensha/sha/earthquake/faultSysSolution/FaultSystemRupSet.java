@@ -982,9 +982,14 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 	
 	private SectAreas getSectAreas() {
-		if (!hasModule(SectAreas.class))
-			addModule(SectAreas.fromFaultSectData(this));
-		return requireModule(SectAreas.class);
+		SectAreas areas = getModule(SectAreas.class);
+		if (areas == null) {
+			// offer it, don't set it directly, because another thread could be trying to add it as well
+			// offerAvailableModule synchronizes and will prevent race conditions
+			offerAvailableModule(()->SectAreas.fromFaultSectData(this), SectAreas.class);
+			areas = requireModule(SectAreas.class);
+		}
+		return areas;
 	}
 
 	/**
@@ -1149,9 +1154,14 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @return section slip rates
 	 */
 	public SectSlipRates getSectSlipRates() {
-		if (!hasModule(SectSlipRates.class))
-			addModule(SectSlipRates.fromFaultSectData(this));
-		return requireModule(SectSlipRates.class);
+		SectSlipRates slips = getModule(SectSlipRates.class);
+		if (slips == null) {
+			// offer it, don't set it directly, because another thread could be trying to add it as well
+			// offerAvailableModule synchronizes and will prevent race conditions
+			offerAvailableModule(()->SectSlipRates.fromFaultSectData(this), SectSlipRates.class);
+			slips = requireModule(SectSlipRates.class);
+		}
+		return slips;
 	}
 
 	/**
@@ -2011,15 +2021,17 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				double[] finalRakes = rakes;
 				double[] finalRupAreas = rupAreas;
 				IntStream.range(0, numRups).parallel().forEach(r -> {
-					List<Double> mySectAreas = new ArrayList<>();
-					List<Double> mySectRakes = new ArrayList<>();
+					List<Integer> sects = sectionForRups.get(r);
+					int numSects = sectionForRups.get(r).size();
+					double[] mySectAreas = new double[numSects];
+					double[] mySectRakes = new double[numSects];
 					double totArea = 0d;
-					for (int s : sectionForRups.get(r)) {
-						FaultSection sect = faultSectionData.get(s);
+					for (int i=0; i<numSects; i++) {
+						FaultSection sect = faultSectionData.get(sects.get(i));
 						double area = sect.getArea(true);	// sq-m
 						totArea += area;
-						mySectAreas.add(area);
-						mySectRakes.add(sect.getAveRake());
+						mySectAreas[i] = area;
+						mySectRakes[i] = sect.getAveRake();
 					}
 					if (Double.isNaN(finalRupAreas[r]))
 						finalRupAreas[r] = totArea;

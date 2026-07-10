@@ -791,7 +791,8 @@ public class RSQSimUtils {
 //		File geomFile = new File(dir, "UCERF3.D3.1.1km.tri.2.flt");
 //		File dir = new File("/data/kevin/simulators/catalogs/rundir2194_long");
 //		File geomFile = new File(dir, "zfault_Deepen.in");
-		int catID = 5895;
+//		int catID = 5895;
+		int catID = 6278;
 		File dir = new File("/data/kevin/simulators/catalogs/bruce/rundir"+catID);
 		File geomFile = new File(dir, "zfault_Deepen.in");
 		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'N');

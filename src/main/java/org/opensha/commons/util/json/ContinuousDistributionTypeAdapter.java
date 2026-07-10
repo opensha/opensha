@@ -1,7 +1,9 @@
 package org.opensha.commons.util.json;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.statistics.distribution.BetaDistribution;
@@ -27,8 +29,12 @@ import org.apache.commons.statistics.distribution.TriangularDistribution;
 import org.apache.commons.statistics.distribution.TruncatedNormalDistribution;
 import org.apache.commons.statistics.distribution.UniformContinuousDistribution;
 import org.apache.commons.statistics.distribution.WeibullDistribution;
-import org.opensha.commons.data.function.EvenlyDiscrFuncEmpiricalDistribution;
-import org.opensha.commons.data.function.EvenlyDiscrFuncEmpiricalDistribution.DiscretizationType;
+import org.opensha.commons.data.AffineTransformedContinuousDistribution;
+import org.opensha.commons.data.WeightedContinuousDistribution;
+import org.opensha.commons.data.WeightedList;
+import org.opensha.commons.data.WeightedValue;
+import org.opensha.commons.data.function.EvenlyDiscrFuncContinuousDistribution;
+import org.opensha.commons.data.function.EvenlyDiscrFuncContinuousDistribution.DiscretizationType;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 
 import com.google.common.base.Preconditions;
@@ -56,9 +62,16 @@ public class ContinuousDistributionTypeAdapter extends TypeAdapter<ContinuousDis
 	private ContinuousDistributionTypeAdapter() {}
 
 	private static final String TYPE = "type";
+	private static final String AFFINE_TRANSFORMED_CONTINUOUS_DISTRIBUTION = "AffineTransformedContinuousDistribution";
+	private static final String WEIGHTED_CONTINUOUS_DISTRIBUTION = "WeightedContinuousDistribution";
+	private static final String DISTRIBUTIONS = "distributions";
+	private static final String DISTRIBUTION = "distribution";
+	private static final String WEIGHT = "weight";
+	private static final String SCALE = "scale";
+	private static final String OFFSET = "offset";
 	
-	// special serialization constants from EvenlyDiscrFuncEmpiricalDistribution
-	private static final String EVENLY_DISCR_FUNC_EMPIRICAL_DISTRIBUTION = "EvenlyDiscrFuncEmpiricalDistribution";
+	// special serialization constants from EvenlyDiscrFuncContinuousDistribution
+	private static final String EVENLY_DISCR_FUNC_EMPIRICAL_DISTRIBUTION = "EvenlyDiscrFuncContinuousDistribution";
 	private static final String FUNCTION = "function";
 	private static final String DISCRETIZATION_TYPE = "discretizationType";
 	
@@ -73,8 +86,27 @@ public class ContinuousDistributionTypeAdapter extends TypeAdapter<ContinuousDis
 
 		out.beginObject();
 
-		if (value instanceof EvenlyDiscrFuncEmpiricalDistribution) {
-			EvenlyDiscrFuncEmpiricalDistribution dist = (EvenlyDiscrFuncEmpiricalDistribution)value;
+		if (value instanceof AffineTransformedContinuousDistribution) {
+			AffineTransformedContinuousDistribution dist = (AffineTransformedContinuousDistribution)value;
+			writeType(out, AFFINE_TRANSFORMED_CONTINUOUS_DISTRIBUTION);
+			out.name(SCALE).value(dist.getScale());
+			out.name(OFFSET).value(dist.getOffset());
+			out.name(DISTRIBUTION);
+			write(out, dist.getSource());
+		} else if (value instanceof WeightedContinuousDistribution) {
+			WeightedContinuousDistribution dist = (WeightedContinuousDistribution)value;
+			writeType(out, WEIGHTED_CONTINUOUS_DISTRIBUTION);
+			out.name(DISTRIBUTIONS).beginArray();
+			for (WeightedValue<ContinuousDistribution> weightedDist : dist.getDistributions()) {
+				out.beginObject();
+				out.name(WEIGHT).value(weightedDist.weight);
+				out.name(DISTRIBUTION);
+				write(out, weightedDist.value);
+				out.endObject();
+			}
+			out.endArray();
+		} else if (value instanceof EvenlyDiscrFuncContinuousDistribution) {
+			EvenlyDiscrFuncContinuousDistribution dist = (EvenlyDiscrFuncContinuousDistribution)value;
 			writeType(out, EVENLY_DISCR_FUNC_EMPIRICAL_DISTRIBUTION);
 			out.name(DISCRETIZATION_TYPE).value(dist.getDiscretizationType().name());
 			out.name(FUNCTION);
@@ -208,6 +240,8 @@ public class ContinuousDistributionTypeAdapter extends TypeAdapter<ContinuousDis
 		String type = null;
 		DiscretizationType discretizationType = null;
 		EvenlyDiscretizedFunc func = null;
+		ContinuousDistribution dist = null;
+		List<WeightedValue<ContinuousDistribution>> dists = null;
 		Map<String, Double> params = new HashMap<>();
 
 		in.beginObject();
@@ -219,6 +253,10 @@ public class ContinuousDistributionTypeAdapter extends TypeAdapter<ContinuousDis
 				discretizationType = DiscretizationType.valueOf(in.nextString());
 			} else if (FUNCTION.equals(name)) {
 				func = GSON.getAdapter(EvenlyDiscretizedFunc.class).read(in);
+			} else if (DISTRIBUTION.equals(name)) {
+				dist = read(in);
+			} else if (DISTRIBUTIONS.equals(name)) {
+				dists = readWeightedDistributions(in);
 			} else if (in.peek() == JsonToken.NUMBER) {
 				params.put(name, in.nextDouble());
 			} else {
@@ -230,10 +268,17 @@ public class ContinuousDistributionTypeAdapter extends TypeAdapter<ContinuousDis
 		Preconditions.checkNotNull(type, "Continuous distribution type was not supplied");
 
 		switch (type) {
+		case AFFINE_TRANSFORMED_CONTINUOUS_DISTRIBUTION:
+			Preconditions.checkNotNull(dist, "Required parameter '%s' was not supplied", DISTRIBUTION);
+			return new AffineTransformedContinuousDistribution(dist,
+					getRequiredDouble(params, SCALE), getRequiredDouble(params, OFFSET));
+		case WEIGHTED_CONTINUOUS_DISTRIBUTION:
+			Preconditions.checkNotNull(dists, "Required parameter '%s' was not supplied", DISTRIBUTIONS);
+			return new WeightedContinuousDistribution(new WeightedList<>(dists));
 		case EVENLY_DISCR_FUNC_EMPIRICAL_DISTRIBUTION:
 			Preconditions.checkNotNull(func, "Required parameter '%s' was not supplied", FUNCTION);
 			Preconditions.checkNotNull(discretizationType, "Required parameter '%s' was not supplied", DISCRETIZATION_TYPE);
-			return new EvenlyDiscrFuncEmpiricalDistribution(func, discretizationType);
+			return new EvenlyDiscrFuncContinuousDistribution(func, discretizationType);
 		case "TruncatedNormalDistribution":
 			return TruncatedNormalDistribution.of(
 					getRequiredDouble(params, "parentMean"),
@@ -299,5 +344,30 @@ public class ContinuousDistributionTypeAdapter extends TypeAdapter<ContinuousDis
 		Double value = params.get(name);
 		Preconditions.checkNotNull(value, "Required parameter '%s' was not supplied", name);
 		return value;
+	}
+	
+	private List<WeightedValue<ContinuousDistribution>> readWeightedDistributions(JsonReader in) throws IOException {
+		List<WeightedValue<ContinuousDistribution>> dists = new ArrayList<>();
+		in.beginArray();
+		while (in.hasNext()) {
+			Double weight = null;
+			ContinuousDistribution dist = null;
+			in.beginObject();
+			while (in.hasNext()) {
+				String name = in.nextName();
+				if (WEIGHT.equals(name))
+					weight = in.nextDouble();
+				else if (DISTRIBUTION.equals(name))
+					dist = read(in);
+				else
+					in.skipValue();
+			}
+			in.endObject();
+			Preconditions.checkNotNull(weight, "Weighted distribution entry missing '%s'", WEIGHT);
+			Preconditions.checkNotNull(dist, "Weighted distribution entry missing '%s'", DISTRIBUTION);
+			dists.add(new WeightedValue<>(dist, weight));
+		}
+		in.endArray();
+		return dists;
 	}
 }

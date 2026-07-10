@@ -64,6 +64,7 @@ import org.opensha.sha.imr.attenRelImpl.Campbell_1997_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.DahleEtAl_1995_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.Field_2000_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.GouletEtAl_2006_AttenRel;
+import org.opensha.sha.imr.attenRelImpl.JointRuptureExperimentalIMR;
 import org.opensha.sha.imr.attenRelImpl.McVerryetal_2000_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.NGAWest_2014_Averaged_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.NGAWest_2014_Averaged_AttenRel.NGAWest_2014_Averaged_AttenRel_NoIdriss;
@@ -421,6 +422,8 @@ public enum AttenRelRef implements AttenRelSupplier {
 	MOD_ATTEN_REL(ModAttenuationRelationship.class, ModAttenuationRelationship.NAME, ModAttenuationRelationship.SHORT_NAME, EXPERIMENTAL),
 	
 	AFSHARI_STEWART_2016(AfshariStewart_2016_AttenRel.class, AfshariStewart_2016_AttenRel.NAME, AfshariStewart_2016_AttenRel.SHORT_NAME, EXPERIMENTAL),
+	
+	JOINT_RUP_EXPERIMENTAL(JointRuptureExperimentalIMR.class, JointRuptureExperimentalIMR.NAME, JointRuptureExperimentalIMR.SHORT_NAME, EXPERIMENTAL),
 
 	// DEPRECATED
 

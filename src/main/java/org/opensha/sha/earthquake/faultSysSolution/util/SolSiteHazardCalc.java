@@ -774,11 +774,25 @@ public class SolSiteHazardCalc {
 			if (cmd.hasOption("disagg-max-mag"))
 				maxMag = Double.parseDouble("disagg-max-mag");
 			magRange = disaggRange(minMag, maxMag, 0.5, false);
+			System.out.println("Mag range for m=["+(float)minMag+", "+(float)maxMag+"]: func min="
+					+(float)magRange.getMinX()+", max="+(float)magRange.getMaxX()
+					+", delta="+(float)magRange.getDelta()+", size="+magRange.size());
 			
-			double disaggMaxDist = cmd.hasOption("disagg-max-dist") ?
-					Double.parseDouble(cmd.getOptionValue("disagg-max-dist")) : Math.min(largestMaxDist, 200d);
+			double disaggMaxDist;
+			if (cmd.hasOption("")) {
+				disaggMaxDist = Double.parseDouble(cmd.getOptionValue("disagg-max-dist"));
+			} else {
+				// don't go above 500 (or below 200) unless explicitly told to (plots get weird)
+				disaggMaxDist = Math.max(Math.min(largestMaxDist, 500d), 200d);
+			}
 			double minDist, distDelta;
-			if (disaggMaxDist > 150d) {
+			if (disaggMaxDist > 550d) {
+				minDist = 20d;
+				distDelta = 40d;
+			} else if (disaggMaxDist > 350d) {
+				minDist = 10d;
+				distDelta = 20d;
+			} else if (disaggMaxDist > 150d) {
 				minDist = 10d;
 				distDelta = 20d;
 			} else {
@@ -786,8 +800,9 @@ public class SolSiteHazardCalc {
 				distDelta = 10d;
 			}
 			EvenlyDiscretizedFunc distRange = disaggRange(minDist, disaggMaxDist, distDelta, true);
-//			System.out.println("Mag range:\n"+magRange);
-//			System.out.println("Dist range:\n"+distRange);
+			System.out.println("Dist range for maxDist="+(float)disaggMaxDist+": func min="
+					+(float)distRange.getMinX()+", max="+(float)distRange.getMaxX()
+					+", delta="+(float)distRange.getDelta()+", size="+distRange.size());
 			
 			List<DisaggCalcThread> disaggThreads = new ArrayList<>(threads);
 			HazardCurveCalculator curveCalc = new HazardCurveCalculator(sourceFilters);
@@ -1407,11 +1422,11 @@ public class SolSiteHazardCalc {
 								table.addColumn("");
 							table.finalizeLine();
 							
-							for (int i=0; i<numDisaggSources; i++) {
+							for (int i=0; i<myNumSources; i++) {
 								table.initNewLine();
 								for (int d=0; d<numDisagg; d++) {
 									List<DisaggregationSourceRuptureInfo> sources = results[p][d].consolidatedSourceInfo;
-									if (sources == null || sources.size() < i) {
+									if (sources == null || sources.size() <= i) {
 										table.addColumn("");
 										continue;
 									}
@@ -1874,7 +1889,11 @@ public class SolSiteHazardCalc {
 				
 				FaultSysHazardCalcSettings.setIMforPeriod(gmms, task.period);
 				
-				calc.getHazardCurve(logCurve, task.site, gmms, erf, exceedCalc);
+				// point source optimizations can mutate the site, make sure we have our own
+				Site site = new Site(task.site.getLocation());
+				site.addParameterList(task.site);
+				
+				calc.getHazardCurve(logCurve, site, gmms, erf, exceedCalc);
 				
 				LightFixedXFunc linearCurve = new LightFixedXFunc(linearXVals, logCurve.getYVals());
 				task.setResult(linearCurve);
@@ -2380,6 +2399,10 @@ public class SolSiteHazardCalc {
 			while (task != null) {
 				FaultSysHazardCalcSettings.setIMforPeriod(gmms, task.period);
 				
+				// point source optimizations can mutate the site, make sure we have our own
+				Site site = new Site(task.site.getLocation());
+				site.addParameterList(task.site);
+				
 				DisaggResult[] results = new DisaggResult[numDisagg];
 				for (int i=0; i<numDisagg; i++) {
 					double prob, iml;
@@ -2411,7 +2434,7 @@ public class SolSiteHazardCalc {
 					} else {
 						calc.setSkipCalculateSourceExceedanceCurves();
 					}
-					calc.disaggregate(Math.log(iml), task.site, gmms, erf, sourceFilters, calcParams);
+					calc.disaggregate(Math.log(iml), site, gmms, erf, sourceFilters, calcParams);
 					List<DisaggregationSourceRuptureInfo> consolidatedNucleationSourceInfo = null;
 					if (i == 0) {
 						// calculate nucleation

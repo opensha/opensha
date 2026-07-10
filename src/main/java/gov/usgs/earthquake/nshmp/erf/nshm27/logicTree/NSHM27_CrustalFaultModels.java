@@ -7,18 +7,12 @@ import java.util.List;
 
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
-import org.opensha.commons.logicTree.LogicTreeBranch;
-import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
-import org.opensha.sha.earthquake.faultSysSolution.RupSetSubsectioningModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
-import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
-import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
-import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionBuilder;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -34,7 +28,7 @@ import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_Seis
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM27_CrustalFaultModels implements RupSetFaultModel, RupSetSubsectioningModel, LogicTreeNode.FixedWeightNode {
+public enum NSHM27_CrustalFaultModels implements NSHM27_FaultModel {
 	GNMI_V1("Guam & Northern Mariana Islands (Crustal FM v1)", "GNMI-Crust-V1", NSHM27_SeismicityRegions.GNMI, 1d,
 			"/data/erf/nshm27/gnmi/fault_models/crustal/NSHM27_GNMI_FaultSections_v1.geojson");
 	
@@ -51,10 +45,6 @@ public enum NSHM27_CrustalFaultModels implements RupSetFaultModel, RupSetSubsect
 		this.seisReg = seisReg;
 		this.weight = weight;
 		this.jsonPath = jsonPath;
-	}
-	
-	public NSHM27_SeismicityRegions getSeisReg() {
-		return seisReg;
 	}
 
 	@Override
@@ -99,20 +89,17 @@ public enum NSHM27_CrustalFaultModels implements RupSetFaultModel, RupSetSubsect
 
 	@Override
 	public RupSetDeformationModel getDefaultDeformationModel() {
-		return NSHM27_CrustalAggregatedDeformationModels.AVERAGE;
+		return NSHM27_CrustalDeformationModels.Aggregated.AVERAGE;
 	}
 
 	@Override
-	public void attachDefaultModules(FaultSystemRupSet rupSet) {
-		rupSet.addAvailableModule(() -> {
-			return NSHM27_InterfaceFaultModels.buildROI(seisReg);
-		}, RegionsOfInterest.class);
-		rupSet.addAvailableModule(() -> {
-			return new ModelRegion(seisReg.load());
-		}, ModelRegion.class);
-		rupSet.addAvailableModule(() -> {
-			return RupSetTectonicRegimes.constant(rupSet, TectonicRegionType.ACTIVE_SHALLOW);
-		}, RupSetTectonicRegimes.class);
+	public NSHM27_SeismicityRegions getSeismicityRegion() {
+		return seisReg;
+	}
+
+	@Override
+	public TectonicRegionType getTectonicRegime() {
+		return TectonicRegionType.ACTIVE_SHALLOW;
 	}
 
 }

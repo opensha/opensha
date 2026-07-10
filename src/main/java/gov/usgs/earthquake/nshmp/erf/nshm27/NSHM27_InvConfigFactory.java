@@ -10,6 +10,9 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 import org.opensha.commons.data.IntegerSampler.ExclusionIntegerSampler;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.geo.CubedGriddedRegion;
+import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -32,8 +35,11 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.Generatio
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
@@ -48,8 +54,11 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_FaultCubeAssociations;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SingleRegionGridSourceProvider;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.ExclusionaryLogicTreeNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SlipAlongRuptureModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
@@ -64,6 +73,9 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBVa
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.SubSeisMoRateReduction;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.GRParticRateEstimator;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.GeoJSONFaultSection;
+import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
+import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -71,10 +83,12 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Range;
 import com.google.common.collect.Table;
 
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_CrustalFaultModels;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_InterfaceFaultModels;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_InterfaceObsSeisDMAdjustment;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_ModelRegimeNode;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisRateModel;
+import gov.usgs.earthquake.nshmp.erf.nshm27.util.InterfaceGridAssociations;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.PureGR;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateRecord;
@@ -312,7 +326,13 @@ public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigur
 		RandomBValSampler.Node bValNode = branch.getValue(RandomBValSampler.Node.class);
 		double bVal;
 		double[] sectSpecificBValues = null;
-		if (bValNode != null) {
+		if (branch.hasValue(NSHM27_InterfaceObsSeisDMAdjustment.EXTRAPOLATE)) {
+			// use obs seis b-value
+			NSHM27_SeismicityRegions reg = branch.requireValue(NSHM27_InterfaceFaultModels.class).getSeismicityRegion();
+			RateRecord rateModel = branch.requireValue(NSHM27_SeisRateModel.class).getRateRecord(reg, TectonicRegionType.SUBDUCTION_INTERFACE);
+			Preconditions.checkState(rateModel instanceof PureGR);
+			bVal = ((PureGR)rateModel).b;
+		} else if (bValNode != null) {
 			RandomBValSampler sampler = rupSet.requireModule(BranchSamplingManager.class).getSampler(bValNode);
 			sectSpecificBValues = sampler.getBValues();
 			Preconditions.checkState(sectSpecificBValues.length == rupSet.getNumSections(),
@@ -320,31 +340,29 @@ public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigur
 			bVal = NSHM23_ConstraintBuilder.momentWeightedAverage(rupSet, sectSpecificBValues);
 		} else {
 			SectionSupraSeisBValues bValues = branch.requireValue(SectionSupraSeisBValues.class);
-			sectSpecificBValues = bValues.getSectBValues(rupSet);
-			if (Double.isFinite(bValues.getB()))
-				bVal = bValues.getB();
-			else
-				bVal = SectionSupraSeisBValues.momentWeightedAverage(rupSet, sectSpecificBValues);
+			sectSpecificBValues = bValues.getSectBValues(rupSet, branch);
+			double b = bValues.getB(rupSet, branch);
+			if (!Double.isFinite(b))
+				b = SectionSupraSeisBValues.momentWeightedAverage(rupSet, sectSpecificBValues);
+			bVal = b;
 		}
 		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal, sectSpecificBValues);
-		
-		
 		
 		if (branch.hasValue(NSHM27_InterfaceObsSeisDMAdjustment.class)) {
 			NSHM27_InterfaceObsSeisDMAdjustment adjustment = branch.requireValue(NSHM27_InterfaceObsSeisDMAdjustment.class);
 			if (adjustment == NSHM27_InterfaceObsSeisDMAdjustment.NONE) {
 				constrBuilder.subSeisMoRateReduction(SubSeisMoRateReduction.NONE);
 			} else {
+				// tell it to use input slip rates, which should have already been applied
+				Preconditions.checkState(!rupSet.hasModule(SectSlipRates.Default.class),
+						"Have an obs seis adjustment but default slip rates are still attached!");
 				constrBuilder.subSeisMoRateReduction(SubSeisMoRateReduction.FROM_INPUT_SLIP_RATES);
-				try {
-					adjustment.adjustSlipRates(rupSet, branch);
-				} catch (IOException e) {
-					throw ExceptionUtils.asRuntimeException(e);
-				}
+				
+				// override the sub-seis b-value from observed seismicity
 				NSHM27_InterfaceFaultModels fm = branch.getValue(NSHM27_InterfaceFaultModels.class);
 				if (fm != null && branch.hasValue(NSHM27_SeisRateModel.class)) {
 					NSHM27_SeisRateModel rateModel = branch.requireValue(NSHM27_SeisRateModel.class);
-					RateRecord record = rateModel.getRateRecord(fm.getSeisReg(), TectonicRegionType.SUBDUCTION_INTERFACE);
+					RateRecord record = rateModel.getRateRecord(fm.getSeismicityRegion(), TectonicRegionType.SUBDUCTION_INTERFACE);
 					if (record instanceof PureGR)
 						constrBuilder.subSeisBOverride(((PureGR)record).b);
 					else
@@ -514,6 +532,22 @@ public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		return new RuptureProbabilityCalc.LogicalAnd(exclusionModels.toArray(new BinaryRuptureProbabilityCalc[0]));
 	}
+	
+	public static double getIncludeRuptureMmax(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+		ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
+		BinaryRuptureProbabilityCalc rupExclusionModel = getExclusionModel(rupSet, branch, cRups);
+		double mMax = 0d;
+		for (int rupIndex=0; rupIndex<rupSet.getNumRuptures(); rupIndex++) {
+			double mag = rupSet.getMagForRup(rupIndex);
+			if (mag > mMax) {
+				if (rupExclusionModel != null && !rupExclusionModel.isRupAllowed(cRups.get(rupIndex), false))
+					continue;
+				mMax = mag;
+			}
+		}
+		Preconditions.checkState(mMax > 0d);
+		return mMax;
+	}
 
 	private static ExclusionIntegerSampler getExcludeSampler(ClusterRuptures cRups,
 			ExclusionIntegerSampler currentSampler, BinaryRuptureProbabilityCalc excludeCalc) {
@@ -576,13 +610,7 @@ public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigur
 			
 			// offer average slips, don't force replacement
 			if (branch.hasValue(RupSetScalingRelationship.class)) {
-				rupSet.offerAvailableModule(new Callable<AveSlipModule>() {
-
-					@Override
-					public AveSlipModule call() throws Exception {
-						return AveSlipModule.forModel(rupSet, branch.requireValue(RupSetScalingRelationship.class));
-					}
-				}, AveSlipModule.class);
+				rupSet.offerAvailableModule(() -> AveSlipModule.forModel(rupSet, branch.requireValue(RupSetScalingRelationship.class)), AveSlipModule.class);
 			}
 			
 			// slip along rupture model
@@ -601,38 +629,34 @@ public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigur
 				fm.attachDefaultModules(rupSet);
 			
 			// add inversion target MFDs
-			rupSet.offerAvailableModule(new Callable<SupraSeisBValInversionTargetMFDs>() {
-
-				@Override
-				public SupraSeisBValInversionTargetMFDs call() throws Exception {
-					return getConstraintBuilder(rupSet, branch).getTargetMFDs();
-				}
-			}, SupraSeisBValInversionTargetMFDs.class);
-			// add target slip rates (modified for sub-seismogenic ruptures)
-			// don't offer as a default implementation could have been attached
-			rupSet.addAvailableModule(new Callable<SectSlipRates>() {
-
-				@Override
-				public SectSlipRates call() throws Exception {
-					SupraSeisBValInversionTargetMFDs targetMFDs = rupSet.getModule(SupraSeisBValInversionTargetMFDs.class, false);
-					if (targetMFDs != null)
-						// we already have target MFDs loaded, get it from there
-						return targetMFDs.getSectSlipRates();
-					// build them
-					SubSeisMoRateReduction moRateRed = branch.hasValue(SubSeisMoRateReductions.class) ?
-							branch.getValue(SubSeisMoRateReductions.class).getChoice() :
-								SupraSeisBValInversionTargetMFDs.SUB_SEIS_MO_RATE_REDUCTION_DEFAULT;
-					SupraSeisBValInversionTargetMFDs.Builder builder;
-					RandomBValSampler.Node bValNode = branch.getValue(RandomBValSampler.Node.class);
-					if (bValNode != null) {
-						RandomBValSampler sampler = rupSet.requireModule(BranchSamplingManager.class).getSampler(bValNode);
-						builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet, sampler.getBValues());
-					} else {
-						builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet,  branch.requireValue(SectionSupraSeisBValues.class));
+			rupSet.offerAvailableModule(() -> getConstraintBuilder(rupSet, branch).getTargetMFDs(), SupraSeisBValInversionTargetMFDs.class);
+			
+			// add fault grid associations
+			NSHM27_GridSourceBuilder.offerAssociations(rupSet, branch);
+			
+			NSHM27_InterfaceObsSeisDMAdjustment obsAdj = branch.getValue(NSHM27_InterfaceObsSeisDMAdjustment.class);
+			if (obsAdj == null || obsAdj == NSHM27_InterfaceObsSeisDMAdjustment.NONE) {
+				// no DM adjustment (or crustal), apply default treatment with no sub-seis reduction
+				rupSet.addAvailableModule(()->NSHM27_InterfaceObsSeisDMAdjustment.NONE.adjustSlipRates(rupSet, branch), SectSlipRates.class);
+			} else {
+				SectSlipRates slipRates = rupSet.requireModule(SectSlipRates.class);
+				if (slipRates instanceof SectSlipRates.Default) {
+					// first time, apply the adjustment
+					Preconditions.checkState(!rupSet.hasModule(RuptureSubSetMappings.class),
+							"Can't adjust when we have subset mappings (should never happen)");
+					rupSet.addAvailableModule(()->obsAdj.adjustSlipRates(rupSet, branch), SectSlipRates.class);
+				} else {
+					// already applied
+					Preconditions.checkState(slipRates instanceof SectSlipRates.Precomputed);
+					if (branch.hasValue(NSHM27_InterfaceObsSeisDMAdjustment.EXTRAPOLATE)) {
+						// make sure they were actually applied
+						for (int s=0; s<rupSet.getNumSections(); s++) {
+							GeoJSONFaultSection sect = (GeoJSONFaultSection)rupSet.getFaultSectionData(s);
+							Preconditions.checkState(sect.getProperties().containsKey(NSHM27_InterfaceObsSeisDMAdjustment.GEOJSON_INPUT_SLIP_RATE_PROP_NAME));
+						}
 					}
-					return builder.subSeisMoRateReduction(moRateRed).buildSlipRatesOnly();
 				}
-			}, SectSlipRates.class);
+			}
 			
 			// don't override existing plausibility configuration, offer it instead
 			// mostly for branch averaging
@@ -658,22 +682,10 @@ public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigur
 			
 			// offer cluster ruptures
 			// should always be single stranded
-			rupSet.offerAvailableModule(new Callable<ClusterRuptures>() {
-
-				@Override
-				public ClusterRuptures call() throws Exception {
-					return ClusterRuptures.singleStranded(rupSet);
-				}
-			}, ClusterRuptures.class);
+			rupSet.offerAvailableModule(() -> ClusterRuptures.singleStranded(rupSet), ClusterRuptures.class);
 			
 			if (BranchSamplingManager.hasSamplingNodes(branch)) {
-				rupSet.offerAvailableModule(new Callable<BranchSamplingManager>() {
-
-					@Override
-					public BranchSamplingManager call() throws Exception {
-						return new BranchSamplingManager(rupSet, branch);
-					}
-				}, BranchSamplingManager.class);
+				rupSet.offerAvailableModule(() -> new BranchSamplingManager(rupSet, branch), BranchSamplingManager.class);
 			}
 			return rupSet;
 		}

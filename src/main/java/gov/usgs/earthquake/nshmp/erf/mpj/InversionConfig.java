@@ -15,6 +15,7 @@ public final class InversionConfig {
 	private final boolean parallelBranchAverage;
 	private final String completionArg;
 	private final Integer explicitWallTimeMinutes;
+	private final Integer explicitWallTimeMinutesPerRound;
 	private final Double estimatedAvgNumRups;
 	private final Integer estimatedRounds;
 	private final Double estimatedItersPerSec;
@@ -26,6 +27,7 @@ public final class InversionConfig {
 		this.parallelBranchAverage = builder.parallelBranchAverage;
 		this.completionArg = builder.completionArg;
 		this.explicitWallTimeMinutes = builder.explicitWallTimeMinutes;
+		this.explicitWallTimeMinutesPerRound = builder.explicitWallTimeMinutesPerRound;
 		this.estimatedAvgNumRups = builder.estimatedAvgNumRups;
 		this.estimatedRounds = builder.estimatedRounds;
 		this.estimatedItersPerSec = builder.estimatedItersPerSec;
@@ -59,6 +61,8 @@ public final class InversionConfig {
 	int resolvePerInversionMinutes() {
 		if (explicitWallTimeMinutes != null)
 			return explicitWallTimeMinutes;
+		if (explicitWallTimeMinutesPerRound != null)
+			return explicitWallTimeMinutesPerRound;
 		double numIters = estimatedAvgNumRups*estimatedRounds;
 		double invSecs = numIters/estimatedItersPerSec;
 		int invMins = (int)(invSecs/60d + 0.5);
@@ -74,6 +78,7 @@ public final class InversionConfig {
 		int mins = (int)(nodeRounds*invMins);
 		mins += Integer.max(60, invMins);
 		mins += Integer.max(0, nodeRounds-1)*10;
+//		System.out.println("Inversion mins="+mins+" for invMins="+invMins+", nodeRounds="+nodeRounds);
 		return mins;
 	}
 
@@ -83,6 +88,7 @@ public final class InversionConfig {
 		private boolean parallelBranchAverage;
 		private String completionArg;
 		private Integer explicitWallTimeMinutes;
+		private Integer explicitWallTimeMinutesPerRound;
 		private Double estimatedAvgNumRups;
 		private Integer estimatedRounds;
 		private Double estimatedItersPerSec;
@@ -110,6 +116,16 @@ public final class InversionConfig {
 
 		public Builder wallTimeMinutes(int explicitWallTimeMinutes) {
 			this.explicitWallTimeMinutes = explicitWallTimeMinutes;
+			this.explicitWallTimeMinutesPerRound = null;
+			this.estimatedAvgNumRups = null;
+			this.estimatedRounds = null;
+			this.estimatedItersPerSec = null;
+			return this;
+		}
+
+		public Builder wallTimeMinutesPerRound(int minsPerRound) {
+			this.explicitWallTimeMinutes = null;
+			this.explicitWallTimeMinutesPerRound = minsPerRound;
 			this.estimatedAvgNumRups = null;
 			this.estimatedRounds = null;
 			this.estimatedItersPerSec = null;
@@ -118,6 +134,7 @@ public final class InversionConfig {
 
 		public Builder estimateWallTimeMinutes(double avgNumRups, int rounds, double itersPerSec) {
 			this.explicitWallTimeMinutes = null;
+			this.explicitWallTimeMinutesPerRound = null;
 			this.estimatedAvgNumRups = avgNumRups;
 			this.estimatedRounds = rounds;
 			this.estimatedItersPerSec = itersPerSec;
@@ -139,7 +156,7 @@ public final class InversionConfig {
 		public InversionConfig build() {
 			Preconditions.checkNotNull(factoryClass, "factoryClass is required");
 			Preconditions.checkArgument(runsPerBranch > 0, "runsPerBranch must be > 0");
-			Preconditions.checkState(explicitWallTimeMinutes != null
+			Preconditions.checkState(explicitWallTimeMinutes != null || explicitWallTimeMinutesPerRound != null
 					|| (estimatedAvgNumRups != null && estimatedRounds != null && estimatedItersPerSec != null),
 					"must explicitly set wall time or estimate it from avgNumRups/rounds/itersPerSec");
 			return new InversionConfig(this);

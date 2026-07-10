@@ -6,6 +6,7 @@ import java.text.DecimalFormat;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.UnaryOperator;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.opensha.commons.data.CSVFile;
@@ -229,6 +230,12 @@ public enum PRVI25_CrustalDeformationModels implements RupSetDeformationModel {
 	}
 	
 	public static void applyStdDevDefaults(List<? extends FaultSection> subSects) {
+		STD_DEV_DEFAULTS.apply(subSects);
+	}
+	
+	private static final DecimalFormat pDF = new DecimalFormat("0.00%");
+	
+	public static final UnaryOperator<List<? extends FaultSection>> STD_DEV_DEFAULTS = (subSects) -> {
 		if (isHardcodedFractionalStdDev()) {
 			System.out.println("Overriding deformation model slip rates std devs and using hardcoded fractional value: "
 					+HARDCODED_FRACTIONAL_STD_DEV);
@@ -301,9 +308,14 @@ public enum PRVI25_CrustalDeformationModels implements RupSetDeformationModel {
 			System.err.println("WARNING: Set "+numFloor+"/"+subSects.size()+" ("
 					+pDF.format((double)numFloor/(double)subSects.size())
 					+") subsection slip rate standard deviations to the floor value of "+(float)STD_DEV_FLOOR+" (mm/yr)");
-	}
+		return subSects;
+	};
 	
 	public static void applyCreepDefaults(List<? extends FaultSection> subSects) {
+		CREEP_DEFAULTS.apply(subSects);
+	}
+	
+	public static final UnaryOperator<List<? extends FaultSection>> CREEP_DEFAULTS = (subSects) -> {
 		double creepFract = CREEP_FRACT_DEFAULT;
 		double aseis, coupling;
 		if (creepFract < ASEIS_CEILING) {
@@ -317,9 +329,12 @@ public enum PRVI25_CrustalDeformationModels implements RupSetDeformationModel {
 			subSect.setAseismicSlipFactor(aseis);
 			subSect.setCouplingCoeff(coupling);
 		}
-	}
+		return subSects;
+	};
 	
-	private static final DecimalFormat pDF = new DecimalFormat("0.00%");
+	public static final UnaryOperator<List<? extends FaultSection>> DEFAULTS = (subSects) -> {
+		return STD_DEV_DEFAULTS.andThen(CREEP_DEFAULTS).apply(subSects);
+	};
 	
 	public static void main(String[] args) throws IOException {
 		PRVI25_CrustalFaultModels fm = PRVI25_CrustalFaultModels.PRVI_CRUSTAL_FM_V1p1;

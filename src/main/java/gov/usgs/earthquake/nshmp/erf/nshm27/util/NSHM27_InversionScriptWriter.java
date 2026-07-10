@@ -2,9 +2,11 @@ package gov.usgs.earthquake.nshmp.erf.nshm27.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
+import org.opensha.commons.data.Site;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeLevel.SamplingMethod;
@@ -54,15 +56,18 @@ public class NSHM27_InversionScriptWriter {
 			System.err.println("No command line arguments, using hardcoded defaults; use --help to see available options instead.");
 			
 			args = new String[] {
-					"--region", NSHM27_SeismicityRegions.AMSAM.name(),
+//					"--region", NSHM27_SeismicityRegions.AMSAM.name(),
+					"--region", NSHM27_SeismicityRegions.GNMI.name(),
 					
 					"--hpc-site", HPCConfig.HPCSite.USC_CARC_FMPJ.name(),
+					"--nodes", "24",
 					
 					"--local-dir", "/home/kevin/OpenSHA/fss_inversions",
 					"--remote-dir", "/project2/scec_608/kmilner/fss_inversions",
 					
-					"--sampling-method", SamplingMethod.MONTE_CARLO.name(),
-					"--samples", "5000",
+//					"--sampling-method", SamplingMethod.MONTE_CARLO.name(),
+					"--sampling-method", SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE.name(),
+					"--samples", "3000",
 //					"--unique-seed",
 			};
 		}
@@ -83,6 +88,7 @@ public class NSHM27_InversionScriptWriter {
 
 		GriddedRegion hazardRegion = new GriddedRegion(
 				NSHM27_MapRegions.valueOf(seisReg.name()).load(), gridSpacing, GriddedRegion.ANCHOR_0_0);
+		List<Site> hazardSites = NSHM27_RegionLoader.loadHazardSites(seisReg);
 
 		RunConfig run = RunConfig.builder()
 				.baseName("nshm27")
@@ -102,7 +108,7 @@ public class NSHM27_InversionScriptWriter {
 		InversionConfig inversion = InversionConfig.builder()
 				.factoryClass(NSHM27_InvConfigFactory.class)
 //				.estimateWallTimeMinutes(200000d, 2000, 200000d)
-				.wallTimeMinutes(10)
+				.wallTimeMinutesPerRound(10)
 				.parallelBranchAverage(true)
 				.build();
 
@@ -115,6 +121,7 @@ public class NSHM27_InversionScriptWriter {
 				.gmpe(AttenRelRef.USGS_PRVI_ACTIVE)
 				.gmpe(AttenRelRef.USGS_PRVI_SLAB)
 				.gmpe(AttenRelRef.USGS_PRVI_INTERFACE)
+				.sites(hazardSites)
 				// now allow cmd overrides
 				.forCMD(cmd)
 				.build();

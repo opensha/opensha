@@ -23,6 +23,7 @@ import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.logicTree.LogicTreeLevel.BinnableLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.BinnedLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.IndexedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.SamplingMethod;
 import org.opensha.commons.logicTree.LogicTreeNode.FixedWeightNode;
@@ -1069,6 +1070,12 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 							String choice = in.nextString();
 							Map<String, E> matchCache = nodeMatchCache.get(index);
 							E node = matchCache.get(choice);
+							if (node == null && level instanceof IndexedLevel) {
+								// try getting it directly from the level
+								node = ((IndexedLevel<E>)level).getNodeForFilePrefix(choice);
+								if (node != null)
+									matchCache.put(choice, node);
+							}
 							if (node == null) {
 								// first time we've encountered this string
 								String modChoice = simplifyChoiceString(choice);
