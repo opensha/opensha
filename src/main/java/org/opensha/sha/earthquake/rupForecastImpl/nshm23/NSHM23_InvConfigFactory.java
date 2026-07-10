@@ -169,6 +169,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	private boolean adjustForActualRupSlips = NSHM23_ConstraintBuilder.ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT;
 	private boolean adjustForSlipAlong = NSHM23_ConstraintBuilder.ADJ_FOR_SLIP_ALONG_DEFAULT;
 	
+	public static boolean APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT = SupraSeisBValInversionTargetMFDs.APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT;
+	
 	public static final long NUM_ITERS_PER_RUP_DEFAULT = 2000l;
 	protected long numItersPerRup;
 	
@@ -859,7 +861,10 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				b = SectionSupraSeisBValues.momentWeightedAverage(rupSet, sectSpecificBValues);
 			bVal = b;
 		}
-		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal, sectSpecificBValues);
+//		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal, sectSpecificBValues);
+		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal, sectSpecificBValues,
+				APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT, SupraSeisBValInversionTargetMFDs.ADD_SECT_COUNT_UNCERTAINTIES_DEFAULT,
+				NSHM23_ConstraintBuilder.ADJ_FOR_INCOMPATIBLE_DATA_DEFAULT);
 		
 		RupSetFaultModel fm = branch.getValue(RupSetFaultModel.class);
 		constrBuilder.parkfieldSelection(getParkfieldSelectionCriteria(fm));
