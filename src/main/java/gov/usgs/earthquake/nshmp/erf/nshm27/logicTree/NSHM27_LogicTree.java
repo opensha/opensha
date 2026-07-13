@@ -347,7 +347,7 @@ public class NSHM27_LogicTree {
 			PairwiseLogicTreeBranchOrderIteration<LogicTreeNode> treeOptimizer = new PairwiseLogicTreeBranchOrderIteration<>(
 					List.of(commonTree, interfaceTree, intraslabTree, crustalTree));
 			int nIters = Integer.max(10000, numSamples*100);
-			treeOptimizer.iterate(nIters, rand, true);
+			treeOptimizer.iterate(nIters, rand, false);
 			List<LogicTree<LogicTreeNode>> optimizedTrees = treeOptimizer.getReorderedTrees();
 			Preconditions.checkState(optimizedTrees.size() == 4);
 			commonTree = optimizedTrees.get(0);
@@ -412,7 +412,7 @@ public class NSHM27_LogicTree {
 //				SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE);
 //		System.exit(0);
 //		int numSamples = 100;
-		int numSamples = 1000;
+		int numSamples = 5000;
 //		SamplingMethod samplingMethod = SamplingMethod.MONTE_CARLO;
 		SamplingMethod samplingMethod = SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE;
 		TectonicRegionType[] trts = {TectonicRegionType.SUBDUCTION_INTERFACE, TectonicRegionType.SUBDUCTION_SLAB, TectonicRegionType.ACTIVE_SHALLOW};

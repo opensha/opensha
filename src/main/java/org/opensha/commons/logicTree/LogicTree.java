@@ -766,7 +766,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 					"Cannot (yet) do pairwise-iteration on a logic tree with branch-dependent weighting");
 			PairwiseLogicTreeNodeSwapIteration<E> iteration = new PairwiseLogicTreeNodeSwapIteration<>(levels, branches, levelFixedWeights);
 			int nIters = Integer.max(10000, numSamples*100);
-			iteration.iterate(nIters, r, true);
+			iteration.iterate(nIters, r, false);
 		}
 		
 		LogicTree<E> tree = fromExisting(levels, branches);

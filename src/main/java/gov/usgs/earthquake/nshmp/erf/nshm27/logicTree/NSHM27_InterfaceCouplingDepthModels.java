@@ -178,8 +178,8 @@ public enum NSHM27_InterfaceCouplingDepthModels implements LogicTreeNode.FixedWe
 			System.out.println();
 		}
 		
-		NSHM27_SeismicityRegions seisReg = NSHM27_SeismicityRegions.GNMI;
-//		NSHM27_SeismicityRegions seisReg = NSHM27_SeismicityRegions.AMSAM;
+//		NSHM27_SeismicityRegions seisReg = NSHM27_SeismicityRegions.GNMI;
+		NSHM27_SeismicityRegions seisReg = NSHM27_SeismicityRegions.AMSAM;
 		LogicTreeBranch<LogicTreeNode> branch = NSHM27_LogicTree.buildDefault(seisReg, TectonicRegionType.SUBDUCTION_INTERFACE, false);
 		NSHM27_InterfaceDeformationModels.Aggregated dm = branch.requireValue(NSHM27_InterfaceDeformationModels.Aggregated.class);
 		CPT couplingCPT = GMT_CPT_Files.SEQUENTIAL_LAJOLLA_UNIFORM.instance().rescale(0d, 1d);
@@ -188,8 +188,8 @@ public enum NSHM27_InterfaceCouplingDepthModels implements LogicTreeNode.FixedWe
 			branch.setValue(model);
 			List<? extends FaultSection> subSects = dm.build(branch.requireValue(NSHM27_InterfaceFaultModels.class), branch);
 			GeographicMapMaker mapMaker = new GeographicMapMaker(subSects);
-			mapMaker.plotSectScalars(S->S.getCouplingCoeff(), couplingCPT, "Coupling Coefficient");
-			mapMaker.plot(new File("/tmp"), seisReg.name()+"_coupling_"+model.name(), " ");
+			mapMaker.plotSectScalars(S->S.getCouplingCoeff(), couplingCPT, "Depth-coupling taper coefficient");
+			mapMaker.plot(new File("/tmp"), seisReg.name()+"_coupling_"+model.name(), model.name);
 			if (model == AVERAGE) {
 				mapMaker.plotSectScalars((S)->S.getFaultSurface(1d).getEvenlyDiscritizedListOfLocsOnSurface()
 						.stream().mapToDouble(L->L.depth).average().getAsDouble(), depthCPT, "Subsection average depth (km)");
