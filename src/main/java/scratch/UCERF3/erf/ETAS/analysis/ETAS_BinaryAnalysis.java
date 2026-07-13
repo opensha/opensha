@@ -47,8 +47,8 @@ import static scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
  *   <li>{@code --config &lt;file&gt;} — ETAS config JSON used to produce the
  *       binary (required; supplies simulation start time, duration, etc.)</li>
  *   <li>{@code --out &lt;dir&gt;} — output directory (required; created if
- *       missing). A {@code report.md} and a {@code plots/} subdirectory will be
- *       written here.</li>
+ *       missing). A {@code report.md}, a rendered {@code report.html}, and a
+ *       {@code plots/} subdirectory will be written here.</li>
  * </ul>
  *
  * <h2>Output</h2>
@@ -423,13 +423,20 @@ public class ETAS_BinaryAnalysis {
      * Helper that buffers markdown report content and writes it to disk on
      * {@link #close()}. The buffer is finalized with a Table of Contents
      * (built from headings at level 2 and below) inserted between the report
-     * title and the rest of the document.
+     * title and the rest of the document, then written as both {@code report.md}
+     * and a rendered {@code report.html} (via {@link MarkdownUtils#writeHTML}).
      */
     private class MarkdownGenerator implements AutoCloseable {
 
         // --- Output paths --------------------------------------------------
         private final Path mdFile;
         public final Path plotsDir;
+        /**
+         * Path to {@link #plotsDir} relative to {@code report.md}/{@code report.html},
+         * used for image references so the report is portable (not tied to an
+         * absolute output path).
+         */
+        private final String plotsRelPath;
 
         // --- Echoed input paths --------------------------------------------
         private final String fssPath;
@@ -440,9 +447,10 @@ public class ETAS_BinaryAnalysis {
 
         /**
          * Creates a new markdown report and {@code plots/} directory under
-         * {@code outputDir}. Existing report files and plot directories are
-         * deleted and recreated. The supplied input file paths are echoed in
-         * the {@code Simulation Configuration} section of the report.
+         * {@code outputDir}. Existing report files (markdown and HTML) and plot
+         * directories are deleted and recreated. The supplied input file paths
+         * are echoed in the {@code Simulation Configuration} section of the
+         * report.
          *
          * @param fssPath path of the FSS ZIP (echoed in the report)
          * @param binPath path of the ETAS results binary (echoed in the report)
@@ -456,12 +464,19 @@ public class ETAS_BinaryAnalysis {
             PathUtils.createParentDirectories(mdFile);
             Files.deleteIfExists(mdFile);
             Files.createFile(mdFile);
+            // Clear any stale HTML from a prior run; the fresh copy is written
+            // in close() alongside the finalized markdown.
+            Files.deleteIfExists(outputDir.resolve("report.html"));
             this.plotsDir = outputDir.resolve("plots");
             PathUtils.createParentDirectories(plotsDir);
             if (Files.exists(plotsDir)) {
                 PathUtils.deleteDirectory(plotsDir);
             }
             Files.createDirectories(plotsDir);
+            // Image references in the report are written relative to the report
+            // file (which lives in outputDir), so they resolve regardless of the
+            // absolute location of --out.
+            this.plotsRelPath = outputDir.relativize(plotsDir).toString();
         }
 
         /**
@@ -566,7 +581,7 @@ public class ETAS_BinaryAnalysis {
         public void addCatalogMapPlots(ETAS_AbstractPlot plot) {
             try {
                 writeln("## Catalog Map Plots");
-                List<String> plotLines = plot.generateMarkdown(plotsDir.toString(), "###", "");
+                List<String> plotLines = plot.generateMarkdown(plotsRelPath, "###", "");
                 for (String line : plotLines) {
                     lines.add(linkifyImage(line));
                 }
@@ -595,7 +610,7 @@ public class ETAS_BinaryAnalysis {
             if (slot < 0)
                 return;
             // generateMarkdown returns: [heading, topLink, "", prose, "", image, ""]
-            List<String> md = plot.generateMarkdown(plotsDir.toString(), "", "");
+            List<String> md = plot.generateMarkdown(plotsRelPath, "", "");
             List<String> replacement = new ArrayList<>();
             for (int i = 2; i < md.size(); i++) {
                 String l = md.get(i);
@@ -619,7 +634,7 @@ public class ETAS_BinaryAnalysis {
          * @throws IOException if the plot markdown cannot be generated
          */
         public void addTimingHistogram(ETAS_PrimaryAftershockTimingPlot plot) throws IOException {
-            List<String> md = plot.generateMarkdown(plotsDir.toString(), "##", "");
+            List<String> md = plot.generateMarkdown(plotsRelPath, "##", "");
             for (String line : md)
                 lines.add(linkifyImage(line));
             lines.add("");
@@ -978,6 +993,12 @@ public class ETAS_BinaryAnalysis {
 
             lines.addAll(insertAt, toc);
             Files.write(mdFile, lines);
+
+            // Also render an HTML version of the report (with GFM tables, heading
+            // anchors, and image links) alongside the markdown. MarkdownUtils
+            // copies markdown.css next to the HTML file; image paths are relative
+            // to outputDir so they resolve from report.html as well.
+            MarkdownUtils.writeHTML(lines, outputDir.resolve("report.html").toFile());
         }
     }
 
