@@ -25,6 +25,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -56,9 +57,15 @@ import static scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
  * <ul>
  *   <li>A summary of the scenario aftershock and the simulation configuration
  *       (start time, duration, number of simulations).</li>
- *   <li>Per-catalog metadata for every simulated catalog that contains the
- *       scenario rupture, including the rupture's absolute origin time, the
- *       offset from the simulation start, and the simulation start/end times.</li>
+ *   <li>An occurrence timeline plot showing when the scenario rupture (and other
+ *       M&ge;2.5 ruptures) occurred across all matching catalogs.</li>
+ *   <li>A per-catalog metadata table with origin time, catalog size, max magnitude,
+ *       M&ge;5/6/7 rupture counts, parent-section rupture count, and largest
+ *       rupture for each matching catalog.</li>
+ *   <li>A histogram of when the primary aftershock occurred across the matching
+ *       catalogs, with cumulative occurrence counts within 1 hour, 1 day, 1 week,
+ *       1 month, and 1 year (thresholds exceeding the simulation duration are
+ *       omitted).</li>
  *   <li>Map plots of the matching catalogs.</li>
  *   <li>How often ruptures on combinations of the Hollywood and Raymond parent
  *       sections were triggered across the simulation.</li>
@@ -70,6 +77,8 @@ public class ETAS_BinaryAnalysis {
     // --- CLI / file inputs -----------------------------------------------
     private final File configFile;
     private final Path outputDir;
+    private final String fssPath;
+    private final String binPath;
 
     // --- Parsed inputs ---------------------------------------------------
     private final BinaryParser parser;
@@ -104,6 +113,8 @@ public class ETAS_BinaryAnalysis {
         this.configFile = new File(cmd.getOptionValue("config"));
         this.config = ETAS_Config.readJSON(configFile);
         this.outputDir = Path.of(cmd.getOptionValue("out"));
+        this.fssPath = cmd.getOptionValue("fss");
+        this.binPath = cmd.getOptionValue("bin");
 
         // Build the rupture searcher for the parent-section tally
         final List<String> parentSections = List.of("Hollywood", "Raymond");
@@ -115,25 +126,47 @@ public class ETAS_BinaryAnalysis {
         // Build the catalog map plotter; we only feed it the catalogs which
         // contain the primary aftershock (collected by MarkdownGenerator).
         ETAS_Launcher launcher = new ETAS_Launcher(config, false);
-        ETAS_SimulatedCatalogPlot plot = new ETAS_SimulatedCatalogPlot(
+        ETAS_SimulatedCatalogPlot catalogMapPlot = new ETAS_SimulatedCatalogPlot(
                 config, launcher, "sim_catalog_map", 0d, 25d, 50d, 75d, 100d);
 
         // Generate report for the scenario aftershock
         int aftershock = Integer.parseInt(cmd.getOptionValue("rup"));
+        double mag = fss.getRupSet().getMagForRup(aftershock);
 
-        try (MarkdownGenerator markdownGen = new MarkdownGenerator()) {
+        // Occurrence-timeline plot for the scenario rupture across all matching catalogs.
+        ETAS_RuptureOccurrenceTimeline timelinePlot =
+                new ETAS_RuptureOccurrenceTimeline(config, launcher, aftershock, mag);
+
+        // Histogram of when the primary aftershock occurred across all matching
+        // catalogs, placed in the report under Catalog Matches.
+        ETAS_PrimaryAftershockTimingPlot timingPlot =
+                new ETAS_PrimaryAftershockTimingPlot(config, launcher, aftershock, mag);
+
+        try (MarkdownGenerator markdownGen = new MarkdownGenerator(fssPath, binPath)) {
             System.out.println("Building ETAS Binary analysis markdown report...");
 
             markdownGen.generateReport(aftershock);
             System.out.println("Primary aftershock reported");
 
+            // Build and embed the primary-aftershock timing histogram over the
+            // matching catalogs, directly under the Catalog Matches section.
+            parser.catalogMatches.get(aftershock).forEach(catalog -> timingPlot.processCatalog(catalog, fss));
+            timingPlot.finalize(markdownGen.plotsDir.toFile(), launcher.checkOutFSS());
+            markdownGen.addTimingHistogram(timingPlot);
+
             // Plot catalogs which contain the primary aftershock. These were
             // collected inside MarkdownGenerator::generateReport.
-            parser.catalogMatches.get(aftershock).forEach(catalog -> plot.processCatalog(catalog, fss));
-            plot.finalize(markdownGen.plotsDir.toFile(), launcher.checkOutFSS());
+            parser.catalogMatches.get(aftershock).forEach(catalog -> catalogMapPlot.processCatalog(catalog, fss));
+            catalogMapPlot.finalize(markdownGen.plotsDir.toFile(), launcher.checkOutFSS());
 
             // Embed plots from plotsDir into the markdown report
-            markdownGen.addPlots(plot);
+            markdownGen.addCatalogMapPlots(catalogMapPlot);
+
+            // Build the rupture-occurrence timeline over the same matching catalogs
+            // and splice its (clickable) image into the report's timeline section.
+            parser.catalogMatches.get(aftershock).forEach(catalog -> timelinePlot.processCatalog(catalog, fss));
+            timelinePlot.finalize(markdownGen.plotsDir.toFile(), launcher.checkOutFSS());
+            markdownGen.addTimeline(timelinePlot);
 
             // How often any rupture (not just our exact scenario) was triggered
             // on the Hollywood fault, Raymond fault, or both together.
@@ -155,6 +188,9 @@ public class ETAS_BinaryAnalysis {
                         "%s\n\nFound %d aftershocks over these parent sections across %d simulated catalogs (%.2f%%).",
                         header, aftershocksCount, totalCount, 100. * aftershocksCount / totalCount));
             }
+
+            // Append the JSON config file contents
+            markdownGen.addConfigFileSection();
         }
     }
 
@@ -314,9 +350,8 @@ public class ETAS_BinaryAnalysis {
          * that FSS index. The result is stored in {@link #aftershocksCount}.
          *
          * @param fssIdxs set of FSS rupture indices to count
-         * @throws IOException if the binary cannot be read
          */
-        public void countAftershocks(Set<Integer> fssIdxs) throws IOException {
+        public void countAftershocks(Set<Integer> fssIdxs) {
             fssIdxs.forEach(id -> aftershocksCount.put(id, 0));
 
             for (ETAS_Catalog cat : getBinaryCatalogsIterable(binFile, MIN_MAG)) {
@@ -396,18 +431,27 @@ public class ETAS_BinaryAnalysis {
         private final Path mdFile;
         public final Path plotsDir;
 
+        // --- Echoed input paths --------------------------------------------
+        private final String fssPath;
+        private final String binPath;
+
         // --- In-memory buffer ----------------------------------------------
         private final List<String> lines = new ArrayList<>();
 
         /**
          * Creates a new markdown report and {@code plots/} directory under
          * {@code outputDir}. Existing report files and plot directories are
-         * deleted and recreated.
+         * deleted and recreated. The supplied input file paths are echoed in
+         * the {@code Simulation Configuration} section of the report.
          *
+         * @param fssPath path of the FSS ZIP (echoed in the report)
+         * @param binPath path of the ETAS results binary (echoed in the report)
          * @throws IOException if the report file or plots directory cannot
          *         be created
          */
-        MarkdownGenerator() throws IOException {
+        MarkdownGenerator(String fssPath, String binPath) throws IOException {
+            this.fssPath = fssPath;
+            this.binPath = binPath;
             this.mdFile = outputDir.resolve("report.md");
             PathUtils.createParentDirectories(mdFile);
             Files.deleteIfExists(mdFile);
@@ -433,41 +477,74 @@ public class ETAS_BinaryAnalysis {
 
         /**
          * Generates the top-of-report summary and the catalog-matches block
-         * for the given FSS index. Writes the report title, simulation
-         * configuration summary, scenario aftershock statistics, and a
-         * sub-section for every catalog matching the scenario.
+         * for the given FSS index. Writes the report title, the simulation
+         * configuration (with echoed input file paths), the scenario aftershock
+         * statistics expressed as verbose probabilities over both the full and
+         * the M&ge;{@value #MIN_MAG} "significant" simulation pools, an
+         * occurrence-timeline section (whose image is spliced in later by
+         * {@link #addTimeline}), and a per-catalog metadata table.
          *
          * @param fssIndex FSS index of the aftershock rupture to summarize
          * @throws IOException if the binary cannot be re-read to gather
          *         per-catalog metadata
          */
         public void generateReport(int fssIndex) throws IOException {
+            FaultSystemRupSet rupSet = fss.getRupSet();
+            double mag = rupSet.getMagForRup(fssIndex);
+
             writeln("# ETAS Binary Analysis Report");
+
+            // --- Simulation Configuration --------------------------------------
             writeln("## Simulation Configuration");
             writeln(String.format("- Simulation Start Time: %s",
                     getDate(config.getSimulationStartTimeMillis())));
             writeln(String.format("- Simulation Duration: %s",
                     formatDuration((long) (config.getDuration() * 365.25d * 24d * 3600d * 1000d))));
             writeln(String.format("- Number of Simulations: %d", config.getNumSimulations()));
+            writeln("- ETAS Config JSON: " + configFile.getAbsolutePath());
+            writeln("- Fault System Solution ZIP: " + fssPath);
+            writeln("- Binary Results: " + binPath);
 
+            // --- Primary Aftershock --------------------------------------------
             writeln("## Primary Aftershock");
-            FaultSystemRupSet rupSet = fss.getRupSet();
-            double mag = rupSet.getMagForRup(fssIndex);
-            writeln(String.format("Primary Aftershock (FSS=%d), M%.4f", fssIndex, mag));
+            writeln("- FSS Index: " + fssIndex);
+            writeln(String.format("- Magnitude: M%.4f", mag));
+            writeln("- Significance threshold for simulation count: M" + MIN_MAG);
+
             int totalCount = parser.getAllCatalogsCount();
             int sigCount = parser.getSignificantCatalogsCount();
             parser.countAftershocks(Set.of(fssIndex));
-
             int aftershocksCount = parser.aftershocksCount.get(fssIndex);
-            writeln("Total number of simulations: " + totalCount);
-            writeln("Total number of simulations M≥"+MIN_MAG+": " + sigCount);
-            writeln("Total number of simulations with aftershock occurrence: " + aftershocksCount);
-            writeln(String.format("Total: %.2f%%, Sig: %.2f%%", 100. * aftershocksCount/totalCount, 100. * aftershocksCount/sigCount));
+            double probAll = (double) aftershocksCount / totalCount;
+            double probSig = sigCount > 0 ? (double) aftershocksCount / sigCount : 0d;
+
+            writeln("- Total number of simulations: " + totalCount);
+            writeln("- Number of M≥" + MIN_MAG + " simulations: " + sigCount);
+            writeln("- Number of simulations with this aftershock: " + aftershocksCount);
+            writeln("- Probability over all " + totalCount + " simulations: "
+                    + ETAS_AbstractPlot.getProbStr(probAll, true));
+            writeln("- Probability over " + sigCount + " significant (M≥" + MIN_MAG + ") simulations: "
+                    + ETAS_AbstractPlot.getProbStr(probSig, true));
+            writeln("A \"significant\" simulation is one that produced at least one M≥" + MIN_MAG
+                    + " rupture anywhere in the simulation domain; it is the appropriate denominator "
+                    + "when comparing against observed aftershock statistics, since simulations that "
+                    + "produced no detectable seismicity cannot meaningfully count toward the probability "
+                    + "of a specific rupture.");
+            writeln("Both probabilities are reported because the raw-binned probability (over all N "
+                    + "simulations) is the more conservative (lower) number, while the conditional "
+                    + "probability over significant simulations is what most seismic-hazard analyses quote.");
+
+            // --- Occurrence Timeline (image spliced in by addTimeline) ----------
+            writeln("### Occurrence Timeline");
+            lines.add("<!--TIMELINE_SLOT-->");
+
+            // --- Catalog Matches -----------------------------------------------
             parser.collectCatalogsMatching(fssIndex);
             writeln("## Catalog Matches");
-            for (ETAS_Catalog catalog : parser.catalogMatches.get(fssIndex)) {
-                writeln(getCatalogMeta(catalog, fssIndex));
-            }
+            int numMatching = parser.catalogMatches.get(fssIndex).size();
+//            writeln("Per-catalog metadata for each of the " + numMatching + " matching catalogs:");
+            writeln("The following table summarizes all " + numMatching + " catalogs where the primary aftershock occurred.");
+            lines.addAll(buildCatalogMetadataTable(fssIndex));
         }
 
         /**
@@ -476,14 +553,22 @@ public class ETAS_BinaryAnalysis {
          * {@code ## Catalog Map Plots} section, followed by a footer line
          * stating how many catalogs were plotted.
          *
+         * <p>Each bare {@code ![Map](...png)} cell emitted by the plot is
+         * post-processed into a clickable {@code [![Map](...png)](...png)}
+         * link so the thumbnail opens the full-resolution PNG. This wrapping
+         * is applied here rather than in {@code ETAS_SimulatedCatalogPlot} so
+         * that the plot's own markdown output (reused by
+         * {@link SimulationMarkdownGenerator} for the HTML report) stays
+         * stable.</p>
+         *
          * @param plot the plot whose markdown should be embedded
          */
-        public void addPlots(ETAS_AbstractPlot plot) {
+        public void addCatalogMapPlots(ETAS_AbstractPlot plot) {
             try {
                 writeln("## Catalog Map Plots");
                 List<String> plotLines = plot.generateMarkdown(plotsDir.toString(), "###", "");
                 for (String line : plotLines) {
-                    lines.add(line);
+                    lines.add(linkifyImage(line));
                 }
                 lines.add("");
                 lines.add("The above plots only consider the " + plot.getNumProcessed() + " catalogs which matched the scenario description.");
@@ -492,6 +577,78 @@ public class ETAS_BinaryAnalysis {
                 System.err.println("Failed to write plots into report. Check " + plotsDir + " for plots.");
                 throw new RuntimeException(e);
             }
+        }
+
+        /**
+         * Splices the (already-finalized) timeline plot's markdown image into
+         * the report at the {@code <!--TIMELINE_SLOT-->} placeholder left by
+         * {@link #generateReport}. The placeholder sits directly under the
+         * {@code ### Occurrence Timeline} heading, so the plot's own heading
+         * and top-link lines are discarded and only the prose + clickable
+         * image are inserted.
+         *
+         * @param plot the finalized timeline plot to embed
+         * @throws IOException if the plot markdown cannot be generated
+         */
+        public void addTimeline(ETAS_RuptureOccurrenceTimeline plot) throws IOException {
+            int slot = lines.indexOf("<!--TIMELINE_SLOT-->");
+            if (slot < 0)
+                return;
+            // generateMarkdown returns: [heading, topLink, "", prose, "", image, ""]
+            List<String> md = plot.generateMarkdown(plotsDir.toString(), "", "");
+            List<String> replacement = new ArrayList<>();
+            for (int i = 2; i < md.size(); i++) {
+                String l = md.get(i);
+                if (l.isEmpty() && replacement.isEmpty())
+                    continue; // drop leading blanks
+                replacement.add(l);
+            }
+            lines.remove(slot);
+            lines.addAll(slot, replacement);
+        }
+
+        /**
+         * Embeds the (already-finalized) primary-aftershock timing plot into
+         * the report as a {@code ## Primary Aftershock Timing} section: a
+         * histogram of when the primary aftershock occurred across the matching
+         * catalogs, followed by a cumulative occurrence-count summary over
+         * fixed time thresholds. The plot's bare image is wrapped in a
+         * clickable link via {@link #linkifyImage}, mirroring {@link #addCatalogMapPlots}.
+         *
+         * @param plot the finalized timing plot to embed
+         * @throws IOException if the plot markdown cannot be generated
+         */
+        public void addTimingHistogram(ETAS_PrimaryAftershockTimingPlot plot) throws IOException {
+            List<String> md = plot.generateMarkdown(plotsDir.toString(), "##", "");
+            for (String line : md)
+                lines.add(linkifyImage(line));
+            lines.add("");
+        }
+
+        /**
+         * Wraps any bare markdown image {@code ![alt](path)} in a clickable
+         * link of the form {@code [![alt](path)](path)}, leaving images that
+         * are already wrapped in a link untouched. Used by {@link #addCatalogMapPlots}
+         * to make the catalog map thumbnails clickable without modifying
+         * {@code ETAS_SimulatedCatalogPlot}.
+         *
+         * @param line a single line of markdown (may be a table row)
+         * @return the line with any bare images wrapped in clickable links
+         */
+        private static String linkifyImage(String line) {
+            // (?<!\[) avoids re-wrapping an image that is already inside a link.
+            Pattern img = Pattern.compile("(?<!\\[)!\\[[^\\]]*\\]\\([^)]+\\)");
+            Matcher m = img.matcher(line);
+            StringBuffer sb = new StringBuffer();
+            while (m.find()) {
+                String image = m.group();
+                // image = ![alt](path); extract the path between the last (...)
+                int open = image.lastIndexOf('(');
+                String path = image.substring(open + 1, image.length() - 1);
+                m.appendReplacement(sb, Matcher.quoteReplacement("[" + image + "](" + path + ")"));
+            }
+            m.appendTail(sb);
+            return sb.toString();
         }
 
         /**
@@ -515,38 +672,241 @@ public class ETAS_BinaryAnalysis {
         }
 
         /**
-         * Builds the markdown representation of the metadata for one ETAS
-         * catalog that contains the scenario aftershock, including the
-         * rupture's absolute origin time, the offset (positive or negative)
-         * between the rupture origin and the simulation start, and the
-         * simulation start/end times.
+         * Builds the per-catalog metadata table for every catalog that
+         * contains the scenario aftershock. One row per matching catalog,
+         * sorted chronologically by the scenario rupture's origin time, with
+         * columns for catalog index, time of occurrence, the offset from the
+         * simulation start, catalog size, maximum magnitude, M&ge;5/6/7
+         * counts, the count of ruptures on each parent-section combination,
+         * and the largest rupture (FSS index).
          *
-         * @param catalog the catalog to describe
+         * <p>To keep the report readable when a great many catalogs match,
+         * the table is capped at the first 200 rows; a note pointing to the
+         * timeline plot is appended when truncation occurs.</p>
+         *
          * @param fssIndex FSS index of the scenario aftershock
-         * @return a multi-line markdown fragment beginning with a level-3
-         *         catalog heading
+         * @return the markdown table lines (plus an optional truncation note)
          */
-        private String getCatalogMeta(ETAS_Catalog catalog, int fssIndex) {
-            StringBuilder output = new StringBuilder("### Catalog Index: ");
-            ETAS_SimulationMetadata meta = catalog.getSimulationMetadata();
-            output.append(meta.catalogIndex);
-            output.append("\n");
+        private List<String> buildCatalogMetadataTable(int fssIndex) {
+            // Pre-compute compact labels (e.g. "H", "R", "H+R") and the candidate
+            // FSS rupture-index sets for each parent-section combination. The full
+            // combination name is retained alongside each label so the table can
+            // carry a legend mapping labels back to parent-section names.
+            List<String> comboHeaders = rupSearch.getIntersectionHeaders();
+            List<List<Integer>> comboRupSets = rupSearch.getCandidateRuptureSets();
+            List<String> comboLabels = new ArrayList<>();
+            List<String> comboNames = new ArrayList<>();
+            for (String header : comboHeaders) {
+                // header e.g. "## Ruptures on Hollywood, Raymond faults"
+                String body = header.substring("## Ruptures on ".length());
+                if (body.endsWith(" faults"))
+                    body = body.substring(0, body.length() - " faults".length());
+                else if (body.endsWith(" fault"))
+                    body = body.substring(0, body.length() - " fault".length());
+                StringBuilder label = new StringBuilder();
+                for (String name : body.split(", ")) {
+                    if (!label.isEmpty())
+                        label.append("+");
+                    label.append(name.charAt(0));
+                }
+                comboLabels.add(label.toString());
+                comboNames.add(body);
+            }
 
-            long originMs = parser.rupMatches
-                    .get(meta.catalogIndex)
-                    .get(fssIndex)
-                    .getOriginTime();
             long simStartMs = config.getSimulationStartTimeMillis();
-            long offsetMs = originMs - simStartMs;
 
-            output.append("Rupture Origin Time: ").append(getDate(originMs)).append("\n\n");
-            output.append("Time After Simulation Start: ").append(formatDuration(offsetMs)).append("\n\n");
-            output.append("Simulation Start Time: ").append(getDate(simStartMs)).append("\n\n");
-            //output.append("Simulation End Time: ").append(getDate(meta.simulationEndTime)).append("\n\n");
-            long durMs = (long) (config.getDuration() * 365.25d * 24d * 3600d * 1000d);
-            output.append("Simulation End Time: ").append(getDate(simStartMs + durMs)).append("\n\n");
-            output.append("\n");
-            return output.toString();
+            // Accumulators for the brief column summary (over ALL matching
+            // catalogs, not just the truncated rows shown in the table).
+            long minOriginMs = Long.MAX_VALUE, maxOriginMs = Long.MIN_VALUE;
+            long minDeltaMs = Long.MAX_VALUE, maxDeltaMs = Long.MIN_VALUE;
+            int minSize = Integer.MAX_VALUE, maxSize = Integer.MIN_VALUE;
+            long sumSize = 0;
+
+            // One row per matching catalog, carrying the cells + sort key.
+            class Row {
+                final long originMs;
+                final String[] cells;
+                Row(long originMs, String[] cells) {
+                    this.originMs = originMs;
+                    this.cells = cells;
+                }
+            }
+            List<Row> rows = new ArrayList<>();
+            for (ETAS_Catalog catalog : parser.catalogMatches.get(fssIndex)) {
+                ETAS_SimulationMetadata meta = catalog.getSimulationMetadata();
+                long originMs = parser.rupMatches.get(meta.catalogIndex).get(fssIndex).getOriginTime();
+
+                int size = 0;
+                double maxMag = Double.NaN;
+                ETAS_EqkRupture largestRup = null;
+                int m5 = 0, m6 = 0, m7 = 0;
+                Set<Integer> fssIdxsInCat = new HashSet<>();
+                for (ETAS_EqkRupture rup : catalog) {
+                    size++;
+                    double m = rup.getMag();
+                    if (Double.isNaN(maxMag) || m > maxMag) {
+                        maxMag = m;
+                        largestRup = rup;
+                    }
+                    if (m >= 5.0)
+                        m5++;
+                    if (m >= 6.0)
+                        m6++;
+                    if (m >= 7.0)
+                        m7++;
+                    int idx = rup.getFSSIndex();
+                    if (idx >= 0)
+                        fssIdxsInCat.add(idx);
+                }
+
+                // Parent-section ruptures: "<label>:<count>" per non-empty combo.
+                StringBuilder psb = new StringBuilder();
+                for (int c = 0; c < comboRupSets.size(); c++) {
+                    int count = 0;
+                    for (int idx : comboRupSets.get(c))
+                        if (fssIdxsInCat.contains(idx))
+                            count++;
+                    if (count > 0) {
+                        if (!psb.isEmpty())
+                            psb.append(", ");
+                        psb.append(comboLabels.get(c)).append(":").append(count);
+                    }
+                }
+                String parentSectionCell = psb.isEmpty() ? "none" : psb.toString();
+
+                String largestCell;
+                if (largestRup == null)
+                    largestCell = "—";
+                else
+                    largestCell = String.valueOf(largestRup.getFSSIndex());
+
+                String[] cells = {
+                        String.valueOf(meta.catalogIndex),
+                        getDate(originMs),
+                        formatDuration(originMs - simStartMs),
+                        String.valueOf(size),
+                        String.format("M%.2f", maxMag),
+                        String.valueOf(m5),
+                        String.valueOf(m6),
+                        String.valueOf(m7),
+                        parentSectionCell,
+                        largestCell
+                };
+                rows.add(new Row(originMs, cells));
+
+                // Update the column-summary accumulators.
+                if (originMs < minOriginMs)
+                    minOriginMs = originMs;
+                if (originMs > maxOriginMs)
+                    maxOriginMs = originMs;
+                long delta = originMs - simStartMs;
+                if (delta < minDeltaMs)
+                    minDeltaMs = delta;
+                if (delta > maxDeltaMs)
+                    maxDeltaMs = delta;
+                if (size < minSize)
+                    minSize = size;
+                if (size > maxSize)
+                    maxSize = size;
+                sumSize += size;
+            }
+
+            rows.sort(Comparator.comparingLong(r -> r.originMs));
+            int total = rows.size();
+            boolean truncated = false;
+            if (rows.size() > 200) {
+                rows = new ArrayList<>(rows.subList(0, 200));
+                truncated = true;
+            }
+
+            MarkdownUtils.TableBuilder table = MarkdownUtils.tableBuilder();
+            table.initNewLine();
+            table.addColumn("Cat #");
+            table.addColumn("Time of Occurrence");
+            table.addColumn("Δt after sim start");
+            table.addColumn("Cat size");
+            table.addColumn("Max M");
+            table.addColumn("# M≥5");
+            table.addColumn("# M≥6");
+            table.addColumn("# M≥7");
+            table.addColumn("Parent-section ruptures");
+            table.addColumn("Largest rupture (FSS)");
+            table.finalizeLine();
+            for (Row row : rows) {
+                table.initNewLine();
+                for (String cell : row.cells)
+                    table.addColumn(cell);
+                table.finalizeLine();
+            }
+
+            // Legend explaining the parent-section ruptures column: what the count
+            // represents, how each compact label maps back to its parent section(s),
+            // and that the counts overlap (they are not a disjoint partition).
+            // Placed above the table so the codes are defined before the reader hits
+            // the `label:count` cells.
+            StringBuilder legend = new StringBuilder("Parent-section ruptures — for each matching "
+                    + "catalog, the number of distinct ruptures in that catalog whose rupture surface "
+                    + "intersects the listed parent section(s). Each entry is `label:count`; labels are "
+                    + "compact codes (the first letter of each parent section, joined by `+`): ");
+            for (int c = 0; c < comboLabels.size(); c++) {
+                if (c > 0)
+                    legend.append(", ");
+                legend.append("`").append(comboLabels.get(c)).append("` = ").append(comboNames.get(c));
+            }
+            legend.append(". These counts overlap and are not a partition: a rupture whose surface "
+                    + "spans multiple parent sections is counted under every combination it intersects, "
+                    + "so a multi-section rupture appears in several entries and the counts should not "
+                    + "be summed");
+            // Append a concrete example derived from the actual labels (the first
+            // two single-section labels and their pairwise combination) so it stays
+            // correct if the parent-section list ever changes.
+            String firstSingle = null, secondSingle = null;
+            for (String lbl : comboLabels) {
+                if (!lbl.contains("+")) {
+                    if (firstSingle == null)
+                        firstSingle = lbl;
+                    else if (secondSingle == null) {
+                        secondSingle = lbl;
+                        break;
+                    }
+                }
+            }
+            if (firstSingle != null && secondSingle != null
+                    && comboLabels.contains(firstSingle + "+" + secondSingle)) {
+                legend.append(" (e.g. a rupture crossing both `").append(firstSingle).append("` and `")
+                        .append(secondSingle).append("` also appears under `")
+                        .append(firstSingle).append("+").append(secondSingle).append("`)");
+            }
+            legend.append(".");
+
+            List<String> out = new ArrayList<>();
+            out.add(legend.toString());
+            out.add("");
+
+            // Brief summary of the time-of-occurrence, Δt, and catalog-size
+            // columns, computed over every matching catalog (not just the rows
+            // shown). Omitted when nothing matched.
+            if (total > 0) {
+                double meanSize = (double) sumSize / total;
+                String summary = String.format(
+                        "Across all %d matching catalogs, the scenario rupture occurred between %s "
+                                + "and %s (Δt after sim start: %s–%s); catalog size ranged from %d to %d "
+                                + "ruptures (mean %.1f).",
+                        total, getDate(minOriginMs), getDate(maxOriginMs),
+                        formatDuration(minDeltaMs), formatDuration(maxDeltaMs),
+                        minSize, maxSize, meanSize);
+                out.add(summary);
+                out.add("");
+            }
+
+            out.addAll(table.build());
+
+            if (truncated) {
+                out.add("");
+                out.add("*(showing first 200 of " + total
+                        + " matching catalogs; see the timeline plot for the full distribution)*");
+            }
+            return out;
         }
 
         /**
@@ -613,7 +973,7 @@ public class ETAS_BinaryAnalysis {
             List<String> toc = new ArrayList<>();
             toc.add("## Table Of Contents");
             toc.add("");
-            toc.addAll(MarkdownUtils.buildTOC(headers, 2, 2));
+            toc.addAll(MarkdownUtils.buildTOC(headers, 2, 3));
             toc.add("");
 
             lines.addAll(insertAt, toc);

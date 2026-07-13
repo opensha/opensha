@@ -286,15 +286,15 @@ public abstract class ETAS_AbstractPlot {
 	protected static DecimalFormat expProbDF = new DecimalFormat("0.00E0");
 	protected static DecimalFormat percentProbDF = new DecimalFormat("0.00%");
 	
-	protected static String getProbStr(double prob) {
+	public static String getProbStr(double prob) {
 		return getProbStr(prob, false);
 	}
-	
-	protected static String getProbStr(double prob, boolean includePercent) {
+
+	public static String getProbStr(double prob, boolean includePercent) {
 		return getProbStr(prob, includePercent, -1);
 	}
-	
-	protected static String getProbStr(double prob, boolean includePercent, int numForConf) {
+
+	public static String getProbStr(double prob, boolean includePercent, int numForConf) {
 		String ret;
 		if (prob < 0.01 && prob > 0)
 			ret = expProbDF.format(prob);
