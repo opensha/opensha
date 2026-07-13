@@ -1895,7 +1895,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					String shortName = binObj.get("shortName").getAsString();
 					String filePrefix = binObj.get("filePrefix").getAsString();
 					double weight = binObj.get("weight").getAsDouble();
-					System.out.println("Deserializing bin "+name+" with weight="+weight+"; this="+this.toString());
+//					System.out.println("Deserializing bin "+name+" with weight="+weight+"; this="+this.toString());
 					levelNodes.add(build(new int[] {l,i}, weight, name, shortName, filePrefix));
 				}
 				

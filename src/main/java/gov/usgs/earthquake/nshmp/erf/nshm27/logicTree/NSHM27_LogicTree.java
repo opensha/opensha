@@ -16,6 +16,7 @@ import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.SamplingMethod;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeBranchOrderIteration;
 import org.opensha.commons.util.RandomSeedUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -341,6 +342,20 @@ public class NSHM27_LogicTree {
 		LogicTree<LogicTreeNode> crustalTree = buildLogicTree(seisReg,
 				TectonicRegionType.ACTIVE_SHALLOW, numSamples, rand.nextLong(), samplingMethod, false);
 		
+		if (samplingMethod == SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE) {
+			// sample the tree combinations as well
+			PairwiseLogicTreeBranchOrderIteration<LogicTreeNode> treeOptimizer = new PairwiseLogicTreeBranchOrderIteration<>(
+					List.of(commonTree, interfaceTree, intraslabTree, crustalTree));
+			int nIters = Integer.max(10000, numSamples*100);
+			treeOptimizer.iterate(nIters, rand, true);
+			List<LogicTree<LogicTreeNode>> optimizedTrees = treeOptimizer.getReorderedTrees();
+			Preconditions.checkState(optimizedTrees.size() == 4);
+			commonTree = optimizedTrees.get(0);
+			interfaceTree = optimizedTrees.get(1);
+			intraslabTree = optimizedTrees.get(2);
+			crustalTree = optimizedTrees.get(3);
+		}
+		
 		LogicTree<LogicTreeNode> tree = buildMultiRegimeTree(seisReg, commonTree, interfaceTree, intraslabTree, crustalTree);
 		tree.setSamplingParameters(seed, 0, samplingMethod);
 		return tree;
@@ -396,16 +411,22 @@ public class NSHM27_LogicTree {
 //		buildLogicTree(NSHM27_SeismicityRegions.AMSAM, TectonicRegionType.SUBDUCTION_INTERFACE, 2000, 123456789l,
 //				SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE);
 //		System.exit(0);
-		SamplingMethod samplingMethod = SamplingMethod.MONTE_CARLO;
+//		int numSamples = 100;
+		int numSamples = 1000;
+//		SamplingMethod samplingMethod = SamplingMethod.MONTE_CARLO;
+		SamplingMethod samplingMethod = SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE;
 		TectonicRegionType[] trts = {TectonicRegionType.SUBDUCTION_INTERFACE, TectonicRegionType.SUBDUCTION_SLAB, TectonicRegionType.ACTIVE_SHALLOW};
-		for (NSHM27_SeismicityRegions seisReg : NSHM27_SeismicityRegions.values()) {
+//		NSHM27_SeismicityRegions[] seisRegs = NSHM27_SeismicityRegions.values();
+		NSHM27_SeismicityRegions[] seisRegs = {NSHM27_SeismicityRegions.GNMI};
+//		NSHM27_SeismicityRegions[] seisRegs = {NSHM27_SeismicityRegions.AMSAM};
+		for (NSHM27_SeismicityRegions seisReg : seisRegs) {
 			List<LogicTree<LogicTreeNode>> trees = new ArrayList<>(3);
 			for (TectonicRegionType trt : trts) {
 				System.out.println("Building for "+seisReg+", "+trt);
 				System.out.println("\tRegular:\t"+buildDefault(seisReg, trt, false));
 				System.out.println("\tSampled:\t"+buildDefault(seisReg, trt, true));
 				System.out.println("\tBuilding sampled tree");
-				LogicTree<LogicTreeNode> tree = buildLogicTree(seisReg, trt, 100, true, samplingMethod);
+				LogicTree<LogicTreeNode> tree = buildLogicTree(seisReg, trt, numSamples, true, samplingMethod);
 				trees.add(tree);
 				File treeFile = new File("/tmp/nshm27_tree_test_"+seisReg.name()+"_"+trt.name()+".json");
 				tree.write(treeFile);
@@ -425,7 +446,7 @@ public class NSHM27_LogicTree {
 			}
 			System.out.println("\tBuilding multi-regime");
 //			LogicTree<LogicTreeNode> multiTree = buildMultiRegimeTree(seisReg, trees.get(0), trees.get(1), trees.get(2));
-			LogicTree<LogicTreeNode> multiTree = buildMultiRegimeTree(seisReg, 100, true, samplingMethod);
+			LogicTree<LogicTreeNode> multiTree = buildMultiRegimeTree(seisReg, numSamples, true, samplingMethod);
 			for (LogicTreeLevel<? extends LogicTreeNode> level : multiTree.getLevels()) {
 				System.out.println("\tMulti-regime level "+level.getName());
 				System.out.println("\t\tAffected: "+level.getAffected());

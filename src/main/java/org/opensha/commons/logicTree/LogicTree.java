@@ -27,6 +27,7 @@ import org.opensha.commons.logicTree.LogicTreeLevel.IndexedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.SamplingMethod;
 import org.opensha.commons.logicTree.LogicTreeNode.FixedWeightNode;
+import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeNodeSwapIteration;
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 
 import com.google.common.base.Preconditions;
@@ -190,6 +191,27 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		this.randomSeed = randomSeed;
 		this.origNumBranches = origNumBranches;
 		this.samplingMethod = samplingMethod;
+	}
+	
+	/**
+	 * @return the random seed used to sample this tree if it was sampled, or 0 otherwise
+	 */
+	public long getSamplingRandomSeed() {
+		return randomSeed;
+	}
+	
+	/**
+	 * @return the original branch count before random sampling if it was sampled, or -1 otherwise
+	 */
+	public int getSamplingOrigNumBranches() {
+		return origNumBranches > 0 ? origNumBranches : -1;
+	}
+	
+	/**
+	 * @return the sampling method used if it was sampled, or null otherwise.
+	 */
+	public SamplingMethod getSamplingMethod() {
+		return samplingMethod;
 	}
 	
 	/**
@@ -742,7 +764,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			Preconditions.checkState(numSamples > 1, "Must have >1 samples for pairwise-iteration");
 			Preconditions.checkState(allFixedWeights,
 					"Cannot (yet) do pairwise-iteration on a logic tree with branch-dependent weighting");
-			LogicTreePairwiseLHSIteration<E> iteration = new LogicTreePairwiseLHSIteration<>(levels, branches, levelFixedWeights);
+			PairwiseLogicTreeNodeSwapIteration<E> iteration = new PairwiseLogicTreeNodeSwapIteration<>(levels, branches, levelFixedWeights);
 			int nIters = Integer.max(10000, numSamples*100);
 			iteration.iterate(nIters, r, true);
 		}
