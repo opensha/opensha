@@ -382,15 +382,15 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	
 	public EvenlyDiscretizedFunc getCondProbGainFunc(double duration, boolean extrapolate) {
 		EvenlyDiscretizedFunc func = getCondProbFunc(duration, extrapolate);
-		double poisProb = 1.0-Math.exp(-duration/mean);
-		func.scale(1.0/poisProb);
-		func.setName(NAME+" Conditional Probability Gain Function");
-		func.setInfo("Relative to Poisson probability of one or more events.\n"+adjustableParams.toString());
+//		double poisProb = 1.0-Math.exp(-duration/mean);
+//		func.scale(1.0/poisProb);
+//		func.setName(NAME+" Conditional Probability Gain Function");
+//		func.setInfo("Relative to Poisson probability of one or more events.\n"+adjustableParams.toString());
 
 		// This is for the U3 rate gains
-//		func.scale(mean/duration);
-//		func.setName(NAME+" Conditional Probability Gain Function");
-//		func.setInfo("Defined as cond prob divided by expected number (duration/mean="+(float)(duration/mean)+").\n"+adjustableParams.toString());
+		func.scale(mean/duration);
+		func.setName(NAME+" Conditional Probability Gain Function");
+		func.setInfo("Defined as cond prob divided by expected number (duration/mean="+(float)(duration/mean)+").\n"+adjustableParams.toString());
 		return func;
 	}
 	
@@ -412,6 +412,7 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 		}
 		validateTimeSinceLast(timeSinceLast);
 		validateDuration(duration);
+		ensureUpToDate(false);
 		boolean doInterp = this.interpolate;
 		int index1 = cdf.getClosestXIndex(timeSinceLast);
 		int index2 = cdf.getClosestXIndex(timeSinceLast+duration);
@@ -889,7 +890,12 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	public static double getPrecision() {
 		return NUMERICAL_PRECISION;
 	}
-
-
+	
+	public double[] getRandomSamples(int numSamples) {
+		double[] randSamplesArray = new double[numSamples];
+		for(int i=0;i<numSamples;i++)
+			randSamplesArray[i] = getCDF().getFirstInterpolatedX(Math.random());
+		return randSamplesArray;
+	}
 }
 

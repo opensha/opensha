@@ -617,34 +617,6 @@ public class ERF_Calculator {
 		}
 	}
 	
-	public static double calcParticipationProbForSect(BaseFaultSystemSolutionERF erf, double minMag, int sectionIndex) {
-		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
-		
-		HashSet<Integer> rupIndexes = new HashSet<Integer>(rupSet.getRupturesForSection(sectionIndex));
-		
-		List<Double> probs = Lists.newArrayList();
-
-		for(int s=0; s<erf.getNumFaultSystemSources();s++) {
-			int fssRupIndex = erf.getFltSysRupIndexForSource(s);
-			if (!rupIndexes.contains(fssRupIndex))
-				continue;
-			for (ProbEqkRupture rup : erf.getSource(s)) {
-				if (rup.getMag() >= minMag)
-					probs.add(rup.getProbability());
-			}
-		}
-		return calcSummedProbs(probs);
-	}
-	
-	public static double calcSummedProbs(List<Double> probs) {
-		double totOneMinus = 1;
-		for (double prob : probs) {
-			totOneMinus *= (1-prob);
-		}
-		double totProb = 1 - totOneMinus;
-		
-		return totProb;
-	}
 
 
 

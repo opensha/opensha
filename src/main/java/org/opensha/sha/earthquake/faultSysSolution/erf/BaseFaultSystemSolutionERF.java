@@ -802,7 +802,6 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		ProbEqkSource src;
 		if (rupMFD == null || rupMFD.size() < 2) {
 			// simple case, single rupture
-			
 			double annualRate = rateGain*longTermRateOfFltSysRupInERF[fltSystRupIndex];
 			
 			if (proxyRups) {

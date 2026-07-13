@@ -579,11 +579,15 @@ public class ProbabilityModelsCalc {
 					if(normTimeSinceYears*condRecurIntWhereUnknown>=histOpenInterval && relProbForTimeSinceLast>1e-15) {
 						double aveNormTS = (normTimeSinceYears*areaWithOutDateOfLast + aveNormTimeSinceLastEventWhereKnown*totRupAreaWithDateOfLast)/totRupArea;
 						double condProbTemp = computeCondProbFast(1.0, aveNormTS, durationYears/aveCondRecurInterval, aperiodicity);
-						sumCondProbGain += (condProbTemp/expNum)*relProbForTimeSinceLast;
-						totWeight += relProbForTimeSinceLast;
-					
+						// this was added on 090626 to avoid NaNs with the new EqkProbDistCalc classes; this may change results slightly, but not much since relProbForTimeSinceLast values are very low
+						if(!Double.isNaN(condProbTemp)) {
+							sumCondProbGain += (condProbTemp/expNum)*relProbForTimeSinceLast;
+							totWeight += relProbForTimeSinceLast;
+						}
+					}
+			
 // MORE DEBUGGING						
-//if(fltSysRupIndex==513447) {
+//if(fltSysRupIndex==459) {
 //	if(normTimeSinceYears==0.11) {
 //		EqkProbDistCalc refProbDistCalc = getCachedRefProbDistCalc(aperiodicity);
 //		EvenlyDiscretizedFunc cdf = refProbDistCalc.getCDF();
@@ -642,7 +646,6 @@ public class ProbabilityModelsCalc {
 //			System.out.println(altProb1+"\t"+altProb2+"\t"+(altProb2/altProb1));
 //		}
 //}
-					}
 				}
 			}
 			else {	// average date of last event
@@ -681,8 +684,8 @@ public class ProbabilityModelsCalc {
 
 				Preconditions.checkState(probGain >= 0d, "Bad probGain=%s where some (but not all) sections have date of last.\n"
 						+ "\tsumCondProbGain=%s\ttotWeight=%s\n"
-						+ "\tdurationYears=%s\texpNum=%s\tfractAreaWith=%s",
-						probGain, sumCondProbGain, totWeight, durationYears, expNum, (float)fractAreaWithDateOfLast);
+						+ "\tdurationYears=%s\texpNum=%s\tfractAreaWith=%s\tfltSysRupIndex=%s",
+						probGain, sumCondProbGain, totWeight, durationYears, expNum, (float)fractAreaWithDateOfLast, fltSysRupIndex);
 			}
 			else {	// deal with case where there was no viable time since last (model implies it definitely should have occurred in hist open interval); use exactly historic open interval
 //List<FaultSectionPrefData> fltDataList = fltSysRupSet.getFaultSectionDataForRupture(fltSysRupIndex);

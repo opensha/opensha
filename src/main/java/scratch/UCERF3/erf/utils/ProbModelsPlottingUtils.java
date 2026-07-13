@@ -18,6 +18,8 @@ import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
+import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.data.xyz.EvenlyDiscrXYZ_DataSet;
 import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.GraphWindow;
@@ -183,6 +185,13 @@ public class ProbModelsPlottingUtils {
 		
 	}
 	
+	
+	/**
+	 * 
+	 * @param targetMFD
+	 * @param simMFD
+	 * @param outputDir
+	 */
 	public static void writeMFD_ComprisonPlot(IncrementalMagFreqDist targetMFD, IncrementalMagFreqDist simMFD, File outputDir) {
 		double maxX = Math.ceil(targetMFD.getMaxMagWithNonZeroRate()/0.5)*0.5;
 		double minX = Math.floor(targetMFD.getMinMagWithNonZeroRate()/0.5)*0.5;
@@ -209,76 +218,49 @@ public class ProbModelsPlottingUtils {
 		boolean popupWindow = false;
 		writeAndOrPlotFuncs(funcs,plotChars,plotName,xAxisLabel,yAxisLabel,xAxisRange,yAxisRange,
 				logX,logY,widthInches,heightInches, new File(outputDir,fileNamePrefix), popupWindow);
+
+		// make ratio plot
+		EvenlyDiscretizedFunc aveRatioMFD = new EvenlyDiscretizedFunc(targetMFD.getMinX(),targetMFD.getMaxX(),targetMFD.size());
+		EvenlyDiscretizedFunc targetRatioMFD = new EvenlyDiscretizedFunc(targetMFD.getMinX(),targetMFD.getMaxX(),targetMFD.size());
+		for(int m=0;m<targetMFD.size();m++) {
+			targetRatioMFD.set(m,targetMFD.getY(m)/targetMFD.getY(m));
+			aveRatioMFD.set(m,simMFD.getY(m)/targetMFD.getY(m));
+		}
+		funcs = new ArrayList<XY_DataSet>();
+		funcs.add(targetRatioMFD);
+		funcs.add(aveRatioMFD);
+		plotName = "MFD Ratio (to target)";
+		yAxisLabel = "Ratio";
+		yAxisRange = new Range(0,2);
+		logY = false;
+		fileNamePrefix = "magFreqDistRatio";
+		writeAndOrPlotFuncs(funcs,plotChars,plotName,xAxisLabel,yAxisLabel,xAxisRange,yAxisRange,
+				logX,logY,widthInches,heightInches, new File(outputDir,fileNamePrefix), popupWindow);
+
 	}
 	
+	public static void writeMFD_ComprisonPlot(IncrementalMagFreqDist targetMFD, IncrementalMagFreqDist aveMFD,
+			EvenlyDiscretizedFunc minConfMFD, EvenlyDiscretizedFunc maxConfMFD, File outputDir) {
+		writeMFD_ComprisonPlot(targetMFD, aveMFD, minConfMFD, maxConfMFD, outputDir, "", new Range(1e-5,2));
+	}
+
 	
-	public static void writeMFD_ComprisonPlot(IncrementalMagFreqDist targetMFD, ArrayList<SummedMagFreqDist> mfdList, File outputDir) {
+	public static void writeMFD_ComprisonPlot(IncrementalMagFreqDist targetMFD, IncrementalMagFreqDist aveMFD,
+			EvenlyDiscretizedFunc minConfMFD, EvenlyDiscretizedFunc maxConfMFD, File outputDir, String namePrefix,
+			Range yAxisRange) {
 		double maxX = Math.ceil(targetMFD.getMaxMagWithNonZeroRate()/0.5)*0.5;
 		double minX = Math.floor(targetMFD.getMinMagWithNonZeroRate()/0.5)*0.5;
 		
-		SummedMagFreqDist aveMFD = new SummedMagFreqDist(targetMFD.getMinX(), targetMFD.getMaxX(),targetMFD.size());
-		IncrementalMagFreqDist minMFD = new IncrementalMagFreqDist(targetMFD.getMinX(), targetMFD.getMaxX(),targetMFD.size());
-		IncrementalMagFreqDist maxMFD = new IncrementalMagFreqDist(targetMFD.getMinX(), targetMFD.getMaxX(),targetMFD.size());
-		EvenlyDiscretizedFunc aveCumMFD=null;
-		EvenlyDiscretizedFunc minCumMFD=null;
-		EvenlyDiscretizedFunc maxCumMFD=null;
-
-		for(int i=0;i<mfdList.size(); i++) {
-			IncrementalMagFreqDist mfd = mfdList.get(i);
-			aveMFD.addIncrementalMagFreqDist(mfd);
-			if(i==1) {
-				for(int m=0;m<mfd.size();m++) {
-					minMFD.set(m,mfd.getY(m));
-					maxMFD.set(m,mfd.getY(m));
-				}
-			}
-			else {
-				for(int m=0;m<mfd.size();m++) {
-					if(minMFD.getY(m)>mfd.getY(m))
-						minMFD.set(m,mfd.getY(m));
-					if(maxMFD.getY(m)<mfd.getY(m))
-						maxMFD.set(m,mfd.getY(m));
-				}
-			}
-			EvenlyDiscretizedFunc cumMFD = mfd.getCumRateDistWithOffset();
-			if(i==0) {
-				aveCumMFD = new EvenlyDiscretizedFunc(cumMFD.getMinX(),cumMFD.getMaxX(),cumMFD.size());
-				minCumMFD = new EvenlyDiscretizedFunc(cumMFD.getMinX(),cumMFD.getMaxX(),cumMFD.size());
-				maxCumMFD = new EvenlyDiscretizedFunc(cumMFD.getMinX(),cumMFD.getMaxX(),cumMFD.size());
-				for(int m=0;m<cumMFD.size();m++) {
-					minCumMFD.set(m,cumMFD.getY(m));
-					maxCumMFD.set(m,cumMFD.getY(m));
-					aveCumMFD.set(m,cumMFD.getY(m));
-				}
-			}
-			else {
-				for(int m=0;m<cumMFD.size();m++) {
-					if(minCumMFD.getY(m)>cumMFD.getY(m))
-						minCumMFD.set(m,cumMFD.getY(m));
-					if(maxCumMFD.getY(m)<cumMFD.getY(m))
-						maxCumMFD.set(m,cumMFD.getY(m));
-					aveCumMFD.set(m,aveCumMFD.getY(m)+cumMFD.getY(m));
-				}
-			}	
-		}
-		aveMFD.scale(1.0/(double)mfdList.size());
-		aveCumMFD.scale(1.0/(double)mfdList.size());
-		aveMFD.setName("aveMFD");
-		minMFD.setName("minMFD");
-		maxMFD.setName("maxMFD");
-		aveCumMFD.setName("aveCumMFD");
-		minCumMFD.setName("minCumMFD");
-		maxCumMFD.setName("maxCumMFD");
+		EvenlyDiscretizedFunc targetCumMFD = targetMFD.getCumRateDistWithOffset();
+		EvenlyDiscretizedFunc aveCumMFD = aveMFD.getCumRateDistWithOffset();
 		
 		ArrayList<XY_DataSet> funcs = new ArrayList<XY_DataSet>();
 		funcs.add(targetMFD);
 		funcs.add(aveMFD);
-		funcs.add(minMFD);
-		funcs.add(maxMFD);
-		funcs.add(targetMFD.getCumRateDistWithOffset());
+		funcs.add(minConfMFD);
+		funcs.add(maxConfMFD);
+		funcs.add(targetCumMFD);
 		funcs.add(aveCumMFD);
-		funcs.add(minCumMFD);
-		funcs.add(maxCumMFD);
 		ArrayList<PlotCurveCharacterstics> plotChars = new ArrayList<PlotCurveCharacterstics>();
 		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.BLACK));
 		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.RED));
@@ -293,16 +275,181 @@ public class ProbModelsPlottingUtils {
 		String xAxisLabel = "Magnitude";
 		String yAxisLabel = "Rate (per year)";
 		Range xAxisRange = new Range(minX,maxX);
-		Range yAxisRange = new Range(1e-5,1);
 		boolean logX = false;
 		boolean logY = true;
 		double widthInches = 7; // inches
 		double heightInches = 6; // inches
 		String fileNamePrefix = "magFreqDists";
+		if(!namePrefix.equals(""))
+			fileNamePrefix = namePrefix+"_"+fileNamePrefix;
 		boolean popupWindow = false;
 		writeAndOrPlotFuncs(funcs,plotChars,plotName,xAxisLabel,yAxisLabel,xAxisRange,yAxisRange,
 				logX,logY,widthInches,heightInches, new File(outputDir,fileNamePrefix), popupWindow);
+		
+		
+		// make ratio plot
+		EvenlyDiscretizedFunc aveRatioMFD = new EvenlyDiscretizedFunc(targetMFD.getMinX(),targetMFD.getMaxX(),targetMFD.size());
+		EvenlyDiscretizedFunc minConfRatioMFD = new EvenlyDiscretizedFunc(targetMFD.getMinX(),targetMFD.getMaxX(),targetMFD.size());
+		EvenlyDiscretizedFunc maxConfRatioMFD = new EvenlyDiscretizedFunc(targetMFD.getMinX(),targetMFD.getMaxX(),targetMFD.size());
+		EvenlyDiscretizedFunc targetRatioMFD = new EvenlyDiscretizedFunc(targetMFD.getMinX(),targetMFD.getMaxX(),targetMFD.size());
+		minConfRatioMFD.setName("minConfRatioMFD");
+		minConfRatioMFD.setInfo("95% confidence bound based on stdom");
+		maxConfRatioMFD.setName("maxConfRatioMFD");
+		maxConfRatioMFD.setInfo("95% confidence bound based on stdom");
+		for(int m=0;m<targetMFD.size();m++) {
+			targetRatioMFD.set(m,targetMFD.getY(m)/targetMFD.getY(m));
+			aveRatioMFD.set(m,aveMFD.getY(m)/targetMFD.getY(m));
+			minConfRatioMFD.set(m,minConfMFD.getY(m)/targetMFD.getY(m));
+			maxConfRatioMFD.set(m,maxConfMFD.getY(m)/targetMFD.getY(m));
+//			aveRatioMFD.set(m,aveMFD.getY(m)*0.956/targetMFD.getY(m));
+//			minRatioMFD.set(m,minMFD.getY(m)*0.956/targetMFD.getY(m));
+//			maxRatioMFD.set(m,maxMFD.getY(m)*0.956/targetMFD.getY(m));
+		}
+		funcs = new ArrayList<XY_DataSet>();
+		funcs.add(targetRatioMFD);
+		funcs.add(aveRatioMFD);
+		funcs.add(minConfRatioMFD);
+		funcs.add(maxConfRatioMFD);
+		plotName = "MFD Ratio (to target)";
+		yAxisLabel = "Ratio";
+		yAxisRange = new Range(0,2);
+		logY = false;
+		fileNamePrefix = "magFreqDistRatio";
+		if(!namePrefix.equals(""))
+			fileNamePrefix = namePrefix+"_"+fileNamePrefix;
+		writeAndOrPlotFuncs(funcs,plotChars,plotName,xAxisLabel,yAxisLabel,xAxisRange,yAxisRange,
+				logX,logY,widthInches,heightInches, new File(outputDir,fileNamePrefix), popupWindow);
+
 	}
+
+	
+	
+	public static void writeMFD_ComprisonPlot(IncrementalMagFreqDist targetMFD, ArrayList<SummedMagFreqDist> mfdList, 
+			File outputDir) {
+		
+		writeMFD_ComprisonPlot(targetMFD, mfdList, outputDir, null);
+	}
+
+	
+	
+	public static void writeMFD_ComprisonPlot(IncrementalMagFreqDist targetMFD, ArrayList<SummedMagFreqDist> mfdList, 
+			File outputDir, String faultName) {
+		double maxX = Math.ceil(targetMFD.getMaxMagWithNonZeroRate()/0.5)*0.5;
+		double minX = Math.floor(targetMFD.getMinMagWithNonZeroRate()/0.5)*0.5;
+		
+		ArbDiscrEmpiricalDistFunc_3D func3D = new ArbDiscrEmpiricalDistFunc_3D(targetMFD.getMinX(),targetMFD.getMaxX(),targetMFD.size());
+		for(SummedMagFreqDist mfd: mfdList)
+			func3D.set(mfd, 1.0);
+		EvenlyDiscretizedFunc aveMFD = func3D.getMeanCurve();
+		EvenlyDiscretizedFunc minConfMFD = func3D.getMeanPlusXstdomCurve(-1.96);
+		EvenlyDiscretizedFunc maxConfMFD = func3D.getMeanPlusXstdomCurve(1.96);
+		
+		EvenlyDiscretizedFunc targetCumMFD = targetMFD.getCumRateDistWithOffset();
+		ArbDiscrEmpiricalDistFunc_3D cumFunc3D = new ArbDiscrEmpiricalDistFunc_3D(targetCumMFD.getMinX(),targetCumMFD.getMaxX(),targetCumMFD.size());
+		for(SummedMagFreqDist mfd: mfdList)
+			cumFunc3D.set(mfd.getCumRateDistWithOffset(), 1.0);
+		EvenlyDiscretizedFunc aveCumMFD = cumFunc3D.getMeanCurve();
+		EvenlyDiscretizedFunc minCumConfMFD = cumFunc3D.getMeanPlusXstdomCurve(-1.96);
+		EvenlyDiscretizedFunc maxCumConfMFD = cumFunc3D.getMeanPlusXstdomCurve(1.96);
+
+		aveMFD.setName("aveMFD");
+		minConfMFD.setName("minConfMFD");
+		minConfMFD.setInfo("Lower 95% confidence bound based on stdom");
+		maxConfMFD.setName("maxConfMFD");
+		maxConfMFD.setInfo("Upper 95% confidence bound based on stdom");
+		aveCumMFD.setName("aveCumMFD");
+		minCumConfMFD.setName("minCumConfMFD");
+		minCumConfMFD.setInfo("Lower 95% confidence bound based on stdom");
+		maxCumConfMFD.setName("maxCumConfMFD");
+		maxCumConfMFD.setInfo("Upper 95% confidence bound based on stdom");
+		
+		ArrayList<XY_DataSet> funcs = new ArrayList<XY_DataSet>();
+//		funcs.add(targetMFD);
+//		funcs.add(aveMFD);
+//		funcs.add(minConfMFD);
+//		funcs.add(maxConfMFD);
+		funcs.add(targetMFD.getCumRateDistWithOffset());
+		funcs.add(aveCumMFD);
+		funcs.add(minCumConfMFD);
+		funcs.add(maxCumConfMFD);
+		ArrayList<PlotCurveCharacterstics> plotChars = new ArrayList<PlotCurveCharacterstics>();
+//		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.BLACK));
+//		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.RED));
+//		plotChars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 1f, Color.RED));
+//		plotChars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 1f, Color.RED));
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.RED));
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 2f, Color.RED));
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 2f, Color.RED));
+		
+		double maxY = maxCumConfMFD.getY(0);
+		double minY = maxY*1e-6;
+		for(int i=0;i<minCumConfMFD.size();i++)
+			if(minCumConfMFD.getY(i)>0)
+				minY = minCumConfMFD.getY(i);
+			else
+				break;
+
+		String plotName = faultName+" MFD Comparsion";
+		String xAxisLabel = "Magnitude";
+		String yAxisLabel = "Rate (per year)";
+		Range xAxisRange = new Range(minX,maxX);
+		Range yAxisRange = new Range(minY,maxY);
+		boolean logX = false;
+		boolean logY = true;
+		double widthInches = 7; // inches
+		double heightInches = 6; // inches
+		String fileNamePrefix = "magFreqDists";
+		if(faultName != null && !faultName.equals(""))
+			fileNamePrefix = faultName.replace(" ","").replace(",","_") +"_"+fileNamePrefix;
+		boolean popupWindow = false;
+		writeAndOrPlotFuncs(funcs,plotChars,plotName,xAxisLabel,yAxisLabel,xAxisRange,yAxisRange,
+				logX,logY,widthInches,heightInches, new File(outputDir,fileNamePrefix), popupWindow);
+		
+		
+		// make ratio plot
+		EvenlyDiscretizedFunc aveRatioMFD = new EvenlyDiscretizedFunc(targetMFD.getMinX(),targetMFD.getMaxX(),targetMFD.size());
+		EvenlyDiscretizedFunc minConfRatioMFD = new EvenlyDiscretizedFunc(targetMFD.getMinX(),targetMFD.getMaxX(),targetMFD.size());
+		EvenlyDiscretizedFunc maxConfRatioMFD = new EvenlyDiscretizedFunc(targetMFD.getMinX(),targetMFD.getMaxX(),targetMFD.size());
+		EvenlyDiscretizedFunc targetRatioMFD = new EvenlyDiscretizedFunc(targetMFD.getMinX(),targetMFD.getMaxX(),targetMFD.size());
+		minConfRatioMFD.setName("minConfRatioMFD");
+		minConfRatioMFD.setInfo("95% confidence bound based on stdom");
+		maxConfRatioMFD.setName("maxConfRatioMFD");
+		maxConfRatioMFD.setInfo("95% confidence bound based on stdom");
+		int num=0,numOutside=0;
+		for(int m=0;m<targetMFD.size();m++) {
+			targetRatioMFD.set(m,targetMFD.getY(m)/targetMFD.getY(m));
+			aveRatioMFD.set(m,aveMFD.getY(m)/targetMFD.getY(m));
+			minConfRatioMFD.set(m,minConfMFD.getY(m)/targetMFD.getY(m));
+			maxConfRatioMFD.set(m,maxConfMFD.getY(m)/targetMFD.getY(m));
+			double target = targetRatioMFD.getY(m);
+			if(target>0) {
+				num+=1;
+				if(target>maxConfRatioMFD.getY(m) || target<minConfRatioMFD.getY(m))
+					numOutside+=1;
+			}
+		}
+		System.out.println(numOutside+"\t"+num);
+		funcs = new ArrayList<XY_DataSet>();
+		funcs.add(targetRatioMFD);
+		funcs.add(aveRatioMFD);
+		funcs.add(minConfRatioMFD);
+		funcs.add(maxConfRatioMFD);
+		plotName = "MFD Ratio (to target)";
+		yAxisLabel = "Ratio";
+		yAxisRange = new Range(0,2);
+		logY = false;
+		fileNamePrefix = "magFreqDistRatio";
+		if(faultName != null && !faultName.equals(""))
+			fileNamePrefix = faultName.replace(" ","").replace(",","_") +"_"+fileNamePrefix;
+
+		writeAndOrPlotFuncs(funcs,plotChars,plotName,xAxisLabel,yAxisLabel,xAxisRange,yAxisRange,
+				logX,logY,widthInches,heightInches, new File(outputDir,fileNamePrefix), popupWindow);
+
+	}
+	
+	
+
 
 	/**
 	 * This assumes the target is BPT
@@ -678,7 +825,7 @@ public class ProbModelsPlottingUtils {
 		}
 		meanTotRate /= totWt;
 		totRateVersusTime.setName("Total Exp Rate vs Time");
-		totRateVersusTime.setInfo("Mean Total Rate = "+meanTotRate+"\nLong Term Rate = "+totalLongTermRate);
+		totRateVersusTime.setInfo("Mean Total Rate = "+meanTotRate+"\nLong Term Rate = "+totalLongTermRate+"\nRatio = "+(meanTotRate/totalLongTermRate));
 		DefaultXY_DataSet longTermRateFunc = new DefaultXY_DataSet();
 		longTermRateFunc.set(totRateVersusTime.getMinX(),totalLongTermRate);
 		longTermRateFunc.set(totRateVersusTime.getMaxX(),totalLongTermRate);
@@ -1011,7 +1158,6 @@ public class ProbModelsPlottingUtils {
 	public static void writeMapOfSimOverTargetPartRates (double[] sectRatioArray, double[] sectSigmaArray, 
 			List<? extends FaultSection> subSects, File outputDir) {
 		try {
-			Color[] sectColorArray = new Color[subSects.size()];
 			GeographicMapMaker mapMaker = new GeographicMapMaker(subSects);
 			mapMaker.setWriteGeoJSON(true);
 			mapMaker.clearSectScalars();
@@ -1029,6 +1175,36 @@ public class ProbModelsPlottingUtils {
 		}
 
 	}
+	
+	
+	
+	public static void writeMapOfSimOverTargetPartRates (double[] sectRatioArray, double[] sectObsStdomArray, 
+			double[] sectExpStdomArray, List<? extends FaultSection> subSects, File outputDir) {
+		try {
+			GeographicMapMaker mapMaker = new GeographicMapMaker(subSects);
+			mapMaker.setWriteGeoJSON(true);
+			mapMaker.clearSectScalars();
+			
+			List<Color> sectColorList = new ArrayList<>();
+			for (int i=0;i<sectRatioArray.length;i++) {
+				Color color = Color.black; // default if ration unconstrained
+				if(sectExpStdomArray[i]<0.02 && sectObsStdomArray[i]<0.02) {
+//					color = ProbModelsPlottingUtils.getRatioMapColor(ratioMeanArray[i], simFractStdom[i]);
+					color = ProbModelsPlottingUtils.getRatioMapColor(sectRatioArray[i], sectObsStdomArray[i]);
+				}
+				sectColorList.add(color);
+			}
+			mapMaker.plotSectColors(sectColorList, null, null);
+			mapMaker.setSectNaNChar(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, new Color(0, 0, 255)));
+			mapMaker.plot(outputDir, "mapOfSectPartRatios", " ");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	
+
 	
 	public static void writeMapOfSectionProbGains (double[] sectGainsArray, List<? extends FaultSection> subSects, File outputDir, String fileName) {
 		try {

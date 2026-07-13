@@ -162,6 +162,22 @@ public class ArbDiscrEmpiricalDistFunc_3D implements Serializable {
 
     
     /**
+     * This returns a curve for Mean + x*Stdom
+     * @param x
+     * @return
+     */
+    public EvenlyDiscretizedFunc getMeanPlusXstdomCurve(double x) {
+        EvenlyDiscretizedFunc mean = getMeanCurve();
+        EvenlyDiscretizedFunc stdom = getStdomEstCurve();
+        EvenlyDiscretizedFunc func = getBaseXaxisFunc();
+        for(int i=0; i<func.size(); i++) {
+      	  func.set(i,mean.getY(i)+x*stdom.getY(i));
+        }
+        return func;
+    }
+
+    
+    /**
      * calculates the mean curve for normalized distribution (done simply as a weight average)
      * @return
      */
@@ -200,7 +216,9 @@ public class ArbDiscrEmpiricalDistFunc_3D implements Serializable {
 
     
     /**
-     * Calculates the standard deviation curve for normalized distribution
+     * Calculates the standard deviation curve for normalized distribution.  Note that this
+     * does not use the standard deviation estimate calculation (it does not correct for a
+     * finite number of samples).
      * 
      * @return
      */
@@ -211,6 +229,22 @@ public class ArbDiscrEmpiricalDistFunc_3D implements Serializable {
         }
         return func;
     }
+    
+    
+    /**
+     * Calculates the standard deviation of the mean curve, using standard deviation estimate 
+     * calculation (it corrects for a finite number of samples).
+     * 
+     * @return
+     */
+    public EvenlyDiscretizedFunc getStdomEstCurve() {
+        EvenlyDiscretizedFunc func = getBaseXaxisFunc();
+        for(int i=0; i<func.size(); i++) {
+      	  func.set(i,arbDiscrEmpDistFuncArray[i].getStdomEst());
+        }
+        return func;
+    }
+
     
     
     /**

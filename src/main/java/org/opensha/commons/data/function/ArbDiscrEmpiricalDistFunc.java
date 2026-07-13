@@ -224,9 +224,38 @@ public class ArbDiscrEmpiricalDistFunc extends ArbitrarilyDiscretizedFunc
     }
 
     
+    /**
+     * Calculates the standard deviation accounting for the finite number of samples (assumes weights of
+     * 1, which means y-axis values are integers of 1 or greater)
+     * 
+     * @return
+     */
+    public double getStdDevEst() {
+    	double mean = getMean();
+    	double stdDev=0.0, sumY=0.0;
+
+    	for(int i=0; i<size(); ++i) {
+    		double dev = mean-getX(i);
+    		stdDev+=dev*dev*getY(i);
+    		sumY+=getY(i);
+    	}
+    	return Math.sqrt(stdDev/(sumY-1.0)); 
+    }
+
+    /**
+     * The returns the standard deviation of the mean estimate, which assumes weights of
+     * 1, which means y-axis values are integers of 1 or greater.
+     * @return
+     */
+    public double getStdomEst() {
+     	return getStdDevEst()/Math.sqrt(getSumOfAllY_Values()); 
+    }
+
+   
     
     /**
-     * This returns the coefficient of variation (standard deviation divided by the mean)
+     * This returns the coefficient of variation (standard deviation divided by the mean).  Note this does
+     * not use getStdDevEst().
      * @return
      */
     public double getCOV() {

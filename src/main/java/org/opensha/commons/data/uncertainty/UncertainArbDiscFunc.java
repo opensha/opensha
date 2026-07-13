@@ -100,7 +100,8 @@ public class UncertainArbDiscFunc extends UnmodifiableDiscrFunc implements Uncer
 			Preconditions.checkArgument((float)x == (float)lowerFunc.getX(i), "X inconsistent in lower func");
 			Preconditions.checkArgument((float)x == (float)upperFunc.getX(i), "X inconsistent in lower func");
 			if(!Double.isNaN(y) && !Double.isNaN(lowerY) && !Double.isNaN(upperY)) {
-				Preconditions.checkArgument((float)y >= (float)lowerY, "Lower func must be <= mean func: %s ! <= %s, x=%s", lowerY, y, x);
+				// added the if statement below because Poisson rate lower confidence is nonzero when N=0 events observed
+				if(y != 0) Preconditions.checkArgument((float)y >= (float)lowerY, "Lower func must be <= mean func: %s ! <= %s, x=%s", lowerY, y, x);
 				Preconditions.checkArgument((float)y <= (float)upperY, "Upper func must be >= mean func: %s ! >= %s, x=%s", upperY, y, x);				
 			}
 		}

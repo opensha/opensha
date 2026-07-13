@@ -148,6 +148,13 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 				noSectionsHadDateOfLast = false;
 				if (aveNormTimeSinceLast) {
 					tmpSumDOLE += area*((double)(presentTimeMillis-dateOfLast)*MILLISEC_TO_YEARS)*sectlongTermPartRates[s];
+//// DEBUG
+//if(fltSysRupIndex==441381) {
+//	double nts = ((double)(presentTimeMillis-dateOfLast)*MILLISEC_TO_YEARS)*sectlongTermPartRates[s];
+//int yrLast = (int)(((double)dateOfLast*MILLISEC_TO_YEARS))+1970;
+//System.out.println("here\t"+s+"\t"+yrLast+"\t"+(float)(1.0/sectlongTermPartRates[s])+"\t"+(float)nts
+//		+"\t"+(float)area+"\t"+fltSysRupSet.getFaultSectionData(s).getName());
+//}			
 				} else {
 					tmpSumDOLE += (double)dateOfLast*area;
 				}
@@ -165,6 +172,9 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 			} else {
 				long aveDOLE = Math.round(tmpSumDOLE/totRupAreaWithDateOfLast);  // epoch millis
 				aveTimeSinceLastWhereKnownYears = (double)(presentTimeMillis-aveDOLE) * MILLISEC_TO_YEARS;
+				// fix slightly negative values
+				if(aveTimeSinceLastWhereKnownYears<0 && aveTimeSinceLastWhereKnownYears>-0.001)
+					aveTimeSinceLastWhereKnownYears=0;
 			}
 		} else {
 			aveTimeSinceLastWhereKnownYears = Double.NaN;
@@ -231,47 +241,34 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 			
 			if(aveNormTimeSinceLast) {
 				for (int i=0;i<normCDF.size();i++) {
-					double normTimeSinceYears = normCDF.getX(i);
+					double normTimeSinceWhereUnknownOption = normCDF.getX(i);
 					// this is the probability of the date of last event (not considering hist open interval)
 					double relProbForTimeSinceLast = 1.0-normCDF.getY(i);
-					if(normTimeSinceYears*condRecurIntWhereUnknown>=histOpenInterval && relProbForTimeSinceLast>1e-15) {
-						double aveNormTS = (normTimeSinceYears*areaWithOutDateOfLast + aveNormTimeSinceLastEventWhereKnown*totRupAreaWithDateOfLast)/totRupArea;
+					if(normTimeSinceWhereUnknownOption*condRecurIntWhereUnknown>=histOpenInterval && relProbForTimeSinceLast>1e-15) {
+						double aveNormTS = (normTimeSinceWhereUnknownOption*areaWithOutDateOfLast + aveNormTimeSinceLastEventWhereKnown*totRupAreaWithDateOfLast)/totRupArea;
 						double condProbTemp = computeCondProbFast(normProbDistCalc, 1.0, aveNormTS, durationYears/aveCondRecurInterval, aperiodicity, false);
 						if(Double.isNaN(condProbTemp) && extrapolateCondProbs) {
 							condProbTemp = computeCondProbFast(normProbDistCalc, 1.0, aveNormTS, durationYears/aveCondRecurInterval, aperiodicity, true);
 							extrapolated = true;
 						}
-
-//// skip numerically unresolvable tail values
-//if(Double.isNaN(condProbTemp)) { // this occurs if 1-cdf(aveNormTS) <= 1e-14; or cdf(aveNormTS) > 1-1e-14
-//	double cdf1 = normProbDistCalc.getCDF().getInterpolatedY(aveNormTS);
-////	double cdf2 = normProbDistCalc.getCDF().getInterpolatedY(aveNormTS+(durationYears/aveCondRecurInterval));
-//	System.out.println("Problem NaN Here: "+aveCondRecurInterval+"\t"+aveNormTS+"\t"+(durationYears/aveCondRecurInterval)+"\t"+
-//relProbForTimeSinceLast+"\t"+aperiodicity+"\t"+(1-cdf1)+"\t"+condProbTemp);	
-//	break;
-//}
 						sumCondProbGain += (condProbTemp/expNum)*relProbForTimeSinceLast;
 						totWeight += relProbForTimeSinceLast;
 				
 // DEBUGGING
-//if(fltSysRupIndex==513447) {
-//	if(normTimeSinceYears==0.11) {
-//		EvenlyDiscretizedFunc cdf = normProbDistCalc.getCDF();
-//		System.out.println("Calc:\t"+cdf.getMinX()+"\t"+cdf.getDelta()+"\t"+cdf.size()+"\t"+normProbDistCalc.getMean()+"\t"+normProbDistCalc.getAperiodicity());
-//		System.exit(0);
-//	}
-//
+//if(fltSysRupIndex==441381) {
 //	System.out.println(
-//		normTimeSinceYears+"\t"+
+//		aveNormTimeSinceLastEventWhereKnown+"\t"+
+//		condRecurIntWhereUnknown+"\t"+
+//		(float)normTimeSinceWhereUnknownOption+"\t"+
 //		relProbForTimeSinceLast+"\t"+
+//		(condProbTemp/expNum)+"\t"+
 //		aveNormTS+"\t"+
+//		aveCondRecurInterval+"\t"+
+//		durationYears+"\t"+
 //		condProbTemp+"\t"+
 //		expNum+"\t"+
 //		aperiodicity+"\t"+
-//		condRecurIntWhereUnknown+"\t"+
-//		histOpenInterval
-//	);
-//	System.exit(0);
+//		histOpenInterval);
 //}
 
 					}
@@ -360,7 +357,16 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 			str += rupSubSects.size()+",";
 			str += extrapolated;
 			this.debugString = str;
+		
+//// DEBUG
+//if(fltSysRupIndex==441381) {
+//	System.out.println("Rup 441381 debugString values:\n"+str+"\\n");
+////	System.exit(0);
+//}
+			
 		}
+		
+
 		
 		if(Double.isNaN(probGain))
 			throw new RuntimeException("probGain=NaN for fltSysRupIndex="+fltSysRupIndex);
@@ -377,7 +383,7 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 	 * @param typeCalc - set as 1 to average RIs, 2 to average rates, 3 for max sect RI
 	 * @return
 	 */
-	private double[] getAveCondRecurIntervalForFltSysRups() {
+	public double[] getAveCondRecurIntervalForFltSysRups() {
 		double[] aveCondRecurIntervalForFltSysRups = cachedAveRupCondRecurIntervals;
 		if (aveCondRecurIntervalForFltSysRups != null)
 			return aveCondRecurIntervalForFltSysRups;
@@ -391,6 +397,24 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 		}
 		return aveCondRecurIntervalForFltSysRups;
 	}
+	
+	
+	// TESTS FOR JAMIE - REMOVE WHEN DONE
+	public void tempSetAveCondRecurIntervalForFltSysRups(double[] aveCondRecurIntervalForFltSysRups) {
+		cachedAveRupCondRecurIntervals = aveCondRecurIntervalForFltSysRups;
+	}
+//	public void tempCheck() { // this should be greater than 1.0
+//		double[] aveCondRecurIntervalForFltSysRups = TimeDepUtils.computeAveCondRecurIntervalForFltSysRups(
+//				fltSysRupSet, sectlongTermPartRates, sectAreas,
+//				averagingTypeParam.getValue().isAveRI());
+//		double testRatio=0;
+//		for(int r=0;r<aveCondRecurIntervalForFltSysRups.length;r++)
+//			testRatio += (cachedAveRupCondRecurIntervals[r]/aveCondRecurIntervalForFltSysRups[r])/aveCondRecurIntervalForFltSysRups.length;
+//		System.out.println("testRatio = "+testRatio);
+//		System.exit(0);
+//	}
+	
+	
 
 	/**
 	 * This is made fast by using a reference calculator (with a reference RI=1 year & aperiodicity), rather than
