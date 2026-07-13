@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import org.apache.commons.numbers.core.Precision;
 import org.apache.commons.statistics.distribution.ContinuousDistribution;
 import org.apache.commons.statistics.distribution.TruncatedNormalDistribution;
 import org.apache.commons.statistics.distribution.UniformContinuousDistribution;
@@ -34,6 +35,12 @@ import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_Seis
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.PureGR;
 
 public class NSHM27_LogicTree {
+	
+	/*
+	 * Top-level (common)
+	 */
+	public static final LogicTreeLevel<NSHM27_SeisClassificationMethod> CLASSIFICATION =
+			LogicTreeLevel.forEnum(NSHM27_SeisClassificationMethod.class, "Seismicity Classification Method", "Classification");
 	
 	/*
 	 * Subduction interface branch levels (FSS and gridded)
@@ -66,7 +73,7 @@ public class NSHM27_LogicTree {
 //		return UniformContinuousDistribution.of(0.5d, 1d);
 		
 		PureGR rateModel = (PureGR)NSHM27_SeisRateModelBranch.PREFFERRED.getRateRecord(
-				seisReg, TectonicRegionType.SUBDUCTION_INTERFACE);
+				seisReg, NSHM27_SeisClassificationMethod.PROFACE, TectonicRegionType.SUBDUCTION_INTERFACE);
 		return UniformContinuousDistribution.of(0.5d, Math.max(1d, rateModel.b));
 	}
 
@@ -119,14 +126,23 @@ public class NSHM27_LogicTree {
 	public static final double CRUSTAL_MMAX_OFF_SINGLE_DEFAULT = 7.6;
 	public static final ContinuousDistribution CRUSTAL_MMAX_OFF_DIST = TruncatedNormalDistribution.of(7.6, 0.134, 7.15, 8.05);
 	
-	public static List<LogicTreeLevel<? extends LogicTreeNode>> buildLevels(NSHM27_SeismicityRegions seisReg,
-			TectonicRegionType trt, boolean sampled) {
-		return buildLevels(seisReg, trt, sampled, true, true);
+	private static List<LogicTreeLevel<? extends LogicTreeNode>> buildCommonLevels() {
+		List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>(1);
+		levels.add(CLASSIFICATION);
+		return levels;
 	}
 	
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> buildLevels(NSHM27_SeismicityRegions seisReg,
-			TectonicRegionType trt, boolean sampled, boolean inversion, boolean gridded) {
+			TectonicRegionType trt, boolean sampled) {
+		return buildLevels(seisReg, trt, sampled, true, true, true);
+	}
+	
+	public static List<LogicTreeLevel<? extends LogicTreeNode>> buildLevels(NSHM27_SeismicityRegions seisReg,
+			TectonicRegionType trt, boolean sampled, boolean inversion, boolean gridded, boolean includeCommon) {
 		List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
+		
+		if (includeCommon)
+			levels.addAll(buildCommonLevels());
 		
 		levels.add(new NSHM27_ModelRegimeNode.Level(seisReg, trt));
 		
@@ -224,8 +240,10 @@ public class NSHM27_LogicTree {
 		List<LogicTreeLevel<? extends LogicTreeNode>> levels = buildLevels(seisReg, trt, sampled);
 		LogicTreeBranch<LogicTreeNode> branch = new LogicTreeBranch<>(levels);
 		
-		Preconditions.checkState(levels.get(0) instanceof NSHM27_ModelRegimeNode.Level);
-		branch.setValue(0, levels.get(0).getNodes().get(0));
+		int regineIndex = branch.getLevelTypeIndex(NSHM27_ModelRegimeNode.class);
+		
+		branch.setValue(regineIndex, levels.get(regineIndex).getNodes().get(0));
+		branch.setValue(NSHM27_SeisClassificationMethod.PROFACE);
 		
 		// inversion
 		if (trt == TectonicRegionType.SUBDUCTION_INTERFACE) {
@@ -279,17 +297,15 @@ public class NSHM27_LogicTree {
 		return buildLogicTree(seisReg, trt, numSamples, seed, samplingMethod);
 	}
 	
-	private static List<LogicTreeNode> buildFixed(LogicTreeNode node, int numSamples) {
-		List<LogicTreeNode> samples = new ArrayList<>();
-		for (int i=0; i<numSamples; i++)
-			samples.add(node);
-		return samples;
-	}
-	
 	public static LogicTree<LogicTreeNode> buildLogicTree(NSHM27_SeismicityRegions seisReg, TectonicRegionType trt,
 			int numSamples, long seed, SamplingMethod samplingMethod) {
+		return buildLogicTree(seisReg, trt, numSamples, seed, samplingMethod, true);
+	}
+	
+	private static LogicTree<LogicTreeNode> buildLogicTree(NSHM27_SeismicityRegions seisReg, TectonicRegionType trt,
+			int numSamples, long seed, SamplingMethod samplingMethod, boolean includeCommon) {
 		Preconditions.checkState(numSamples > 0);
-		List<LogicTreeLevel<? extends LogicTreeNode>> levels = buildLevels(seisReg, trt, true);
+		List<LogicTreeLevel<? extends LogicTreeNode>> levels = buildLevels(seisReg, trt, true, true, true, includeCommon);
 		
 		return LogicTree.buildSampled(levels, numSamples, seed, samplingMethod, NSHM27_InterfaceFaultModels.regionDefault(seisReg));
 	}
@@ -313,24 +329,36 @@ public class NSHM27_LogicTree {
 			int numSamples, long seed, SamplingMethod samplingMethod) {
 		Random rand = new Random(seed);
 		
-		LogicTree<LogicTreeNode> interfaceTree = buildLogicTree(seisReg,
-				TectonicRegionType.SUBDUCTION_INTERFACE, numSamples, rand.nextLong(), samplingMethod);
-		LogicTree<LogicTreeNode> intraslabTree = buildLogicTree(seisReg,
-				TectonicRegionType.SUBDUCTION_SLAB, numSamples, rand.nextLong(), samplingMethod);
-		LogicTree<LogicTreeNode> crustalTree = buildLogicTree(seisReg,
-				TectonicRegionType.ACTIVE_SHALLOW, numSamples, rand.nextLong(), samplingMethod);
+		// build common tree
+		LogicTree<LogicTreeNode> commonTree = LogicTree.buildSampled(buildCommonLevels(),
+				numSamples, rand.nextLong(), samplingMethod);
 		
-		LogicTree<LogicTreeNode> tree = buildMultiRegimeTree(seisReg, interfaceTree, intraslabTree, crustalTree);
+		// build each subtree without common levels
+		LogicTree<LogicTreeNode> interfaceTree = buildLogicTree(seisReg,
+				TectonicRegionType.SUBDUCTION_INTERFACE, numSamples, rand.nextLong(), samplingMethod, false);
+		LogicTree<LogicTreeNode> intraslabTree = buildLogicTree(seisReg,
+				TectonicRegionType.SUBDUCTION_SLAB, numSamples, rand.nextLong(), samplingMethod, false);
+		LogicTree<LogicTreeNode> crustalTree = buildLogicTree(seisReg,
+				TectonicRegionType.ACTIVE_SHALLOW, numSamples, rand.nextLong(), samplingMethod, false);
+		
+		LogicTree<LogicTreeNode> tree = buildMultiRegimeTree(seisReg, commonTree, interfaceTree, intraslabTree, crustalTree);
 		tree.setSamplingParameters(seed, 0, samplingMethod);
 		return tree;
 	}
 	
-	public static LogicTree<LogicTreeNode> buildMultiRegimeTree(NSHM27_SeismicityRegions seisReg,
+	private static LogicTree<LogicTreeNode> buildMultiRegimeTree(NSHM27_SeismicityRegions seisReg, LogicTree<LogicTreeNode> commonTree,
 			LogicTree<LogicTreeNode> interfaceTree, LogicTree<LogicTreeNode> intraslabTree, LogicTree<LogicTreeNode> crustalTree) {
-		Preconditions.checkState(interfaceTree.size() == intraslabTree.size());
-		Preconditions.checkState(interfaceTree.size() == crustalTree.size());
-		int numEach = interfaceTree.size();
-		List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>(3);
+		int numCommonLevels = commonTree.getLevels().size();
+		int numEach = commonTree.size();
+		double weightEach = 1d/numEach;
+		for (LogicTree<?> subTree : List.of(commonTree, interfaceTree, intraslabTree, crustalTree)) {
+			Preconditions.checkState(subTree.size() == numEach);
+			for (int i=0; i<numEach; i++)
+				Preconditions.checkState(Precision.equals(weightEach, subTree.getBranchWeight(i), 1e-10));
+		}
+
+		List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>(3+numCommonLevels);
+		levels.addAll(commonTree.getLevels());
 		levels.add(new TectonicRegionBranchTreeNode.Level(TectonicRegionType.SUBDUCTION_INTERFACE, interfaceTree,
 				seisReg.getName()+" Interface Branches", seisReg.name()+"-Interface",
 				seisReg.name()+"-Interface Branch", "InterfaceBranch", "InterfaceBranch"));
@@ -342,20 +370,26 @@ public class NSHM27_LogicTree {
 				seisReg.name()+"-Crustal Branch", "CrustalBranch", "CrustalBranch"));
 		List<LogicTreeBranch<LogicTreeNode>> branches = new ArrayList<>(numEach);
 		for (int i=0; i<numEach; i++) {
-			List<LogicTreeNode> values = new ArrayList<>(3);
-			double weight0 = -1d;
-			for (LogicTreeLevel<? extends LogicTreeNode> level : levels) {
-				LogicTreeNode value = level.getNodes().get(i);
-				if (weight0 == -1)
-					weight0 = value.getNodeWeight(null);
-				else
-					Preconditions.checkState(weight0 == value.getNodeWeight(null));
+			List<LogicTreeNode> values = new ArrayList<>(levels.size());
+			for (int l=0; l<levels.size(); l++) {
+				LogicTreeNode value;
+				double weight;
+				if (l < numCommonLevels) {
+					value = commonTree.getBranch(i).getValue(l);
+					weight = commonTree.getBranchWeight(l);
+				} else {
+					value = levels.get(l).getNodes().get(i);
+					weight = value.getNodeWeight(null);
+				}
+				Preconditions.checkState(Precision.equals(weightEach, weight, 1e-10));
 				values.add(value);
 			}
 			LogicTreeBranch<LogicTreeNode> branch = new LogicTreeBranch<>(levels, values);
+			branch.setOrigBranchWeight(weightEach);
 			branches.add(branch);
 		}
-		return LogicTree.fromExisting(levels, branches);
+		LogicTree<LogicTreeNode> combTree = LogicTree.fromExisting(levels, branches);
+		return combTree;
 	}
 	
 	public static void main(String[] args) throws IOException {
@@ -390,7 +424,8 @@ public class NSHM27_LogicTree {
 				}
 			}
 			System.out.println("\tBuilding multi-regime");
-			LogicTree<LogicTreeNode> multiTree = buildMultiRegimeTree(seisReg, trees.get(0), trees.get(1), trees.get(2));
+//			LogicTree<LogicTreeNode> multiTree = buildMultiRegimeTree(seisReg, trees.get(0), trees.get(1), trees.get(2));
+			LogicTree<LogicTreeNode> multiTree = buildMultiRegimeTree(seisReg, 100, true, samplingMethod);
 			for (LogicTreeLevel<? extends LogicTreeNode> level : multiTree.getLevels()) {
 				System.out.println("\tMulti-regime level "+level.getName());
 				System.out.println("\t\tAffected: "+level.getAffected());

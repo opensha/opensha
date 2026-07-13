@@ -738,7 +738,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 				branches.get(i).setValue(l, (E)samples.get(i));
 		}
 		
-		if (samplingMethod == SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE) {
+		if (samplingMethod == SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE && levels.size() > 1) {
 			Preconditions.checkState(numSamples > 1, "Must have >1 samples for pairwise-iteration");
 			Preconditions.checkState(allFixedWeights,
 					"Cannot (yet) do pairwise-iteration on a logic tree with branch-dependent weighting");

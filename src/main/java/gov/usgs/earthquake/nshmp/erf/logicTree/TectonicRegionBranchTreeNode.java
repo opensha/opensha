@@ -55,6 +55,50 @@ public class TectonicRegionBranchTreeNode implements LogicTreeNode.ValuedLogicTr
 	public LogicTreeBranch<?> getValue() {
 		return branch;
 	}
+	
+	/**
+	 * Builds an unrolled branch for this TRT branch containing any common top-level values as well as all of the
+	 * values for this TRT branch; any other TRT branches are skipped.
+	 * 
+	 * @param fullBranch
+	 * @return
+	 */
+	public LogicTreeBranch<?> getUnrolledIndividualBranch(LogicTreeBranch<? extends LogicTreeNode> fullBranch) {
+		// first see if there are any common values; if not, we can return our branch directly
+		int numCommon = 0;
+		for (LogicTreeNode value : fullBranch)
+			if (!(value instanceof TectonicRegionBranchTreeNode))
+				numCommon++;
+		if (numCommon == 0)
+			// no common values, just return our TRT branch directly
+			return branch;
+		// need to build a new branch combining common values and our branch
+		List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>(numCommon+branch.size());
+		List<LogicTreeNode> values = new ArrayList<>(numCommon+branch.size());
+		boolean found = false;
+		for (int l=0; l<fullBranch.size(); l++) {
+			LogicTreeNode value = fullBranch.getValue(l);
+			if (value instanceof TectonicRegionBranchTreeNode) {
+				if (value == this) {
+					// this TRT branch, add all of it's values
+					found = true;
+					for (int i=0; i<branch.size(); i++) {
+						levels.add(branch.getLevel(i));
+						values.add(branch.getValue(i));
+					}
+				} // else another TRT branch, skip
+			} else {
+				// common branch node
+				levels.add(fullBranch.getLevel(l));
+				values.add(value);
+			}
+		}
+		Preconditions.checkState(found);
+		LogicTreeBranch<LogicTreeNode> branch = new LogicTreeBranch<>(levels, values);
+		branch.setOrigBranchWeight(fullBranch.getOrigBranchWeight());
+		branch.setCustomFileName(fullBranch.buildFileName());
+		return branch;
+	}
 
 	@SuppressWarnings("unchecked")
 	@Override

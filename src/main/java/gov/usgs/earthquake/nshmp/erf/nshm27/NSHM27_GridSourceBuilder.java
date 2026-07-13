@@ -72,6 +72,7 @@ import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_InterfaceFaultModel
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_InterfaceMinSubSects;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_InterfaceObsSeisDMAdjustment;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_LogicTree;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisClassificationMethod;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisRateModel;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisSmoothingAlgorithms;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.InterfaceGridAssociations;
@@ -371,17 +372,18 @@ public class NSHM27_GridSourceBuilder {
 		boolean rateToFullMmax = isInterfaceRateToFullMmax(fullBranch);
 		
 		NSHM27_SeisRateModel rateBranch = fullBranch.requireValue(NSHM27_SeisRateModel.class);
+		NSHM27_SeisClassificationMethod classification = fullBranch.requireValue(NSHM27_SeisClassificationMethod.class);
 		
 		if (rateToFullMmax) {
 			double snappedFullMMax = refMFD.getX(refMFD.getClosestXIndex(faultMmax));
-			IncrementalMagFreqDist mfd = rateBranch.build(seisRegion, TectonicRegionType.SUBDUCTION_INTERFACE, refMFD, snappedFullMMax);
+			IncrementalMagFreqDist mfd = rateBranch.build(seisRegion, classification, TectonicRegionType.SUBDUCTION_INTERFACE, refMFD, snappedFullMMax);
 			// now zero out above mMax
 			for (int i=mfd.getClosestXIndex(gridMmax)+1; i<mfd.size(); i++)
 				mfd.set(i, 0d);
 			return mfd;
 		}
 		
-		return rateBranch.build(seisRegion, TectonicRegionType.SUBDUCTION_INTERFACE, refMFD, gridMmax);
+		return rateBranch.build(seisRegion, classification, TectonicRegionType.SUBDUCTION_INTERFACE, refMFD, gridMmax);
 	}
 	
 	public static GridSourceList buildInterfaceGridSourceList(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch,
@@ -402,6 +404,7 @@ public class NSHM27_GridSourceBuilder {
 		
 		NSHM27_DeclusteringAlgorithms decluster = fullBranch.requireValue(NSHM27_DeclusteringAlgorithms.class);
 		NSHM27_SeisSmoothingAlgorithms smooth = fullBranch.requireValue(NSHM27_SeisSmoothingAlgorithms.class);
+		NSHM27_SeisClassificationMethod classification = fullBranch.requireValue(NSHM27_SeisClassificationMethod.class);
 		
 		IncrementalMagFreqDist refMFD;
 		double faultMmax;
@@ -422,7 +425,7 @@ public class NSHM27_GridSourceBuilder {
 		GriddedGeoDataSet strikes = loadInterfaceStrikes(seisRegion);
 		double rake = 90d;
 		
-		GriddedGeoDataSet pdf = NSHM27_SeisPDF_Loader.load2D(seisRegion, TectonicRegionType.SUBDUCTION_INTERFACE, decluster, smooth);
+		GriddedGeoDataSet pdf = NSHM27_SeisPDF_Loader.load2D(seisRegion, classification, TectonicRegionType.SUBDUCTION_INTERFACE, decluster, smooth);
 		GriddedGeoDataSet clippedPDF = new GriddedGeoDataSet(pdf.getRegion());
 		int skipped = 0;
 		double skippedWeight = 0d;
@@ -565,12 +568,13 @@ public class NSHM27_GridSourceBuilder {
 		NSHM27_SeisRateModel rateBranch = fullBranch.requireValue(NSHM27_SeisRateModel.class);
 		NSHM27_DeclusteringAlgorithms decluster = fullBranch.requireValue(NSHM27_DeclusteringAlgorithms.class);
 		NSHM27_SeisSmoothingAlgorithms smooth = fullBranch.requireValue(NSHM27_SeisSmoothingAlgorithms.class);
+		NSHM27_SeisClassificationMethod classification = fullBranch.requireValue(NSHM27_SeisClassificationMethod.class);
 		
 		double mMax = fullBranch.requireValue(MaxMagOffFaultBranchNode.class).getMaxMagOffFault();
 		
 		IncrementalMagFreqDist refMFD = FaultSysTools.initEmptyMFD(OVERALL_MMIN, mMax+0.1);
 		
-		IncrementalMagFreqDist totalGR = rateBranch.build(seisRegion, TectonicRegionType.SUBDUCTION_SLAB,
+		IncrementalMagFreqDist totalGR = rateBranch.build(seisRegion, classification, TectonicRegionType.SUBDUCTION_SLAB,
 				refMFD, refMFD.getX(refMFD.getClosestXIndex(mMax-0.001)));
 		double m5Rate = totalGR.getCumRate(totalGR.getClosestXIndex(5.05));
 		
@@ -581,7 +585,7 @@ public class NSHM27_GridSourceBuilder {
 		double strike = Double.NaN;
 		
 		GriddedGeoDepthValueDataSet pdf = NSHM27_SeisPDF_Loader.load3D(
-				seisRegion, TectonicRegionType.SUBDUCTION_SLAB, decluster, smooth);
+				seisRegion, classification, TectonicRegionType.SUBDUCTION_SLAB, decluster, smooth);
 		Preconditions.checkState((float)pdf.getSumValues() == 1f);
 		if (SLAB_DEPTH_REDISCRETIZATION != null) {
 			StringBuilder depthStr = null;
@@ -676,15 +680,16 @@ public class NSHM27_GridSourceBuilder {
 		NSHM27_SeisRateModel rateBranch = fullBranch.requireValue(NSHM27_SeisRateModel.class);
 		NSHM27_DeclusteringAlgorithms decluster = fullBranch.requireValue(NSHM27_DeclusteringAlgorithms.class);
 		NSHM27_SeisSmoothingAlgorithms smooth = fullBranch.requireValue(NSHM27_SeisSmoothingAlgorithms.class);
+		NSHM27_SeisClassificationMethod classification = fullBranch.requireValue(NSHM27_SeisClassificationMethod.class);
 		
 		double mMax = fullBranch.requireValue(MaxMagOffFaultBranchNode.class).getMaxMagOffFault();
 		
 		IncrementalMagFreqDist refMFD = FaultSysTools.initEmptyMFD(OVERALL_MMIN, mMax+0.1);
 		
-		IncrementalMagFreqDist totalGR = rateBranch.build(seisRegion, TectonicRegionType.ACTIVE_SHALLOW,
+		IncrementalMagFreqDist totalGR = rateBranch.build(seisRegion, classification, TectonicRegionType.ACTIVE_SHALLOW,
 				refMFD, refMFD.getX(refMFD.getClosestXIndex(mMax-0.001)));
 		
-		GriddedGeoDataSet pdf = NSHM27_SeisPDF_Loader.load2D(seisRegion, TectonicRegionType.ACTIVE_SHALLOW, decluster, smooth);
+		GriddedGeoDataSet pdf = NSHM27_SeisPDF_Loader.load2D(seisRegion, classification, TectonicRegionType.ACTIVE_SHALLOW, decluster, smooth);
 		
 		return buildCrustalGridSourceProv(seisRegion, sol, totalGR, pdf);
 	}

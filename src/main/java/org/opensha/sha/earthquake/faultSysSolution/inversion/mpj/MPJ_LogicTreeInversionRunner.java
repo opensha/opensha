@@ -351,20 +351,12 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 	}
 	
 	/**
-	 * Returns true if this branch has TectonicRegionBranchTreeNode nodes, and if so, throws an IllegalStateException
-	 * if it contains other nodes that are not a TectonicRegionBranchTreeNode
+	 * Returns true if this branch has TectonicRegionBranchTreeNode nodes
 	 * @param branch
 	 * @return
 	 */
 	private static boolean isTRTSpecificBranch(LogicTreeBranch<LogicTreeNode> branch) {
-		if (branch.hasValue(TectonicRegionBranchTreeNode.class)) {
-			for (int i=0; i<branch.size(); i++)
-				Preconditions.checkState(branch.getValue(i) instanceof TectonicRegionBranchTreeNode,
-						"TODO: In TRT-specific branch mode, all top level branch nodes must currently be of type "
-						+ "TectonicRegionBranchTreeNode; %s", branch);
-			return true;
-		}
-		return false;
+		return branch.hasValue(TectonicRegionBranchTreeNode.class);
 	}
 
 	private class CalcRunnable implements Runnable {
@@ -393,7 +385,8 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 				List<TectonicRegionBranchTreeNode> trtNodes = branch.getValues(TectonicRegionBranchTreeNode.class);
 				if (trtNodes.size() == 1) {
 					// just one, simple
-					LogicTreeBranch<?> trtBranch = trtNodes.get(0).getValue();
+					// this also includes any common top-level values
+					LogicTreeBranch<?> trtBranch = trtNodes.get(0).getUnrolledIndividualBranch(branch);
 					FaultSystemSolution sol = doCalculate(branchIndex, trtBranch, solFile);
 					if (nodeBACreators != null) {
 						if (sol == null) {
@@ -438,7 +431,8 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 						List<FaultSystemSolution> sols = new ArrayList<>(trtNodes.size());
 						List<GridSourceProvider> individualGridProvs = new ArrayList<>(trtNodes.size());
 						for (int i=0; i<trtNodes.size(); i++) {
-							LogicTreeBranch<?> trtBranch = trtNodes.get(i).getValue();
+							// this also includes any common top-level values
+							LogicTreeBranch<?> trtBranch = trtNodes.get(i).getUnrolledIndividualBranch(branch);
 							TectonicRegionType trt = trtNodes.get(i).getTectonicRegime();
 							debug("Processing index "+index+" is for trt="+trt.name()+": "+trtBranch);
 							if (trtBranch.hasValue(RupSetFaultModel.class)) {

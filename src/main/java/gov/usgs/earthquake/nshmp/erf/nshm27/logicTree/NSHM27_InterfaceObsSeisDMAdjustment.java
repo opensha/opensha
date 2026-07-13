@@ -36,10 +36,10 @@ import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_Seis
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode.FixedWeightNode {
-	NONE("No Adjustment", "None", 1d),
-	AVERAGE("Average Observed Seismicity Sub-Seis Reduction", "Avg-Sub-Seis", 1d),
-	SECTION_SPECIFIC("Section-Specific Observed Seismicity", "Sect-Sub-Seis", 1d),
-	EXTRAPOLATE("Match Extrapolated Observed Seismicity", "Extrapolate-Observed", 1d);
+	NONE("No Adjustment", "None", 0.3d),
+	AVERAGE("Average Observed Seismicity Sub-Seis Reduction", "Avg-Sub-Seis", 0.3),
+	SECTION_SPECIFIC("Section-Specific Observed Seismicity", "Sect-Sub-Seis", 0.3),
+	EXTRAPOLATE("Match Extrapolated Observed Seismicity", "Extrapolate-Observed", 0.1);
 	
 	private String name;
 	private String shortName;
@@ -208,7 +208,8 @@ public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode.FixedWe
 			IncrementalMagFreqDist refMFD = FaultSysTools.initEmptyMFD(NSHM27_GridSourceBuilder.OVERALL_MMIN, mMax);
 			NSHM27_SeisRateModel rateModel = branch.requireValue(NSHM27_SeisRateModel.class);
 			int mMaxIndex = refMFD.getClosestXIndex(mMax);
-			IncrementalMagFreqDist totalGR = rateModel.build(seisReg, TectonicRegionType.SUBDUCTION_INTERFACE,
+			NSHM27_SeisClassificationMethod classification = branch.requireValue(NSHM27_SeisClassificationMethod.class);
+			IncrementalMagFreqDist totalGR = rateModel.build(seisReg, classification, TectonicRegionType.SUBDUCTION_INTERFACE,
 					refMFD, refMFD.getX(mMaxIndex));
 			
 			System.out.println("Building extrapolated DM with mMax="+(float)mMax);

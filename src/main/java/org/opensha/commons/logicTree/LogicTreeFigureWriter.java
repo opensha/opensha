@@ -29,7 +29,10 @@ import org.apache.commons.statistics.distribution.NormalDistribution;
 import org.apache.commons.statistics.distribution.TriangularDistribution;
 import org.apache.commons.statistics.distribution.UniformContinuousDistribution;
 import org.jfree.chart.ui.RectangleAnchor;
+import org.opensha.commons.data.WeightedList;
+import org.opensha.commons.data.WeightedValue;
 import org.opensha.commons.gui.plot.pdf.PDF_UTF8_FontMapper;
+import org.opensha.commons.logicTree.LogicTreeLevel.AbstractCombinedSamplingLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.AbstractContinuousDistributionSampledLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
 import org.opensha.commons.util.ExceptionUtils;
@@ -218,7 +221,60 @@ public class LogicTreeFigureWriter extends JPanel {
 			int botLineY = y+lineHeight;
 			int topChoiceY = botLineY + lineGap;
 			int topWeightY = topChoiceY + choiceFontHeight;
-			if (level instanceof RandomLevel<?,?> && nodes.size() > maxNodes && includedLevels.size() > 1) {
+			List<NodeLevelPair> subNodePairs = null;
+			if (level instanceof AbstractCombinedSamplingLevel<?,?>) {
+				subNodePairs = new ArrayList<>();
+				WeightedList<? extends LogicTreeLevel<?>> subLevels = ((AbstractCombinedSamplingLevel<?,?>)level).getSubLevels();
+				for (int i=0; i<subLevels.size(); i++) {
+					LogicTreeLevel<?> subLevel = subLevels.getValue(i);
+					if (subLevel instanceof RandomLevel<?, ?>) {
+						subNodePairs.add(new NodeLevelPair(null, subLevel, i));
+					} else {
+						for (LogicTreeNode node : subLevel.getNodes())
+							subNodePairs.add(new NodeLevelPair(node, subLevel, i));
+					}
+				}
+			}
+			if (subNodePairs != null && subNodePairs.size() <= maxNodes && includedLevels.size() > 1) {
+				WeightedList<? extends LogicTreeLevel<?>> subLevels = ((AbstractCombinedSamplingLevel<?,?>)level).getSubLevels();
+				if (!subLevels.isNormalized()) {
+					subLevels = new WeightedList<>(subLevels);
+					subLevels.normalize();
+				}
+				int myNodesWidth = choiceWidth*subNodePairs.size();
+				int sideBuffer = (int)(0.5*(width - myNodesWidth));
+				int leftX = sideBuffer;
+				for (NodeLevelPair subNode : subNodePairs) {
+					int rightX = leftX + choiceWidth;
+					int choiceCenterX = (int)(0.5*(leftX + rightX));
+					int topX = middleX + (int)(0.2*(choiceCenterX - middleX));
+					if (subNode.level instanceof RandomLevel<?,?>) {
+						g2d.setStroke(randLineStroke);
+						g2d.drawLine(topX, y, choiceCenterX, botLineY);
+						g2d.setStroke(lineStroke);
+						leftX = rightX;
+						if (subNode.level instanceof AbstractContinuousDistributionSampledLevel<?>) {
+							AbstractContinuousDistributionSampledLevel<?> distLevel = (AbstractContinuousDistributionSampledLevel<?>)subNode.level;
+							String distStr = getDistString(distLevel);
+							g2d.setFont(distFont);
+							drawText(g2d, distStr, choiceCenterX, topChoiceY, RectangleAnchor.TOP);
+						} else {
+							g2d.setFont(choiceFont);
+							drawText(g2d, remapped(subNode.level.getShortName()), choiceCenterX, topChoiceY, RectangleAnchor.TOP);
+						}
+					} else {
+						g2d.drawLine(topX, y, choiceCenterX, botLineY);
+						leftX = rightX;
+						g2d.setFont(choiceFont);
+						drawText(g2d, remapped(subNode.node.getShortName()), choiceCenterX, topChoiceY, RectangleAnchor.TOP);
+					}
+					double weight = subLevels.getWeight(subNode.levelIndex);
+					if (subNode.node != null)
+						weight *= subNode.node.getNodeWeight(null);
+					g2d.setFont(weightFont);
+					drawText(g2d, "("+weightDF.format(weight)+")", choiceCenterX, topWeightY, RectangleAnchor.TOP);
+				}
+			} else if (level instanceof RandomLevel<?,?> && nodes.size() > maxNodes && includedLevels.size() > 1) {
 				// figure out how many branches we have without this
 				HashSet<String> uniquesWithout = new HashSet<>();
 				for (LogicTreeBranch<?> branch : tree) {
@@ -271,40 +327,7 @@ public class LogicTreeFigureWriter extends JPanel {
 				}
 				if (level instanceof AbstractContinuousDistributionSampledLevel<?>) {
 					AbstractContinuousDistributionSampledLevel<?> distLevel = (AbstractContinuousDistributionSampledLevel<?>)level;
-					ContinuousDistribution dist = distLevel.getDistribution();
-					String distStr;
-					if (dist == null) {
-						distStr = "Unknown distribution";
-					} else {
-						double lower = distLevel.getLowerBound();
-						double upper = distLevel.getUpperBound();
-						String rangeStr = "["+distParamStr(lower)+", "+distParamStr(upper)+"]";
-						if (dist instanceof UniformContinuousDistribution) {
-							distStr = "𝑈"+rangeStr;
-						} else if (dist instanceof NormalDistribution) {
-							NormalDistribution norm = (NormalDistribution)dist;
-							distStr = "𝑁(μ="+distParamStr(norm.getMean())
-									+", σ="+distParamStr(norm.getStandardDeviation())+")";
-						} else if (dist instanceof TruncatedNormalDistribution) {
-							TruncatedNormalDistribution tNorm = (TruncatedNormalDistribution)dist;
-							distStr = "Trunc𝑁(μ="+distParamStr(tNorm.getParentMean())
-									+", σ="+distParamStr(tNorm.getParentStandardDeviation())
-									+", "+rangeStr+")";
-						} else if (dist instanceof TriangularDistribution) {
-							TriangularDistribution triDist = (TriangularDistribution)dist;
-							distStr = "Tri("+distParamStr(lower)
-									+", "+distParamStr(triDist.getMode())+", "+distParamStr(upper)+")";
-						} else if (dist instanceof LogNormalDistribution) {
-							LogNormalDistribution logNorm = (LogNormalDistribution)dist;
-							distStr = "Log𝑁(μ="+distParamStr(logNorm.getMu())
-									+", σ="+distParamStr(logNorm.getSigma())+")";
-						} else {
-							distStr = "Unknown"+rangeStr;
-						}
-						String units = distLevel.getUnits();
-						if (units != null && !units.isBlank())
-							distStr += " "+units;
-					}
+					String distStr = getDistString(distLevel);
 					g2d.setFont(distFont);
 					drawText(g2d, distStr, middleX, topWeightY, RectangleAnchor.TOP);
 				} else if ((float)minWeight == (float)maxWeight) {
@@ -345,6 +368,44 @@ public class LogicTreeFigureWriter extends JPanel {
 //		
 //		drawText(g2d, "Test Text", 200, 0, RectangleAnchor.TOP);
 		
+	}
+
+	public String getDistString(AbstractContinuousDistributionSampledLevel<?> distLevel) {
+		ContinuousDistribution dist = distLevel.getDistribution();
+		String distStr;
+		if (dist == null) {
+			distStr = "Unknown distribution";
+		} else {
+			double lower = distLevel.getLowerBound();
+			double upper = distLevel.getUpperBound();
+			String rangeStr = "["+distParamStr(lower)+", "+distParamStr(upper)+"]";
+			if (dist instanceof UniformContinuousDistribution) {
+				distStr = "𝑈"+rangeStr;
+			} else if (dist instanceof NormalDistribution) {
+				NormalDistribution norm = (NormalDistribution)dist;
+				distStr = "𝑁(μ="+distParamStr(norm.getMean())
+						+", σ="+distParamStr(norm.getStandardDeviation())+")";
+			} else if (dist instanceof TruncatedNormalDistribution) {
+				TruncatedNormalDistribution tNorm = (TruncatedNormalDistribution)dist;
+				distStr = "Trunc𝑁(μ="+distParamStr(tNorm.getParentMean())
+						+", σ="+distParamStr(tNorm.getParentStandardDeviation())
+						+", "+rangeStr+")";
+			} else if (dist instanceof TriangularDistribution) {
+				TriangularDistribution triDist = (TriangularDistribution)dist;
+				distStr = "Tri("+distParamStr(lower)
+						+", "+distParamStr(triDist.getMode())+", "+distParamStr(upper)+")";
+			} else if (dist instanceof LogNormalDistribution) {
+				LogNormalDistribution logNorm = (LogNormalDistribution)dist;
+				distStr = "Log𝑁(μ="+distParamStr(logNorm.getMu())
+						+", σ="+distParamStr(logNorm.getSigma())+")";
+			} else {
+				distStr = "Unknown"+rangeStr;
+			}
+			String units = distLevel.getUnits();
+			if (units != null && !units.isBlank())
+				distStr += " "+units;
+		}
+		return distStr;
 	}
 	
 	private static DecimalFormat oDF = new DecimalFormat("0.###");

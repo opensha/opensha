@@ -1,13 +1,13 @@
 package gov.usgs.earthquake.nshmp.erf.nshm27.logicTree;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
-import org.opensha.commons.logicTree.LogicTreeBranch;
-import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.json.DoubleRangeAdapter;
 import org.opensha.commons.logicTree.LogicTreeLevel.BinnedLevel;
@@ -24,17 +24,112 @@ import com.google.common.collect.Range;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import com.google.gson.TypeAdapter;
+import com.google.gson.annotations.JsonAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.PureGR;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateRecord;
+import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateType;
 
 public interface NSHM27_SeisRateModel extends LogicTreeNode {
 	
-	public abstract IncrementalMagFreqDist build(NSHM27_SeismicityRegions region, TectonicRegionType trt, EvenlyDiscretizedFunc refMFD, double mMax);
+	public abstract IncrementalMagFreqDist build(NSHM27_SeismicityRegions region,
+			NSHM27_SeisClassificationMethod classification, TectonicRegionType trt,
+			EvenlyDiscretizedFunc refMFD, double mMax);
 	
-	public abstract RateRecord getRateRecord(NSHM27_SeismicityRegions region, TectonicRegionType trt);
+	public abstract RateRecord getRateRecord(NSHM27_SeismicityRegions region,
+			NSHM27_SeisClassificationMethod classification, TectonicRegionType trt);
+	
+	@JsonAdapter(ClassificationDependentGRAdapter.class)
+	public static class ClassificationDependentGR {
+		private EnumMap<NSHM27_SeisClassificationMethod, PureGR> grs;
+		private double sampleFractile;
+		
+		public ClassificationDependentGR(EnumMap<NSHM27_SeisClassificationMethod, PureGR> grs, double sampleFractile) {
+			Preconditions.checkState(!grs.isEmpty());
+			Preconditions.checkState(sampleFractile >= 0d && sampleFractile < 1d);
+			this.grs = grs;
+			this.sampleFractile = sampleFractile;
+		}
+		
+		public PureGR getValue(NSHM27_SeisClassificationMethod classification) {
+			PureGR value = grs.get(classification);
+			Preconditions.checkNotNull(value);
+			return value;
+		}
+		
+		public double getSampleFractile() {
+			return sampleFractile;
+		}
+	}
+	
+	public static ClassificationDependentGRAdapter CLASS_GR_ADAPTER = new ClassificationDependentGRAdapter();
+	
+	public static class ClassificationDependentGRAdapter extends TypeAdapter<ClassificationDependentGR> {
+
+		@Override
+		public void write(JsonWriter out, ClassificationDependentGR value) throws IOException {
+			out.beginObject();
+			
+			out.name("rateModels").beginArray();
+			for (NSHM27_SeisClassificationMethod classification : value.grs.keySet()) {
+				out.beginArray();
+				out.value(classification.name());
+				PureGR gr = value.getValue(classification);
+				out.value(gr.M1);
+				out.value(gr.rateAboveM1);
+				out.value(gr.b);
+				out.endArray();
+			}
+			out.endArray();
+			out.name("fractile").value(value.getSampleFractile());
+			
+			out.endObject();
+		}
+
+		@Override
+		public ClassificationDependentGR read(JsonReader in) throws IOException {
+			EnumMap<NSHM27_SeisClassificationMethod, PureGR> grs = new EnumMap<>(NSHM27_SeisClassificationMethod.class);
+			Double fractile = null;
+			in.beginObject();
+			
+			while (in.hasNext()) {
+				String name = in.nextName();
+				switch (name) {
+				case "rateModels":
+					in.beginArray();
+					while (in.hasNext()) {
+						in.beginArray();
+						NSHM27_SeisClassificationMethod classification = NSHM27_SeisClassificationMethod.valueOf(in.nextString());
+						double m1 = in.nextDouble();
+						double rateAboveM1 = in.nextDouble();
+						double b = in.nextDouble();
+						PureGR gr = new PureGR(RateType.M1, m1, Double.POSITIVE_INFINITY, rateAboveM1, b, Double.NaN, true);
+						grs.put(classification, gr);
+						in.endArray();
+					}
+					in.endArray();
+					break;
+				case "fractile":
+					fractile = in.nextDouble();
+					break;
+
+				default:
+					System.err.println("Skipping unexpected Json token with name: "+name);
+					in.skipValue();
+					break;
+				}
+			}
+			
+			in.endObject();
+			return new ClassificationDependentGR(grs, fractile);
+		}
+		
+	}
 	
 	// this affects interface slip rates
 	@Affects(FaultSystemRupSet.SECTS_FILE_NAME)
@@ -45,7 +140,7 @@ public interface NSHM27_SeisRateModel extends LogicTreeNode {
 	@DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 	@DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 	@Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-	public static class NSHM27_SiesRateModelSample extends SimpleValuedNode<PureGR> implements NSHM27_SeisRateModel {
+	public static class NSHM27_SiesRateModelSample extends SimpleValuedNode<ClassificationDependentGR> implements NSHM27_SeisRateModel {
 		
 		private NSHM27_SeismicityRegions region;
 		private TectonicRegionType trt;
@@ -53,33 +148,41 @@ public interface NSHM27_SeisRateModel extends LogicTreeNode {
 		@SuppressWarnings("unused") // deserialization
 		private NSHM27_SiesRateModelSample() {}
 
-		public NSHM27_SiesRateModelSample(PureGR value, NSHM27_SeismicityRegions region, TectonicRegionType trt, double weight, String name,
+		public NSHM27_SiesRateModelSample(ClassificationDependentGR value, NSHM27_SeismicityRegions region,
+				TectonicRegionType trt, double weight, String name,
 				String shortName, String filePrefix) {
-			super(value, PureGR.class, weight, name, shortName, filePrefix);
+			super(value, ClassificationDependentGR.class, weight, name, shortName, filePrefix);
 			this.region = region;
 			this.trt = trt;
 		}
 
 		@Override
-		public IncrementalMagFreqDist build(NSHM27_SeismicityRegions region, TectonicRegionType trt,
+		public IncrementalMagFreqDist build(NSHM27_SeismicityRegions region,
+				NSHM27_SeisClassificationMethod classification, TectonicRegionType trt,
 				EvenlyDiscretizedFunc refMFD, double mMax) {
-			PureGR value = getValue();
-			Preconditions.checkState(this.region == null || region == this.region, "Region mismatch: %s != %s", region, this.region);
-			Preconditions.checkState(this.trt == null || trt == this.trt, "TRT mismatch: %s != %s", trt, this.trt);
-			return SeismicityRateFileLoader.buildIncrementalMFD(value, refMFD, mMax, Double.NaN);
+			ClassificationDependentGR value = getValue();
+			Preconditions.checkState(this.region == null || region == this.region,
+					"Region mismatch: %s != %s", region, this.region);
+			Preconditions.checkState(this.trt == null || trt == this.trt,
+					"TRT mismatch: %s != %s", trt, this.trt);
+			PureGR gr = value.getValue(classification);
+			return SeismicityRateFileLoader.buildIncrementalMFD(gr, refMFD, mMax, Double.NaN);
 		}
 
 		@Override
-		public RateRecord getRateRecord(NSHM27_SeismicityRegions region, TectonicRegionType trt) {
-			Preconditions.checkState(this.region == null || region == this.region, "Region mismatch: %s != %s", region, this.region);
-			Preconditions.checkState(this.trt == null || trt == this.trt, "TRT mismatch: %s != %s", trt, this.trt);
-			return getValue();
+		public RateRecord getRateRecord(NSHM27_SeismicityRegions region,
+				NSHM27_SeisClassificationMethod classification, TectonicRegionType trt) {
+			Preconditions.checkState(this.region == null || region == this.region,
+					"Region mismatch: %s != %s", region, this.region);
+			Preconditions.checkState(this.trt == null || trt == this.trt,
+					"TRT mismatch: %s != %s", trt, this.trt);
+			return getValue().getValue(classification);
 		}
 		
 	}
 	
 	public static class BinnedSamplesLevel extends DataBackedLevel<BinnedSamplesNode>
-	implements BinnedLevel<PureGR, BinnedSamplesNode>{
+	implements BinnedLevel<ClassificationDependentGR, BinnedSamplesNode>{
 		
 		private List<BinnedSamplesNode> nodes;
 		
@@ -108,7 +211,7 @@ public interface NSHM27_SeisRateModel extends LogicTreeNode {
 		}
 
 		@Override
-		public BinnedSamplesNode getBin(PureGR value) {
+		public BinnedSamplesNode getBin(ClassificationDependentGR value) {
 			for (BinnedSamplesNode node : nodes)
 				if (node.isMember(value))
 					return node;
@@ -126,7 +229,7 @@ public interface NSHM27_SeisRateModel extends LogicTreeNode {
 			for (BinnedSamplesNode node : nodes) {
 				JsonObject binObj = new JsonObject();
 
-				binObj.add("range", rangeAdapter.toJsonTree(node.rateRange));
+				binObj.add("range", rangeAdapter.toJsonTree(node.fractileRange));
 				binObj.add("name", new JsonPrimitive(node.getName()));
 				binObj.add("shortName", new JsonPrimitive(node.getShortName()));
 				binObj.add("filePrefix", new JsonPrimitive(node.getFilePrefix()));
@@ -166,15 +269,15 @@ public interface NSHM27_SeisRateModel extends LogicTreeNode {
 		private String shortName;
 		private String filePrefix;
 		private double weight;
-		private Range<Double> rateRange;
+		private Range<Double> fractileRange;
 
 		public BinnedSamplesNode(String name, String shortName, String filePrefix, double weight,
-				Range<Double> rateRange) {
+				Range<Double> fractileRange) {
 			this.name = name;
 			this.shortName = shortName;
 			this.filePrefix = filePrefix;
 			this.weight = weight;
-			this.rateRange = rateRange;
+			this.fractileRange = fractileRange;
 		}
 
 		@Override
@@ -197,8 +300,8 @@ public interface NSHM27_SeisRateModel extends LogicTreeNode {
 			return filePrefix;
 		}
 		
-		public boolean isMember(PureGR gr) {
-			return rateRange.contains(gr.rateAboveM1);
+		public boolean isMember(ClassificationDependentGR gr) {
+			return fractileRange.contains(gr.sampleFractile);
 		}
 		
 	}

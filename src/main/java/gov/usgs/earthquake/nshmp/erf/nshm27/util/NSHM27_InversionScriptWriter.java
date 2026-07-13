@@ -67,7 +67,7 @@ public class NSHM27_InversionScriptWriter {
 					
 //					"--sampling-method", SamplingMethod.MONTE_CARLO.name(),
 					"--sampling-method", SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE.name(),
-					"--samples", "3000",
+					"--samples", "2000",
 //					"--unique-seed",
 			};
 		}

@@ -44,7 +44,7 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public class NSHM27_InterfaceDeformationModels extends RupSetDeformationModelDistribution<FixedSampler> {
 	
-	public static final String CSV_NAME = "2026_06_23.csv";
+	public static final String CSV_NAME = "2026_07_10.csv";
 	
 	public static class SamplingLevel extends RupSetDeformationModelDistribution.UniformSamplingLevel<NSHM27_InterfaceDeformationModels> {
 		

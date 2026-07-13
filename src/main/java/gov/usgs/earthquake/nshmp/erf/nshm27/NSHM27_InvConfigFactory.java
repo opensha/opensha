@@ -87,6 +87,7 @@ import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_CrustalFaultModels;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_InterfaceFaultModels;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_InterfaceObsSeisDMAdjustment;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_ModelRegimeNode;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisClassificationMethod;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisRateModel;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.InterfaceGridAssociations;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
@@ -329,7 +330,8 @@ public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigur
 		if (branch.hasValue(NSHM27_InterfaceObsSeisDMAdjustment.EXTRAPOLATE)) {
 			// use obs seis b-value
 			NSHM27_SeismicityRegions reg = branch.requireValue(NSHM27_InterfaceFaultModels.class).getSeismicityRegion();
-			RateRecord rateModel = branch.requireValue(NSHM27_SeisRateModel.class).getRateRecord(reg, TectonicRegionType.SUBDUCTION_INTERFACE);
+			NSHM27_SeisClassificationMethod classification = branch.requireValue(NSHM27_SeisClassificationMethod.class);
+			RateRecord rateModel = branch.requireValue(NSHM27_SeisRateModel.class).getRateRecord(reg, classification, TectonicRegionType.SUBDUCTION_INTERFACE);
 			Preconditions.checkState(rateModel instanceof PureGR);
 			bVal = ((PureGR)rateModel).b;
 		} else if (bValNode != null) {
@@ -362,7 +364,8 @@ public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigur
 				NSHM27_InterfaceFaultModels fm = branch.getValue(NSHM27_InterfaceFaultModels.class);
 				if (fm != null && branch.hasValue(NSHM27_SeisRateModel.class)) {
 					NSHM27_SeisRateModel rateModel = branch.requireValue(NSHM27_SeisRateModel.class);
-					RateRecord record = rateModel.getRateRecord(fm.getSeismicityRegion(), TectonicRegionType.SUBDUCTION_INTERFACE);
+					NSHM27_SeisClassificationMethod classification = branch.requireValue(NSHM27_SeisClassificationMethod.class);
+					RateRecord record = rateModel.getRateRecord(fm.getSeismicityRegion(), classification, TectonicRegionType.SUBDUCTION_INTERFACE);
 					if (record instanceof PureGR)
 						constrBuilder.subSeisBOverride(((PureGR)record).b);
 					else

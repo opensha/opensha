@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
+import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -19,9 +21,12 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
 
+import com.google.common.base.Preconditions;
+
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_MapRegions;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
+import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateModel;
 
 public interface NSHM27_FaultModel extends RupSetFaultModel, RupSetSubsectioningModel, LogicTreeNode.FixedWeightNode {
 	
@@ -63,7 +68,16 @@ public interface NSHM27_FaultModel extends RupSetFaultModel, RupSetSubsectioning
 		for (TectonicRegionType trt : trts) {
 			trtRegions.add(cloneForTRT(seisReg.load(), trt));
 			double mMax = NSHM27_SeisRateModelBranch.getPlotMmax(trt);
-			UncertainBoundedIncrMagFreqDist obsMFD = NSHM27_SeisRateModelBranch.loadRateModel(seisReg, trt).getBounded(refMFD, mMax);
+			WeightedList<UncertainBoundedIncrMagFreqDist> weightedMFDs = new WeightedList<>();
+			for (NSHM27_SeisClassificationMethod classification : NSHM27_SeisClassificationMethod.values()) {
+				double weight = classification.getNodeWeight();
+				if (weight == 0)
+					continue;
+				UncertainBoundedIncrMagFreqDist obsMFD = NSHM27_SeisRateModelBranch.loadRateModel(
+						seisReg, classification, trt).getBounded(refMFD, mMax);
+				weightedMFDs.add(obsMFD, weight);
+			}
+			UncertainBoundedIncrMagFreqDist obsMFD = SeismicityRateModel.averageUncert(weightedMFDs);
 			fullObsMFD.addIncrementalMagFreqDist(obsMFD);
 			trtMFDs.add(obsMFD);
 			regionTRTs.add(trt);
