@@ -110,6 +110,14 @@ public class NSHM27_InterfaceHingedBValue implements SectionSupraSeisBValues.Fix
 			return node.getB(rupSet, branch);
 		}
 		
+		public boolean isHinged() {
+			return node instanceof NSHM27_InterfaceHingedBValue;
+		}
+		
+		public FixedWeight getNode() {
+			return node;
+		}
+		
 	}
 	
 	public static class CombinedSamplingLevel extends
