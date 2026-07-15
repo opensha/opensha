@@ -250,6 +250,10 @@ public class TectonicRegionBranchTreeNode implements LogicTreeNode.ValuedLogicTr
 			return tree.getBranch(index);
 		}
 		
+		public LogicTree<LogicTreeNode> getTree() {
+			return tree;
+		}
+		
 	}
 	
 	public static boolean isTRTBranch(LogicTreeBranch<?> branch) {
