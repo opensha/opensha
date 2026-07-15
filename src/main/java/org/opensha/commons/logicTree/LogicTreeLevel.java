@@ -1,14 +1,11 @@
 package org.opensha.commons.logicTree;
 
-import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.text.DecimalFormat;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -22,8 +19,6 @@ import org.apache.commons.statistics.distribution.ContinuousDistribution;
 import org.apache.commons.statistics.distribution.ContinuousDistribution.Sampler;
 import org.opensha.commons.data.ShortNamed;
 import org.opensha.commons.data.WeightedList;
-import org.opensha.commons.data.WeightedValue;
-import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.logicTree.Affects.Affected;
 import org.opensha.commons.logicTree.DoesNotAffect.NotAffected;
 import org.opensha.commons.logicTree.LogicTreeBranch.NodeTypeAdapter;
@@ -32,6 +27,7 @@ import org.opensha.commons.logicTree.LogicTreeNode.FixedWeightNode;
 import org.opensha.commons.logicTree.LogicTreeNode.RandomlyGeneratedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.SimpleValuedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.ValuedLogicTreeNode;
+import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.json.ContinuousDistributionTypeAdapter;
 import org.opensha.commons.util.json.DoubleRangeAdapter;
@@ -41,7 +37,6 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Range;
-import com.google.common.primitives.Doubles;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -1016,13 +1011,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 				samples[i] = getRoundedToPrecision(dist.inverseCumulativeProbability(p));
 			}
 			// shuffle them according to the uniform random provider
-			// Fisher–Yates shuffle
-			for (int i = numSamples - 1; i > 0; i--) {
-				int j = rand.nextInt(i + 1);
-				double tmp = samples[i];
-				samples[i] = samples[j];
-				samples[j] = tmp;
-			}
+			DataUtils.shuffle(samples, rand);
 			
 			build(new Supplier<Double>() {
 				int index = 0;

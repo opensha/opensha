@@ -21,7 +21,6 @@ import java.util.Random;
 
 import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
-import org.opensha.commons.logicTree.LogicTreeLevel.BinnableLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.BinnedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.IndexedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
@@ -32,7 +31,6 @@ import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
-import com.google.common.primitives.Doubles;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.TypeAdapter;
