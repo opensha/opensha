@@ -20,6 +20,7 @@ import org.opensha.commons.logicTree.LogicTreeLevel.SamplingMethod;
 import org.opensha.commons.logicTree.LogicTreeLevel.ValueBackedLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.logicTree.LogicTreeNode.ValuedLogicTreeNode;
+import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.json.DoubleRangeAdapter;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
@@ -213,6 +214,7 @@ implements RupSetDeformationModel, ValuedLogicTreeNode<S> {
 				double binEnd = (double)(i + 1) / numSamples;
 				samples[i] = rand.nextDouble(binStart, binEnd);
 			}
+			DataUtils.shuffle(samples, rand);
 		} else {
 			for (int i=0; i<numSamples; i++)
 				samples[i] = rand.nextDouble();
