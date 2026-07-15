@@ -97,6 +97,7 @@ public class NSHM27_InterfaceHingedBValue implements SectionSupraSeisBValues.Fix
 
 		@Override
 		protected void setNodeValue(SectionSupraSeisBValues.FixedWeight node) {
+			super.setNodeValue(node);
 			this.node = node;
 		}
 
@@ -112,10 +113,6 @@ public class NSHM27_InterfaceHingedBValue implements SectionSupraSeisBValues.Fix
 		
 		public boolean isHinged() {
 			return node instanceof NSHM27_InterfaceHingedBValue;
-		}
-		
-		public FixedWeight getNode() {
-			return node;
 		}
 		
 	}
