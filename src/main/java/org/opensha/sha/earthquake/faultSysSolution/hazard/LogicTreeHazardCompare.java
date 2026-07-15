@@ -25,6 +25,7 @@ import java.nio.charset.Charset;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -129,6 +130,8 @@ public class LogicTreeHazardCompare {
 	
 //	private static final Location DEBUG_LOC = new Location(46, -105);
 	private static final Location DEBUG_LOC = null;
+	
+	private static final boolean RESHUFFLE_STABILITY_BRANCHES = false;
 	
 	public static void main(String[] args) throws IOException {
 		System.setProperty("java.awt.headless", "true");
@@ -2186,12 +2189,18 @@ public class LogicTreeHazardCompare {
 							mapMean = buildMean(maps);
 					}
 					
+					List<Integer> randomIndexes = new ArrayList<>(branches.size());
+					for (int i=0; i<branches.size(); i++)
+						randomIndexes.add(i);
+					if (RESHUFFLE_STABILITY_BRANCHES)
+						Collections.shuffle(randomIndexes);
 					int halfSize = branches.size()/2;
 					List<GriddedGeoDataSet> halfMaps = new ArrayList<>(halfSize);
 					List<Double> halfWeights = new ArrayList<>(halfSize);
 					for (int i=0; i<halfSize; i++) {
-						halfMaps.add(maps[i]);
-						halfWeights.add(weights.get(i));
+						int index = randomIndexes.get(i);
+						halfMaps.add(maps[index]);
+						halfWeights.add(weights.get(index));
 					}
 					GriddedGeoDataSet firstHalfMean = buildMean(halfMaps, halfWeights);
 					GriddedGeoDataSet firstHalfSD = new GriddedGeoDataSet(region);
@@ -2200,8 +2209,9 @@ public class LogicTreeHazardCompare {
 					halfMaps.clear();
 					halfWeights.clear();
 					for (int i=halfSize; i<branches.size(); i++) {
-						halfMaps.add(maps[i]);
-						halfWeights.add(weights.get(i));
+						int index = randomIndexes.get(i);
+						halfMaps.add(maps[index]);
+						halfWeights.add(weights.get(index));
 					}
 					GriddedGeoDataSet secondHalfMean = buildMean(halfMaps, halfWeights);
 					GriddedGeoDataSet secondHalfSD = new GriddedGeoDataSet(region);
@@ -2220,6 +2230,10 @@ public class LogicTreeHazardCompare {
 							+ "randomly-sampled logic tree compared to the full tree. If differences are minimal, then "
 							+ "the total sample count of "+branches.size()+" may be sufficient.");
 					lines.add("");
+					if (RESHUFFLE_STABILITY_BRANCHES) {
+						lines.add("This test first resuffles the logic tree to remove any imprinted ordering biases.");
+						lines.add("");
+					}
 					
 					table = MarkdownUtils.tableBuilder(TableTextAlignment.CENTER);
 					table.addLine("__First Half__", "__Second Half__");
