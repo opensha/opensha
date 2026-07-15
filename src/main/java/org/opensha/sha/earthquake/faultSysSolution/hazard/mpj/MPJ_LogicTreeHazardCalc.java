@@ -166,6 +166,13 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					logicTreeFile.getAbsolutePath());
 			analysisTree = LogicTree.read(logicTreeFile);
 			Preconditions.checkState(analysisTree.size() == solTree.getLogicTree().size());
+
+			for (int i=0; i<analysisTree.size(); i++) {
+				Preconditions.checkState(analysisTree.getBranch(i).buildFileName()
+							.equals(solTree.getLogicTree().getBranch(i).buildFileName()),
+						"Analysis tree branch %s does not match solution tree branch %s at index %s",
+						analysisTree.getBranch(i).buildFileName(), solTree.getLogicTree().getBranch(i).buildFileName(), i);
+			}
 		}
 		
 		if (rank == 0)
