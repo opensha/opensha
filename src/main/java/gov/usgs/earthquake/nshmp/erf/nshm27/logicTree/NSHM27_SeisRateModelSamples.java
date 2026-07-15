@@ -6,19 +6,15 @@ import java.text.DecimalFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Random;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.opensha.commons.data.CSVFile;
-import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
-import org.opensha.commons.data.function.LightFixedXFunc;
-import org.opensha.commons.logicTree.LogicTreeBranch;
-import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.AbstractRandomlySampledLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.BinnableLevel;
-import org.opensha.commons.logicTree.LogicTreeLevel.SamplingMethod;
-import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -26,21 +22,19 @@ import com.google.common.collect.Range;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.TypeAdapter;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonWriter;
 
 import gov.usgs.earthquake.nshmp.erf.nshm27.NSHM27_InvConfigFactory;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisRateModel.BinnedSamplesLevel;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisRateModel.BinnedSamplesNode;
+import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisRateModel.ClassificationDependentGR;
 import gov.usgs.earthquake.nshmp.erf.nshm27.logicTree.NSHM27_SeisRateModel.NSHM27_SiesRateModelSample;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.PureGR;
-import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateType;
 
-public class NSHM27_SeisRateModelSamples extends AbstractRandomlySampledLevel<PureGR, NSHM27_SiesRateModelSample>
-implements BinnableLevel<PureGR, NSHM27_SiesRateModelSample, BinnedSamplesLevel> {
+public class NSHM27_SeisRateModelSamples extends AbstractRandomlySampledLevel<ClassificationDependentGR, NSHM27_SiesRateModelSample>
+implements BinnableLevel<ClassificationDependentGR, NSHM27_SiesRateModelSample, BinnedSamplesLevel> {
 	
 	private NSHM27_SeismicityRegions region;
 	private TectonicRegionType trt;
@@ -59,51 +53,63 @@ implements BinnableLevel<PureGR, NSHM27_SiesRateModelSample, BinnedSamplesLevel>
 	}
 	
 	@Override
-	public Class<? extends PureGR> getValueType() {
-		return PureGR.class;
+	public Class<? extends ClassificationDependentGR> getValueType() {
+		return ClassificationDependentGR.class;
 	}
 	
-	protected CSVFile<String> loadCSV() throws IOException {
+	protected CSVFile<String> loadCSV(NSHM27_SeisClassificationMethod classification) throws IOException {
 		File data = new File(NSHM27_InvConfigFactory.locateDataDirectory(), "seis_rate_samples");
 		Preconditions.checkState(data.exists(), "Data directory doesn't exist: %s", data.getAbsolutePath());
 		Preconditions.checkNotNull(region, "Region not set; can only be built upon initial construction");
 		Preconditions.checkNotNull(trt, "TRT not set; can only be built upon initial construction");
 		data = new File(data, region.name().toLowerCase());
 		Preconditions.checkState(data.exists(), "Region directory doesn't exist: %s", data.getAbsolutePath());
-		data = new File(data, NSHM27_SeisRateModelBranch.getRateModelDate(region));
+		data = new File(data, NSHM27_SeisRateModelBranch.getRateModelDate(region, classification));
 		Preconditions.checkState(data.exists(), "Date directory doesn't exist: %s", data.getAbsolutePath());
 		File csvFile = new File(data, NSHM27_SeisRateModelBranch.getRateModelCSVName(trt));
 		Preconditions.checkState(csvFile.exists(), "CSV doesn't exist: %s", data.getAbsolutePath());
 		return CSVFile.readFile(csvFile, false);
 	}
 	
-	public List<PureGR> loadOrigSamples() {
+	public List<PureGR> loadOrigSamples(NSHM27_SeisClassificationMethod classification) {
 		CSVFile<String> csv;
 		try {
-			csv = loadCSV();
+			csv = loadCSV(classification);
 		} catch (IOException e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
 		return SeismicityRateFileLoader.loadSamplesCSV(csv);
 	}
+	
+	private static Comparator<PureGR> COMP = (o1,o2) -> {
+		int cmp = Double.compare(o1.rateAboveM1, o2.rateAboveM1);
+		if (cmp == 0)
+			// treat lower b-value as "higher" to break rate ties
+			cmp = Double.compare(o2.b, o1.b);
+		return cmp;
+	};
 
 	@Override
 	protected void doBuild(long seed, int numNodes, SamplingMethod samplingMethod, double weightEach) {
-		List<PureGR> origSamples = loadOrigSamples();
-		Random rand = new Random(seed);
-		ArrayDeque<PureGR> samples = new ArrayDeque<>(numNodes);
-		if (samplingMethod.isLHS()) {
+//		List<PureGR> origSamples = loadOrigSamples();
+		EnumMap<NSHM27_SeisClassificationMethod, List<PureGR>> origSamples = new EnumMap<>(NSHM27_SeisClassificationMethod.class);
+		int numOrigSamples = -1;
+		for (NSHM27_SeisClassificationMethod classification : NSHM27_SeisClassificationMethod.values()) {
+			if (classification.getNodeWeight() == 0d)
+				continue;
+			List<PureGR> samples = loadOrigSamples(classification);
+			if (numOrigSamples == -1)
+				numOrigSamples = samples.size();
+			else
+				Preconditions.checkState(numOrigSamples == samples.size());
 			// sort by rate
-			origSamples.sort((o1,o2) -> {
-				int cmp = Double.compare(o1.rateAboveM1, o2.rateAboveM1);
-				if (cmp == 0)
-					// treat lower b-value as "higher" to break rate ties
-					cmp = Double.compare(o2.b, o1.b);
-				return cmp;
-			});
-			int numOrigSamples = origSamples.size();
-			
-			List<PureGR> sampled = new ArrayList<>(numNodes);
+			samples.sort(COMP);
+			origSamples.put(classification, samples);
+		}
+		Random rand = new Random(seed);
+		ArrayDeque<ClassificationDependentGR> samples = new ArrayDeque<>(numNodes);
+		if (samplingMethod.isLHS()) {
+			List<ClassificationDependentGR> sampled = new ArrayList<>(numNodes);
 			for (int i=0; i<numNodes; i++) {
 				double binStart = (double)i / numNodes;
 				double binEnd = (double)(i + 1) / numNodes;
@@ -112,26 +118,38 @@ implements BinnableLevel<PureGR, NSHM27_SiesRateModelSample, BinnedSamplesLevel>
 				int index = (int)(p * numOrigSamples);
 				if (index == numOrigSamples)
 					index = numOrigSamples - 1;
+				
+				EnumMap<NSHM27_SeisClassificationMethod, PureGR> grs = new EnumMap<>(NSHM27_SeisClassificationMethod.class);
+				for (NSHM27_SeisClassificationMethod classification : origSamples.keySet())
+					grs.put(classification, origSamples.get(classification).get(index));
 
-				sampled.add(origSamples.get(index));
+				sampled.add(new ClassificationDependentGR(grs, p));
 			}
 			Collections.shuffle(sampled, rand);
 			samples.addAll(sampled);
 		} else {
 			// monte carlo
+			List<Integer> origIndexes = new ArrayList<>(numOrigSamples);
+			for (int i=0; i<numOrigSamples; i++)
+				origIndexes.add(i);
 			for (int i=0; i<numNodes; i++) {
-				int sampleIndex = i % origSamples.size();
+				int sampleIndex = i % numOrigSamples;
 				if (sampleIndex == 0)
 					// shuffle the list (and reshuffle on any subsequent passes through it)
-					Collections.shuffle(origSamples, rand);
-				samples.addLast(origSamples.get(sampleIndex));
+					Collections.shuffle(origIndexes, rand);
+				int index = origIndexes.get(sampleIndex);
+				EnumMap<NSHM27_SeisClassificationMethod, PureGR> grs = new EnumMap<>(NSHM27_SeisClassificationMethod.class);
+				for (NSHM27_SeisClassificationMethod classification : origSamples.keySet())
+					grs.put(classification, origSamples.get(classification).get(index));
+				double p = (double)index/(double)numOrigSamples;
+				samples.addLast(new ClassificationDependentGR(grs, p));
 			}
 		}
 		build(()->{ return samples.pop(); }, numNodes, weightEach);
 	}
 
 	@Override
-	public NSHM27_SiesRateModelSample build(PureGR value, double weight, String name, String shortName,
+	public NSHM27_SiesRateModelSample build(ClassificationDependentGR value, double weight, String name, String shortName,
 			String filePrefix) {
 		return new NSHM27_SiesRateModelSample(value, region, trt, weight, name, shortName, filePrefix);
 	}
@@ -152,33 +170,9 @@ implements BinnableLevel<PureGR, NSHM27_SiesRateModelSample, BinnedSamplesLevel>
 	}
 	
 	@Override
-	public TypeAdapter<PureGR> getValueTypeAdapter() {
-		return GR_TYPE_ADAPTER;
+	public TypeAdapter<ClassificationDependentGR> getValueTypeAdapter() {
+		return NSHM27_SeisRateModel.CLASS_GR_ADAPTER;
 	}
-	
-	private static TypeAdapter<PureGR> GR_TYPE_ADAPTER = new TypeAdapter<PureGR>() {
-
-		@Override
-		public void write(JsonWriter out, PureGR value) throws IOException {
-			out.beginArray();
-			out.value(value.M1);
-			out.value(value.rateAboveM1);
-			out.value(value.b);
-			out.endArray();
-		}
-
-		@Override
-		public PureGR read(JsonReader in) throws IOException {
-			in.beginArray();
-			double[] vals = new double[3];
-			for (int i=0; i<3; i++)
-				vals[i] = in.nextDouble();
-			Preconditions.checkState(!in.hasNext());
-			in.endArray();
-			return new PureGR(RateType.M1, vals[0], Double.POSITIVE_INFINITY, vals[1], vals[2], Double.NaN, true);
-		}
-		
-	};
 
 	@Override
 	public void initFromJsonObject(JsonObject jsonObj) {
@@ -200,70 +194,44 @@ implements BinnableLevel<PureGR, NSHM27_SiesRateModelSample, BinnedSamplesLevel>
 		List<String> names = new ArrayList<>(numBins);
 		List<String> shortNames = new ArrayList<>(numBins);
 		
-		double[] allRates = new double[nodes.size()];
-		double minRate = Double.POSITIVE_INFINITY;
-		double maxRate = 0d;
-		for (int i=0; i<allRates.length; i++) {
-			allRates[i] = nodes.get(i).getValue().rateAboveM1;
-			minRate = Math.min(minRate, allRates[i]);
-			maxRate = Math.max(maxRate, allRates[i]);
-		}
+		DecimalFormat pDF = new DecimalFormat("0%");
 		
-		LightFixedXFunc cdf = ArbDiscrEmpiricalDistFunc.calcQuickNormCDF(allRates, null);
-		
-		DecimalFormat rateDF = new DecimalFormat("0.0#");
-		
-		DecimalFormat mDF = new DecimalFormat("0.#");
-		String nmLabel = "N"+mDF.format(nodes.get(0).getValue().M1);
-		
-		binEdges.add(minRate);
 		double probEach = 1d/(double)numBins;
-		double startP = 0d;
+		binEdges.add(0d);
 		List<BinnedSamplesNode> binNodes = new ArrayList<>();
 		for (int i=0; i<numBins; i++) {
-			double lower = binEdges.get(i);
-			double upper;
+			double startP = binEdges.get(i);
 			double endP;
 			if (i == numBins-1) {
 				// last
 				endP = 1d;
-				upper = maxRate;
 			} else {
 				// intermediate
 				endP = startP + probEach;
-				upper = ArbDiscrEmpiricalDistFunc.calcFractileFromNormCDF(cdf, endP);
 			}
 			
-			binEdges.add(upper);
+			binEdges.add(endP);
 			
-			String binStr;
-			if (Double.isInfinite(lower) && Double.isInfinite(upper))
-				binStr = nmLabel+" ∈ ["+Double.POSITIVE_INFINITY+"]";
-			else if (Double.isInfinite(lower))
-				binStr = nmLabel+" < "+rateDF.format(upper);
-			else if (Double.isInfinite(upper))
-				binStr = nmLabel+" > "+rateDF.format(lower);
-			else
-				binStr = nmLabel+" ∈ ["+rateDF.format(lower)+", "+rateDF.format(upper)+"]";
+			String binStr = pDF.format(startP)+"-"+pDF.format(endP);
 			
 			String name, shortName;
 			Range<Double> range;
 			if (numBins == 1 || numBins > 3) {
 				name = binStr;
 				shortName = binStr;
-				range = Range.all();
+				range = Range.closed(0d, 1d);
 			} else if (i == 0) {
 				shortName = "Low";
 				name = shortName+": "+binStr;
-				range = Range.atMost(upper);
+				range = Range.closedOpen(startP, endP);
 			} else if (i == numBins-1) {
 				shortName = "High";
 				name = shortName+": "+binStr;
-				range = Range.atLeast(lower);
+				range = Range.closed(startP, endP);
 			} else {
 				shortName = "Middle";
 				name = shortName+": "+binStr;
-				range = Range.closed(lower, upper);
+				range = Range.closedOpen(startP, endP);
 			}
 			names.add(name);
 			shortNames.add(binStr);

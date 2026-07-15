@@ -244,6 +244,28 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<Logic
 	}
 	
 	/**
+	 * @param levelClass
+	 * @return first index of a {@link LogicTreeLevel} that is assignable from the given class, or -1 if not found
+	 */
+	public int getLevelIndex(Class<? extends LogicTreeLevel<?>> levelClass) {
+		for (int i=0; i<size(); i++)
+			if (levelClass.isAssignableFrom(levels.get(i).getClass()))
+				return i;
+		return -1;
+	}
+	
+	/**
+	 * @param levelClass
+	 * @return first index of for which {@link LogicTreeLevel#getType()} is assignable from the given class, or -1 if not found
+	 */
+	public int getLevelTypeIndex(Class<? extends LogicTreeNode> nodeClass) {
+		for (int i=0; i<size(); i++)
+			if (nodeClass.isAssignableFrom(levels.get(i).getType()))
+				return i;
+		return -1;
+	}
+	
+	/**
 	 * Sets the value for the given class to null.
 	 * @param clazz
 	 * @return true if a value was cleared

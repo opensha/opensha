@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
 import org.opensha.commons.geo.Location;
@@ -36,6 +37,8 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
+
+import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateModel;
 
 @Affects(FaultSystemRupSet.SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
@@ -173,8 +176,7 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel, RupSetSubs
 					double dataMmax = maxMags.stream().mapToDouble(D->D).max().getAsDouble();
 					dataMmax = interfaceRefMFD.getX(interfaceRefMFD.getClosestXIndex(dataMmax));
 					regions.add(reg);
-					List<UncertainBoundedIncrMagFreqDist> mfds = new ArrayList<>();
-					List<Double> weights = new ArrayList<>();
+					WeightedList<UncertainBoundedIncrMagFreqDist> mfds = new WeightedList<>();
 					for (PRVI25_SeismicityRateEpoch epoch : PRVI25_SeismicityRateEpoch.values()) {
 						double weight = epoch.getNodeWeight(branch);
 						if (weight == 0d)
@@ -184,10 +186,9 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel, RupSetSubs
 							mfd = PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(epoch, false).getBounded(interfaceRefMFD, dataMmax);
 						else
 							mfd = PRVI25_SubductionMuertosSeismicityRate.loadRateModel(epoch, false).getBounded(interfaceRefMFD, dataMmax);
-						mfds.add(mfd);
-						weights.add(weight);
+						mfds.add(mfd, weight);
 					}
-					regionMFDs.add(PRVI25_SeismicityRateEpoch.averageUncert(mfds, weights));
+					regionMFDs.add(SeismicityRateModel.averageUncert(mfds));
 					regionTRTs.add(TectonicRegionType.SUBDUCTION_INTERFACE);
 				}
 				
@@ -206,8 +207,7 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel, RupSetSubs
 				
 				for (PRVI25_SeismicityRegions seisReg : slabRegions) {
 					regions.add(seisReg.load());
-					List<UncertainBoundedIncrMagFreqDist> mfds = new ArrayList<>();
-					List<Double> weights = new ArrayList<>();
+					WeightedList<UncertainBoundedIncrMagFreqDist> mfds = new WeightedList<>();
 					for (PRVI25_SeismicityRateEpoch epoch : PRVI25_SeismicityRateEpoch.values()) {
 						double weight = epoch.getNodeWeight(branch);
 						if (weight == 0d)
@@ -217,10 +217,9 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel, RupSetSubs
 							mfd = PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(epoch, true).getBounded(slabRefMFD, slabMmaxOff);
 						else
 							mfd = PRVI25_SubductionMuertosSeismicityRate.loadRateModel(epoch, true).getBounded(slabRefMFD, slabMmaxOff);
-						mfds.add(mfd);
-						weights.add(weight);
+						mfds.add(mfd, weight);
 					}
-					regionMFDs.add(PRVI25_SeismicityRateEpoch.averageUncert(mfds, weights));
+					regionMFDs.add(SeismicityRateModel.averageUncert(mfds));
 //					UncertainBoundedIncrMagFreqDist mfd;
 //					if (seisReg == PRVI25_SeismicityRegions.CAR_INTRASLAB)
 //						mfd = PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(epoch, true).getBounded(slabRefMFD, slabMmaxOff);

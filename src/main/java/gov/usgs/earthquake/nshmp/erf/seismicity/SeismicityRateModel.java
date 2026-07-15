@@ -4,8 +4,12 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.List;
 
+import org.apache.commons.numbers.core.Precision;
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.WeightedList;
+import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.uncertainty.BoundedUncertainty;
 import org.opensha.commons.data.uncertainty.UncertainArbDiscFunc;
 import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
@@ -299,6 +303,154 @@ public class SeismicityRateModel {
 				fractN += pdf.get(i);
 		
 		return getRescaled(fractN, refMFD, mMax);
+	}
+	
+	private static boolean AVG_UNCERT_IN_LOG10 = true;
+	
+	/**
+	 * Calculates a weighted average of multiple uncertain incremental magnitude-frequency distributions.
+	 * The calculation is performed independently for each magnitude bin using the mixture-of-normals approach
+	 * of {@link BoundedUncertainty#weightedCombination(WeightedList)} assuming log-normally distributed uncertainties.
+	 *
+	 * @param mfds weighted uncertain magnitude-frequency distributions to average
+	 * @return the bin-by-bin weighted average, with uncertainties combined in log10 rate space
+	 * @throws NullPointerException if any input distribution has a {@code null} uncertainty-bound type
+	 * @throws IllegalStateException if the distributions have incompatible discretizations or bound types
+	 */
+	public static UncertainBoundedIncrMagFreqDist averageUncert(WeightedList<UncertainBoundedIncrMagFreqDist> mfds) {
+		if (mfds.size() == 1)
+			return mfds.getValue(0);
+		if (!mfds.isNormalized()) {
+			mfds = new WeightedList<>(mfds);
+			mfds.normalize();
+		}
+		UncertainBoundedIncrMagFreqDist refMFD = mfds.getValue(0);
+		for (int i=0; i<mfds.size(); i++) {
+			UncertainBoundedIncrMagFreqDist mfd = mfds.getValue(i);
+			Preconditions.checkNotNull(mfd.getBoundType());
+			Preconditions.checkState(mfd.getBoundType() == refMFD.getBoundType());
+			Preconditions.checkState(IncrementalMagFreqDist.areXValuesIdentical(refMFD, mfd));
+		}
+		
+		IncrementalMagFreqDist pref = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
+		IncrementalMagFreqDist lower = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
+		IncrementalMagFreqDist upper = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
+		for (int i=0; i<refMFD.size(); i++) {
+			boolean anyNonZero = false;
+			for (int j=0; !anyNonZero && j<mfds.size(); j++)
+				anyNonZero = mfds.getValue(j).getY(i) > 0d;
+			if (!anyNonZero)
+				continue;
+			double average = 0d;
+			double sumNonzeroWeight = 0d;
+			WeightedList<BoundedUncertainty> uncertainties = new WeightedList<>(mfds.size());
+			for (int j=0; j<mfds.size(); j++) {
+				UncertainBoundedIncrMagFreqDist mfd = mfds.getValue(j);
+				double y = mfd.getY(i);
+				if (y > 0d) {
+					double weight = mfds.getWeight(j);
+					sumNonzeroWeight += weight;
+					average += weight*y;
+					double lowerY = mfd.getLowerY(i);
+					double upperY = mfd.getUpperY(i);
+					if (AVG_UNCERT_IN_LOG10)
+						uncertainties.add(new BoundedUncertainty(mfd.getBoundType(),
+								Math.log10(lowerY), Math.log10(upperY),
+								mfd.getBoundType().estimateStdDev(Math.log10(lowerY), Math.log10(upperY))), weight);
+					else
+						uncertainties.add(new BoundedUncertainty(mfd.getBoundType(),
+								lowerY, upperY,
+								mfd.getStdDev(i)), weight);
+				}
+			}
+			pref.set(i, average);
+			BoundedUncertainty uncertMix = BoundedUncertainty.weightedCombination(uncertainties);
+			if (AVG_UNCERT_IN_LOG10) {
+				lower.set(i, Math.pow(10, uncertMix.lowerBound)*sumNonzeroWeight);
+				upper.set(i, Math.pow(10, uncertMix.upperBound)*sumNonzeroWeight);
+			} else {
+				lower.set(i, uncertMix.lowerBound*sumNonzeroWeight);
+				upper.set(i, uncertMix.upperBound*sumNonzeroWeight);
+			}
+		}
+		UncertainBoundedIncrMagFreqDist ret = new UncertainBoundedIncrMagFreqDist(pref, lower, upper, refMFD.getBoundType());
+		ret.setName(refMFD.getName());
+		return ret;
+	}
+	
+	/**
+	 * Calculates a weighted average of multiple uncertain cumulative magnitude-frequency distributions.
+	 * The calculation is performed independently for each magnitude bin using the mixture-of-normals approach
+	 * of {@link BoundedUncertainty#weightedCombination(WeightedList)} assuming log-normally distributed uncertainties.
+	 *
+	 * @param mfds weighted uncertain magnitude-frequency distributions to average
+	 * @return the bin-by-bin weighted average, with uncertainties combined in log10 rate space
+	 * @throws NullPointerException if any input distribution has a {@code null} uncertainty-bound type
+	 * @throws IllegalStateException if the distributions have incompatible discretizations or bound types
+	 */
+	public static UncertainArbDiscFunc averageUncertCml(WeightedList<UncertainArbDiscFunc> mfds) {
+		if (mfds.size() == 1)
+			return mfds.getValue(0);
+		if (!mfds.isNormalized()) {
+			mfds = new WeightedList<>(mfds);
+			mfds.normalize();
+		}
+		UncertainArbDiscFunc refMFD = mfds.getValue(0);
+		for (int i=0; i<mfds.size(); i++) {
+			UncertainArbDiscFunc mfd = mfds.getValue(i);
+			Preconditions.checkState(mfd.getMinX() == refMFD.getMinX(), "MFD minX=%s != ref minX=%s",
+					mfd.getMinX(), refMFD.getMinX());
+			Preconditions.checkState(mfd.getMaxX() == refMFD.getMaxX(), "MFD maxX=%s != ref maxX=%s",
+					mfd.getMaxX(), refMFD.getMaxX());
+			Preconditions.checkState(mfd.size() == refMFD.size(), "MFD size=%s != ref size=%s", mfd.size(),
+					refMFD.size());
+		}
+		
+		ArbitrarilyDiscretizedFunc pref = new ArbitrarilyDiscretizedFunc();
+		ArbitrarilyDiscretizedFunc lower = new ArbitrarilyDiscretizedFunc();
+		ArbitrarilyDiscretizedFunc upper = new ArbitrarilyDiscretizedFunc();
+		for (int i=0; i<refMFD.size(); i++) {
+			boolean anyNonZero = false;
+			for (int j=0; !anyNonZero && j<mfds.size(); j++)
+				anyNonZero = mfds.getValue(j).getY(i) > 0d;
+			if (!anyNonZero)
+				continue;
+			double x = refMFD.getX(i);
+			double average = 0d;
+			double sumNonzeroWeight = 0d;
+			WeightedList<BoundedUncertainty> uncertainties = new WeightedList<>(mfds.size());
+			for (int j=0; j<mfds.size(); j++) {
+				UncertainArbDiscFunc mfd = mfds.getValue(j);
+				double y = mfd.getY(i);
+				if (y > 0d) {
+					double weight = mfds.getWeight(j);
+					sumNonzeroWeight += weight;
+					average += weight*mfd.getY(i);
+					double lowerY = mfd.getLowerY(i);
+					double upperY = mfd.getUpperY(i);
+					if (AVG_UNCERT_IN_LOG10)
+						uncertainties.add(new BoundedUncertainty(mfd.getBoundType(),
+								Math.log10(lowerY), Math.log10(upperY),
+								mfd.getBoundType().estimateStdDev(Math.log10(lowerY), Math.log10(upperY))), weight);
+					else
+						uncertainties.add(new BoundedUncertainty(mfd.getBoundType(),
+								lowerY, upperY,
+								mfd.getStdDev(i)), weight);
+				}
+			}
+			pref.set(x, average);
+			BoundedUncertainty uncertMix = BoundedUncertainty.weightedCombination(uncertainties);
+			if (AVG_UNCERT_IN_LOG10) {
+				lower.set(x, Math.pow(10, uncertMix.lowerBound)*sumNonzeroWeight);
+				upper.set(x, Math.pow(10, uncertMix.upperBound)*sumNonzeroWeight);
+			} else {
+				lower.set(x, uncertMix.lowerBound*sumNonzeroWeight);
+				upper.set(x, uncertMix.upperBound*sumNonzeroWeight);
+			}
+		}
+		UncertainArbDiscFunc ret = new UncertainArbDiscFunc(pref, lower, upper, refMFD.getBoundType());
+		ret.setName(refMFD.getName());
+		return ret;
 	}
 
 }

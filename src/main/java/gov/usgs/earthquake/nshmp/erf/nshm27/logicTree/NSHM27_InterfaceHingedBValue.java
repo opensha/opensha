@@ -97,6 +97,7 @@ public class NSHM27_InterfaceHingedBValue implements SectionSupraSeisBValues.Fix
 
 		@Override
 		protected void setNodeValue(SectionSupraSeisBValues.FixedWeight node) {
+			super.setNodeValue(node);
 			this.node = node;
 		}
 
@@ -108,6 +109,10 @@ public class NSHM27_InterfaceHingedBValue implements SectionSupraSeisBValues.Fix
 		@Override
 		public double getB(FaultSystemRupSet rupSet, LogicTreeBranch<? extends LogicTreeNode> branch) {
 			return node.getB(rupSet, branch);
+		}
+		
+		public boolean isHinged() {
+			return node instanceof NSHM27_InterfaceHingedBValue;
 		}
 		
 	}
