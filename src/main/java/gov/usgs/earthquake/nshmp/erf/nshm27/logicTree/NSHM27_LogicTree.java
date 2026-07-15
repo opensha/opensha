@@ -391,7 +391,7 @@ public class NSHM27_LogicTree {
 				double weight;
 				if (l < numCommonLevels) {
 					value = commonTree.getBranch(i).getValue(l);
-					weight = commonTree.getBranchWeight(l);
+					weight = commonTree.getBranchWeight(i);
 				} else {
 					value = levels.get(l).getNodes().get(i);
 					weight = value.getNodeWeight(null);
