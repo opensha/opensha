@@ -2466,7 +2466,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		return lines;
 	}
 	
-	static void writeAlongStrikePlots(File outputDir, String prefix, List<AlongStrikePlot> plots,
+	public static void writeAlongStrikePlots(File outputDir, String prefix, List<AlongStrikePlot> plots,
 			Map<Integer, List<FaultSection>> parentsMap, boolean latX, String xLabel, Range xRange, String faultName)
 					throws IOException {
 		List<PlotSpec> specs = new ArrayList<>();
@@ -2595,7 +2595,10 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		List<Boolean> xLogs = List.of(false);
 		List<Range> xRanges = List.of(xRange);
 		
-		gp.setxAxisInverted(latX);
+		if (latX) {
+			for (PlotSpec spec : specs)
+				spec.setXAxisInverted(true);
+		}
 		gp.drawGraphPanel(specs, xLogs, yLogs, xRanges, yRanges);
 		
 		if (specWeights != null)
@@ -2615,7 +2618,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		PlotUtils.writePlots(outputDir, prefix, gp, width, height, true, true, false);
 	}
 	
-	static class AlongStrikePlot {
+	public static class AlongStrikePlot {
 		
 		private PlotSpec spec;
 		private List<XY_DataSet> funcs;
@@ -3533,10 +3536,13 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 	}
 	
 	static XY_DataSet copyAtY(XY_DataSet func, double y) {
-		DefaultXY_DataSet ret = new DefaultXY_DataSet();
-		for (Point2D pt : func)
-			ret.set(pt.getX(), y);
-		return ret;
+		double[] xVals = new double[func.size()];
+		double[] yVals = new double[xVals.length];
+		for (int i=0; i<xVals.length; i++) {
+			xVals[i] = func.getX(i);
+			yVals[i] = y;
+		}
+		return new DefaultXY_DataSet(xVals, yVals);
 	}
 	
 	static UncertainArbDiscFunc uncertCopyAtY(XY_DataSet func, double y, double stdDev) {
