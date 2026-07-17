@@ -51,6 +51,40 @@ public class BoundedUncertainty extends Uncertainty {
 	}
 	
 	/**
+	 * Estimates a signed z-score using asymmetric lower and upper uncertainty bounds.
+	 * <p>
+	 * The interval is approximated by separate Gaussian widths below and above the best estimate. The supplied lower and
+	 * upper bounds are assumed to correspond to {@code -z} and {@code +z}, respectively.
+	 *
+	 * @param data value for which the z-score will be estimated
+	 * @param bestEstimate central or preferred estimate, corresponding to a z-score of 0
+	 * @return the signed approximate z-score
+	 */
+	public double estimateDataZ(double data, double bestEstimate) {
+		Preconditions.checkState(Double.isFinite(bestEstimate), "Non-finite best estimate: %s", bestEstimate);
+		Preconditions.checkState(Double.isFinite(lowerBound), "Non-finite lower bound: %s", lowerBound);
+		Preconditions.checkState(Double.isFinite(upperBound), "Non-finite upper bound: %s", upperBound);
+		Preconditions.checkState(Double.isFinite(data), "Non-finite data value: %s", data);
+		double z = type.z;
+		Preconditions.checkState(Double.isFinite(z) && z > 0d, "Invalid bounding z-score: %s", z);
+		Preconditions.checkState(lowerBound < bestEstimate,
+				"Lower bound (%s) must be below best estimate (%s)", lowerBound, bestEstimate);
+		Preconditions.checkState(upperBound > bestEstimate,
+				"Upper bound (%s) must be above best estimate (%s)", upperBound, bestEstimate);
+
+		if (data == bestEstimate)
+			return 0d;
+
+		if (data < bestEstimate) {
+			double lowerSigma = (bestEstimate - lowerBound) / z;
+			return (data - bestEstimate) / lowerSigma;
+		}
+
+		double upperSigma = (upperBound - bestEstimate) / z;
+		return (data - bestEstimate) / upperSigma;
+	}
+	
+	/**
 	 * Computes a single, symmetric BoundedUncertainty by combining multiple weighted uncertainties using a
 	 * mixture‑of‑normals approach.
 	 *
