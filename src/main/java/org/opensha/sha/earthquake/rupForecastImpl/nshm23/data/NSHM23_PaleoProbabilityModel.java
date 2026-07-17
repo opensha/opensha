@@ -74,8 +74,10 @@ public class NSHM23_PaleoProbabilityModel extends PaleoProbabilityModel {
 		PaleoProbabilityModel cached = modelCache.get(sect);
 		if (cached == null) {
 			cached = doGetModel(sect);
-			synchronized (this) {
-				modelCache.put(sect, cached);
+			if (cached != null) {
+				synchronized (this) {
+					modelCache.put(sect, cached);
+				}
 			}
 		}
 		return cached;
