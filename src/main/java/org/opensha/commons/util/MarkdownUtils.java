@@ -652,7 +652,77 @@ public class MarkdownUtils {
 		}
 
 	}
-	
+
+	/**
+	 * Renders the given Markdown to an HTML string for inline display (e.g. in a
+	 * Swing {@code JEditorPane}). GFM tables are enabled; image-link wrapping,
+	 * heading anchors, entity re-escaping, and file output used by
+	 * {@link #writeHTML(String, File)} are intentionally omitted. Returns an
+	 * empty string for {@code null}/blank input.
+	 *
+	 * @param markdown the Markdown source (may be {@code null})
+	 * @return the rendered HTML body, or {@code ""} if the input is blank
+	 */
+	public static String renderMarkdownToHtml(String markdown) {
+		if (markdown == null || markdown.isBlank())
+			return "";
+		List<Extension> extensions = Arrays.asList(TablesExtension.create());
+		Parser parser = Parser.builder().extensions(extensions).build();
+		HtmlRenderer renderer = HtmlRenderer.builder().extensions(extensions).build();
+		return renderer.render(parser.parse(markdown));
+	}
+
+	/**
+	 * If {@code markdown} contains an ATX heading whose title matches
+	 * {@code headingTitle} (case-insensitive, trimmed), return the slice of the
+	 * document from that heading to the end (heading included); otherwise return
+	 * {@code markdown} unchanged. Used to trim the generic preamble GitHub
+	 * release bodies often carry above a curated "Release Notes" section, showing
+	 * only that section and everything below it. Returns {@code null} for
+	 * {@code null} input and passes blank input through unchanged.
+	 *
+	 * @param markdown     the Markdown source (may be {@code null})
+	 * @param headingTitle the heading title to search for (e.g. "Release Notes")
+	 * @return the document from the matching heading onward, or the original
+	 *         {@code markdown} if no such heading is present
+	 */
+	public static String sectionFromHeading(String markdown, String headingTitle) {
+		if (markdown == null || headingTitle == null || headingTitle.isBlank())
+			return markdown;
+		String[] lines = markdown.split("\n", -1);
+		for (int i = 0; i < lines.length; i++) {
+			String title = atxHeadingTitle(lines[i]);
+			if (title != null && title.equalsIgnoreCase(headingTitle.trim()))
+				return String.join("\n", Arrays.copyOfRange(lines, i, lines.length));
+		}
+		return markdown;
+	}
+
+	/**
+	 * Extract the title text of an ATX heading line ({@code #..# Title}, 1-6
+	 * leading {@code #} followed by a space, optional trailing {@code #} run),
+	 * or {@code null} if the line is not an ATX heading.
+	 */
+	private static String atxHeadingTitle(String line) {
+		if (line == null)
+			return null;
+		int n = 0;
+		while (n < line.length() && line.charAt(n) == '#')
+			n++;
+		if (n < 1 || n > 6)
+			return null;
+		if (n >= line.length() || line.charAt(n) != ' ')
+			return null;
+		String text = line.substring(n + 1).strip();
+		// strip an optional closing '#'-run, e.g. "# Release Notes #"
+		int hash = text.length();
+		while (hash > 0 && text.charAt(hash - 1) == '#')
+			hash--;
+		if (hash < text.length())
+			text = text.substring(0, hash).strip();
+		return text;
+	}
+
 	/**
 	 * Converts the given Markdown to HTML and writes to a file
 	 * @param markdown

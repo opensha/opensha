@@ -1,22 +1,28 @@
 package org.opensha.commons.util.updater;
 
 import java.awt.BorderLayout;
+import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.GraphicsEnvironment;
+import java.net.URI;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
+import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.HyperlinkEvent;
 
 import org.opensha.commons.util.ApplicationVersion;
+import org.opensha.commons.util.MarkdownUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * {@link UpdatePrompt} implementation backed by Swing. The update-available
@@ -45,6 +51,8 @@ public class SwingUpdatePrompt implements UpdatePrompt {
 	 */
 	private static final boolean SKIP_VERSION_BUTTON_ENABLED = false;
 
+	private static final Logger log = LoggerFactory.getLogger(SwingUpdatePrompt.class);
+
 	private JDialog progressDialog;
 	private JProgressBar progressBar;
 	private JLabel progressLabel;
@@ -69,10 +77,12 @@ public class SwingUpdatePrompt implements UpdatePrompt {
 					+ "</b></html>");
 			header.setBorder(new EmptyBorder(12, 12, 8, 12));
 
-			JTextArea notes = new JTextArea(releaseNotes == null ? "" : releaseNotes);
+			JEditorPane notes = new JEditorPane();
+			notes.setContentType("text/html");
 			notes.setEditable(false);
-			notes.setWrapStyleWord(true);
-			notes.setLineWrap(true);
+			notes.setText(releaseNotesHtml(releaseNotes));
+			notes.setCaretPosition(0); // setText scrolls to the end; reset to top
+			notes.addHyperlinkListener(this::openLink);
 			JScrollPane scroll = new JScrollPane(notes);
 			scroll.setBorder(BorderFactory.createTitledBorder("Release Notes"));
 			scroll.setBorder(new EmptyBorder(0, 12, 0, 12));
@@ -162,6 +172,44 @@ public class SwingUpdatePrompt implements UpdatePrompt {
 				progressLabel = null;
 			}
 		});
+	}
+
+	/**
+	 * Render the release notes as Markdown into a minimal HTML document for the
+	 * {@code text/html} {@link JEditorPane}. Returns a placeholder for
+	 * {@code null}/blank notes.
+	 */
+	private static String releaseNotesHtml(String releaseNotes) {
+		// If the body has a "Release Notes" section, show only that section and
+		// everything below it, dropping the generic preamble above.
+		String section = MarkdownUtils.sectionFromHeading(releaseNotes, "Release Notes");
+		String body = MarkdownUtils.renderMarkdownToHtml(section);
+		if (body == null || body.isBlank())
+			body = "<p><i>No release notes.</i></p>";
+		return "<html><head><style>"
+				+ "body { font-family: sans-serif; font-size: 11pt; }"
+				+ "h1, h2, h3 { margin: 0.6em 0 0.2em; }"
+				+ "a { color: #1a5fb4; }"
+				+ "code, pre { font-family: monospace; }"
+				+ "</style></head><body>" + body + "</body></html>";
+	}
+
+	/**
+	 * Open release-note links in the system browser when activated. Best-effort:
+	 * any failure (no desktop support, malformed URL) is logged, never thrown.
+	 */
+	private void openLink(HyperlinkEvent e) {
+		if (e.getEventType() != HyperlinkEvent.EventType.ACTIVATED)
+			return;
+		try {
+			if (Desktop.isDesktopSupported()) {
+				URI uri = e.getURL() == null ? null : e.getURL().toURI();
+				if (uri != null)
+					Desktop.getDesktop().browse(uri);
+			}
+		} catch (Throwable t) {
+			log.warn("Could not open release-notes link: " + e.getURL(), t);
+		}
 	}
 
 	private void ensureProgressUI() {

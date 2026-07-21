@@ -84,7 +84,10 @@ a daemon thread that first runs `cleanupOldVersions` and then `runUpdateCheck`:
 6. **Honors user preferences**: skips if the user previously chose "skip this
    version" or is within the "remind me later" defer window (default 7 days).
 7. **Prompts** the user via `UpdatePrompt.prompt(...)`, showing the version and
-   release notes.
+   release notes. If the body contains a "Release Notes" section, only that
+   section and everything below it is shown (the generic preamble above it is
+   trimmed). The notes are rendered as Markdown (via `MarkdownUtils`/commonmark)
+   into an HTML view; links open in the system browser.
    - **Remind me later** &rarr; stores the defer timestamp and stops.
    - **Skip this version** &rarr; records the version (`setSkipVersion`) so the
      updater will not prompt for it again until a newer release becomes latest;
