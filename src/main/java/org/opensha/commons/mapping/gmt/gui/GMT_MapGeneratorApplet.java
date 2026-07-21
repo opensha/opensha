@@ -24,6 +24,7 @@ import org.opensha.commons.data.xyz.ArbDiscrGeoDataSet;
 import org.opensha.commons.data.xyz.GeoDataSet;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.gui.DisclaimerDialog;
+import org.opensha.commons.util.updater.ApplicationUpdater;
 import org.opensha.commons.param.editor.impl.StringParameterEditor;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.ApplicationVersion;
@@ -174,6 +175,7 @@ public class GMT_MapGeneratorApplet extends JPanel{
 	public static void main(String[] args) {
 		new DisclaimerDialog(APP_NAME, APP_SHORT_NAME, getAppVersion());
 		launch();
+		ApplicationUpdater.checkForUpdatesDefault(APP_NAME, APP_SHORT_NAME, "GMTMapApp");
 	}
 	
 	public static GMT_MapGeneratorApplet launch() {

@@ -16,6 +16,7 @@ import org.opensha.commons.data.siteData.gui.beans.OrderedSiteDataGUIBean;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.gui.ControlPanel;
 import org.opensha.commons.gui.DisclaimerDialog;
+import org.opensha.commons.util.updater.ApplicationUpdater;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.util.ApplicationVersion;
 import org.opensha.commons.util.DevStatus;
@@ -396,6 +397,7 @@ public class IMEventSetCalculatorGUI extends JFrame implements ActionListener, C
                 APP_SHORT_NAME, getAppVersion(), null, null);
         Thread.setDefaultUncaughtExceptionHandler(exp);
         launch(exp);
+        ApplicationUpdater.checkForUpdatesDefault(APP_NAME, APP_SHORT_NAME, "IMEventSetCalculatorGUI");
 	}
 
     public static IMEventSetCalculatorGUI launch(DefaultExceptionHandler handler) {

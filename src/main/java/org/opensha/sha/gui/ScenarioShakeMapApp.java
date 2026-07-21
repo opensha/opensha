@@ -21,6 +21,7 @@ import org.opensha.commons.data.xyz.GeoDataSet;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.gui.ControlPanel;
 import org.opensha.commons.gui.DisclaimerDialog;
+import org.opensha.commons.util.updater.ApplicationUpdater;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.event.ParameterChangeEvent;
@@ -390,6 +391,7 @@ AttenuationRelationshipSiteParamsRegionAPI,CalculationSettingsControlPanelAPI,Ru
 				APP_SHORT_NAME, getAppVersion(), null, null);
 		Thread.setDefaultUncaughtExceptionHandler(exp);
 		launch(exp);
+		ApplicationUpdater.checkForUpdatesDefault(APP_NAME, APP_SHORT_NAME, "ShakeMapGUI");
 	}
 	
 	public static ScenarioShakeMapApp launch(DefaultExceptionHandler handler) {
