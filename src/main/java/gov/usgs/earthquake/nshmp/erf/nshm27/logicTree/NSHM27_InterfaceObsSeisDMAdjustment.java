@@ -41,6 +41,10 @@ public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode.FixedWe
 	SECTION_SPECIFIC("Section-Specific Observed Seismicity", "Sect-Sub-Seis", 0.3),
 	EXTRAPOLATE("Match Extrapolated Observed Seismicity", "Extrapolate-Observed", 0.1);
 	
+	// never allow a reduction below this fraction in order to prevent zero-slip inversions
+	// (ignored in EXTRAPOLATE mode, which can be small but will never be zero anyway)
+	public static double REDUCTION_FRACT_FLOOR = 0.01;
+	
 	private String name;
 	private String shortName;
 	private double weight;
@@ -147,18 +151,17 @@ public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode.FixedWe
 		
 		SectSlipRates slips =  switch (this) {
 		case AVERAGE: {
-			if (avgReduction >= 1d) {
-				System.err.println("WARNING: associated interface moment ("+(float)assocFaultMoment+") is less than "
-						+ "associated gridded moment ("+(float)assocGridMoment+") for branch "+branch+", setting all slip rates to 0");
-				yield SectSlipRates.precomputed(rupSet, new double[numSections], inputFullSlipSDs);
-			}
+			double avgFactor = Math.max(REDUCTION_FRACT_FLOOR, 1d-avgReduction);
+			if (avgReduction >= 1d)
+				System.err.println("WARNING: associated interface moment ("+(float)assocFaultMoment+") was less than "
+						+ "associated gridded moment ("+(float)assocGridMoment+") for branch "+branch);
 			double[] reducedSlipRates = new double[numSections];
 			for (int s=0; s<numSections; s++) {
 				double orig = inputReducedSlipRates[s];
-				reducedSlipRates[s] = orig * (1d-avgReduction);
+				reducedSlipRates[s] = orig * avgFactor;
 				Preconditions.checkState(orig >= reducedSlipRates[s]);
 			}
-			System.out.println("Interface average seis reduction for branch "+branch+": "+avgReduction);
+			System.out.println("Interface average seis reduction for branch "+branch+": "+avgReduction+" (scale="+avgFactor+")");
 			yield SectSlipRates.precomputed(rupSet, reducedSlipRates, inputFullSlipSDs);
 		}
 		case SECTION_SPECIFIC: {
@@ -169,18 +172,17 @@ public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode.FixedWe
 			int numAbove = 0;
 			double[] reducedSlipRates = new double[numSections];
 			for (int s=0; s<numSections; s++) {
-				double reduction = impliedMoments[s] / moments[s];
+				double reduction = moments[s] > 0d ? impliedMoments[s] / moments[s] : 1d;
 				rawTrack.addValue(Math.min(1d, reduction));
 				double assocFract = assoc.getSectionFractInRegion(s);
 				// add in the average reduction for any un-assocated portion of the subsection
 				reduction = assocFract*reduction + (1d-assocFract)*avgReduction;
+				double factor = Math.max(REDUCTION_FRACT_FLOOR, 1d-reduction);
 				if (reduction >= 1) {
-					reducedSlipRates[s] = 0d;
 					numAbove++;
 					reduction = 1d;
-				} else {
-					reducedSlipRates[s] = inputReducedSlipRates[s] * (1d-reduction);
 				}
+				reducedSlipRates[s] = inputReducedSlipRates[s] * factor;
 				sectWtSum += reduction*moments[s];
 				gridWtSum += reduction*impliedMoments[s];
 				finalTrack.addValue(reduction);
