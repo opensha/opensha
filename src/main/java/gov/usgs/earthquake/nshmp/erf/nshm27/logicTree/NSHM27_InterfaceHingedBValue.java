@@ -41,7 +41,7 @@ import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_Seis
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public class NSHM27_InterfaceHingedBValue implements SectionSupraSeisBValues.FixedWeight {
 	
-	private static final NSHM27_InterfaceHingedBValue HINGED_SINGLE_NODE = new NSHM27_InterfaceHingedBValue(1d);
+	public static final NSHM27_InterfaceHingedBValue HINGED_SINGLE_NODE = new NSHM27_InterfaceHingedBValue(1d);
 	
 	public static final String NAME = "Hinged b-value";
 	public static final String SHORT_NAME = "HingedB";
@@ -206,9 +206,23 @@ public class NSHM27_InterfaceHingedBValue implements SectionSupraSeisBValues.Fix
 	 * 
 	 * @param rupSet
 	 * @param branch
-	 * @return the greater of the hinge b-value and 0
+	 * @return the greater of the hinged b-value and 0
 	 */
 	public static double calcInterfaceHingedBValue(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+		return Math.max(0d, calcRawInterfaceHingedBValue(rupSet, branch));
+	}
+	
+	/**
+	 * Calculates an interface on-fault moment-balanced GR b-value such that the incremental rate in the first
+	 * on-fault MFD bin matches the extrapolation from the observed seismicity rate model. Using this b-value to
+	 * construct the interface on-fault MFD will result in a continuous but hinged MFD, rather than a shelved one when
+	 * hitting the higher on-fault rates.
+	 * 
+	 * @param rupSet
+	 * @param branch
+	 * @return the hinged b-value
+	 */
+	public static double calcRawInterfaceHingedBValue(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 		// figure out included rupture mMin and mMax
 		int numSects = rupSet.getNumSections();
 		int numRups = rupSet.getNumRuptures();
@@ -232,17 +246,32 @@ public class NSHM27_InterfaceHingedBValue implements SectionSupraSeisBValues.Fix
 		FaultGridAssociations assoc = rupSet.requireModule(FaultGridAssociations.class);
 		double momentSum = 0d;
 		double momentWeightedMminSum = 0d;
+		double totalMomentSum = 0d;
+		int positiveMomentSects = 0;
+		int positiveAssocMomentSects = 0;
 		SectSlipRates slips = rupSet.requireModule(SectSlipRates.class);
 		for (int s=0; s<numSects; s++) {
-			double moment = slips.calcMomentRate(s) * assoc.getSectionFractInRegion(s);
+			double sectMoment = slips.calcMomentRate(s);
+			Preconditions.checkState(Double.isFinite(sectMoment));
+			if (sectMoment > 0d) {
+				totalMomentSum += sectMoment;
+				positiveMomentSects++;
+			}
+			double assocFract = assoc.getSectionFractInRegion(s);
+			Preconditions.checkState(Double.isFinite(assocFract), "Bad association fraction for section %s: %s",
+					Integer.valueOf(s), Double.valueOf(assocFract));
+			double moment = sectMoment * assocFract;
 			Preconditions.checkState(Double.isFinite(moment));
 			if (moment == 0)
 				continue;
+			positiveAssocMomentSects++;
 			Preconditions.checkState(Double.isFinite(sectMmins[s]));
 			momentSum += moment;
 			momentWeightedMminSum += sectMmins[s]*moment;
 		}
-		Preconditions.checkState(momentSum > 0d);
+		Preconditions.checkState(momentSum > 0d, "No positive associated interface moment for branch %s: "
+				+ "totalMoment=%s, positiveMomentSects=%s/%s, positiveAssocMomentSects=%s/%s",
+				branch, totalMomentSum, positiveMomentSects, numSects, positiveAssocMomentSects, numSects);
 		double mMin = momentWeightedMminSum/momentSum;
 		
 		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(NSHM27_GridSourceBuilder.OVERALL_MMIN, mMax+0.1);
@@ -276,7 +305,7 @@ public class NSHM27_InterfaceHingedBValue implements SectionSupraSeisBValues.Fix
 		System.out.println("Calculated hinged b="+(float)faultGR.get_bValue()+"; faultIncr["+(float)mMin+"]="
 				+faultGR.getY(mMinIndex)+", faultTotal="+faultGR.calcSumOfY_Vals());
 		
-		return Math.max(0d, faultGR.get_bValue());
+		return faultGR.get_bValue();
 	}
 
 }
