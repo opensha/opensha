@@ -319,6 +319,43 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		}
 	}
 	
+	public static class GridRemovalSolutionLogicTree extends AbstractExternalFetcher {
+		
+		private SolutionLogicTree slt;
+		private Double gridMinMag;
+
+		public GridRemovalSolutionLogicTree(SolutionLogicTree slt, Double gridMinMag) {
+			super(slt.getProcessor(), slt.getLogicTree());
+			this.slt = slt;
+			this.gridMinMag = gridMinMag;
+			this.setArchiveInput(slt.getArchiveInput());
+			if (gridMinMag == null || gridMinMag > 10)
+				setSerializeGridded(false);
+		}
+
+		@Override
+		protected FaultSystemSolution loadExternalForBranch(LogicTreeBranch<?> branch) throws IOException {
+			return slt.forBranch(branch, false);
+		}
+
+		@Override
+		public synchronized double[] loadRatesForBranch(LogicTreeBranch<?> branch) throws IOException {
+			return slt.loadRatesForBranch(branch);
+		}
+
+		@Override
+		public synchronized RuptureProperties loadPropsForBranch(LogicTreeBranch<?> branch) throws IOException {
+			return slt.loadPropsForBranch(branch);
+		}
+
+		@Override
+		public synchronized GridSourceProvider loadGridProvForBranch(LogicTreeBranch<?> branch) throws IOException {
+			if (gridMinMag == null)
+				return null;
+			return slt.loadGridProvForBranch(branch).getAboveMinMag(gridMinMag.floatValue());
+		}
+	}
+	
 	public static class FileBuilder extends Builder {
 		
 		private static final String DNAME = ClassUtils.getClassNameWithoutPackage(FileBuilder.class);
@@ -1976,34 +2013,52 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	 */
 	public static void reprocess(SolutionLogicTree slt, File outputFile,
 			UnaryOperator<FaultSystemSolution> reprocessor, boolean updateBuildInfo, boolean processModules) throws IOException {
+		reprocess(slt, outputFile, reprocessor, updateBuildInfo, processModules, slt.serializeGridded);
+	}
+	
+	/**
+	 * Removes extraneous data not needed for hazard, such as plausibility configuration and misfit stats
+	 * 
+	 * @param slt
+	 * @param outputFile
+	 * @param updateBuildInfo if true, OpenSHA build information attached to the SLT will be replaced with current infor
+	 * @param processModules if true, the {@link SolutionProcessor} will be called before the reprocess step
+	 * @param directCopyGridded if true, will attempt to directly-copy grid source providers without loading
+	 * @throws IOException 
+	 */
+	public static void reprocess(SolutionLogicTree slt, File outputFile,
+			UnaryOperator<FaultSystemSolution> reprocessor, boolean updateBuildInfo, boolean processModules,
+			boolean directCopyGridded) throws IOException {
 		LogicTree<?> tree = slt.getLogicTree();
 		
 		ArchiveInput directCopyInput = slt.getArchiveInput();
 		if (directCopyInput instanceof ArchiveInput.FileBacked && !(directCopyInput instanceof ArchiveInput.ApacheZipFileInput))
 			// switch to apache for efficient copying without de/re-compression
 			directCopyInput = new ArchiveInput.ApacheZipFileInput(((ArchiveInput.FileBacked)directCopyInput).getInputFile());
-		boolean directCopyGridded = false;
 		boolean hasBranchSpecificGridded;
-		if (slt.constantGridProv == null && slt.forBranch(tree.getBranch(0), false).hasModule(GridSourceProvider.class)) {
+		if (slt.serializeGridded && slt.constantGridProv == null && slt.forBranch(tree.getBranch(0), false).hasModule(GridSourceProvider.class)) {
 			hasBranchSpecificGridded = true;
-			try {
-				ArchiveInput input = slt.getArchiveInput();
-				if (input instanceof ArchiveInput.FileBacked && !(input instanceof ArchiveInput.ApacheZipFileInput))
-					// switch to apache for efficient copying without de/re-compression
-					input = new ArchiveInput.ApacheZipFileInput(((ArchiveInput.FileBacked)input).getInputFile());
-				System.out.println("Will directly copy gridded seismicity data");
-				directCopyInput = input;
-				directCopyGridded = true;
-			} catch (Exception e) {
-				System.out.println("Will load and write gridded seismicity data (if applicable): "+e.getMessage());
-			}			
+			if (directCopyGridded) {
+				try {
+					ArchiveInput input = slt.getArchiveInput();
+					if (input instanceof ArchiveInput.FileBacked && !(input instanceof ArchiveInput.ApacheZipFileInput))
+						// switch to apache for efficient copying without de/re-compression
+						input = new ArchiveInput.ApacheZipFileInput(((ArchiveInput.FileBacked)input).getInputFile());
+					System.out.println("Will directly copy gridded seismicity data");
+					directCopyInput = input;
+				} catch (Exception e) {
+					System.out.println("Will load and write gridded seismicity data (if applicable): "+e.getMessage());
+					directCopyGridded = false;
+				}
+			}
 		} else {
 			hasBranchSpecificGridded = false;
+			directCopyGridded = false;
 		}
 		FileBuilder builder = new FileBuilder(slt.getProcessor(), ArchiveOutput.getDefaultOutput(outputFile, directCopyInput));
-		if (slt.constantGridProv != null)
+		if (slt.constantGridProv != null) {
 			builder.setConstantGridProv(slt.constantGridProv);
-		if (hasBranchSpecificGridded) {
+		} else if (hasBranchSpecificGridded) {
 			if (directCopyInput == null)
 				builder.setSerializeGridded(true);
 			else
@@ -2028,8 +2083,15 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		for (int i=0; i<tree.size(); i++) {
 			LogicTreeBranch<?> branch = tree.getBranch(i);
 			FaultSystemSolution sol = slt.forBranch(branch, processModules);
-			if (directCopyGridded)
-				sol.removeAvailableModuleInstances(GridSourceList.class);
+			if (directCopyGridded) {
+				sol.removeAvailableModuleInstances(GridSourceProvider.class);
+			} else if (builder.serializeGridded) {
+				GridSourceProvider gridSources = slt.loadGridProvForBranch(branch);
+				if (gridSources == null)
+					sol.removeAvailableModuleInstances(GridSourceProvider.class);
+				else
+					sol.setGridSourceProvider(gridSources);
+			}
 			
 			FaultSystemSolution outputSol;
 			if (reprocessor != null)
