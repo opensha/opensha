@@ -160,6 +160,7 @@ public class NSHM27_LogicTree {
 					levels.add(new NSHM27_InterfaceDeformationModels.SamplingLevel());
 				else
 					levels.add(INTERFACE_AGG_DM);
+				levels.add(INTERFACE_OBS_SEIS_DM_ADJ);
 				levels.add(INTERFACE_SCALE);
 				if (INTERFACE_B_HINGED_WEIGHT == 1d) {
 					levels.add(new NSHM27_InterfaceHingedBValue.FixedLevel(supraBname, supraBshortName));
@@ -172,7 +173,6 @@ public class NSHM27_LogicTree {
 				} else {
 					levels.add(new SectionSupraSeisBValues.FixedValueLevel(supraBname, supraBshortName, INTERFACE_B_SINGLE_DEFAULT));
 				}
-				levels.add(INTERFACE_OBS_SEIS_DM_ADJ);
 				levels.add(INTERFACE_MIN_SUB_SECTS);
 				if (sampled)
 					levels.add(new MaxRuptureLengthBranchNode.DistributionSamplingLevel(
