@@ -517,7 +517,13 @@ public class Inversions {
 					HistogramFunction tempHist = HistogramFunction.getEncompassingHistogram(minX, rupSet.getMaxMag(), 0.1d);
 					GutenbergRichterMagFreqDist targetGR = new GutenbergRichterMagFreqDist(
 							tempHist.getMinX(), tempHist.getMaxX(), tempHist.size());
-					targetGR.scaleToCumRate(minTargetMag, totRate);
+					int minTargetMagIndex = targetGR.getClosestXIndex(minTargetMag);
+					double snappedMag = targetGR.getX(minTargetMagIndex);
+					double halfDelta = 0.5*targetGR.getDelta();
+					Preconditions.checkState(Math.abs(minTargetMag - snappedMag) <= halfDelta*1.001,
+							"MFD min mag for rate (%s) is further than %s away from the closest incremental MFD bin center (%s)",
+							(float)minTargetMag, (float)halfDelta, (float)snappedMag);
+					targetGR.setAllButTotMoRate(snappedMag, tempHist.getMaxX(), totRate, bValue);
 					
 					IncrementalMagFreqDist targetMFD = targetGR;
 					if (mfdMagDepUncertModel != null)
