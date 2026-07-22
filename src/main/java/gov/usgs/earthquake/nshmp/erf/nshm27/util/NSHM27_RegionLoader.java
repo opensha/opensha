@@ -27,17 +27,19 @@ public class NSHM27_RegionLoader {
 	 * 
 	 */
 	public enum NSHM27_SeismicityRegions implements NSHM23_BaseRegion, ShortNamed {
-		GNMI(GNMI_DIR+"gnmi-catalog-extent.geojson", "Guam & Northern Mariana Islands Seismicity", "GNMI Seismicity"),
-		AMSAM(AMSAM_DIR+"amsam-catalog-extent.geojson", "American Samoa Seismicity", "AmSam Seismicity");
+		GNMI(GNMI_DIR+"gnmi-catalog-extent.geojson", "Guam & Northern Mariana Islands Seismicity", "GNMI Seismicity", "GNMI"),
+		AMSAM(AMSAM_DIR+"amsam-catalog-extent.geojson", "American Samoa Seismicity", "AmSam Seismicity", "AmSam");
 		
-		private String path;
-		private String name;
-		private String shortName;
+		private final String path;
+		private final String name;
+		private final String shortName;
+		private final String titleCaseAcronym;
 
-		private NSHM27_SeismicityRegions(String path, String name, String shortName) {
+		private NSHM27_SeismicityRegions(String path, String name, String shortName, String titleCaseAcronym) {
 			this.path = path;
 			this.name = name;
 			this.shortName = shortName;
+			this.titleCaseAcronym = titleCaseAcronym;
 		}
 		
 		public String getResourcePath() {
@@ -52,6 +54,10 @@ public class NSHM27_RegionLoader {
 		@Override
 		public String getShortName() {
 			return shortName;
+		}
+		
+		public String getTitleCaseAcronym() {
+			return titleCaseAcronym;
 		}
 
 		@Override
