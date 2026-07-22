@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 
+import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
@@ -44,6 +45,27 @@ public interface NSHM27_SeisRateModel extends LogicTreeNode {
 	public abstract RateRecord getRateRecord(NSHM27_SeismicityRegions region,
 			NSHM27_SeisClassificationMethod classification, TectonicRegionType trt);
 	
+	static PureGR getAverageGR(WeightedList<PureGR> grs) {
+		if (!grs.isNormalized()) {
+			grs = new WeightedList<>(grs);
+			grs.normalize();
+		}
+		double avgRate = 0d;
+		double avgB = 0d;
+		System.out.println("Averaging GRs");
+		for (int i=0; i<grs.size(); i++) {
+			double weight = grs.getWeight(i);
+			PureGR gr = grs.getValue(i);
+			System.out.println("\t"+i+": "+gr+"\t(wt="+(float)weight+")");
+			avgRate += weight*gr.rateAboveM1;
+			avgB += weight*gr.b;
+		}
+		PureGR gr0 = grs.getValue(0);
+		PureGR ret = new PureGR(gr0.type, gr0.M1, gr0.Mmax, avgRate, avgB, gr0.quantile, gr0.mean);
+		System.out.println("AVERAGE:\t"+ret);
+		return ret;
+	}
+	
 	@JsonAdapter(ClassificationDependentGRAdapter.class)
 	public static class ClassificationDependentGR {
 		private EnumMap<NSHM27_SeisClassificationMethod, PureGR> grs;
@@ -57,6 +79,14 @@ public interface NSHM27_SeisRateModel extends LogicTreeNode {
 		}
 		
 		public PureGR getValue(NSHM27_SeisClassificationMethod classification) {
+			if (classification == NSHM27_SeisClassificationMethod.AVERAGE) {
+				WeightedList<PureGR> grs = new WeightedList<>();
+				for (NSHM27_SeisClassificationMethod oClass : NSHM27_SeisClassificationMethod.values()) {
+					if (oClass != NSHM27_SeisClassificationMethod.AVERAGE && oClass.getNodeWeight() > 0d)
+						grs.add(getValue(oClass), oClass.getNodeWeight());
+				}
+				return getAverageGR(grs);
+			}
 			PureGR value = grs.get(classification);
 			Preconditions.checkNotNull(value);
 			return value;

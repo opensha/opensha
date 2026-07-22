@@ -20,7 +20,8 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum NSHM27_SeisClassificationMethod implements LogicTreeNode.FixedWeightNode {
 	PROFACE("Prefer interface", "Pro-face", 2d/3d),
-	PROSLAB("Prefer intraslab", "Pro-slab", 1d/3d);
+	PROSLAB("Prefer intraslab", "Pro-slab", 1d/3d),
+	AVERAGE("Average", "Average", 0d);
 	
 	private String name;
 	private String shortName;
