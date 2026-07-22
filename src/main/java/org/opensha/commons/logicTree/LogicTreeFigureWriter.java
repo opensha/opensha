@@ -370,8 +370,9 @@ public class LogicTreeFigureWriter extends JPanel {
 		
 	}
 
-	public String getDistString(AbstractContinuousDistributionSampledLevel<?> distLevel) {
+	public static String getDistString(AbstractContinuousDistributionSampledLevel<?> distLevel) {
 		ContinuousDistribution dist = distLevel.getDistribution();
+		
 		String distStr;
 		if (dist == null) {
 			distStr = "Unknown distribution";
