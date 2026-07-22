@@ -615,7 +615,7 @@ public class SolSiteHazardCalc {
 			if (rpStr.contains(",")) {
 				String[] split = rpStr.split(",");
 				rpYears = new double[split.length];
-				for (int p=0; p<periods.length; p++)
+				for (int p=0; p<split.length; p++)
 					rpYears[p] = Double.parseDouble(split[p]);
 			} else {
 				rpYears = new double[] { Double.parseDouble(rpStr) };
