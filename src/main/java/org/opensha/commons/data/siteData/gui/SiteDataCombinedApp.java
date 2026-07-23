@@ -6,6 +6,7 @@ import javax.swing.JFrame;
 import javax.swing.JTabbedPane;
 
 import org.opensha.commons.gui.DisclaimerDialog;
+import org.opensha.commons.util.updater.ApplicationUpdater;
 import org.opensha.commons.util.ApplicationVersion;
 import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 
@@ -73,6 +74,7 @@ public class SiteDataCombinedApp extends JFrame {
 				APP_SHORT_NAME, getAppVersion(), null, null);
 		Thread.setDefaultUncaughtExceptionHandler(exp);
 		launch(exp);
+		ApplicationUpdater.checkForUpdatesDefault(APP_NAME, APP_SHORT_NAME, "SiteDataGUI");
 	}
 	
 	public static SiteDataCombinedApp launch(DefaultExceptionHandler handler) {

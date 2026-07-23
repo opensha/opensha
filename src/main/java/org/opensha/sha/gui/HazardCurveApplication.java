@@ -52,6 +52,7 @@ import org.opensha.commons.exceptions.WarningException;
 import org.opensha.commons.gui.ControlPanel;
 import org.opensha.commons.gui.DisclaimerDialog;
 import org.opensha.commons.gui.HelpMenuBuilder;
+import org.opensha.commons.util.updater.ApplicationUpdater;
 import org.opensha.commons.gui.plot.GraphWidget;
 import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
@@ -677,6 +678,8 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 				APP_SHORT_NAME, getAppVersion(), null, null);
 		Thread.setDefaultUncaughtExceptionHandler(exp);
         launch(exp);
+        // Check for updates on a background thread (no-op in headless/IDE builds).
+        ApplicationUpdater.checkForUpdatesDefault(APP_NAME, APP_SHORT_NAME, "HazardCurveGUI");
 	}
 	
 	public static HazardCurveApplication launch(DefaultExceptionHandler handler) {
