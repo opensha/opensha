@@ -40,7 +40,6 @@ import static scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
  *
  * <h2>Inputs</h2>
  * <ul>
- *   <li>{@code --fss &lt;file&gt;} — Fault System Solution ZIP file (required)</li>
  *   <li>{@code --bin &lt;file&gt;} — ETAS results binary (required)</li>
  *   <li>{@code --rup &lt;id&gt;} — FSS index of the aftershock rupture to
  *       analyze (required)</li>
@@ -107,14 +106,28 @@ public class ETAS_BinaryAnalysis {
     public ETAS_BinaryAnalysis(CommandLine cmd) throws IOException {
         System.out.println("Parsing ETAS results binary...");
         this.parser = new BinaryParser(new File(cmd.getOptionValue("bin")));
-        System.out.println("Loading fault system solution...");
-        this.fss = FaultSystemSolution.load(new File(cmd.getOptionValue("fss")));
 
         this.configFile = new File(cmd.getOptionValue("config"));
         this.config = ETAS_Config.readJSON(configFile);
         this.outputDir = Path.of(cmd.getOptionValue("out"));
-        this.fssPath = cmd.getOptionValue("fss");
         this.binPath = cmd.getOptionValue("bin");
+
+        System.out.println("Loading fault system solution from config...");
+        File fssFile = ETAS_Config.resolvePath(config.getFSS_File());
+        ETAS_Launcher launcher = new ETAS_Launcher(config, false);
+        try {
+            this.fss = launcher.checkOutFSS();
+        } catch (RuntimeException e) {
+            String path = fssFile == null ? "<none specified in config>" : fssFile.getAbsolutePath();
+            System.err.println("ERROR: Could not load the Fault System Solution referenced by the "
+                    + "config (" + path + "). The provided FSS path is invalid; verify the 'fssFile' "
+                    + "field in the ETAS config points to a valid FSS ZIP, e.g. the FM3_1 solution "
+                    + "shipped with the etas-launcher "
+                    + "('2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_"
+                    + "MEAN_BRANCH_AVG_SOL.zip').");
+            throw e;
+        }
+        this.fssPath = fssFile == null ? null : fssFile.getAbsolutePath();
 
         // Build the rupture searcher for the parent-section tally
         final List<String> parentSections = List.of("Hollywood", "Raymond");
@@ -125,7 +138,6 @@ public class ETAS_BinaryAnalysis {
 
         // Build the catalog map plotter; we only feed it the catalogs which
         // contain the primary aftershock (collected by MarkdownGenerator).
-        ETAS_Launcher launcher = new ETAS_Launcher(config, false);
         ETAS_SimulatedCatalogPlot catalogMapPlot = new ETAS_SimulatedCatalogPlot(
                 config, launcher, "sim_catalog_map", 0d, 25d, 50d, 75d, 100d);
 
@@ -1015,14 +1027,6 @@ public class ETAS_BinaryAnalysis {
                 .desc("Show this help and exit.")
                 .build());
 
-        options.addOption(Option.builder("f")
-                .longOpt("fss")
-                .desc("Fault System Solution ZIP file")
-                .required(true)
-                .hasArg()
-                .argName("file-path")
-                .build());
-
         options.addOption(Option.builder("b")
                 .longOpt("bin")
                 .desc("Binary Results file")
@@ -1086,7 +1090,6 @@ public class ETAS_BinaryAnalysis {
     public static void main(String[] args) {
         if (args.length == 1 && args[0].equals("--hardcoded")) {
             args = new String[]{
-                    "--fss", "/Users/bhatthal/git/ucerf3-etas-launcher/inputs/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip",
                     "--bin", "/Users/bhatthal/Downloads/Merged-FSS_Rupture_201887_M7p8_Start_2026_10_15_1_yr_kCOV_1p5_MaxPtSrcM_6/results_m5_preserve_chain.bin",
                     "--config", "/Users/bhatthal/Downloads/Merged-FSS_Rupture_201887_M7p8_Start_2026_10_15_1_yr_kCOV_1p5_MaxPtSrcM_6/config.json",
                     "--rup", "218331",
