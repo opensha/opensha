@@ -46,8 +46,8 @@ public class NSHM27_InterfaceDeformationModels extends RupSetDeformationModelDis
 	
 	public static final String CSV_NAME = "2026_07_10.csv";
 	
-	public static final double MIN_DM_FRACTILE = 1e-4;
-	
+//	public static final double MIN_DM_FRACTILE = 0.0000001; // 0.00001% (1 in 10,000,000)
+	public static final double MIN_DM_FRACTILE = 0.000001; // 0.0001% (1 in 1,000,000)	
 	public static class SamplingLevel extends RupSetDeformationModelDistribution.UniformSamplingLevel<NSHM27_InterfaceDeformationModels> {
 		
 		public static String NAME = "Interface Deformation Model Sample";
@@ -142,7 +142,7 @@ public class NSHM27_InterfaceDeformationModels extends RupSetDeformationModelDis
 	@SuppressWarnings("unused") // for deserialization
 	private NSHM27_InterfaceDeformationModels() {}
 	
-	NSHM27_InterfaceDeformationModels(String name, String shortName, String filePrefix,
+	public NSHM27_InterfaceDeformationModels(String name, String shortName, String filePrefix,
 			double weight, FixedSampler sampler) {
 		super(name, shortName, filePrefix, weight, sampler);
 	}
