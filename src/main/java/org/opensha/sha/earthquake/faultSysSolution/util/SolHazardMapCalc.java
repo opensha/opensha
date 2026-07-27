@@ -17,6 +17,7 @@ import java.io.Writer;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +45,7 @@ import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.siteData.SiteDataValue;
+import org.opensha.commons.data.siteData.SiteDataValueList;
 import org.opensha.commons.data.siteData.SiteDataValueListList;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.GriddedRegion;
@@ -226,41 +228,58 @@ public class SolHazardMapCalc {
 			Preconditions.checkState(period == -1d || period >= 0d,
 					"supplied map calculation periods must be -1 (PGV), 0 (PGA), or a positive value");
 		
-		if (gmpeRefMap != null) {
-			sites = new ArrayList<>();
-			ParameterList siteParams = FaultSysHazardCalcSettings.getDefaultRefSiteParams(gmpeRefMap);
-			
-			int numSites = region.getNodeCount();
-			SiteDataValueListList siteData = region.getSiteData();
-			SiteTranslator siteTrans = siteData == null ? null : new SiteTranslator();
-			int numSitesWithData = 0;
-			int numSiteDataSet = 0;
-			
-			for (int n=0; n<numSites; n++) {
-				Location loc = region.getLocation(n);
-				Site site = new Site(loc);
-				for (Parameter<?> param : siteParams)
-					site.addParameter((Parameter<?>) param.clone());
-				if (siteData != null) {
-					List<SiteDataValue<?>> dataForSite = siteData.getDataList(n);
-					boolean any = false;
-					for (Parameter<?> param : site) {
-						if (siteTrans.setParameterValue(param, dataForSite)) {
-							any = true;
-							numSiteDataSet++;
-						}
-					}
-					if (any)
-						numSitesWithData++;
-				}
-				sites.add(site);
-			}
-			
-			if (siteData != null) {
-				System.out.println("Built "+numSites+" sites with data from "+siteData.getNumProviders()+" providers; "
-						+numSitesWithData+"/"+numSites+" sites had site data ("+numSiteDataSet+" total values set)");
-			}
+		if (gmpeRefMap != null)
+			this.sites = loadSites(region, gmpeRefMap);
+	}
+	
+	public static List<Site> loadSites(GriddedRegion region, Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeRefMap) {
+		List<Site> sites = new ArrayList<>();
+		ParameterList siteParams = FaultSysHazardCalcSettings.getDefaultRefSiteParams(gmpeRefMap);
+		
+		int numSites = region.getNodeCount();
+		SiteDataValueListList siteData = region.getSiteData();
+		int numSitesWithData = 0;
+		int numSiteDataSet = 0;
+		SiteTranslator siteTrans = null;
+		HashSet<String> setTypes = null;
+		HashSet<String> availTypes = null;
+		if (siteData != null) {
+			siteTrans = new SiteTranslator();
+			setTypes = new HashSet<>();
+			availTypes = new HashSet<>();
+			for (SiteDataValueList<?> list : siteData)
+				availTypes.add(list.getType());
 		}
+		
+		for (int n=0; n<numSites; n++) {
+			Location loc = region.getLocation(n);
+			Site site = new Site(loc);
+			for (Parameter<?> param : siteParams)
+				site.addParameter((Parameter<?>) param.clone());
+			if (siteData != null) {
+				List<SiteDataValue<?>> dataForSite = siteData.getDataList(n);
+				boolean any = false;
+				for (Parameter<?> param : site) {
+					if (siteTrans.setParameterValue(param, dataForSite)) {
+						any = true;
+						numSiteDataSet++;
+						setTypes.add(param.getName());
+					}
+				}
+				if (any)
+					numSitesWithData++;
+			}
+			sites.add(site);
+		}
+		
+		if (siteData != null) {
+			System.out.println("Built "+numSites+" sites with data from "+siteData.getNumProviders()+" providers");
+			System.out.println("\t"+numSitesWithData+"/"+numSites+" sites had site data ("+numSiteDataSet+" total values set)");
+			System.out.println("\tAvailable site data types:\t"+availTypes);
+			System.out.println("\tSite data types set:\t"+setTypes);
+		}
+		
+		return sites;
 	}
 	
 	public void setBackSeisOption(IncludeBackgroundOption backSeisOption) {
@@ -524,7 +543,9 @@ public class SolHazardMapCalc {
 				gmpeMap.put(trt, gmpeRefMap.get(trt).get());
 			
 			HazardCurveCalculator calc = new HazardCurveCalculator(sourceFilter);
-			RuptureExceedProbCalculator exceedCalc = pointSourceOptimizations ?
+			boolean hasGridded = backSeisOption == IncludeBackgroundOption.INCLUDE || backSeisOption == IncludeBackgroundOption.ONLY;
+			boolean hasSiteData = region.getSiteData() != null;
+			RuptureExceedProbCalculator exceedCalc = hasGridded && pointSourceOptimizations && !hasSiteData ?
 					new PointSourceOptimizedExceedProbCalc() : RuptureExceedProbCalculator.BASIC_IMPLEMENTATION;
 			while (true) {
 				Integer index = calcIndexes.pollFirst();
@@ -554,6 +575,10 @@ public class SolHazardMapCalc {
 						continue;
 					}
 				}
+				
+				if (hasSiteData && hasGridded && pointSourceOptimizations)
+					// need a unique one for this site
+					exceedCalc = new PointSourceOptimizedExceedProbCalc();
 				
 				List<DiscretizedFunc> curves = calcSiteCurves(calc, erf, gmpeMap, site, exceedCalc, combineWith, index);
 				
