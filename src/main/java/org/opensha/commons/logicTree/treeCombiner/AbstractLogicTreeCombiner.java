@@ -375,6 +375,67 @@ public abstract class AbstractLogicTreeCombiner {
 		}
 	}
 	
+	public void pairwiseSampleExplicit(List<Integer> combBranchesOuterIndexes, List<Integer> combBranchesInnerIndexes, List<Double> weights) {
+		Preconditions.checkState(combBranchesOuterIndexes.size() == combBranchesInnerIndexes.size());
+		Preconditions.checkState(combBranchesOuterIndexes.size() == weights.size());
+		numSamples = combBranchesOuterIndexes.size();
+		
+		combBranches = new ArrayList<>(numSamples);
+		combBranchesOuterPortion = new ArrayList<>(numSamples);
+		combBranchesInnerPortion = new ArrayList<>(numSamples);
+		this.combBranchesOuterIndexes = combBranchesOuterIndexes;
+		this.combBranchesInnerIndexes = combBranchesInnerIndexes;
+		
+		for (int n=0; n<numSamples; n++) {
+			int o = combBranchesOuterIndexes.get(n);
+			int i = combBranchesInnerIndexes.get(n);
+			LogicTreeBranch<?> outerBranch = outerTree.getBranch(o);
+			LogicTreeBranch<?> innerBranch = innerTree.getBranch(i);
+			double weight = weights.get(n);
+			
+			LogicTreeBranch<LogicTreeNode> combBranch = new LogicTreeBranch<>(combLevels);
+			int combNodeIndex = 0;
+			for (int l=0; l<outerBranch.size(); l++) {
+				LogicTreeNode node = outerBranch.getValue(l);
+				if (outerNodeRemaps.containsKey(node)) {
+					LogicTreeNode remappedNode = outerNodeRemaps.get(node);
+					if (remappedNode != node) {
+						node = remappedNode;
+					}
+				}
+				combBranch.setValue(node);
+				LogicTreeNode getNode = combBranch.getValue(combNodeIndex);
+				Preconditions.checkState(getNode == node,
+						"Set didn't work for node %s of combined branch: %s, has %s",
+						combNodeIndex, node, getNode);
+				combNodeIndex++;
+			}
+			for (int l=0; l<innerBranch.size(); l++) {
+				if (commonLevels.contains(innerBranch.getLevel(l)))
+					// skip common levels (already accounted for in the outer branch)
+					continue;
+				LogicTreeNode node = innerBranch.getValue(l);
+				if (innerNodeRemaps.containsKey(node))
+					node = innerNodeRemaps.get(node);
+				combBranch.setValue(node);
+				LogicTreeNode getNode = combBranch.getValue(combNodeIndex);
+				Preconditions.checkState(getNode == node,
+						"Set didn't work for node %s of combined branch: %s, has %s;\n\tInner branch: %s"
+						+ "\n\tOuter branch: %s\n\tCombined branch: %s",
+						combNodeIndex, node, getNode, innerBranch, outerBranch, combBranch);
+				combNodeIndex++;
+			}
+			combBranch.setOrigBranchWeight(weight);
+			
+			combBranches.add(combBranch);
+			combBranchesOuterPortion.add(outerBranch);
+			combBranchesInnerPortion.add(innerBranch);
+		}
+		
+		combTree = LogicTree.fromExisting(combLevels, combBranches);
+		combTree.setWeightProvider(new BranchWeightProvider.OriginalWeights());
+	}
+	
 	private void buildCominedTree() {
 		System.out.println("Building combined tree");
 		if (commonLevels.isEmpty()) {
