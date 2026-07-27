@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 import org.dom4j.Document;
 import org.dom4j.Element;
@@ -30,24 +31,32 @@ public class SiteDataValueListList implements XMLSaveable, Iterable<SiteDataValu
 	
 	public static final String XML_METADATA_NAME = "SiteDataValuesList";
 	
-	private ArrayList<SiteDataValueList<?>> lists;
+	private List<SiteDataValueList<?>> lists;
 	
 	private int size = -1;
 	
 	private boolean hasLocations = true;
 	
-	public SiteDataValueListList(ArrayList<SiteDataValueList<?>> lists) {
-		this.lists = lists;
+	public SiteDataValueListList() {
+		this(new ArrayList<>());
+	}
+	
+	public SiteDataValueListList(List<SiteDataValueList<?>> lists) {
+		this.lists = new ArrayList<>();
 		
 		// get the overall size, and ensure they're all the same
-		for (SiteDataValueList<?> list : lists) {
-			if (size < 0)
-				size = list.size();
-			if (size != list.size())
-				throw new RuntimeException("The size of each list must be same!");
-			if (!list.hasLocations())
-				hasLocations = false;
-		}
+		for (SiteDataValueList<?> list : lists)
+			add(list);
+	}
+	
+	public void add(SiteDataValueList<?> list) {
+		if (size < 0)
+			size = list.size();
+		if (size != list.size())
+			throw new RuntimeException("The size of each list must be same!");
+		if (!list.hasLocations())
+			hasLocations = false;
+		lists.add(list);
 	}
 	
 	public int size() {
@@ -58,7 +67,7 @@ public class SiteDataValueListList implements XMLSaveable, Iterable<SiteDataValu
 		return lists.size();
 	}
 	
-	public ArrayList<SiteDataValue<?>> getDataList(int index) {
+	public List<SiteDataValue<?>> getDataList(int index) {
 		ArrayList<SiteDataValue<?>> datas = new ArrayList<SiteDataValue<?>>();
 		
 		for (SiteDataValueList<?> list : lists) {
