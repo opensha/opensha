@@ -14,6 +14,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.opensha.commons.util.ApplicationVersion;
+import org.opensha.commons.util.OpenSHAConfig;
 import org.opensha.commons.util.http.GitHubAsset;
 import org.opensha.commons.util.http.GitHubClient;
 import org.opensha.commons.util.http.GitHubRelease;
@@ -46,14 +47,20 @@ public class ApplicationUpdaterTest {
 	}
 
 	@Before
-	public void setUp() {
+	public void setUp() throws java.io.IOException {
 		client = mock(GitHubClient.class);
 		prompt = mock(UpdatePrompt.class);
 		shortName = "UpdaterUnitTest_" + System.nanoTime();
+		// Isolate the global-disable config so a developer's real
+		// ~/.opensha/config.json can never make these tests non-deterministic.
+		// Pointing at a non-existent file means defaults (prompts enabled).
+		Path configDir = Files.createTempDirectory("opensha-updater-test");
+		OpenSHAConfig.setConfigFileForTesting(configDir.resolve("config.json"));
 	}
 
 	@After
 	public void tearDown() {
+		OpenSHAConfig.clearConfigFileOverride();
 		// Clear any prefs written by the remind-later / skip / cleanup flows so
 		// tests stay isolated.
 		java.util.prefs.Preferences prefs =
@@ -213,6 +220,40 @@ public class ApplicationUpdaterTest {
 		ApplicationUpdater u = new ApplicationUpdater(client, prompt,
 				new ApplicationVersion(26, 1, 0), (a, p) -> null, p -> {});
 		u.runUpdateCheck("Test App", shortName, "HazardCurveGUI");
+		verify(prompt, never()).prompt(anyString(), any(), anyString());
+	}
+
+	@Test
+	public final void testRunUpdateCheckSkippedWhenGloballyDisabled() throws IOException {
+		// Globally disable update prompts in the (temp) config.
+		OpenSHAConfig disabled = new OpenSHAConfig();
+		disabled.setDisableUpdatePrompts(true);
+		disabled.save();
+		assertTrue(OpenSHAConfig.load().isDisableUpdatePrompts());
+
+		// A newer stable release exists, so without the global disable this would
+		// prompt. With it on, the check must short-circuit before any network or
+		// prompt activity.
+		when(client.getLatestRelease()).thenReturn(release("v26.1.1", false, "notes"));
+		ApplicationUpdater u = new ApplicationUpdater(client, prompt,
+				new ApplicationVersion(26, 1, 0), (a, p) -> null, p -> {});
+		u.runUpdateCheck("Test App", shortName, "HazardCurveGUI");
+
+		verify(client, never()).getLatestRelease();
+		verify(client, never()).getRecentReleases();
+		verify(prompt, never()).prompt(anyString(), any(), anyString());
+	}
+
+	@Test
+	public final void testRunUpdateCheckProceedsWhenEnabled() throws IOException {
+		// No config file written => defaults => prompts enabled. The updater
+		// should reach the GitHub client (here returning an up-to-date release).
+		assertFalse(OpenSHAConfig.load().isDisableUpdatePrompts());
+		when(client.getLatestRelease()).thenReturn(release("v26.1.0", false, "notes"));
+		ApplicationUpdater u = new ApplicationUpdater(client, prompt,
+				new ApplicationVersion(26, 1, 0), (a, p) -> null, p -> {});
+		u.runUpdateCheck("Test App", shortName, "HazardCurveGUI");
+		verify(client, times(1)).getLatestRelease();
 		verify(prompt, never()).prompt(anyString(), any(), anyString());
 	}
 

@@ -1,8 +1,10 @@
 package org.opensha.commons.util.updater;
 
 import java.awt.GraphicsEnvironment;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.URI;
 import java.net.URL;
@@ -25,6 +27,7 @@ import java.util.prefs.Preferences;
 import javax.swing.JOptionPane;
 
 import org.opensha.commons.util.ApplicationVersion;
+import org.opensha.commons.util.OpenSHAConfig;
 import org.opensha.commons.util.http.GitHubAsset;
 import org.opensha.commons.util.http.GitHubRelease;
 import org.opensha.commons.util.http.GitHubClient;
@@ -86,6 +89,8 @@ public class ApplicationUpdater {
 	private static final String PREF_SKIP_VERSION = "skipVersion_";
 	private static final String PREF_CLEANUP_ASKED = "cleanupAsked_";
 
+    // TODO: Publish updated alpha testing JARs, update README
+    // TODO: Commit and push working tree
 	private static final Preferences prefs = Preferences.userNodeForPackage(ApplicationUpdater.class);
 
 	private final GitHubClient client;
@@ -287,6 +292,10 @@ public class ApplicationUpdater {
 			log.debug("Skipping update check: not running from a JAR (e.g. IDE/dev build)");
 			return;
 		}
+		if (isUpdatePromptsGloballyDisabled()) {
+			log.debug("Skipping update check: update prompts disabled globally by user");
+			return;
+		}
 		Path jarDir = runningJar.getParent();
 		Thread t = new Thread(() -> {
 			cleanupOldVersions(appShortName, assetPrefix, jarDir,
@@ -318,11 +327,35 @@ public class ApplicationUpdater {
 	}
 
 	/**
+	 * Whether the user has globally disabled update prompts via the per-user
+	 * {@code ~/.opensha/config.json} ({@link OpenSHAConfig#isDisableUpdatePrompts()}).
+	 * This is a single, cross-application setting: when {@code true}, every
+	 * OpenSHA application skips its update check entirely (no background thread,
+	 * no network call, no dialog). Reads are tolerant &mdash; any failure to read
+	 * the config defaults to enabled ({@code false}) so the host app is never
+	 * affected.
+	 *
+	 * @return {@code true} if update prompts are disabled globally for all apps
+	 */
+	static boolean isUpdatePromptsGloballyDisabled() {
+		try {
+			return OpenSHAConfig.load().isDisableUpdatePrompts();
+		} catch (Throwable t) {
+			log.warn("Could not read global update config; defaulting to enabled", t);
+			return false;
+		}
+	}
+
+	/**
 	 * Synchronous core of the update check. Package-visible so tests can drive
 	 * it on the test thread with mocked dependencies.
 	 */
 	void runUpdateCheck(String appName, String appShortName, String assetPrefix) {
 		try {
+			if (isUpdatePromptsGloballyDisabled()) {
+				log.debug("Skipping update check: update prompts disabled globally by user");
+				return;
+			}
 			if (runningVersion == null || runningVersion.getMajor() < 0) {
 				log.debug("Skipping update check: running version unknown");
 				return;
@@ -710,7 +743,7 @@ public class ApplicationUpdater {
 			}
 		}
 		Files.deleteIfExists(temp);
-		throw last != null ? last : new IOException("Download failed for " + asset.getName());
+		throw last;
 	}
 
 	private static void streamDownload(String url, Path dest, long size, UpdatePrompt prompt)
@@ -785,5 +818,123 @@ public class ApplicationUpdater {
 			log.debug("Could not load build version; disabling update", e);
 			return new ApplicationVersion(-1, -1, -1);
 		}
+	}
+
+	/**
+	 * Manual state utility: an interactive console menu for inspecting and
+	 * resetting the Application Updater's per-app state so the update prompt can
+	 * be re-tested. It can view the current {@link java.util.prefs} state, clear
+	 * the update-check preferences (the "remind me later" / "skip this version" /
+	 * "old-version cleanup already asked" gates across all apps), and toggle the
+	 * global {@code disableUpdatePrompts} flag in {@code ~/.opensha/config.json}.
+	 *
+	 * <p>This avoids the need to delete the whole OS-level Java preferences store
+	 * (which would wipe every Java application's preferences). Run with
+	 * {@code java -cp ... org.opensha.commons.util.updater.ApplicationUpdater}.</p>
+	 *
+	 * @param args ignored
+	 * @throws IOException if the console input stream cannot be read
+	 */
+	public static void main(String[] args) throws IOException {
+		Preferences node = Preferences.userNodeForPackage(ApplicationUpdater.class);
+		try (BufferedReader in = new BufferedReader(new InputStreamReader(System.in))) {
+			while (true) {
+				System.out.println();
+				System.out.println("OpenSHA Application Updater - manual state utility");
+				printCurrentState(node);
+				System.out.println();
+				System.out.println("  1) View current prefs state");
+				System.out.println("  2) Clear the update-check prefs (remind-later / skip-version / cleanup-asked, all apps)");
+				System.out.println("  3) Toggle disableUpdatePrompts in ~/.opensha/config.json");
+				System.out.println("  q) Quit");
+				System.out.print("Choose: ");
+				String line = in.readLine();
+				if (line == null) {
+					break; // EOF (e.g. piped input ended)
+				}
+				String choice = line.trim();
+				if (choice.isEmpty()) {
+					continue;
+				}
+				switch (choice.charAt(0)) {
+					case '1':
+						viewPrefs(node);
+						break;
+					case '2':
+						clearPrefs(node);
+						break;
+					case '3':
+						toggleDisablePrompts();
+						break;
+					case 'q':
+					case 'Q':
+						return;
+					default:
+						System.out.println("Unknown choice: " + choice);
+				}
+			}
+		}
+	}
+
+	private static void printCurrentState(Preferences node) {
+		OpenSHAConfig config = OpenSHAConfig.load();
+		String fileNote = java.nio.file.Files.isRegularFile(OpenSHAConfig.configFile())
+				? "" : "  (default - no config file yet)";
+		int keyCount = 0;
+		try {
+			keyCount = node.keys().length;
+		} catch (java.util.prefs.BackingStoreException e) {
+			log.warn("Could not read prefs keys", e);
+		}
+		System.out.println("  disableUpdatePrompts = " + config.isDisableUpdatePrompts() + fileNote);
+		System.out.println("  config file: " + OpenSHAConfig.configFile());
+		System.out.println("  update-check prefs entries: " + keyCount);
+	}
+
+	private static void viewPrefs(Preferences node) {
+		System.out.println();
+		String[] keys;
+		try {
+			keys = node.keys();
+		} catch (java.util.prefs.BackingStoreException e) {
+			System.out.println("Could not read prefs: " + e);
+			log.warn("Could not read prefs keys", e);
+			return;
+		}
+		if (keys.length == 0) {
+			System.out.println("(no prefs set)");
+			return;
+		}
+		java.util.Arrays.sort(keys);
+		for (String key : keys) {
+			System.out.println("  " + key + " = " + node.get(key, "<unset>"));
+		}
+	}
+
+	private static void clearPrefs(Preferences node) {
+		int before = 0;
+		try {
+			before = node.keys().length;
+		} catch (java.util.prefs.BackingStoreException e) {
+			log.warn("Could not read prefs keys before clear", e);
+		}
+		try {
+			node.clear();
+			node.flush();
+		} catch (java.util.prefs.BackingStoreException e) {
+			System.out.println("Could not clear prefs: " + e);
+			log.warn("Could not clear prefs", e);
+			return;
+		}
+		System.out.println("Cleared " + before + " update-check pref(s).");
+	}
+
+	private static void toggleDisablePrompts() {
+		OpenSHAConfig config = OpenSHAConfig.load();
+		boolean before = config.isDisableUpdatePrompts();
+		config.setDisableUpdatePrompts(!before);
+		config.save();
+		System.out.println("disableUpdatePrompts: " + before + " -> " + config.isDisableUpdatePrompts());
+		System.out.println("  written to " + OpenSHAConfig.configFile());
 	}
 }

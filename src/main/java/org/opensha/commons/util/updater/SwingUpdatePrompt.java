@@ -44,12 +44,12 @@ public class SwingUpdatePrompt implements UpdatePrompt {
 	/**
 	 * Gate for the "Skip this version" button on the update-available prompt.
 	 * The button is always constructed and wired, but is only added to the
-	 * dialog when this is {@code true}. It defaults to {@code false} so the
-	 * shipped prompt offers only "Update now" and "Remind me later"; the skip
-	 * plumbing ({@link Choice#SKIP_THIS_VERSION}, {@code setSkipVersion}) is
-	 * still reachable via {@link UpdatePrompt#prompt} returning that choice.
+	 * dialog when this is {@code true}. It is {@code true} in the shipped prompt,
+	 * so the user is offered all three choices: "Update now", "Remind me later",
+	 * and "Skip this version". The dialog width is sized to fit all three buttons
+	 * in a single row.
 	 */
-	private static final boolean SKIP_VERSION_BUTTON_ENABLED = false;
+	private static final boolean SKIP_VERSION_BUTTON_ENABLED = true;
 
 	private static final Logger log = LoggerFactory.getLogger(SwingUpdatePrompt.class);
 
@@ -70,7 +70,10 @@ public class SwingUpdatePrompt implements UpdatePrompt {
 			dialog.setModal(true);
 			dialog.setTitle("Update Available");
 			dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
-			dialog.setPreferredSize(new Dimension(480, 360));
+			// Wide enough that "Update and restart now", "Remind me later", and
+			// "Skip this version" all fit in a single row of the button panel,
+			// with room for the opt-out footer above them.
+			dialog.setPreferredSize(new Dimension(620, 380));
 
 			JLabel header = new JLabel("<html><b>A new version of " + appName
 					+ " is available: " + (latestVersion == null ? "?" : latestVersion.toString())
@@ -110,12 +113,29 @@ public class SwingUpdatePrompt implements UpdatePrompt {
 			buttonPanel.add(laterBtn);
 			if (SKIP_VERSION_BUTTON_ENABLED)
 				buttonPanel.add(skipBtn);
-			buttonPanel.setBorder(new EmptyBorder(8, 12, 12, 12));
+			buttonPanel.setBorder(new EmptyBorder(8, 12, 4, 12));
+
+			// Informational footer telling the user how to opt out of update
+			// prompts globally (for this and all future OpenSHA versions) by
+			// editing the per-user config file. It performs no action.
+			JLabel footer = new JLabel("<html><div style='font-size: 10pt; color: #555555'>"
+					+ "Update prompts can be disabled for this and all future OpenSHA versions by setting<br>"
+					+ "<code>~/.opensha/config.json</code> with "
+					+ "<code>\"disableUpdatePrompts\": true</code>."
+					+ "</div></html>");
+			footer.setBorder(new EmptyBorder(0, 12, 10, 12));
+
+			// BorderLayout stretches the NORTH/SOUTH children to the full dialog
+			// width, so the footer box spans the whole popup (rather than only its
+			// natural text width) and the button row stays centered within it.
+			JPanel south = new JPanel(new BorderLayout());
+			south.add(footer, BorderLayout.NORTH);
+			south.add(buttonPanel, BorderLayout.SOUTH);
 
 			JPanel content = new JPanel(new BorderLayout(0, 0));
 			content.add(header, BorderLayout.PAGE_START);
 			content.add(scroll, BorderLayout.CENTER);
-			content.add(buttonPanel, BorderLayout.PAGE_END);
+			content.add(south, BorderLayout.PAGE_END);
 			dialog.setContentPane(content);
 
 			dialog.pack();
@@ -239,5 +259,48 @@ public class SwingUpdatePrompt implements UpdatePrompt {
 		progressDialog.pack();
 		progressDialog.setLocationRelativeTo(null);
 		progressDialog.setVisible(true);
+	}
+
+	/**
+	 * Manual GUI test: shows the update-available prompt with a fake
+	 * application name, a test latest version, and a Markdown release-notes
+	 * string (including a "Release Notes" section heading, headings, lists,
+	 * inline code, and a link) so the rendering and the three-button row can be
+	 * eyeballed without launching a full OpenSHA application. Run with
+	 * {@code java -cp ... org.opensha.commons.util.updater.SwingUpdatePrompt}.
+	 *
+	 * @param args ignored
+	 */
+	public static void main(String[] args) {
+		String appName = "SwingUpdatePrompt";
+		ApplicationVersion latestVersion = new ApplicationVersion(26, 1, 2);
+		String releaseNotes = """
+                # SwingUpdatePrompt 26.1.2
+                
+                This is a **manual test** of the update-available prompt. The text above \
+                this heading is the generic preamble, which the prompt trims by showing \
+                only the `Release Notes` section and everything below it.
+                
+                ## Release Notes
+                
+                ### Highlights
+                
+                - Added a global *disable update prompts* setting.
+                - Enabled the **Skip this version** button.
+                - Rendered Markdown release notes (via `MarkdownUtils`/commonmark).
+                
+                ### Notes
+                
+                Links open in the system browser, e.g. [OpenSHA](https://www.opensha.org).
+                
+                > Blockquote: the dialog is sized so all three buttons fit on one row.
+                
+                ```
+                code block
+                ```
+                """;
+		UpdatePrompt.Choice choice = new SwingUpdatePrompt().prompt(appName, latestVersion, releaseNotes);
+		System.out.println("User chose: " + choice);
+		System.exit(0);
 	}
 }

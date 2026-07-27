@@ -15,6 +15,10 @@ All classes live in two packages:
   (`ApplicationUpdater`, `AssetDownloader`, `AssetLauncher`, `UpdatePrompt`,
   `SwingUpdatePrompt`)
 
+The global disable-updates setting is read from `org.opensha.commons.util.OpenSHAConfig`
+(`~/.opensha/config.json`). There is no GUI to edit it &mdash it is set by hand (see
+[Disabling update prompts globally](#disabling-update-prompts-globally)).
+
 ## Architecture
 
 ```
@@ -34,7 +38,8 @@ GitHub API ───▶                            │    GitHubClient    │ th
         │     AssetDownloader      │    │      AssetLauncher       │    │       UpdatePrompt       │
         │HTTP: downloadAssetToTemp │    │   launchJar: detached    │    │    SwingUpdatePrompt     │
         │  in ApplicationUpdater   │    │  process + System.exit   │    │UPDATE_NOW / REMIND_LATER │
-        └──────────────────────────┘    └──────────────────────────┘    └──────────────────────────┘
+        └──────────────────────────┘    └──────────────────────────┘    │   / SKIP_THIS_VERSION    │
+                                                                        └──────────────────────────┘
 
 The strategy interfaces + UpdatePrompt are the test seams; their production impls are
 method references on ApplicationUpdater (downloadAssetToTemp, launchJar), injected via the
@@ -64,8 +69,9 @@ a daemon thread that first runs `cleanupOldVersions` and then `runUpdateCheck`:
    versioned JARs sit beside the running JAR and the user has not yet been asked
    about them for this version, prompts once whether to delete them.
 2. **Skips the update check early** if headless, not running from a JAR (e.g. an
-   IDE/dev build), or the running version is unknown (`build.version` could not
-   be loaded).
+   IDE/dev build), the running version is unknown (`build.version` could not
+   be loaded), or update prompts have been **disabled globally** by the user
+   (see [Disabling update prompts globally](#disabling-update-prompts-globally)).
 3. **Finds the latest stable release.** Calls `GitHubClient.getLatestRelease()`
    and parses the tag with `parseStableVersion`. If the latest release is a
    beta/alpha (tag contains `beta`/`alpha` or non-numeric characters), it falls
@@ -94,13 +100,15 @@ a daemon thread that first runs `cleanupOldVersions` and then `runUpdateCheck`:
      stops without downloading.
    - **Update now** &rarr; continues.
 
-   The shipped prompt shows only "Update now" and "Remind me later". The "Skip
-   this version" button exists in `SwingUpdatePrompt` (fully wired to
-   `Choice.SKIP_THIS_VERSION`) but is gated behind a hardcoded static flag
-   (`SKIP_VERSION_BUTTON_ENABLED`, default `false`), so it is dormant in the
-   released UI; the skip plumbing is still reachable because
-   `UpdatePrompt.prompt` may return `SKIP_THIS_VERSION` (and `setSkipVersion`
-   is public, so a caller can also set the preference programmatically).
+   The shipped prompt offers all three choices: "Update now", "Remind me later",
+   and "Skip this version". The "Skip this version" button is wired to
+   `Choice.SKIP_THIS_VERSION` and gated by a static flag
+   (`SKIP_VERSION_BUTTON_ENABLED`, currently `true`) in `SwingUpdatePrompt`; the
+   skip plumbing is also reachable because `UpdatePrompt.prompt` may return
+   `SKIP_THIS_VERSION` (and `setSkipVersion` is public, so a caller can set the
+   preference programmatically). The dialog is sized wide enough that all three
+   buttons fit in a single row above the opt-out footer (see
+   [Disabling update prompts globally](#disabling-update-prompts-globally)).
 8. **Selects the asset** on the stable release whose name starts with
    `assetPrefix + "-"`. Release assets are named `<prefix>-<version>.jar`, e.g.
    `HazardCurveGUI-26.1.1.jar`.
@@ -202,6 +210,51 @@ The old JAR is deliberately kept until the new version has proven it can start
 is installed), its `cleanupOldVersions` never runs, so the old JAR remains
 usable as a fallback. Deletion is never automatic.
 
+## Disabling update prompts globally
+
+A user who never wants to see the update prompt can disable the updater
+**globally, across all OpenSHA applications**, from a single per-user file:
+
+`~/.opensha/config.json`
+
+```json
+{
+  "disableUpdatePrompts": true
+}
+```
+
+When `disableUpdatePrompts` is `true`, every OpenSHA application skips its
+launch-time update check entirely &mdash; no background thread, no network call,
+and no update dialog. The check happens in `ApplicationUpdater` before the
+update-checker thread is even spawned, so a disabled updater is a complete no-op
+at launch. The setting is read once per launch; there is no in-session caching.
+
+This is a **cross-application** setting: it lives in one file under the user's
+home (`~/.opensha/`, the same directory the OpenSHA data downloaders use) and is
+honored by every application that calls `checkForUpdatesDefault`, so the user
+does not have to disable the updater separately for each app. It sits above the
+per-app `java.util.prefs` preferences ("remind me later", "skip this version"):
+those still apply per app when prompts are enabled, but are irrelevant while the
+global disable is on.
+
+**How to set it:** there is no GUI for this setting (not all OpenSHA
+applications have a Help menu), so it is set by hand. Edit
+`~/.opensha/config.json` and set `disableUpdatePrompts` to `true` (disable) or
+`false` (re-enable). Delete the file (or remove the key) to restore defaults
+(prompts enabled). The file is created lazily &mdash; it only appears after the
+first change, so a normal launch with prompts enabled writes nothing. Because the
+file lives in the user's home and is read on every launch, a user can disable the
+updater without ever launching an application (and thus without ever seeing an
+update prompt) by creating the file ahead of time.
+
+The update-available prompt itself (`SwingUpdatePrompt`) shows a footer reminding
+the user that prompts can be disabled for this and all future OpenSHA versions by
+setting `disableUpdatePrompts: true` in `~/.opensha/config.json`.
+
+Parsing is tolerant: a missing, empty, or malformed `config.json` is treated as
+defaults (prompts enabled) with a logged warning, so a bad hand-edit can never
+break application startup.
+
 ## Caching (none)
 
 There is deliberately no caching layer. The updater checks for updates exactly
@@ -244,7 +297,9 @@ ApplicationUpdater.checkForUpdatesDefault(APP_NAME, APP_SHORT_NAME, "HazardCurve
 Preferences ("remind me later" defer timestamp, the "skip this version" gate,
 and the per-version "old-version cleanup already asked" gate) are stored per
 app via `java.util.prefs`, keyed by `appShortName` &mdash; the same keying
-convention `DisclaimerDialog` uses.
+convention `DisclaimerDialog` uses. The **global** disable-updates setting is
+separate: it lives in `~/.opensha/config.json` and applies across all apps (see
+[Disabling update prompts globally](#disabling-update-prompts-globally)).
 
 ## Testing
 
@@ -263,8 +318,8 @@ convention `DisclaimerDialog` uses.
     mocked and the download/launch steps injected as fakes &mdash; no network, no
     `System.exit`). The `SKIP_THIS_VERSION` flow is exercised by mocking
     `UpdatePrompt.prompt` to return that choice; the `SwingUpdatePrompt` button
-    itself is dormant behind `SKIP_VERSION_BUTTON_ENABLED` and is not driven by
-    the unit tests.
+    itself (gated by `SKIP_VERSION_BUTTON_ENABLED`, currently `true`) is not driven
+    by the unit tests, which treat the prompt as a mock.
 - **Live smoke test** (run only via `./gradlew testOperational`, named
   `*Operational*`): `GitHubClientOperationalTest` hits the real GitHub API,
   bounded with `@Test(timeout = 30000)`.
@@ -281,6 +336,7 @@ flow can be exercised without network or process exit.
 | API version header | `GitHubClient.API_VERSION` | `2026-03-10` |
 | Download retry attempts | `ApplicationUpdater.MAX_DOWNLOAD_ATTEMPTS` | 3 |
 | "Remind me later" defer | `ApplicationUpdater.REMIND_LATER_DELAY_DAYS` | 7 days |
+| Disable update prompts (global) | `~/.opensha/config.json` `disableUpdatePrompts` | `false` |
 
 To point the updater at a different repository (e.g. a fork that publishes its
 own releases), construct a `GitHubClient` with an explicit owner/repo
