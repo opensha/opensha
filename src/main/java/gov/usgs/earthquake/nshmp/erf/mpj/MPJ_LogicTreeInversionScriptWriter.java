@@ -9,8 +9,6 @@ import java.util.Map;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.Site;
-import org.opensha.commons.geo.GriddedRegion;
-import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.hpc.JavaShellScriptWriter;
 import org.opensha.commons.hpc.pbs.BatchScriptWriter;
 import org.opensha.commons.logicTree.LogicTree;
@@ -29,11 +27,11 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.mpj.MPJ_LogicTreeIn
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen.PlotLevel;
 import org.opensha.sha.earthquake.faultSysSolution.util.TrueMeanSolutionCreator;
-import org.opensha.sha.imr.AttenRelRef;
 
 import com.google.common.base.Preconditions;
 
 import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
+import gov.usgs.earthquake.nshmp.erf.mpj.HazardScriptUtil.HazardArgs;
 
 public class MPJ_LogicTreeInversionScriptWriter {
 
@@ -158,7 +156,7 @@ public class MPJ_LogicTreeInversionScriptWriter {
 			NodeCalcConfig calcConfig) throws IOException {
 		HazardArgs hazardArgs = buildHazardArgs(localDir, request.hazard(), logicTree, levels, analysisTreePath,
 				resultsPath);
-		String args = hazardArgs.baseArgs+" "+MPJTaskCalculator.argumentBuilder().exactDispatch(1)
+		String args = hazardArgs.baseArgs()+" "+MPJTaskCalculator.argumentBuilder().exactDispatch(1)
 				.threads(request.hpc().threadsPerNode()).build();
 		List<String> script = mpjWriter.buildScript(MPJ_LogicTreeHazardCalc.class.getName(), args);
 		int hazardNodes = Integer.min(40, calcConfig.nodes);
@@ -373,8 +371,6 @@ public class MPJ_LogicTreeInversionScriptWriter {
 				appendArg(args, "--output-dir", resultsPath+"_full_gridded");
 				appendArg(args, "--combine-with-dir", resultsPath);
 				appendArg(args, "--gridded-seis", "INCLUDE");
-				if (logicTreeSize > 50)
-					appendFlag(args, "--quick-grid-calc");
 				jobFile = new File(localDir, "batch_hazard_full_gridded.slurm");
 			} else if (i == 2) {
 				appendArg(args, "--input-file", resultsPath);
@@ -383,7 +379,6 @@ public class MPJ_LogicTreeInversionScriptWriter {
 				appendArg(args, "--output-dir", resultsPath+"_full_gridded");
 				appendArg(args, "--combine-with-dir", resultsPath);
 				appendArg(args, "--gridded-seis", "INCLUDE");
-				appendFlag(args, "--quick-grid-calc");
 				jobFile = new File(localDir, "batch_hazard_full_gridded_sampled.slurm");
 			} else if (i == 3) {
 				appendArg(args, "--input-file", resultsPath);
@@ -392,7 +387,6 @@ public class MPJ_LogicTreeInversionScriptWriter {
 				appendArg(args, "--output-dir", resultsPath+"_full_gridded");
 				appendArg(args, "--combine-with-dir", resultsPath);
 				appendArg(args, "--gridded-seis", "ONLY");
-				appendFlag(args, "--quick-grid-calc");
 				jobFile = new File(localDir, "batch_hazard_full_gridded_only.slurm");
 			} else {
 				appendArg(args, "--input-file", resultsPath+"_gridded_branches.zip");
@@ -401,8 +395,8 @@ public class MPJ_LogicTreeInversionScriptWriter {
 				appendArg(args, "--gridded-seis", "ONLY");
 				jobFile = new File(localDir, "batch_hazard_gridded_only.slurm");
 			}
-			args.append(hazardArgs.regionArg);
-			args.append(hazardArgs.sharedArgs);
+			args.append(hazardArgs.regionArg());
+			args.append(hazardArgs.sharedArgs());
 			if (i == 1 && logicTreeSize > 400)
 				args.append(" ").append(MPJTaskCalculator.argumentBuilder().maxDispatch(100)
 						.threads(request.hpc().threadsPerNode()).build());
@@ -419,56 +413,11 @@ public class MPJ_LogicTreeInversionScriptWriter {
 	private HazardArgs buildHazardArgs(File localDir, HazardConfig hazard, LogicTree<LogicTreeNode> logicTree,
 			List<LogicTreeLevel<? extends LogicTreeNode>> levels, String analysisTreePath, String resultsPath)
 			throws IOException {
-		StringBuilder args = new StringBuilder();
-		appendArg(args, "--input-file", resultsPath+".zip");
-		if (analysisTreePath != null)
-			appendArg(args, "--analysis-logic-tree", analysisTreePath);
-		appendArg(args, "--output-dir", resultsPath);
-		appendArg(args, "--gridded-seis", hazard.backgroundOption().name());
-		HazardRegion region = resolveHazardRegion(localDir, hazard, logicTree, levels);
-		args.append(region.arg);
-		String sharedArgs = buildHazardSharedArgs(hazard);
-		args.append(sharedArgs);
-		return new HazardArgs(args.toString(), region.arg, sharedArgs);
-	}
-
-	private HazardRegion resolveHazardRegion(File localDir, HazardConfig hazard, LogicTree<LogicTreeNode> logicTree,
-			List<LogicTreeLevel<? extends LogicTreeNode>> levels) throws IOException {
-		if (hazard.region() != null) {
-			File regionFile = new File(localDir, "gridded_region.geojson");
-			Feature.write(hazard.region().toFeature(), regionFile);
-			return new HazardRegion(" --region $DIR/"+regionFile.getName());
-		}
-		double gridSpacing = logicTree.size() > 1000 ? 0.2 : 0.1;
-		if (hazard.gridSpacing() != null)
-			gridSpacing = hazard.gridSpacing();
-		return new HazardRegion(" --grid-spacing "+(float)gridSpacing);
-	}
-
-	private String buildHazardSharedArgs(HazardConfig hazard) {
-		StringBuilder args = new StringBuilder();
-		appendHazardSharedArgs(args, hazard);
-		return args.toString();
+		return HazardScriptUtil.buildLogicTreeHazardArgs(localDir, hazard, logicTree, analysisTreePath, resultsPath);
 	}
 
 	private void appendHazardSharedArgs(StringBuilder args, HazardConfig hazard) {
-		for (AttenRelRef gmpe : hazard.gmpes())
-			appendArg(args, "--gmpe", gmpe.name());
-		if (hazard.periods() != null && hazard.periods().length > 0) {
-			StringBuilder periods = new StringBuilder();
-			for (int i=0; i<hazard.periods().length; i++) {
-				if (i > 0)
-					periods.append(",");
-				periods.append((float)hazard.periods()[i]);
-			}
-			appendArg(args, "--periods", periods.toString());
-		}
-		if (hazard.vs30() != null)
-			appendArg(args, "--vs30", hazard.vs30().floatValue());
-		if (hazard.supersample())
-			appendFlag(args, "--supersample-quick");
-		if (hazard.sigmaTruncation() != null)
-			appendArg(args, "--gmm-sigma-trunc-one-sided", hazard.sigmaTruncation().floatValue());
+		HazardScriptUtil.appendSharedArgs(args, hazard);
 	}
 
 	private NodeCalcConfig resolveNodeCalcConfig(HPCConfig hpc, InversionConfig inversion, int logicTreeSize) {
@@ -515,11 +464,11 @@ public class MPJ_LogicTreeInversionScriptWriter {
 	}
 
 	private static void appendArg(StringBuilder args, String name, Object value) {
-		args.append(" ").append(name).append(" ").append(value);
+		HazardScriptUtil.appendArg(args, name, value);
 	}
 
 	private static void appendFlag(StringBuilder args, String name) {
-		args.append(" ").append(name);
+		HazardScriptUtil.appendFlag(args, name);
 	}
 
 	private static String quote(String value) {
@@ -527,7 +476,7 @@ public class MPJ_LogicTreeInversionScriptWriter {
 	}
 
 	private static int capWeek(int mins) {
-		return Integer.min(mins, 60*24*7 - 1);
+		return HazardScriptUtil.capWeek(mins);
 	}
 
 	public static final class Request {
@@ -628,7 +577,4 @@ public class MPJ_LogicTreeInversionScriptWriter {
 	private record NodeCalcConfig(int nodes, int nodeRounds, int numCalcs, int perInversionMins,
 			int inversionMins, int hazardMins) {}
 
-	private record HazardRegion(String arg) {}
-
-	private record HazardArgs(String baseArgs, String regionArg, String sharedArgs) {}
 }
