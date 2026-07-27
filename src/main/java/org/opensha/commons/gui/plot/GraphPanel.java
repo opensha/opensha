@@ -169,9 +169,9 @@ public class GraphPanel extends JSplitPane {
 	ValueAxis xAxis, prevXAxis;
 	ValueAxis yAxis, prevYAxis;
 
-	private boolean xAxisInverted = false;
+	private Boolean xAxisInverted = null;
 	private boolean[] xAxisInverteds = null;
-	private boolean yAxisInverted = false;
+	private Boolean yAxisInverted = null;
 	private boolean[] yAxisInverteds = null;
 
 	// if true, multiple plots will be share the Y axis (false: X axis)
@@ -435,7 +435,7 @@ public class GraphPanel extends JSplitPane {
 				Font axisTickFont = xAxis.getTickLabelFont();
 				xAxis.setTickLabelFont(new Font(axisTickFont.getFontName(), axisTickFont.getStyle(), tickFontSize));
 
-				boolean inverted = xAxisInverted
+				boolean inverted = (xAxisInverted != null && xAxisInverted)
 						|| (xAxisInverteds != null && xAxisInverteds.length > i && xAxisInverteds[i]);
 				xAxis.setInverted(inverted);
 
@@ -498,7 +498,7 @@ public class GraphPanel extends JSplitPane {
 				// added to have the minimum range within the Upper and Lower Bound of the Axis
 				// yAxis.setAutoRangeMinimumSize(.1);
 
-				boolean inverted = yAxisInverted
+				boolean inverted = (yAxisInverted != null && yAxisInverted)
 						|| (yAxisInverteds != null && yAxisInverteds.length > i && yAxisInverteds[i]);
 				yAxis.setInverted(inverted);
 
@@ -631,8 +631,11 @@ public class GraphPanel extends JSplitPane {
 				myYAxis = yAxis;
 			}
 
-			myXAxis.setInverted(plotSpec.isXAxisInverted());
-			myYAxis.setInverted(plotSpec.isYAxisInverted());
+			// use plot setting if not explicitly overridden at the GP level
+			if (xAxisInverted == null && xAxisInverteds == null)
+				myXAxis.setInverted(plotSpec.isXAxisInverted());
+			if (yAxisInverted == null && yAxisInverteds == null)
+				myYAxis.setInverted(plotSpec.isYAxisInverted());
 
 			boolean xLog = xLogs.size() > 1 ? xLogs.get(p) : xLogs.get(0);
 			boolean yLog = yLogs.size() > 1 ? yLogs.get(p) : yLogs.get(0);
