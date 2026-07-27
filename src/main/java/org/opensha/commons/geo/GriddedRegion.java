@@ -17,6 +17,8 @@ import java.util.List;
 import org.apache.commons.math3.util.Precision;
 import org.dom4j.Element;
 import org.opensha.commons.data.region.CaliforniaRegions;
+import org.opensha.commons.data.siteData.SiteDataValueList;
+import org.opensha.commons.data.siteData.SiteDataValueListList;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.commons.geo.json.Geometry;
@@ -126,6 +128,9 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 	private double latSpacing;
 	private double lonSpacing;
 	private int nodeCount;
+	
+	// site data, if attached
+	private SiteDataValueListList siteData;
 
 	// private int gridSize;
 
@@ -941,6 +946,33 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 	public double getMaxGridLon() {
 		return maxGridLon;
 	}
+	
+	/**
+	 * @return site data list if available, else null
+	 */
+	public SiteDataValueListList getSiteData() {
+		return siteData;
+	}
+	
+	/**
+	 * Sets a site data list with values corresponding to every node of the gridded region
+	 * @param siteData
+	 */
+	public void setSiteData(SiteDataValueListList siteData) {
+		if (siteData != null) {
+			for (SiteDataValueList<?> data : siteData) {
+				Preconditions.checkArgument(data.size() == nodeCount,
+						"Passed in site data list (%s) has %s values but we have %s nodes",
+						data.toString(), data.size(), nodeCount);
+				if (data.hasLocations()) {
+					LocationList dataLocs = data.getLocationList();
+					for (int l=0; l<nodeCount; l++)
+						Preconditions.checkState(LocationUtils.areSimilar(getLocation(l), dataLocs.get(l)));
+				}
+			}
+		}
+		this.siteData = siteData;
+	}
 
 	@Override
 	public Element toXMLMetadata(Element root) {
@@ -952,6 +984,7 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 		anchor.toXMLMetadata(xml_anchor);
 		xml.addAttribute(GriddedRegion.XML_METADATA_NUM_POINTS_NAME,
 			this.getNodeCount() + "");
+		// TODO add site data support
 		super.toXMLMetadata(xml);
 
 		return root;
@@ -970,6 +1003,7 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 		LocationList outline = geoRegion.getBorder();
 		Location xml_anchor = Location.fromXMLMetadata(root.element(
 			XML_METADATA_ANCHOR_NAME).element(Location.XML_METADATA_NAME));
+		// TODO add site data support
 		return new GriddedRegion(outline, BorderType.MERCATOR_LINEAR,
 			gridSpacing, gridSpacing, xml_anchor);
 	}
@@ -1158,6 +1192,8 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 		properties.put(JSON_LAT_SPACING, latSpacing);
 		properties.put(JSON_LON_SPACING, lonSpacing);
 		properties.put(JSON_ANCHOR, anchor);
+		if (siteData != null)
+			properties.put(SiteDataValueListList.XML_METADATA_NAME, siteData);
 		
 		String name = getName();
 		if (name != null && name.equals(NAME_DEFAULT))
@@ -1240,6 +1276,11 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 				region, latNodeCenters, lonNodeCenters, latSpacing, lonSpacing, anchor, nodeList);
 		if (feature.id != null)
 			gridRegion.setName(feature.id.toString());
+		if (properties != null && properties.containsKey(SiteDataValueListList.XML_METADATA_NAME)) {
+			SiteDataValueListList siteData = properties.getAsType(SiteDataValueListList.XML_METADATA_NAME, SiteDataValueListList.class);
+			Preconditions.checkNotNull(siteData, "Error deserializing site data");
+			gridRegion.setSiteData(siteData);
+		}
 		return gridRegion;
 	}
 	

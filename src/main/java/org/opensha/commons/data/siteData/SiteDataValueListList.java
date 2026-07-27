@@ -26,7 +26,7 @@ import com.google.gson.stream.JsonWriter;
  *
  */
 @JsonAdapter(SiteDataValueListList.Adapter.class)
-public class SiteDataValueListList implements XMLSaveable {
+public class SiteDataValueListList implements XMLSaveable, Iterable<SiteDataValueList<?>> {
 	
 	public static final String XML_METADATA_NAME = "SiteDataValuesList";
 	
@@ -229,6 +229,11 @@ public class SiteDataValueListList implements XMLSaveable {
 		Element listsEl = root.element(SiteDataValueListList.XML_METADATA_NAME);
 		
 		valsLists = SiteDataValueListList.fromXMLMetadata(listsEl);
+	}
+
+	@Override
+	public Iterator<SiteDataValueList<?>> iterator() {
+		return lists.iterator();
 	}
 
 }
