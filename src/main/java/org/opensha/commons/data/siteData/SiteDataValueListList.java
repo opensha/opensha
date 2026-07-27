@@ -11,6 +11,13 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.metadata.XMLSaveable;
 import org.opensha.commons.util.XMLUtils;
 
+import com.google.common.base.Preconditions;
+import com.google.gson.TypeAdapter;
+import com.google.gson.annotations.JsonAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.JsonWriter;
+
 /**
  * This represents a list of site data value lists. It is most useful for applications such
  * as hazard maps, and for XML saving/loading.
@@ -18,6 +25,7 @@ import org.opensha.commons.util.XMLUtils;
  * @author Kevin Milner
  *
  */
+@JsonAdapter(SiteDataValueListList.Adapter.class)
 public class SiteDataValueListList implements XMLSaveable {
 	
 	public static final String XML_METADATA_NAME = "SiteDataValuesList";
@@ -119,6 +127,75 @@ public class SiteDataValueListList implements XMLSaveable {
 		}
 		
 		return new SiteDataValueListList(ordered);
+	}
+	
+	public static class Adapter extends TypeAdapter<SiteDataValueListList> {
+		
+		private static final SiteDataValueList.Adapter listAdapter = new SiteDataValueList.Adapter();
+
+		@Override
+		public void write(JsonWriter out, SiteDataValueListList value) throws IOException {
+			if (value == null) {
+				out.nullValue();
+				return;
+			}
+			out.beginObject();
+			
+			out.name("type").value(SiteDataValueListList.class.getName());
+			out.name("size").value(value.size());
+			out.name("lists").beginArray();
+			for (SiteDataValueList<?> list : value.lists)
+				listAdapter.write(out, list);
+			out.endArray();
+			
+			out.endObject();
+		}
+
+		@Override
+		public SiteDataValueListList read(JsonReader in) throws IOException {
+			if (in.peek() == JsonToken.NULL) {
+				in.nextNull();
+				return null;
+			}
+			in.beginObject();
+			SiteDataValueListList ret = innerRead(in);
+			in.endObject();
+			return ret;
+		}
+		
+		public SiteDataValueListList innerRead(JsonReader in) throws IOException {
+			Integer size = null;
+			ArrayList<SiteDataValueList<?>> lists = null;
+			
+			while (in.hasNext()) {
+				String name = in.nextName();
+				switch (name) {
+				case "type":
+					in.nextString();
+					break;
+				case "size":
+					size = in.nextInt();
+					break;
+				case "lists":
+					lists = new ArrayList<>();
+					in.beginArray();
+					while (in.hasNext())
+						lists.add(listAdapter.read(in));
+					in.endArray();
+					break;
+				default:
+					in.skipValue();
+					break;
+				}
+			}
+			
+			Preconditions.checkNotNull(lists, "Missing 'lists'");
+			SiteDataValueListList ret = new SiteDataValueListList(lists);
+			if (size != null)
+				Preconditions.checkState(size == ret.size(), "Expected size %s, found %s", size, ret.size());
+			return ret;
+		}
+		
 	}
 	
 	public static void main(String args[]) throws IOException {

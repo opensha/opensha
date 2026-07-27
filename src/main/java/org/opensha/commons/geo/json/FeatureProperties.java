@@ -12,6 +12,8 @@ import java.util.Map;
 import org.apache.commons.lang3.ArrayUtils;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.function.XY_DataSet.XYAdapter;
+import org.opensha.commons.data.siteData.SiteDataValueList;
+import org.opensha.commons.data.siteData.SiteDataValueListList;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.json.Feature.FeatureAdapter;
 import org.opensha.commons.geo.json.FeatureCollection.FeatureCollectionAdapter;
@@ -596,7 +598,7 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 			for (String name : properties.keySet()) {
 				out.name(name);
 				Object value = properties.get(name);
-				propSerializeDefault(out, value);
+				serialize(out, name, value);
 			}
 			
 			out.endObject();
@@ -692,6 +694,8 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 	}
 	
 	private static XYAdapter xyAdapter = new XYAdapter();
+	private static SiteDataValueList.Adapter siteDataValueListAdapter = new SiteDataValueList.Adapter();
+	private static SiteDataValueListList.Adapter siteDataValueListListAdapter = new SiteDataValueListList.Adapter();
 	private static PropertiesAdapter propAdapter = new PropertiesAdapter();
 	private static GeometryAdapter geomAdapter = new GeometryAdapter();
 	private static FeatureAdapter featureAdapter = new FeatureAdapter();
@@ -719,6 +723,10 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 			out.value("#"+Integer.toHexString(((Color)value).getRGB()).substring(2));
 		} else if (value instanceof XY_DataSet) {
 			xyAdapter.write(out, (XY_DataSet)value);
+		} else if (value instanceof SiteDataValueList<?>) {
+			siteDataValueListAdapter.write(out, (SiteDataValueList<?>)value);
+		} else if (value instanceof SiteDataValueListList) {
+			siteDataValueListListAdapter.write(out, (SiteDataValueListList)value);
 		} else if (value instanceof Geometry) {
 			geomAdapter.write(out, (Geometry)value);
 		} else if (value instanceof Feature) {
@@ -853,6 +861,14 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 								Class<?> typeClass = Class.forName(type);
 								if (XY_DataSet.class.isAssignableFrom(typeClass)) {
 									XY_DataSet ret = new XY_DataSet.XYAdapter().innerReadAsType(in, (Class<? extends XY_DataSet>)typeClass);
+									in.endObject();
+									return ret;
+								} else if (SiteDataValueList.class.isAssignableFrom(typeClass)) {
+									SiteDataValueList<?> ret = siteDataValueListAdapter.innerRead(in);
+									in.endObject();
+									return ret;
+								} else if (SiteDataValueListList.class.isAssignableFrom(typeClass)) {
+									SiteDataValueListList ret = siteDataValueListListAdapter.innerRead(in);
 									in.endObject();
 									return ret;
 								}
