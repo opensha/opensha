@@ -69,7 +69,7 @@ public class NSHM27_LogicTree {
 
 	public static double INTERFACE_B_HINGED_WEIGHT = 0.25;
 	public static double INTERFACE_B_SINGLE_DEFAULT = 1d;
-	private static ContinuousDistribution getInterfaceBDist(NSHM27_SeismicityRegions seisReg) {
+	public static ContinuousDistribution getInterfaceBDist(NSHM27_SeismicityRegions seisReg) {
 //		// alpha model
 //		return UniformContinuousDistribution.of(0.5d, 1d);
 		
@@ -79,7 +79,7 @@ public class NSHM27_LogicTree {
 	}
 
 	public static final double INTERFACE_MAX_LEN_SINGLE_DEFAULT = 750d;
-	private static ContinuousDistribution getInterfaceLMax(NSHM27_SeismicityRegions seisReg) {
+	public static ContinuousDistribution getInterfaceLMax(NSHM27_SeismicityRegions seisReg) {
 //		// alpha model
 //		return UniformContinuousDistribution.of(1000d, 1500d);
 		
@@ -160,6 +160,7 @@ public class NSHM27_LogicTree {
 					levels.add(new NSHM27_InterfaceDeformationModels.SamplingLevel());
 				else
 					levels.add(INTERFACE_AGG_DM);
+				levels.add(INTERFACE_OBS_SEIS_DM_ADJ);
 				levels.add(INTERFACE_SCALE);
 				if (INTERFACE_B_HINGED_WEIGHT == 1d) {
 					levels.add(new NSHM27_InterfaceHingedBValue.FixedLevel(supraBname, supraBshortName));
@@ -172,7 +173,6 @@ public class NSHM27_LogicTree {
 				} else {
 					levels.add(new SectionSupraSeisBValues.FixedValueLevel(supraBname, supraBshortName, INTERFACE_B_SINGLE_DEFAULT));
 				}
-				levels.add(INTERFACE_OBS_SEIS_DM_ADJ);
 				levels.add(INTERFACE_MIN_SUB_SECTS);
 				if (sampled)
 					levels.add(new MaxRuptureLengthBranchNode.DistributionSamplingLevel(
@@ -244,7 +244,7 @@ public class NSHM27_LogicTree {
 		int regineIndex = branch.getLevelTypeIndex(NSHM27_ModelRegimeNode.class);
 		
 		branch.setValue(regineIndex, levels.get(regineIndex).getNodes().get(0));
-		branch.setValue(NSHM27_SeisClassificationMethod.PROFACE);
+		branch.setValue(NSHM27_SeisClassificationMethod.AVERAGE);
 		
 		// inversion
 		if (trt == TectonicRegionType.SUBDUCTION_INTERFACE) {
@@ -292,6 +292,8 @@ public class NSHM27_LogicTree {
 			seedComponents.add(trt.name().hashCode());
 			seedComponents.add(numSamples);
 			seed = RandomSeedUtils.uniqueSeedCombination(RandomSeedUtils.getMixed64(seedComponents));
+//			System.out.println("Seed components:\t"+seedComponents);
+//			System.out.println("Seed:\t"+seed);
 		} else {
 			seed = new Random().nextLong();
 		}

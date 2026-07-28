@@ -17,6 +17,7 @@ import java.io.Writer;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -43,12 +44,16 @@ import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.data.siteData.SiteDataValue;
+import org.opensha.commons.data.siteData.SiteDataValueList;
+import org.opensha.commons.data.siteData.SiteDataValueListList;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -96,10 +101,12 @@ import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
 import org.opensha.sha.earthquake.util.GriddedFiniteRuptureSettings;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrections;
 import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.ScalarIMR;
+import org.opensha.sha.util.SiteTranslator;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -221,17 +228,58 @@ public class SolHazardMapCalc {
 			Preconditions.checkState(period == -1d || period >= 0d,
 					"supplied map calculation periods must be -1 (PGV), 0 (PGA), or a positive value");
 		
-		if (gmpeRefMap != null) {
-			sites = new ArrayList<>();
-			ParameterList siteParams = FaultSysHazardCalcSettings.getDefaultRefSiteParams(gmpeRefMap);
-			
-			for (Location loc : region.getNodeList()) {
-				Site site = new Site(loc);
-				for (Parameter<?> param : siteParams)
-					site.addParameter((Parameter<?>) param.clone());
-				sites.add(site);
-			}
+		if (gmpeRefMap != null)
+			this.sites = loadSites(region, gmpeRefMap);
+	}
+	
+	public static List<Site> loadSites(GriddedRegion region, Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeRefMap) {
+		List<Site> sites = new ArrayList<>();
+		ParameterList siteParams = FaultSysHazardCalcSettings.getDefaultRefSiteParams(gmpeRefMap);
+		
+		int numSites = region.getNodeCount();
+		SiteDataValueListList siteData = region.getSiteData();
+		int numSitesWithData = 0;
+		int numSiteDataSet = 0;
+		SiteTranslator siteTrans = null;
+		HashSet<String> setTypes = null;
+		HashSet<String> availTypes = null;
+		if (siteData != null) {
+			siteTrans = new SiteTranslator();
+			setTypes = new HashSet<>();
+			availTypes = new HashSet<>();
+			for (SiteDataValueList<?> list : siteData)
+				availTypes.add(list.getType());
 		}
+		
+		for (int n=0; n<numSites; n++) {
+			Location loc = region.getLocation(n);
+			Site site = new Site(loc);
+			for (Parameter<?> param : siteParams)
+				site.addParameter((Parameter<?>) param.clone());
+			if (siteData != null) {
+				List<SiteDataValue<?>> dataForSite = siteData.getDataList(n);
+				boolean any = false;
+				for (Parameter<?> param : site) {
+					if (siteTrans.setParameterValue(param, dataForSite)) {
+						any = true;
+						numSiteDataSet++;
+						setTypes.add(param.getName());
+					}
+				}
+				if (any)
+					numSitesWithData++;
+			}
+			sites.add(site);
+		}
+		
+		if (siteData != null) {
+			System.out.println("Built "+numSites+" sites with data from "+siteData.getNumProviders()+" providers");
+			System.out.println("\t"+numSitesWithData+"/"+numSites+" sites had site data ("+numSiteDataSet+" total values set)");
+			System.out.println("\tAvailable site data types:\t"+availTypes);
+			System.out.println("\tSite data types set:\t"+setTypes);
+		}
+		
+		return sites;
 	}
 	
 	public void setBackSeisOption(IncludeBackgroundOption backSeisOption) {
@@ -495,7 +543,9 @@ public class SolHazardMapCalc {
 				gmpeMap.put(trt, gmpeRefMap.get(trt).get());
 			
 			HazardCurveCalculator calc = new HazardCurveCalculator(sourceFilter);
-			RuptureExceedProbCalculator exceedCalc = pointSourceOptimizations ?
+			boolean hasGridded = backSeisOption == IncludeBackgroundOption.INCLUDE || backSeisOption == IncludeBackgroundOption.ONLY;
+			boolean hasSiteData = region.getSiteData() != null;
+			RuptureExceedProbCalculator exceedCalc = hasGridded && pointSourceOptimizations && !hasSiteData ?
 					new PointSourceOptimizedExceedProbCalc() : RuptureExceedProbCalculator.BASIC_IMPLEMENTATION;
 			while (true) {
 				Integer index = calcIndexes.pollFirst();
@@ -525,6 +575,10 @@ public class SolHazardMapCalc {
 						continue;
 					}
 				}
+				
+				if (hasSiteData && hasGridded && pointSourceOptimizations)
+					// need a unique one for this site
+					exceedCalc = new PointSourceOptimizedExceedProbCalc();
 				
 				List<DiscretizedFunc> curves = calcSiteCurves(calc, erf, gmpeMap, site, exceedCalc, combineWith, index);
 				
@@ -1360,25 +1414,18 @@ public class SolHazardMapCalc {
 		
 		FaultSysHazardCalcSettings.addCommonOptions(ops, true);
 		
-		Option inputOption = new Option("if", "input-file", true, "Input solution file");
-		inputOption.setRequired(true);
-		ops.addOption(inputOption);
+		ops.addRequiredOption("if", "input-file", true, "Input solution file");
 		
-		Option compOption = new Option("cf", "comp-file", true, "Comparison solution file");
-		compOption.setRequired(false);
-		ops.addOption(compOption);
+		ops.addOption("cf", "comp-file", true, "Comparison solution file");
 		
-		Option outputOption = new Option("od", "output-dir", true, "Output directory");
-		outputOption.setRequired(true);
-		ops.addOption(outputOption);
+		ops.addRequiredOption("od", "output-dir", true, "Output directory");
 		
-		Option gridSpacingOption = new Option("gs", "grid-spacing", true, "Grid spacing in degrees. Default: "+(float)SPACING_DEFAULT);
-		gridSpacingOption.setRequired(false);
-		ops.addOption(gridSpacingOption);
+		ops.addOption("gs", "grid-spacing", true, "Grid spacing in degrees. Default: "+(float)SPACING_DEFAULT);
 		
-		Option recalcOption = new Option("rc", "recalc", false, "Flag to force recalculation (ignore existing curves files)");
-		recalcOption.setRequired(false);
-		ops.addOption(recalcOption);
+		ops.addOption("rc", "recalc", false, "Flag to force recalculation (ignore existing curves files)");
+		
+		ops.addOption("r", "region", true, "Optional path to GeoJSON file containing a region for which we should compute hazard. "
+				+ "Can be a gridded region or an outline. If not supplied, then one will be detected from the model.");
 		
 		ops.addOption("gs", "gridded-seis", true, "Gridded seismicity option. One of "
 				+FaultSysTools.enumOptions(IncludeBackgroundOption.class)+". Default: "+GRID_SEIS_DEFAULT.name());
@@ -1398,7 +1445,14 @@ public class SolHazardMapCalc {
 		File outputDir = new File(cmd.getOptionValue("output-dir"));
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 		
-		Region region = new ReportMetadata(new RupSetMetadata(null, sol)).region;
+		Region region;
+		if (cmd.hasOption("region")) {
+			Feature feature = Feature.read(new File(cmd.getOptionValue("region")));
+			// will load as gridded region if applicable
+			region = Region.fromFeature(feature);
+		} else {
+			region = new ReportMetadata(new RupSetMetadata(null, sol)).region;
+		}
 		
 		IncludeBackgroundOption gridSeisOp = GRID_SEIS_DEFAULT;
 		if (cmd.hasOption("gridded-seis"))
@@ -1419,10 +1473,19 @@ public class SolHazardMapCalc {
 			System.out.println("\tGMM for "+trt.name()+": "+gmmRefs.get(trt).getName());
 		
 		double gridSpacing = SPACING_DEFAULT;
-		if (cmd.hasOption("grid-spacing"))
+		GriddedRegion gridReg;
+		if (region instanceof GriddedRegion) {
+			gridReg = (GriddedRegion)region;
+			Preconditions.checkState(
+					!cmd.hasOption("grid-spacing") || (float)gridSpacing == (float)gridReg.getSpacing(),
+					"Supplied a gridded region via the command line, cannont also specify grid spacing.");
 			gridSpacing = Double.parseDouble(cmd.getOptionValue("grid-spacing"));
-		
-		GriddedRegion gridReg = new GriddedRegion(region, gridSpacing, GriddedRegion.ANCHOR_0_0);
+		} else if (cmd.hasOption("grid-spacing")) {
+			gridSpacing = Double.parseDouble(cmd.getOptionValue("grid-spacing"));
+			gridReg = new GriddedRegion(region, gridSpacing, GriddedRegion.ANCHOR_0_0);
+		} else {
+			gridReg = new GriddedRegion(region, gridSpacing, GriddedRegion.ANCHOR_0_0);
+		}
 		
 		List<Double> periodsList = new ArrayList<>();
 		String periodsStr = cmd.getOptionValue("periods");

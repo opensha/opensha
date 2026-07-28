@@ -2,11 +2,14 @@ package gov.usgs.earthquake.nshmp.erf.nshm27.logicTree;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.logicTree.Affects;
@@ -27,6 +30,7 @@ import com.google.common.collect.Table;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader;
 import gov.usgs.earthquake.nshmp.erf.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateModel;
+import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.PureGR;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateRecord;
 import gov.usgs.earthquake.nshmp.erf.seismicity.SeismicityRateFileLoader.RateType;
 
@@ -142,6 +146,8 @@ public enum NSHM27_SeisRateModelBranch implements NSHM27_SeisRateModel, LogicTre
 	}
 	
 	public static final String getRateModelCSVName(TectonicRegionType trt) {
+		if (trt == null)
+			return "ALL.csv";
 		return switch (trt) {
 		case ACTIVE_SHALLOW:
 			yield "CRUSTAL.csv";
@@ -202,13 +208,32 @@ public enum NSHM27_SeisRateModelBranch implements NSHM27_SeisRateModel, LogicTre
 	
 	public synchronized static SeismicityRateModel loadRateModel(NSHM27_SeismicityRegions region,
 			NSHM27_SeisClassificationMethod classification, TectonicRegionType trt, RateType type) {
+		if (classification == NSHM27_SeisClassificationMethod.AVERAGE) {
+			WeightedList<PureGR> lowGRs = new WeightedList<>();
+			WeightedList<PureGR> prefGRs = new WeightedList<>();
+			WeightedList<PureGR> highGRs = new WeightedList<>();
+			for (NSHM27_SeisClassificationMethod oClass : NSHM27_SeisClassificationMethod.values()) {
+				double weight = oClass.getNodeWeight();
+				if (weight > 0d) {
+					Preconditions.checkState(oClass != NSHM27_SeisClassificationMethod.AVERAGE);
+					SeismicityRateModel rateModel = loadRateModel(region, oClass, trt);
+					Preconditions.checkState(rateModel.getLowerRecord() instanceof PureGR, "Can only average PureGR");
+					lowGRs.add((PureGR)rateModel.getLowerRecord(), weight);
+					prefGRs.add((PureGR)rateModel.getMeanRecord(), weight);
+					highGRs.add((PureGR)rateModel.getUpperRecord(), weight);
+				}
+			}
+			return new SeismicityRateModel(NSHM27_SeisRateModel.getAverageGR(prefGRs),
+					NSHM27_SeisRateModel.getAverageGR(lowGRs), NSHM27_SeisRateModel.getAverageGR(highGRs), BOUND_TYPE);
+		}
 		if (rateModelsCache == null)
 			rateModelsCache = HashBasedTable.create();
 		if (type == TYPE) {
 			Map<NSHM27_SeisClassificationMethod, SeismicityRateModel> rateModels = rateModelsCache.get(region, trt);
 			if (rateModels == null) {
 				rateModels = new EnumMap<>(NSHM27_SeisClassificationMethod.class);
-				rateModelsCache.put(region, trt, rateModels);
+				if (trt != null)
+					rateModelsCache.put(region, trt, rateModels);
 			}
 			SeismicityRateModel rateModel = rateModels.get(classification);
 			if (rateModel != null)

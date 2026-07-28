@@ -22,9 +22,13 @@ public class CONUS_SiteDataProvider extends AbstractGriddedSiteDataLoader implem
     public static final CONUS_Versions VERSION_DEFAULT = CONUS_Versions.NSHM23;
 
     public CONUS_SiteDataProvider(String type) throws IOException {
-        super(type, new CONUS_Downloader(VERSION_DEFAULT), NSHM23_RegionLoader.loadFullConterminousUS());
+    	this(type, VERSION_DEFAULT);
+    }
+
+    public CONUS_SiteDataProvider(String type, CONUS_Versions version) throws IOException {
+        super(type, new CONUS_Downloader(version), NSHM23_RegionLoader.loadFullConterminousUS());
         this.versionParam = new EnumParameter<CONUS_Versions>(VERSION_PARAM_NAME,
-                EnumSet.allOf(CONUS_Versions.class), VERSION_DEFAULT, null);
+                EnumSet.allOf(CONUS_Versions.class), version, null);
         versionParam.addParameterChangeListener(this);
         paramList.addParameter(versionParam);
         serverParamsList.addParameter(versionParam);

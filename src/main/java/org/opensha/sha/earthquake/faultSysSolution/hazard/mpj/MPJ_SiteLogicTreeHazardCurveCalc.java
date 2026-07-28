@@ -2,6 +2,7 @@ package org.opensha.sha.earthquake.faultSysSolution.hazard.mpj;
 
 import java.awt.geom.Point2D;
 import java.io.BufferedOutputStream;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
@@ -38,6 +39,7 @@ import org.opensha.commons.util.ExecutorUtils;
 import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
+import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
@@ -50,6 +52,8 @@ import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
 import mpi.MPI;
@@ -128,6 +132,13 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 					logicTreeFile.getAbsolutePath());
 			analysisTree = LogicTree.read(logicTreeFile);
 			Preconditions.checkState(analysisTree.size() == tree.size());
+
+			for (int i=0; i<analysisTree.size(); i++) {
+				Preconditions.checkState(analysisTree.getBranch(i).buildFileName()
+							.equals(solTree.getLogicTree().getBranch(i).buildFileName()),
+						"Analysis tree branch %s does not match solution tree branch %s at index %s",
+						analysisTree.getBranch(i).buildFileName(), solTree.getLogicTree().getBranch(i).buildFileName(), i);
+			}
 		}
 		
 		if (rank == 0)
@@ -348,7 +359,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 			
 			DiscretizedFunc[][] curves = calc.calcForBranch(branchIndex);
 			
-			LogicTreeBranch<?> branch = tree.getBranch(branchIndex);
+			LogicTreeBranch<?> branch = analysisTree == null ? tree.getBranch(branchIndex) : analysisTree.getBranch(branchIndex);
 			List<String> csvHeader = null;
 			List<List<List<String>>> sitesPeriodCSVLines = new ArrayList<>(sites.size());
 			for (int siteIndex=0; siteIndex<sites.size(); siteIndex++) {
@@ -436,8 +447,8 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 	private List<CSVFile<String>> getInitSiteCSVs(int siteIndex) {
 		List<CSVFile<String>> csvs = siteCSVs.get(siteIndex);
 		if (csvs == null) {
-			csvs = new ArrayList<>();
-			LogicTreeBranch<?> branch = tree.getBranch(0);
+			csvs = new ArrayList<>();			
+			LogicTreeBranch<?> branch = analysisTree == null ? tree.getBranch(0) : analysisTree.getBranch(0);
 			for (int p=0; p<periods.length; p++) {
 				CSVFile<String> csv = new CSVFile<>(true);
 				List<String> header = new ArrayList<>();
@@ -490,12 +501,28 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 			inputSitesCSV.writeToStream(zout);
 			zout.closeEntry();
 			
-			zout.putNextEntry(new ZipEntry(tree.getFileName()));
-			if (analysisTree == null)
-				tree.writeToStream(new BufferedOutputStream(zout));
-			else
-				analysisTree.writeToStream(new BufferedOutputStream(zout));
-			zout.closeEntry();
+			Gson gson = new GsonBuilder().setPrettyPrinting()
+					.registerTypeAdapter(LogicTree.class, new LogicTree.Adapter<>()).create();
+			BufferedWriter writer;
+			if (analysisTree != null) {
+				zout.putNextEntry(new ZipEntry(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME));
+				writer = new BufferedWriter(new OutputStreamWriter(zout));
+				gson.toJson(analysisTree, LogicTree.class, writer);
+				writer.flush();
+				zout.closeEntry();
+				
+				zout.putNextEntry(new ZipEntry(MPJ_LogicTreeHazardCalc.ORIG_LOGIC_TREE_FILE_NAME));
+				writer = new BufferedWriter(new OutputStreamWriter(zout));
+				gson.toJson(solTree.getLogicTree(), LogicTree.class, writer);
+				writer.flush();
+				zout.closeEntry();
+			} else {
+				zout.putNextEntry(new ZipEntry(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME));
+				writer = new BufferedWriter(new OutputStreamWriter(zout));
+				gson.toJson(solTree.getLogicTree(), LogicTree.class, writer);
+				writer.flush();
+				zout.closeEntry();
+			}
 			
 			OutputStreamWriter zipWriter = new OutputStreamWriter(new BufferedOutputStream(zout));
 			

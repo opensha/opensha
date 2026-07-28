@@ -190,6 +190,10 @@ public interface MaxRuptureLengthBranchNode extends ValuedLogicTreeNode<Double>,
 			this.maxLen = maxLen;
 			this.node = null;
 		}
+		
+		public double getValue() {
+			return maxLen;
+		}
 
 		@Override
 		public Class<? extends Default> getType() {

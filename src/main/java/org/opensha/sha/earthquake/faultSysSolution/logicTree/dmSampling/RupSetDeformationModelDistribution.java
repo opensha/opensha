@@ -227,8 +227,15 @@ implements RupSetDeformationModel, ValuedLogicTreeNode<S> {
 	extends AbstractRandomlySampledLevel<FixedFractileSampler, E>
 	implements BinnableLevel<FixedFractileSampler, E, BinnedUniformSamplingLevel> {
 
+		private double fractileFloor;
+
 		public UniformSamplingLevel(String levelName, String levelShortName) {
+			this(levelName, levelShortName, 0d);
+		}
+
+		public UniformSamplingLevel(String levelName, String levelShortName, double fractileFloor) {
 			super(levelName, levelShortName, "DM Sample ", "DM-Sample-", "DMSample");
+			this.fractileFloor = fractileFloor;
 		}
 
 		@Override
@@ -239,6 +246,18 @@ implements RupSetDeformationModel, ValuedLogicTreeNode<S> {
 		@Override
 		protected void doBuild(long seed, int numNodes, SamplingMethod samplingMethod, double weightEach) {
 			double[] samples = buildCmlProbSamples(seed, numNodes, samplingMethod);
+			if (fractileFloor > 0d) {
+				Preconditions.checkState(fractileFloor < 1d);
+				int numBelow = 00;
+				for (int s=0; s<samples.length; s++) {
+					if (samples[s] < fractileFloor) {
+						samples[s] = fractileFloor;
+						numBelow++;
+					}
+				}
+				if (numBelow > 0)
+					System.out.println(getName()+": set "+numBelow+"/"+numNodes+" to fractileFloor="+(float)fractileFloor);
+			}
 			
 			List<E> nodes = new ArrayList<>(numNodes);
 			for (int i=0; i<numNodes; i++)

@@ -131,7 +131,7 @@ public class LogicTreeHazardCompare {
 //	private static final Location DEBUG_LOC = new Location(46, -105);
 	private static final Location DEBUG_LOC = null;
 	
-	private static final boolean RESHUFFLE_STABILITY_BRANCHES = false;
+	private static final boolean RESHUFFLE_STABILITY_BRANCHES = true;
 	
 	public static void main(String[] args) throws IOException {
 		System.setProperty("java.awt.headless", "true");

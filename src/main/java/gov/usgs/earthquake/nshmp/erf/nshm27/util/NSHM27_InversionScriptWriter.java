@@ -65,11 +65,13 @@ public class NSHM27_InversionScriptWriter {
 					"--local-dir", "/home/kevin/OpenSHA/fss_inversions",
 					"--remote-dir", "/project2/scec_608/kmilner/fss_inversions",
 					
-//					"--sampling-method", SamplingMethod.MONTE_CARLO.name(),
+					"--sampling-method", SamplingMethod.MONTE_CARLO.name(),
 //					"--sampling-method", SamplingMethod.LATIN_HYPERCUBE.name(),
-					"--sampling-method", SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE.name(),
+//					"--sampling-method", SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE.name(),
 					"--samples", "5000",
 //					"--unique-seed",
+					
+//					"--hazard-grid-spacing", "0.2",
 			};
 		}
 		

@@ -46,13 +46,15 @@ public class NSHM27_InterfaceDeformationModels extends RupSetDeformationModelDis
 	
 	public static final String CSV_NAME = "2026_07_10.csv";
 	
+//	public static final double MIN_DM_FRACTILE = 0.0000001; // 0.00001% (1 in 10,000,000)
+	public static final double MIN_DM_FRACTILE = 0.000001; // 0.0001% (1 in 1,000,000)	
 	public static class SamplingLevel extends RupSetDeformationModelDistribution.UniformSamplingLevel<NSHM27_InterfaceDeformationModels> {
 		
 		public static String NAME = "Interface Deformation Model Sample";
 		public static String SHORT_NAME = "DMSample";
 
 		public SamplingLevel() {
-			super(NAME, SHORT_NAME);
+			super(NAME, SHORT_NAME, MIN_DM_FRACTILE);
 		}
 
 		@Override
@@ -78,7 +80,8 @@ public class NSHM27_InterfaceDeformationModels extends RupSetDeformationModelDis
 	public static enum Aggregated implements RupSetDeformationModel, FixedWeightNode {
 		LOW_COUPLING("Low Interface Coupling (2.5 %-ile)", "Low", 1d, new FixedFractileSampler(0.025)),
 		PREF_COUPLING("Preferred Interface Coupling (Median)", "Preferred", 1d, new FixedFractileSampler(0.5)),
-		HIGH_COUPLING("High Interface Coupling (97.5 %-ile)", "High", 1d, new FixedFractileSampler(0.975));
+		HIGH_COUPLING("High Interface Coupling (97.5 %-ile)", "High", 1d, new FixedFractileSampler(0.975)),
+		AVERAGE_COUPLING("Average Interface Coupling", "Average", 1d, new AverageSampler());
 		
 		private String name;
 		private String shortName;
@@ -139,7 +142,7 @@ public class NSHM27_InterfaceDeformationModels extends RupSetDeformationModelDis
 	@SuppressWarnings("unused") // for deserialization
 	private NSHM27_InterfaceDeformationModels() {}
 	
-	NSHM27_InterfaceDeformationModels(String name, String shortName, String filePrefix,
+	public NSHM27_InterfaceDeformationModels(String name, String shortName, String filePrefix,
 			double weight, FixedSampler sampler) {
 		super(name, shortName, filePrefix, weight, sampler);
 	}
@@ -269,6 +272,11 @@ public class NSHM27_InterfaceDeformationModels extends RupSetDeformationModelDis
 		
 		NSHM27_InterfaceCouplingDepthModels depthCoupling = branch.getValue(
 				NSHM27_InterfaceCouplingDepthModels.class);
+		if (sampler instanceof FixedFractileSampler) {
+			System.out.println("Building deformation model for branch "+branch+" with dmFract="+((FixedFractileSampler)sampler).getFixedFractile());
+		} else {
+			System.out.println("Building deformation model for branch "+branch+" with sampler "+sampler);
+		}
 		
 		return apply(subSects, df, depthCoupling, sampler);
 	}

@@ -58,6 +58,18 @@ public class NSHM27_SeisPDF_Loader {
 	
 	public static GriddedGeoDataSet load2D(NSHM27_SeismicityRegions region, NSHM27_SeisClassificationMethod classification,
 			TectonicRegionType trt,	NSHM27_DeclusteringAlgorithms decluster, NSHM27_SeisSmoothingAlgorithms smooth) throws IOException {
+		if (classification == NSHM27_SeisClassificationMethod.AVERAGE) {
+			// average them
+			WeightedList<GriddedGeoDataSet> wtList = new WeightedList<>();
+			for (NSHM27_SeisClassificationMethod oClass : NSHM27_SeisClassificationMethod.values()) {
+				double weight = oClass.getNodeWeight();
+				if (weight > 0d) {
+					Preconditions.checkState(oClass != NSHM27_SeisClassificationMethod.AVERAGE);
+					wtList.add(load2D(region, oClass, trt, decluster, smooth), weight);
+				}
+			}
+			return avg2D(wtList);
+		}
 		File dataDir = NSHM27_InvConfigFactory.locateDataDirectory();
 		File baseDir = new File(dataDir, "spatial_seis_pdfs/"+region.name().toLowerCase()
 				+"/"+DATA_DATE_2D+"/"+classification.name()+"/"+NSHM27_RegionLoader.getNameForTRT(trt).toUpperCase()+"/");
@@ -185,6 +197,18 @@ public class NSHM27_SeisPDF_Loader {
 	
 	public static GriddedGeoDepthValueDataSet load3D(NSHM27_SeismicityRegions region, NSHM27_SeisClassificationMethod classification,
 			TectonicRegionType trt, NSHM27_DeclusteringAlgorithms decluster, NSHM27_SeisSmoothingAlgorithms smooth) throws IOException {
+		if (classification == NSHM27_SeisClassificationMethod.AVERAGE) {
+			// average them
+			WeightedList<GriddedGeoDepthValueDataSet> wtList = new WeightedList<>();
+			for (NSHM27_SeisClassificationMethod oClass : NSHM27_SeisClassificationMethod.values()) {
+				double weight = oClass.getNodeWeight();
+				if (weight > 0d) {
+					Preconditions.checkState(oClass != NSHM27_SeisClassificationMethod.AVERAGE);
+					wtList.add(load3D(region, oClass, trt, decluster, smooth), weight);
+				}
+			}
+			return avg3D(wtList);
+		}
 		File dataDir = NSHM27_InvConfigFactory.locateDataDirectory();
 		File baseDir = new File(dataDir, "spatial_seis_pdfs/"+region.name().toLowerCase()
 				+"/"+DATA_DATE_3D+"/"+classification.name()+"/"+NSHM27_RegionLoader.getNameForTRT(trt).toUpperCase()+"/");
@@ -355,14 +379,15 @@ public class NSHM27_SeisPDF_Loader {
 //		TectonicRegionType[] trts = {TectonicRegionType.ACTIVE_SHALLOW, TectonicRegionType.SUBDUCTION_SLAB, TectonicRegionType.SUBDUCTION_INTERFACE};
 //		boolean twoD = false;
 		
-//		TectonicRegionType[] trts = {TectonicRegionType.SUBDUCTION_SLAB};
-//		boolean twoD = false;
+		TectonicRegionType[] trts = {TectonicRegionType.SUBDUCTION_SLAB};
+		boolean twoD = false;
 		
-		TectonicRegionType[] trts = {TectonicRegionType.ACTIVE_SHALLOW, TectonicRegionType.SUBDUCTION_INTERFACE};
-		boolean twoD = true;
+//		TectonicRegionType[] trts = {TectonicRegionType.ACTIVE_SHALLOW, TectonicRegionType.SUBDUCTION_INTERFACE};
+//		boolean twoD = true;
 		
 //		NSHM27_SeisClassificationMethod classification = NSHM27_SeisClassificationMethod.PROFACE;
-		NSHM27_SeisClassificationMethod classification = NSHM27_SeisClassificationMethod.PROSLAB;
+//		NSHM27_SeisClassificationMethod classification = NSHM27_SeisClassificationMethod.PROSLAB;
+		NSHM27_SeisClassificationMethod classification = NSHM27_SeisClassificationMethod.AVERAGE;
 		
 //		NSHM27_SeismicityRegions region = NSHM27_SeismicityRegions.GNMI;
 		NSHM27_SeismicityRegions region = NSHM27_SeismicityRegions.AMSAM;

@@ -8,6 +8,7 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.opensha.commons.hpc.JavaShellScriptWriter;
 import org.opensha.commons.hpc.mpj.FastMPJShellScriptWriter;
+import org.opensha.commons.hpc.mpj.NoMPJSingleNodeShellScriptWriter;
 import org.opensha.commons.hpc.pbs.BatchScriptWriter;
 import org.opensha.commons.hpc.pbs.HovenweepScriptWriter;
 import org.opensha.commons.hpc.pbs.USC_CARC_ScriptWriter;
@@ -109,6 +110,10 @@ public final class HPCConfig {
 
 	JavaShellScriptWriter buildJavaWriter(Collection<File> classpath) {
 		return site.buildJavaWriter(memGB, classpath);
+	}
+
+	JavaShellScriptWriter buildSingleNodeMPJWriter(Collection<File> classpath) {
+		return site.buildSingleNodeMPJWriter(memGB, classpath);
 	}
 
 	BatchScriptWriter buildBatchWriter() {
@@ -341,6 +346,10 @@ public final class HPCConfig {
 
 		JavaShellScriptWriter buildJavaWriter(int memGB, Collection<File> classpath) {
 			return new JavaShellScriptWriter(javaBin, memGB*1024, classpath);
+		}
+
+		JavaShellScriptWriter buildSingleNodeMPJWriter(int memGB, Collection<File> classpath) {
+			return new NoMPJSingleNodeShellScriptWriter(javaBin, memGB*1024, classpath);
 		}
 
 		abstract BatchScriptWriter buildBatchWriter();

@@ -13,6 +13,7 @@ import java.util.Random;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.logicTree.LogicTreeLevel.AbstractRandomlySampledLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.BinnableLevel;
 import org.opensha.sha.util.TectonicRegionType;
@@ -58,20 +59,64 @@ implements BinnableLevel<ClassificationDependentGR, NSHM27_SiesRateModelSample, 
 	}
 	
 	protected CSVFile<String> loadCSV(NSHM27_SeisClassificationMethod classification) throws IOException {
-		File data = new File(NSHM27_InvConfigFactory.locateDataDirectory(), "seis_rate_samples");
-		Preconditions.checkState(data.exists(), "Data directory doesn't exist: %s", data.getAbsolutePath());
 		Preconditions.checkNotNull(region, "Region not set; can only be built upon initial construction");
 		Preconditions.checkNotNull(trt, "TRT not set; can only be built upon initial construction");
-		data = new File(data, region.name().toLowerCase());
+		return loadCSV(region, classification, trt);
+	}
+	
+	private static CSVFile<String> loadCSV(NSHM27_SeismicityRegions seisReg,
+			NSHM27_SeisClassificationMethod classification, TectonicRegionType trt) throws IOException {
+		Preconditions.checkNotNull(seisReg, "Region not set; can only be built upon initial construction");
+		Preconditions.checkNotNull(classification, "Classification method cannot be null");
+		// trt can be null
+		File data = new File(NSHM27_InvConfigFactory.locateDataDirectory(), "seis_rate_samples");
+		Preconditions.checkState(data.exists(), "Data directory doesn't exist: %s", data.getAbsolutePath());
+		Preconditions.checkNotNull(seisReg, "Region not set; can only be built upon initial construction");
+		data = new File(data, seisReg.name().toLowerCase());
 		Preconditions.checkState(data.exists(), "Region directory doesn't exist: %s", data.getAbsolutePath());
-		data = new File(data, NSHM27_SeisRateModelBranch.getRateModelDate(region, classification));
+		data = new File(data, NSHM27_SeisRateModelBranch.getRateModelDate(seisReg, classification));
 		Preconditions.checkState(data.exists(), "Date directory doesn't exist: %s", data.getAbsolutePath());
 		File csvFile = new File(data, NSHM27_SeisRateModelBranch.getRateModelCSVName(trt));
 		Preconditions.checkState(csvFile.exists(), "CSV doesn't exist: %s", data.getAbsolutePath());
 		return CSVFile.readFile(csvFile, false);
 	}
 	
+	public static List<PureGR> loadOrigSamples(NSHM27_SeismicityRegions seisReg,
+			NSHM27_SeisClassificationMethod classification, TectonicRegionType trt) throws IOException {
+		CSVFile<String> csv = loadCSV(seisReg, classification, trt);
+		return SeismicityRateFileLoader.loadSamplesCSV(csv);
+	}
+	
 	public List<PureGR> loadOrigSamples(NSHM27_SeisClassificationMethod classification) {
+		if (classification == NSHM27_SeisClassificationMethod.AVERAGE) {
+			WeightedList<List<PureGR>> samplesLists = new WeightedList<>();
+			for (NSHM27_SeisClassificationMethod oClass : NSHM27_SeisClassificationMethod.values()) {
+				double weight = oClass.getNodeWeight();
+				if (weight != 0d) {
+					Preconditions.checkState(oClass != NSHM27_SeisClassificationMethod.AVERAGE);
+					samplesLists.add(loadOrigSamples(oClass), weight);
+				}
+			}
+			samplesLists.normalize();
+			int numSamples = samplesLists.getValue(0).size();
+			double maxWeight = 0d;
+			for (int i=0; i<samplesLists.size(); i++) {
+				maxWeight = Math.max(samplesLists.getWeight(i), maxWeight);
+				Preconditions.checkState(numSamples == samplesLists.getValue(i).size());
+			}
+			List<PureGR> totalSamples = new ArrayList<>();
+			for (int i=0; i<samplesLists.size(); i++) {
+				List<PureGR> samples = samplesLists.getValue(i);
+				double weight = samplesLists.getWeight(i);
+				if ((float)weight == (float)maxWeight) {
+					totalSamples.addAll(samples);
+				} else {
+					int fractSamples = (int)(samples.size() * weight/maxWeight + 0.5);
+					totalSamples.addAll(samples.subList(0, fractSamples));
+				}
+			}
+			return totalSamples;
+		}
 		CSVFile<String> csv;
 		try {
 			csv = loadCSV(classification);

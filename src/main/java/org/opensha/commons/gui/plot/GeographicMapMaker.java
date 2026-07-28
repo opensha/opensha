@@ -223,7 +223,7 @@ public class GeographicMapMaker {
 	/*
 	 * Inset region outlies
 	 */
-	protected List<Region> insetRegions;
+	protected List<? extends Region> insetRegions;
 	protected List<PlotCurveCharacterstics> insetRegionOutlineChars;
 	protected List<Color> insetRegionFillColors;
 	protected double insetRegionFillOpacity;
@@ -477,7 +477,7 @@ public class GeographicMapMaker {
 		this.highlightTraceChar = null;
 	}
 	
-	public void plotInsetRegions(List<Region> regions, PlotCurveCharacterstics outlineChar,
+	public void plotInsetRegions(List<? extends Region> regions, PlotCurveCharacterstics outlineChar,
 			Color fillColor, double fillOpacity) {
 		List<PlotCurveCharacterstics> chars = null;
 		if (outlineChar != null) {
@@ -494,7 +494,7 @@ public class GeographicMapMaker {
 		plotInsetRegions(regions, chars, colors, fillOpacity);
 	}
 	
-	public void plotInsetRegions(List<Region> regions, List<PlotCurveCharacterstics> outlineChars,
+	public void plotInsetRegions(List<? extends Region> regions, List<PlotCurveCharacterstics> outlineChars,
 			List<Color> fillColors, double fillOpacity) {
 		if (regions == null || regions.isEmpty()) {
 			clearInsetRegions();
