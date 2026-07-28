@@ -237,7 +237,10 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 
 		@Override
 		protected Object getCustomConstraintRange(Field field) {
-			return gmm.constraints().get(field).get();
+			Optional<?> range = gmm.constraints().get(field);
+			if (range.isPresent())
+				return range.get();
+			return null;
 		}
 		
 	}
