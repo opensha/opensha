@@ -79,7 +79,7 @@ abstract class AbstractPointSourceOptimizedCalc {
 			if (getClass() != obj.getClass())
 				return false;
 			UniquePointRupture other = (UniquePointRupture) obj;
-			return hash == other.hash && distCorr == other.distCorr && trt == other.trt
+			return hash == other.hash && Objects.equals(distCorr, other.distCorr) && trt == other.trt
 					&& Double.doubleToLongBits(zHyp) == Double.doubleToLongBits(other.zHyp)
 					&& Double.doubleToLongBits(dip) == Double.doubleToLongBits(other.dip)
 					&& Double.doubleToLongBits(mag) == Double.doubleToLongBits(other.mag)
