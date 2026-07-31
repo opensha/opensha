@@ -3,6 +3,7 @@ package org.opensha.sha.earthquake.faultSysSolution.util;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,6 +12,7 @@ import java.util.function.Supplier;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.param.Parameter;
@@ -31,6 +33,7 @@ import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.ScalarIMR;
+import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_Config;
 import org.opensha.sha.imr.logicTree.ScalarIMR_ParamsLogicTreeNode;
 import org.opensha.sha.imr.logicTree.ScalarIMRsLogicTreeNode;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
@@ -371,16 +374,110 @@ public class FaultSysHazardCalcSettings {
 	}
 
 	public static DiscretizedFunc getDefaultXVals(double period) {
-		return FaultSysHazardCalcSettings.getDefaultXVals(new IMT_Info(), period);
+		return FaultSysHazardCalcSettings.getDefaultXVals(period, false);
 	}
+	
+	public static abstract class CurveXValManager {
+		
+		private Map<Double, LightFixedXFunc> xValsMap = new HashMap<>();
+		private Map<Double, LightFixedXFunc> logXValsMap = new HashMap<>();
+		
+		protected abstract LightFixedXFunc getXVals(double period);
+		
+		public LightFixedXFunc initLinearCurve(double period) {
+			LightFixedXFunc xVals = xValsMap.get(period);
+			if (xVals == null) {
+				xVals = getXVals(period);
+				xValsMap.putIfAbsent(period, xVals);
+			}
+			return xVals.deepClone();
+		}
+		
+		public LightFixedXFunc initLogCurve(double period) {
+			LightFixedXFunc logXVals = logXValsMap.get(period);
+			if (logXVals == null) {
+				LightFixedXFunc xVals = initLinearCurve(period);
+				double[] logArray = new double[xVals.size()];
+				for (int i=0; i<logArray.length; i++)
+					logArray[i] = Math.log(xVals.getX(i));
+				logXVals = new LightFixedXFunc(logArray, new double[logArray.length]);
+				logXValsMap.putIfAbsent(period, logXVals);
+			}
+			return logXVals.deepClone();
+		}
+		
+		public LightFixedXFunc remapToLinear(DiscretizedFunc logCurve, double period) {
+			LightFixedXFunc linearCurve = initLinearCurve(period); // this clones
+			Preconditions.checkState(linearCurve.size() == logCurve.size());
+			for (int i=0; i<linearCurve.size(); i++)
+				linearCurve.set(i, logCurve.getY(i));
+			return linearCurve;
+		}
+	}
+	
+	private static class DefaultCurveXValManager extends CurveXValManager {
 
-	public static DiscretizedFunc getDefaultXVals(IMT_Info imtInfo, double period) {
+		@Override
+		protected LightFixedXFunc getXVals(double period) {
+			return getDefaultXVals(period, false);
+		}
+		
+	}
+	
+	private static class NSHMPCurveXValManager extends CurveXValManager {
+
+		@Override
+		protected LightFixedXFunc getXVals(double period) {
+			return getDefaultXVals(period, true);
+		}
+		
+	}
+	
+	private static class FixedCurveXValManager extends CurveXValManager {
+		
+		private LightFixedXFunc xVals;
+		
+		public FixedCurveXValManager(DiscretizedFunc xVals) {
+			if (xVals instanceof LightFixedXFunc)
+				this.xVals = (LightFixedXFunc)xVals;
+			else
+				this.xVals = new LightFixedXFunc(xVals);
+		}
+
+		@Override
+		protected LightFixedXFunc getXVals(double period) {
+			return xVals;
+		}
+		
+	}
+	
+	public static CurveXValManager getXValManager() {
+		return new DefaultCurveXValManager();
+	}
+	
+	public static CurveXValManager getXValManager(CommandLine cmd) {
+		if (cmd.hasOption("nshmp-imls"))
+			return new NSHMPCurveXValManager();
+		return new DefaultCurveXValManager();
+	}
+	
+	public static CurveXValManager getFixedXValManager(DiscretizedFunc xVals) {
+		return new FixedCurveXValManager(xVals);
+	}
+	
+	private static final IMT_Info imtInfo = new IMT_Info();
+
+	public static LightFixedXFunc getDefaultXVals(double period, boolean useNSHMP) {
+		if (useNSHMP) {
+			double[] imls = NSHMP_Config.imlsFor(period);
+			return new LightFixedXFunc(imls, new double[imls.length]);
+		}
 		if (period == -1d)
-			return imtInfo.getDefaultHazardCurve(PGV_Param.NAME);
+			return new LightFixedXFunc(imtInfo.getDefaultHazardCurve(PGV_Param.NAME));
 		else if (period == 0d)
-			return imtInfo.getDefaultHazardCurve(PGA_Param.NAME);
+			return new LightFixedXFunc(imtInfo.getDefaultHazardCurve(PGA_Param.NAME));
 		else
-			return imtInfo.getDefaultHazardCurve(SA_Param.NAME);
+			return new LightFixedXFunc(imtInfo.getDefaultHazardCurve(SA_Param.NAME));
 	}
 
 	public static void setIMforPeriod(Map<TectonicRegionType, ScalarIMR> gmpeMap, double period) {
@@ -434,6 +531,7 @@ public class FaultSysHazardCalcSettings {
 		if (includeSiteSkip)
 			ops.addOption("smd", "skip-max-distance", true, "Skip sites with no source-site distances below this value, in km. "
 					+ "Default is "+(int)(FaultSysHazardCalcSettings.SITE_SKIP_FRACT*100d)+"% of the TectonicRegionType-specific default maximum distance.");
+		ops.addOption(null, "nshmp-imls", false, "Flag to use NSHMP period-dependent IMLs instead OpenSHA defaults.");
 	}
 
 	static final double SITE_SKIP_FRACT = 0.8;

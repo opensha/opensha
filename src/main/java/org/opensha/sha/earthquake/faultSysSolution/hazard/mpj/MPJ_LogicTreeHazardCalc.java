@@ -52,6 +52,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings.CurveXValManager;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
@@ -86,6 +87,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private boolean pointSourceOptimizations;
 	
 	private SourceFilterManager sourceFilter;
+	
+	private CurveXValManager xValManager;
 	
 	private SourceFilterManager siteSkipSourceFilter;
 	private Map<TectonicRegionType, AttenRelSupplier> gmmRefs;
@@ -194,6 +197,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		pointSourceOptimizations = FaultSysHazardCalcSettings.arePointSourceOptimizationsEnabled(cmd);
 		
 		sourceFilter = FaultSysHazardCalcSettings.getSourceFilters(cmd);
+		xValManager = FaultSysHazardCalcSettings.getXValManager(cmd);
 		
 		siteSkipSourceFilter = FaultSysHazardCalcSettings.getSiteSkipSourceFilters(sourceFilter, cmd);
 		
@@ -848,10 +852,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 								FaultSysHazardCalcSettings.getGMM_Suppliers(branch, gmmRefs, true), gridRegion,
 								IncludeBackgroundOption.ONLY, applyAftershockFilter, periods);
 						
-						externalGriddedCurveCalc.setSourceFilter(sourceFilter);
-						externalGriddedCurveCalc.setPointSourceOptimizations(pointSourceOptimizations);
-						externalGriddedCurveCalc.setSiteSkipSourceFilter(siteSkipSourceFilter);
-						externalGriddedCurveCalc.setGriddedSeismicitySettings(griddedSettings);
+						configureHazardCalc(externalGriddedCurveCalc);
 						
 						externalGriddedCurveCalc.calcHazardCurves(getNumThreads());
 					}
@@ -870,11 +871,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						externalSolCurveCalc = new SolHazardMapCalc(externalSol,
 								FaultSysHazardCalcSettings.getGMM_Suppliers(branch, gmmRefs, true), gridRegion,
 								IncludeBackgroundOption.EXCLUDE, applyAftershockFilter, periods);
-						
-						externalSolCurveCalc.setSourceFilter(sourceFilter);
-						externalSolCurveCalc.setPointSourceOptimizations(pointSourceOptimizations);
-						externalSolCurveCalc.setSiteSkipSourceFilter(siteSkipSourceFilter);
 						externalSolCurveCalc.setCacheGridSources(false);
+						configureHazardCalc(externalSolCurveCalc);
 						
 						externalSolCurveCalc.calcHazardCurves(getNumThreads());
 					}
@@ -957,13 +955,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					combineWithCurves = combineWithOnlyCurves;
 					calc = new SolHazardMapCalc(sol, gmpeSuppliers, gridRegion, IncludeBackgroundOption.EXCLUDE, applyAftershockFilter, periods);
 				}
-				calc.setSourceFilter(sourceFilter);
-				calc.setPointSourceOptimizations(pointSourceOptimizations);
-				calc.setSiteSkipSourceFilter(siteSkipSourceFilter);
-				calc.setGriddedSeismicitySettings(griddedSettings);
-				calc.setAseisReducesArea(aseisReducesArea);
-				calc.setNoMFDs(noMFDs);
-				calc.setUseProxyRups(!noProxyRups);
+				configureHazardCalc(calc);
 				
 				calc.calcHazardCurves(getNumThreads(), combineWithCurves);
 				calc.writeCurvesCSVs(hazardOutDir, curvesPrefix, true);
@@ -1003,6 +995,17 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				}
 			}
 		}
+	}
+	
+	private void configureHazardCalc(SolHazardMapCalc calc) {
+		calc.setSourceFilter(sourceFilter);
+		calc.setXValManager(xValManager);
+		calc.setPointSourceOptimizations(pointSourceOptimizations);
+		calc.setSiteSkipSourceFilter(siteSkipSourceFilter);
+		calc.setAseisReducesArea(aseisReducesArea);
+		calc.setNoMFDs(noMFDs);
+		calc.setUseProxyRups(!noProxyRups);
+		calc.setGriddedSeismicitySettings(griddedSettings);
 	}
 	
 	private File getGriddedOnlyHazardDir(LogicTreeBranch<?> branch, File sourceDir, File combineFromRunDir) {

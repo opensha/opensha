@@ -88,6 +88,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.HazardMapPlot;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings.CurveXValManager;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.AseismicityAreaReductionParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
@@ -141,8 +142,7 @@ public class SolHazardMapCalc {
 	
 	private List<Site> sites;
 	
-	private DiscretizedFunc[] xVals;
-	private DiscretizedFunc[] logXVals;
+	private CurveXValManager xValManager;
 	
 	private List<DiscretizedFunc[]> curvesList;
 	
@@ -372,15 +372,11 @@ public class SolHazardMapCalc {
 	}
 	
 	public void setXVals(DiscretizedFunc xVals) {
-		DiscretizedFunc logXVals = new ArbitrarilyDiscretizedFunc();
-		for (Point2D pt : xVals)
-			logXVals.set(Math.log(pt.getX()), 0d);
-		this.xVals = new DiscretizedFunc[periods.length];
-		this.logXVals = new DiscretizedFunc[periods.length];
-		for (int p=0; p<periods.length; p++) {
-			this.xVals[p] = xVals;
-			this.logXVals[p] = logXVals;
-		}
+		xValManager = FaultSysHazardCalcSettings.getFixedXValManager(xVals);
+	}
+	
+	public void setXValManager(CurveXValManager xValManager) {
+		this.xValManager = xValManager;
 	}
 	
 	public void setPointSourceOptimizations(boolean pointSourceOptimizations) {
@@ -396,28 +392,17 @@ public class SolHazardMapCalc {
 	}
 	
 	private void checkInitXVals() {
-		if (xVals == null) {
+		if (xValManager == null) {
 			synchronized (this) {
-				if (xVals == null) {
-					DiscretizedFunc[] xVals = new DiscretizedFunc[periods.length];
-					DiscretizedFunc[] logXVals = new DiscretizedFunc[periods.length];
-					IMT_Info imtInfo = new IMT_Info();
-					for (int p=0; p<periods.length; p++) {
-						xVals[p] = FaultSysHazardCalcSettings.getDefaultXVals(imtInfo, periods[p]);
-						logXVals[p] = new ArbitrarilyDiscretizedFunc();
-						for (Point2D pt : xVals[p])
-							logXVals[p].set(Math.log(pt.getX()), 0d);
-					}
-					this.logXVals = logXVals;
-					this.xVals = xVals;
-				}
+				if (xValManager == null)
+					this.xValManager = FaultSysHazardCalcSettings.getXValManager();
 			}
 		}
 	}
 	
 	public DiscretizedFunc getXVals(double period) {
 		checkInitXVals();
-		return xVals[periodIndex(period)];
+		return xValManager.initLinearCurve(period);
 	}
 	
 	private int periodIndex(double period) {
@@ -559,9 +544,7 @@ public class SolHazardMapCalc {
 						// can skip this site, no sources within skipMaxSiteDist
 						checkInitXVals();
 						for (int p=0; p<periods.length; p++) {
-							DiscretizedFunc curve = xVals[p].deepClone();
-							for (int i=0; i<curve.size(); i++)
-								curve.set(i, 0d);
+							DiscretizedFunc curve = xValManager.initLinearCurve(periods[p]);
 							if (combineWith != null) {
 								// add in
 								DiscretizedFunc oCurve = combineWith.curvesList.get(p)[index];
@@ -648,11 +631,9 @@ public class SolHazardMapCalc {
 		
 		for (int p=0; p<periods.length; p++) {
 			FaultSysHazardCalcSettings.setIMforPeriod(gmpeMap, periods[p]);
-			DiscretizedFunc logCurve = logXVals[p].deepClone();
+			DiscretizedFunc logCurve = xValManager.initLogCurve(periods[p]);
 			calc.getHazardCurve(logCurve, site, gmpeMap, erf, exceedCalc);
-			DiscretizedFunc curve = xVals[p].deepClone();
-			for (int i=0; i<curve.size(); i++)
-				curve.set(i, logCurve.getY(i));
+			DiscretizedFunc curve = xValManager.remapToLinear(logCurve, periods[p]);
 			
 			if (combineWith != null) {
 				DiscretizedFunc oCurve = combineWith.curvesList.get(p)[index];
