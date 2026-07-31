@@ -66,7 +66,7 @@ public class PointSourceOptimizedExceedProbCalc extends AbstractPointSourceOptim
 			Location origSiteLoc = gmm.getSite().getLocation();
 			double dist = pointSurf.getQuickDistance(origSiteLoc);
 			
-			QuickInterpolator qi = interp.getQuickInterpolator(dist, true); // true here means interpolate in log-distance domain
+			QuickInterpolator qi = interp.getQuickInterpolator(dist, INTERP_LOG_DIST, INTERP_LOG_PROB);
 //			LightFixedXFunc[] cached = getDistCache(gmm, eqkRupture, exceedProbCache);
 			
 			UniquePointRupture uniqueRup = new UniquePointRupture(eqkRupture);

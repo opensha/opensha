@@ -95,7 +95,7 @@ public class DistanceInterpolatorTest {
 			double edge = di.getDistance(i);
 
 			DistanceInterpolator.QuickInterpolator qi =
-					di.getQuickInterpolator(edge, /*interpLogX=*/false);
+					di.getQuickInterpolator(edge, /*interpLogX=*/false, /*interpLogY=*/false);
 
 			assertTrue(qi.isDiscrete());
 			assertEquals(edge, qi.getTargetDistance(), 0.0);
@@ -123,7 +123,7 @@ public class DistanceInterpolatorTest {
 		double mid = 0.5 * (d0 + d1);
 
 		DistanceInterpolator.QuickInterpolator qi =
-				di.getQuickInterpolator(mid, /*interpLogX=*/false);
+				di.getQuickInterpolator(mid, /*interpLogX=*/false, /*interpLogY=*/false);
 
 		assertFalse(qi.isDiscrete());
 		assertEquals(0, qi.getIndex1());
@@ -160,7 +160,7 @@ public class DistanceInterpolatorTest {
 		double midLog = Math.sqrt(d1 * d2);
 
 		DistanceInterpolator.QuickInterpolator qi =
-				di.getQuickInterpolator(midLog, /*interpLogX=*/true);
+				di.getQuickInterpolator(midLog, /*interpLogX=*/true, /*interpLogY=*/false);
 
 		assertFalse(qi.isDiscrete());
 		assertEquals(idx1, qi.getIndex1());
@@ -183,7 +183,7 @@ public class DistanceInterpolatorTest {
 		double beyond = DistanceInterpolator.OVERALL_MAX_DIST + 42.0;
 
 		DistanceInterpolator.QuickInterpolator qi =
-				di.getQuickInterpolator(beyond, /*interpLogX=*/true);
+				di.getQuickInterpolator(beyond, /*interpLogX=*/true, /*interpLogY=*/false);
 
 		int last = di.size() - 1;
 		assertTrue(qi.isDiscrete());
@@ -228,7 +228,7 @@ public class DistanceInterpolatorTest {
 		double mid = 0.5 * (d0 + d1);
 
 		DistanceInterpolator.QuickInterpolator qi =
-				di.getQuickInterpolator(mid, /*interpLogX=*/false);
+				di.getQuickInterpolator(mid, /*interpLogX=*/false, /*interpLogY=*/false);
 
 		// tiny positives on both ends remain non-negative
 		IntToDoubleFunction tinyPos = i -> (i == qi.getIndex1() ? 1e-12 : 2e-12);
@@ -241,5 +241,89 @@ public class DistanceInterpolatorTest {
 		double valNeg = qi.interpolate(tinyNeg);
 		assertTrue(valNeg <= 0.0);
 		assertTrue(valNeg >= -2e-12 - 1e-18);
+	}
+
+	@Test
+	public void testQuickInterpolatorLogYDirect() {
+		DistanceInterpolator di = DistanceInterpolator.get();
+
+		double d0 = di.getDistance(0);
+		double d1 = di.getDistance(1);
+		double mid = 0.5 * (d0 + d1);
+
+		DistanceInterpolator.QuickInterpolator qi =
+				di.getQuickInterpolator(mid, /*interpLogX=*/false, /*interpLogY=*/true);
+
+		assertFalse(qi.isDiscrete());
+		assertEquals(10.0, qi.interpolate(1.0, 100.0), 1e-12);
+	}
+
+	@Test
+	public void testQuickInterpolatorLogYFunction() {
+		DistanceInterpolator di = DistanceInterpolator.get();
+
+		int n = di.size();
+		int idx1 = -1;
+		for (int i = 0; i < n; i++) {
+			if (Math.abs(di.getDistance(i) - 1.0) < 1e-12) {
+				idx1 = i;
+				break;
+			}
+		}
+		assertTrue("Expected to find 1.0 in the grid", idx1 >= 0 && idx1 + 1 < n);
+
+		double d1 = di.getDistance(idx1);
+		double d2 = di.getDistance(idx1 + 1);
+		double midLog = Math.sqrt(d1 * d2);
+
+		DistanceInterpolator.QuickInterpolator qi =
+				di.getQuickInterpolator(midLog, /*interpLogX=*/true, /*interpLogY=*/true);
+
+		IntToDoubleFunction powersOfTen = i -> i == qi.getIndex1() ? 1e-4 : 1e-2;
+		assertEquals(1e-3, qi.interpolate(powersOfTen), 1e-14);
+	}
+
+	@Test
+	public void testQuickInterpolatorLogYDiscreteEdgeReturnsInput() {
+		DistanceInterpolator di = DistanceInterpolator.get();
+		double edge = di.getDistance(10);
+
+		DistanceInterpolator.QuickInterpolator qi =
+				di.getQuickInterpolator(edge, /*interpLogX=*/false, /*interpLogY=*/true);
+
+		assertTrue(qi.isDiscrete());
+		assertEquals(2.0, qi.interpolate(2.0, 200.0), 0.0);
+		assertEquals(5.0, qi.interpolate(i -> 5.0), 0.0);
+	}
+
+	@Test
+	public void testQuickInterpolatorLogYFallsBackToLinearForNonPositiveValues() {
+		DistanceInterpolator di = DistanceInterpolator.get();
+
+		double d0 = di.getDistance(0);
+		double d1 = di.getDistance(1);
+		double mid = 0.5 * (d0 + d1);
+
+		DistanceInterpolator.QuickInterpolator qi =
+				di.getQuickInterpolator(mid, /*interpLogX=*/false, /*interpLogY=*/true);
+
+		assertEquals(0.5, qi.interpolate(0.0, 1.0), 1e-12);
+		assertEquals(-1.5, qi.interpolate(-1.0, -2.0), 1e-12);
+		assertEquals(0.0, qi.interpolate(-1.0, 1.0), 1e-12);
+	}
+
+	@Test
+	public void testQuickInterpolatorLogYFallsBackToLinearForTinyValues() {
+		DistanceInterpolator di = DistanceInterpolator.get();
+
+		double d0 = di.getDistance(0);
+		double d1 = di.getDistance(1);
+		double mid = 0.5 * (d0 + d1);
+
+		DistanceInterpolator.QuickInterpolator qi =
+				di.getQuickInterpolator(mid, /*interpLogX=*/false, /*interpLogY=*/true);
+
+		assertEquals(0.5e-31, qi.interpolate(0.0, 1e-31), 1e-45);
+		assertEquals(1.5e-31, qi.interpolate(1e-31, 2e-31), 1e-45);
 	}
 }
