@@ -17,6 +17,7 @@ import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.data.function.WeightedFuncListforPlotting;
 import org.opensha.commons.data.function.XY_DataSetList;
 import org.opensha.commons.gui.DisclaimerDialog;
+import org.opensha.commons.util.updater.ApplicationUpdater;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.event.ParameterChangeEvent;
@@ -699,6 +700,7 @@ public class HazardSpectrumApplication extends HazardCurveApplication {
 				APP_SHORT_NAME, getAppVersion(), null, null);
 		Thread.setDefaultUncaughtExceptionHandler(exp);
 		launch(exp);
+		ApplicationUpdater.checkForUpdatesDefault(APP_NAME, APP_SHORT_NAME, "HazardSpectrumGUI");
 	}
 	
 	public static HazardSpectrumApplication launch(DefaultExceptionHandler handler) {
