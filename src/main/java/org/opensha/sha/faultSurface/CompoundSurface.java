@@ -792,7 +792,10 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 			for (int s=0; s<surfaceAreas.length; s++)
 				avgDip += surfaces.get(s).getAveDip()*surfaceAreas[s];
 			avgDip /= totArea;
-			this.avgDip = avgDip;
+			Preconditions.checkState(avgDip < 90.0001 && avgDip > 0d, "Bad avgDip=%s", avgDip);
+			// can end up as barely over 90 due to floating point math, e.g., 90.00000000000001; clamp it to 90 after
+			// the check above
+			this.avgDip = Math.min(avgDip, 90d);
 		}
 		return avgDip;
 	}
