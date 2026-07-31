@@ -330,7 +330,7 @@ public abstract class ImCorrelationRelationship implements Named  {
 
 		tectonicRegionTypeParam = new TectonicRegionTypeParam();
 		tectonicRegionTypeParam.setValueAsDefault();
-		System.out.println("1: " + tectonicRegionTypeParam);
+//		System.out.println("1: " + tectonicRegionTypeParam);
 		
 		// Put parameters in the otherParams list:
 		otherParams.clear();

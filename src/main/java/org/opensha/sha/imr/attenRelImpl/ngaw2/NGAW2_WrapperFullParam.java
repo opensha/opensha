@@ -181,8 +181,7 @@ public class NGAW2_WrapperFullParam extends AttenuationRelationship implements P
 			if (eqkRupture.getHypocenterLocation() != null) {
 				zHyp = eqkRupture.getHypocenterLocation().getDepth();
 			} else {
-				zHyp = surf.getAveRupTopDepth() +
-						Math.sin(surf.getAveDip() * TO_RAD) * width/2.0;
+				zHyp = 0.5 * (surf.getAveRupTopDepth() + surf.getAveRupBottomDepth());
 			}
 			focalDepthParam.setValueIgnoreWarning(zHyp);
 

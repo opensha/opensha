@@ -89,7 +89,10 @@ import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_GMM_Wrapper;
 import org.opensha.sha.imr.mod.ModAttenuationRelationship;
 import org.opensha.sha.imr.mod.impl.stewartSiteSpecific.StewartAfshariGoulet2017NonergodicGMPE;
 
+import com.google.common.collect.ImmutableList;
+
 import gov.usgs.earthquake.nshmp.gmm.Gmm;
+import gov.usgs.earthquake.nshmp.gmm.GmmInput.Field;
 
 /**
  * This <code>enum</code> supplies references to
@@ -248,16 +251,62 @@ public enum AttenRelRef implements AttenRelSupplier {
 		}
 		
 	},
-
-	// DEVELOPMENT
-
-	USGS_NSHM23_STABLE(null, "USGS NSHM23 Stable Crustal",
-			"NSHM23-Stable", EXPERIMENTAL) {
+	
+	USGS_PRVI_ACTIVE(null, "USGS PRVI25 Active Crustal",
+			"PRVI25-Active", DEVELOPMENT) {
 		
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_CONUS_STABLE_CRUST_2023, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_PRVI_ACTIVE_CRUST_2025, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	USGS_PRVI_INTERFACE(null, "USGS PRVI25 Interface",
+			"PRVI25-Interface", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_PRVI_INTERFACE_2025, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	USGS_PRVI_SLAB(null, "USGS PRVI25 Intraslab",
+			"PRVI25-Intraslab", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_PRVI_INTRASLAB_2025, getName(), getShortName(), false, null);
+		}
+		
+	},
+
+	// DEVELOPMENT
+
+	USGS_NSHM23_STABLE(null, "USGS NSHM23 Stable Crustal",
+			"NSHM23-Stable", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_CONUS_STABLE_CRUST_2023, getName(), getShortName(), false, null) {
+
+				@Override
+				protected ImmutableList<Field> initFieldsUsed() {
+					// dirty hack to fix the fields used in nshmp-haz, but not reported as such by this GMM
+					return ImmutableList.of(
+							Field.MW,
+							Field.RRUP,
+							Field.VS30,
+							Field.RJB,
+							Field.ZSED);
+				}
+				
+			};
 		}
 		
 	},
@@ -329,39 +378,6 @@ public enum AttenRelRef implements AttenRelSupplier {
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
 			return new NSHMP_GMM_Wrapper.Single(Gmm.PSBAH_20_GLOBAL_SLAB, getName(), getShortName(), false, null);
-		}
-		
-	},
-	
-	USGS_PRVI_ACTIVE(null, "USGS PRVI25 Active Crustal (beta)",
-			"PRVI25-Active", DEVELOPMENT) {
-		
-		@Override
-		public AttenuationRelationship instance(
-				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_PRVI_ACTIVE_CRUST_2025, getName(), getShortName(), false, null);
-		}
-		
-	},
-	
-	USGS_PRVI_INTERFACE(null, "USGS PRVI25 Interface (beta)",
-			"PRVI25-Interface", DEVELOPMENT) {
-		
-		@Override
-		public AttenuationRelationship instance(
-				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_PRVI_INTERFACE_2025, getName(), getShortName(), false, null);
-		}
-		
-	},
-	
-	USGS_PRVI_SLAB(null, "USGS PRVI25 Intraslab (beta)",
-			"PRVI25-Intraslab", DEVELOPMENT) {
-		
-		@Override
-		public AttenuationRelationship instance(
-				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_PRVI_INTRASLAB_2025, getName(), getShortName(), false, null);
 		}
 		
 	},
