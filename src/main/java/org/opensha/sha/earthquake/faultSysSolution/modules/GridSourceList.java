@@ -884,6 +884,126 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		
 	}
 	
+	public static class GriddedRupturePropertiesBuilder {
+		
+		// MAGNITUDE
+		private double magnitude;
+		// FOCAL MECHANISM
+		private double rake;
+		private double dip;
+		private double strike;
+		private Range<Double> strikeRange;
+		// FINITE PROPERTIES
+		/**
+		 * Rupture upper depth in km
+		 */
+		private double upperDepth;
+		/**
+		 * Rupture lower depth in km
+		 */
+		private double lowerDepth;
+		/**
+		 * Rupture length in km
+		 */
+		private double length;
+		/**
+		 * Rupture hypocentral depth in km, or NaN (assumed halfway)
+		 */
+		private double hypocentralDepth;
+		/**
+		 * Rupture hypocentral distance along strike in km, or NaN (assumed halfway)
+		 */
+		private double hypocentralDAS;
+		// TECTONIC REGIME
+		private TectonicRegionType tectonicRegionType;
+		
+		public GriddedRupturePropertiesBuilder() {
+			
+		}
+		
+		public GriddedRupturePropertiesBuilder(GriddedRuptureProperties other) {
+			this(other.magnitude, other.rake, other.dip, other.strike, other.strikeRange,
+					other.upperDepth, other.lowerDepth, other.length,
+					other.hypocentralDepth, other.hypocentralDAS, other.tectonicRegionType);
+		}
+		
+		public GriddedRupturePropertiesBuilder(double magnitude, double rake, double dip, double strike,
+				Range<Double> strikeRange, double upperDepth, double lowerDepth, double length, double hypocentralDepth,
+				double hypocentralDAS, TectonicRegionType tectonicRegionType) {
+			this.magnitude = magnitude;
+			this.rake = rake;
+			this.dip = dip;
+			this.strike = strike;
+			this.strikeRange = strikeRange;
+			this.upperDepth = upperDepth;
+			this.lowerDepth = lowerDepth;
+			this.length = length;
+			this.hypocentralDepth = hypocentralDepth;
+			this.hypocentralDAS = hypocentralDAS;
+			this.tectonicRegionType = tectonicRegionType;
+		}
+
+		public GriddedRupturePropertiesBuilder magnitude(double magnitude) {
+			this.magnitude = magnitude;
+			return this;
+		}
+
+		public GriddedRupturePropertiesBuilder rake(double rake) {
+			this.rake = rake;
+			return this;
+		}
+
+		public GriddedRupturePropertiesBuilder dip(double dip) {
+			this.dip = dip;
+			return this;
+		}
+
+		public GriddedRupturePropertiesBuilder strike(double strike) {
+			this.strike = strike;
+			return this;
+		}
+
+		public GriddedRupturePropertiesBuilder strikeRange(Range<Double> strikeRange) {
+			this.strikeRange = strikeRange;
+			return this;
+		}
+
+		public GriddedRupturePropertiesBuilder upperDepth(double upperDepth) {
+			this.upperDepth = upperDepth;
+			return this;
+		}
+
+		public GriddedRupturePropertiesBuilder lowerDepth(double lowerDepth) {
+			this.lowerDepth = lowerDepth;
+			return this;
+		}
+
+		public GriddedRupturePropertiesBuilder length(double length) {
+			this.length = length;
+			return this;
+		}
+
+		public GriddedRupturePropertiesBuilder hypocentralDepth(double hypocentralDepth) {
+			this.hypocentralDepth = hypocentralDepth;
+			return this;
+		}
+
+		public GriddedRupturePropertiesBuilder hypocentralDAS(double hypocentralDAS) {
+			this.hypocentralDAS = hypocentralDAS;
+			return this;
+		}
+
+		public GriddedRupturePropertiesBuilder tectonicRegionType(TectonicRegionType tectonicRegionType) {
+			this.tectonicRegionType = tectonicRegionType;
+			return this;
+		}
+		
+		public GriddedRuptureProperties build() {
+			return new GriddedRuptureProperties(magnitude, rake, dip, strike, strikeRange,
+					upperDepth, lowerDepth, length, hypocentralDepth, hypocentralDAS, tectonicRegionType);
+		}
+	}
+	
 	/**
 	 * Gridded rupture representation, consisting of {@link GriddedRuptureProperties}, rate, and section associations
 	 */
