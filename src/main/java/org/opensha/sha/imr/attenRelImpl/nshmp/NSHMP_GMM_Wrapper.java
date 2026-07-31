@@ -1138,8 +1138,7 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 				if (eqkRupture.getHypocenterLocation() != null) {
 					zHyp = eqkRupture.getHypocenterLocation().getDepth();
 				} else {
-					zHyp = surf.getAveRupTopDepth() +
-						Math.sin(surf.getAveDip() * TO_RAD) * surf.getAveWidth()/2.0;
+					zHyp = 0.5*(surf.getAveRupTopDepth() + surf.getAveRupBottomDepth());
 				}
 				valueManager.setParameterValue(Field.ZHYP, zHyp);
 			}
