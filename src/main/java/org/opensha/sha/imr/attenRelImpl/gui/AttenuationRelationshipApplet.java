@@ -47,6 +47,7 @@ import org.jfree.data.Range;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.gui.DisclaimerDialog;
+import org.opensha.commons.util.updater.ApplicationUpdater;
 import org.opensha.commons.gui.HelpMenuBuilder;
 import org.opensha.commons.gui.plot.AxisLimitsControlPanel;
 import org.opensha.commons.gui.plot.ButtonControlPanel;
@@ -877,6 +878,7 @@ implements ParameterChangeFailListener, ParameterChangeWarningListener, ItemList
 	public static void main( String[] args ) throws MalformedURLException, IOException {
 		new DisclaimerDialog(APP_NAME, APP_SHORT_NAME, getAppVersion());
 		launch();
+		ApplicationUpdater.checkForUpdatesDefault(APP_NAME, APP_SHORT_NAME, "AttenuationRelationshipGUI");
 	}
 	
 	public static AttenuationRelationshipApplet launch() {
