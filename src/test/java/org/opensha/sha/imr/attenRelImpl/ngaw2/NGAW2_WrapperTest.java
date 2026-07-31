@@ -181,8 +181,7 @@ public class NGAW2_WrapperTest {
 				if (gmpe_rup.getHypocenterLocation() != null) {
 					gmpe.set_zHyp(gmpe_rup.getHypocenterLocation().getDepth());
 				} else {
-					gmpe.set_zHyp(surf.getAveRupTopDepth() +
-							Math.sin(surf.getAveDip() * TO_RAD) * surf.getAveWidth() / 2.0);
+					gmpe.set_zHyp(0.5 * (surf.getAveRupTopDepth() + surf.getAveRupBottomDepth()));
 				}
 
 				gmpe.set_vs30(vs30);
