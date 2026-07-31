@@ -708,7 +708,8 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 			// ---------------------------------------------------------------------- MARCO 2010.03.15
 		}
 		if (hypo == null)
-			hypodepth = surf.getAveRupTopDepth() + 0.5*surf.getAveWidth()*Math.sin(Math.toRadians(surf.getAveDip()));
+//			hypodepth = surf.getAveRupTopDepth() + 0.5*surf.getAveWidth()*Math.sin(Math.toRadians(surf.getAveDip()));
+			hypodepth = 0.5 * (surf.getAveRupTopDepth() + surf.getAveRupBottomDepth());
 		else
 			hypodepth = hypo.getDepth();
 		
