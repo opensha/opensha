@@ -13,7 +13,9 @@ import org.opensha.commons.util.binFile.GeolocatedBinaryMesh2DTest;
 	BinaryMesh2DTest.class,
 	GeolocatedBinaryMesh2DTest.class,
 	InterpolateTests.class,
-	DoubleRangeAdapterTest.class
+	DoubleRangeAdapterTest.class,
+	MarkdownUtilsTest.class,
+	OpenSHAConfigTest.class
 })
 
 

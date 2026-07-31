@@ -8,34 +8,30 @@ import static java.lang.Math.round;
 import static java.lang.Math.sin;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.opensha.commons.geo.GeoTools.TO_RAD;
-import static org.opensha.sha.util.FocalMech.STRIKE_SLIP;
 
 import java.io.IOException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import org.apache.commons.math3.util.Precision;
 import org.opensha.commons.calc.magScalingRelations.MagLengthRelationship;
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_MagLengthRelationship;
-import org.opensha.commons.data.Site;
 import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.util.DataUtils;
 import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.earthquake.PointSource;
 import org.opensha.sha.earthquake.PointSource.PoissonPointSource;
-import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.earthquake.SiteAdaptiveSource;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SingleRegionGridSourceProvider.NSHM23GridRupDimensions;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SingleRegionGridSourceProvider.NSHM23_WUS_FiniteRuptureConverter;
 import org.opensha.sha.earthquake.util.GridCellSuperSamplingPoissonPointSourceData;
 import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
-import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 import org.opensha.sha.faultSurface.utils.PointSurfaceBuilder;
 import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrection;
 import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrections;
@@ -273,6 +269,7 @@ public class PointSourceNshm extends PoissonPointSource {
 	private static final int RJB_R_MAX_INDEX = RJB_R_SIZE - 1;
 	private static final String RJB_DAT_DIR = "data/nshmp/";
 	private static final double[][] RJB_WC94LENGTH = readRjb("rjb_wc94length.dat");
+	private static final double[][] RJB_SOMERVILLE = readRjb("rjb_somerville.dat");
 
 	/* package visibility for testing */
 	static double[][] readRjb(String resource) {
@@ -318,13 +315,20 @@ public class PointSourceNshm extends PoissonPointSource {
 	 */
 	public static class DistanceCorrection2013 implements PointSourceDistanceCorrection {
 
-		public double getCorrectedDistanceJB(Location siteLoc, double mag, PointSurface surf, double horzDist) {
+		public double getCorrectedDistanceJB(double mag, double horzDist, TectonicRegionType trt) {
 			if (mag < RJB_M_CUTOFF) {
 				return horzDist;
 			}
 			int mIndex = min((int) round((mag - RJB_M_MIN) / RJB_M_DELTA), RJB_M_MAX_INDEX);
 			int rIndex = min(RJB_R_MAX_INDEX, (int) floor(horzDist));
-			return RJB_WC94LENGTH[mIndex][rIndex];
+			return switch (trt) {
+			case STABLE_SHALLOW:
+				yield RJB_SOMERVILLE[mIndex][rIndex];
+				// TODO: add subduction logic?
+			default:
+				// active
+				yield RJB_WC94LENGTH[mIndex][rIndex];
+			};
 		}
 		
 		public double getCorrectedDistanceRup(double rJB, double zTop, double zBot, double dipRad, double horzWidth, boolean footwall) {
@@ -355,6 +359,7 @@ public class PointSourceNshm extends PoissonPointSource {
 		@Override
 		public WeightedList<SurfaceDistances> getCorrectedDistances(Location siteLoc, PointSurface surf,
 				TectonicRegionType trt, double mag, double horzDist) {
+			Location surfLoc = surf.getLocation();
 			if (trt == TectonicRegionType.SUBDUCTION_SLAB) {
 				// NSHM13 always treats slab ruptures as true point sources
 				double corrJB = horzDist;
@@ -363,10 +368,30 @@ public class PointSourceNshm extends PoissonPointSource {
 				double rX = -corrJB;
 				return WeightedList.evenlyWeighted(
 						new SurfaceDistances.Precomputed(siteLoc, rRup, corrJB, rX));
+			} else if (trt == TectonicRegionType.ACTIVE_SHALLOW && surfLoc.lon >= -115 && surfLoc.lon <= -100
+					&& surf.getAveLength() > 0d && surf.getAveRupTopDepth() > 4.9) {
+				// TODO: keep this hack? it's dirty and not sure if it changes things much
+				
+				// check for NSHM23.R2 hack where 2/3 of the sources were treated as "active" for GMMs (and thus
+				// assigned as active TRT here), but use all stable properties
+				
+				// build the dimensions as if it were stable
+				NSHM23GridRupDimensions dims = NSHM23_WUS_FiniteRuptureConverter.getDimensions(
+						TectonicRegionType.STABLE_SHALLOW, mag, surf.getAveDip());
+				
+				// see if this rupture matches those
+				// but after applying the rounding that we typically apply...ugh
+				if (Precision.equals(DataUtils.roundSigFigs(surf.getAveLength(), 3), DataUtils.roundSigFigs(dims.length(), 3), 1e-1)
+						&& Precision.equals(DataUtils.roundSigFigs(surf.getAveRupTopDepth(), 3), DataUtils.roundSigFigs(dims.upperDepth(), 3), 1e-1)
+						&& Precision.equals(DataUtils.roundSigFigs(surf.getAveRupBottomDepth(), 3), DataUtils.roundSigFigs(dims.lowerDepth(), 3), 1e-1)) {
+					// it does, use the stable distance correction instead
+					trt = TectonicRegionType.STABLE_SHALLOW;
+//					System.out.println("Caught a stable-as-active!");
+				}
 			}
 			// note: nshmp-haz still uses all of this logic for M<6, just with corrJB == horzDist, which will happen
 			// in getCorrectedDistanceJB
-			double corrJB = getCorrectedDistanceJB(siteLoc, mag, surf, horzDist);
+			double corrJB = getCorrectedDistanceJB(mag, horzDist, trt);
 			
 			double dip = surf.getAveDip();
 			

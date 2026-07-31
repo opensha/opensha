@@ -453,26 +453,54 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 		return cubeMFD;
 	}
 	
+	public static record NSHM23GridRupDimensions(double upperDepth, double lowerDepth, double length, double width, double dip) {};
+	
 	public static class NSHM23_WUS_FiniteRuptureConverter implements FiniteRuptureConverter {
 		
-		private WC1994_MagLengthRelationship WC94 = new WC1994_MagLengthRelationship();
+		private static WC1994_MagLengthRelationship WC94 = new WC1994_MagLengthRelationship();
+		
+		public static NSHM23GridRupDimensions getDimensions(TectonicRegionType trt, double magnitude, double dip) {
+			double dipRad = Math.toRadians(dip);
+			
+			double length;
+			double width;
+			double depth;
+			double lower;
+			if (trt == TectonicRegionType.STABLE_SHALLOW) {
+				// zTOR=5km for NSHMP-Haz stable
+				depth = 5d;
+				
+				// max depth is 22 km for stable
+				double maxWidthDD = (22 - depth) / Math.sin(dipRad);
+
+				// NSHM_SOMERVILLE
+				double area = Math.pow(10, magnitude - 4.366);
+				double unclippedWidthDD = Math.sqrt(area);
+
+				width = Math.min(unclippedWidthDD, maxWidthDD);
+				length = area / width;
+				lower = depth + width * Math.sin(dipRad);
+			} else {
+				length = WC94.getMedianLength(magnitude);
+				depth = (float)magnitude < 6.5f ? 5d : 1d;
+				double aspectWidth = length / 1.5;
+				width = (14.0 - depth) / Math.sin(dipRad);
+				width = Math.min(aspectWidth, width);
+				lower = depth + width * Math.sin(dipRad);
+			}
+			
+			return new NSHM23GridRupDimensions(depth, lower, length, width, dip);
+		}
 
 		@Override
 		public GriddedRupture buildFiniteRupture(int gridIndex, Location loc, double magnitude, double rate,
 				FocalMech focalMech, TectonicRegionType trt, int[] associatedSections, double[] associatedSectionFracts,
 				GriddedRupturePropertiesCache cache) {
-			double dipRad = Math.toRadians(focalMech.dip());
-			
-			double depth = (float)magnitude < 6.5f ? 5d : 1d;
-			double length = WC94.getMedianLength(magnitude);
-			double aspectWidth = length / 1.5;
-			double ddWidth = (14.0 - depth) / Math.sin(dipRad);
-			ddWidth = Math.min(aspectWidth, ddWidth);
-			double lower = depth + ddWidth * Math.sin(dipRad);
+			NSHM23GridRupDimensions dims = getDimensions(trt, magnitude, focalMech.dip());
 			
 			GriddedRuptureProperties props = cache.getCached(new GriddedRuptureProperties(magnitude,
-					focalMech.rake(), focalMech.dip(), Double.NaN, null, depth, lower, length, Double.NaN, Double.NaN,
-					trt));
+					focalMech.rake(), focalMech.dip(), Double.NaN, null,
+					dims.upperDepth, dims.lowerDepth, dims.length, Double.NaN, Double.NaN, trt));
 			
 			return new GriddedRupture(gridIndex, loc, props, rate, associatedSections, associatedSectionFracts);
 		}
