@@ -71,6 +71,7 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 	private double horzWidth = Double.NaN;
 	private double topDepth = Double.NaN;
 	private double bottomDepth = Double.NaN;
+	private double avgDip = Double.NaN;
 	
 	private SurfaceDistanceCache cache = SurfaceCachingPolicy.build(this);
 	
@@ -123,7 +124,7 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 	 */
 	public static class Simple extends CompoundSurface {
 		
-		private final double avgDip;
+		private final double avgOrientedDip;
 		private final BitSet reversed;
 		private final boolean wholeRupReversed;
 		private final ContiguousIntList indexes;
@@ -369,23 +370,23 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 				// flip the direction of each surface
 				reversed.flip(0, numSurfaces);
 			}
-			this.avgDip = avgDip;
+			this.avgOrientedDip = avgDip;
 			this.indexes = new ContiguousIntList();
 		}
 
 		private Simple(List<? extends RuptureSurface> surfaces, List<? extends FaultSection> sects,
-				double[] surfaceAreas, double totArea, double avgDip, BitSet reversed,
+				double[] surfaceAreas, double totArea, double avgOrientedDip, BitSet reversed,
 				boolean wholeRupReversed, ContiguousIntList indexes) {
 			super(surfaces, sects, surfaceAreas, totArea);
-			this.avgDip = avgDip;
+			this.avgOrientedDip = avgOrientedDip;
 			this.reversed = reversed;
 			this.wholeRupReversed = wholeRupReversed;
 			this.indexes = indexes;
 		}
 
 		@Override
-		public double getAveDip() {
-			return avgDip;
+		public double getAveOrientedDip() {
+			return avgOrientedDip;
 		}
 
 		@Override
@@ -425,7 +426,7 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 
 		@Override
 		public Simple copyShallow() {
-			return new Simple(surfaces, sections, surfaceAreas, totArea, avgDip, reversed, wholeRupReversed, indexes);
+			return new Simple(surfaces, sections, surfaceAreas, totArea, avgOrientedDip, reversed, wholeRupReversed, indexes);
 		}
 		
 		private class ContiguousIntList extends AbstractList<Integer> {
@@ -457,7 +458,7 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 		private final List<Integer> bottomIndexes;
 		private final List<Integer> leftIndexes;
 		private final List<Integer> rightIndexes;
-		private final double avgDip;
+		private final double avgOrientedDip;
 		
 		public DownDip(List<? extends RuptureSurface> surfaces, List<? extends FaultSection> sections) {
 			super(surfaces, sections);
@@ -685,6 +686,7 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 				leftIndexes = rightIndexes;
 				rightIndexes = tmp;
 				reversed.flip(0, numSurfaces);
+				avgDip = 180d-avgDip;
 			}
 			
 			tops = new BitSet(numSurfaces);
@@ -704,15 +706,15 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 				this.leftIndexes = new IntListWrapper(leftIndexes);
 				this.rightIndexes = new IntListWrapper(rightIndexes);
 			}
-			this.avgDip = avgDip;
+			this.avgOrientedDip = avgDip;
 		}
 
 		private DownDip(List<? extends RuptureSurface> surfaces, List<? extends FaultSection> sections,
 				double[] surfaceAreas, double totArea,
-				double avgDip, BitSet reversed, BitSet tops, List<Integer> topIndexes, List<Integer> bottomIndexes,
+				double avgOrientedDip, BitSet reversed, BitSet tops, List<Integer> topIndexes, List<Integer> bottomIndexes,
 				List<Integer> leftIndexes, List<Integer> rightIndexes) {
 			super(surfaces, sections, surfaceAreas, totArea);
-			this.avgDip = avgDip;
+			this.avgOrientedDip = avgOrientedDip;
 			this.reversed = reversed;
 			this.tops = tops;
 			this.topIndexes = topIndexes;
@@ -722,8 +724,8 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 		}
 
 		@Override
-		public double getAveDip() {
-			return avgDip;
+		public double getAveOrientedDip() {
+			return avgOrientedDip;
 		}
 
 		@Override
@@ -763,10 +765,36 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 
 		@Override
 		public DownDip copyShallow() {
-			return new DownDip(surfaces, sections, surfaceAreas, totArea, avgDip, reversed, tops,
+			return new DownDip(surfaces, sections, surfaceAreas, totArea, avgOrientedDip, reversed, tops,
 					topIndexes, bottomIndexes, leftIndexes, rightIndexes);
 		}
 		
+	}
+
+	/**
+	 * Unlike {@link #getAveDip()} which returns a simple area-weighted average dip, this returns the overall average
+	 * sense of dip along the direction of the rupture following the AKi & Richards convention, and surfaces that dip
+	 * opposite each other will cancel out.
+	 * @return
+	 */
+	public abstract double getAveOrientedDip();
+
+	/**
+	 * This returns an area-weighted dip across all surfaces that compose this compound surface. This is better if you
+	 * care about a typical dip across the surface. Use {@link CompoundSurface#getAveOrientedDip()} instead if you
+	 * care about an overall directional sense of dip following the Aki & Richards convention.
+	 * @return area-weighted dip
+	 */
+	@Override
+	public double getAveDip() {
+		if (Double.isNaN(avgDip)) {
+			double avgDip = 0d;
+			for (int s=0; s<surfaceAreas.length; s++)
+				avgDip += surfaces.get(s).getAveDip()*surfaceAreas[s];
+			avgDip /= totArea;
+			this.avgDip = avgDip;
+		}
+		return avgDip;
 	}
 	
 	private static double distForReversalCheck(Location loc1, Location loc2) {
