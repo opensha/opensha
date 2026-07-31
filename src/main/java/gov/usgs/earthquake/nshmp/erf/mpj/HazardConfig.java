@@ -25,6 +25,9 @@ public final class HazardConfig {
 	private final List<Site> sites;
 	private final Double vs30;
 	private final Double sigmaTruncation;
+	private final Double maxDistance;
+	private final boolean disablePointOptimizations;
+	private final boolean useNSHMP_IMLs;
 	private final boolean supersample;
 	private final double[] periods;
 
@@ -36,6 +39,9 @@ public final class HazardConfig {
 		this.sites = List.copyOf(builder.sites);
 		this.vs30 = builder.vs30;
 		this.sigmaTruncation = builder.sigmaTruncation;
+		this.maxDistance = builder.maxDistance;
+		this.disablePointOptimizations = builder.disablePointOptimizations;
+		this.useNSHMP_IMLs = builder.useNSHMP_IMLs;
 		this.supersample = builder.supersample;
 		this.periods = builder.periods == null ? null : builder.periods.clone();
 	}
@@ -72,6 +78,18 @@ public final class HazardConfig {
 		return sigmaTruncation;
 	}
 
+	public Double maxDistance() {
+		return maxDistance;
+	}
+
+	public boolean disablePointOptimizations() {
+		return disablePointOptimizations;
+	}
+
+	public boolean useNSHMP_IMLs() {
+		return useNSHMP_IMLs;
+	}
+
 	public boolean supersample() {
 		return supersample;
 	}
@@ -89,6 +107,9 @@ public final class HazardConfig {
 		ops.addOption(null, "vs30", true, "Hazard Vs30 override.");
 		ops.addOption(null, "sigma-trunc", true,
 				"Hazard sigma truncation override; supply 'null' to disable it.");
+		ops.addOption(null, "max-distance", true, "Hazard maximum source-site distance in km.");
+		ops.addOption(null, "disable-point-optimizations", false, "Disable point source optimizations.");
+		ops.addOption(null, "nshmp-imls", false, "Use NSHMP period-dependent IMLs.");
 		ops.addOption(null, "supersample", false, "Enable hazard supersampling.");
 		ops.addOption(null, "no-supersample", false, "Disable hazard supersampling.");
 		ops.addOption(null, "periods", true, "Comma-separated hazard periods, e.g., 0,0.2,1");
@@ -102,6 +123,9 @@ public final class HazardConfig {
 		private final List<Site> sites = new ArrayList<>();
 		private Double vs30;
 		private Double sigmaTruncation;
+		private Double maxDistance;
+		private boolean disablePointOptimizations;
+		private boolean useNSHMP_IMLs;
 		private boolean supersample;
 		private double[] periods;
 		
@@ -132,6 +156,12 @@ public final class HazardConfig {
 				else
 					sigmaTruncation = Double.parseDouble(sigmaTruncStr);
 			}
+			if (cmd.hasOption("max-distance"))
+				maxDistance = Double.parseDouble(cmd.getOptionValue("max-distance"));
+			if (cmd.hasOption("disable-point-optimizations"))
+				disablePointOptimizations = true;
+			if (cmd.hasOption("nshmp-imls"))
+				useNSHMP_IMLs = true;
 			if (cmd.hasOption("supersample"))
 				supersample = true;
 			if (cmd.hasOption("no-supersample"))
@@ -192,6 +222,21 @@ public final class HazardConfig {
 
 		public Builder sigmaTruncation(Double sigmaTruncation) {
 			this.sigmaTruncation = sigmaTruncation;
+			return this;
+		}
+
+		public Builder maxDistance(Double maxDistance) {
+			this.maxDistance = maxDistance;
+			return this;
+		}
+
+		public Builder disablePointOptimizations(boolean disablePointOptimizations) {
+			this.disablePointOptimizations = disablePointOptimizations;
+			return this;
+		}
+
+		public Builder setUseNSHMP_IMLs(boolean useNSHMP_IMLs) {
+			this.useNSHMP_IMLs = useNSHMP_IMLs;
 			return this;
 		}
 

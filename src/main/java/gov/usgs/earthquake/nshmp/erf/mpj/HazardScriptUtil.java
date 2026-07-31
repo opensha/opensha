@@ -68,6 +68,12 @@ final class HazardScriptUtil {
 			appendFlag(args, "--supersample-quick");
 		if (hazard.sigmaTruncation() != null)
 			appendArg(args, "--gmm-sigma-trunc-one-sided", hazard.sigmaTruncation().floatValue());
+		if (hazard.maxDistance() != null)
+			appendArg(args, "--max-distance", hazard.maxDistance().floatValue());
+		if (hazard.disablePointOptimizations())
+			appendFlag(args, "--disable-point-optimizations");
+		if (hazard.useNSHMP_IMLs())
+			appendFlag(args, "--nshmp-imls");
 	}
 
 	static void appendArg(StringBuilder args, String name, Object value) {
