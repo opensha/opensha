@@ -115,13 +115,14 @@ public class NSHM23_BranchAveragedERF extends BaseFaultSystemSolutionERF {
 		modelInfoParam.setRows(7); // make it a little longer in the apps
 		modelInfoParam.setIncludedInMetadata(false); // don't include in the parameter value metadata strings
 		
-		modelChanged();
-		
 		initParams();
 		initTimeSpan();
+		
+		modelChanged();
 	}
 	
 	private void modelChanged() {
+		setSolution(null);
 		this.model = modelParam.getValue();
 		// set the TRTs explicitly so that getIncludedTectonicRegionTypes() knows them without updating the forecast first
 		this.erfTRTs = model.trts;
@@ -153,7 +154,7 @@ public class NSHM23_BranchAveragedERF extends BaseFaultSystemSolutionERF {
 					JOptionPane.showMessageDialog(null,
 							"Failed to download " + model.prefix +
 							". Verify internet connection and restart. Server may be down.",
-							"NSHM23_WUS_BranchAveragedERF", JOptionPane.ERROR_MESSAGE);
+							"NSHM23_BranchAveragedERF", JOptionPane.ERROR_MESSAGE);
 				} else {
 					FaultSystemSolution sol = FaultSystemSolution.load(solFile);
 					setSolution(sol);
@@ -170,7 +171,7 @@ public class NSHM23_BranchAveragedERF extends BaseFaultSystemSolutionERF {
 	 */
 	@Override
 	public void updateForecast() {
-		if (D) System.out.println("NSHM23_WUS_BranchAveragedERF.updateForecast()");
+		if (D) System.out.println("NSHM23_BranchAveragedERF.updateForecast()");
 		if (getSolution() == null) {
 			fetchSolution();
 		}
