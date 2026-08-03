@@ -32,7 +32,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2_Tim
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.MeanUCERF2.MeanUCERF2;
 import org.opensha.sha.earthquake.rupForecastImpl.YuccaMountain.YuccaMountainERF;
 import org.opensha.sha.earthquake.rupForecastImpl.YuccaMountain.YuccaMountainERF_List;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.erf.NSHM23_WUS_BranchAveragedERF;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.erf.NSHM23_BranchAveragedERF;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.erf.NSHM25_PRVI_BranchAveragedERF;
 import org.opensha.sha.earthquake.rupForecastImpl.step.STEP_AlaskanPipeForecast;
 
@@ -146,7 +146,7 @@ public enum ERF_Ref {
 	UCERF3_EPISTEMIC(UCERF3EpistemicListERF.class, UCERF3EpistemicListERF.NAME, PRODUCTION, false),
 	
 	/** National Seismic Hazard Model 2023 Western US ERF */
-	NSHM23_WUS_BRANCH_AVG(NSHM23_WUS_BranchAveragedERF.class, NSHM23_WUS_BranchAveragedERF.NAME, PRODUCTION, false),
+	NSHM23_WUS_BRANCH_AVG(NSHM23_BranchAveragedERF.class, NSHM23_BranchAveragedERF.NAME, PRODUCTION, false),
 
 	// DEVELOPMENT
 
