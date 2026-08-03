@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipException;
 
 import javax.swing.JOptionPane;
+import javax.swing.event.ChangeListener;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.TimeSpan;
@@ -397,6 +398,11 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 		System.out.println("TOTAL took "+totalWatch.elapsed(TimeUnit.SECONDS)+" s");
 		System.out.println("\t"+(float)totLoadSecs+" s loading");
 		System.out.println("\t"+(float)totCalcSecs+" s calculating");
+	}
+
+	@Override
+	public void addTectonicRegionChangeListener(ChangeListener l) {
+		// will never change
 	}
 
 }

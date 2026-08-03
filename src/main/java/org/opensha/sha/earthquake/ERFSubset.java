@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Set;
 
+import javax.swing.event.ChangeListener;
+
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.geo.Location;
@@ -146,6 +148,11 @@ public class ERFSubset implements ERF {
 	@Override
 	public Iterator<ProbEqkSource> iterator() {
 		return getSourceList().iterator();
+	}
+
+	@Override
+	public void addTectonicRegionChangeListener(ChangeListener l) {
+		baseERF.addTectonicRegionChangeListener(l);
 	}
 	
 }

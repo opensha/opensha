@@ -5,8 +5,12 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.EventObject;
+import java.util.List;
 import java.util.ListIterator;
 import java.util.Set;
+
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 import org.dom4j.Attribute;
 import org.dom4j.Element;
@@ -50,6 +54,8 @@ TimeSpanChangeListener,ParameterChangeListener, XMLSaveable {
 	protected ParameterList adjustableParams = new ParameterList();
 	// time span param
 	protected TimeSpan timeSpan;
+	
+	protected List<ChangeListener> trtChangeListeners;
 
 
 	/**
@@ -263,6 +269,22 @@ TimeSpanChangeListener,ParameterChangeListener, XMLSaveable {
 		}
 		
 		return erf;
+	}
+	
+	@Override
+	public synchronized void addTectonicRegionChangeListener(ChangeListener l) {
+		if (trtChangeListeners == null)
+			trtChangeListeners = new ArrayList<>();
+		if (!trtChangeListeners.contains(l))
+			trtChangeListeners.add(l);
+	}
+	
+	protected synchronized void fireTRTChangeEvent() {
+		if (trtChangeListeners == null)
+			return;
+		ChangeEvent e = new ChangeEvent(this);
+		for (ChangeListener l : trtChangeListeners)
+			l.stateChanged(e);
 	}
 
 }

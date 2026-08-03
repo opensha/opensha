@@ -40,6 +40,7 @@ import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.UIManager;
+import javax.swing.event.ChangeListener;
 
 import org.jfree.data.Range;
 import org.opensha.commons.data.Site;
@@ -299,6 +300,10 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	
 	private static String errorInInitializationMessage = "Problem occured " +
 				"during initialization the ERF's. All parameters are set to default.";
+	
+	private ChangeListener trtChangeListener = (e) -> {
+		imrGuiBean.setTectonicRegions(getIncludedTectonicRegionTypes());
+	};
 
 	// Construct the applet
 	public HazardCurveApplication(String appShortName) {
@@ -2711,6 +2716,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 			// this one doesn't update the forecast, and may return null/hardcoded TRTs, but prevents unnecessary
 			// forecast updating on initial ERF selection
 			BaseERF selectedERF = erfGuiBean.getSelectedERF_Instance();
+			selectedERF.addTectonicRegionChangeListener(trtChangeListener);
 			// this one updates the forecast, which can fail for ERFs that require parameterization (e.g., generic FSS
 			// ERF), but will result in correct TRTs if they require forecast updating
 //			BaseERF selectedERF = erfGuiBean.getSelectedERF();
