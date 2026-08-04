@@ -205,8 +205,7 @@ public class PortfolioEALCalculatorView extends JFrame {
 		JComboBox controlPanels = new JComboBox(array);
 		// The compute EAL button
 		computeButton = new JButton("Compute");
-		// The cancel button to stop computations
-		// It starts not visible, but becomes visible when the "Compute" button is hit
+		// Cancellation is not supported for this legacy GUI.
 		cancelButton = new JButton("Cancel");
 		cancelButton.setVisible(false);
 		// The clear I/O screen button
@@ -326,12 +325,12 @@ public class PortfolioEALCalculatorView extends JFrame {
 	
 	/**
 	 * Set the buttons up when the "Compute" button is hit.<br>
-	 * "Cancel": set visible<br>
+	 * "Cancel": keep hidden<br>
 	 * "Compute": set disabled<br>
 	 * "Clear": set disabled<br>
 	 */
 	public void setButtonsOnCompute() {
-		cancelButton.setVisible(true);
+		cancelButton.setVisible(false);
 		computeButton.setEnabled(false);
 		clearButton.setEnabled(false);
 	}
