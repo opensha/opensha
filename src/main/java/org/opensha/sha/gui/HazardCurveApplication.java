@@ -1638,7 +1638,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 				return;
 			}
 			new DisaggregationPlotViewerWindow(disaggregationPlotWebAddr
-					+ DisaggregationCalculator.DISAGGREGATION_PLOT_PDF_NAME, disaggCalc, modeString, metadata, binDataToShow);
+					+ DisaggregationCalculator.DISAGGREGATION_PLOT_PNG_NAME, disaggCalc, modeString, metadata, binDataToShow);
 		} else {
 			new DisaggregationPlotViewerWindow(PureJavaDisaggPlotter.buildChartPanel(disaggCalc.getDisaggPlotData()),
 					disaggCalc, modeString, metadata, binDataToShow);
