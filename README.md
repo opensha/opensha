@@ -14,7 +14,7 @@ This repository contains OpenSHA code and model implementations. This project is
 
 ### Requirements
 
-* Java 11 JDK or later, 64-bit: [AdoptOpenJDK](https://adoptopenjdk.net/) or [OpenJDK](https://jdk.java.net/)
+* Java 21 JDK or later, 64-bit: [AdoptOpenJDK](https://adoptopenjdk.net/) or [OpenJDK](https://jdk.java.net/)
 * [Git](https://git-scm.com/downloads)
     - Git is included in the macOS [developer tools](https://developer.apple.com/xcode/).
     - Windows users may want to consider [Git for Windows](https://git-for-windows.github.io), which includes a linux-like terminal (Git BASH) in which subsequent commands listed here will work.
