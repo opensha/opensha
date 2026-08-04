@@ -595,7 +595,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 		Dimension appDim = getDefaultInitialDimension();
 		setSize(appDim);
 		contentSplitPane.setDividerLocation(getDefaultDividerLocation(appDim));
-		center();
+		center(this);
 		setJMenuBar(menuBar);
 		getRootPane().setDefaultButton(computeButton);
 
@@ -634,7 +634,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 */
 	protected static int APP_SCREEN_BUFFER = 50;
 	
-	protected static Dimension getDefaultInitialDimension() {
+	public static Dimension getDefaultInitialDimension() {
 		// initial default; used if detection fails
 		int width = MIN_APP_WIDTH;
 		int height = MIN_APP_HEIGHT;
@@ -658,12 +658,12 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	/**
 	 * Centers the application on the user's main screen, after accounting for an OS menu bars and such
 	 */
-	protected void center() {
+	public static void center(JFrame window) {
 		try {
 			Rectangle bounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
-			int xPos = (bounds.width - getWidth()) / 2;
-			int yPos = (bounds.height - getHeight()) / 2;
-			setLocation(xPos, yPos);
+			int xPos = (bounds.width - window.getWidth()) / 2;
+			int yPos = (bounds.height - window.getHeight()) / 2;
+			window.setLocation(xPos, yPos);
 		} catch (Exception e) {}
 	}
 
