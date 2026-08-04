@@ -584,7 +584,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 
 		// frame setup
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setTitle("Hazard Curve Application (" + getAppVersion().getDisplayString() + " )");
+		setTitle("Hazard Curve Application (" + getAppVersion().getDisplayString() + ")");
 		setSize(1000, 720);
 		contentSplitPane.setDividerLocation(500);
 		Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
