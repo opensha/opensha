@@ -611,7 +611,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 
 	}
 	
-	protected static int getDefaultDividerLocation(Dimension dims) {
+	public static int getDefaultDividerLocation(Dimension dims) {
 		// this sets the divider location from the left, i.e., the width of the chart
 		
 		// set to the greater of 500 or 60%
