@@ -96,24 +96,7 @@ ParameterChangeListener, ChangeListener {
 	private HashMap<ERF_Ref, BaseERF> erfInstanceMap = new HashMap<ERF_Ref, BaseERF>();
 	
 	protected static List<ERF_Ref> asList(Set<ERF_Ref> erfRefSet) {
-		List<ERF_Ref> list = new ArrayList<ERF_Ref>();
-		for (ERF_Ref erf : erfRefSet) {
-			list.add(erf);
-		}
-		// sort by name, dev status
-//		Collections.sort(list, new ERF_RefComparator());
-		return list;
-	}
-	private static class ERF_RefComparator implements Comparator<ERF_Ref> {
-
-		@Override
-		public int compare(ERF_Ref o1, ERF_Ref o2) {
-			int priorityComp = Integer.valueOf(o1.status().priority()).compareTo(o2.status().priority());
-			if (priorityComp != 0)
-				return priorityComp;
-			return o1.toString().compareTo(o2.toString());
-		}
-		
+		return ERF_Ref.getSorted(erfRefSet);
 	}
 	
 	public ERF_GuiBean(ERF_Ref... erfRefs) throws InvocationTargetException {
