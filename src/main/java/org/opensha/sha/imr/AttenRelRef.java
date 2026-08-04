@@ -262,6 +262,32 @@ public enum AttenRelRef implements AttenRelSupplier {
 		}
 		
 	},
+
+	USGS_NSHM23_STABLE(null, "USGS NSHM23 Stable Crustal",
+			"NSHM23-Stable", PRODUCTION) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_CONUS_STABLE_CRUST_2023, getName(), getShortName(), false, null) {
+
+				@Override
+				protected ImmutableList<Field> initFieldsUsed() {
+					// dirty hack to fix the fields used in nshmp-haz, but not reported as such by this GMM
+					// TODO: remove this when NSHMP-haz fixes their bug
+//					System.out.println("Hack for NSHM23-Stable fields. Declared: "+super.initFieldsUsed());
+					return ImmutableList.of(
+							Field.MW,
+							Field.RRUP,
+							Field.VS30,
+							Field.RJB,
+							Field.ZSED);
+				}
+				
+			};
+		}
+		
+	},
 	
 	USGS_PRVI_INTERFACE(null, "USGS PRVI25 Interface",
 			"PRVI25-Interface", DEVELOPMENT) {
@@ -286,30 +312,6 @@ public enum AttenRelRef implements AttenRelSupplier {
 	},
 
 	// DEVELOPMENT
-
-	USGS_NSHM23_STABLE(null, "USGS NSHM23 Stable Crustal",
-			"NSHM23-Stable", DEVELOPMENT) {
-		
-		@Override
-		public AttenuationRelationship instance(
-				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_CONUS_STABLE_CRUST_2023, getName(), getShortName(), false, null) {
-
-				@Override
-				protected ImmutableList<Field> initFieldsUsed() {
-					// dirty hack to fix the fields used in nshmp-haz, but not reported as such by this GMM
-					return ImmutableList.of(
-							Field.MW,
-							Field.RRUP,
-							Field.VS30,
-							Field.RJB,
-							Field.ZSED);
-				}
-				
-			};
-		}
-		
-	},
 	
 	WRAPPED_ASK_2014(null, "NSHMP-Haz ASK (2014) Base",
 			"WrapedASK2014", DEVELOPMENT) {
