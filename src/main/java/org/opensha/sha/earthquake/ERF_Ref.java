@@ -56,6 +56,10 @@ public enum ERF_Ref {
 	 */
 
 	// PRODUCTION
+	
+	/*
+	 * Old USGS models
+	 */
 
 	/** Frankel/USGS 1996 Adjustable ERF */
 	FRANKEL_ADJUSTABLE_96(Frankel96_AdjustableEqkRupForecast.class,
@@ -78,13 +82,14 @@ public enum ERF_Ref {
 
 	/** WGCEP 2002 ERF Epistemic List */
 	WGCEP_02_LIST(WG02_ERF_Epistemic_List.class, WG02_ERF_Epistemic_List.NAME, PRODUCTION, false),
+	
+	/*
+	 * Generic interactive/build-on-the-fly models
+	 */
 
 	/** WGCEP 2002 Fortran Wrapped ERF */
 	//WGCEP_02_WRAPPED_LIST(WG02_FortranWrappedERF_EpistemicList.class,
 	//		WG02_FortranWrappedERF_EpistemicList.NAME, PRODUCTION, true),
-
-	/** WGCEP UCERF 1 */
-	WGCEP_UCERF_1(WGCEP_UCERF1_EqkRupForecast.class, WGCEP_UCERF1_EqkRupForecast.NAME, PRODUCTION, false),
 
 	/** PEER Area Forecast */
 	PEER_AREA(PEER_AreaForecast.class, PEER_AreaForecast.NAME, PRODUCTION, true),
@@ -116,6 +121,25 @@ public enum ERF_Ref {
 	/**  Point Source Multi Vert ERF */
 	POINT_SOURCE_MULTI_VERT_LIST(Point2MultVertSS_FaultERF_List.class,
 			Point2MultVertSS_FaultERF_List.NAME, PRODUCTION, false),
+	
+	/*
+	 * Generic FSS base ERFs
+	 */
+	
+	/** Fault System Solution ERF */
+	INVERSION_SOLUTION_ERF(FaultSystemSolutionERF.class, FaultSystemSolutionERF.NAME,
+			PRODUCTION, true),
+	
+	/*
+	 * UCERF1
+	 */
+
+	/** WGCEP UCERF 1 */
+	WGCEP_UCERF_1(WGCEP_UCERF1_EqkRupForecast.class, WGCEP_UCERF1_EqkRupForecast.NAME, PRODUCTION, false),
+	
+	/*
+	 * UCERF2
+	 */
 
 	/** WGCEP UCERF 2 ERF */
 	UCERF_2(UCERF2.class, UCERF2.NAME, PRODUCTION, false),
@@ -129,10 +153,10 @@ public enum ERF_Ref {
 
 	/** WGCEP Mean2 */
 	MEAN_UCERF_2_Mod(ModMeanUCERF2_FM2pt1.class, ModMeanUCERF2_FM2pt1.NAME, PRODUCTION, false),
-
-	/** Fault System Solution ERF */
-	INVERSION_SOLUTION_ERF(FaultSystemSolutionERF.class, FaultSystemSolutionERF.NAME,
-			PRODUCTION, true),
+	
+	/*
+	 * UCERF3
+	 */
 
 	/** WGCEP Mean UCERF 3 */
 	MEAN_UCERF3(MeanUCERF3.class, MeanUCERF3.NAME, PRODUCTION, false),
@@ -142,18 +166,26 @@ public enum ERF_Ref {
 
 	/** WGCEP UCERF3List */
 	UCERF3_EPISTEMIC(UCERF3EpistemicListERF.class, UCERF3EpistemicListERF.NAME, PRODUCTION, false),
-
-	/** Yucca Mountain ERF */
-	YUCCA_MOUNTAIN(YuccaMountainERF.class, YuccaMountainERF.NAME, PRODUCTION, false),
-
-	/** Yucca Mountain ERF List */
-	YUCCA_MOUNTAIN_LIST(YuccaMountainERF_List.class, YuccaMountainERF_List.NAME, PRODUCTION, false),
+	
+	/*
+	 * Other recent NSHMs
+	 */
 
 	/** National Seismic Hazard Model 2023 Western US ERF */
 	NSHM23_WUS_BRANCH_AVG(NSHM23_BranchAveragedERF.class, NSHM23_BranchAveragedERF.NAME, PRODUCTION, false),
 	
 	/** National Seismic Hazard Model 2025 Puerto Rico and Virgin Islands ERF */
 	NHSM25_PRVI_BRANCH_AVG(NSHM25_PRVI_BranchAveragedERF.class, NSHM25_PRVI_BranchAveragedERF.NAME, PRODUCTION, false),
+	
+	/*
+	 * Other
+	 */
+
+	/** Yucca Mountain ERF */
+	YUCCA_MOUNTAIN(YuccaMountainERF.class, YuccaMountainERF.NAME, PRODUCTION, false),
+
+	/** Yucca Mountain ERF List */
+	YUCCA_MOUNTAIN_LIST(YuccaMountainERF_List.class, YuccaMountainERF_List.NAME, PRODUCTION, false),
 
 	// DEVELOPMENT
 

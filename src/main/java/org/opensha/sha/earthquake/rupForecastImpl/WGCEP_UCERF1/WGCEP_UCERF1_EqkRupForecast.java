@@ -58,7 +58,7 @@ public class WGCEP_UCERF1_EqkRupForecast extends AbstractERF{
   private boolean D = false;
 
   // name of this ERF
-  public final static String NAME = new String("WGCEP (2005) UCERF 1.0");
+  public final static String NAME = new String("WGCEP (2005) UCERF1");
 
 //  ArrayList allSourceNames;
 
