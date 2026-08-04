@@ -118,6 +118,7 @@ dependencies {
 	api 'org.apache.poi:poi:3.16'
 	api 'net.mahdilamb:colormap:0.9.511'
     implementation 'io.github.abhatthal:getfile:26.08.0'
+    implementation 'org.opensha:mpj-task-calculator:1.1'
 
 	/* apache commons */
 	api 'org.apache.commons:commons-lang3:3.11'
@@ -137,7 +138,6 @@ dependencies {
 	api files('lib/ncCore-4.0.jar')
 	implementation files('lib/mpj-0.38.jar') // MPJ API
 	api files('lib/f2jutil.jar') // used by NNLS code
-	api files('lib/mpj-task-calculator-1.1.jar') // MPJTaskCalculator
 	api files('lib/parallelcolt-0.9.4.jar')
 	api files('lib/csparsej.jar')
 	api files('lib/ojdbc5.jar')
