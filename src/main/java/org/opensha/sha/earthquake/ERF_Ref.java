@@ -387,7 +387,7 @@ public enum ERF_Ref {
 				System.out.println(ref.status);
 				prevStatus = ref.status;
 			}
-			System.out.println("\t"+ref.name+"\t\t\t\t("+(ref.name())+")");
+			System.out.println("\t"+ref.name);
 		}
 	}
 
