@@ -62,7 +62,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 	
 	 private static final boolean D = false;
 	
-	public static final String NAME = "Mean UCERF3";
+	public static final String NAME = "WGCEP (2014) UCERF3 - Mean/Branch Averaged";
 	
 	static final String RAKE_BASIS_FILE_NAME = "rake_basis.zip";
 	static final String TRUE_MEAN_FILE_NAME = "mean_ucerf3_sol.zip";
