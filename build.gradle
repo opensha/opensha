@@ -118,7 +118,7 @@ dependencies {
 	api 'org.apache.poi:poi:3.16'
 	api 'net.mahdilamb:colormap:0.9.511'
     implementation 'io.github.abhatthal:getfile:26.08.0'
-    implementation 'org.opensha:mpj-task-calculator:1.1'
+    implementation 'org.opensha:mpj-task-calculator:1.2'
 
 	/* apache commons */
 	api 'org.apache.commons:commons-lang3:3.11'
