@@ -659,10 +659,12 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 * Centers the application on the user's main screen, after accounting for an OS menu bars and such
 	 */
 	protected void center() {
-		Rectangle bounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
-		int xPos = (bounds.width - getWidth()) / 2;
-		int yPos = (bounds.height - getHeight()) / 2;
-		setLocation(xPos, yPos);
+		try {
+			Rectangle bounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+			int xPos = (bounds.width - getWidth()) / 2;
+			int yPos = (bounds.height - getHeight()) / 2;
+			setLocation(xPos, yPos);
+		} catch (Exception e) {}
 	}
 
 	/* implementation */ 
