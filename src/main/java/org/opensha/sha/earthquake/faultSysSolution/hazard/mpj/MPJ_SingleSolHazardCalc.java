@@ -39,6 +39,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings.CurveXValManager;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
@@ -84,6 +85,8 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 	private boolean aseisReducesArea = MPJ_LogicTreeHazardCalc.ASEIS_REDUCES_AREA_DEFAULT;
 	
 	private SourceFilterManager sourceFilter;
+	
+	private CurveXValManager xValManager;
 	
 	private SourceFilterManager siteSkipSourceFilter;
 	
@@ -160,6 +163,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 			gridSpacing = Double.parseDouble(cmd.getOptionValue("grid-spacing"));
 		
 		sourceFilter = FaultSysHazardCalcSettings.getSourceFilters(cmd);
+		xValManager = FaultSysHazardCalcSettings.getXValManager(cmd);
 		siteSkipSourceFilter = FaultSysHazardCalcSettings.getSiteSkipSourceFilters(sourceFilter, cmd);
 		
 		gmmRefs = FaultSysHazardCalcSettings.getGMMs(cmd);
@@ -572,10 +576,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 					externalGriddedCurveCalc = new SolHazardMapCalc(extSol, gmmRefs, gridRegion,
 							IncludeBackgroundOption.ONLY, applyAftershockFilter, periods);
 					
-					externalGriddedCurveCalc.setSourceFilter(sourceFilter);
-					externalGriddedCurveCalc.setPointSourceOptimizations(pointSourceOptimizations);
-					externalGriddedCurveCalc.setSiteSkipSourceFilter(siteSkipSourceFilter);
-					externalGriddedCurveCalc.setGriddedSeismicitySettings(griddedSettings);
+					configureHazardCalc(externalGriddedCurveCalc);
 					
 					externalGriddedCurveCalc.calcHazardCurves(getNumThreads());
 				}
@@ -645,13 +646,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 				combineWithCurves = combineWithOnlyCurves;
 				calc = new SolHazardMapCalc(singleSol, gmpeSuppliers, gridRegion, IncludeBackgroundOption.EXCLUDE, applyAftershockFilter, periods);
 			}
-			calc.setSourceFilter(sourceFilter);
-			calc.setPointSourceOptimizations(pointSourceOptimizations);
-			calc.setSiteSkipSourceFilter(siteSkipSourceFilter);
-			calc.setAseisReducesArea(aseisReducesArea);
-			calc.setNoMFDs(noMFDs);
-			calc.setUseProxyRups(!noProxyRups);
-			calc.setGriddedSeismicitySettings(griddedSettings);
+			configureHazardCalc(calc);
 			
 			if (erf != null)
 				calc.setERF(erf);
@@ -664,6 +659,17 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 		calc.calcHazardCurves(getNumThreads(), calcIndexes, combineWithCurves);
 		
 		this.erf = calc.getERF();
+	}
+	
+	private void configureHazardCalc(SolHazardMapCalc calc) {
+		calc.setSourceFilter(sourceFilter);
+		calc.setXValManager(xValManager);
+		calc.setPointSourceOptimizations(pointSourceOptimizations);
+		calc.setSiteSkipSourceFilter(siteSkipSourceFilter);
+		calc.setAseisReducesArea(aseisReducesArea);
+		calc.setNoMFDs(noMFDs);
+		calc.setUseProxyRups(!noProxyRups);
+		calc.setGriddedSeismicitySettings(griddedSettings);
 	}
 	
 	public static Options createOptions() {

@@ -43,6 +43,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModu
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings.CurveXValManager;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.imr.AttenRelRef;
@@ -77,12 +78,13 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 	
 	private SourceFilterManager sourceFilters;
 	
+	private CurveXValManager xVals;
+	
 	private SolutionLogicTree solTree;
 	private LogicTree<?> tree;
 	private LogicTree<?> analysisTree;
 	
 	private AbstractSitewiseThreadedLogicTreeCalc calc;
-	private DiscretizedFunc[] xVals;
 	
 	private File outputDir;
 	
@@ -156,6 +158,8 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		
 		sourceFilters = FaultSysHazardCalcSettings.getSourceFilters(cmd);
 		
+		xVals = FaultSysHazardCalcSettings.getXValManager(cmd);
+		
 		gmms = FaultSysHazardCalcSettings.getGMMs(cmd);
 		if (rank == 0) {
 			debug("GMMs:");
@@ -215,7 +219,8 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		int threads = getNumThreads();
 		exec = ExecutorUtils.newBlockingThreadPool(threads);
 		
-		calc = new AbstractSitewiseThreadedLogicTreeCalc(exec, sites.size(), solTree, gmms, periods, gridSeisOp, griddedSettings, sourceFilters) {
+		calc = new AbstractSitewiseThreadedLogicTreeCalc(exec, sites.size(), solTree, gmms, periods, gridSeisOp,
+				griddedSettings, sourceFilters, xVals) {
 			
 			@Override
 			public Site siteForIndex(int siteIndex, Map<TectonicRegionType, ScalarIMR> gmms) {
@@ -227,7 +232,6 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 				MPJ_SiteLogicTreeHazardCurveCalc.this.debug(message);
 			}
 		};
-		xVals = calc.getXVals();
 		
 		calc.setDoGmmInputCache(cmd.hasOption("cache-gmm-inputs"));
 	}
@@ -379,7 +383,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 				sitesPeriodCSVLines.add(sitePeriodCSVLines);
 				synchronized (csvs) {
 					for (int p=0; p<periods.length; p++) {
-						List<String> line = new ArrayList<>(commonPrefix.size()+xVals[p].size());
+						List<String> line = new ArrayList<>(commonPrefix.size()+xVals.initLinearCurve(periods[p]).size());
 						line.addAll(commonPrefix);
 						for (Point2D pt : curves[siteIndex][p])
 							line.add(pt.getY()+"");
@@ -457,7 +461,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 				header.add("Branch Weight");
 				for (int l=0; l<branch.size(); l++)
 					header.add(branch.getLevel(l).getShortName());
-				for (Point2D pt : xVals[p])
+				for (Point2D pt : xVals.initLinearCurve(periods[p]))
 					header.add((float)pt.getX()+"");
 				csv.addLine(header);
 				csvs.add(csv);

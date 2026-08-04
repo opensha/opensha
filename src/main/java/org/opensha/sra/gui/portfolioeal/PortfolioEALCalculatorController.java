@@ -213,12 +213,11 @@ public class PortfolioEALCalculatorController implements ActionListener, ItemLis
 	}
 	
 	/**
-	 * This is called when the "Cancel" button is pressed.  It resets the buttons to
-	 * their original state, and stops the current calculation.
+	 * This is called if the hidden "Cancel" button is pressed. It resets the buttons
+	 * to their original state; cancellation is not supported for this legacy GUI.
 	 */
 	private void cancelButtonPressed() {
 		view.setButtonsOnCancel();
-		calcThread.stop();
 	}
 	
 	/**
@@ -250,7 +249,7 @@ public class PortfolioEALCalculatorController implements ActionListener, ItemLis
 	 *	<b>"Compute"</b> starts up a new thread that calls computeEAL(), which computes the EAL for a portfolio.><br>
 	 *	<b>"Clear Results"</b> goes to clearResults(), which clears the I/O text area.<br>
 	 *  <b>"Open Portfolio"</b> opens up a new dialog that allows you to open a portfolio file.<br>
-	 *  <b>"Cancel"</b> stops the thread running the calculations and resets the buttons.
+	 *  <b>"Cancel"</b> resets the buttons; cancellation is not supported.
 	 *  <b>JComboBox: "comboBoxSelection"</b> Calls a method in view based on the selection
 	 *  
 	 *  
@@ -328,6 +327,5 @@ public class PortfolioEALCalculatorController implements ActionListener, ItemLis
 	public void calculationException( String errorMessage ) {
 		JOptionPane.showMessageDialog(view, errorMessage, "Error", JOptionPane.ERROR_MESSAGE );
 		view.setButtonsOnCancel();
-		calcThread.stop();
 	}
 }

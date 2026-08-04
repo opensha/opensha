@@ -53,7 +53,7 @@ public class PointSourceOptimizedSpectraCalc extends AbstractPointSourceOptimize
 			Location origSiteLoc = gmm.getSite().getLocation();
 			double dist = pointSurf.getQuickDistance(origSiteLoc);
 			
-			QuickInterpolator qi = interp.getQuickInterpolator(dist, true); // true here means interpolate in log-distance domain
+			QuickInterpolator qi = interp.getQuickInterpolator(dist, INTERP_LOG_DIST, INTERP_LOG_PROB);
 			
 			UniquePointRupture uniqueRup = new UniquePointRupture(eqkRupture);
 			UniqueIMR uniqueIMR = getUniqueIMR(gmm);
@@ -134,7 +134,7 @@ public class PointSourceOptimizedSpectraCalc extends AbstractPointSourceOptimize
 			int numPeriods = periods.size();
 			Preconditions.checkState(periods.size() == exceedProbs.length);
 			
-			QuickInterpolator qi = interp.getQuickInterpolator(dist, true); // true here means interpolate in log-distance domain
+			QuickInterpolator qi = interp.getQuickInterpolator(dist, INTERP_LOG_DIST, INTERP_LOG_PROB);
 			
 			UniquePointRupture uniqueRup = new UniquePointRupture(eqkRupture);
 			UniqueIMR uniqueIMR = getUniqueIMR(gmm);
