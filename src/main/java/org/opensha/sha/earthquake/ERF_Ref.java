@@ -7,6 +7,7 @@ import static org.opensha.commons.util.DevStatus.PRODUCTION;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -139,23 +140,22 @@ public enum ERF_Ref {
 	/** WGCEP Single Branch UCERF 3 */
 	UCERF3_COMPOUND(UCERF3_CompoundSol_ERF.class, UCERF3_CompoundSol_ERF.NAME, PRODUCTION, false),
 
+	/** WGCEP UCERF3List */
+	UCERF3_EPISTEMIC(UCERF3EpistemicListERF.class, UCERF3EpistemicListERF.NAME, PRODUCTION, false),
+
 	/** Yucca Mountain ERF */
 	YUCCA_MOUNTAIN(YuccaMountainERF.class, YuccaMountainERF.NAME, PRODUCTION, false),
 
 	/** Yucca Mountain ERF List */
 	YUCCA_MOUNTAIN_LIST(YuccaMountainERF_List.class, YuccaMountainERF_List.NAME, PRODUCTION, false),
 
-	/** WGCEP UCERF3List */
-	UCERF3_EPISTEMIC(UCERF3EpistemicListERF.class, UCERF3EpistemicListERF.NAME, PRODUCTION, false),
-
 	/** National Seismic Hazard Model 2023 Western US ERF */
 	NSHM23_WUS_BRANCH_AVG(NSHM23_BranchAveragedERF.class, NSHM23_BranchAveragedERF.NAME, PRODUCTION, false),
+	
+	/** National Seismic Hazard Model 2025 Puerto Rico and Virgin Islands ERF */
+	NHSM25_PRVI_BRANCH_AVG(NSHM25_PRVI_BranchAveragedERF.class, NSHM25_PRVI_BranchAveragedERF.NAME, PRODUCTION, false),
 
 	// DEVELOPMENT
-
-	/** National Seismic Hazard Model 2025 Puerto Rico and Virgin Islands ERF */
-	NHSM25_PRVI_BRANCH_AVG(NSHM25_PRVI_BranchAveragedERF.class, NSHM25_PRVI_BranchAveragedERF.NAME, DEVELOPMENT, false),
-
 
 	/** STEP Alaska Forecast */
 	STEP_ALASKA(STEP_AlaskanPipeForecast.class, STEP_AlaskanPipeForecast.NAME, DEVELOPMENT, false),
@@ -168,7 +168,12 @@ public enum ERF_Ref {
 	//	TEST_ETAS1_ERF(TestModel1_ERF.class, TestModel1_ERF.NAME, EXPERIMENTAL, false),
 
 	;
-
+	
+	/**
+	 * The ERF that should be selected by default in the applications. This one loads/calculates instantly so it's a
+	 * good default.
+	 */
+	public static ERF_Ref APP_DEFAULT_ERF = FRANKEL_ADJUSTABLE_96;
 
 	private Class<? extends BaseERF> clazz;
 	private String name;
@@ -352,18 +357,38 @@ public enum ERF_Ref {
 			DevStatus... stati) {
 		return get(includeListERFs, true, stati);
 	}
-
-	/**
-	 * This returns a sorted view of the given ERF Refs, sorted first by DevStatus and then by name
-	 */
-	public static List<ERF_Ref> getSorted(Set<ERF_Ref> erfs) {
-		List<ERF_Ref> refs = new ArrayList<>(erfs);
-		Collections.sort(refs, (R1,R2) -> {
-			if (R1.status != R2.status)
-				return Integer.compare(R1.status.priority(), R2.status.priority());
-			return R1.name.compareTo(R2.name);
-		});
-		return refs;
+	
+	public static Comparator<ERF_Ref> PRIORITY_NAME_COMPARATOR = (R1,R2) -> {
+		if (R1.status != R2.status)
+			return Integer.compare(R1.status.priority(), R2.status.priority());
+		return R1.name.compareTo(R2.name);
+	};
+	
+	public static void main(String[] args) {
+		// in list order
+		System.out.println("In class list order:");
+		DevStatus prevStatus = null;
+		List<ERF_Ref> list = new ArrayList<>();
+		for (ERF_Ref ref : values()) {
+			if (ref.status != prevStatus) {
+				System.out.println(ref.status);
+				prevStatus = ref.status;
+			}
+			System.out.println("\t"+ref.name+"\t\t\t\t("+(ref.name())+")");
+			list.add(ref);
+		}
+		System.out.println();
+		
+		list.sort(PRIORITY_NAME_COMPARATOR);
+		System.out.println("In sorted order:");
+		prevStatus = null;
+		for (ERF_Ref ref : list) {
+			if (ref.status != prevStatus) {
+				System.out.println(ref.status);
+				prevStatus = ref.status;
+			}
+			System.out.println("\t"+ref.name+"\t\t\t\t("+(ref.name())+")");
+		}
 	}
 
 }

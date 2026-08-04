@@ -6,7 +6,8 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -31,6 +32,7 @@ import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeFailEvent;
 import org.opensha.commons.param.event.ParameterChangeFailListener;
 import org.opensha.commons.param.event.ParameterChangeListener;
+import org.opensha.commons.param.impl.EnumParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.ApplicationVersion;
 import org.opensha.commons.util.bugReports.BugReport;
@@ -59,9 +61,7 @@ public class ERF_GuiBean extends JPanel implements ParameterChangeFailListener,
 ParameterChangeListener, ChangeListener {
 
 	private final static String C = "ERF_GuiBean";
-
-	//this vector saves the names of all the supported Eqk Rup Forecasts
-	protected ArrayList<String> erfNamesVector = new ArrayList<String>();
+	
 	//this vector holds the references to all included ERFs
 	private List<ERF_Ref> erfRefs;
 
@@ -69,7 +69,7 @@ ParameterChangeListener, ChangeListener {
 	public final static String ERF_PARAM_NAME = "Eqk Rup Forecast";
 	// these are to store the list of independ params for chosen ERF
 	public final static String ERF_EDITOR_TITLE =  "Set Forecast";
-	StringParameter erfSelectionParam;
+	EnumParameter<ERF_Ref> erfSelectionParam;
 	// boolean for telling whether to show a progress bar
 	boolean showProgressBar = true;
 	
@@ -96,7 +96,9 @@ ParameterChangeListener, ChangeListener {
 	private HashMap<ERF_Ref, BaseERF> erfInstanceMap = new HashMap<ERF_Ref, BaseERF>();
 	
 	protected static List<ERF_Ref> asList(Set<ERF_Ref> erfRefSet) {
-		return ERF_Ref.getSorted(erfRefSet);
+		List<ERF_Ref> refs = new ArrayList<>(erfRefSet);
+		Collections.sort(refs);
+		return refs;
 	}
 	
 	public ERF_GuiBean(ERF_Ref... erfRefs) throws InvocationTargetException {
@@ -135,34 +137,30 @@ ParameterChangeListener, ChangeListener {
 		}
 		return erfInstanceMap.get(erfRef);
 	}
+	
+	private ERF_Ref getDefaultERF_Ref() {
+		Preconditions.checkNotNull(erfRefs, "ERF list cannot be null!");
+		Preconditions.checkArgument(!erfRefs.isEmpty(), "ERF list cannot be empty!");
+		return erfRefs.contains(ERF_Ref.APP_DEFAULT_ERF) ? ERF_Ref.APP_DEFAULT_ERF : erfRefs.get(0);
+	}
 
 	/**
 	 * init erf_IndParamList. List of all available forecasts at this time
 	 */
 	protected void init_erf_IndParamListAndEditor() throws InvocationTargetException{
-		Preconditions.checkNotNull(erfRefs, "ERF list cannot be null!");
-		Preconditions.checkArgument(!erfRefs.isEmpty(), "ERF list cannot be empty!");
-
 		this.parameterList = new ParameterList();
 
-		for (ERF_Ref erfRef : erfRefs) {
-			String name = erfRef.toString();
-			Preconditions.checkState(!erfNamesVector.contains(name),
-					"ERF list cannot contain 2 ERFs with the same name! Duplicate: "+name);
-			erfNamesVector.add(name);
-		}
-
-		// first ERF class that is to be shown as the default ERF in the ERF Pick List
-		ERF_Ref erf = erfRefs.get(0);
+		// ERF class that is to be shown as the default ERF in the ERF Pick List
+		ERF_Ref erf = getDefaultERF_Ref();
 		// make the ERF objects to get their adjustable parameters
 		eqkRupForecast = getERFInstance(erf);
 
-
-
 		// make the forecast selection parameter
-		erfSelectionParam = new StringParameter(ERF_PARAM_NAME,
-				erfNamesVector, (String)erfNamesVector.get(0));
+		erfSelectionParam = new EnumParameter<>(ERF_PARAM_NAME,
+				EnumSet.copyOf(erfRefs), erf, null);
 		erfSelectionParam.addParameterChangeListener(this);
+		System.out.println("Setting comparator on erf selector");
+		erfSelectionParam.setComparator(ERF_Ref.PRIORITY_NAME_COMPARATOR);
 		parameterList.addParameter(erfSelectionParam);
 	}
 	
@@ -320,7 +318,6 @@ ParameterChangeListener, ChangeListener {
 		return eqkRupForecast;
 	}
 
-
 	/**
 	 * get the selected ERF instance.
 	 * It returns the ERF after updating its forecast
@@ -354,11 +351,11 @@ ParameterChangeListener, ChangeListener {
 	
 			try {
 				isNewERF_Instance = false;
-				ERF_Ref fallbackRef = erfRefs.get(0);
+				ERF_Ref fallbackRef = getDefaultERF_Ref();
 				if (fallbackERF != null && fallbackERF.getName().equals(fallbackRef.toString()))
 					erfInstanceMap.put(fallbackRef, fallbackERF);
 				System.gc();
-				erfSelectionParam.setValue(fallbackRef.toString());
+				erfSelectionParam.setValue(fallbackRef);
 				erfSelectionParam.getEditor().refreshParamEditor();
 			} catch (Exception e1) {}
 			throw e;
@@ -441,7 +438,7 @@ ParameterChangeListener, ChangeListener {
 
 	}
 	
-	private void showERFInstantiationError(Throwable t, String erfName) {
+	private void showERFInstantiationError(Throwable t, ERF_Ref erf) {
 		t.printStackTrace();
 		ApplicationVersion version;
 		try {
@@ -450,10 +447,10 @@ ParameterChangeListener, ChangeListener {
 			version = null;
 		}
 		BugReport bug = new BugReport(t, "Problem occured in ERF_GuiBean" +
-				" when "+erfName+" is selected.", erfName, version, this);
-		String title = "Error instantiating "+erfName;
+				" when "+erf+" is selected.", erf.toString(), version, this);
+		String title = "Error instantiating "+erf;
 		
-		String message = "An error occured when instantiating "+erfName+
+		String message = "An error occured when instantiating "+erf+
 					"\n\nIt will be removed from the list. If you wish, you can submit" +
 					" a bug report by clicking below. To receive updates on the bug report, it" +
 					" is important that you leave your e-mail address in the 'reporter' field.";
@@ -472,29 +469,21 @@ ParameterChangeListener, ChangeListener {
 	 */
 	public void parameterChange(ParameterChangeEvent event) {
 
-
-		String name1 = event.getParameterName();
-
 		// if ERF selected by the user  changes
-		if (name1.equals(ERF_PARAM_NAME) && !isNewERF_Instance) {
-			String value = event.getNewValue().toString();
-			int size = this.erfNamesVector.size();
+		if (event.getParameter() == erfSelectionParam && !isNewERF_Instance) {
 			try {
-				for (int i=0;i<size;++i) {
-					if(value.equalsIgnoreCase((String)erfNamesVector.get(i))) {
-						try {
-							eqkRupForecast = getERFInstance(erfRefs.get(i));
-						} catch (Exception e) {
-							showERFInstantiationError(e, value);
-							ArrayList<ERF_Ref> removed = new ArrayList<ERF_Ref>();
-							removed.add(erfRefs.get(i));
-							removeERFs_FromList(removed);
-							erfSelectionParam.setValue((String)event.getOldValue());
-							erfSelectionParam.getEditor().refreshParamEditor();
-							return;
-						}
-						break;
-					}
+				ERF_Ref ref = (ERF_Ref)event.getNewValue();
+				try {
+					eqkRupForecast = getERFInstance(ref);
+				} catch (Exception e) {
+					showERFInstantiationError(e, ref);
+					int index = erfRefs.indexOf(ref);
+					ArrayList<ERF_Ref> removed = new ArrayList<ERF_Ref>();
+					removed.add(erfRefs.get(index));
+					removeERFs_FromList(removed);
+					erfSelectionParam.setValue((ERF_Ref)event.getOldValue());
+					erfSelectionParam.getEditor().refreshParamEditor();
+					return;
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -534,12 +523,10 @@ ParameterChangeListener, ChangeListener {
 	 */
 	public void addERFs_ToList(ArrayList<ERF_Ref> newRefs) throws InvocationTargetException{
 
-		int size = newRefs.size();
 		for (ERF_Ref erfRef : newRefs)
 			if(!erfRefs.contains(erfRef))
 				newRefs.add(erfRef);
 		// create the instance of ERFs
-		erfNamesVector.clear();
 		init_erf_IndParamListAndEditor();
 		setParamsInForecast();
 	}
@@ -570,7 +557,6 @@ ParameterChangeListener, ChangeListener {
 			if (erfRefs.contains(erf))
 				erfRefs.remove(erf);
 		// create the instance of ERFs
-		erfNamesVector.clear();
 		init_erf_IndParamListAndEditor();
 		setParamsInForecast();
 	}
@@ -599,11 +585,11 @@ ParameterChangeListener, ChangeListener {
 		this.eqkRupForecast = eqkRupForecast;
 		isNewERF_Instance = true;
 		String erfName = eqkRupForecast.getName();
-		int size = erfNamesVector.size();
-		for(int i=0;i<size;++i){
-			if(erfName.equalsIgnoreCase( (String) erfNamesVector.get(i))) {
+//		int size = erf.size();
+		for (ERF_Ref ref : erfRefs) {
+			if(erfName.equalsIgnoreCase(ref.toString())) {
 				try{
-					listEditor.getParameterEditor(ERF_PARAM_NAME).setValue(erfName);
+					erfSelectionParam.setValue(ref);
 					setParamsInForecast();
 				}catch(Exception e){
 					e.printStackTrace();
