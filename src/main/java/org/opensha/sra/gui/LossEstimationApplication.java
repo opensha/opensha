@@ -519,7 +519,7 @@ implements Runnable, ParameterChangeListener, CurveDisplayAppAPI, IMR_GuiBeanAPI
 		buttonPanel.add(usgsImgLabel, 6);
 		buttonPanel.add(openshaImgLabel, 7);
 		buttonPanel.add(riskAgoraImgLabel,8);
-		//making the cancel button not visible until user has started to do the calculation
+		// Cancellation is not supported for this legacy GUI.
 		cancelCalcButton.setVisible(false);
 
 		topSplitPane.add(chartSplit, JSplitPane.TOP);
@@ -1372,18 +1372,11 @@ implements Runnable, ParameterChangeListener, CurveDisplayAppAPI, IMR_GuiBeanAPI
 
 
 	/**
-	 * This function stops the hazard curve calculation if started, so that user does not
-	 * have to wait for the calculation to finish.
-	 * Note: This function has one advantage , it starts over the calculation again, but
-	 * if user has not changed any other parameter for the forecast, that won't
-	 * be updated, so saves time and memory for not updating the forecast everytime,
-	 * cancel is pressed.
+	 * Cancellation is not supported for this legacy GUI, but leave this handler to
+	 * clean up the old cancel UI if it is invoked.
 	 * @param e
 	 */
 	void cancelCalcButton_actionPerformed(ActionEvent e) {
-		//stopping the Hazard Curve calculation thread
-		calcThread.stop();
-		calcThread = null;
 		//close the progress bar for the ERF GuiBean that displays "Updating Forecast".
 		erfGuiBean.closeProgressBar();
 		//stoping the timer thread that updates the progress bar
