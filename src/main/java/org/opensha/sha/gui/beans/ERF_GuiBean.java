@@ -159,7 +159,6 @@ ParameterChangeListener, ChangeListener {
 		erfSelectionParam = new EnumParameter<>(ERF_PARAM_NAME,
 				EnumSet.copyOf(erfRefs), erf, null);
 		erfSelectionParam.addParameterChangeListener(this);
-		System.out.println("Setting comparator on erf selector");
 		erfSelectionParam.setComparator(ERF_Ref.PRIORITY_NAME_COMPARATOR);
 		parameterList.addParameter(erfSelectionParam);
 	}
