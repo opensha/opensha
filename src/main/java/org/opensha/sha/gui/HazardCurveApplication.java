@@ -591,7 +591,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 
 		// frame setup
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setTitle("Hazard Curve Application (" + getAppVersion().getDisplayString() + " )");
+		setTitle("Hazard Curve Application (" + getAppVersion().getDisplayString() + ")");
 		Dimension appDim = getDefaultInitialDimension();
 		setSize(appDim);
 		contentSplitPane.setDividerLocation(getDefaultDividerLocation(appDim));
@@ -1676,10 +1676,12 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 			modeString = "Disaggregation Results for Prob = " + probVal
 			+ " (for IML = " + (float) imlVal + ")";
 		modeString += "\n" + disaggregationString;
+		DisaggregationPlotViewerWindow disagg;
 		if (disaggregationControlPanel.isUseGMT()) {
 			// String pdfImageLink;
 			try {
 				disaggregationPlotWebAddr = getDisaggregationPlot();
+//				System.out.println("Link: "+disaggregationPlotWebAddr);
 				/*
 				 * pdfImageLink = "<br>Click  " + "<a href=\"" +
 				 * disaggregationPlotWebAddr +
@@ -1699,12 +1701,15 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 						"Server Problem", JOptionPane.INFORMATION_MESSAGE);
 				return;
 			}
-			new DisaggregationPlotViewerWindow(disaggregationPlotWebAddr
-					+ DisaggregationCalculator.DISAGGREGATION_PLOT_PDF_NAME, disaggCalc, modeString, metadata, binDataToShow);
+			disagg = new DisaggregationPlotViewerWindow(disaggregationPlotWebAddr
+					+ DisaggregationCalculator.DISAGGREGATION_PLOT_PNG_NAME, disaggCalc, modeString, metadata, binDataToShow);
 		} else {
-			new DisaggregationPlotViewerWindow(PureJavaDisaggPlotter.buildChartPanel(disaggCalc.getDisaggPlotData()),
+			disagg = new DisaggregationPlotViewerWindow(PureJavaDisaggPlotter.buildChartPanel(disaggCalc.getDisaggPlotData()),
 					disaggCalc, modeString, metadata, binDataToShow);
 		}
+		// uncomment to center the window, default goes top left of screen
+		// not sure which is more useful for most people
+//		disagg.setLocationRelativeTo(this);
 	}
 
 	/**

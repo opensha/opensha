@@ -143,7 +143,6 @@ dependencies {
 	api files('lib/ojdbc5.jar')
 	api files('lib/sdoapi.jar')
 	api files('lib/EventWebService.jar')
-	api files('lib/jpedal.jar')
 
 	testImplementation 'junit:junit:4.12'
 	testImplementation 'org.mockito:mockito-core:3.5.13'
