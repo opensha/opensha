@@ -529,6 +529,9 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		
 		// rebuild the parameter list
 		createParamList();
+		
+		if (sol != null)
+			fireTRTChangeEvent();
 	}
 	
 	public FaultSystemSolution getSolution() {

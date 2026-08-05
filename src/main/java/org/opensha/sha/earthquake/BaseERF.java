@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.ListIterator;
 import java.util.Set;
 
+import javax.swing.event.ChangeListener;
+
 import org.opensha.commons.data.Named;
 import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.geo.Region;
@@ -84,4 +86,11 @@ public interface BaseERF extends Named, Serializable, Comparable<BaseERF> {
 	 * @return : Set<TectonicRegionType>
 	 */
 	public Set<TectonicRegionType> getIncludedTectonicRegionTypes();
+	
+	/**
+	 * Add a listener for changes to the set of {@link TectonicRegionType}'s returned by
+	 * {@link #getIncludedTectonicRegionTypes()}.
+	 * @param l
+	 */
+	public void addTectonicRegionChangeListener(ChangeListener l);
 }
