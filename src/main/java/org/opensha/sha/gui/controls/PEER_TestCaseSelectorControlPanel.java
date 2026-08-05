@@ -26,6 +26,7 @@ import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
 import org.opensha.sha.calc.sourceFilters.SourceFilters;
 import org.opensha.sha.calc.sourceFilters.params.MaxDistanceParam;
 import org.opensha.sha.calc.sourceFilters.params.SourceFiltersParam;
+import org.opensha.sha.earthquake.ERF_Ref;
 import org.opensha.sha.earthquake.rupForecastImpl.FloatingPoissonFaultERF;
 import org.opensha.sha.earthquake.rupForecastImpl.PEER_TestCases.PEER_AreaForecast;
 import org.opensha.sha.earthquake.rupForecastImpl.PEER_TestCases.PEER_LogicTreeERF_List;
@@ -417,7 +418,7 @@ public class PEER_TestCaseSelectorControlPanel extends ControlPanel {
 		if(!selectedTest.equalsIgnoreCase(TEST_CASE_TEN) && !selectedTest.equalsIgnoreCase(TEST_CASE_ELEVEN)) {
 
 			// set the ERF
-			erfGuiBean.getERFParameterList().getParameter(ERF_GuiBean.ERF_PARAM_NAME).setValue(FloatingPoissonFaultERF.NAME);
+			erfGuiBean.getERFParameterList().getParameter(ERF_GuiBean.ERF_PARAM_NAME).setValue(ERF_Ref.POISSON_FLOATING_FAULT);
 
 			// set offset and fault grid spacing (these were determined by trial and error)
 			double gridSpacing;
@@ -640,7 +641,7 @@ public class PEER_TestCaseSelectorControlPanel extends ControlPanel {
 
 		//if test case -1
 		if(selectedTest.equalsIgnoreCase(TEST_CASE_ONE)){
-			erfGuiBean.getERFParameterList().getParameter(ERF_GuiBean.ERF_PARAM_NAME).setValue(PEER_NonPlanarFaultForecast.NAME);
+			erfGuiBean.getERFParameterList().getParameter(ERF_GuiBean.ERF_PARAM_NAME).setValue(ERF_Ref.PEER_NON_PLANAR_FAULT);
 			// add sigma for maglength(0-1)
 			erfGuiBean.getERFParameterList().getParameter(PEER_NonPlanarFaultForecast.SIGMA_PARAM_NAME).setValue(Double.valueOf(0));
 			timeSpanGuiBean.getParameterList().getParameter(TimeSpan.DURATION).setValue(Double.valueOf(1.0));

@@ -23,7 +23,7 @@ public class NSHM23_BranchAveragedERF extends BaseFaultSystemSolutionERF {
 	private static final long serialVersionUID = 2L;
 	
 	public static final ModelVersions MODEL_DEFAULT = ModelVersions.WUS_R2;
-	public static final String NAME = "USGS NSHM23 Branch Averaged ERF";
+	public static final String NAME = "USGS NSHM23 - Branch Averaged ERF";
 	private static final boolean D = false;
 	
 	private NSHM23_Downloader downloader;
