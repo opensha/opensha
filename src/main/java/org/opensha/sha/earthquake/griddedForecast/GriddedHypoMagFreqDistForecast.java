@@ -6,6 +6,8 @@ import java.util.EventObject;
 import java.util.ListIterator;
 import java.util.Set;
 
+import javax.swing.event.ChangeListener;
+
 import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
@@ -187,6 +189,11 @@ ParameterChangeListener {
 	 */
 	public Set<TectonicRegionType> getIncludedTectonicRegionTypes(){
 		return EnumSet.of(TectonicRegionType.ACTIVE_SHALLOW);
+	}
+
+	@Override
+	public void addTectonicRegionChangeListener(ChangeListener l) {
+		// will never change
 	}
 
 	@Override

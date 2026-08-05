@@ -366,7 +366,7 @@ AttenuationRelationshipSiteParamsRegionAPI,CalculationSettingsControlPanelAPI,Ru
 		this.setLocation((dim.width - getSize().width) / 2, (dim.height - getSize().height) / 2);
 		//EXIT_ON_CLOSE == 3
 		this.setDefaultCloseOperation(3);
-		this.setTitle("ScenarioShakeMap Application ("+getAppVersion().getDisplayString()+" )");
+		this.setTitle("ScenarioShakeMap Application ("+getAppVersion().getDisplayString()+")");
 
 		//adding the Menu to the application
 		/*helpMenu.setText("Help");

@@ -4,7 +4,10 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Vector;
 
 import javax.swing.BorderFactory;
@@ -38,6 +41,7 @@ public class EnumParameterEditor<E extends Enum<E>> extends
 
 	private JComboBox widget;
 	private Class<E> clazz;
+	private Comparator<E> comparator;
 
 	/**
 	 * Constructs a new editor for the supplied <code>Parameter</code>.
@@ -45,8 +49,27 @@ public class EnumParameterEditor<E extends Enum<E>> extends
 	 * @param clazz the class of the supplied <code>Parameter</code>
 	 */
 	public EnumParameterEditor(EnumParameter<E> model, Class<E> clazz) {
+		this(model, clazz, null);
+	}
+
+	/**
+	 * Constructs a new editor for the supplied <code>Parameter</code>.
+	 * @param model for editor
+	 * @param clazz the class of the supplied <code>Parameter</code>
+	 * @param comparator comparator to sort the enum list
+	 */
+	public EnumParameterEditor(EnumParameter<E> model, Class<E> clazz, Comparator<E> comparator) {
 		super(model);
 		this.clazz = clazz;
+		if (comparator != null) {
+			// this will also update the widget, which will have been already built via the super constructor
+			setComparator(comparator);
+		}
+	}
+	
+	public void setComparator(Comparator<E> comparator) {
+		this.comparator = comparator;
+		updateWidget();
 	}
 
 	@Override
@@ -105,7 +128,12 @@ public class EnumParameterEditor<E extends Enum<E>> extends
 		Vector<Object> v = new Vector<Object>();
 		String nullOption = ((EnumParameter<E>) getParameter()).getNullOption();
 		if (nullOption != null) v.add(nullOption);
-		v.addAll(con.getAllowedValues());
+		List<E> vals = con.getAllowedValues();
+		if (comparator != null) {
+			vals = new ArrayList<>(vals);
+			vals.sort(comparator);
+		}
+		v.addAll(vals);
 		return v;
 	}
 

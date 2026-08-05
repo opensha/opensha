@@ -5,7 +5,11 @@ import static org.opensha.commons.util.DevStatus.EXPERIMENTAL;
 import static org.opensha.commons.util.DevStatus.PRODUCTION;
 
 import java.lang.reflect.Constructor;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.lang3.ArrayUtils;
@@ -32,7 +36,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2_Tim
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.MeanUCERF2.MeanUCERF2;
 import org.opensha.sha.earthquake.rupForecastImpl.YuccaMountain.YuccaMountainERF;
 import org.opensha.sha.earthquake.rupForecastImpl.YuccaMountain.YuccaMountainERF_List;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.erf.NSHM23_WUS_BranchAveragedERF;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.erf.NSHM23_BranchAveragedERF;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.erf.NSHM25_PRVI_BranchAveragedERF;
 import org.opensha.sha.earthquake.rupForecastImpl.step.STEP_AlaskanPipeForecast;
 
@@ -43,24 +47,28 @@ import scratch.UCERF3.erf.mean.MeanUCERF3;
 import scratch.UCERF3.utils.ModUCERF2.ModMeanUCERF2_FM2pt1;
 
 public enum ERF_Ref {
-	
-	
+
+
 	/* 
 	 * ********************
 	 * LOCAL ERFS
 	 * ********************
 	 */
-	
+
 	// PRODUCTION
 	
+	/*
+	 * Old USGS models
+	 */
+
 	/** Frankel/USGS 1996 Adjustable ERF */
 	FRANKEL_ADJUSTABLE_96(Frankel96_AdjustableEqkRupForecast.class,
 			Frankel96_AdjustableEqkRupForecast.NAME, PRODUCTION, false),
-	
+
 	// should we include this?
-			//			erf_Classes.add(POINT_SRC_TO_LINE_ERF_CLASS_NAME);
-			//			erf_Classes.add(POINT_SRC_TO_LINE_ERF_LIST_TEST_CLASS_NAME);
-	
+	//			erf_Classes.add(POINT_SRC_TO_LINE_ERF_CLASS_NAME);
+	//			erf_Classes.add(POINT_SRC_TO_LINE_ERF_LIST_TEST_CLASS_NAME);
+
 	/** Frankel/USGS 1996 ERF */
 	FRANKEL_96(Frankel96_EqkRupForecast.class,
 			Frankel96_EqkRupForecast.NAME, PRODUCTION, false),
@@ -68,19 +76,20 @@ public enum ERF_Ref {
 	/** Frankel/USGS 2002 Adjustable ERF */
 	FRANKEL_02(Frankel02_AdjustableEqkRupForecast.class,
 			Frankel02_AdjustableEqkRupForecast.NAME, PRODUCTION, false),
-	
+
 	/** WGCEP 2002 ERF */
 	WGCEP_02(WG02_EqkRupForecast.class, WG02_EqkRupForecast.NAME, PRODUCTION, false),
-	
+
 	/** WGCEP 2002 ERF Epistemic List */
 	WGCEP_02_LIST(WG02_ERF_Epistemic_List.class, WG02_ERF_Epistemic_List.NAME, PRODUCTION, false),
 	
+	/*
+	 * Generic interactive/build-on-the-fly models
+	 */
+
 	/** WGCEP 2002 Fortran Wrapped ERF */
 	//WGCEP_02_WRAPPED_LIST(WG02_FortranWrappedERF_EpistemicList.class,
 	//		WG02_FortranWrappedERF_EpistemicList.NAME, PRODUCTION, true),
-	
-	/** WGCEP UCERF 1 */
-	WGCEP_UCERF_1(WGCEP_UCERF1_EqkRupForecast.class, WGCEP_UCERF1_EqkRupForecast.NAME, PRODUCTION, false),
 
 	/** PEER Area Forecast */
 	PEER_AREA(PEER_AreaForecast.class, PEER_AreaForecast.NAME, PRODUCTION, true),
@@ -95,90 +104,121 @@ public enum ERF_Ref {
 	PEER_LOGIC_TREE(PEER_LogicTreeERF_List.class, PEER_LogicTreeERF_List.NAME, PRODUCTION, false),
 
 	// include this?
-		//erf_Classes.add(STEP_FORECAST_CLASS_NAME);
-	
+	//erf_Classes.add(STEP_FORECAST_CLASS_NAME);
+
 	/** Floating Poisson Fault ERF */
 	POISSON_FLOATING_FAULT(FloatingPoissonFaultERF.class, FloatingPoissonFaultERF.NAME, PRODUCTION, true),
-	
+
 	/** Poisson Fault ERF */
 	POISSON_FAULT(PoissonFaultERF.class, PoissonFaultERF.NAME, PRODUCTION, true),
-	
+
 	/**  Point Source ERF */
 	POINT_SOURCE(PointSourceERF.class, PointSourceERF.NAME, PRODUCTION, true),
-	
+
 	/**  Point Source Multi Vert ERF */
 	POINT_SOURCE_MULTI_VERT(Point2MultVertSS_FaultERF.class, Point2MultVertSS_FaultERF.NAME, PRODUCTION, true),
 
 	/**  Point Source Multi Vert ERF */
 	POINT_SOURCE_MULTI_VERT_LIST(Point2MultVertSS_FaultERF_List.class,
 			Point2MultVertSS_FaultERF_List.NAME, PRODUCTION, false),
-
-	/** WGCEP UCERF 2 ERF */
-	UCERF_2(UCERF2.class, UCERF2.NAME, PRODUCTION, false),
 	
-	/** WGCEP UCERF 2 Time Independent Epistemic List */
-	UCERF_2_TIME_INDEP_LIST(UCERF2_TimeIndependentEpistemicList.class,
-			UCERF2_TimeIndependentEpistemicList.NAME, PRODUCTION, false),
-	
-	/** WGCEP Mean UCERF 2 */
-	MEAN_UCERF_2(MeanUCERF2.class, MeanUCERF2.NAME, PRODUCTION, false),
-	
-	/** WGCEP Mean2 */
-	MEAN_UCERF_2_Mod(ModMeanUCERF2_FM2pt1.class, ModMeanUCERF2_FM2pt1.NAME, PRODUCTION, false),
+	/*
+	 * Generic FSS base ERFs
+	 */
 	
 	/** Fault System Solution ERF */
 	INVERSION_SOLUTION_ERF(FaultSystemSolutionERF.class, FaultSystemSolutionERF.NAME,
 			PRODUCTION, true),
 	
+	/*
+	 * UCERF1
+	 */
+
+	/** WGCEP UCERF 1 */
+	WGCEP_UCERF_1(WGCEP_UCERF1_EqkRupForecast.class, WGCEP_UCERF1_EqkRupForecast.NAME, PRODUCTION, false),
+	
+	/*
+	 * UCERF2
+	 */
+
+	/** WGCEP UCERF 2 ERF */
+	UCERF_2(UCERF2.class, UCERF2.NAME, PRODUCTION, false),
+
+	/** WGCEP UCERF 2 Time Independent Epistemic List */
+	UCERF_2_TIME_INDEP_LIST(UCERF2_TimeIndependentEpistemicList.class,
+			UCERF2_TimeIndependentEpistemicList.NAME, PRODUCTION, false),
+
+	/** WGCEP Mean UCERF 2 */
+	MEAN_UCERF_2(MeanUCERF2.class, MeanUCERF2.NAME, PRODUCTION, false),
+
+	/** WGCEP Mean2 */
+	MEAN_UCERF_2_Mod(ModMeanUCERF2_FM2pt1.class, ModMeanUCERF2_FM2pt1.NAME, PRODUCTION, false),
+	
+	/*
+	 * UCERF3
+	 */
+
 	/** WGCEP Mean UCERF 3 */
 	MEAN_UCERF3(MeanUCERF3.class, MeanUCERF3.NAME, PRODUCTION, false),
-	
+
 	/** WGCEP Single Branch UCERF 3 */
 	UCERF3_COMPOUND(UCERF3_CompoundSol_ERF.class, UCERF3_CompoundSol_ERF.NAME, PRODUCTION, false),
 
-	/** Yucca Mountain ERF */
-	YUCCA_MOUNTAIN(YuccaMountainERF.class, YuccaMountainERF.NAME, PRODUCTION, false),
-	
-	/** Yucca Mountain ERF List */
-	YUCCA_MOUNTAIN_LIST(YuccaMountainERF_List.class, YuccaMountainERF_List.NAME, PRODUCTION, false),
-	
 	/** WGCEP UCERF3List */
 	UCERF3_EPISTEMIC(UCERF3EpistemicListERF.class, UCERF3EpistemicListERF.NAME, PRODUCTION, false),
 	
+	/*
+	 * Other recent NSHMs
+	 */
+
 	/** National Seismic Hazard Model 2023 Western US ERF */
-	NSHM23_WUS_BRANCH_AVG(NSHM23_WUS_BranchAveragedERF.class, NSHM23_WUS_BranchAveragedERF.NAME, PRODUCTION, false),
+	NSHM23_WUS_BRANCH_AVG(NSHM23_BranchAveragedERF.class, NSHM23_BranchAveragedERF.NAME, PRODUCTION, false),
+	
+	/** National Seismic Hazard Model 2025 Puerto Rico and Virgin Islands ERF */
+	NHSM25_PRVI_BRANCH_AVG(NSHM25_PRVI_BranchAveragedERF.class, NSHM25_PRVI_BranchAveragedERF.NAME, PRODUCTION, false),
+	
+	/*
+	 * Other
+	 */
+
+	/** Yucca Mountain ERF */
+	YUCCA_MOUNTAIN(YuccaMountainERF.class, YuccaMountainERF.NAME, PRODUCTION, false),
+
+	/** Yucca Mountain ERF List */
+	YUCCA_MOUNTAIN_LIST(YuccaMountainERF_List.class, YuccaMountainERF_List.NAME, PRODUCTION, false),
 
 	// DEVELOPMENT
 
-    /** National Seismic Hazard Model 2025 Puerto Rico and Virgin Islands ERF */
-    NHSM25_PRVI_BRANCH_AVG(NSHM25_PRVI_BranchAveragedERF.class, NSHM25_PRVI_BranchAveragedERF.NAME, DEVELOPMENT, false),
-
-
-    /** STEP Alaska Forecast */
+	/** STEP Alaska Forecast */
 	STEP_ALASKA(STEP_AlaskanPipeForecast.class, STEP_AlaskanPipeForecast.NAME, DEVELOPMENT, false),
-		
-	// EXPERIMENTAL
-	
-	/** NSHMP CEUS 2008 ERF */
-//	NSHMP_CEUS_08(NSHMP08_CEUS_ERF.class, NSHMP08_CEUS_ERF.NAME, EXPERIMENTAL, false),
-		
-//	TEST_ETAS1_ERF(TestModel1_ERF.class, TestModel1_ERF.NAME, EXPERIMENTAL, false),
-	
-	;
 
+	// EXPERIMENTAL
+
+	/** NSHMP CEUS 2008 ERF */
+	//	NSHMP_CEUS_08(NSHMP08_CEUS_ERF.class, NSHMP08_CEUS_ERF.NAME, EXPERIMENTAL, false),
+
+	//	TEST_ETAS1_ERF(TestModel1_ERF.class, TestModel1_ERF.NAME, EXPERIMENTAL, false),
+
+	;
 	
+	/**
+	 * The ERF that should be selected by default in the applications. This one loads/calculates instantly so it's a
+	 * good default.
+	 */
+	public static ERF_Ref APP_DEFAULT_ERF = FRANKEL_ADJUSTABLE_96;
+
 	private Class<? extends BaseERF> clazz;
 	private String name;
 	private DevStatus status;
-    private boolean interactiveParams;
+	private boolean interactiveParams;
 	private boolean erfList;
 
 	ERF_Ref(Class<? extends BaseERF> clazz,
-            String name, DevStatus status, boolean interactiveParams) {
+			String name, DevStatus status, boolean interactiveParams) {
 		this.clazz = clazz;
 		this.name = name;
 		this.status = status;
-        this.interactiveParams = interactiveParams;
+		this.interactiveParams = interactiveParams;
 	}
 
 	@Override
@@ -194,20 +234,20 @@ public enum ERF_Ref {
 	public DevStatus status() {
 		return status;
 	}
-	
+
 	/**
 	 * @return true if this is an ERF Epistemic List, false otherwise
 	 */
 	public boolean isERFList() {
-        return EpistemicListERF.class.isAssignableFrom(clazz);
+		return EpistemicListERF.class.isAssignableFrom(clazz);
 	}
 
-    /**
-     * @return true if this ERF requires interactive parameterization to be useful
-     */
-    public boolean needsInteractiveParams() {
-        return interactiveParams;
-    }
+	/**
+	 * @return true if this ERF requires interactive parameterization to be useful
+	 */
+	public boolean needsInteractiveParams() {
+		return interactiveParams;
+	}
 
 	/**
 	 * Returns a new instance of the ERF represented by
@@ -217,14 +257,14 @@ public enum ERF_Ref {
 	public BaseERF instance() {
 		try {
 			Constructor<? extends BaseERF> con = clazz
-				.getConstructor();
+					.getConstructor();
 			return con.newInstance();
 		} catch (Exception e) {
 			// TODO init logging
 			throw ExceptionUtils.asRuntimeException(e);
 		}
 	}
-	
+
 	public Class<? extends BaseERF> getERFClass() {
 		return clazz;
 	}
@@ -236,30 +276,30 @@ public enum ERF_Ref {
 	 * or experimental. The <code>Set</code> of references returned does not
 	 * include deprecated references.
 	 * @param includeListERFs if true, Epistemic List ERFs will be included,
-     *                           otherwise they will be excluded
-     * @param interactiveParams if true, ERFs requiring interactive parameters will be included,
-     *                          otherwise they will be excluded
+	 *                           otherwise they will be excluded
+	 * @param interactiveParams if true, ERFs requiring interactive parameters will be included,
+	 *                          otherwise they will be excluded
 	 * @return reference <code>Set</code> of all non-deprecated
 	 *         <code>EqkRupForecastBaseAPI</code>s
 	 * @see DevStatus
 	 */
-    public static Set<ERF_Ref> get(boolean includeListERFs, boolean interactiveParams) {
-        return get(includeListERFs, interactiveParams, PRODUCTION, DEVELOPMENT, EXPERIMENTAL);
-    }
+	public static Set<ERF_Ref> get(boolean includeListERFs, boolean interactiveParams) {
+		return get(includeListERFs, interactiveParams, PRODUCTION, DEVELOPMENT, EXPERIMENTAL);
+	}
 
 
-    /**
-     * Convenience method to return references for all
-     * <code>EqkRupForecastBaseAPI</code> implementations that are currently
-     * production quality (i.e. fully tested and documented), under development,
-     * or experimental. The <code>Set</code> of references returned does not
-     * include deprecated references.
-     * ERFs requiring interactive parameters are included by default.
-     * @param includeListERFs if true, Epistemic List ERFs will be included,
-     *                        otherwise they will be excluded
-     * @return reference <code>Set</code> of all non-deprecated
-     *         <code>EqkRupForecastBaseAPI</code>s
-     */
+	/**
+	 * Convenience method to return references for all
+	 * <code>EqkRupForecastBaseAPI</code> implementations that are currently
+	 * production quality (i.e. fully tested and documented), under development,
+	 * or experimental. The <code>Set</code> of references returned does not
+	 * include deprecated references.
+	 * ERFs requiring interactive parameters are included by default.
+	 * @param includeListERFs if true, Epistemic List ERFs will be included,
+	 *                        otherwise they will be excluded
+	 * @return reference <code>Set</code> of all non-deprecated
+	 *         <code>EqkRupForecastBaseAPI</code>s
+	 */
 	public static Set<ERF_Ref> get(boolean includeListERFs) {
 		return get(includeListERFs, true);
 	}
@@ -272,35 +312,35 @@ public enum ERF_Ref {
 	 * production IMRs, and development applications include everything but
 	 * deprecated IMRs.
 	 * @param includeListERFs if true, Epistemic List ERFs will be included,
-     *                        otherwise they will be excluded
-     * @param interactiveParams if true, ERFs requiring interactive parameters will be included,
-     *                          otherwise they will be excluded
+	 *                        otherwise they will be excluded
+	 * @param interactiveParams if true, ERFs requiring interactive parameters will be included,
+	 *                          otherwise they will be excluded
 	 * @param prefs <code>ServerPrefs</code> instance for which IMRs should be selected
 	 * @return
 	 */
-    public static Set<ERF_Ref> get(boolean includeListERFs, boolean interactiveParams, ServerPrefs prefs) {
-        if (prefs == ServerPrefs.DEV_PREFS)
-            return get(includeListERFs, interactiveParams, PRODUCTION, DEVELOPMENT, EXPERIMENTAL);
-        else if (prefs == ServerPrefs.PRODUCTION_PREFS)
-            return get(includeListERFs, interactiveParams, PRODUCTION);
-        else
-            throw new IllegalArgumentException("Unknown ServerPrefs instance: "+prefs);
-    }
+	public static Set<ERF_Ref> get(boolean includeListERFs, boolean interactiveParams, ServerPrefs prefs) {
+		if (prefs == ServerPrefs.DEV_PREFS)
+			return get(includeListERFs, interactiveParams, PRODUCTION, DEVELOPMENT, EXPERIMENTAL);
+		else if (prefs == ServerPrefs.PRODUCTION_PREFS)
+			return get(includeListERFs, interactiveParams, PRODUCTION);
+		else
+			throw new IllegalArgumentException("Unknown ServerPrefs instance: "+prefs);
+	}
 
-    /**
-     * Convenience method to return references for all
-     * <code>EqkRupForecastBaseAPI</code> implementations that should be included
-     * in applications with the given ServerPrefs. Production applications only include
-     * production IMRs, and development applications include everything but
-     * deprecated IMRs.
-     * ERFs requiring interactive parameters are included by default.
-     * @param includeListERFs if true, Epistemic List ERFs will be included, otherwise
-     * they will be excluded
-     * @param prefs <code>ServerPrefs</code> instance for which IMRs should be selected
-     * @return
-     */
+	/**
+	 * Convenience method to return references for all
+	 * <code>EqkRupForecastBaseAPI</code> implementations that should be included
+	 * in applications with the given ServerPrefs. Production applications only include
+	 * production IMRs, and development applications include everything but
+	 * deprecated IMRs.
+	 * ERFs requiring interactive parameters are included by default.
+	 * @param includeListERFs if true, Epistemic List ERFs will be included, otherwise
+	 * they will be excluded
+	 * @param prefs <code>ServerPrefs</code> instance for which IMRs should be selected
+	 * @return
+	 */
 	public static Set<ERF_Ref> get(boolean includeListERFs, ServerPrefs prefs) {
-            return get(includeListERFs, true, prefs);
+		return get(includeListERFs, true, prefs);
 	}
 
 	/**
@@ -308,9 +348,9 @@ public enum ERF_Ref {
 	 * <code>EqkRupForecastBaseAPI</code> implementations at the specified
 	 * levels of development.
 	 * @param includeListERFs if true, Epistemic List ERFs will be included,
-     *                           otherwise they will be excluded
-     * @param interactiveParams if true, ERFs requiring interactive parameters will be included,
-     *                          otherwise they will be excluded
+	 *                           otherwise they will be excluded
+	 * @param interactiveParams if true, ERFs requiring interactive parameters will be included,
+	 *                          otherwise they will be excluded
 	 * @param stati the development level(s) of the
 	 *        <code>EqkRupForecastBaseAPI</code> references to be retrieved
 	 * @return a <code>Set</code> of <code>EqkRupForecastBaseAPI</code>
@@ -318,36 +358,69 @@ public enum ERF_Ref {
 	 * @see DevStatus
 	 */
 	public static Set<ERF_Ref> get(boolean includeListERFs,
-                                   boolean interactiveParams,
-                                   DevStatus... stati) {
+			boolean interactiveParams,
+			DevStatus... stati) {
 		EnumSet<ERF_Ref> erfSet = EnumSet.allOf(ERF_Ref.class);
 		for (ERF_Ref erf : erfSet) {
 			if (!ArrayUtils.contains(stati, erf.status))
 				erfSet.remove(erf);
 			if (erf.isERFList() && !includeListERFs)
 				erfSet.remove(erf);
-            if (erf.needsInteractiveParams() && !interactiveParams)
-                erfSet.remove(erf);
+			if (erf.needsInteractiveParams() && !interactiveParams)
+				erfSet.remove(erf);
 		}
 		return erfSet;
 	}
 
-    /**
-     * Convenience method to return references to
-     * <code>EqkRupForecastBaseAPI</code> implementations at the specified
-     * levels of development.
-     * ERFs requiring interactive parameters are included by default.
-     * @param includeListERFs if true, Epistemic List ERFs will be included,
-     *                           otherwise they will be excluded
-     * @param stati the development level(s) of the
-     *        <code>EqkRupForecastBaseAPI</code> references to be retrieved
-     * @return a <code>Set</code> of <code>EqkRupForecastBaseAPI</code>
-     *         references
-     * @see DevStatus
-     */
-    public static Set<ERF_Ref> get(boolean includeListERFs,
-                                   DevStatus... stati) {
-        return get(includeListERFs, true, stati);
-    }
+	/**
+	 * Convenience method to return references to
+	 * <code>EqkRupForecastBaseAPI</code> implementations at the specified
+	 * levels of development.
+	 * ERFs requiring interactive parameters are included by default.
+	 * @param includeListERFs if true, Epistemic List ERFs will be included,
+	 *                           otherwise they will be excluded
+	 * @param stati the development level(s) of the
+	 *        <code>EqkRupForecastBaseAPI</code> references to be retrieved
+	 * @return a <code>Set</code> of <code>EqkRupForecastBaseAPI</code>
+	 *         references
+	 * @see DevStatus
+	 */
+	public static Set<ERF_Ref> get(boolean includeListERFs,
+			DevStatus... stati) {
+		return get(includeListERFs, true, stati);
+	}
+	
+	public static Comparator<ERF_Ref> PRIORITY_NAME_COMPARATOR = (R1,R2) -> {
+		if (R1.status != R2.status)
+			return Integer.compare(R1.status.priority(), R2.status.priority());
+		return R1.name.compareTo(R2.name);
+	};
+	
+	public static void main(String[] args) {
+		// in list order
+		System.out.println("In class list order:");
+		DevStatus prevStatus = null;
+		List<ERF_Ref> list = new ArrayList<>();
+		for (ERF_Ref ref : values()) {
+			if (ref.status != prevStatus) {
+				System.out.println(ref.status);
+				prevStatus = ref.status;
+			}
+			System.out.println("\t"+ref.name+"\t\t\t\t("+(ref.name())+")");
+			list.add(ref);
+		}
+		System.out.println();
+		
+		list.sort(PRIORITY_NAME_COMPARATOR);
+		System.out.println("In sorted order:");
+		prevStatus = null;
+		for (ERF_Ref ref : list) {
+			if (ref.status != prevStatus) {
+				System.out.println(ref.status);
+				prevStatus = ref.status;
+			}
+			System.out.println("\t"+ref.name);
+		}
+	}
 
 }

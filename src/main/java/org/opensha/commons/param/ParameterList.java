@@ -613,13 +613,15 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 		StringBuffer metaData = new StringBuffer();
 		boolean first = true;
 		for(int i=0;i<size;++i){
-			Parameter tempParam=(Parameter)params.get(i);
-			if(first) {
-				metaData.append(tempParam.getMetadataString());
-				first = false;
+			Parameter<?> tempParam = params.get(i);
+			String paramMeta = tempParam.getMetadataString();
+			if (paramMeta != null && !paramMeta.isBlank()) {
+				if (first)
+					first = false;
+				else
+					metaData.append(delimiter);
+				metaData.append(paramMeta);
 			}
-			else
-				metaData.append(delimiter+tempParam.getMetadataString());
 		}
 		return metaData.toString();
 	}
