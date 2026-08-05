@@ -362,7 +362,7 @@ public class EnumParameterizedModelarameter<E extends Enum<E>, T extends Paramet
 		@Override
 		protected JComponent buildWidget() {
 			widget = new JPanel(new BorderLayout());
-			enumEditor = new EnumParameterEditor<>(enumParam);
+			enumEditor = new EnumParameterEditor<>(enumParam, enumParam.getEnumClass());
 			enumEditor.setIncludeBorder(false);
 			enumEditor.setShowNullOptionIfNonNull(false);
 			
