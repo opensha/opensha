@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipException;
 
 import javax.swing.JOptionPane;
+import javax.swing.event.ChangeListener;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.TimeSpan;
@@ -63,7 +64,7 @@ import scratch.UCERF3.utils.UCERF3_Downloader;
 
 public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChangeListener {
 	
-	public static final String NAME = "UCERF3 Epistemic List ERF";
+	public static final String NAME = "WGCEP (2014) UCERF3 - Epistemic List";
 	
 	private CompletableFuture<SolutionLogicTree> fetchFuture;
 	private LogicTree<?> tree;
@@ -397,6 +398,11 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 		System.out.println("TOTAL took "+totalWatch.elapsed(TimeUnit.SECONDS)+" s");
 		System.out.println("\t"+(float)totLoadSecs+" s loading");
 		System.out.println("\t"+(float)totCalcSecs+" s calculating");
+	}
+
+	@Override
+	public void addTectonicRegionChangeListener(ChangeListener l) {
+		// will never change
 	}
 
 }
