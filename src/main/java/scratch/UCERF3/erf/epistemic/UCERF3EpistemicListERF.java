@@ -64,7 +64,7 @@ import scratch.UCERF3.utils.UCERF3_Downloader;
 
 public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChangeListener {
 	
-	public static final String NAME = "UCERF3 Epistemic List ERF";
+	public static final String NAME = "WGCEP (2014) UCERF3 - Epistemic List";
 	
 	private CompletableFuture<SolutionLogicTree> fetchFuture;
 	private LogicTree<?> tree;

@@ -22,9 +22,8 @@ public class NSHM23_BranchAveragedERF extends BaseFaultSystemSolutionERF {
 	
 	private static final long serialVersionUID = 2L;
 	
-	// TODO updated default to R2 when file is posted
-	public static final ModelVersions MODEL_DEFAULT = ModelVersions.WUS_R1;
-	public static final String NAME = "USGS NSHM23 Branch Averaged ERF";
+	public static final ModelVersions MODEL_DEFAULT = ModelVersions.WUS_R2;
+	public static final String NAME = "USGS NSHM23 - Branch Averaged ERF";
 	private static final boolean D = false;
 	
 	private NSHM23_Downloader downloader;
@@ -79,24 +78,25 @@ public class NSHM23_BranchAveragedERF extends BaseFaultSystemSolutionERF {
 	}
 	
 	/**
-	 * Noarg constructor uses default storeDir for NSHM23 files
+	 * Noarg constructor uses default storeDir for NSHM23 files and default NSHM23 model
 	 * (Recommended Constructor)
 	 */
 	public NSHM23_BranchAveragedERF() {
-		this(/*storeDir=*/null, MODEL_DEFAULT); // Use default storeDir
+		this(/*storeDir=*/null, MODEL_DEFAULT); // Use default storeDir and model
 	}
 	
 	/**
-	 * Noarg constructor uses default storeDir for NSHM23 files
-	 * (Recommended Constructor)
+	 * Constructor uses default storeDir for NSHM23 files and allows specifying model version
+	 * @param model
 	 */
 	public NSHM23_BranchAveragedERF(ModelVersions model) {
 		this(/*storeDir=*/null, model); // Use default storeDir
 	}
 	
 	/**
-	 * Allow specifying where to download files
+	 * Allow specifying where to download files and the model version
 	 * @param storeDir
+	 * @param model
 	 */
 	public NSHM23_BranchAveragedERF(File storeDir, ModelVersions model) {
 		super(false); // false here means don't do the init calls yet, we do them at the end

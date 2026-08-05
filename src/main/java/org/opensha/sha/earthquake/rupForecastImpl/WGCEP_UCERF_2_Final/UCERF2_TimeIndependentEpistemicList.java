@@ -23,7 +23,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.analysis.P
  *
  */
 public class UCERF2_TimeIndependentEpistemicList extends AbstractEpistemicListERF {
-	public static final String  NAME = new String("UCERF2 ERF Epistemic List");
+	public static final String  NAME = new String("WGCEP (2007) UCERF2 - Epistemic List");
 	private ArrayList<Double> weights = null;
 	private ArrayList<ParameterList> logicTreeParamList = null;
 	protected UCERF2 ucerf2 = new UCERF2();

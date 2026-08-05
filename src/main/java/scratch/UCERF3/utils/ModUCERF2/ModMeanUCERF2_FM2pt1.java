@@ -32,7 +32,7 @@ public class ModMeanUCERF2_FM2pt1 extends ModMeanUCERF2 {
 	//for Debug purposes
 	protected static String  C = new String("MeanUCERF2 Modified, FM 2.1");
 	// name of this ERF
-	public final static String NAME = new String("WGCEP (2007) UCERF2 - Single Branch, Modified, Fault Model 2.1 only");
+	public final static String NAME = new String("WGCEP (2007) UCERF2 - Single Branch (Mod: FM 2.1 only)");
 
 	/**
 	 * Make B-Faults sources and caluculate B-Faults Total Summed MFD
