@@ -85,7 +85,7 @@ The first choice is which of the following Earthquake Rupture Forecasts to use:
 
     WGCEP (2007) UCERF2 - Single Branch
     WGCEP Eqk Rate Model 2 ERF
-    NSHM23-WUS (crustal only, excl. Cascadia) Branch Avg ERF
+    USGS NSHM23 Branch Averaged ERF
     USGS/CGS 2002 Adj. Cal. ERF
     UCERF3 Single Branch ERF
     USGS/CGS 1996 Cal. ERF
@@ -98,7 +98,7 @@ The first choice is which of the following Earthquake Rupture Forecasts to use:
 You could alternatively specify their corresponding short names as follows:
     MeanUCERF2
     UCERF2
-    NSHM23_WUS_BranchAveragedERF
+    NSHM23_BranchAveragedERF
     Frankel02_AdjustableEqkRupForecast
     UCERF3_CompoundSol_ERF
     Frankel96_EqkRupForecast
