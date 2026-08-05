@@ -13,6 +13,10 @@ java {
 compileJava.options.encoding = "UTF-8"
 
 repositories {
+	maven {
+		name = 'OpenSHA NSHMP Shaded Local Test'
+		url = uri('../opensha-nshmp-shaded/build/local-maven')
+	}
 	mavenCentral()
 }
 
@@ -33,6 +37,14 @@ configurations {
 		extendsFrom implementation
 	}
 }
+
+eclipse {
+    classpath {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}
+
 
 ext.getDate = {
 	new Date().format('yyyy_MM_dd')
