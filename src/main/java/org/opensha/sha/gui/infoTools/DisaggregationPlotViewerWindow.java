@@ -1,20 +1,28 @@
 package org.opensha.sha.gui.infoTools;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Graphics2D;
 import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
 
+import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
@@ -29,7 +37,6 @@ import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
 
 import org.jfree.chart3d.Chart3DPanel;
-import org.jpedal.PdfDecoder;
 import org.opensha.commons.util.BrowserUtils;
 import org.opensha.commons.util.CustomFileFilter;
 import org.opensha.commons.util.ExceptionUtils;
@@ -50,8 +57,7 @@ import com.itextpdf.text.pdf.SimpleBookmark;
 
 /**
  * <p>Title: DisaggregationPlotViewerWindow</p>
- * <p>Description: this Class thye displays the image of the GMT Map in the
- * Frame window</p>
+ * <p>Description: this Class displays the disaggregation results in the Frame window</p>
  * @author: Nitin Gupta & Vipin Gupta
  * @version 1.0
  */
@@ -61,7 +67,7 @@ public class DisaggregationPlotViewerWindow extends JFrame implements HyperlinkL
 	private final static int W=830;
 	private final static int H=1000;
 
-	private final static String MAP_WINDOW = "Maps using GMT";
+	private final static String MAP_WINDOW = "Disaggregation Results";
 	private JSplitPane mapSplitPane = new JSplitPane();
 	private JScrollPane mapScrollPane = new JScrollPane();
 
@@ -215,23 +221,35 @@ public class DisaggregationPlotViewerWindow extends JFrame implements HyperlinkL
 		}
 		//addImageToWindow(imageFileName);
 		if (imagePDF_URL != null) {
-			int currentPage = 1;
-			PdfDecoder pdfDecoder = new PdfDecoder();
-
+			JLabel label;
 			try {
-				//this opens the PDF and reads its internal details
-				pdfDecoder.openPdfFileFromURL(imagePDF_URL);
+				URL url = new URI(imagePDF_URL).toURL();
+				
+				// this has a transparent background
+				BufferedImage transChart = ImageIO.read(url);
+                BufferedImage finalImage = new BufferedImage(
+                		transChart.getWidth(), 
+                		transChart.getHeight(), 
+                    BufferedImage.TYPE_INT_RGB
+                );
 
-				//these 2 lines opens page 1 at 100% scaling
-				pdfDecoder.decodePage(currentPage);
-				pdfDecoder.setPageParameters(1, 1); //values scaling (1=100%). page number
-			}
-			catch (Exception e) {
+                Graphics2D g2d = finalImage.createGraphics();
+
+                g2d.setColor(Color.WHITE);
+                g2d.fillRect(0, 0, finalImage.getWidth(), finalImage.getHeight());
+
+                g2d.drawImage(transChart, 0, 0, null);
+                g2d.dispose(); // Free up system resources used by the graphics context
+
+                ImageIcon icon = new ImageIcon(finalImage);
+				label = new JLabel(icon);
+			} catch (IOException | URISyntaxException e) {
 				e.printStackTrace();
+				label = new JLabel("ERROR fetching image:\n\n"+e.getMessage());
 			}
 
 			//setup our GUI display
-			mapScrollPane.setViewportView(pdfDecoder);
+			mapScrollPane.setViewportView(label);
 		} else {
 			mapScrollPane.setViewportView(imagePanel);
 //			mapPanel.add(imagePanel, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0
