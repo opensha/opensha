@@ -12,7 +12,7 @@ public class SourceFiltersParam extends AbstractParameter<SourceFilterManager> {
 	private SourceFiltersParamEditor editor = null;
 	
 	public static SourceFilterManager getDefault() {
-		return new SourceFilterManager(SourceFilters.FIXED_DIST_CUTOFF);
+		return new SourceFilterManager(SourceFilters.TRT_DIST_CUTOFFS);
 	}
 	
 	public SourceFiltersParam() {

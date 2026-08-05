@@ -88,7 +88,7 @@ public class ApplicationVersion implements Comparable<ApplicationVersion> {
 	public String getDisplayString() {
 		String ret = toString();
 		if (ServerPrefUtils.SERVER_PREFS.getBuildType() != DevStatus.PRODUCTION)
-			ret += " ("+ServerPrefUtils.SERVER_PREFS.getBuildType()+")";
+			ret += "-"+ServerPrefUtils.SERVER_PREFS.getBuildType();
 		return ret;
 	}
 	
