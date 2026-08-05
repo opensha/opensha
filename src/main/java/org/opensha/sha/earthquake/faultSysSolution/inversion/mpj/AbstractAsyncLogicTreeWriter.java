@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 import org.opensha.commons.logicTree.BranchWeightProvider;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.TectonicRegionBranchTreeNode;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -28,7 +29,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 
 import edu.usc.kmilner.mpj.taskDispatch.AsyncPostBatchHook;
-import gov.usgs.earthquake.nshmp.erf.logicTree.TectonicRegionBranchTreeNode;
 
 public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 

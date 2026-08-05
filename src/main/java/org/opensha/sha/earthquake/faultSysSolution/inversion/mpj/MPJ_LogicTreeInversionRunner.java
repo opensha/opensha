@@ -22,6 +22,7 @@ import org.opensha.commons.logicTree.BranchWeightProvider;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.logicTree.TectonicRegionBranchTreeNode;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.io.archive.ArchiveInput;
@@ -45,7 +46,6 @@ import org.opensha.sha.util.TectonicRegionType;
 import com.google.common.base.Preconditions;
 
 import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
-import gov.usgs.earthquake.nshmp.erf.logicTree.TectonicRegionBranchTreeNode;
 import mpi.MPI;
 
 /**

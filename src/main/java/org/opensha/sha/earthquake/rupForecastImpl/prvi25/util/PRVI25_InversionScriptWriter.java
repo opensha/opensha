@@ -9,6 +9,13 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.sha.earthquake.faultSysSolution.mpj.HPCConfig;
+import org.opensha.sha.earthquake.faultSysSolution.mpj.HazardConfig;
+import org.opensha.sha.earthquake.faultSysSolution.mpj.InversionConfig;
+import org.opensha.sha.earthquake.faultSysSolution.mpj.LogicTreeConfig;
+import org.opensha.sha.earthquake.faultSysSolution.mpj.MPJ_LogicTreeInversionScriptWriter;
+import org.opensha.sha.earthquake.faultSysSolution.mpj.PostProcessConfig;
+import org.opensha.sha.earthquake.faultSysSolution.mpj.RunConfig;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.PRVI25_InvConfigFactory;
@@ -16,14 +23,6 @@ import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_Crusta
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalRandomlySampledDeformationModelLevel;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_LogicTree;
 import org.opensha.sha.imr.AttenRelRef;
-
-import gov.usgs.earthquake.nshmp.erf.mpj.HPCConfig;
-import gov.usgs.earthquake.nshmp.erf.mpj.HazardConfig;
-import gov.usgs.earthquake.nshmp.erf.mpj.InversionConfig;
-import gov.usgs.earthquake.nshmp.erf.mpj.LogicTreeConfig;
-import gov.usgs.earthquake.nshmp.erf.mpj.MPJ_LogicTreeInversionScriptWriter;
-import gov.usgs.earthquake.nshmp.erf.mpj.PostProcessConfig;
-import gov.usgs.earthquake.nshmp.erf.mpj.RunConfig;
 
 public class PRVI25_InversionScriptWriter {
 
