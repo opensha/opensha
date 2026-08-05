@@ -627,7 +627,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	/*
 	 * Preferred dimensions if the screen allows it
 	 */
-	protected static int PREF_APP_WIDTH = 1300;
+	protected static int PREF_APP_WIDTH = 1200;
 	protected static double PREF_APP_ASPECT_RATIO = 1.5;
 	/**
 	 * Buffer for app size relative to available screen size
