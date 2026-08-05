@@ -24,9 +24,36 @@ import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
+/**
+ * Abstract base class for interpolated exceedance probability calculators for true point-sources.
+ * 
+ * This introduces very small deterministic interpolation artifacts relative to exact point-source calculations.
+ * I tested 2%-in-50 PGA with NSHM23-WUS (gridded-only) and found that the default optimized calculation was mostly
+ * higher than the non-optimized calculation, with mean/mean-absolute difference about 0.087% and max pointwise
+ * difference about 0.47%.
+ * 
+ * The artifacts appear as coherent horizontal bands. They are not caused by parallel cache reuse: reruns with different
+ * node counts/distribution parameters produced the same pattern. They are also not caused directly by supersampling,
+ * since both optimized and non-optimized runs used supersampling. The most likely cause is fixed distance-bin
+ * interpolation of final exceedance probabilities, interacting with the regular lat/lon grid geometry. Because
+ * east-west grid spacing in km varies with latitude, source-site distance-bin phase varies coherently by latitude row.
+ * 
+ * Resolution tests support this:
+ *   - Halving both linear and log distance spacing preserved the same pattern but reduced amplitudes by about half.
+ *   - A non-nested one-third spacing changed some band locations and flipped the overall sign, indicating
+ *   bin-phase/aliasing effects.
+ *   - Log-y interpolation reduced signed mean bias but retained substantial banding, was ~50% slower, and produced
+ *   sign changes correlated with high/low hazard regions.
+ * 
+ * Given the small magnitude of the differences, the current default interpolation is acceptable for now. Reducing
+ * spacing, especially in the log-distance portion, would shrink artifacts if needed, but with added runtime/cache cost.
+ */
 abstract class AbstractPointSourceOptimizedCalc {
 	
 	private static final boolean D = false;
+	
+	protected static final boolean INTERP_LOG_DIST = true;
+	protected static final boolean INTERP_LOG_PROB = false;
 	
 	/**
 	 * These properties define a unique point source rupture, for which conditional exceedance probabilities will be

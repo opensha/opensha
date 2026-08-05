@@ -45,8 +45,7 @@ import com.itextpdf.text.pdf.PdfWriter;
 
 /**
  * <p>Title: DisaggregationPlotViewerWindow</p>
- * <p>Description: this Class thye displays the image of the GMT Map in the
- * Frame window</p>
+ * <p>Description: this Class displays the disaggregation results in the Frame window</p>
  * @author: Nitin Gupta & Vipin Gupta
  * @version 1.0
  */
@@ -56,7 +55,7 @@ public class DisaggregationPlotViewerWindow extends JFrame implements HyperlinkL
 	private final static int W=830;
 	private final static int H=1000;
 
-	private final static String MAP_WINDOW = "Maps using GMT";
+	private final static String MAP_WINDOW = "Disaggregation Results";
 	private JSplitPane mapSplitPane = new JSplitPane();
 	private JScrollPane mapScrollPane = new JScrollPane();
 

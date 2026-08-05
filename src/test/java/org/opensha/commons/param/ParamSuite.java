@@ -7,7 +7,8 @@ import org.opensha.commons.param.editor.NewParameterEditorTest;
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
 	NewParameterEditorTest.class,
-	AbstractParamTest.class
+	AbstractParamTest.class,
+	MultilineStringParameterTest.class
 })
 
 public class ParamSuite

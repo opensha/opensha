@@ -40,6 +40,7 @@ import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.UIManager;
+import javax.swing.event.ChangeListener;
 
 import org.jfree.data.Range;
 import org.opensha.commons.data.Site;
@@ -299,6 +300,10 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	
 	private static String errorInInitializationMessage = "Problem occured " +
 				"during initialization the ERF's. All parameters are set to default.";
+
+	private ChangeListener trtChangeListener = (e) -> {
+		imrGuiBean.setTectonicRegions(getIncludedTectonicRegionTypes());
+	};
 
 	// Construct the applet
 	public HazardCurveApplication(String appShortName) {
@@ -584,7 +589,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 
 		// frame setup
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setTitle("Hazard Curve Application (" + getAppVersion().getDisplayString() + " )");
+		setTitle("Hazard Curve Application (" + getAppVersion().getDisplayString() + ")");
 		setSize(1000, 720);
 		contentSplitPane.setDividerLocation(500);
 		Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
@@ -1614,10 +1619,12 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 			modeString = "Disaggregation Results for Prob = " + probVal
 			+ " (for IML = " + (float) imlVal + ")";
 		modeString += "\n" + disaggregationString;
+		DisaggregationPlotViewerWindow disagg;
 		if (disaggregationControlPanel.isUseGMT()) {
 			// String pdfImageLink;
 			try {
 				disaggregationPlotWebAddr = getDisaggregationPlot();
+//				System.out.println("Link: "+disaggregationPlotWebAddr);
 				/*
 				 * pdfImageLink = "<br>Click  " + "<a href=\"" +
 				 * disaggregationPlotWebAddr +
@@ -1637,12 +1644,15 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 						"Server Problem", JOptionPane.INFORMATION_MESSAGE);
 				return;
 			}
-			new DisaggregationPlotViewerWindow(disaggregationPlotWebAddr
+			disagg = new DisaggregationPlotViewerWindow(disaggregationPlotWebAddr
 					+ DisaggregationCalculator.DISAGGREGATION_PLOT_PNG_NAME, disaggCalc, modeString, metadata, binDataToShow);
 		} else {
-			new DisaggregationPlotViewerWindow(PureJavaDisaggPlotter.buildChartPanel(disaggCalc.getDisaggPlotData()),
+			disagg = new DisaggregationPlotViewerWindow(PureJavaDisaggPlotter.buildChartPanel(disaggCalc.getDisaggPlotData()),
 					disaggCalc, modeString, metadata, binDataToShow);
 		}
+		// uncomment to center the window, default goes top left of screen
+		// not sure which is more useful for most people
+//		disagg.setLocationRelativeTo(this);
 	}
 
 	/**
@@ -2711,6 +2721,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 			// this one doesn't update the forecast, and may return null/hardcoded TRTs, but prevents unnecessary
 			// forecast updating on initial ERF selection
 			BaseERF selectedERF = erfGuiBean.getSelectedERF_Instance();
+			selectedERF.addTectonicRegionChangeListener(trtChangeListener);
 			// this one updates the forecast, which can fail for ERFs that require parameterization (e.g., generic FSS
 			// ERF), but will result in correct TRTs if they require forecast updating
 //			BaseERF selectedERF = erfGuiBean.getSelectedERF();

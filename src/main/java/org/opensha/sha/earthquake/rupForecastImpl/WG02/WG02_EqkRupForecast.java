@@ -38,7 +38,7 @@ public class WG02_EqkRupForecast extends AbstractERF{
 
   //for Debug purposes
   private final static String  C = new String("WG02_EqkRupForecast");
-  public final static String NAME ="WG02 Eqk Rup Forecast";
+  public final static String NAME ="WGCEP (2002) Eqk Rup Forecast";
   private boolean D = false;
 
   /**
