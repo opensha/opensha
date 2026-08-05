@@ -1,4 +1,4 @@
-package gov.usgs.earthquake.nshmp.erf.inversion.mfdPreInversion;
+package org.opensha.sha.earthquake.nshmp.inversion.mfdPreInversion;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
