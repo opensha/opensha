@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.timeDependence;
 
 import static org.opensha.sha.earthquake.faultSysSolution.erf.td.TimeDepUtils.MILLISEC_PER_YEAR;
+import static org.opensha.sha.earthquake.faultSysSolution.erf.td.TimeDepUtils.MILLISEC_TO_YEARS;
 
 import java.awt.Color;
 import java.io.File;
@@ -18,6 +19,8 @@ import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.jfree.chart.LegendItem;
+import org.jfree.chart.LegendItemCollection;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.ui.RectangleAnchor;
 import org.jfree.data.Range;
@@ -776,7 +779,7 @@ public class TimeDependentReportPageGen {
 		
 		// parent section cum part mag prob dists
 		Map<Integer, EvenlyDiscretizedFunc> parCumPartMPD_Map = FaultSysSolERF_Calc.calcParentSectSupraSeisPartCumMagProbDists(
-				erf, 5.05, 50, 0.1);
+				erf, 5.0, 50, 0.1);
 		Map<Integer, EvenlyDiscretizedFunc> parIncrPartMPD_Map = FaultSysSolERF_Calc.calcParentSectSupraSeisPartIncrMagProbDists(
 				erf, 5.05, 50, 0.1);
 		
@@ -789,7 +792,7 @@ public class TimeDependentReportPageGen {
 		
 		// TI parent section cum part mag prob dists
 		Map<Integer, EvenlyDiscretizedFunc> parTI_CumPartMPD_Map = FaultSysSolERF_Calc.calcParentSectSupraSeisPartCumMagProbDists(
-				erf, 5.05, 50, 0.1); 
+				erf, 5.0, 50, 0.1); 
 		Map<Integer, EvenlyDiscretizedFunc> parTI_IncrPartMPD_Map = FaultSysSolERF_Calc.calcParentSectSupraSeisPartIncrMagProbDists(
 				erf, 5.05, 50, 0.1); 
 		
@@ -1442,7 +1445,7 @@ public class TimeDependentReportPageGen {
 		
 		// parent section cum part mag prob dists
 		Map<Integer, EvenlyDiscretizedFunc> parCumPartMPD_Map = FaultSysSolERF_Calc.calcParentSectSupraSeisPartCumMagProbDists(
-				erf, 5.05, 50, 0.1);
+				erf, 5.0, 50, 0.1);
 		Map<Integer, EvenlyDiscretizedFunc> parIncrPartMPD_Map = FaultSysSolERF_Calc.calcParentSectSupraSeisPartIncrMagProbDists(
 				erf, 5.05, 50, 0.1);
 		
@@ -1455,7 +1458,7 @@ public class TimeDependentReportPageGen {
 		
 		// TI parent section cum part mag prob dists
 		Map<Integer, EvenlyDiscretizedFunc> parTI_CumPartMPD_Map = FaultSysSolERF_Calc.calcParentSectSupraSeisPartCumMagProbDists(
-				erf, 5.05, 50, 0.1); 
+				erf, 5.0, 50, 0.1); 
 		Map<Integer, EvenlyDiscretizedFunc> parTI_IncrPartMPD_Map = FaultSysSolERF_Calc.calcParentSectSupraSeisPartIncrMagProbDists(
 				erf, 5.05, 50, 0.1); 
 		
@@ -1472,10 +1475,15 @@ public class TimeDependentReportPageGen {
 		double[] ucerf3_Mgt6pt7_prob=null;
 		double[] ucerf3_Mgt7pt7_prob=null;
 		double[] ucerf3_recurInt=null;
+		double[] ucerf3_timeSinceYrs = null;
+		double[] ucerf3_normTimeSince = null;
+
 		double[] Mgt6pt7_prob_ratio_ToU3 = new double[subSects.size()]; // size of current model
 		double[] Mgt7pt7_prob_ratio_ToU3 = new double[subSects.size()];
 		double[] supraRI_ratioToU3 = new double[subSects.size()];
 		double[] slipRateRatioToU3 = new double[subSects.size()];
+		double[] normTimeSinceU3 = new double[subSects.size()]; //this one is for nshm23 subsection indexing
+		double[] timeSinceYrsU3 = new double[subSects.size()]; //this one is for nshm23 subsection indexing
 		Map<Integer, double[]> rateListForParentMapU3 = null;
 		Map<Integer, double[]> rateListForParentMap = null;
 		
@@ -1497,10 +1505,22 @@ public class TimeDependentReportPageGen {
 			ucerf3_Mgt6pt7_prob = new double[numU3_sections];
 			ucerf3_Mgt7pt7_prob = new double[numU3_sections];
 			ucerf3_recurInt = new double[numU3_sections];
+			ucerf3_normTimeSince = new double[numU3_sections];
+			ucerf3_timeSinceYrs = new double[numU3_sections];
+			long presentTimeMillis = ucerf3_erf.getTimeSpan().getStartTimeInMillis();
 			for (int s=0; s<numU3_sections; s++) {
 				ucerf3_Mgt6pt7_prob[s] = FaultSysSolERF_Calc.calcParticipationProbForSect(ucerf3_erf, 6.7, s);
 				ucerf3_Mgt7pt7_prob[s] = FaultSysSolERF_Calc.calcParticipationProbForSect(ucerf3_erf, 7.7, s);
 				ucerf3_recurInt[s] = 1.0/ucerf3_erf.getSolution().calcTotParticRateForSect(s);
+				long doleMillis = ucerf3_erf.getSolution().getRupSet().getFaultSectionData(s).getDateOfLastEvent();	
+				if(doleMillis != Long.MIN_VALUE) {
+					ucerf3_timeSinceYrs[s] = (double)(presentTimeMillis-doleMillis)*MILLISEC_TO_YEARS;
+					ucerf3_normTimeSince[s] = ucerf3_timeSinceYrs[s]/ucerf3_recurInt[s];					
+				}
+				else {
+					ucerf3_timeSinceYrs[s] = Double.NaN;
+					ucerf3_normTimeSince[s] = Double.NaN;
+				}
 			}
 			// these are current model to ucerf3 ratios (full number of sections)
 			for(int s=0;s<subSects.size();s++) {
@@ -1508,6 +1528,8 @@ public class TimeDependentReportPageGen {
 				Mgt7pt7_prob_ratio_ToU3[s] = Double.NaN;
 				supraRI_ratioToU3[s] = Double.NaN;
 				slipRateRatioToU3[s] = Double.NaN;
+				normTimeSinceU3[s] = Double.NaN;
+				timeSinceYrsU3[s] = Double.NaN;
 			}
 			HistogramFunction supraRI_ratioToU3_Historgram = new HistogramFunction(0.05,50,0.1);
 			HistogramFunction supraRI_ratioToU3_RateWt_Historgram = new HistogramFunction(0.05,50,0.1);
@@ -1532,6 +1554,8 @@ public class TimeDependentReportPageGen {
 					Mgt7pt7_prob_ratio_ToU3[nshmID] = Double.NaN;
 				supraRI_ratioToU3[nshmID] = recurInt[nshmID]/ucerf3_recurInt[u3_ID];
 				slipRateRatioToU3[nshmID] = sectSlipRatesArray[nshmID]/u3_sectSlipRatesArray[u3_ID];
+				timeSinceYrsU3[nshmID] = ucerf3_timeSinceYrs[u3_ID];
+				normTimeSinceU3[nshmID] = ucerf3_normTimeSince[u3_ID];
 				if(supraRI_ratioToU3[nshmID]<supraRI_ratioToU3_Historgram.getMaxX()) {
 					supraRI_ratioToU3_Historgram.add(supraRI_ratioToU3[nshmID], 1.0);
 					supraRI_ratioToU3_RateWt_Historgram.add(supraRI_ratioToU3[nshmID], 1.0/recurInt[nshmID]); // wt is 2023 rate
@@ -1649,7 +1673,7 @@ public class TimeDependentReportPageGen {
 			Map<Integer, EvenlyDiscretizedFunc> u3_parIncrPartMPD_Map = FaultSysSolERF_Calc.calcParentSectSupraSeisPartIncrMagProbDists(
 					ucerf3_erf, 5.05, 50, 0.1);
 			Map<Integer, EvenlyDiscretizedFunc> u3_parCumPartMPD_Map = FaultSysSolERF_Calc.calcParentSectSupraSeisPartCumMagProbDists(
-					ucerf3_erf, 5.05, 50, 0.1);
+					ucerf3_erf, 5.0, 50, 0.1);
 			
 			// temporarily set the forecast as Poisson, to get long-term rates, & no background 
 			ucerf3_erf.setProbabilityModelChoice(FSS_ProbabilityModels.POISSON);
@@ -1660,7 +1684,7 @@ public class TimeDependentReportPageGen {
 			Map<Integer, EvenlyDiscretizedFunc> u3_parTI_IncrPartMPD_Map = FaultSysSolERF_Calc.calcParentSectSupraSeisPartIncrMagProbDists(
 					ucerf3_erf, 5.05, 50, 0.1); 
 			Map<Integer, EvenlyDiscretizedFunc> u3_parTI_CumPartMPD_Map = FaultSysSolERF_Calc.calcParentSectSupraSeisPartCumMagProbDists(
-					ucerf3_erf, 5.05, 50, 0.1); 
+					ucerf3_erf, 5.0, 50, 0.1); 
 			// reset ERF to original state
 			ucerf3_erf.setCustomProbabilityModel(probModel);
 			ucerf3_erf.updateForecast();
@@ -1685,7 +1709,7 @@ public class TimeDependentReportPageGen {
 							"ProbGain_Mgt6pt7,BPT_Prob_Mgt7pt7,Pois_Prob_Mgt7pt7,ProbGain_Mgt7pt7,"+
 							"ParID,SubsectName,ParentName,DOLE_MappingType";
 		if(ucerf3_erf !=null) 
-			csv_dataSring += ",supraRI_ratioToU3, Mgt6pt7_prob_ratio_ToU3,Mgt7pt7_prob_ratio_ToU3";
+			csv_dataSring += ",supraRI_ratioToU3, Mgt6pt7_prob_ratio_ToU3,Mgt7pt7_prob_ratio_ToU3,slipRateRatioToU3,timeSinceYrsU3,normTimeSinceU3";
 		csv_dataSring += "\n";
 		for (int s=0; s<subSects.size(); s++) {
 			pois_Mgt6pt7_prob[s] = FaultSysSolERF_Calc.calcParticipationProbForSect(erf, 6.7, s);
@@ -1703,12 +1727,13 @@ public class TimeDependentReportPageGen {
 					td_Mgt7pt7_prob[s]+","+pois_Mgt7pt7_prob[s]+","+probGain_Mgt7pt7[s]+","+
 					subSects.get(s).getParentSectionId()+","+modName+","+modParentName+","+sectMappingTypes[s];
 			if(ucerf3_erf !=null) 
-				csv_dataSring += ","+(float)supraRI_ratioToU3[s]+","+ (float)Mgt6pt7_prob_ratio_ToU3[s]+","+(float)Mgt7pt7_prob_ratio_ToU3[s];
+				csv_dataSring += ","+(float)supraRI_ratioToU3[s]+","+ (float)Mgt6pt7_prob_ratio_ToU3[s]+","+(float)Mgt7pt7_prob_ratio_ToU3[s]+","
+						+(float)slipRateRatioToU3[s]+","+timeSinceYrsU3[s]+","+(float)normTimeSinceU3[s];
 			csv_dataSring += "\n";
 		}
 		
-		// write out subSectDataMgt6pt7.csv
-		FileWriter fw2 = new FileWriter(new File(outputDir+"/subSectDataMgt6pt7.csv"));
+		// write out subSectDataMgt6pt7_Etc.csv
+		FileWriter fw2 = new FileWriter(new File(outputDir+"/subSectDataMgt6pt7_Etc.csv"));
 		fw2.write(csv_dataSring); 
 		fw2.close();
 		
@@ -1721,7 +1746,7 @@ public class TimeDependentReportPageGen {
 		
 		// Get prob ratios with respect to reference dir
 		// Get 5th column:
-		double[] td_Mgt6pt7_prob_reference = readSectProbFromFile(new File(comparisonDir,"/subSectDataMgt6pt7.csv"),5);
+		double[] td_Mgt6pt7_prob_reference = readSectProbFromFile(new File(comparisonDir,"/subSectDataMgt6pt7_Etc.csv"),5);
 		if(td_Mgt6pt7_prob_reference.length != td_Mgt6pt7_prob.length)
 			throw new RuntimeException("problem with comparison array length: "+td_Mgt6pt7_prob_reference.length+" vs "+td_Mgt6pt7_prob.length);
 		double[] Mgt6pt7_prob_ratioToReference = new double[td_Mgt6pt7_prob.length];
@@ -1729,7 +1754,7 @@ public class TimeDependentReportPageGen {
 			Mgt6pt7_prob_ratioToReference[s] = td_Mgt6pt7_prob[s]/td_Mgt6pt7_prob_reference[s];
 		}
 		// Get 5th column:
-		double[] td_Mgt7pt7_prob_reference = readSectProbFromFile(new File(comparisonDir,"/subSectDataMgt6pt7.csv"),8);
+		double[] td_Mgt7pt7_prob_reference = readSectProbFromFile(new File(comparisonDir,"/subSectDataMgt6pt7_Etc.csv"),8);
 		if(td_Mgt7pt7_prob_reference.length != td_Mgt7pt7_prob.length)
 			throw new RuntimeException("problem with comparison array length");
 		double[] Mgt7pt7_prob_ratioToReference = new double[td_Mgt7pt7_prob.length];
@@ -2309,10 +2334,14 @@ public class TimeDependentReportPageGen {
 			EvenlyDiscretizedFunc parIncrTI_MPD = parTI_IncrPartMPD_Map.get(parID);
 			String parName = perentNameID_Map.get(parID);
 			String parentMFD_FileNamePrefix = parName.replace(" ","").replace(",","_");
-			parCumMPD.setName(parName + " TD Cumumlative Part Mag Prob Dist");
-			parCumTI_MPD.setName(parName + " TI Cumulative Part Mag Prob Dist");
-			parIncrMPD.setName(parName + " TD Incramental Part Mag Prob Dist");
-			parIncrTI_MPD.setName(parName + " TI Incramental Part Mag Prob Dist");
+			parCumMPD.setName( "TD Cum. MFD");
+			parCumTI_MPD.setName(" TI Cum. MFD");
+			parIncrMPD.setName(" TD Incr. MFD");
+			parIncrTI_MPD.setName(" TI Incr. MFD");
+			parCumMPD.setInfo(parName + " TD Cumumlative Part Mag Prob Dist");
+			parCumTI_MPD.setInfo(parName + " TI Cumulative Part Mag Prob Dist");
+			parIncrMPD.setInfo(parName + " TD Incramental Part Mag Prob Dist");
+			parIncrTI_MPD.setInfo(parName + " TI Incramental Part Mag Prob Dist");
 			
 			// 
 			double maxY = Math.max(parCumTI_MPD.getMaxY(), parCumMPD.getMaxY())*2.0;
@@ -2355,6 +2384,7 @@ public class TimeDependentReportPageGen {
 			File fileNamePrefix = new File(parentMPD_Dir,parentMFD_FileNamePrefix+"_cumMagProbDists");
 			
 			PlotSpec spec = new PlotSpec(funcs, plotChars, plotName, xAxisLabel, yAxisLabel);
+			spec.setLegendInset(true);
 			
 				HeadlessGraphPanel gp = new HeadlessGraphPanel();
 				gp.setUserBounds(xAxisRange, yAxisRange);
@@ -2405,10 +2435,14 @@ public class TimeDependentReportPageGen {
 			EvenlyDiscretizedFunc u3_parIncrTI_MPD = u3_parTI_PartMPD_Map.get(u3_parID);
 			String parName = perentNameID_Map.get(parID);
 			String parentMFD_FileNamePrefix = parName.replace(" ","").replace(",","_");
-			parIncrMPD.setName("TD "+mfdTypeString+" Part Mag Prob Dist for "+parName);
-			parIncrTI_MPD.setName("TI "+mfdTypeString+" Part Mag Prob Dist for "+parName);
-			u3_parIncrMPD.setName("UCERF3 TD "+mfdTypeString+" Part Mag Prob Dist for "+parName);
-			u3_parIncrTI_MPD.setName("UCERF3 TI "+mfdTypeString+" Part Mag Prob Dist for "+parName);
+			parIncrMPD.setName("NSHM23 TD ");
+			parIncrTI_MPD.setName("NSHM23 TI");
+			u3_parIncrMPD.setName("UCERF3 TD");
+			u3_parIncrTI_MPD.setName("UCERF3 TI");
+			parIncrMPD.setInfo("TD "+mfdTypeString+" Part Mag Prob Dist for "+parName);
+			parIncrTI_MPD.setInfo("TI "+mfdTypeString+" Part Mag Prob Dist for "+parName);
+			u3_parIncrMPD.setInfo("UCERF3 TD "+mfdTypeString+" Part Mag Prob Dist for "+parName);
+			u3_parIncrTI_MPD.setInfo("UCERF3 TI "+mfdTypeString+" Part Mag Prob Dist for "+parName);
 
 			ArrayList<XY_DataSet> funcs = new ArrayList<XY_DataSet>();
 			funcs.add(parIncrMPD);
@@ -2443,6 +2477,7 @@ public class TimeDependentReportPageGen {
 			File fileNamePrefix = new File(parentMPD_Dir,parentMFD_FileNamePrefix+"_"+mfdTypeString+"MagProbDists");
 
 			PlotSpec spec = new PlotSpec(funcs, plotChars, plotName, xAxisLabel, yAxisLabel);
+			spec.setLegendInset(true);
 
 			HeadlessGraphPanel gp = new HeadlessGraphPanel();
 			gp.setUserBounds(xAxisRange, yAxisRange);
