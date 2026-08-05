@@ -1,17 +1,17 @@
 package org.opensha.sha.imr;
 
-import static gov.usgs.earthquake.nshmp.gmm.Gmm.ASK_14;
-import static gov.usgs.earthquake.nshmp.gmm.Gmm.ASK_14_BASIN;
-import static gov.usgs.earthquake.nshmp.gmm.Gmm.ASK_14_CYBERSHAKE;
-import static gov.usgs.earthquake.nshmp.gmm.Gmm.BSSA_14;
-import static gov.usgs.earthquake.nshmp.gmm.Gmm.BSSA_14_BASIN;
-import static gov.usgs.earthquake.nshmp.gmm.Gmm.BSSA_14_CYBERSHAKE;
-import static gov.usgs.earthquake.nshmp.gmm.Gmm.CB_14;
-import static gov.usgs.earthquake.nshmp.gmm.Gmm.CB_14_BASIN;
-import static gov.usgs.earthquake.nshmp.gmm.Gmm.CB_14_CYBERSHAKE;
-import static gov.usgs.earthquake.nshmp.gmm.Gmm.CY_14;
-import static gov.usgs.earthquake.nshmp.gmm.Gmm.CY_14_BASIN;
-import static gov.usgs.earthquake.nshmp.gmm.Gmm.CY_14_CYBERSHAKE;
+import static org.opensha.nshmp.shaded.gmm.NshmpGmm.ASK_14;
+import static org.opensha.nshmp.shaded.gmm.NshmpGmm.ASK_14_BASIN;
+import static org.opensha.nshmp.shaded.gmm.NshmpGmm.ASK_14_CYBERSHAKE;
+import static org.opensha.nshmp.shaded.gmm.NshmpGmm.BSSA_14;
+import static org.opensha.nshmp.shaded.gmm.NshmpGmm.BSSA_14_BASIN;
+import static org.opensha.nshmp.shaded.gmm.NshmpGmm.BSSA_14_CYBERSHAKE;
+import static org.opensha.nshmp.shaded.gmm.NshmpGmm.CB_14;
+import static org.opensha.nshmp.shaded.gmm.NshmpGmm.CB_14_BASIN;
+import static org.opensha.nshmp.shaded.gmm.NshmpGmm.CB_14_CYBERSHAKE;
+import static org.opensha.nshmp.shaded.gmm.NshmpGmm.CY_14;
+import static org.opensha.nshmp.shaded.gmm.NshmpGmm.CY_14_BASIN;
+import static org.opensha.nshmp.shaded.gmm.NshmpGmm.CY_14_CYBERSHAKE;
 import static org.opensha.commons.util.DevStatus.*;
 
 import java.lang.reflect.Constructor;
@@ -91,8 +91,8 @@ import org.opensha.sha.imr.mod.impl.stewartSiteSpecific.StewartAfshariGoulet2017
 
 import com.google.common.collect.ImmutableList;
 
-import gov.usgs.earthquake.nshmp.gmm.Gmm;
-import gov.usgs.earthquake.nshmp.gmm.GmmInput.Field;
+import org.opensha.nshmp.shaded.gmm.NshmpGmm;
+import org.opensha.nshmp.shaded.gmm.NshmpGmmInput.Field;
 
 /**
  * This <code>enum</code> supplies references to
@@ -200,10 +200,10 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-//			Unmodifiable<Gmm> gmms = WeightedList.evenlyWeighted(
-//					Gmm.ASK_14_BASIN, Gmm.BSSA_14_BASIN, Gmm.CB_14_BASIN, Gmm.CY_14_BASIN);
+//			Unmodifiable<NshmpGmm> gmms = WeightedList.evenlyWeighted(
+//					NshmpGmm.ASK_14_BASIN, NshmpGmm.BSSA_14_BASIN, NshmpGmm.CB_14_BASIN, NshmpGmm.CY_14_BASIN);
 //			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
-			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_CONUS_ACTIVE_CRUST_2023, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.TOTAL_TREE_CONUS_ACTIVE_CRUST_2023, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -214,19 +214,19 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			WeightedList<Gmm> gmms = WeightedList.of(
-					new WeightedValue<>(Gmm.ASK_14, 0.125),
-					new WeightedValue<>(Gmm.BSSA_14, 0.125),
-					new WeightedValue<>(Gmm.CB_14, 0.125),
-					new WeightedValue<>(Gmm.CY_14, 0.125),
-					new WeightedValue<>(Gmm.ASK_14_BASIN, 0.0625),
-					new WeightedValue<>(Gmm.BSSA_14_BASIN, 0.0625),
-					new WeightedValue<>(Gmm.CB_14_BASIN, 0.0625),
-					new WeightedValue<>(Gmm.CY_14_BASIN, 0.0625),
-					new WeightedValue<>(Gmm.ASK_14_CYBERSHAKE, 0.0625),
-					new WeightedValue<>(Gmm.BSSA_14_CYBERSHAKE, 0.0625),
-					new WeightedValue<>(Gmm.CB_14_CYBERSHAKE, 0.0625),
-					new WeightedValue<>(Gmm.CY_14_CYBERSHAKE, 0.0625));
+			WeightedList<NshmpGmm> gmms = WeightedList.of(
+					new WeightedValue<>(NshmpGmm.ASK_14, 0.125),
+					new WeightedValue<>(NshmpGmm.BSSA_14, 0.125),
+					new WeightedValue<>(NshmpGmm.CB_14, 0.125),
+					new WeightedValue<>(NshmpGmm.CY_14, 0.125),
+					new WeightedValue<>(NshmpGmm.ASK_14_BASIN, 0.0625),
+					new WeightedValue<>(NshmpGmm.BSSA_14_BASIN, 0.0625),
+					new WeightedValue<>(NshmpGmm.CB_14_BASIN, 0.0625),
+					new WeightedValue<>(NshmpGmm.CY_14_BASIN, 0.0625),
+					new WeightedValue<>(NshmpGmm.ASK_14_CYBERSHAKE, 0.0625),
+					new WeightedValue<>(NshmpGmm.BSSA_14_CYBERSHAKE, 0.0625),
+					new WeightedValue<>(NshmpGmm.CB_14_CYBERSHAKE, 0.0625),
+					new WeightedValue<>(NshmpGmm.CY_14_CYBERSHAKE, 0.0625));
 			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
 		}
 		
@@ -238,15 +238,15 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			WeightedList<Gmm> gmms = WeightedList.of(
-					new WeightedValue<>(Gmm.ASK_14, 0.125),
-					new WeightedValue<>(Gmm.BSSA_14, 0.125),
-					new WeightedValue<>(Gmm.CB_14, 0.125),
-					new WeightedValue<>(Gmm.CY_14, 0.125),
-					new WeightedValue<>(Gmm.ASK_14_BASIN, 0.125),
-					new WeightedValue<>(Gmm.BSSA_14_BASIN, 0.125),
-					new WeightedValue<>(Gmm.CB_14_BASIN, 0.125),
-					new WeightedValue<>(Gmm.CY_14_BASIN, 0.125));
+			WeightedList<NshmpGmm> gmms = WeightedList.of(
+					new WeightedValue<>(NshmpGmm.ASK_14, 0.125),
+					new WeightedValue<>(NshmpGmm.BSSA_14, 0.125),
+					new WeightedValue<>(NshmpGmm.CB_14, 0.125),
+					new WeightedValue<>(NshmpGmm.CY_14, 0.125),
+					new WeightedValue<>(NshmpGmm.ASK_14_BASIN, 0.125),
+					new WeightedValue<>(NshmpGmm.BSSA_14_BASIN, 0.125),
+					new WeightedValue<>(NshmpGmm.CB_14_BASIN, 0.125),
+					new WeightedValue<>(NshmpGmm.CY_14_BASIN, 0.125));
 			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
 		}
 		
@@ -258,7 +258,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_PRVI_ACTIVE_CRUST_2025, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.TOTAL_TREE_PRVI_ACTIVE_CRUST_2025, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -269,7 +269,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_CONUS_STABLE_CRUST_2023, getName(), getShortName(), false, null) {
+			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.TOTAL_TREE_CONUS_STABLE_CRUST_2023, getName(), getShortName(), false, null) {
 
 				@Override
 				protected ImmutableList<Field> initFieldsUsed() {
@@ -295,7 +295,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_PRVI_INTERFACE_2025, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.TOTAL_TREE_PRVI_INTERFACE_2025, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -306,7 +306,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_PRVI_INTRASLAB_2025, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.TOTAL_TREE_PRVI_INTRASLAB_2025, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -319,7 +319,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(Gmm.ASK_14_BASE, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.ASK_14_BASE, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -330,7 +330,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(Gmm.BSSA_14_BASE, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.BSSA_14_BASE, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -341,11 +341,11 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			WeightedList<Gmm> gmms = WeightedList.of(
-					new WeightedValue<>(Gmm.ASK_14_BASE, 0.25),
-					new WeightedValue<>(Gmm.BSSA_14_BASE, 0.25),
-					new WeightedValue<>(Gmm.CB_14_BASE, 0.25),
-					new WeightedValue<>(Gmm.CY_14_BASE, 0.25));
+			WeightedList<NshmpGmm> gmms = WeightedList.of(
+					new WeightedValue<>(NshmpGmm.ASK_14_BASE, 0.25),
+					new WeightedValue<>(NshmpGmm.BSSA_14_BASE, 0.25),
+					new WeightedValue<>(NshmpGmm.CB_14_BASE, 0.25),
+					new WeightedValue<>(NshmpGmm.CY_14_BASE, 0.25));
 			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
 		}
 		
@@ -357,7 +357,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(Gmm.AG_20_GLOBAL_INTERFACE, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.AG_20_GLOBAL_INTERFACE, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -368,7 +368,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(Gmm.PSBAH_20_GLOBAL_INTERFACE, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.PSBAH_20_GLOBAL_INTERFACE, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -379,7 +379,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(Gmm.PSBAH_20_GLOBAL_SLAB, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.PSBAH_20_GLOBAL_SLAB, getName(), getShortName(), false, null);
 		}
 		
 	},

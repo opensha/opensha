@@ -1,6 +1,6 @@
 package org.opensha.sha.imr.attenRelImpl.nshmp;
 
-import static gov.usgs.earthquake.nshmp.gmm.Imt.*;
+import static org.opensha.nshmp.shaded.gmm.NshmpImt.*;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -9,7 +9,7 @@ import java.util.TreeMap;
 
 import com.google.common.base.Preconditions;
 
-import gov.usgs.earthquake.nshmp.gmm.Imt;
+import org.opensha.nshmp.shaded.gmm.NshmpImt;
 
 /**
  * This copies (ugh) constants and other things that NSHMP-lib uses but doesn't expose
@@ -38,7 +38,7 @@ public class NSHMP_Config {
 	 * The following were copied from nshmp-haz 1.7.15 on 12/1/2025
 	 */
 	
-	public static double[] imlsFor(Imt imt) {
+	public static double[] imlsFor(NshmpImt imt) {
 		if (imt.isSA() || imt == PGA) {
 			return imlMap.ceilingEntry(imt).getValue();
 		} else if (imt == PGV) {
@@ -89,7 +89,7 @@ public class NSHMP_Config {
 			46.0, 69.0, 103.0, 155.0, 233.0, 349.0, 525.0 };
 
 	/* NavigableMap facilitates assigning IMLs to ranges of spectral periods. */
-	static final NavigableMap<Imt, double[]> imlMap = new TreeMap<>(Map.of(
+	static final NavigableMap<NshmpImt, double[]> imlMap = new TreeMap<>(Map.of(
 			SA0P01, IMLS_SA0P01,
 			SA0P02, IMLS_SA0P02,
 			SA0P5, IMLS_SA0P5,

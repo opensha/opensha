@@ -12,13 +12,13 @@ import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
-import gov.usgs.earthquake.nshmp.gmm.GroundMotions;
+import org.opensha.nshmp.shaded.gmm.NshmpGroundMotions;
 
 @AffectsNone
 public enum PRVI25_GMM_GenericEpistemicModel implements ScalarIMR_ParamsLogicTreeNode {
-	EPI_LOW("Low", "Low", GroundMotions.EPI_LO, 0.185d),
-	EPI_OFF("Off", "Off", GroundMotions.EPI_OFF, 0.63d),
-	EPI_HIGH("High", "High", GroundMotions.EPI_HI, 0.185d),;
+	EPI_LOW("Low", "Low", NshmpGroundMotions.EPI_LO, 0.185d),
+	EPI_OFF("Off", "Off", NshmpGroundMotions.EPI_OFF, 0.63d),
+	EPI_HIGH("High", "High", NshmpGroundMotions.EPI_HI, 0.185d),;
 	
 	final String name;
 	final String shortName;
