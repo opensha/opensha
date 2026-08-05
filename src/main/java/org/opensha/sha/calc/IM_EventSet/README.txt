@@ -84,33 +84,28 @@ Each line of the input file that starts with "#" is a comment that gets ignored 
 The first choice is which of the following Earthquake Rupture Forecasts to use:
 
     WGCEP (2007) UCERF2 - Single Branch
-    WGCEP Eqk Rate Model 2 ERF
-    USGS NSHM23 Branch Averaged ERF
+    WGCEP (2007) UCERF2 - Adjustable ERF
+    USGS NSHM23 - Branch Averaged ERF
     USGS/CGS 2002 Adj. Cal. ERF
-    UCERF3 Single Branch ERF
     USGS/CGS 1996 Cal. ERF
-    WGCEP (2007) UCERF2 - Single Branch, Modified, Fault Model 2.1 only
-    WGCEP UCERF 1.0 (2005)
-    Fault System Solution ERF
+    WGCEP (2007) UCERF2 - Single Branch (Mod: FM 2.1 only)
+    WGCEP (2005) UCERF1
     USGS/CGS 1996 Adj. Cal. ERF
-    Mean UCERF3
+    WGCEP (2014) UCERF3 - Mean/Branch Averaged
 
 You could alternatively specify their corresponding short names as follows:
     MeanUCERF2
     UCERF2
     NSHM23_BranchAveragedERF
     Frankel02_AdjustableEqkRupForecast
-    UCERF3_CompoundSol_ERF
     Frankel96_EqkRupForecast
     ModMeanUCERF2_FM2pt1
     WGCEP_UCERF1_EqkRupForecast
-    FaultSystemSolutionERF
     Frankel96_AdjustableEqkRupForecast
     MeanUCERF3
 
-
 For example, you could pass either
-Mean UCERF3
+WGCEP (2014) UCERF3 - Mean/Branch Averaged
 or
 MeanUCERF3
 as the first choice. Either long or short name formats will result in the same choice.
