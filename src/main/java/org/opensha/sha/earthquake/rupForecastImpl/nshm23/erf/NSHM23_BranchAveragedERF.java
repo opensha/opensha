@@ -79,7 +79,7 @@ public class NSHM23_BranchAveragedERF extends BaseFaultSystemSolutionERF {
 	}
 	
 	/**
-	 * Noarg constructor uses default storeDir for NSHM23 files
+	 * Noarg constructor uses default storeDir for NSHM23 files and default NSHM23 model
 	 * (Recommended Constructor)
 	 */
 	public NSHM23_BranchAveragedERF() {
@@ -87,8 +87,8 @@ public class NSHM23_BranchAveragedERF extends BaseFaultSystemSolutionERF {
 	}
 	
 	/**
-	 * Noarg constructor uses default storeDir for NSHM23 files
-	 * (Recommended Constructor)
+	 * Constructor uses default storeDir for NSHM23 files and allows specifying model version
+	 * @param model
 	 */
 	public NSHM23_BranchAveragedERF(ModelVersions model) {
 		this(/*storeDir=*/null, model); // Use default storeDir
@@ -97,6 +97,7 @@ public class NSHM23_BranchAveragedERF extends BaseFaultSystemSolutionERF {
 	/**
 	 * Allow specifying where to download files
 	 * @param storeDir
+	 * @param model
 	 */
 	public NSHM23_BranchAveragedERF(File storeDir, ModelVersions model) {
 		super(false); // false here means don't do the init calls yet, we do them at the end
