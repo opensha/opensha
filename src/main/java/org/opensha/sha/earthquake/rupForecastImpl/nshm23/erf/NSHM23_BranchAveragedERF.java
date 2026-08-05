@@ -22,8 +22,7 @@ public class NSHM23_BranchAveragedERF extends BaseFaultSystemSolutionERF {
 	
 	private static final long serialVersionUID = 2L;
 	
-	// TODO updated default to R2 when file is posted
-	public static final ModelVersions MODEL_DEFAULT = ModelVersions.WUS_R1;
+	public static final ModelVersions MODEL_DEFAULT = ModelVersions.WUS_R2;
 	public static final String NAME = "USGS NSHM23 Branch Averaged ERF";
 	private static final boolean D = false;
 	
@@ -83,7 +82,7 @@ public class NSHM23_BranchAveragedERF extends BaseFaultSystemSolutionERF {
 	 * (Recommended Constructor)
 	 */
 	public NSHM23_BranchAveragedERF() {
-		this(/*storeDir=*/null, MODEL_DEFAULT); // Use default storeDir
+		this(/*storeDir=*/null, MODEL_DEFAULT); // Use default storeDir and model
 	}
 	
 	/**
@@ -95,7 +94,7 @@ public class NSHM23_BranchAveragedERF extends BaseFaultSystemSolutionERF {
 	}
 	
 	/**
-	 * Allow specifying where to download files
+	 * Allow specifying where to download files and the model version
 	 * @param storeDir
 	 * @param model
 	 */
