@@ -51,6 +51,10 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 	 */
 	protected List<? extends RuptureSurface> surfaces;
 	/**
+	 * Original list in order passed in
+	 */
+	protected final List<? extends FaultSection> sections;
+	/**
 	 * Areas of each surface (in original order)
 	 */
 	protected final double[] surfaceAreas;
@@ -67,6 +71,7 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 	private double horzWidth = Double.NaN;
 	private double topDepth = Double.NaN;
 	private double bottomDepth = Double.NaN;
+	private double avgDip = Double.NaN;
 	
 	private SurfaceDistanceCache cache = SurfaceCachingPolicy.build(this);
 	
@@ -83,11 +88,18 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 		return new Simple(surfaces);
 	}
 
-	protected CompoundSurface(List<? extends RuptureSurface> surfaces) {
+	protected CompoundSurface(List<? extends RuptureSurface> surfaces, List<? extends FaultSection> sects) {
 		Preconditions.checkNotNull(surfaces, "Surfaces list is null");
 		this.numSurfaces = surfaces.size();
 		Preconditions.checkArgument(numSurfaces > 1, "Must supply at least 2 surfaces (have %s)", numSurfaces);
 		this.surfaces = Collections.unmodifiableList(surfaces);
+		if (sects != null) {
+			Preconditions.checkState(sects.size() == numSurfaces,
+					"Have %s sects and %s surfaces", sects.size(), numSurfaces);
+			this.sections = Collections.unmodifiableList(sects);
+		} else {
+			this.sections = null;
+		}
 		surfaceAreas = new double[surfaces.size()];
 		double totArea = 0d;
 		for (int s=0; s<surfaceAreas.length; s++) {
@@ -97,9 +109,10 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 		this.totArea = totArea;
 	}
 	
-	private CompoundSurface(List<? extends RuptureSurface> surfaces, double[] surfaceAreas, double totArea) {
+	private CompoundSurface(List<? extends RuptureSurface> surfaces, List<? extends FaultSection> sects, double[] surfaceAreas, double totArea) {
 		this.surfaces = surfaces;
 		this.numSurfaces = surfaces.size();
+		this.sections = sects;
 		this.surfaceAreas = surfaceAreas;
 		this.totArea = totArea;
 	}
@@ -111,7 +124,7 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 	 */
 	public static class Simple extends CompoundSurface {
 		
-		private final double avgDip;
+		private final double avgOrientedDip;
 		private final BitSet reversed;
 		private final boolean wholeRupReversed;
 		private final ContiguousIntList indexes;
@@ -121,7 +134,7 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 		}
 		
 		public Simple(List<? extends RuptureSurface> surfaces, List<? extends FaultSection> sects) {
-			super(surfaces);
+			super(surfaces, sects);
 
 			// keep track of those we will need to reverse; don't do so just yet because we might have to flip the whole
 			// surface at the end
@@ -357,23 +370,23 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 				// flip the direction of each surface
 				reversed.flip(0, numSurfaces);
 			}
-			this.avgDip = avgDip;
+			this.avgOrientedDip = avgDip;
 			this.indexes = new ContiguousIntList();
 		}
 
-		private Simple(List<? extends RuptureSurface> surfaces, double[] surfaceAreas, double totArea,
-				double avgDip, BitSet reversed,
+		private Simple(List<? extends RuptureSurface> surfaces, List<? extends FaultSection> sects,
+				double[] surfaceAreas, double totArea, double avgOrientedDip, BitSet reversed,
 				boolean wholeRupReversed, ContiguousIntList indexes) {
-			super(surfaces, surfaceAreas, totArea);
-			this.avgDip = avgDip;
+			super(surfaces, sects, surfaceAreas, totArea);
+			this.avgOrientedDip = avgOrientedDip;
 			this.reversed = reversed;
 			this.wholeRupReversed = wholeRupReversed;
 			this.indexes = indexes;
 		}
 
 		@Override
-		public double getAveDip() {
-			return avgDip;
+		public double getAveOrientedDip() {
+			return avgOrientedDip;
 		}
 
 		@Override
@@ -413,7 +426,7 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 
 		@Override
 		public Simple copyShallow() {
-			return new Simple(surfaces, surfaceAreas, totArea, avgDip, reversed, wholeRupReversed, indexes);
+			return new Simple(surfaces, sections, surfaceAreas, totArea, avgOrientedDip, reversed, wholeRupReversed, indexes);
 		}
 		
 		private class ContiguousIntList extends AbstractList<Integer> {
@@ -445,13 +458,11 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 		private final List<Integer> bottomIndexes;
 		private final List<Integer> leftIndexes;
 		private final List<Integer> rightIndexes;
-		private final double avgDip;
+		private final double avgOrientedDip;
 		
 		public DownDip(List<? extends RuptureSurface> surfaces, List<? extends FaultSection> sections) {
-			super(surfaces);
-			Preconditions.checkArgument(sections.size() == numSurfaces,
-					"Passed in section list must be null or of equal size as the surfaces list: %s != %s",
-					sections.size(), numSurfaces);
+			super(surfaces, sections);
+			Preconditions.checkNotNull(sections, "Sections list must be supplied for down dip surfaces");
 			
 			List<Integer> topIndexes = new ArrayList<>();
 			List<Integer> bottomIndexes = new ArrayList<>();
@@ -675,6 +686,7 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 				leftIndexes = rightIndexes;
 				rightIndexes = tmp;
 				reversed.flip(0, numSurfaces);
+				avgDip = 180d-avgDip;
 			}
 			
 			tops = new BitSet(numSurfaces);
@@ -694,14 +706,15 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 				this.leftIndexes = new IntListWrapper(leftIndexes);
 				this.rightIndexes = new IntListWrapper(rightIndexes);
 			}
-			this.avgDip = avgDip;
+			this.avgOrientedDip = avgDip;
 		}
 
-		private DownDip(List<? extends RuptureSurface> surfaces, double[] surfaceAreas, double totArea,
-				double avgDip, BitSet reversed, BitSet tops, List<Integer> topIndexes, List<Integer> bottomIndexes,
+		private DownDip(List<? extends RuptureSurface> surfaces, List<? extends FaultSection> sections,
+				double[] surfaceAreas, double totArea,
+				double avgOrientedDip, BitSet reversed, BitSet tops, List<Integer> topIndexes, List<Integer> bottomIndexes,
 				List<Integer> leftIndexes, List<Integer> rightIndexes) {
-			super(surfaces, surfaceAreas, totArea);
-			this.avgDip = avgDip;
+			super(surfaces, sections, surfaceAreas, totArea);
+			this.avgOrientedDip = avgOrientedDip;
 			this.reversed = reversed;
 			this.tops = tops;
 			this.topIndexes = topIndexes;
@@ -711,8 +724,8 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 		}
 
 		@Override
-		public double getAveDip() {
-			return avgDip;
+		public double getAveOrientedDip() {
+			return avgOrientedDip;
 		}
 
 		@Override
@@ -752,11 +765,39 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 
 		@Override
 		public DownDip copyShallow() {
-			// TODO Auto-generated method stub
-			return new DownDip(surfaces, surfaceAreas, totArea, avgDip, reversed, tops,
+			return new DownDip(surfaces, sections, surfaceAreas, totArea, avgOrientedDip, reversed, tops,
 					topIndexes, bottomIndexes, leftIndexes, rightIndexes);
 		}
 		
+	}
+
+	/**
+	 * Unlike {@link #getAveDip()} which returns a simple area-weighted average dip, this returns the overall average
+	 * sense of dip along the direction of the rupture following the AKi & Richards convention, and surfaces that dip
+	 * opposite each other will cancel out.
+	 * @return
+	 */
+	public abstract double getAveOrientedDip();
+
+	/**
+	 * This returns an area-weighted dip across all surfaces that compose this compound surface. This is better if you
+	 * care about a typical dip across the surface. Use {@link CompoundSurface#getAveOrientedDip()} instead if you
+	 * care about an overall directional sense of dip following the Aki & Richards convention.
+	 * @return area-weighted dip
+	 */
+	@Override
+	public double getAveDip() {
+		if (Double.isNaN(avgDip)) {
+			double avgDip = 0d;
+			for (int s=0; s<surfaceAreas.length; s++)
+				avgDip += surfaces.get(s).getAveDip()*surfaceAreas[s];
+			avgDip /= totArea;
+			Preconditions.checkState(avgDip < 90.0001 && avgDip > 0d, "Bad avgDip=%s", avgDip);
+			// can end up as barely over 90 due to floating point math, e.g., 90.00000000000001; clamp it to 90 after
+			// the check above
+			this.avgDip = Math.min(avgDip, 90d);
+		}
+		return avgDip;
 	}
 	
 	private static double distForReversalCheck(Location loc1, Location loc2) {
@@ -806,8 +847,18 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 	 */
 	public abstract boolean isSurfaceOnUpperEdge(int index);
 	
+	/**
+	 * @return list of surfaces in the order passed in
+	 */
 	public List<? extends RuptureSurface> getSurfaceList() {
 		return surfaces;
+	}
+	
+	/**
+	 * @return list of sections in the order passed in, or null if not constructed with a fault sections list
+	 */
+	public List<? extends FaultSection> getSectionsList() {
+		return sections;
 	}
 
 	@Override
@@ -1039,12 +1090,30 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 		return getEvenlyDiscritizedListOfLocsOnSurface().listIterator();
 	}
 	
+	@Override
+	public int getEvenlyDiscretizedNumLocs() {
+		int numLocs = 0;
+		for(RuptureSurface surf:surfaces)
+			numLocs += surf.getEvenlyDiscretizedNumLocs();
+		return numLocs;
+	}
 
+	@Override
+	public Location getEvenlyDiscretizedLocation(int index) {
+		int prevNum = 0;
+		for (RuptureSurface surf : surfaces) {
+			int myNum = surf.getEvenlyDiscretizedNumLocs();
+			if (index < prevNum + myNum)
+				return surf.getEvenlyDiscretizedLocation(index - prevNum);
+			prevNum += myNum;
+		}
+		throw new IllegalStateException("No point at index "+index+", have "+getEvenlyDiscretizedNumLocs());
+	}
 
 	@Override
 	public LocationList getEvenlyDiscritizedListOfLocsOnSurface() {
 		// modified to use an expected size
-		// not caching in order to avoid memory bloat, but individual surfaces should already be cached, making this quick'
+		// not caching in order to avoid memory bloat, but individual surfaces should already be cached, making this quick
 		int count = 0;
 		List<LocationList> surfLists = new ArrayList<>(surfaces.size());
 		for(RuptureSurface surf:surfaces) {

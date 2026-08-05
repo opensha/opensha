@@ -61,7 +61,7 @@ public class UCERF2 extends AbstractERF {
 	private boolean D = true;
 
 	// name of this ERF
-	public final static String NAME = new String("WGCEP Eqk Rate Model 2 ERF");
+	public final static String NAME = new String("WGCEP (2007) UCERF2 - Adjustable ERF");
 
 //	ArrayList allSourceNames;
 

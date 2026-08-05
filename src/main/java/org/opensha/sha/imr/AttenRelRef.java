@@ -64,6 +64,7 @@ import org.opensha.sha.imr.attenRelImpl.Campbell_1997_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.DahleEtAl_1995_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.Field_2000_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.GouletEtAl_2006_AttenRel;
+import org.opensha.sha.imr.attenRelImpl.JointRuptureExperimentalIMR;
 import org.opensha.sha.imr.attenRelImpl.McVerryetal_2000_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.NGAWest_2014_Averaged_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.NGAWest_2014_Averaged_AttenRel.NGAWest_2014_Averaged_AttenRel_NoIdriss;
@@ -88,7 +89,10 @@ import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_GMM_Wrapper;
 import org.opensha.sha.imr.mod.ModAttenuationRelationship;
 import org.opensha.sha.imr.mod.impl.stewartSiteSpecific.StewartAfshariGoulet2017NonergodicGMPE;
 
+import com.google.common.collect.ImmutableList;
+
 import gov.usgs.earthquake.nshmp.gmm.Gmm;
+import gov.usgs.earthquake.nshmp.gmm.GmmInput.Field;
 
 /**
  * This <code>enum</code> supplies references to
@@ -247,6 +251,65 @@ public enum AttenRelRef implements AttenRelSupplier {
 		}
 		
 	},
+	
+	USGS_PRVI_ACTIVE(null, "USGS PRVI25 Active Crustal",
+			"PRVI25-Active", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_PRVI_ACTIVE_CRUST_2025, getName(), getShortName(), false, null);
+		}
+		
+	},
+
+	USGS_NSHM23_STABLE(null, "USGS NSHM23 Stable Crustal",
+			"NSHM23-Stable", PRODUCTION) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_CONUS_STABLE_CRUST_2023, getName(), getShortName(), false, null) {
+
+				@Override
+				protected ImmutableList<Field> initFieldsUsed() {
+					// dirty hack to fix the fields used in nshmp-haz, but not reported as such by this GMM
+					// TODO: remove this when NSHMP-haz fixes their bug
+//					System.out.println("Hack for NSHM23-Stable fields. Declared: "+super.initFieldsUsed());
+					return ImmutableList.of(
+							Field.MW,
+							Field.RRUP,
+							Field.VS30,
+							Field.RJB,
+							Field.ZSED);
+				}
+				
+			};
+		}
+		
+	},
+	
+	USGS_PRVI_INTERFACE(null, "USGS PRVI25 Interface",
+			"PRVI25-Interface", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_PRVI_INTERFACE_2025, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	USGS_PRVI_SLAB(null, "USGS PRVI25 Intraslab",
+			"PRVI25-Intraslab", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_PRVI_INTRASLAB_2025, getName(), getShortName(), false, null);
+		}
+		
+	},
 
 	// DEVELOPMENT
 	
@@ -320,39 +383,6 @@ public enum AttenRelRef implements AttenRelSupplier {
 		}
 		
 	},
-	
-	USGS_PRVI_ACTIVE(null, "USGS PRVI25 Active Crustal (beta)",
-			"PRVI25-Active", DEVELOPMENT) {
-		
-		@Override
-		public AttenuationRelationship instance(
-				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_PRVI_ACTIVE_CRUST_2025, getName(), getShortName(), false, null);
-		}
-		
-	},
-	
-	USGS_PRVI_INTERFACE(null, "USGS PRVI25 Interface (beta)",
-			"PRVI25-Interface", DEVELOPMENT) {
-		
-		@Override
-		public AttenuationRelationship instance(
-				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_PRVI_INTERFACE_2025, getName(), getShortName(), false, null);
-		}
-		
-	},
-	
-	USGS_PRVI_SLAB(null, "USGS PRVI25 Intraslab (beta)",
-			"PRVI25-Intraslab", DEVELOPMENT) {
-		
-		@Override
-		public AttenuationRelationship instance(
-				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(Gmm.TOTAL_TREE_PRVI_INTRASLAB_2025, getName(), getShortName(), false, null);
-		}
-		
-	},
 
 	/** Interpolation between periods using BA. */
 	BA_2008_INTERP(InterpolatedBA_2008_AttenRel.class,
@@ -410,6 +440,8 @@ public enum AttenRelRef implements AttenRelSupplier {
 	MOD_ATTEN_REL(ModAttenuationRelationship.class, ModAttenuationRelationship.NAME, ModAttenuationRelationship.SHORT_NAME, EXPERIMENTAL),
 	
 	AFSHARI_STEWART_2016(AfshariStewart_2016_AttenRel.class, AfshariStewart_2016_AttenRel.NAME, AfshariStewart_2016_AttenRel.SHORT_NAME, EXPERIMENTAL),
+	
+	JOINT_RUP_EXPERIMENTAL(JointRuptureExperimentalIMR.class, JointRuptureExperimentalIMR.NAME, JointRuptureExperimentalIMR.SHORT_NAME, EXPERIMENTAL),
 
 	// DEPRECATED
 

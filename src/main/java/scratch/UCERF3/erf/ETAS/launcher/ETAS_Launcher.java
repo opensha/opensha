@@ -15,12 +15,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
+import java.util.Optional;
 import java.util.TimeZone;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -36,11 +35,8 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.math3.random.RandomDataGenerator;
 import org.dom4j.DocumentException;
 import org.opensha.commons.geo.GriddedRegion;
-import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ExceptionUtils;
-import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
-import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.AbstractNthRupERF;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -76,9 +72,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_CubeDiscretizationParams;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
-import scratch.UCERF3.erf.ETAS.ETAS_LocationWeightCalculator;
 import scratch.UCERF3.erf.ETAS.ETAS_LongTermMFDs;
-import scratch.UCERF3.erf.ETAS.ETAS_PrimaryEventSampler;
 import scratch.UCERF3.erf.ETAS.ETAS_SimAnalysisTools;
 import scratch.UCERF3.erf.ETAS.ETAS_SimulationMetadata;
 import scratch.UCERF3.erf.ETAS.ETAS_Simulator;
@@ -93,9 +87,7 @@ import scratch.UCERF3.erf.ETAS.analysis.SimulationMarkdownGenerator;
 import scratch.UCERF3.erf.ETAS.association.FiniteFaultMappingData;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.BinaryFilteredOutputConfig;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
-import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
-import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.utils.U3FaultSystemIO;
+import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.utils.LastEventData;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
@@ -127,8 +119,9 @@ public class ETAS_Launcher {
 	private String simulationName;
 	private File fssFile;
 	private Map<TriggerRupture, ETAS_EqkRupture> triggerRupturesMap;
-	private List<ETAS_EqkRupture> triggerRuptures;
-	private List<ETAS_EqkRupture> histQkList;
+	
+	private volatile Optional<List<ETAS_EqkRupture>> triggerRuptures;
+	private volatile Optional<List<ETAS_EqkRupture>> histQkList;
 	
 	// caches
 	private double[] gridSeisCorrections;
@@ -341,44 +334,94 @@ public class ETAS_Launcher {
 		return times;
 	}
 	
-	public synchronized List<ETAS_EqkRupture> getTriggerRuptures() {
+	public List<ETAS_EqkRupture> getTriggerRuptures() {
+		checkLoadTriggerRuptures(null);
+		return triggerRuptures.isPresent() ? triggerRuptures.get() : null;
+	}
+	
+	private void checkLoadTriggerRuptures(FaultSystemRupSet rupSet) {
 		if (triggerRuptures == null) {
-			// load trigger ruptures
-			List<TriggerRupture> triggerRuptureConfigs = config.getTriggerRuptures();
-			if (triggerRuptureConfigs != null && !triggerRuptureConfigs.isEmpty()) {
-				debug(DebugLevel.INFO, "Building "+triggerRuptureConfigs.size()+" trigger ruptures");
-				FaultSystemSolution fss = checkOutFSS();
-				FaultSystemRupSet rupSet = fss.getRupSet();
-				
-				triggerRuptures = new ArrayList<>();
-				triggerRupturesMap = new HashMap<>();
-				for (TriggerRupture triggerRup : triggerRuptureConfigs) {
-					ETAS_EqkRupture rup = triggerRup.buildRupture(rupSet, simulationOT, params);
-					triggerRupturesMap.put(triggerRup, rup);
-					triggerRuptures.add(rup);
-					int[] rupturedSects = triggerRup.getSectionsRuptured(rupSet);
-					if (rupturedSects != null && rupturedSects.length > 0) {
-						long time = rup.getOriginTime();
-						List<Integer> sects = resetSubSectsMap.get(time);
-						if (sects == null) {
-							sects = new ArrayList<>();
-							resetSubSectsMap.put(time, sects);
+			synchronized (this) {
+				if (triggerRuptures == null) {
+					List<TriggerRupture> triggerRuptureConfigs = config.getTriggerRuptures();
+					if (triggerRuptureConfigs != null && !triggerRuptureConfigs.isEmpty()) {
+						debug(DebugLevel.INFO, "Building "+triggerRuptureConfigs.size()+" trigger ruptures");
+						if (rupSet == null) {
+							// this will load the trigger ruptures internally, return here to avoid doing so twice
+							checkInFSS(checkOutFSS());
+							Preconditions.checkNotNull(triggerRuptures);
+							return;
 						}
-						for (int sect : rupturedSects)
-							sects.add(sect);
+						
+						List<ETAS_EqkRupture> triggerRuptures = new ArrayList<>();
+						triggerRupturesMap = new HashMap<>();
+						for (TriggerRupture triggerRup : triggerRuptureConfigs) {
+							ETAS_EqkRupture rup = triggerRup.buildRupture(rupSet, simulationOT, params);
+							triggerRupturesMap.put(triggerRup, rup);
+							triggerRuptures.add(rup);
+							int[] rupturedSects = triggerRup.getSectionsRuptured(rupSet);
+							if (rupturedSects != null && rupturedSects.length > 0) {
+								long time = rup.getOriginTime();
+								List<Integer> sects = resetSubSectsMap.get(time);
+								if (sects == null) {
+									sects = new ArrayList<>();
+									resetSubSectsMap.put(time, sects);
+								}
+								for (int sect : rupturedSects)
+									sects.add(sect);
+							}
+						}
+						
+						if (!resetSubSectsMap.isEmpty()) {
+							debug(DebugLevel.FINE, "The following subsections' time of occurrence will be reset:");
+							for (Long time : getSortedResetTimes())
+								debug(DebugLevel.FINE, "\t"+time+": "+Joiner.on(",").join(resetSubSectsMap.get(time)));
+						}
+						
+						this.triggerRuptures = Optional.of(triggerRuptures);
+					} else {
+						this.triggerRuptures = Optional.empty();
 					}
-				}
-				
-				checkInFSS(fss);
-				
-				if (!resetSubSectsMap.isEmpty()) {
-					debug(DebugLevel.FINE, "The following subsections' time of occurrence will be reset:");
-					for (Long time : getSortedResetTimes())
-						debug(DebugLevel.FINE, "\t"+time+": "+Joiner.on(",").join(resetSubSectsMap.get(time)));
 				}
 			}
 		}
-		return triggerRuptures;
+		Preconditions.checkNotNull(triggerRuptures);
+	}
+	
+	private void checkLoadHistoricalCatalog(FaultSystemRupSet rupSet) {
+		if (histQkList == null) {
+			synchronized (this) {
+				if (histQkList == null) {
+					// now load a trigger catalog
+					if (config.getTriggerCatalogFile() != null) {
+						if (rupSet == null) {
+							// this will load the hist catalog internally, return here to avoid doing so twice
+							checkInFSS(checkOutFSS());
+							Preconditions.checkNotNull(histQkList);
+							return;
+						}
+						List<ETAS_EqkRupture> histQkList = new ArrayList<>();
+						debug(DebugLevel.INFO, "Loading historical catalog: "+config.getTriggerCatalogFile().getName());
+						if (config.getCompletenessModel() == null)
+							debug(DebugLevel.INFO, "WARNING: statewide completeness model not specified, using default. "
+									+ "Specify with `catalogCompletenessModel` JSON parameter");
+						else
+							params.setStatewideCompletenessModel(config.getCompletenessModel());
+						try {
+							histQkList.addAll(loadHistoricalCatalog(ETAS_Config.resolvePath(config.getTriggerCatalogFile()),
+									ETAS_Config.resolvePath(config.getTriggerCatalogSurfaceMappingsFile()),
+									rupSet, simulationOT, resetSubSectsMap, params.getStatewideCompletenessModel()));
+						} catch (DocumentException | IOException e) {
+							throw ExceptionUtils.asRuntimeException(e);
+						}
+						this.histQkList = Optional.of(histQkList);
+					} else {
+						histQkList = Optional.empty();
+					}
+				}
+			}
+		}
+		Preconditions.checkNotNull(histQkList);
 	}
 	
 	public ETAS_EqkRupture getRuptureForTrigger(TriggerRupture trigger) {
@@ -390,29 +433,9 @@ public class ETAS_Launcher {
 		return params;
 	}
 
-	public synchronized List<ETAS_EqkRupture> getHistQkList() {
-		if (histQkList == null) {
-			// now load a trigger catalog
-			histQkList = new ArrayList<>();
-			if (config.getTriggerCatalogFile() != null) {
-				debug(DebugLevel.INFO, "Loading historical catalog: "+config.getTriggerCatalogFile().getName());
-				if (config.getCompletenessModel() == null)
-					debug(DebugLevel.INFO, "WARNING: statewide completeness model not specified, using default. "
-							+ "Specify with `catalogCompletenessModel` JSON parameter");
-				else
-					params.setStatewideCompletenessModel(config.getCompletenessModel());
-				FaultSystemSolution fss = checkOutFSS();
-				try {
-					histQkList.addAll(loadHistoricalCatalog(ETAS_Config.resolvePath(config.getTriggerCatalogFile()),
-							ETAS_Config.resolvePath(config.getTriggerCatalogSurfaceMappingsFile()),
-							fss, simulationOT, resetSubSectsMap, params.getStatewideCompletenessModel()));
-				} catch (DocumentException | IOException e) {
-					throw ExceptionUtils.asRuntimeException(e);
-				}
-				checkInFSS(fss);
-			}
-		}
-		return histQkList;
+	public List<ETAS_EqkRupture> getHistQkList() {
+		checkLoadHistoricalCatalog(null);
+		return histQkList.isEmpty() ? null : histQkList.get();
 	}
 	
 	public GriddedRegion getRegion() {
@@ -488,6 +511,10 @@ public class ETAS_Launcher {
 	}
 
 	private void resetLastEventData(FaultSystemRupSet rupSet) {
+		// ensure trigger ruptures have been loaded (they might affect section DOLE)
+		checkLoadTriggerRuptures(rupSet);
+		checkLoadHistoricalCatalog(rupSet);
+		
 		if (config.isTimeIndependentERF()) {
 			for (int s=0; s<rupSet.getNumSections(); s++)
 				rupSet.getFaultSectionData(s).setDateOfLastEvent(Long.MIN_VALUE);
@@ -511,6 +538,12 @@ public class ETAS_Launcher {
 	public static List<ETAS_EqkRupture> loadHistoricalCatalog(File catFile, File surfsFile, FaultSystemSolution sol,
 			long ot, Map<Long, List<Integer>> resetSubSectsMap, U3_EqkCatalogStatewideCompleteness completenessModel)
 					throws IOException, DocumentException {
+		return loadHistoricalCatalog(catFile, surfsFile, sol.getRupSet(), ot, resetSubSectsMap, completenessModel);
+	}
+	
+	public static List<ETAS_EqkRupture> loadHistoricalCatalog(File catFile, File surfsFile, FaultSystemRupSet rupSet,
+			long ot, Map<Long, List<Integer>> resetSubSectsMap, U3_EqkCatalogStatewideCompleteness completenessModel)
+					throws IOException, DocumentException {
 		List<ETAS_EqkRupture> histQkList = new ArrayList<>();
 		// load in historical catalog
 		
@@ -519,10 +552,10 @@ public class ETAS_Launcher {
 		
 		if (surfsFile != null) {
 			// add rupture surfaces
-			FaultModels fm = getFaultModel(sol);
+			FaultModels fm = getFaultModel(rupSet);
 			
 			Preconditions.checkArgument(surfsFile.exists(), "Rupture surfaces file doesn't exist: "+surfsFile.getAbsolutePath());
-			FiniteFaultMappingData.loadRuptureSurfaces(surfsFile, loadedRups, fm, sol.getRupSet());
+			FiniteFaultMappingData.loadRuptureSurfaces(surfsFile, loadedRups, fm, rupSet);
 		}
 		
 		// filter for historical completeness
@@ -542,7 +575,7 @@ public class ETAS_Launcher {
 			ETAS_EqkRupture etasRup = rup instanceof ETAS_EqkRupture ? (ETAS_EqkRupture)rup : new ETAS_EqkRupture(rup);
 			if (etasRup.getFSSIndex() >= 0 && resetSubSectsMap != null) {
 				// reset times
-				List<Integer> sectIndexes = sol.getRupSet().getSectionsIndicesForRup(etasRup.getFSSIndex());
+				List<Integer> sectIndexes = rupSet.getSectionsIndicesForRup(etasRup.getFSSIndex());
 //				System.out.print("Resetting elastic rebound for historical rupture, ot="+etasRup.getOriginTime()+", sects=");
 //				for (Integer sectIndex : sectIndexes)
 //					System.out.print(sectIndex+" ");
@@ -562,9 +595,19 @@ public class ETAS_Launcher {
 	 * @return
 	 */
 	private static FaultModels getFaultModel(FaultSystemSolution sol) {
-		int numRups = sol.getRupSet().getNumRuptures();
-		if (sol instanceof InversionFaultSystemSolution)
-			return ((InversionFaultSystemSolution)sol).getLogicTreeBranch().getValue(FaultModels.class);
+		return getFaultModel(sol.getRupSet());
+	}
+
+	
+	/**
+	 * A little kludgy, but determines FaultModel by rupture count
+	 * @param sol
+	 * @return
+	 */
+	private static FaultModels getFaultModel(FaultSystemRupSet rupSet) {
+		int numRups = rupSet.getNumRuptures();
+		if (rupSet instanceof InversionFaultSystemRupSet)
+			return ((InversionFaultSystemRupSet)rupSet).getLogicTreeBranch().getValue(FaultModels.class);
 		else if (numRups == 253706)
 			return FaultModels.FM3_1;
 		else if (numRups == 305709)

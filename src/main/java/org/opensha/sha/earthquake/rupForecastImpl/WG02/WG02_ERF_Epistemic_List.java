@@ -32,7 +32,7 @@ public class WG02_ERF_Epistemic_List extends AbstractEpistemicListERF{
   private static final String  C = new String("WG02 ERF List");
   private boolean D = false;
 
-  public static final String  NAME = new String("WG02 ERF List");
+  public static final String  NAME = new String("WGCEP (2002) ERF List");
 
   /**
    * Static variable for input file name

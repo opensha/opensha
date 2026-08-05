@@ -31,7 +31,6 @@ public class PointSourceOptimizedExceedProbCalc extends AbstractPointSourceOptim
 	private final IMRPointSourceDistanceCache<LightFixedXFunc> exceedProbCache;
 	
 	public PointSourceOptimizedExceedProbCalc() {
-		// true here means to track the SA period
 		exceedProbCache = new IMRPointSourceDistanceCache<>(size -> {return new LightFixedXFunc[size];});
 	}
 	
@@ -42,6 +41,8 @@ public class PointSourceOptimizedExceedProbCalc extends AbstractPointSourceOptim
 			siteLoc = sourceLoc;
 		else
 			siteLoc = LocationUtils.location(sourceLoc, 0d, dist);
+		// reset to zero depth
+		siteLoc = new Location(siteLoc.lat, siteLoc.lon);
 		gmm.setEqkRupture(null); // so that the next call doesn't trigger unnecessary calculations
 		gmm.setSiteLocation(siteLoc);
 		
@@ -65,7 +66,7 @@ public class PointSourceOptimizedExceedProbCalc extends AbstractPointSourceOptim
 			Location origSiteLoc = gmm.getSite().getLocation();
 			double dist = pointSurf.getQuickDistance(origSiteLoc);
 			
-			QuickInterpolator qi = interp.getQuickInterpolator(dist, true); // true here means interpolate in log-distance domain
+			QuickInterpolator qi = interp.getQuickInterpolator(dist, INTERP_LOG_DIST, INTERP_LOG_PROB);
 //			LightFixedXFunc[] cached = getDistCache(gmm, eqkRupture, exceedProbCache);
 			
 			UniquePointRupture uniqueRup = new UniquePointRupture(eqkRupture);

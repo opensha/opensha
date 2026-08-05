@@ -29,10 +29,7 @@ import org.opensha.sha.imr.attenRelImpl.SadighEtAl_1997_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.ShakeMap_2003_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.USGS_Combined_2004_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.ZhaoEtAl_2006_AttenRel;
-import org.opensha.sha.imr.param.SiteParams.DepthTo1pt0kmPerSecParam;
-import org.opensha.sha.imr.param.SiteParams.DepthTo2pt5kmPerSecParam;
-import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
-import org.opensha.sha.imr.param.SiteParams.Vs30_TypeParam;
+import org.opensha.sha.imr.param.SiteParams.*;
 
 /**
  * <p>Title: SiteTranslator</p>
@@ -126,7 +123,10 @@ implements java.io.Serializable {
 		
 		/*				params that can be set from Depth to Vs = 1.0 KM/sec			*/
 		map.addMapping(SiteData.TYPE_DEPTH_TO_1_0,	DepthTo1pt0kmPerSecParam.NAME);
-		
+
+        /*				params that can be set from Sediment Thickness      			*/
+        map.addMapping(SiteData.TYPE_SEDIMENT_THICKNESS, SedimentThicknessParam.NAME);
+
 		return map;
 	}
 	
@@ -209,6 +209,10 @@ implements java.io.Serializable {
 			} else if (paramName.equals(Field_2000_AttenRel.BASIN_DEPTH_NAME)){
 				return setDepthTo2p5Param(param, datas);
 			}
+
+            if (paramName.equals(SedimentThicknessParam.NAME)) {
+                return setSedimentThicknessParam(param, datas);
+            }
 		} else {
 			// this means that the parameter can't be set by any of the data values given.
 			
@@ -225,8 +229,8 @@ implements java.io.Serializable {
 		}
 		return false;
 	}
-	
-	/**
+
+    /**
 	 * Convenience method to set all site params in the given attenuation relationship instance from a single
 	 * site data value. Returns true if at least one parameter was set.
 	 * 
@@ -458,8 +462,31 @@ implements java.io.Serializable {
 		}
 		return false;
 	}
-	
-	/**
+
+    /**
+     * Sets the Sediment Thickness param if appropriate data is available.
+     *
+     * @param param
+     * @param datas
+     * @return
+     */
+    private boolean setSedimentThicknessParam(Parameter param, Collection<SiteDataValue<?>> datas) {
+        // this will get the first (highest priority) data that works
+        for (SiteDataValue<?> data : datas) {
+            if (data.getDataType().equals(SiteData.TYPE_SEDIMENT_THICKNESS)) {
+                Double val = (Double)data.getValue();
+                if (val == null || Double.isNaN(val)) {
+                    continue;
+                }
+                if (D) System.out.println("setSiteParamsForData: +++ Setting zSed: " + val);
+                setValueIgnoreWarning(param, val);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
 	 * Sets the AS Site Type param as follows:
 	 * 
 	 * If using a Wills Site Classification:

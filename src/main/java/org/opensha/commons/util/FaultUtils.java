@@ -758,6 +758,42 @@ public final class FaultUtils {
 	}
 	
 	/**
+	 * Returns an average of the given angles scaled by the given scalars. Note that this
+	 * expects angles in degrees, and will return angles from 0 to 360 degrees.
+	 * 
+	 * @param scalars scalar weights for each angle (does not need to be normalized)
+	 * @param angles angles in degrees corresponding to each pair of locations
+	 * @return
+	 */
+	public static double getScaledAngleAverage(double[] scalars, double[] angles) {
+		Preconditions.checkArgument(scalars.length >= 1, "must have at least 1 lengths!");
+		Preconditions.checkArgument(angles.length == scalars.length, "must have exactly the same amount of lengths as angles");
+
+		// see if we have an easy case, or a NaN
+		if (angles.length == 1)
+			return angles[0];
+		if (Double.isNaN(angles[0]))
+			return Double.NaN;
+		boolean equal = true;
+		for (int i=1; i<angles.length; i++) {
+			if (Double.isNaN(angles[i]))
+				return Double.NaN;
+			if (angles[i] != angles[0]) {
+				equal = false;
+			}
+		}
+		if (equal)
+			return angles[0];
+		
+		AngleAverager avg = new AngleAverager();
+		
+		for (int i=0; i<scalars.length; i++)
+			avg.add(angles[i], scalars[i]);
+
+		return avg.getAverage();
+	}
+	
+	/**
 	 * Averages angles dealing with any -180/180 or 0/360 cut issues. Note that this
 	 * expects angles in degrees, and will return angles from 0 to 360 degrees.
 	 * 

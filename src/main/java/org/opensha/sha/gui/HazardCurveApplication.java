@@ -40,6 +40,7 @@ import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.UIManager;
+import javax.swing.event.ChangeListener;
 
 import org.jfree.data.Range;
 import org.opensha.commons.data.Site;
@@ -52,6 +53,7 @@ import org.opensha.commons.exceptions.WarningException;
 import org.opensha.commons.gui.ControlPanel;
 import org.opensha.commons.gui.DisclaimerDialog;
 import org.opensha.commons.gui.HelpMenuBuilder;
+import org.opensha.commons.util.updater.ApplicationUpdater;
 import org.opensha.commons.gui.plot.GraphWidget;
 import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
@@ -298,6 +300,10 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	
 	private static String errorInInitializationMessage = "Problem occured " +
 				"during initialization the ERF's. All parameters are set to default.";
+	
+	private ChangeListener trtChangeListener = (e) -> {
+		imrGuiBean.setTectonicRegions(getIncludedTectonicRegionTypes());
+	};
 
 	// Construct the applet
 	public HazardCurveApplication(String appShortName) {
@@ -583,7 +589,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 
 		// frame setup
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setTitle("Hazard Curve Application (" + getAppVersion().getDisplayString() + " )");
+		setTitle("Hazard Curve Application (" + getAppVersion().getDisplayString() + ")");
 		setSize(1000, 720);
 		contentSplitPane.setDividerLocation(500);
 		Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
@@ -677,6 +683,8 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 				APP_SHORT_NAME, getAppVersion(), null, null);
 		Thread.setDefaultUncaughtExceptionHandler(exp);
         launch(exp);
+        // Check for updates on a background thread (no-op in headless/IDE builds).
+        ApplicationUpdater.checkForUpdatesDefault(APP_NAME, APP_SHORT_NAME, "HazardCurveGUI");
 	}
 	
 	public static HazardCurveApplication launch(DefaultExceptionHandler handler) {
@@ -1611,10 +1619,12 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 			modeString = "Disaggregation Results for Prob = " + probVal
 			+ " (for IML = " + (float) imlVal + ")";
 		modeString += "\n" + disaggregationString;
+		DisaggregationPlotViewerWindow disagg;
 		if (disaggregationControlPanel.isUseGMT()) {
 			// String pdfImageLink;
 			try {
 				disaggregationPlotWebAddr = getDisaggregationPlot();
+//				System.out.println("Link: "+disaggregationPlotWebAddr);
 				/*
 				 * pdfImageLink = "<br>Click  " + "<a href=\"" +
 				 * disaggregationPlotWebAddr +
@@ -1634,12 +1644,15 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 						"Server Problem", JOptionPane.INFORMATION_MESSAGE);
 				return;
 			}
-			new DisaggregationPlotViewerWindow(disaggregationPlotWebAddr
-					+ DisaggregationCalculator.DISAGGREGATION_PLOT_PDF_NAME, disaggCalc, modeString, metadata, binDataToShow);
+			disagg = new DisaggregationPlotViewerWindow(disaggregationPlotWebAddr
+					+ DisaggregationCalculator.DISAGGREGATION_PLOT_PNG_NAME, disaggCalc, modeString, metadata, binDataToShow);
 		} else {
-			new DisaggregationPlotViewerWindow(PureJavaDisaggPlotter.buildChartPanel(disaggCalc.getDisaggPlotData()),
+			disagg = new DisaggregationPlotViewerWindow(PureJavaDisaggPlotter.buildChartPanel(disaggCalc.getDisaggPlotData()),
 					disaggCalc, modeString, metadata, binDataToShow);
 		}
+		// uncomment to center the window, default goes top left of screen
+		// not sure which is more useful for most people
+//		disagg.setLocationRelativeTo(this);
 	}
 
 	/**
@@ -2705,7 +2718,13 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 */
 	public Set<TectonicRegionType> getIncludedTectonicRegionTypes() {
 		try {
-			BaseERF selectedERF = erfGuiBean.getSelectedERF();
+			// this one doesn't update the forecast, and may return null/hardcoded TRTs, but prevents unnecessary
+			// forecast updating on initial ERF selection
+			BaseERF selectedERF = erfGuiBean.getSelectedERF_Instance();
+			selectedERF.addTectonicRegionChangeListener(trtChangeListener);
+			// this one updates the forecast, which can fail for ERFs that require parameterization (e.g., generic FSS
+			// ERF), but will result in correct TRTs if they require forecast updating
+//			BaseERF selectedERF = erfGuiBean.getSelectedERF();
 //			System.out.println("Getting TRTs for "+selectedERF.getName());
 			Set<TectonicRegionType> includedTectonicRegionTypes =  selectedERF.getIncludedTectonicRegionTypes();
 //			System.out.println("Returning TRTs: "+includedTectonicRegionTypes);

@@ -1,5 +1,6 @@
 package org.opensha.commons.param.impl;
 
+import java.util.Comparator;
 import java.util.EnumSet;
 
 import org.dom4j.Element;
@@ -32,6 +33,8 @@ public class EnumParameter<E extends Enum<E>> extends AbstractParameter<E> {
 	private String nullOption;
 	private Class<E> clazz;
 	private EnumSet<E> choices;
+	
+	private Comparator<E> comparator;
 
 	// private; for internal cloning use only
 	private EnumParameter() {};
@@ -72,7 +75,7 @@ public class EnumParameter<E extends Enum<E>> extends AbstractParameter<E> {
 	@Override
 	public ParameterEditor<E> getEditor() {
 		if (editor == null) {
-			editor = new EnumParameterEditor<E>(this);
+			editor = new EnumParameterEditor<E>(this, clazz, comparator);
 		}
 		return editor;
 	}
@@ -121,6 +124,13 @@ public class EnumParameter<E extends Enum<E>> extends AbstractParameter<E> {
 	@Override
 	public EnumConstraint<E> getConstraint() {
 		return (EnumConstraint<E>) super.getConstraint();
+	}
+	
+	public void setComparator(Comparator<E> comparator) {
+		this.comparator = comparator;
+		if (editor != null) {
+			editor.setComparator(comparator);
+		}
 	}
 
 }

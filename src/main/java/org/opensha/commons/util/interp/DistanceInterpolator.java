@@ -158,6 +158,17 @@ public class DistanceInterpolator {
 	 * @return interpolator instance for the given distance
 	 */
 	public QuickInterpolator getQuickInterpolator(double dist, boolean interpLogX) {
+		return getQuickInterpolator(dist, interpLogX, false);
+	}
+	
+	/**
+	 * 
+	 * @param dist the distance at which we are interpolating values
+	 * @param interpLogX if true, interpolations will be done in the log-distance domain
+	 * @param interpLogY if true, interpolations will be done in the log-value domain where supported
+	 * @return interpolator instance for the given distance
+	 */
+	public QuickInterpolator getQuickInterpolator(double dist, boolean interpLogX, boolean interpLogY) {
 		int indexBefore = getIndexAtOrBefore(dist);
 		
 		if (equalsDiscreteDistance(indexBefore, dist)) {
@@ -179,7 +190,7 @@ public class DistanceInterpolator {
 		else
 			binDelta = calcBinDelta(dist, linearDists[indexBefore], linearDists[indexBefore+1]);
 		
-		return new BinDeltaInterpolator(indexBefore, indexBefore+1, dist, binDelta);
+		return new BinDeltaInterpolator(indexBefore, indexBefore+1, dist, binDelta, interpLogY);
 	}
 	
 	/**
@@ -295,17 +306,19 @@ public class DistanceInterpolator {
 		private final int indexAfter;
 		private final double distance;
 		private final double binDelta;
+		private final boolean logY;
 
-		private BinDeltaInterpolator(int indexBefore, int indexAfter, double distance, double binDelta) {
+		private BinDeltaInterpolator(int indexBefore, int indexAfter, double distance, double binDelta, boolean logY) {
 			this.indexBefore = indexBefore;
 			this.indexAfter = indexAfter;
 			this.distance = distance;
 			this.binDelta = binDelta;
+			this.logY = logY;
 		}
 
 		@Override
 		public double interpolate(IntToDoubleFunction data) {
-			return binDeltaInterp(binDelta, data.applyAsDouble(indexBefore), data.applyAsDouble(indexAfter));
+			return binDeltaInterp(binDelta, data.applyAsDouble(indexBefore), data.applyAsDouble(indexAfter), logY);
 		}
 
 		@Override
@@ -340,7 +353,7 @@ public class DistanceInterpolator {
 
 		@Override
 		public double interpolate(double y1, double y2) {
-			return binDeltaInterp(binDelta, y1, y2);
+			return binDeltaInterp(binDelta, y1, y2, logY);
 		}
 	}
 	
@@ -354,6 +367,8 @@ public class DistanceInterpolator {
 		return (x - x1) / (x2 - x1);
 	}
 	
+	private static final double MIN_LOG_INTERP = 1e-30;
+	
 	/**
 	 * efficient interpolation that uses this equivalence:
 	 * y = y1 + (x - x1) * (y2 - y1) / (x2 - x1)
@@ -365,10 +380,16 @@ public class DistanceInterpolator {
 	 * @param y2
 	 * @return
 	 */
-	static double binDeltaInterp(double binDelta, double y1, double y2) {
+	static double binDeltaInterp(double binDelta, double y1, double y2, boolean logY) {
 		if (y1 == 0d && y2 == 0d)
 			return 0d;
-		double ret = y1 + binDelta * (y2-y1);
+		double ret;
+		if (logY && y1 > MIN_LOG_INTERP && y2 > MIN_LOG_INTERP) {
+			double logY1 = Math.log10(y1);
+			ret = Math.pow(10d, logY1 + binDelta * (Math.log10(y2) - logY1));
+		} else {
+			ret = y1 + binDelta * (y2-y1);
+		}
 		
 		// test for sign errors, which can happen very close to zero
 		if (ret < 0.1 && ret > -0.1) {
@@ -412,14 +433,14 @@ public class DistanceInterpolator {
 			Preconditions.checkState(testIndexBefore == i, "Bad getIndexAtOrBefore=%s with small add for %s. linear=%s, log=%s",
 					testIndexBefore, i, interp.linearDists[i], interp.logDists[i]);
 			int index = i;
-			double interpEdgeTest = interp.getQuickInterpolator(interp.linearDists[i], false).interpolate(val->(double)val);
+			double interpEdgeTest = interp.getQuickInterpolator(interp.linearDists[i], false, false).interpolate(val->(double)val);
 			Preconditions.checkState(Precision.equals(interpEdgeTest, (double)i), "Bad interp for edge: %s != %s", (Double)interpEdgeTest, (Integer)i);
 			if (i < interp.size-1) {
 				double halfway = 0.5*(interp.linearDists[i]+interp.linearDists[i+1]);
 				testIndexBefore = interp.getIndexAtOrBefore(halfway);
 				Preconditions.checkState(testIndexBefore == i, "Bad getIndexAtOrBefore=%s with half add for %s. linear=%s, log=%s",
 						testIndexBefore, i, interp.linearDists[i], interp.logDists[i]);
-				double interpMiddleTest = interp.getQuickInterpolator(halfway, false).interpolate(val->(double)val);
+				double interpMiddleTest = interp.getQuickInterpolator(halfway, false, false).interpolate(val->(double)val);
 				Preconditions.checkState(Precision.equals(interpMiddleTest, i+0.5), "Bad interp for middle: %s != %s", (Double)interpMiddleTest, i+0.5);
 			}
 		}

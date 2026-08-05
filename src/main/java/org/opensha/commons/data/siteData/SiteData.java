@@ -45,6 +45,10 @@ public interface SiteData<Element> extends Named, XMLSaveable {
 	 * Depth to first Vs = 1.0 km/sec (km)
 	 */
 	public static final String TYPE_DEPTH_TO_1_0 = "Depth to Vs = 1.0 km/sec";
+    /**
+     * Sediment Thickness (km)
+     */
+    public static final String TYPE_SEDIMENT_THICKNESS = "Sediment Thickness (km)";
 	/**
 	 * Elevation (m)
 	 */
@@ -150,7 +154,7 @@ public interface SiteData<Element> extends Named, XMLSaveable {
 	/**
 	 * Get the value for each location in the given location list
 	 * 
-	 * @param loc
+	 * @param locs
 	 * @return
 	 */
 	public ArrayList<Element> getValues(LocationList locs) throws IOException;

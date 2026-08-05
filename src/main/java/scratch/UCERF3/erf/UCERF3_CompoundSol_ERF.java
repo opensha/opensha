@@ -62,7 +62,7 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 
 	private static final boolean D = false;
 	
-	public static final String NAME = "UCERF3 Single Branch ERF";
+	public static final String NAME = "WGCEP (2014) UCERF3 - Individual Branch";
 	
 	private Map<Class<? extends U3LogicTreeBranchNode<?>>, EnumParameter<?>> enumParamsMap;
 	

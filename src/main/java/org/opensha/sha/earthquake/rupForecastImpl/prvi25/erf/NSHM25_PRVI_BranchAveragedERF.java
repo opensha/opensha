@@ -9,6 +9,7 @@ import org.opensha.sha.util.TectonicRegionType;
 import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
+import java.util.EnumSet;
 import java.util.Set;
 
 /**
@@ -16,7 +17,7 @@ import java.util.Set;
  */
 public class NSHM25_PRVI_BranchAveragedERF extends BaseFaultSystemSolutionERF {
     private static final String MODEL = "2025_PRVI_NSHM_Fault-System_Solution";
-    public static final String NAME = "NSHM25-PRVI Branch Avg ERF";
+    public static final String NAME = "USGS NSHM25-PRVI - Branch Averaged ERF";
     private static final boolean D = false;
     private NSHM25_Downloader downloader;
     /**
@@ -39,6 +40,9 @@ public class NSHM25_PRVI_BranchAveragedERF extends BaseFaultSystemSolutionERF {
             this.downloader = new NSHM25_Downloader(storeDir);
         }
         this.setName(NAME);
+        // set the TRTs explicitly so that getIncludedTectonicRegionTypes() knows them without updating the forecast first
+        this.erfTRTs = EnumSet.of(TectonicRegionType.ACTIVE_SHALLOW,
+        		TectonicRegionType.SUBDUCTION_INTERFACE, TectonicRegionType.SUBDUCTION_SLAB);
     }
 
     /**

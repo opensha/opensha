@@ -112,7 +112,11 @@ public class GeographicMapMaker {
 	protected List<LocationList> sectUpperEdges;
 	protected List<LocationList> sectPerimeters;
 	protected boolean plotAseisReducedSurfaces = false;
-	protected boolean fillSurfaces = false;
+	protected Boolean fillSurfaces = null;
+	/**
+	 * true if any fault sections have section index >= 1
+	 */
+	protected boolean hasSectsDD = false;
 	protected boolean fillVertialSurfaces = false;
 	protected boolean plotTracesForFilledSurfaces = true;
 	protected boolean plotOutlinesForFilledSurfaces = true;
@@ -328,15 +332,12 @@ public class GeographicMapMaker {
 			this.sects = sects;
 			this.sectIndexMap = new HashMap<>();
 			
-			boolean hasDD = false;
+			hasSectsDD = false;
 			for (int s=0; s<sects.size(); s++) {
 				FaultSection sect = sects.get(s);
 				sectIndexMap.put(sect, s);
-				hasDD |= sect.getSubSectionIndexDownDip() > 0;
+				hasSectsDD |= sect.getSubSectionIndexDownDip() > 0;
 			}
-			
-			if (hasDD)
-				fillSurfaces = true;
 			
 			Preconditions.checkState(sectIndexMap.size() == sects.size(), "Duplicate section ID?");
 		}
@@ -1137,6 +1138,17 @@ public class GeographicMapMaker {
 			}
 		}
 		
+		private boolean isFillSurface(FaultSection sect) {
+			boolean dipping = sect.getAveDip() < 89;
+			if (fillSurfaces != null)
+				// explicitly set
+				return fillSurfaces && (fillVertialSurfaces || dipping);
+			// default behavior: fill if we have subsections down-dip, and this section is one of them and it dips
+			// hasSectsDD requires indexDD >= 1, so if all have indexDD=0 this won't trigger,
+			// but, it will trigger for sections with indexDD if there also exist sections with indexDD > 1
+			return hasSectsDD && sect.getSubSectionIndexDownDip() >= 0 && (fillVertialSurfaces || dipping);
+		}
+		
 		protected void plotRegionOutlines() {
 			if (regionOutlineChar != null && (plotRectangularRegionOutlines || !region.isRectangular())) {
 				DefaultXY_DataSet outline = new DefaultXY_DataSet();
@@ -1277,7 +1289,7 @@ public class GeographicMapMaker {
 				if (!doTraces && (!skipNaNs || sectNaNChar != null))
 					// plot the trace anyway if it's NaN
 					doTraces = isNaN;
-				if (sectsAreColored && fillSurfaces && plotTracesForFilledSurfaces && (fillVertialSurfaces || sect.getAveDip() != 90d)) {
+				if (sectsAreColored && plotTracesForFilledSurfaces && isFillSurface(sect)) {
 					// plot the trace if we're filling the surface
 					// if we're not doing custom sorting, do it here as the fills will be put on bottom
 					// if we're doing custom sorting, we'll add them in on top later instead
@@ -1322,7 +1334,7 @@ public class GeographicMapMaker {
 						if (doTraces && sectTraceChar == null && s == 0)
 							outline.setName("Fault Sections");
 					}
-					if (writeGeoJSON && !fillSurfaces) {
+					if (writeGeoJSON && !isFillSurface(sect)) {
 						Feature feature = surfFeature(sect, sectOutlineChar, GEOJSON_DEFAULT_SURF_OPACITY);
 						outlineFeatures.put(sect.getSectionId(), feature);
 						features.add(0, feature);
@@ -1385,7 +1397,7 @@ public class GeographicMapMaker {
 				}
 				int fillIndex = -1;
 				int fillGeoIndex = -1;
-				if (fillSurfaces && sectSortables == null) {
+				if (sectSortables == null && ((fillSurfaces != null && fillSurfaces) || hasSectsDD)) {
 					if (plotSectsOnTop) {
 						// probably wanted these on top as well
 						// plot all fills now, traces will still go above
@@ -1406,7 +1418,7 @@ public class GeographicMapMaker {
 					if (Double.isNaN(scalar) && sectNaNChar != null)
 						color = sectNaNChar.getColor();
 
-					if (fillSurfaces && (fillVertialSurfaces || sect.getAveDip() != 90d)) {
+					if (isFillSurface(sect) && (fillVertialSurfaces || sect.getAveDip() != 90d)) {
 						XY_DataSet outline = new DefaultXY_DataSet();
 						for (Location loc : getPerimeter(sect))
 							outline.set(loc.getLongitude(), loc.getLatitude());
@@ -1508,7 +1520,7 @@ public class GeographicMapMaker {
 					if (!plotSects.contains(sect))
 						continue;
 
-					if (fillSurfaces && (fillVertialSurfaces || sect.getAveDip() != 90d)) {
+					if (isFillSurface(sect)) {
 						XY_DataSet outline = new DefaultXY_DataSet();
 						LocationList perimeter = getPerimeter(sect);
 						for (Location loc : perimeter)

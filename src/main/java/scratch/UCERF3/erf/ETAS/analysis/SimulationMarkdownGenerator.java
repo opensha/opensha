@@ -431,7 +431,7 @@ public class SimulationMarkdownGenerator {
 			}
 		}
 		if (!config.isGriddedOnly())
-			plots.add(new ETAS_FaultParticipationPlot(config, launcher, "fault_participation", annualizeMFDs, skipMaps));
+			plots.add(new ETAS_FaultParticipationPlot(config, launcher, "fault_participation", annualizeMFDs, skipMaps, 25));
 		if (!skipMaps)
 			plots.add(new ETAS_GriddedNucleationPlot(config, launcher, "gridded_nucleation", annualizeMFDs));
 

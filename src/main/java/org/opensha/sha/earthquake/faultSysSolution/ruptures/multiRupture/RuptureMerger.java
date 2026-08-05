@@ -213,15 +213,24 @@ public class RuptureMerger {
         return outPrefix;
     }
 
-    public static void main(String[] args) throws IOException {
+    /**
+     * RuptureMerger configuration with defaults
+     */
+    public static class Config{
+        public File ruptureSet;
+        public File filterFile;
+        public File outputDir = new File("/tmp/");
+        public double maxJumpDist = 15;
+        public int areaSpreadCount = 3;
+        public double areaSpreadDiff = 0.1;
+        public double stiffnessGridSpacing = 2;
+        public File stiffnessCacheDir = new File("/tmp/stiffnessCaches/");
+    }
+
+    public static void merge(Config config) throws IOException {
 
         // load ruptures and split them up into crustal and subduction
-    	// dirty...but this will help us collaborate better...
-    	// Oakley's file:
-    	File inputFile = resolveFile(
-                "C:\\tmp\\nzshm22_merged.zip",
-                "C:\\Users\\user\\GNS\\rupture sets\\nzshm_complete_merged.zip",
-                "/home/kevin/Downloads/rupset-disjointed.zip");
+    	File inputFile = config.ruptureSet;
         FaultSystemRupSet rupSet = FaultSystemRupSet.load(inputFile);
         List<ClusterRupture> nucleationRuptures = new ArrayList<>();
         List<ClusterRupture> targetRuptures = new ArrayList<>();
@@ -232,7 +241,7 @@ public class RuptureMerger {
         }
 
         List<ClusterRupture> ruptures = cRups.getAll();
-        File filterFile = resolveFile("C:\\tmp\\filteredRuptures.txt", "C:\\Users\\user\\GNS\\rupture sets\\filteredRuptures.txt");
+        File filterFile = config.filterFile;
         if (filterFile != null) {
             int oldRupCount = ruptures.size();
             ruptures = new ArrayList<>();
@@ -257,16 +266,15 @@ public class RuptureMerger {
         System.out.println("Loaded " + targetRuptures.size() + " target ruptures");
 
         // set up RuptureMerger
-        double maxJumpDist = 15d;
-        String outPrefix = "mergedRupset_"+oDF.format(maxJumpDist)+"km";
-        RuptureMerger merger = new RuptureMerger(rupSet, maxJumpDist, nucleationRuptures, targetRuptures);
+        String outPrefix = "mergedRupset_"+oDF.format(config.maxJumpDist)+"km";
+        RuptureMerger merger = new RuptureMerger(rupSet, config.maxJumpDist, nucleationRuptures, targetRuptures);
 
-        AreaSpreadSelector targetSelector = new AreaSpreadSelector(merger.getDisAzCalc(), 3, 0.1);
+        AreaSpreadSelector targetSelector = new AreaSpreadSelector(merger.getDisAzCalc(), config.areaSpreadCount, config.areaSpreadDiff);
         merger.setTargetSelector(targetSelector);
 
         System.out.println("possible jumps: "+merger.countPossibleJumps());
 
-        StiffnessCalcModule stiffness = new StiffnessCalcModule(rupSet, 2, new File("C:\\tmp\\stiffnessCaches"));
+        StiffnessCalcModule stiffness = new StiffnessCalcModule(rupSet, config.stiffnessGridSpacing, config.stiffnessCacheDir);
 
         if (stiffness.stiffGridSpacing != 1d)
             outPrefix += "_cffPatch" + oDF.format(stiffness.stiffGridSpacing) + "km";
@@ -318,10 +326,10 @@ public class RuptureMerger {
                         .forScalingRelationship(ScalingRelationships.MEAN_UCERF3)
                         .addModule(stiffness)
                         .build();
-        resultRupSet.write(new File("/tmp/" + outPrefix + ".zip"));
+        resultRupSet.write(new File(config.outputDir, outPrefix + ".zip"));
 
         // quick sanity check
-        RupCartoonGenerator.plotRupture(new File("/tmp/"), outPrefix, mergedRuptures.get(0), "merged rupture", false, true);
+        RupCartoonGenerator.plotRupture(config.outputDir, outPrefix, mergedRuptures.get(0), "merged rupture", false, true);
 
         List<ClusterRupture> sortedRups = new ArrayList<>(mergedRuptures);
         sortedRups.sort(Comparator.comparing((ClusterRupture r) -> r.clusters[0].subSects.size()).thenComparing((ClusterRupture r) -> r.buildOrderedSectionList().size()));
@@ -330,5 +338,15 @@ public class RuptureMerger {
 //        plot.plot(new File("/tmp"), outPrefix + "stiffness", sortedRups.get(sortedRups.size() - 1), "merged rupture " + (sortedRups.size() - 1));
     }
 
+    public static void main(String[] args) throws IOException {
+        Config config = new Config();
+        // dirty...but this will help us collaborate better...
+        config.ruptureSet = resolveFile(
+                "C:\\runs\\run_4\\nzshm22_complete_merged.zip",
+                "C:\\Users\\user\\GNS\\rupture sets\\nzshm_complete_merged.zip",
+                "/home/kevin/Downloads/rupset-disjointed.zip");
+        config.filterFile = resolveFile("C:\\tmp\\filteredRuptures.txt", "C:\\runs\\run_4\\filteredRuptures.txt");
 
+        merge(config);
+    }
 }
