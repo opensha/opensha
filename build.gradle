@@ -136,9 +136,9 @@ dependencies {
 	api 'org.apache.commons:commons-compress:1.28.0'
 	
 	/* Atlassan commonmark - Markdown utilities */
-	api 'com.atlassian.commonmark:commonmark:0.10.0'
-	api 'com.atlassian.commonmark:commonmark-ext-gfm-tables:0.10.0'
-	api 'com.atlassian.commonmark:commonmark-ext-heading-anchor:0.10.0'
+	api 'org.commonmark:commonmark:0.29.0'
+	api 'org.commonmark:commonmark-ext-gfm-tables:0.29.0'
+	api 'org.commonmark:commonmark-ext-heading-anchor:0.29.0'
 	
 	/* no remote repo */
 	// MPJ API; keep this as a jar, but can skip it as a maven dependency as any real runtime configurations
