@@ -4,9 +4,9 @@ import java.security.MessageDigest;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Random;
 
-import org.apache.commons.codec.binary.Base64;
 import org.opensha.refFaultParamDb.dao.exception.InsertException;
 import org.opensha.refFaultParamDb.dao.exception.QueryException;
 import org.opensha.refFaultParamDb.dao.exception.UpdateException;
@@ -81,7 +81,7 @@ public class ContributorDB_DAO  {
 		try {
 			MessageDigest md = MessageDigest.getInstance("MD5");
 			md.update(password.getBytes());
-			return Base64.encodeBase64String(md.digest()).trim();
+			return Base64.getEncoder().encodeToString(md.digest()).trim();
 			//return new String(md.digest());
 		}catch(Exception e) {
 			e.printStackTrace();
