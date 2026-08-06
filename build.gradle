@@ -118,10 +118,15 @@ dependencies {
 	api 'net.mahdilamb:colormap:0.9.511'
 	api 'org.slf4j:slf4j-simple:2.0.18'
 	api('net.sourceforge.parallelcolt:parallelcolt:0.10.1') {
-		// parallel colt on maven comes with an old junit version that confuses eclipse
+		// parallel colt on maven comes with an old junit version that confuses eclipse and has a vulnerability
 		exclude group: 'junit', module: 'junit'
 	}
 	api 'net.sourceforge.csparsej:csparsej:1.1.1'
+	api ('com.googlecode.json-simple:json-simple:1.1.1') {
+		// used by EventWebService.jar
+		// json-simple on maven comes with an old junit version that confuses eclipse and has a vulnerability
+		exclude group: 'junit', module: 'junit'
+	}
 	
 	// legacy oracle DB/spatial; don't include on runtime classpath
 	implementation 'com.oracle.database.spatial:sdoapi:23.26'
