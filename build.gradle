@@ -117,6 +117,11 @@ dependencies {
 	api 'javax.mail:mail:1.4.7'
 	api 'org.apache.poi:poi:3.16'
 	api 'net.mahdilamb:colormap:0.9.511'
+	api 'org.slf4j:slf4j-api:2.0.18'
+	
+	// legacy oracle DB/spatial; don't include on runtime classpath
+	implementation 'com.oracle.database.spatial:sdoapi:23.26'
+	implementation 'com.oracle.database.jdbc:ojdbc5:11.2.0.4'
 	
 	/* apache commons */
 	api 'org.apache.commons:commons-lang3:3.11'
@@ -133,15 +138,12 @@ dependencies {
 	api 'com.atlassian.commonmark:commonmark-ext-heading-anchor:0.10.0'
 	
 	/* no remote repo */
-	api files('lib/ncCore-4.0.jar')
 	implementation files('lib/mpj-0.38.jar') // MPJ API
 	api files('lib/getfile-all.jar')
 	api files('lib/f2jutil.jar') // used by NNLS code
 	api files('lib/mpj-task-calculator-1.1.jar') // MPJTaskCalculator
 	api files('lib/parallelcolt-0.9.4.jar')
 	api files('lib/csparsej.jar')
-	api files('lib/ojdbc5.jar')
-	api files('lib/sdoapi.jar')
 	api files('lib/EventWebService.jar')
 
 	testImplementation 'junit:junit:4.12'
