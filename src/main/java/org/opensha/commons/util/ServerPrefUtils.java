@@ -26,7 +26,7 @@ public class ServerPrefUtils {
 	 * Update this when distributing a new OpenSHA release.
 	 * This same backend may be in use for more than one OpenSHA version.
 	 */
-	private static final String PROD_VERSION = "26.1";
+	private static final String PROD_VERSION = "26.8";
 
 	/**
 	 * Hostname for all production services
@@ -97,7 +97,7 @@ public class ServerPrefUtils {
 	 * In practice, this means that it should be development prefs on trunk and nightly builds, and production
 	 * prefs on release branches and distribution applications.
 	 */
-	public static final ServerPrefs SERVER_PREFS = ServerPrefs.DEV_PREFS;
+	public static final ServerPrefs SERVER_PREFS = ServerPrefs.PRODUCTION_PREFS;
 	
 	public static void debug(String debugName, String message) {
 		String date = "[" + df.format(new Date()) + "]";
