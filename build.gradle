@@ -118,6 +118,11 @@ dependencies {
 	api 'org.apache.poi:poi:3.16'
 	api 'net.mahdilamb:colormap:0.9.511'
 	api 'org.slf4j:slf4j-api:2.0.18'
+	api('net.sourceforge.parallelcolt:parallelcolt:0.10.1') {
+		// parallel colt on maven comes with an old junit version that confuses eclipse
+		exclude group: 'junit', module: 'junit'
+	}
+	api 'net.sourceforge.csparsej:csparsej:1.1.1'
 	
 	// legacy oracle DB/spatial; don't include on runtime classpath
 	implementation 'com.oracle.database.spatial:sdoapi:23.26'
@@ -142,8 +147,6 @@ dependencies {
 	api files('lib/getfile-all.jar')
 	api files('lib/f2jutil.jar') // used by NNLS code
 	api files('lib/mpj-task-calculator-1.1.jar') // MPJTaskCalculator
-	api files('lib/parallelcolt-0.9.4.jar')
-	api files('lib/csparsej.jar')
 	api files('lib/EventWebService.jar')
 
 	testImplementation 'junit:junit:4.12'
