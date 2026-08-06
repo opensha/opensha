@@ -4,10 +4,9 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.lang3.text.WordUtils;
 import org.apache.commons.math3.util.MathUtils;
 import org.apache.commons.math3.util.Precision;
-
+import org.apache.commons.text.WordUtils;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
