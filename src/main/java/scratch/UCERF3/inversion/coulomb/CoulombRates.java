@@ -97,7 +97,7 @@ public class CoulombRates extends HashMap<IDPairing, CoulombRatesRecord> {
 			if (cellNum < 0)
 				continue;
 			HSSFCell id1_cell = row.getCell(cellNum++);
-			if(id1_cell==null || id1_cell.getCellType()!=HSSFCell.CELL_TYPE_NUMERIC)
+			if(id1_cell==null || id1_cell.getCellType()!=org.apache.poi.ss.usermodel.CellType.NUMERIC)
 				continue;
 			id1 = (int)id1_cell.getNumericCellValue();
 			id2 = (int)row.getCell(cellNum++).getNumericCellValue();
@@ -176,10 +176,10 @@ public class CoulombRates extends HashMap<IDPairing, CoulombRatesRecord> {
 			HSSFRow row = sheet.getRow(r);
 			// clear/create cells
 			for (int i=0; i<7; i++)
-				row.createCell(i, HSSFCell.CELL_TYPE_NUMERIC);
+				row.createCell(i, org.apache.poi.ss.usermodel.CellType.NUMERIC);
 //			if (row.getFirstCellNum() != 0 || row.getLastCellNum() < 6) {
 //				for (int i=0; i<7; i++)
-//					row.createCell(i, HSSFCell.CELL_TYPE_NUMERIC);
+//					row.createCell(i, org.apache.poi.ss.usermodel.CellType.NUMERIC);
 //			}
 			row.getCell(0).setCellValue(pairing.getID1());
 			row.getCell(1).setCellValue(pairing.getID2());

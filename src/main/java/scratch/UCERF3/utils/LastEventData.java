@@ -99,7 +99,7 @@ public class LastEventData {
 					continue;
 				HSSFCell intervalCell = row.getCell(4);
 				// only cells with open intervals
-				if (intervalCell == null || intervalCell.getCellType() != HSSFCell.CELL_TYPE_NUMERIC)
+				if (intervalCell == null || intervalCell.getCellType() != org.apache.poi.ss.usermodel.CellType.NUMERIC)
 					continue;
 				double interval = intervalCell.getNumericCellValue();
 				String name = row.getCell(0).getStringCellValue();
@@ -107,13 +107,13 @@ public class LastEventData {
 				Preconditions.checkState(parentID >= 0);
 				HSSFCell offsetCell = row.getCell(3);
 				double offset;
-				if (offsetCell == null || offsetCell.getCellType() != HSSFCell.CELL_TYPE_NUMERIC)
+				if (offsetCell == null || offsetCell.getCellType() != org.apache.poi.ss.usermodel.CellType.NUMERIC)
 					offset = Double.NaN;
 				else
 					offset = offsetCell.getNumericCellValue();
 				// make sure it has a location
 				HSSFCell locStartCell = row.getCell(6);
-				if (locStartCell == null || locStartCell.getCellType() != HSSFCell.CELL_TYPE_NUMERIC) {
+				if (locStartCell == null || locStartCell.getCellType() != org.apache.poi.ss.usermodel.CellType.NUMERIC) {
 					System.err.println("WARNING: no location for "+name+"...skipping!");
 					continue;
 				}

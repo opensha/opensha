@@ -114,7 +114,7 @@ dependencies {
 	api 'com.itextpdf:itextpdf:5.5.13.2'
 	api 'gov.nist.math:jama:1.0.3'
 	api 'javax.servlet:javax.servlet-api:4.0.1'
-	api 'org.apache.poi:poi:3.16'
+	api 'org.apache.poi:poi:5.5.1'
 	api 'net.mahdilamb:colormap:0.9.511'
 	api 'org.slf4j:slf4j-simple:2.0.18'
 	api('net.sourceforge.parallelcolt:parallelcolt:0.10.1') {

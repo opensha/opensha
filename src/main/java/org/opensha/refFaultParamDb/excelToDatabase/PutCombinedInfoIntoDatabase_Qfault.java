@@ -124,8 +124,8 @@ public class PutCombinedInfoIntoDatabase_Qfault {
             HSSFCell cell = row.getCell( (short) c);
             String value = null;
             if (cell != null &&
-                ! (cell.getCellType() == HSSFCell.CELL_TYPE_BLANK)) {
-              if(cell.getCellType() == HSSFCell.CELL_TYPE_STRING)
+                ! (cell.getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK)) {
+              if(cell.getCellType() == org.apache.poi.ss.usermodel.CellType.STRING)
                 value = cell.getStringCellValue().trim();
               else value = ""+cell.getNumericCellValue();
             }

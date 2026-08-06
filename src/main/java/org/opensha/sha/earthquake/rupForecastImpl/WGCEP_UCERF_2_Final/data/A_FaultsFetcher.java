@@ -103,7 +103,7 @@ public class A_FaultsFetcher extends FaultsFetcher implements java.io.Serializab
 				ArrayList<String> rupModelTypes = new ArrayList<String>();;
 				for(int i=1;true; ++i, ++lastColIndex) {
 					cell = row.getCell((short)i);
-					if(cell==null || cell.getCellType()==HSSFCell.CELL_TYPE_BLANK) break;
+					if(cell==null || cell.getCellType()==org.apache.poi.ss.usermodel.CellType.BLANK) break;
 					rupModelTypes.add(row.getCell((short)i).getStringCellValue()); 
 				}
 				++r;
@@ -156,7 +156,7 @@ public class A_FaultsFetcher extends FaultsFetcher implements java.io.Serializab
 				HSSFRow row = sheet.getRow(r);
 				if(row==null) continue;
 				HSSFCell cell = row.getCell( (short) 1);
-				if(cell==null || cell.getCellType()==HSSFCell.CELL_TYPE_STRING) continue;
+				if(cell==null || cell.getCellType()==org.apache.poi.ss.usermodel.CellType.STRING) continue;
 				lat = cell.getNumericCellValue();
 				siteName = row.getCell( (short) 0).getStringCellValue().trim();
 				lon = row.getCell( (short) 2).getNumericCellValue();
@@ -203,23 +203,23 @@ public class A_FaultsFetcher extends FaultsFetcher implements java.io.Serializab
 
 					// Segment name
 					cell = row.getCell( (short) 0);
-					if(cell==null || cell.getCellType()==HSSFCell.CELL_TYPE_BLANK) break;
+					if(cell==null || cell.getCellType()==org.apache.poi.ss.usermodel.CellType.BLANK) break;
 
 					++segIndex;
 
 					// last event yr
 					cell = row.getCell( (short) 1);
-					if(cell==null || cell.getCellType()==HSSFCell.CELL_TYPE_BLANK) lastEventYr = Double.NaN;
+					if(cell==null || cell.getCellType()==org.apache.poi.ss.usermodel.CellType.BLANK) lastEventYr = Double.NaN;
 					else lastEventYr = (int)cell.getNumericCellValue();
 
 					// slip in MRE
 					cell = row.getCell( (short) 2);
-					if(cell==null || cell.getCellType()==HSSFCell.CELL_TYPE_BLANK) slip = Double.NaN;
+					if(cell==null || cell.getCellType()==org.apache.poi.ss.usermodel.CellType.BLANK) slip = Double.NaN;
 					else slip = cell.getNumericCellValue();
 
 					// apriodicity
 					cell = row.getCell( (short) 3);
-					if(cell==null || cell.getCellType()==HSSFCell.CELL_TYPE_BLANK) aperiodicity = Double.NaN;
+					if(cell==null || cell.getCellType()==org.apache.poi.ss.usermodel.CellType.BLANK) aperiodicity = Double.NaN;
 					else aperiodicity = cell.getNumericCellValue();
 
 					//System.out.println(faultName+","+segIndex+","+lastEventYr+","+slip+","+aperiodicity);
