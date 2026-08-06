@@ -116,7 +116,6 @@ dependencies {
 	api 'javax.servlet:javax.servlet-api:4.0.1'
 	api 'org.apache.poi:poi:5.5.1'
 	api 'net.mahdilamb:colormap:0.9.511'
-	api 'org.slf4j:slf4j-simple:2.0.18'
 	api('net.sourceforge.parallelcolt:parallelcolt:0.10.1') {
 		// parallel colt on maven comes with an old junit version that confuses eclipse and has a vulnerability
 		exclude group: 'junit', module: 'junit'
@@ -128,9 +127,15 @@ dependencies {
 		exclude group: 'junit', module: 'junit'
 	}
 	
-	// legacy oracle DB/spatial; don't include on runtime classpath
-	implementation 'com.oracle.database.spatial:sdoapi:23.26'
-	implementation 'com.oracle.database.jdbc:ojdbc5:11.2.0.4'
+	/* legacy oracle DB/spatial; TODO: refactor away */
+	api 'com.oracle.database.spatial:sdoapi:23.26'
+	api 'com.oracle.database.jdbc:ojdbc5:11.2.0.4'
+	
+	/* logging */
+	// this is the generic api
+	api 'org.slf4j:slf4j-api:2.0.18'
+	// include an implementation only when running and building fat jars
+	runtimeOnly 'org.slf4j:slf4j-simple:2.0.18'
 	
 	/* apache commons */
 	api 'org.apache.commons:commons-lang3:3.20.0'
@@ -155,7 +160,7 @@ dependencies {
 	api files('lib/EventWebService.jar')
 
 	testImplementation 'junit:junit:4.13.2'
-	testImplementation 'org.mockito:mockito-core:3.5.13'
+	testImplementation 'org.mockito:mockito-core:5.23.0'
 }
 
 // application build tasks
