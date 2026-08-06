@@ -143,7 +143,10 @@ dependencies {
 	api 'com.atlassian.commonmark:commonmark-ext-heading-anchor:0.10.0'
 	
 	/* no remote repo */
-	implementation files('lib/mpj-0.38.jar') // MPJ API
+	// MPJ API; keep this as a jar, but can skip it as a maven dependency as any real runtime configurations
+	// will have an MPJ implementation on the classpath. But keep it as 'api' rather than 'implementation' to support
+	// running our MPJ apps in single-node mode
+	api files('lib/mpj-0.44.jar')
 	api files('lib/getfile-all.jar')
 	api files('lib/f2jutil.jar') // used by NNLS code
 	api files('lib/mpj-task-calculator-1.1.jar') // MPJTaskCalculator
