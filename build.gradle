@@ -148,7 +148,6 @@ dependencies {
 	// running our MPJ apps in single-node mode
 	api files('lib/mpj-0.44.jar')
 	api files('lib/getfile-all.jar')
-	api files('lib/f2jutil.jar') // used by NNLS code
 	api files('lib/mpj-task-calculator-1.1.jar') // MPJTaskCalculator
 	api files('lib/EventWebService.jar')
 
