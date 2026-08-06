@@ -150,7 +150,7 @@ dependencies {
 	api files('lib/mpj-task-calculator-1.1.jar') // MPJTaskCalculator
 	api files('lib/EventWebService.jar')
 
-	testImplementation 'junit:junit:4.12'
+	testImplementation 'junit:junit:4.13.2'
 	testImplementation 'org.mockito:mockito-core:3.5.13'
 }
 
