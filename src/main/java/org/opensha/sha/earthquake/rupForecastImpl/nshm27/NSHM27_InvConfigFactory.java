@@ -25,8 +25,11 @@ import org.opensha.sha.earthquake.faultSysSolution.RuptureSets;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RectangularDownDipSubductionRupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionConfigurationFactory;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionSolver;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.ExclusionaryInversionConfigurationFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.GridSourceProviderFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionSolver;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.JumpProbabilityConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
@@ -62,6 +65,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilde
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_FaultCubeAssociations;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SingleRegionGridSourceProvider;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.ExclusionaryLogicTreeNode;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SlipAlongRuptureModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues;
@@ -74,6 +78,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.random.Random
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.SubSeisMoRateReduction;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.GRParticRateEstimator;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.ClassicModelInversionSolver;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_CrustalFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_InterfaceFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_InterfaceObsSeisDMAdjustment;
@@ -93,7 +98,8 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Range;
 import com.google.common.collect.Table;
 
-public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory, GridSourceProviderFactory.Single {
+public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory, GridSourceProviderFactory.Single,
+ExclusionaryInversionConfigurationFactory {
 	
 	private static final File[] POSSIBLE_DATA_DIRS = {
 			new File("/home/kevin/OpenSHA/nshm27/data/"),
@@ -380,7 +386,7 @@ public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigur
 		constrBuilder.adjustForActualRupSlips(NSHM23_ConstraintBuilder.ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT,
 				NSHM23_ConstraintBuilder.ADJ_FOR_SLIP_ALONG_DEFAULT);
 		
-		BinaryRuptureProbabilityCalc rupExclusionModel = getExclusionModel(
+		BinaryRuptureProbabilityCalc rupExclusionModel = buildExclusionModel(
 				rupSet, branch, rupSet.requireModule(ClusterRuptures.class));
 		
 		if (rupExclusionModel != null)
@@ -512,8 +518,14 @@ public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigur
 				return true;
 		return false;
 	}
+
+	@Override
+	public BinaryRuptureProbabilityCalc getExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+			ClusterRuptures cRups) {
+		return buildExclusionModel(rupSet, branch, cRups);
+	}
 	
-	public static BinaryRuptureProbabilityCalc getExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+	public static BinaryRuptureProbabilityCalc buildExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
 			ClusterRuptures cRups) {
 		// segmentation model, Lmax
 		List<BinaryRuptureProbabilityCalc> exclusionModels = new ArrayList<>();
@@ -537,7 +549,7 @@ public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigur
 	
 	public static double getIncludeRuptureMmax(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 		ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
-		BinaryRuptureProbabilityCalc rupExclusionModel = getExclusionModel(rupSet, branch, cRups);
+		BinaryRuptureProbabilityCalc rupExclusionModel = buildExclusionModel(rupSet, branch, cRups);
 		double mMax = 0d;
 		for (int rupIndex=0; rupIndex<rupSet.getNumRuptures(); rupIndex++) {
 			double mag = rupSet.getMagForRup(rupIndex);
@@ -739,6 +751,26 @@ public class NSHM27_InvConfigFactory implements ClusterSpecificInversionConfigur
 	@Override
 	public void preGridBuildHook(FaultSystemSolution sol, LogicTreeBranch<?> faultBranch) throws IOException {
 		NSHM27_GridSourceBuilder.doPreGridBuildHook(sol, faultBranch);
+	}
+	
+	@Override
+	public InversionSolver getSolver(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+		NSHM23_SegmentationModels segModel = branch.getValue(NSHM23_SegmentationModels.class);
+		if (segModel == NSHM23_SegmentationModels.CLASSIC) {
+			// it's a classic model
+			if (isSolveClustersIndividually()) {
+				// solve clusters individually, can handle mixed clusters and single-fault analytical
+				System.out.println("Returning classic model solver");
+				return new ClassicModelInversionSolver(rupSet, branch);
+			}
+			System.err.println("WARNING: solving classic model via full system inversion");
+			// have to do a full system inversion
+			return new InversionSolver.Default();
+		} else if (isSolveClustersIndividually()) {
+			return new ClusterSpecificInversionSolver();
+		} else {
+			return new InversionSolver.Default();
+		}
 	}
 
 }

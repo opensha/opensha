@@ -2288,6 +2288,10 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		}
 		return new Range(minNonZero, max);
 	}
+	
+	public static boolean isLatX(String faultName, MinMaxAveTracker latTrack, MinMaxAveTracker lonTrack) {
+		return latTrack.getLength() > 0.6*lonTrack.getLength() || faultName.contains("San Andreas");
+	}
 
 	static List<String> getAlongStrikeLines(ReportMetadata meta, String faultName,
 			List<FaultSection> faultSects, File outputDir, String topLink) throws IOException {
@@ -2304,7 +2308,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		}
 		
 		// strongly prefer latitude here
-		boolean latX = latRange.getLength() > 0.6*lonRange.getLength() || faultName.contains("San Andreas");
+		boolean latX = isLatX(faultName, latRange, lonRange);
 		String xLabel;
 		Range xRange;
 		if (latX) {

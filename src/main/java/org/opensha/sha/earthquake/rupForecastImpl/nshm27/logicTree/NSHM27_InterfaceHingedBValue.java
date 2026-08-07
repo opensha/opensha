@@ -226,7 +226,7 @@ public class NSHM27_InterfaceHingedBValue implements SectionSupraSeisBValues.Fix
 		int numSects = rupSet.getNumSections();
 		int numRups = rupSet.getNumRuptures();
 		ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
-		BinaryRuptureProbabilityCalc rupExclusionModel = NSHM27_InvConfigFactory.getExclusionModel(rupSet, branch, cRups);
+		BinaryRuptureProbabilityCalc rupExclusionModel = NSHM27_InvConfigFactory.buildExclusionModel(rupSet, branch, cRups);
 		double[] sectMmins = new double[numSects];
 		for (int s=0; s<numSects; s++)
 			sectMmins[s] = Double.POSITIVE_INFINITY;
