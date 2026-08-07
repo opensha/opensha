@@ -248,5 +248,66 @@ public interface SectionSupraSeisBValues extends LogicTreeNode {
 		}
 		
 	}
+	
+	@DoesNotAffect(FaultSystemRupSet.SECTS_FILE_NAME)
+	@DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
+	@DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
+	@Affects(FaultSystemSolution.RATES_FILE_NAME)
+	@DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
+	@DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
+	@Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
+	public static abstract class SectSpecificDistributionSample implements FixedWeight {
+		
+		private double weight;
+		private String name;
+		private String shortName;
+		private String filePrefix;
+
+		public SectSpecificDistributionSample(double weight, String name, String shortName, String filePrefix) {
+			this.weight = weight;
+			this.name = name;
+			this.shortName = shortName; 
+			this.filePrefix = filePrefix;
+		}
+		
+		public abstract ContinuousDistribution getSectDistribution(FaultSystemRupSet rupSet,
+				LogicTreeBranch<? extends LogicTreeNode> branch, int sectIndex);
+		
+		public abstract double getSectFractile(int sectIndex);
+
+		@Override
+		public double[] getSectBValues(FaultSystemRupSet rupSet, LogicTreeBranch<? extends LogicTreeNode> branch) {
+			double[] ret = new double[rupSet.getNumSections()];
+			for (int s=0; s<ret.length; s++)
+				ret[s] = getSectDistribution(rupSet, branch, s).inverseCumulativeProbability(getSectFractile(s));
+			return ret;
+		}
+
+		@Override
+		public double getB(FaultSystemRupSet rupSet, LogicTreeBranch<? extends LogicTreeNode> branch) {
+			return Double.NaN;
+		}
+
+		@Override
+		public String getFilePrefix() {
+			return filePrefix;
+		}
+
+		@Override
+		public String getShortName() {
+			return shortName;
+		}
+
+		@Override
+		public String getName() {
+			return name;
+		}
+
+		@Override
+		public double getNodeWeight() {
+			return weight;
+		}
+		
+	}
 
 }
