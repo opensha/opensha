@@ -90,8 +90,12 @@ public class EvenlyDiscrFuncContinuousDistribution implements ContinuousDistribu
 		Preconditions.checkNotNull(func);
 		Preconditions.checkNotNull(type);
 		// don't allow it to be changed externally
-		this.func = new UnmodifiableEvenlyDiscrFunc(func);
-		func = this.func;
+		// use this instead of deepClone because the passed in func could already be un-modifiable or otherwise
+		// not support the scale operation that we may perform below
+		EvenlyDiscretizedFunc tempFunc = new EvenlyDiscretizedFunc(func.getMinX(), func.getMaxX(), func.size());
+		for (int i=0; i<tempFunc.size(); i++)
+			tempFunc.set(i, func.getY(i));
+		func = tempFunc;
 		double sumY = func.calcSumOfY_Vals();
 		
 		Preconditions.checkState(Double.isFinite(sumY) && sumY > 0d, "Sum of Y values must be finite and >0: %s", sumY);
@@ -125,6 +129,8 @@ public class EvenlyDiscrFuncContinuousDistribution implements ContinuousDistribu
 			if (!Precision.equals(sumY, 1d))
 				func.scale(1d/sumY);
 		}
+		// make it unmodifiable so that it can be safely shared
+		this.func = new UnmodifiableEvenlyDiscrFunc(func);
 		this.type = type;
 		this.cumulative = new double[func.size()];
 		if (type == DiscretizationType.INTERPOLATE)
