@@ -28,6 +28,7 @@ import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.CoulombRupSetConf
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionConfigurationFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionSolver;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.ExclusionaryInversionConfigurationFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.GridSourceProviderFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionSolver;
@@ -103,7 +104,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 
-public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory, GridSourceProviderFactory {
+public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory, GridSourceProviderFactory,
+ExclusionaryInversionConfigurationFactory {
 	
 	protected transient RuptureSets.Cache rupSetCache = new RuptureSets.Cache();
 	protected transient Map<RupSetFaultModel, SectionDistanceAzimuthCalculator> distAzCache = new HashMap<>();
@@ -675,7 +677,7 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		// apply any segmentation adjustments
 		if (hasJumps(rupSet)) {
 			// this handles creeping section, binary segmentation, and max dist models
-			BinaryRuptureProbabilityCalc rupExclusionModel = getExclusionModel(
+			BinaryRuptureProbabilityCalc rupExclusionModel = buildExclusionModel(
 					rupSet, branch, rupSet.requireModule(ClusterRuptures.class));
 			
 			if (rupExclusionModel != null)
@@ -847,7 +849,13 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		return builder.build();
 	}
 	
-	public static BinaryRuptureProbabilityCalc getExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+	@Override
+	public BinaryRuptureProbabilityCalc getExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+			ClusterRuptures cRups) {
+		return buildExclusionModel(rupSet, branch, cRups);
+	}
+	
+	public static BinaryRuptureProbabilityCalc buildExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
 			ClusterRuptures cRups) {
 		// segmentation model
 		List<BinaryRuptureProbabilityCalc> exclusionModels = new ArrayList<>();
@@ -987,13 +995,12 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 			if (isSolveClustersIndividually()) {
 				// solve clusters individually, can handle mixed clusters and single-fault analytical
 				System.out.println("Returning classic model solver");
-				ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
-				return new ClassicModelInversionSolver(rupSet, branch, getExclusionModel(rupSet, branch, cRups));
+				return new ClassicModelInversionSolver(rupSet, branch);
 			} else if (!hasPaleoData(rupSet)) {
 				// see if we can solve the whole thing analytically (can do if all multifault rups are excluded)
 				// but only if we don't have paleo/parkfield constraints
 				ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
-				BinaryRuptureProbabilityCalc exclusionModel = getExclusionModel(rupSet, branch, cRups);
+				BinaryRuptureProbabilityCalc exclusionModel = buildExclusionModel(rupSet, branch, cRups);
 				boolean hasIncludedJump = false;
 				for (ClusterRupture cRup : cRups) {
 					int numJumps = cRup.getTotalNumJumps();
@@ -1011,20 +1018,10 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 			// have to do a full system inversion
 			return new InversionSolver.Default();
 		} else if (isSolveClustersIndividually()) {
-			return new ExclusionAwareClusterSpecificInversionSolver();
+			return new ClusterSpecificInversionSolver();
 		} else {
 			return new InversionSolver.Default();
 		}
-	}
-	
-	private static class ExclusionAwareClusterSpecificInversionSolver extends ClusterSpecificInversionSolver {
-
-		@Override
-		protected BinaryRuptureProbabilityCalc getRuptureExclusionModel(FaultSystemRupSet rupSet,
-				LogicTreeBranch<?> branch) {
-			return getExclusionModel(rupSet, branch, rupSet.requireModule(ClusterRuptures.class));
-		}
-		
 	}
 
 	private static ExclusionIntegerSampler getExcludeSampler(ClusterRuptures cRups,
