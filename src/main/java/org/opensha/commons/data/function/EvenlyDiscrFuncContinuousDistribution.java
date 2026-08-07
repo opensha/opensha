@@ -45,7 +45,25 @@ public class EvenlyDiscrFuncContinuousDistribution implements ContinuousDistribu
 		INTERPOLATE
 	}
 	
-	private EvenlyDiscretizedFunc func;
+	/**
+	 * Discretizes the given distribution at the given x values and with the given discretization type
+	 * @param dist
+	 * @param xValues
+	 * @param type
+	 * @return
+	 */
+	public static EvenlyDiscrFuncContinuousDistribution discretize(ContinuousDistribution dist,
+			EvenlyDiscretizedFunc xValues, DiscretizationType type) {
+		EvenlyDiscretizedFunc pdf = new EvenlyDiscretizedFunc(xValues.getMinX(), xValues.getMaxX(), xValues.size());
+		for (int i=0; i<pdf.size(); i++) {
+			double x = pdf.getX(i);
+			double density = dist.density(x);
+			pdf.set(i, density);
+		}
+		return new EvenlyDiscrFuncContinuousDistribution(pdf, type);
+	}
+	
+	private UnmodifiableEvenlyDiscrFunc func;
 	private DiscretizationType type;
 	private double[] cumulative;
 	private int lowerIndex;
@@ -72,7 +90,8 @@ public class EvenlyDiscrFuncContinuousDistribution implements ContinuousDistribu
 		Preconditions.checkNotNull(func);
 		Preconditions.checkNotNull(type);
 		// don't allow it to be changed externally
-		func = func.deepClone();
+		this.func = new UnmodifiableEvenlyDiscrFunc(func);
+		func = this.func;
 		double sumY = func.calcSumOfY_Vals();
 		
 		Preconditions.checkState(Double.isFinite(sumY) && sumY > 0d, "Sum of Y values must be finite and >0: %s", sumY);
@@ -106,7 +125,6 @@ public class EvenlyDiscrFuncContinuousDistribution implements ContinuousDistribu
 			if (!Precision.equals(sumY, 1d))
 				func.scale(1d/sumY);
 		}
-		this.func = func;
 		this.type = type;
 		this.cumulative = new double[func.size()];
 		if (type == DiscretizationType.INTERPOLATE)
@@ -175,8 +193,8 @@ public class EvenlyDiscrFuncContinuousDistribution implements ContinuousDistribu
 	}
 
 
-	public EvenlyDiscretizedFunc getFunc() {
-		return func.deepClone();
+	public UnmodifiableEvenlyDiscrFunc getFunc() {
+		return func;
 	}
 
 	public DiscretizationType getDiscretizationType() {
