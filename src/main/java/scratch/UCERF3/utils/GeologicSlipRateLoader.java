@@ -33,11 +33,11 @@ public class GeologicSlipRateLoader {
 	
 	private static String getCellAsString(HSSFCell cell) {
 		
-		if (cell.getCellType() == HSSFCell.CELL_TYPE_STRING)
+		if (cell.getCellType() == org.apache.poi.ss.usermodel.CellType.STRING)
 			return cell.getStringCellValue();
-		else if (cell.getCellType() == HSSFCell.CELL_TYPE_NUMERIC)
+		else if (cell.getCellType() == org.apache.poi.ss.usermodel.CellType.NUMERIC)
 			return ""+cell.getNumericCellValue();
-		else if (cell.getCellType() == HSSFCell.CELL_TYPE_BLANK)
+		else if (cell.getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK)
 			return null;
 		else
 			throw new IllegalStateException("cell is neither a string, blank, nor numeric");
@@ -55,7 +55,7 @@ public class GeologicSlipRateLoader {
 		
 		POIFSFileSystem fs = new POIFSFileSystem(is);
 		HSSFWorkbook wb = new HSSFWorkbook(fs);
-		wb.setMissingCellPolicy(Row.CREATE_NULL_AS_BLANK);
+		wb.setMissingCellPolicy(Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
 		HSSFSheet sheet = wb.getSheetAt(0);
 		
 		boolean newTable = sheet.getRow(0).getCell(8).getStringCellValue().startsWith("ID");

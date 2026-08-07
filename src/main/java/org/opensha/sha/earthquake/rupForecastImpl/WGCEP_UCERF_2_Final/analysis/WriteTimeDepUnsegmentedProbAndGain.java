@@ -174,7 +174,7 @@ public class WriteTimeDepUnsegmentedProbAndGain {
 		
 		// create bold font style
 		HSSFFont boldFont = wb.createFont();
-		boldFont.setBoldweight(HSSFFont.BOLDWEIGHT_BOLD);
+		boldFont.setBold(true);
 		boldStyle = wb.createCellStyle();
 		boldStyle.setFont(boldFont);
 		
