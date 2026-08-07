@@ -6,12 +6,12 @@ import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_GMM_Wrapper;
 import org.opensha.sha.imr.logicTree.ScalarIMR_ParamsLogicTreeNode;
 
-import gov.usgs.earthquake.nshmp.gmm.UsgsPrviBackbone2025;
+import org.opensha.nshmp.shaded.gmm.NshmpUsgsPrviBackbone2025;
 
 @AffectsNone
 public enum PRVI25_GMM_GenericSigmaModel implements ScalarIMR_ParamsLogicTreeNode {
-	SIGMA_NGA("NGA Sigma Model", "NGA", UsgsPrviBackbone2025.SIGMA_NGA_ID, 0.5d),
-	SIGMA_PRVI("PRVI Sigma Model", "PRVI", UsgsPrviBackbone2025.SIGMA_PRVI_ID, 0.5d);
+	SIGMA_NGA("NGA Sigma Model", "NGA", NshmpUsgsPrviBackbone2025.SIGMA_NGA_ID, 0.5d),
+	SIGMA_PRVI("PRVI Sigma Model", "PRVI", NshmpUsgsPrviBackbone2025.SIGMA_PRVI_ID, 0.5d);
 	
 	final String name;
 	final String shortName;

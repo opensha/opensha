@@ -20,12 +20,12 @@ import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
-import gov.usgs.earthquake.nshmp.gmm.Gmm;
+import org.opensha.nshmp.shaded.gmm.NshmpGmm;
 
 @JsonAdapter(NSHMP_GMM_Branch.Adapter.class)
 public class NSHMP_GMM_Branch implements ScalarIMRsLogicTreeNode.SingleTRT, AdapterBackedNode {
 	
-	private Gmm gmm;
+	private NshmpGmm gmm;
 	private GroundMotionLogicTreeFilter treeFilter;
 	private String name;
 	private String shortName;
@@ -34,14 +34,14 @@ public class NSHMP_GMM_Branch implements ScalarIMRsLogicTreeNode.SingleTRT, Adap
 	
 	private TectonicRegionType trt;
 
-	private NSHMP_GMM_Branch(Gmm gmm, GroundMotionLogicTreeFilter treeFilter) {
+	private NSHMP_GMM_Branch(NshmpGmm gmm, GroundMotionLogicTreeFilter treeFilter) {
 		this.gmm = gmm;
 		this.treeFilter = treeFilter;
 		
 		this.trt = NSHMP_GMM_Wrapper.trtForType(gmm.type());
 	}
 
-	public NSHMP_GMM_Branch(Gmm gmm, GroundMotionLogicTreeFilter treeFilter, String name, String shortName,
+	public NSHMP_GMM_Branch(NshmpGmm gmm, GroundMotionLogicTreeFilter treeFilter, String name, String shortName,
 			String filePrefix, double weight) {
 		this.gmm = gmm;
 		this.treeFilter = treeFilter;
@@ -113,12 +113,12 @@ public class NSHMP_GMM_Branch implements ScalarIMRsLogicTreeNode.SingleTRT, Adap
 		@Override
 		public NSHMP_GMM_Branch read(JsonReader in) throws IOException {
 			in.beginObject();
-			Gmm gmm = null;
+			NshmpGmm gmm = null;
 			GroundMotionLogicTreeFilter filter = null;
 			while (in.hasNext()) {
 				switch (in.nextName()) {
 				case "gmm":
-					gmm = Gmm.valueOf(in.nextString());
+					gmm = NshmpGmm.valueOf(in.nextString());
 					break;
 				case "treeFilter":
 					filter = (GroundMotionLogicTreeFilter) JsonAdapterHelper.readAdapterValue(in);

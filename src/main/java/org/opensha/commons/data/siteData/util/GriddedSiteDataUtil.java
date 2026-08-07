@@ -1,6 +1,6 @@
 package org.opensha.commons.data.siteData.util;
 
-import gov.usgs.earthquake.nshmp.Maths;
+import org.opensha.nshmp.shaded.NshmpMaths;
 import org.opensha.commons.geo.Location;
 
 import java.math.BigDecimal;
@@ -30,7 +30,7 @@ public class GriddedSiteDataUtil {
      * and down in the initial Math.round() call.
      */
     private static double snapToGrid(double value, double spacing, int scale) {
-        return Maths.round(
+        return NshmpMaths.round(
                 Math.round(value / spacing) * spacing,
                 scale, RoundingMode.HALF_UP);
     }
