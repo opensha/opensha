@@ -112,9 +112,9 @@ public class CompareExcelSheets {
 	}
 		
 	private String getValue(HSSFCell cell) {
-		if (cell == null || cell.getCellType() == HSSFCell.CELL_TYPE_BLANK) 
+		if (cell == null || cell.getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK) 
 			return "";
-		if(cell.getCellType() == HSSFCell.CELL_TYPE_STRING)
+		if(cell.getCellType() == org.apache.poi.ss.usermodel.CellType.STRING)
                 return cell.getStringCellValue().trim();
         return ""+cell.getNumericCellValue();
 	}

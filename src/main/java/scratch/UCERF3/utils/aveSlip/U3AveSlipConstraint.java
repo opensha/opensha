@@ -243,7 +243,7 @@ public class U3AveSlipConstraint extends SectMappedUncertainDataConstraint imple
 	
 	public static List<Integer> loadParentIDs(HSSFCell parentCell) {
 		List<Integer> parentIDs = Lists.newArrayList();
-		if (parentCell.getCellType() == HSSFCell.CELL_TYPE_STRING) {
+		if (parentCell.getCellType() == org.apache.poi.ss.usermodel.CellType.STRING) {
 			String[] parentSplits = parentCell.getStringCellValue().trim().split(",");
 			for (String parentStr : parentSplits)
 				parentIDs.add(Integer.parseInt(parentStr.trim()));
