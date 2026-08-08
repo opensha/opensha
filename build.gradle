@@ -116,6 +116,9 @@ dependencies {
 	api 'javax.servlet:javax.servlet-api:4.0.1'
 	api 'org.apache.poi:poi:5.5.1'
 	api 'net.mahdilamb:colormap:0.9.511'
+    api 'io.github.abhatthal:getfile:26.08.0'
+    api 'org.opensha:mpj-task-calculator:1.2'
+
 	api('net.sourceforge.parallelcolt:parallelcolt:0.10.1') {
 		// parallel colt on maven comes with an old junit version that confuses eclipse and has a vulnerability
 		exclude group: 'junit', module: 'junit'
@@ -126,17 +129,17 @@ dependencies {
 		// json-simple on maven comes with an old junit version that confuses eclipse and has a vulnerability
 		exclude group: 'junit', module: 'junit'
 	}
-	
+
 	/* legacy oracle DB/spatial; TODO: refactor away */
 	api 'com.oracle.database.spatial:sdoapi:23.26'
 	api 'com.oracle.database.jdbc:ojdbc5:11.2.0.4'
-	
+
 	/* logging */
 	// this is the generic api
 	api 'org.slf4j:slf4j-api:2.0.18'
 	// include an implementation only when running and building fat jars
 	runtimeOnly 'org.slf4j:slf4j-simple:2.0.18'
-	
+
 	/* apache commons */
 	api 'org.apache.commons:commons-lang3:3.20.0'
 	api 'org.apache.commons:commons-text:1.15.0'
@@ -155,8 +158,6 @@ dependencies {
 	// will have an MPJ implementation on the classpath. But keep it as 'api' rather than 'implementation' to support
 	// running our MPJ apps in single-node mode
 	api files('lib/mpj-0.44.jar')
-	api files('lib/getfile-all.jar')
-	api files('lib/mpj-task-calculator-1.1.jar') // MPJTaskCalculator
 	api files('lib/EventWebService.jar')
 
 	testImplementation 'junit:junit:4.13.2'
