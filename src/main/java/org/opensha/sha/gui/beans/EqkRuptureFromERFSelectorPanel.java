@@ -13,6 +13,7 @@ import java.awt.event.ItemEvent;
 import java.lang.reflect.InvocationTargetException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.ListIterator;
 
@@ -35,6 +36,7 @@ import org.opensha.commons.param.editor.ParameterEditor;
 import org.opensha.commons.param.editor.impl.ParameterListEditor;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
+import org.opensha.commons.param.impl.EnumParameter;
 import org.opensha.commons.param.impl.IntegerParameter;
 import org.opensha.commons.param.impl.LocationParameter;
 import org.opensha.commons.param.impl.StringParameter;
@@ -146,8 +148,8 @@ implements ParameterChangeListener,EqkRupSelectorGuiBeanAPI{
 	private boolean firstTime = true;
 	
 //	ParameterAPI chooseERF_Param = erfGuiBean.getERFParameterList().getParameter(ERF_PARAM_NAME);
-	StringParameter myChooseERF_Param = null;
-	StringParameter erfGuiChooseERF_Param = null;
+	EnumParameter<ERF_Ref> myChooseERF_Param = null;
+	EnumParameter<ERF_Ref> erfGuiChooseERF_Param = null;
 
 	/**
 	 * If Application  has already created the ERF Gui Bean then give that to this
@@ -242,10 +244,13 @@ implements ParameterChangeListener,EqkRupSelectorGuiBeanAPI{
 
 		if(firstTime){
 			// add the select forecast parameter
-			erfGuiChooseERF_Param = (StringParameter) erfGuiBean.getERFParameterList().getParameter(ERF_PARAM_NAME);
-			ArrayList<String> allowedStrings = erfGuiChooseERF_Param.getAllowedStrings();
-			myChooseERF_Param = new StringParameter(ERF_PARAM_NAME, allowedStrings, erfGuiBean.getSelectedERF_Name());
+			erfGuiChooseERF_Param = (EnumParameter<ERF_Ref>) erfGuiBean.getERFParameterList().getParameter(ERF_PARAM_NAME);
+			EnumSet<ERF_Ref> choices = EnumSet.copyOf(
+					erfGuiChooseERF_Param.getConstraint().getAllowedValues());
+			myChooseERF_Param = new EnumParameter<ERF_Ref>(ERF_PARAM_NAME, choices,
+					erfGuiBean.getSelectedERF_Ref(), null);
 			myChooseERF_Param.addParameterChangeListener(this);
+			myChooseERF_Param.setComparator(ERF_Ref.PRIORITY_NAME_COMPARATOR);
 			parameterList.addParameter(myChooseERF_Param);
 			if(erf == null){
 				try {

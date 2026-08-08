@@ -9,12 +9,12 @@ import java.io.StringWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.ByteBuffer;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
-import org.apache.commons.codec.binary.Base64;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.DocumentHelper;
@@ -247,14 +247,14 @@ public class XMLUtils {
 		Preconditions.checkNotNull(elName, "elName cannot be null");
 		Preconditions.checkArgument(!elName.isEmpty(), "elName cannot be empty");
 		Element el = parent.addElement(elName);
-		String str = Base64.encodeBase64String(array);
+		String str = Base64.getEncoder().encodeToString(array);
 		el.addCDATA(str);
 	}
 	
 	public static byte[] byteArrayFromXML(Element byteArrayEl) {
 		Preconditions.checkNotNull(byteArrayEl, "byteArrayEl element can't be null");
 		String str = byteArrayEl.getText().trim();
-		byte[] data = Base64.decodeBase64(str);
+		byte[] data = Base64.getDecoder().decode(str);
 		return data;
 	}
 	

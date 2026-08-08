@@ -26,7 +26,7 @@ public class ServerPrefUtils {
 	 * Update this when distributing a new OpenSHA release.
 	 * This same backend may be in use for more than one OpenSHA version.
 	 */
-	private static final String PROD_VERSION = "26.1";
+	private static final String PROD_VERSION = "26.8";
 
 	/**
 	 * Hostname for all production services
