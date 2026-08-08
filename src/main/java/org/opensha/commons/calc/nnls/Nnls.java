@@ -1,9 +1,5 @@
 package org.opensha.commons.calc.nnls;
 
-
-import org.netlib.util.doubleW;
-import org.netlib.util.intW;
-
 /**
  * This code was originally downloaded from http://www.imaging.robarts.ca/~cjones/software/,
  * and subsequently modified slightly by Vipin Gupta in some presently unknown way.  Ned Field
@@ -37,9 +33,9 @@ class Nnls {
 	static double two= 0.0;
 	static double sm= 0.0;
 	static double wmax= 0.0;
-	static doubleW up= new doubleW(0.0);
-	static doubleW cc= new doubleW(0.0);
-	static doubleW ss= new doubleW(0.0);
+	static DoubleW up= new DoubleW(0.0);
+	static DoubleW cc= new DoubleW(0.0);
+	static DoubleW ss= new DoubleW(0.0);
 	static double alpha= 0.0;
 	static double t= 0.0;
 	static double asave= 0.0;
@@ -69,11 +65,11 @@ class Nnls {
 			int n,
 			double [] b, int _b_offset,
 			double [] x, int _x_offset,
-			doubleW rnorm,
+			DoubleW rnorm,
 			double [] w, int _w_offset,
 			double [] zz, int _zz_offset,
 			int [] index, int _index_offset,
-			intW mode)  {
+			IntW mode)  {
 
 		two = 2.;
 		factor = 0.01;
@@ -340,9 +336,9 @@ outer1:		while(true) {
 		return;
 	}
 //	adapter for g1
-	private static void g1_adapter(double arg0 ,double arg1 ,doubleW arg2 ,doubleW arg3 ,double [] arg4 , int arg4_offset )
+	private static void g1_adapter(double arg0 ,double arg1 ,DoubleW arg2 ,DoubleW arg3 ,double [] arg4 , int arg4_offset )
 	{
-		doubleW _f2j_tmp4 = new doubleW(arg4[arg4_offset]);
+		DoubleW _f2j_tmp4 = new DoubleW(arg4[arg4_offset]);
 
 		G1.g1(arg0,arg1,arg2,arg3,_f2j_tmp4);
 

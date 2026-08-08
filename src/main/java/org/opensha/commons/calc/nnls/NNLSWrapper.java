@@ -1,9 +1,5 @@
 package org.opensha.commons.calc.nnls;
 
-
-import org.netlib.util.doubleW;
-import org.netlib.util.intW;
-
 /**  NNLS class is strictly a wrapper for the fortran->C->Java 
  *   nnls code.  Nothing else should be done here except 
  *   things that are needed for the wrapper.
@@ -22,9 +18,9 @@ public class NNLSWrapper
 	private int ndata;
     private double[] w;
     private double[] zz;
-    doubleW rnorm;
+    DoubleW rnorm;
     int[] index;
-    intW mode;
+    IntW mode;
 
     double[] b;
     double[] x;
@@ -97,8 +93,8 @@ public class NNLSWrapper
             System.exit(0);
         }                                                     
                                                               
-        mode = new intW(0);                                   
-        rnorm = new doubleW(0.0);                             
+        mode = new IntW(0);                                   
+        rnorm = new DoubleW(0.0);                             
 
 	}
 

@@ -230,7 +230,7 @@ public class CreatePlotFromSegSlipRateFile{
 						// segment name
 						if(cell!=null) segName = cell.getStringCellValue().trim();
 						if(row==null || cell==null || 
-								cell.getCellType()==HSSFCell.CELL_TYPE_BLANK || segName.equalsIgnoreCase("")) {
+								cell.getCellType()==org.apache.poi.ss.usermodel.CellType.BLANK || segName.equalsIgnoreCase("")) {
 							r= r+4;
 							JOptionPane.showMessageDialog(null, "This was disabled during refactor because it will probably" +
 									" never be used again. If you need it, resurrect it.");

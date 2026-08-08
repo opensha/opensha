@@ -28,7 +28,7 @@ public class ExcelVerificationWriter {
 	throws FileNotFoundException, IOException {
 		POIFSFileSystem fs = new POIFSFileSystem(new FileInputStream(inFile));
 		HSSFWorkbook wb = new HSSFWorkbook(fs);
-		wb.setMissingCellPolicy(Row.CREATE_NULL_AS_BLANK);
+		wb.setMissingCellPolicy(Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
 		HSSFSheet sheet = wb.getSheetAt(0);
 		
 		ArrayList<PortfolioRuptureResults> results = new ArrayList<PortfolioRuptureResults>();

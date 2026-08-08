@@ -208,7 +208,7 @@ public class PutFaultSectionsIntoDatabase {
 			   HSSFRow row = sheet.getRow(r);
 			   HSSFCell cell1 = row.getCell( (short) 0);
 			   HSSFCell cell2 = row.getCell( (short) 2);
-			   if(cell2!=null && !(cell2.getCellType()==HSSFCell.CELL_TYPE_BLANK)) {
+			   if(cell2!=null && !(cell2.getCellType()==org.apache.poi.ss.usermodel.CellType.BLANK)) {
 				   nameChangesMap.put(cell1.getStringCellValue().trim(),
 						   cell2.getStringCellValue().trim());
 			   }

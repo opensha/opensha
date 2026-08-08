@@ -1,8 +1,5 @@
 package org.opensha.commons.calc.nnls;
 
-
-import org.netlib.util.doubleW;
-
 class H12
 {
 	static double cl = 0.0D;
@@ -28,7 +25,7 @@ class H12
 //	C  CONSTRUCTION AND APPLICATION OF HOUSEHOLDER TRANSFORMATION FOR
 //	C  MODIFIED FROM  H12  IN LAWSON+HANSEN - SOLVING LEAST SQUARES 
 //	C  - PRENTICE-HALL 1974 (PP308,309).  DOUBLE PRECISION THROUGHOUT
-	public static final void h12(int k, int l, int j1, int k1, double ad[], int l1, int j2, doubleW doublew, 
+	public static final void h12(int k, int l, int j1, int k1, double ad[], int l1, int j2, DoubleW doublew, 
 			double ad1[], int k2, int l2, int j3, int k3)
 	{
 		label0:
@@ -114,4 +111,3 @@ class H12
 
 
 }
-
