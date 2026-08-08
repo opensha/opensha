@@ -12,12 +12,19 @@ java {
 }
 compileJava.options.encoding = "UTF-8"
 
+eclipse {
+    classpath {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}
+
 repositories {
-	mavenCentral()
 	maven {
-		url = "https://code.usgs.gov/api/v4/groups/1352/-/packages/maven"
-		name = "NSHMP GitLab Group"
+		name = 'OpenSHA NSHMP Shaded Local Test'
+		url = uri('../opensha-nshmp-shaded/build/local-maven')
 	}
+	mavenCentral()
 }
 
 configurations {
