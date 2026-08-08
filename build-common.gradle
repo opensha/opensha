@@ -12,6 +12,13 @@ java {
 }
 compileJava.options.encoding = "UTF-8"
 
+eclipse {
+    classpath {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}
+
 repositories {
 	maven {
 		name = 'OpenSHA NSHMP Shaded Local Test'
@@ -36,13 +43,6 @@ configurations {
 
 		extendsFrom implementation
 	}
-}
-
-eclipse {
-    classpath {
-        downloadSources = true
-        downloadJavadoc = true
-    }
 }
 
 configurations {
