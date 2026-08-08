@@ -38,6 +38,16 @@ configurations {
 	}
 }
 
+configurations {
+	fatJarResolvable {
+		description = 'resolvable classpath for fatJars'
+		canBeResolved = true
+		extendsFrom api
+		extendsFrom runtimeOnly
+	}
+}
+
+
 ext.getDate = {
 	new Date().format('yyyy_MM_dd')
 }
@@ -72,8 +82,8 @@ if (project.parentProject != null) {
 		archiveBaseName = project.name + '-all'
 		// include all 'api' dependencies
 		from {
-			configurations.apiResolvable.collect { it.isDirectory() ? it : zipTree(it).matching {
-				exclude { it.path.contains('META-INF') }
+			configurations.fatJarResolvable.collect { it.isDirectory() ? it : zipTree(it).matching {
+				exclude { it.path.contains('META-INF') && !it.path.startsWith('META-INF/services/') }
 			}}
 		}
 		// include compiled source from this project
@@ -113,8 +123,8 @@ if (project.parentProject != null) {
 		archiveBaseName = project.name + '-all'
 		// include all 'api' dependencies
 		from {
-			configurations.apiResolvable.collect { it.isDirectory() ? it : zipTree(it).matching {
-				exclude { it.path.contains('META-INF') }
+			configurations.fatJarResolvable.collect { it.isDirectory() ? it : zipTree(it).matching {
+				exclude { it.path.contains('META-INF') && !it.path.startsWith('META-INF/services/') }
 			}}
 		}
 		// include compiled source from this project
@@ -133,9 +143,9 @@ void createAppTask(String taskName, String prefix, String mainClass) {
 				writeBuildFiles()
 			}
 			archiveBaseName = prefix
-			from { configurations.apiResolvable.collect {
+			from { configurations.fatJarResolvable.collect {
 				it.isDirectory() ? it : zipTree(it).matching {
-					exclude { it.path.contains('META-INF') }
+					exclude { it.path.contains('META-INF') && !it.path.startsWith('META-INF/services/') }
 				}
 			}}
 			// include compiled source from this project
@@ -146,7 +156,7 @@ void createAppTask(String taskName, String prefix, String mainClass) {
 				exclude 'build.gitbranch'
 				exclude 'build.gitremoteurl'
 				exclude 'build.date'
-				exclude { it.path.contains('META-INF') }
+				exclude { it.path.contains('META-INF') && !it.path.startsWith('META-INF/services/') }
 			}
 			// include version files
 			from(project(':opensha').projectDir) {
@@ -160,7 +170,7 @@ void createAppTask(String taskName, String prefix, String mainClass) {
 			}
 			manifest {
 				attributes(
-					'Class-Path': configurations.apiResolvable.collect { it.getName() }.join(' '),
+					'Class-Path': configurations.fatJarResolvable.collect { it.getName() }.join(' '),
 					'Main-Class': mainClass
 				)
 			}
@@ -174,9 +184,9 @@ void createAppTask(String taskName, String prefix, String mainClass) {
 				writeBuildFiles()
 			}
 			archiveBaseName = prefix
-			from { configurations.apiResolvable.collect {
+			from { configurations.fatJarResolvable.collect {
 				it.isDirectory() ? it : zipTree(it).matching {
-					exclude { it.path.contains('META-INF') }
+					exclude { it.path.contains('META-INF') && !it.path.startsWith('META-INF/services/') }
 				}
 			}}
 			// include compiled source from this project
@@ -193,7 +203,7 @@ void createAppTask(String taskName, String prefix, String mainClass) {
 			}
 			manifest {
 				attributes(
-					'Class-Path': configurations.apiResolvable.collect { it.getName() }.join(' '),
+					'Class-Path': configurations.fatJarResolvable.collect { it.getName() }.join(' '),
 					'Main-Class': mainClass
 				)
 			}

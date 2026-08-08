@@ -102,7 +102,7 @@ public class CreateHistogramsFromSegSlipRateFile {
 					// segment name. Do for selected segment
 					if(cell!=null) rupName = cell.getStringCellValue().trim();
 					if(row==null || cell==null || 
-							cell.getCellType()==HSSFCell.CELL_TYPE_BLANK || rupName.equalsIgnoreCase("")) {
+							cell.getCellType()==org.apache.poi.ss.usermodel.CellType.BLANK || rupName.equalsIgnoreCase("")) {
 						r=r+4;
 						continue;
 					}
@@ -190,7 +190,7 @@ public class CreateHistogramsFromSegSlipRateFile {
 					if(cell!=null) rupName = cell.getStringCellValue().trim();
 					if(segName!=null && !rupName.equalsIgnoreCase(segName)) continue;
 					if(row==null || cell==null || 
-							cell.getCellType()==HSSFCell.CELL_TYPE_BLANK || rupName.equalsIgnoreCase("")) {
+							cell.getCellType()==org.apache.poi.ss.usermodel.CellType.BLANK || rupName.equalsIgnoreCase("")) {
 						r=r+4;
 						continue;
 					}

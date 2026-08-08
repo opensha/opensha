@@ -477,13 +477,13 @@ public class DeformationModelFileParser {
 				if (miniCell == null)
 					continue;
 				String miniSection;
-				if (miniCell.getCellType() == HSSFCell.CELL_TYPE_NUMERIC)
+				if (miniCell.getCellType() == org.apache.poi.ss.usermodel.CellType.NUMERIC)
 					miniSection = ""+(float)miniCell.getNumericCellValue();
 				else
 					miniSection = miniCell.getStringCellValue();
 				
 				HSSFCell dataCell = row.getCell(2);
-				Preconditions.checkState(dataCell.getCellType() == HSSFCell.CELL_TYPE_NUMERIC,
+				Preconditions.checkState(dataCell.getCellType() == org.apache.poi.ss.usermodel.CellType.NUMERIC,
 						"non numeric data cell!");
 				double creep = dataCell.getNumericCellValue();
 				creepData.put(miniSection, creep);
@@ -506,7 +506,7 @@ public class DeformationModelFileParser {
 //			if (miniCell == null)
 //				continue;
 //			String miniSection;
-//			if (miniCell.getCellType() == HSSFCell.CELL_TYPE_NUMERIC)
+//			if (miniCell.getCellType() == org.apache.poi.ss.usermodel.CellType.NUMERIC)
 //				miniSection = ""+(float)miniCell.getNumericCellValue();
 //			else
 //				miniSection = miniCell.getStringCellValue();
@@ -516,7 +516,7 @@ public class DeformationModelFileParser {
 //			double[] reductions = new double[numModels];
 //			for (int i=0; i<numModels; i++) {
 //				HSSFCell dataCell = row.getCell(2+i);
-//				Preconditions.checkState(dataCell.getCellType() == HSSFCell.CELL_TYPE_NUMERIC,
+//				Preconditions.checkState(dataCell.getCellType() == org.apache.poi.ss.usermodel.CellType.NUMERIC,
 //						"non numeric data cell!");
 //				reductions[i] = dataCell.getNumericCellValue();
 //			}

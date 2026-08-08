@@ -126,7 +126,7 @@ public class MomentMatchingPortfolioLECTest {
 		File excelFile = new File(MomentMatchingPortfolioLECTest.class.getResource("output.xls").toURI());
 		POIFSFileSystem fs = new POIFSFileSystem(new FileInputStream(excelFile));
 		HSSFWorkbook wb = new HSSFWorkbook(fs);
-		wb.setMissingCellPolicy(Row.CREATE_NULL_AS_BLANK);
+		wb.setMissingCellPolicy(Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
 		refResults = wb.getSheetAt(0);
 	}
 	

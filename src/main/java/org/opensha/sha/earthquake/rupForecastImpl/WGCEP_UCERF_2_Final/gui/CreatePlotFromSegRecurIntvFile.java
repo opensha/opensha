@@ -231,7 +231,7 @@ public class CreatePlotFromSegRecurIntvFile {
 						// segment name
 						if(cell!=null) rupName = cell.getStringCellValue().trim();
 						if(row==null || cell==null || 
-								cell.getCellType()==HSSFCell.CELL_TYPE_BLANK || rupName.equalsIgnoreCase("")) {
+								cell.getCellType()==org.apache.poi.ss.usermodel.CellType.BLANK || rupName.equalsIgnoreCase("")) {
 							r= r+4;
 							JOptionPane.showMessageDialog(null, "This was disabled during refactor because it will probably" +
 									" never be used again. If you need it, resurrect it.");
