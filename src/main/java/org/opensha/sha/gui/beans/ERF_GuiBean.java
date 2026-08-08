@@ -300,8 +300,13 @@ ParameterChangeListener, ChangeListener {
 	 * returns the name of selected ERF
 	 * @return
 	 */
+	public ERF_Ref getSelectedERF_Ref() {
+		return erfSelectionParam.getValue();
+	}
+
 	public String getSelectedERF_Name() {
-		return (String)parameterList.getValue(this.ERF_PARAM_NAME);
+		ERF_Ref ref = erfSelectionParam.getValue();
+		return ref == null ? null : ref.toString();
 	}
 
 	/**

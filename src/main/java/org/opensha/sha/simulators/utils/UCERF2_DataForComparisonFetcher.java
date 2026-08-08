@@ -122,7 +122,7 @@ public class UCERF2_DataForComparisonFetcher {
 				HSSFRow row = sheet.getRow(r);
 				if(row==null) continue;
 				HSSFCell cell = row.getCell( (short) 1);
-				if(cell==null || cell.getCellType()==HSSFCell.CELL_TYPE_STRING) continue;
+				if(cell==null || cell.getCellType()==org.apache.poi.ss.usermodel.CellType.STRING) continue;
 				parsonsSiteNames.add(row.getCell( (short) 0).getStringCellValue().trim());
 				lat = cell.getNumericCellValue();
 				lon = row.getCell( (short) 2).getNumericCellValue();
