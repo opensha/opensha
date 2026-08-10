@@ -85,6 +85,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PosteriorSectionBValueDistributions;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
@@ -109,6 +110,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectIDRange;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
+import org.opensha.sha.earthquake.nshmp.inversion.mfdPreInversion.PaleoBValueEstimator;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
@@ -561,6 +563,10 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			lines.addAll(getScalarLines(meta, parentSectIndex, parentName, parentSects,
 					rupSet, resourcesDir, topLink, scalarVals));
 		}
+		
+		PosteriorSectionBValueDistributions posteriorB = rupSet.getModule(PosteriorSectionBValueDistributions.class);
+		if (posteriorB != null && rupSet.hasModule(PaleoseismicConstraintData.class))
+			getPosteriorBLines(meta, parentName, parentSects, resourcesDir, topLink);
 
 		lines.add("");
 		lines.addAll(getConnectivityLines(meta, parentSectIndex, parentName, distAzCalc, sectsByParent,
@@ -783,6 +789,37 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		lines.add("");
 		
 		lines.add("![Length Hist]("+outputDir.getName()+"/"+pngFile.getName()+")");
+		return lines;
+	}
+	
+	static List<String> getPosteriorBLines(ReportMetadata meta, String faultName,
+			List<FaultSection> faultSects, File outputDir, String topLink) throws IOException {
+		FaultSystemRupSet rupSet = meta.primary.rupSet;
+		PosteriorSectionBValueDistributions posteriorB = rupSet.getModule(PosteriorSectionBValueDistributions.class);
+		if (posteriorB == null || posteriorB.getPaleoSitePosteriors() == null || posteriorB.getPaleoSiteMisfits() == null)
+			return new ArrayList<>();
+		boolean any = false;
+		for (FaultSection sect : faultSects) {
+			if (posteriorB.getSectPosteriors().get(sect.getSectionId()) != null) {
+				any = true;
+				break;
+			}
+		}
+		if (!any)
+			return new ArrayList<>();
+		
+		String prefix = "b_val_posterior";
+		PaleoBValueEstimator.plotSectDistribution(outputDir, prefix, faultSects, posteriorB, rupSet);
+		
+		List<String> lines = new ArrayList<>();
+		
+		lines.add("## b-value Posterior Distribution");
+		lines.add(topLink); lines.add("");
+		
+		lines.add("Section b-value posterior distributions. TODO: add description.");
+		lines.add("");
+		
+		lines.add("![Length Hist]("+outputDir.getName()+"/"+prefix+".png)");
 		return lines;
 	}
 	
@@ -2452,6 +2489,17 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 
 		lines.add("![Along-strike plot]("+outputDir.getName()+"/"+prefix+".png)");
 		
+		PosteriorSectionBValueDistributions posteriorB = meta.primary.rupSet.getModule(PosteriorSectionBValueDistributions.class);
+		boolean hasPaleoPosterior = false;
+		if (posteriorB != null) {
+			for (FaultSection sect : faultSects) {
+				if (posteriorB.getSectPosteriors().get(sect.getSectionId()) != null) {
+					hasPaleoPosterior = true;
+					break;
+				}
+			}
+		}
+		
 		if (meta.primary.rupSet.hasModule(AveSlipModule.class) && meta.hasPrimarySol()) {
 			lines.add("### Moment-Rates and b-Values");
 			lines.add(topLink); lines.add("");
@@ -2460,11 +2508,23 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 
 			plots.add(buildMoRatePlot(meta, faultSects, faultName, emptySectFuncs, xLabel, legendRelX));
 			plots.add(buildBValPlot(meta, faultSects, faultName, emptySectFuncs, xLabel, legendRelX));
+			if (hasPaleoPosterior)
+				plots.add(PaleoBValueEstimator.getPosteriorBValueAlongStrikePlot(posteriorB, faultSects, faultName, emptySectFuncs, xLabel));
 			
 			prefix = "sect_along_strike_mo_b";
 			writeAlongStrikePlots(outputDir, prefix, plots, parentsMap, latX, xLabel, xRange, faultName);
 
 			lines.add("![Along-strike plot]("+outputDir.getName()+"/"+prefix+".png)");
+		} else if (hasPaleoPosterior) {
+			lines.add("### Posterior b-Values");
+			lines.add(topLink); lines.add("");
+			
+			plots = new ArrayList<>();
+
+			plots.add(PaleoBValueEstimator.getPosteriorBValueAlongStrikePlot(posteriorB, faultSects, faultName, emptySectFuncs, xLabel));
+			
+			prefix = "sect_along_strike_post_b";
+			writeAlongStrikePlots(outputDir, prefix, plots, parentsMap, latX, xLabel, xRange, faultName);
 		}
 		
 		return lines;
