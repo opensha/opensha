@@ -109,7 +109,15 @@ public enum AperiodicityModels {
 		public AperiodicityModel instance(FaultSystemSolution fltSysSolution) {
 			return new AperiodicityModel.SingleValued(0.3, true); // true -> adjustable
 		}
+	},
+	
+	SINGLE_VALUED_0pt4("Single Value 0.4") {
+		@Override
+		public AperiodicityModel instance(FaultSystemSolution fltSysSolution) {
+			return new AperiodicityModel.SingleValued(0.4, false); // true -> adjustable
+		}
 	};
+
 	
 	public static EnumSet<AperiodicityModels> UCERF3_MODELS = EnumSet.of(UCERF3_LOW, UCERF3_MIDDLE, UCERF3_HIGH);
 	public static EnumSet<AperiodicityModels> NSHM26_MODELS = EnumSet.of(NSHM26_MIDDLE);

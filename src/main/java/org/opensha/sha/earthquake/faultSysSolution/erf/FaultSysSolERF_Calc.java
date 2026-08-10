@@ -10,7 +10,9 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.erf.td.FSS_ProbabilityModel;
 import org.opensha.sha.earthquake.faultSysSolution.erf.td.TimeDepFaultSystemSolutionERF;
+import org.opensha.sha.earthquake.faultSysSolution.erf.td.TimeDepUtils;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -49,13 +51,14 @@ public class FaultSysSolERF_Calc {
 	
 	
 	/**
-	 * The returns a HashMap of parent name for parent ID.
+	 * Put this in FaultSystemRupSet?
+	 * 
+	 * This returns a HashMap of parent name for parent ID.
 	 * If parent section name is null we assume it is an un-sectioned fault from NSHM and 
-	 * assign the section name.
+	 * assign the section name (and we test that no other parents have this name).
 	 * @return HashMap<Integer,String>
 	 */
 	public static HashMap<Integer,String> getParentSectNameFromID_Map(BaseFaultSystemSolutionERF erf) {
-		// get HashMap of parent name from parent ID
 		HashMap<Integer,String> parentNameFromID_Map = new HashMap<Integer,String>();
 		ArrayList<String> testList = new ArrayList<String>();
 		for (FaultSection sect:erf.getSolution().getRupSet().getFaultSectionDataList()) {
@@ -65,6 +68,8 @@ public class FaultSysSolERF_Calc {
 					if(!testList.contains(name)) {  // not already used
 						name = sect.getSectionName();
 						testList.add(name);
+//						System.err.println(name+" had no parent name; parID = "+sect.getParentSectionId()+
+//								"; sectID="+sect.getSectionId());
 					}
 					else
 						throw new RuntimeException("Error: more than one section with null parent name has the same section name");
@@ -74,6 +79,23 @@ public class FaultSysSolERF_Calc {
 			}
 		}
 		return parentNameFromID_Map;
+	}
+	
+	
+	/**
+	 * This map gives a list of section IDs for each parent-section ID
+	 * @param erf
+	 * @return HashMap<Integer,List<Integer>
+	 */
+	public static HashMap<Integer,List<Integer>> getSectionID_ListFromParentSectionID_Map(BaseFaultSystemSolutionERF erf) {
+		HashMap<Integer,List<Integer>> map = new HashMap<Integer,List<Integer>>();
+		for(FaultSection sect:erf.getSolution().getRupSet().getFaultSectionDataList()) {
+			int parID = sect.getParentSectionId();
+			if(!map.containsKey(parID))
+				map.put(parID, new ArrayList<Integer>());
+			map.get(parID).add(sect.getSectionId());
+		}
+		return map;
 	}
 
 	
@@ -195,6 +217,49 @@ public class FaultSysSolERF_Calc {
 		}
 		
 		return parRateArrayMap;
+	}
+
+	
+	/**
+	 * this returns a two-element array with average normalized time since last (zeroth array element) 
+	 * and faction of sections that had a date of last (array element 1) for each parent section ID.
+	 * @param erf
+	 * @return
+	 */
+	public static Map<Integer, double[]> getAveNormTimeSinceAndFractForParentSect(
+			TimeDepFaultSystemSolutionERF erf) {
+		HashMap<Integer, double[]> map = new HashMap<Integer, double[]>();
+		HashMap<Integer,List<Integer>> sectsForParMap = getSectionID_ListFromParentSectionID_Map(erf);
+		
+		long startTimeMillis = erf.getTimeSpan().getStartTimeInMillis();
+
+		FSS_ProbabilityModel probModel = erf.getProbabilityModel();
+		for(int parID:sectsForParMap.keySet()) {
+			List<Integer> sectIDs = sectsForParMap.get(parID);
+			int num = 0;
+			double ave = 0;
+			for(int s:sectIDs) {
+				long doleMillis = probModel.getSectDOLE(s);
+				if(doleMillis != Long.MIN_VALUE) {
+					if(doleMillis>startTimeMillis)
+						throw new RuntimeException("doleMillis is greater than startTimeMillis");
+					num+=1;
+					double yrsSince = (double)(startTimeMillis-doleMillis)*TimeDepUtils.MILLISEC_TO_YEARS;
+					ave += yrsSince*probModel.getSectLongTermPartRate(s);
+				}
+			}
+			double[] result = new double[2];
+			if(num==0) {
+				result[0] = Double.NaN;
+				result[1] = 0;
+			}
+			else {
+				result[0] = ave/num;
+				result[1] = (float)(num/sectIDs.size());
+			}
+			map.put(parID, result);
+		}
+		return map;
 	}
 
 
