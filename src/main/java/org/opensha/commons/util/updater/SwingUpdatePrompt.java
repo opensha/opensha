@@ -174,6 +174,7 @@ public class SwingUpdatePrompt implements UpdatePrompt {
 	public void showMessage(String message) {
 		if (GraphicsEnvironment.isHeadless())
 			return;
+        // This message will flash and disappear since it's not blocking the EDT.
 		SwingUtilities.invokeLater(() -> {
 			ensureProgressUI();
 			progressLabel.setText(message);

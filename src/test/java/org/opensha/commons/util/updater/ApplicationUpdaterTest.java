@@ -388,7 +388,9 @@ public class ApplicationUpdaterTest {
 		ApplicationUpdater u = new ApplicationUpdater(client, prompt,
 				new ApplicationVersion(26, 1, 0), failingDownloader, p -> {});
 		u.runUpdateCheck("Test App", shortName, "HazardCurveGUI");
-		verify(prompt, atLeastOnce()).showMessage(contains("Download failed"));
+		verify(prompt, atLeastOnce()).showErrorMessage(contains("Download failed"));
+		verify(prompt, never()).showMessage(anyString());
+		verify(prompt, atLeastOnce()).close();
 	}
 
 	// ---- old-version cleanup ----
