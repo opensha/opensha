@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.DoubleFunction;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.commons.statistics.distribution.ContinuousDistribution;
@@ -26,6 +27,7 @@ import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscrFuncContinuousDistribution;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.function.EvenlyDiscrFuncContinuousDistribution.DiscretizationType;
 import org.opensha.commons.data.uncertainty.BoundedUncertainty;
@@ -83,11 +85,18 @@ public class PaleoBValueEstimator {
 	// if false, sections use weighted combinations of likelihoods
 	private boolean sectUseWeightedDistribution = false;
 	private DiscretizationType interpType = DiscretizationType.INTERPOLATE;
+	private Function<MFDCalcInputs, InversionTargetMFDs> targetMFDCalc =
+			(I) -> {
+				try {
+					return I.factory.updateRuptureSetForBranch(I.rupSet, I.branch).requireModule(InversionTargetMFDs.class);
+				} catch (IOException e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+			};
 	
 	/* Intermediate Outputs for most recent calculation (used for some diagnostics) */
 	private InversionTargetMFDs[] bValTargetMFDs;
 	private LogicTreeBranch<? extends LogicTreeNode> branch;
-	
 
 	public PaleoBValueEstimator(ContinuousDistribution priorDist, EvenlyDiscretizedFunc bVals,
 			InversionConfigurationFactory factory) {
@@ -125,19 +134,29 @@ public class PaleoBValueEstimator {
 		this.logLikelihoodFunction = getStudentsTLogLikelihood(nu);
 	}
 	
+	public void setTargetMFDCalc(Function<MFDCalcInputs, InversionTargetMFDs> targetMFDCalc) {
+		this.targetMFDCalc = targetMFDCalc;
+	}
+	
 	public PosteriorSectionBValueDistributions calculate(LogicTreeBranch<? extends LogicTreeNode> branch, boolean verbose) throws IOException {
 		FaultSystemRupSet rs = factory.buildRuptureSet(branch, FaultSysTools.defaultNumThreads());
 		return calculate(rs, branch, verbose);
 	}
 	
+	public record MFDCalcInputs(InversionConfigurationFactory factory, FaultSystemRupSet rupSet,
+			LogicTreeBranch<? extends LogicTreeNode> branch) {}
+	
 	public PosteriorSectionBValueDistributions calculate(FaultSystemRupSet rs,
-			LogicTreeBranch<? extends LogicTreeNode> branch, boolean verbose) throws IOException {
+			LogicTreeBranch<? extends LogicTreeNode> branch, boolean verbose) {
 		Preconditions.checkNotNull(rs);
 		PaleoseismicConstraintData paleoData = rs.requireModule(PaleoseismicConstraintData.class);
 		List<? extends SectMappedUncertainDataConstraint> paleoConstraints = paleoData.getPaleoRateConstraints();
 		Preconditions.checkState(paleoConstraints != null && !paleoConstraints.isEmpty(),
 				"Paleo constraints cannot be null/empty");
 		PaleoProbabilityModel paleoProb = paleoData.getPaleoProbModel();
+		
+		System.out.println("Calculating section posterior b-value distributions for "+rs.getNumSections()
+				+" sections and "+paleoConstraints.size()+" paleo constraints");
 		
 		BitSet includedRups;
 		if (factory instanceof ExclusionaryInversionConfigurationFactory) {
@@ -161,16 +180,20 @@ public class PaleoBValueEstimator {
 		}
 		
 		// calculate for each b-value
+		System.out.println("Calculating target MFDs for "+bVals.size()+" b-values");
 		List<CompletableFuture<InversionTargetMFDs>> targetFutures = new ArrayList<>();
 		for (int i=0; i<bVals.size(); i++) {
 			double b = bVals.getX(i);
-			targetFutures.add(CompletableFuture.supplyAsync(()->buildTargetsForB(factory, rs, branch, b)));
+			targetFutures.add(CompletableFuture.supplyAsync(()->targetMFDCalc.apply(
+					new MFDCalcInputs(factory, rs, getBranchForB(branch, b)))));
 		}
-		InversionTargetMFDs connectivityWeightTargetMFDs = buildTargetsForB(factory, rs, branch, connectivityWeightB);
+		InversionTargetMFDs connectivityWeightTargetMFDs = targetMFDCalc.apply(
+				new MFDCalcInputs(factory, rs, getBranchForB(branch, connectivityWeightB)));
 		InversionTargetMFDs[] bValTargetMFDs = new InversionTargetMFDs[bVals.size()];
 		for (int i=0; i<bValTargetMFDs.length; i++)
 			bValTargetMFDs[i] = targetFutures.get(i).join();
 		System.out.println("DONE calculating for "+bVals.size()+" b-values");
+		System.out.println("Calculating site b-value paleo misfits");
 		
 		for (int i=0; i<bValTargetMFDs.length; i++) {
 			rs.removeModuleInstances(InversionTargetMFDs.class);
@@ -273,7 +296,7 @@ public class PaleoBValueEstimator {
 		}
 		
 		// now build posteriori distributions
-		System.out.println("Building site posteriors");
+		System.out.println("Building site b-value posteriors");
 		Map<Integer, List<Integer>> parentPaleoIndexes = new HashMap<>();
 		Map<String, List<Integer>> faultPaleoIndexes = new HashMap<>();
 		List<ContinuousDistribution> sitePosteriorDists = new ArrayList<>(paleoConstraints.size());
@@ -299,11 +322,14 @@ public class PaleoBValueEstimator {
 			for (int i=0; i<posteriorWeights.length; i++) {
 				double b = bVals.getX(i);
 				double priorDensity = priorDist.density(b);
-				Preconditions.checkState(Double.isFinite(priorDensity) && priorDensity > 0d);
+				Preconditions.checkState(Double.isFinite(priorDensity) && priorDensity > 0d,
+						"Prior density=%s must be finite and positive for b=%s, site=%s",
+						priorDensity, b, paleoConstr.name);
 				
 				// z-score
 				double misfit = paleoBValMisfits.get(s).getY(i);
-				Preconditions.checkState(Double.isFinite(misfit));
+				Preconditions.checkState(Double.isFinite(misfit), "Misfit=%s must be finite for b=%s, site=%s",
+						misfit, b, paleoConstr.name);
 
 				// Unnormalized posterior density:
 				// prior density * Gaussian likelihood
@@ -313,7 +339,9 @@ public class PaleoBValueEstimator {
 				sumWeights += posteriorWeights[i];
 			}
 
-			Preconditions.checkState(Double.isFinite(sumWeights) && sumWeights > 0d);
+			Preconditions.checkState(Double.isFinite(sumWeights) && sumWeights > 0d,
+					"Sum of posterior weights=%s must be finite and positive for site=%s", sumWeights,
+					paleoConstr.name);
 
 			EvenlyDiscretizedFunc posteriorPDF = new EvenlyDiscretizedFunc(
 					bVals.getMinX(), bVals.getMaxX(), bVals.size());
@@ -332,7 +360,7 @@ public class PaleoBValueEstimator {
 				siteRups[s].set(r);
 		}
 		
-		System.out.println("Building section weighted posteriors");
+		System.out.println("Building section weighted b-value posteriors");
 		int numSects = rs.getNumSections();
 		List<CompletableFuture<SectResult>> sectBDistFutures = new ArrayList<>(numSects);
 		
@@ -349,13 +377,13 @@ public class PaleoBValueEstimator {
 					connectedPaleoIndexes = parentPaleoIndexes.get(parentID);
 				} else {
 					// no connected paleo data, use prior
-					return new SectResult(priorDist, null, 1d);
+					return new SectResult(null, null, 1d);
 				}
 				
 				IncrementalMagFreqDist mfd = connectivityWeightTargetMFDs.getOnFaultSupraSeisNucleationMFDs().get(sectIndex);
 				
 				if (mfd.calcSumOfY_Vals() == 0d)
-					return new SectResult(priorDist, null, 1d);
+					return new SectResult(null, null, 1d);
 				
 				/*
 				 * Weighting scheme:
@@ -485,8 +513,11 @@ public class PaleoBValueEstimator {
 
 		List<ContinuousDistribution> sectPosteriors = new ArrayList<>(numSects);
 		List<double[]> sectPaleoWeights = new ArrayList<>();
+		int numSet = 0;
 		for (CompletableFuture<SectResult> future : sectBDistFutures) {
 			SectResult result = future.join();
+			if (result.distribution != null)
+				numSet++;
 			sectPosteriors.add(result.distribution);
 			sectPaleoWeights.add(result.paleoSiteWeights);
 		}
@@ -494,20 +525,21 @@ public class PaleoBValueEstimator {
 		this.bValTargetMFDs = bValTargetMFDs;
 		this.branch = branch;
 		
+		System.out.println("DONE calculating section b-value posteriors for "+numSet+"/"+numSects+" sections");
+		
 		return new PosteriorSectionBValueDistributions(priorDist, sectPosteriors, sectPaleoWeights, sitePosteriorDists, paleoBValMisfits);
 	}
 	
 	private static record SectResult(ContinuousDistribution distribution, double[] paleoSiteWeights, double noPaleoWeight) {}; 
 	
-	private static InversionTargetMFDs buildTargetsForB(InversionConfigurationFactory factory, FaultSystemRupSet rupSet,
-			LogicTreeBranch<? extends LogicTreeNode> branch, double b) {
+	private static LogicTreeBranch<? extends LogicTreeNode> getBranchForB(LogicTreeBranch<? extends LogicTreeNode> branch, double b) {
 		List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
 		List<LogicTreeNode> nodes = new ArrayList<>();
 		SectionSupraSeisBValues.FixedValueLevel fixedB = null;
 		boolean replaced = false;
 		for (int l=0; l<branch.size(); l++) {
 			LogicTreeLevel<? extends LogicTreeNode> level = branch.getLevel(l);
-			if (SupraSeisBValues.class.isAssignableFrom(level.getType())) {
+			if (SectionSupraSeisBValues.class.isAssignableFrom(level.getType())) {
 				Preconditions.checkState(!replaced);
 				System.out.println("Replacing level "+l+": level");
 				fixedB = new SectionSupraSeisBValues.FixedValueLevel("Fixed b", "FixedB", b);
@@ -519,13 +551,8 @@ public class PaleoBValueEstimator {
 				nodes.add(branch.getValue(l));
 			}
 		}
-		Preconditions.checkState(replaced);
-		branch = new LogicTreeBranch<>(levels, nodes);
-		try {
-			return factory.updateRuptureSetForBranch(rupSet, branch).requireModule(InversionTargetMFDs.class);
-		} catch (IOException e) {
-			throw ExceptionUtils.asRuntimeException(e);
-		}
+		Preconditions.checkState(replaced, "Section b-value branch level not found");
+		return new LogicTreeBranch<>(levels, nodes);
 	}
 	
 	private static PlotCurveCharacterstics priorDistChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Colors.tab_green);
@@ -533,6 +560,14 @@ public class PaleoBValueEstimator {
 	private static PlotCurveCharacterstics otherDistChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.GRAY);
 	private static PlotCurveCharacterstics posteriorDistChar = new PlotCurveCharacterstics(PlotLineType.DOTTED, 2f, Colors.tab_orange);
 	private static PlotCurveCharacterstics posteriorAvgDistChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 5f, Color.BLACK);
+	private static PlotCurveCharacterstics charBounds = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.DARK_GRAY);
+	private static PlotCurveCharacterstics postModeChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Colors.tab_blue);
+	private static PlotCurveCharacterstics postAvgChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Colors.tab_orange);
+	
+	private static LightFixedXFunc thicknessForWeights = new LightFixedXFunc(
+			0d, 1d,
+			0.5d, 4d,
+			1d, 5d);
 	
 	public static void plotSectDistributions(File outputDir, FaultSystemRupSet rs,
 			PosteriorSectionBValueDistributions posteriors) throws IOException {
@@ -541,11 +576,8 @@ public class PaleoBValueEstimator {
 		Map<Integer, List<FaultSection>> parentMappedSects = rs.getFaultSectionDataList().stream().collect(
 				Collectors.groupingBy(S->S.getParentSectionId()));
 		ContinuousDistribution priorDist = posteriors.getPriorDist();
-		EvenlyDiscretizedFunc bVals = posteriors.getPaleoSiteMisfits().get(0).deepClone();
-		EvenlyDiscretizedFunc priorFunc = bVals.deepClone();
-		for (int i=0; i<priorFunc.size(); i++)
-			priorFunc.set(i, priorDist.density(bVals.getX(i)));
-		priorFunc.setName("Prior");
+		EvenlyDiscretizedFunc bVals = PosteriorSectionBValueDistributions.detectBValues(posteriors);
+		
 
 		PaleoseismicConstraintData paleoData = rs.requireModule(PaleoseismicConstraintData.class);
 		List<? extends SectMappedUncertainDataConstraint> paleoConstraints = paleoData.getPaleoRateConstraints();
@@ -613,7 +645,6 @@ public class PaleoBValueEstimator {
 		
 		Map<Integer, List<Integer>> parentPaleoIndexes = new HashMap<>();
 		Map<String, List<Integer>> faultPaleoIndexes = new HashMap<>();
-		BitSet[] siteRups = new BitSet[paleoConstraints.size()];
 		for (int s=0; s<paleoConstraints.size(); s++) {
 			SectMappedUncertainDataConstraint paleoConstr = paleoConstraints.get(s);
 			int parentID = rs.getFaultSectionData(paleoConstr.sectionIndex).getParentSectionId();
@@ -628,144 +659,152 @@ public class PaleoBValueEstimator {
 			}
 		}
 		
-		DiscretizedFunc thicknessForWeights = new ArbitrarilyDiscretizedFunc();
-		thicknessForWeights.set(0d, 1d);
-		thicknessForWeights.set(0.5, 4d);
-		thicknessForWeights.set(1d, 5d);
 		for (int parentID : parentMappedSects.keySet()) {
-			String faultName = faults.getFaultName(parentID);
-			List<Integer> connectedPaleoIndexes;
-			if (faultName != null && faultPaleoIndexes.containsKey(faultName))
-				connectedPaleoIndexes = faultPaleoIndexes.get(faultName);
-			else if (parentPaleoIndexes.containsKey(parentID))
-				connectedPaleoIndexes = parentPaleoIndexes.get(parentID);
-			else
-				continue;
 			List<FaultSection> sects = parentMappedSects.get(parentID);
-			
-			List<EvenlyDiscretizedFunc> pdfFuncs = new ArrayList<>();
-			List<PlotCurveCharacterstics> pdfChars = new ArrayList<>();
-			List<EvenlyDiscretizedFunc> misfitFuncs = new ArrayList<>();
-			List<PlotCurveCharacterstics> misfitChars = new ArrayList<>();
-			
-			WeightedList<ContinuousDistribution> mySectDists = new WeightedList<>();
-			double[] paleoSiteWeights = new double[paleoConstraints.size()];
-			double noPaleoWeight = 0d;
-			for (FaultSection sect : sects) {
-				ContinuousDistribution sectDist = posteriors.getSectDistribution(sect.getSectionId());
-				double[] sectWeights = posteriors.getSectPaleoSiteWeights().get(sect.getSectionId());
-				double sectNoPaleoWeight = 1d;
-				if (sectWeights != null) {
-					for (int p=0; p<paleoSiteWeights.length; p++) {
-						paleoSiteWeights[p] += sectWeights[p];
-						sectNoPaleoWeight -= sectWeights[p];
-					}
-				}
-				mySectDists.add(sectDist, 1d);
-				if (sectNoPaleoWeight < 0d) {
-					// floating point errors can make this barely negative
-					Preconditions.checkState(sectNoPaleoWeight > -1e-10);
-					sectNoPaleoWeight = 0d;
-				}
-				noPaleoWeight += sectNoPaleoWeight;
-			}
-			for (int p=0; p<paleoSiteWeights.length; p++)
-				paleoSiteWeights[p] /= (double)sects.size();
-			noPaleoWeight /= (double)sects.size();
-			
-			pdfFuncs.add(priorFunc);
-			pdfChars.add(getForThickness(priorDistChar, (float)thicknessForWeights.getInterpolatedY(noPaleoWeight)));
-			
-			boolean firstSame = true;
-			boolean firstOther = true;
-			for (int paleoIndex : connectedPaleoIndexes) {
-				int paleoSectIndex = paleoConstraints.get(paleoIndex).sectionIndex;
-				if (paleoSiteWeights[paleoIndex] == 0d)
-					continue;
-				float thickness = (float)thicknessForWeights.getInterpolatedY(paleoSiteWeights[paleoIndex]);
-				boolean sameParent = parentID == rs.getFaultSectionData(paleoSectIndex).getParentSectionId();
-				EvenlyDiscretizedFunc misfits = paleoBValMisfits.get(paleoIndex);
-				ContinuousDistribution dist = sitePosteriorDists.get(paleoIndex);
-				EvenlyDiscretizedFunc pdf = bVals.deepClone();
-				for (int i=0; i<pdf.size(); i++)
-					pdf.set(i, dist.density(pdf.getX(i)));
-				if (sameParent) {
-					if (firstSame) {
-						misfits = misfits.deepClone();
-						pdf = pdf.deepClone();
-						misfits.setName("Paleo site (this section)");
-//						pdf.setName(misfits.getName());
-						firstSame = false;
-					}
-					misfitFuncs.add(misfits);
-					misfitChars.add(getForThickness(parentDistChar, thickness));
-					pdfFuncs.add(pdf);
-					pdfChars.add(getForThickness(parentDistChar, thickness));
-				} else {
-					if (firstOther) {
-						misfits = misfits.deepClone();
-						pdf = pdf.deepClone();
-						misfits.setName("Paleo site (other connected sections)");
-//						pdf.setName(misfits.getName());
-						firstOther = false;
-					}
-					misfitFuncs.add(0, misfits);
-					misfitChars.add(0, getForThickness(otherDistChar, thickness));
-					pdfFuncs.add(0, pdf);
-					pdfChars.add(0, getForThickness(otherDistChar, thickness));
-				}
-			}
-
-			boolean firstSectDist = true;
-			for (int s=0; s<mySectDists.size(); s++) {
-				ContinuousDistribution sectDist = mySectDists.getValue(s);
-				EvenlyDiscretizedFunc sectPDF = bVals.deepClone();
-				for (int i=0; i<sectPDF.size(); i++)
-					sectPDF.set(i, sectDist.density(bVals.getX(i)));
-				if (firstSectDist) {
-					sectPDF.setName("Subsection posteriors");
-					firstSectDist = false;
-				}
-				pdfFuncs.add(sectPDF);
-				pdfChars.add(posteriorDistChar);
-			}
-			ContinuousDistribution poisteriorDist = new WeightedContinuousDistribution(mySectDists);
-			EvenlyDiscretizedFunc posteriorFunc = bVals.deepClone();
-			for (int i=0; i<posteriorFunc.size(); i++)
-				posteriorFunc.set(i, poisteriorDist.density(bVals.getX(i)));
-			posteriorFunc.setName("Section average posterior");
-			pdfFuncs.add(posteriorFunc);
-			pdfChars.add(posteriorAvgDistChar);
-			
 			String parentName = sects.get(0).getParentSectionName();
-			PlotSpec pdfPlot = new PlotSpec(pdfFuncs, pdfChars, parentName, "b-value", "Density");
-			pdfPlot.setLegendInset(true);
-			
-//			PlotSpec misfitsPlot = new PlotSpec(misfitFuncs, misfitChars, parentName, "b-value", "Misfit (z-score)");
-//			misfitsPlot.setLegendInset(true);
-			
-			List<EvenlyDiscretizedFunc> absMisfitFuncs = new ArrayList<>();
-			for (EvenlyDiscretizedFunc func : misfitFuncs) {
-				EvenlyDiscretizedFunc absFunc = func.deepClone();
-				for (int i=0; i<func.size(); i++)
-					absFunc.set(i, Math.abs(func.getY(i)));
-				absMisfitFuncs.add(absFunc);
-			}
-			PlotSpec misfitsPlot = new PlotSpec(absMisfitFuncs, misfitChars, parentName, "b-value", "|Misfit (z-score)|");
-			misfitsPlot.setLegendInset(true);
-			
-			HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
-			
-			gp.drawGraphPanel(List.of(pdfPlot, misfitsPlot), false, false, List.of(new Range(bVals.getMinX(), bVals.getMaxX())), null);
-			
 			String prefix;
 			if (parentWithinNamedPrefixes.containsKey(parentID))
 				prefix = parentWithinNamedPrefixes.get(parentID);
 			else
 				prefix = FileNameUtils.simplify(parentName);
-			
-			PlotUtils.writePlots(outputDir, prefix, gp, 800, 1200, true, true, false);
+			plotSectDistribution(outputDir, prefix, sects, posteriors, rs, paleoConstraints, bVals);
 		}
+	}
+	
+	public static void plotSectDistribution(File outputDir, String prefix, List<FaultSection> sects,
+			PosteriorSectionBValueDistributions posteriors, FaultSystemRupSet rs) throws IOException {
+		plotSectDistribution(outputDir, prefix, sects, posteriors, rs,
+				rs.requireModule(PaleoseismicConstraintData.class).getPaleoRateConstraints(),
+				PosteriorSectionBValueDistributions.detectBValues(posteriors));
+	}
+	
+	public static void plotSectDistribution(File outputDir, String prefix, List<FaultSection> sects,
+			PosteriorSectionBValueDistributions posteriors, FaultSystemRupSet rs,
+			List<? extends SectMappedUncertainDataConstraint> paleoConstraints, EvenlyDiscretizedFunc bVals) throws IOException {
+		
+		
+		List<EvenlyDiscretizedFunc> pdfFuncs = new ArrayList<>();
+		List<PlotCurveCharacterstics> pdfChars = new ArrayList<>();
+		List<EvenlyDiscretizedFunc> misfitFuncs = new ArrayList<>();
+		List<PlotCurveCharacterstics> misfitChars = new ArrayList<>();
+		
+		WeightedList<ContinuousDistribution> mySectDists = new WeightedList<>();
+		double[] paleoSiteWeights = new double[posteriors.getPaleoSitePosteriors().size()];
+		double noPaleoWeight = 0d;
+		for (FaultSection sect : sects) {
+			ContinuousDistribution sectDist = posteriors.getSectDistribution(sect.getSectionId());
+			double[] sectWeights = posteriors.getSectPaleoSiteWeights().get(sect.getSectionId());
+			double sectNoPaleoWeight = 1d;
+			if (sectWeights != null) {
+				for (int p=0; p<paleoSiteWeights.length; p++) {
+					paleoSiteWeights[p] += sectWeights[p];
+					sectNoPaleoWeight -= sectWeights[p];
+				}
+			}
+			mySectDists.add(sectDist, 1d);
+			if (sectNoPaleoWeight < 0d) {
+				// floating point errors can make this barely negative
+				Preconditions.checkState(sectNoPaleoWeight > -1e-10);
+				sectNoPaleoWeight = 0d;
+			}
+			noPaleoWeight += sectNoPaleoWeight;
+		}
+		for (int p=0; p<paleoSiteWeights.length; p++)
+			paleoSiteWeights[p] /= (double)sects.size();
+		noPaleoWeight /= (double)sects.size();
+		
+		EvenlyDiscretizedFunc priorFunc = bVals.deepClone();
+		ContinuousDistribution priorDist = posteriors.getPriorDist();
+		for (int i=0; i<priorFunc.size(); i++)
+			priorFunc.set(i, priorDist.density(bVals.getX(i)));
+		priorFunc.setName("Prior");
+		pdfFuncs.add(priorFunc);
+		pdfChars.add(getForThickness(priorDistChar, (float)thicknessForWeights.getInterpolatedY(noPaleoWeight)));
+		
+		int parentID = sects.get(0).getParentSectionId();
+		boolean firstSame = true;
+		boolean firstOther = true;
+		for (int paleoIndex=0; paleoIndex<paleoSiteWeights.length; paleoIndex++) {
+			int paleoSectIndex = paleoConstraints.get(paleoIndex).sectionIndex;
+			if (paleoSiteWeights[paleoIndex] == 0d)
+				continue;
+			float thickness = (float)thicknessForWeights.getInterpolatedY(paleoSiteWeights[paleoIndex]);
+			boolean sameParent = parentID == rs.getFaultSectionData(paleoSectIndex).getParentSectionId();
+			EvenlyDiscretizedFunc misfits = posteriors.getPaleoSiteMisfits().get(paleoIndex);
+			ContinuousDistribution dist = posteriors.getPaleoSitePosteriors().get(paleoIndex);
+			EvenlyDiscretizedFunc pdf = bVals.deepClone();
+			for (int i=0; i<pdf.size(); i++)
+				pdf.set(i, dist.density(pdf.getX(i)));
+			if (sameParent) {
+				if (firstSame) {
+					misfits = misfits.deepClone();
+					pdf = pdf.deepClone();
+					misfits.setName("Paleo site (this section)");
+//					pdf.setName(misfits.getName());
+					firstSame = false;
+				}
+				misfitFuncs.add(misfits);
+				misfitChars.add(getForThickness(parentDistChar, thickness));
+				pdfFuncs.add(pdf);
+				pdfChars.add(getForThickness(parentDistChar, thickness));
+			} else {
+				if (firstOther) {
+					misfits = misfits.deepClone();
+					pdf = pdf.deepClone();
+					misfits.setName("Paleo site (other connected sections)");
+//					pdf.setName(misfits.getName());
+					firstOther = false;
+				}
+				misfitFuncs.add(0, misfits);
+				misfitChars.add(0, getForThickness(otherDistChar, thickness));
+				pdfFuncs.add(0, pdf);
+				pdfChars.add(0, getForThickness(otherDistChar, thickness));
+			}
+		}
+
+		boolean firstSectDist = true;
+		for (int s=0; s<mySectDists.size(); s++) {
+			ContinuousDistribution sectDist = mySectDists.getValue(s);
+			EvenlyDiscretizedFunc sectPDF = bVals.deepClone();
+			for (int i=0; i<sectPDF.size(); i++)
+				sectPDF.set(i, sectDist.density(bVals.getX(i)));
+			if (firstSectDist) {
+				sectPDF.setName("Subsection posteriors");
+				firstSectDist = false;
+			}
+			pdfFuncs.add(sectPDF);
+			pdfChars.add(posteriorDistChar);
+		}
+		ContinuousDistribution poisteriorDist = new WeightedContinuousDistribution(mySectDists);
+		EvenlyDiscretizedFunc posteriorFunc = bVals.deepClone();
+		for (int i=0; i<posteriorFunc.size(); i++)
+			posteriorFunc.set(i, poisteriorDist.density(bVals.getX(i)));
+		posteriorFunc.setName("Section average posterior");
+		pdfFuncs.add(posteriorFunc);
+		pdfChars.add(posteriorAvgDistChar);
+		
+		String parentName = sects.get(0).getParentSectionName();
+		PlotSpec pdfPlot = new PlotSpec(pdfFuncs, pdfChars, parentName, "b-value", "Density");
+		pdfPlot.setLegendInset(true);
+		
+//		PlotSpec misfitsPlot = new PlotSpec(misfitFuncs, misfitChars, parentName, "b-value", "Misfit (z-score)");
+//		misfitsPlot.setLegendInset(true);
+		
+		List<EvenlyDiscretizedFunc> absMisfitFuncs = new ArrayList<>();
+		for (EvenlyDiscretizedFunc func : misfitFuncs) {
+			EvenlyDiscretizedFunc absFunc = func.deepClone();
+			for (int i=0; i<func.size(); i++)
+				absFunc.set(i, Math.abs(func.getY(i)));
+			absMisfitFuncs.add(absFunc);
+		}
+		PlotSpec misfitsPlot = new PlotSpec(absMisfitFuncs, misfitChars, parentName, "b-value", "|Misfit (z-score)|");
+		misfitsPlot.setLegendInset(true);
+		
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
+		
+		gp.drawGraphPanel(List.of(pdfPlot, misfitsPlot), false, false, List.of(new Range(bVals.getMinX(), bVals.getMaxX())), null);
+		
+		PlotUtils.writePlots(outputDir, prefix, gp, 800, 1200, true, true, false);
 	}
 	
 	public void plotAlongStrike(File outputDir, String prefix, FaultSystemRupSet rs,
@@ -801,6 +840,32 @@ public class PaleoBValueEstimator {
 		if (factory instanceof ExclusionaryInversionConfigurationFactory)
 			includedRups = ((ExclusionaryInversionConfigurationFactory)factory).getInncludedRups(rs, branch, rs.requireModule(ClusterRuptures.class));
 		return doPlotAlongStrike(outputDir, prefix, rs, posteriors, faultName, sects, paleoData, includedRups);
+	}
+	
+	private static double[] calcModes(List<FaultSection> sects, EvenlyDiscretizedFunc bVals, PosteriorSectionBValueDistributions posteriors) {
+		double[] modes = new double[sects.size()];
+		for (int i=0; i<sects.size(); i++) {
+			FaultSection sect = sects.get(i);
+			int sectIndex = sect.getSectionId();
+			ContinuousDistribution dist = posteriors.getSectDistribution(sectIndex);
+			double maxDensity = 0d;
+			double mode = Double.NaN;
+			boolean allSame = true;
+			for (int b=0; b<bVals.size(); b++) {
+				double density = dist.density(bVals.getX(b));
+				allSame &= b==0 || density == 0 || density == maxDensity;
+				if (density > maxDensity) {
+					maxDensity = density;
+					mode = bVals.getX(b);
+				}
+			}
+			if (allSame)
+				// uniform distribution, just use the mean
+				mode = dist.getMean();
+			Preconditions.checkState(Double.isFinite(mode));
+			modes[i] = mode;
+		}
+		return modes;
 	}
 	
 	private boolean doPlotAlongStrike(File outputDir, String prefix, FaultSystemRupSet rs,
@@ -843,42 +908,23 @@ public class PaleoBValueEstimator {
 			emptySectFuncs.add(func);
 		}
 		
-		PlotCurveCharacterstics charBounds = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.DARK_GRAY);
-		PlotCurveCharacterstics postModeChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Colors.tab_blue);
-		PlotCurveCharacterstics postAvgChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Colors.tab_orange);
-		
 		List<? extends SectMappedUncertainDataConstraint> paleoConstraints = paleoData.getPaleoRateConstraints();
 		PaleoProbabilityModel paleoProb = paleoData.getPaleoProbModel();
 		
-		EvenlyDiscretizedFunc bVals = posteriors.getPaleoSiteMisfits().get(0).deepClone();
+		EvenlyDiscretizedFunc bVals = PosteriorSectionBValueDistributions.detectBValues(posteriors);
+		Preconditions.checkNotNull(bVals);
 
-		double[] modes = new double[sects.size()];
 		boolean anyCustom = false;
 		for (int i=0; i<sects.size(); i++) {
 			FaultSection sect = sects.get(i);
 			int sectIndex = sect.getSectionId();
 			
 			anyCustom |= posteriors.getSectPosteriors().get(sectIndex) != null;
-			ContinuousDistribution dist = posteriors.getSectDistribution(sectIndex);
-			double maxDensity = 0d;
-			double mode = Double.NaN;
-			boolean allSame = true;
-			for (int b=0; b<bVals.size(); b++) {
-				double density = dist.density(bVals.getX(b));
-				allSame &= b==0 || density == 0 || density == maxDensity;
-				if (density > maxDensity) {
-					maxDensity = density;
-					mode = bVals.getX(b);
-				}
-			}
-			if (allSame)
-				// uniform distribution, just use the mean
-				mode = dist.getMean();
-			Preconditions.checkState(Double.isFinite(mode));
-			modes[i] = mode;
 		}
 		if (!anyCustom)
 			return false;
+		
+		double[] modes = calcModes(sects, bVals, posteriors);
 		
 		// top plot: overall rates
 		// 2nd plot: paleo fits
@@ -1022,11 +1068,26 @@ public class PaleoBValueEstimator {
 		}
 		
 		// b-value plot
+		plots.add(getPosteriorBValueAlongStrikePlot(posteriors, sects, faultName, emptySectFuncs, xLabel));
 		
+		SectBySectDetailPlots.writeAlongStrikePlots(outputDir, prefix, plots, parentsMap, latX, xLabel, xRange, faultName);
+		return true;
+	}
+	
+	public static AlongStrikePlot getPosteriorBValueAlongStrikePlot(PosteriorSectionBValueDistributions posteriors,
+			List<FaultSection> faultSects, String faultName, List<XY_DataSet> emptySectFuncs, String xLabel) {
+		EvenlyDiscretizedFunc bVals = PosteriorSectionBValueDistributions.detectBValues(posteriors);
+		Preconditions.checkNotNull(bVals);
+		double[] modes = calcModes(faultSects, bVals, posteriors);
+		return getPosteriorBValueAlongStrikePlot(posteriors, faultSects, faultName, emptySectFuncs, xLabel, bVals, modes);
+	}
+	public static AlongStrikePlot getPosteriorBValueAlongStrikePlot(PosteriorSectionBValueDistributions posteriors,
+			List<FaultSection> faultSects, String faultName, List<XY_DataSet> emptySectFuncs, String xLabel,
+			EvenlyDiscretizedFunc bVals, double[] modes) {
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
-		double priorAvg = priorDist.getMean();
-		for (int i=0; i<sects.size(); i++) {
+		double priorAvg = posteriors.getPriorDist().getMean();
+		for (int i=0; i<faultSects.size(); i++) {
 			XY_DataSet emptyFunc = emptySectFuncs.get(i);
 			
 			funcs.add(copyAtY(emptyFunc, priorAvg));
@@ -1034,7 +1095,7 @@ public class PaleoBValueEstimator {
 			if (i == 0)
 				funcs.get(funcs.size()-1).setName("Average prior");
 		}
-		for (int i=0; i<sects.size(); i++) {
+		for (int i=0; i<faultSects.size(); i++) {
 			XY_DataSet emptyFunc = emptySectFuncs.get(i);
 			
 			funcs.add(copyAtY(emptyFunc, modes[i]));
@@ -1042,9 +1103,9 @@ public class PaleoBValueEstimator {
 			if (i == 0)
 				funcs.get(funcs.size()-1).setName("Modal posterior");
 		}
-		for (int i=0; i<sects.size(); i++) {
+		for (int i=0; i<faultSects.size(); i++) {
 			XY_DataSet emptyFunc = emptySectFuncs.get(i);
-			FaultSection sect = sects.get(i);
+			FaultSection sect = faultSects.get(i);
 			int sectIndex = sect.getSectionId();
 			
 			double avgB = posteriors.getSectDistribution(sectIndex).getMean();
@@ -1060,10 +1121,7 @@ public class PaleoBValueEstimator {
 		
 		Range yRange = new Range(bVals.getMinX()-0.02, bVals.getMaxX()+0.02);
 		
-		plots.add(new AlongStrikePlot(plot, funcs, chars, yRange, false));
-		
-		SectBySectDetailPlots.writeAlongStrikePlots(outputDir, prefix, plots, parentsMap, latX, xLabel, xRange, faultName);
-		return true;
+		return new AlongStrikePlot(plot, funcs, chars, yRange, false);
 	}
 	
 	private static PlotCurveCharacterstics getForThickness(PlotCurveCharacterstics pChar, float thickness) {
