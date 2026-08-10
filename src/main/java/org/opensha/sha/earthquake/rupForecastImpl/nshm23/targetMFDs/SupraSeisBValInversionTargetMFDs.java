@@ -198,6 +198,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		
 		private double slipStdDevFloor = 0d;
 		
+		private boolean updateSlipRates = true;
+		
 		// if non-null, subset of ruptures that we're allowed to use
 		private BitSet rupSubSet;
 		
@@ -450,6 +452,16 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		}
 		
 		/**
+		 * Specifies whether or not we should override the slip rates in the attached module
+		 * @param updateSlipRates
+		 * @return
+		 */
+		public Builder updateSlipRates(boolean updateSlipRates) {
+			this.updateSlipRates = updateSlipRates;
+			return this;
+		}
+		
+		/**
 		 * Build target slip rates only
 		 * 
 		 * @return
@@ -527,7 +539,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			SectMFDCalculator calc = new SectMFDCalculator();
 			calc.calc(exec, refMFD, minMags, zeroRateAllowed, slipOnly, 0d);
 			// give the newly computed target slip rates to the rupture set for use in inversions
-			if (subSeisMoRateReduction != SubSeisMoRateReduction.FROM_INPUT_SLIP_RATES)
+			if (updateSlipRates && subSeisMoRateReduction != SubSeisMoRateReduction.FROM_INPUT_SLIP_RATES)
 				rupSet.addModule(calc.sectSlipRates);
 			if (slipOnly)
 				return new SupraSeisBValInversionTargetMFDs(rupSet, supraSeisBValue, sectSpecificBValues,
