@@ -370,4 +370,19 @@ public class ContinuousDistributionTypeAdapter extends TypeAdapter<ContinuousDis
 		in.endArray();
 		return dists;
 	}
+	
+	/**
+	 * The {@link ContinuousDistribution} implementations don't implement equals(), so equals() on identically-parameterized
+	 * distributions will return false. This checks equality using json serialization
+	 * @param dist1
+	 * @param dist2
+	 * @return
+	 */
+	public static boolean distSerializationEquals(ContinuousDistribution dist1, ContinuousDistribution dist2) {
+		if (dist1.equals(dist2))
+			return true;
+		
+		ContinuousDistributionTypeAdapter adapter = get();
+		return adapter.toJson(dist1).equals(adapter.toJson(dist2));
+	}
 }

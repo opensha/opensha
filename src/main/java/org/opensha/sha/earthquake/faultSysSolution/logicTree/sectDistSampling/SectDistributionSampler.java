@@ -1,15 +1,12 @@
-package org.opensha.sha.earthquake.faultSysSolution.logicTree.dmSampling;
+package org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
-import java.util.Set;
-import java.util.function.Supplier;
 
 import org.apache.commons.statistics.distribution.ContinuousDistribution;
-import org.opensha.commons.data.Named;
 import org.opensha.commons.data.ShortNamed;
 import org.opensha.commons.util.json.JsonObjectSerializable;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -20,15 +17,15 @@ import com.google.gson.JsonPrimitive;
 
 /**
  * Sampler that extracts values from a {@link ContinuousDistribution} for each fault section. These can either be
- * random (per-fault) or at fixed fractiles for all faults (possibly randomly-drawn for each branch). 
+ * random per-section or fixed fractiles for all sections.
  */
-public interface DeformationModelDistSampler extends ShortNamed {
+public interface SectDistributionSampler extends ShortNamed {
 	
-	public void init(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects);
+	public void init(List<? extends FaultSection> subSects);
 	
 	public double getValue(FaultSection subSect, ContinuousDistribution dist);
 	
-	public interface FractileSampler extends DeformationModelDistSampler {
+	public interface FractileSampler extends SectDistributionSampler {
 		
 		public double getFractile(FaultSection subSect);
 		
@@ -37,7 +34,7 @@ public interface DeformationModelDistSampler extends ShortNamed {
 		}
 	}
 	
-	public interface FixedSampler extends DeformationModelDistSampler, JsonObjectSerializable {
+	public interface FixedSampler extends SectDistributionSampler, JsonObjectSerializable {
 		
 		public double getValue(ContinuousDistribution dist);
 		
@@ -68,7 +65,7 @@ public interface DeformationModelDistSampler extends ShortNamed {
 		}
 
 		@Override
-		public void init(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) {
+		public void init(List<? extends FaultSection> subSects) {
 			// do nothing
 		}
 
@@ -137,14 +134,14 @@ public interface DeformationModelDistSampler extends ShortNamed {
 	public static enum SectionGroupingType {
 		PARENT("Parent-Grouped") {
 			@Override
-			public SectionGrouping get(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) {
-				return new ParentSectionGrouping(subSects, fullSects);
+			public SectionGrouping get(List<? extends FaultSection> subSects) {
+				return new ParentSectionGrouping(subSects);
 			}
 		},
 		FULLY_INDEPENDENT("Fully-Independent") {
 			@Override
-			public SectionGrouping get(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) {
-				return new FullyIndependentSectionGrouping(subSects.size());
+			public SectionGrouping get(List<? extends FaultSection> subSects) {
+				return new FullyIndependentSectionGrouping(subSects);
 			}
 		};
 		
@@ -154,7 +151,7 @@ public interface DeformationModelDistSampler extends ShortNamed {
 			this.label = label;
 		}
 
-		public abstract SectionGrouping get(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects);
+		public abstract SectionGrouping get(List<? extends FaultSection> subSects);
 		
 		public String toString() {
 			return label;
@@ -170,20 +167,26 @@ public interface DeformationModelDistSampler extends ShortNamed {
 	
 	public static final class FullyIndependentSectionGrouping implements SectionGrouping {
 		
-		private int numSections;
+		private Map<Integer, Integer> sectionMappings;
 
-		public FullyIndependentSectionGrouping(int numSections) {
-			this.numSections = numSections;
+		public FullyIndependentSectionGrouping(List<? extends FaultSection> subSects) {
+			sectionMappings = new HashMap<>(subSects.size());
+			for (FaultSection sect : subSects)
+				sectionMappings.put(sect.getSectionId(), sectionMappings.size());
 		}
 
 		@Override
 		public int getGroupIndex(FaultSection subSect) {
-			return subSect.getSectionId();
+			Preconditions.checkNotNull(sectionMappings);
+			Integer ret = sectionMappings.get(subSect.getSectionId());
+			Preconditions.checkNotNull(ret, "Section %s was not in the initialized section list", subSect.getSectionId());
+			return ret;
 		}
 
 		@Override
 		public int getNumGroups() {
-			return numSections;
+			Preconditions.checkNotNull(sectionMappings);
+			return sectionMappings.size();
 		}
 		
 	}
@@ -192,22 +195,23 @@ public interface DeformationModelDistSampler extends ShortNamed {
 		
 		private Map<Integer, Integer> parentMappings;
 
-		public ParentSectionGrouping(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) {
-			Map<Integer, Integer> parentMappings =
-					fullSects == null ? new HashMap<>() : new HashMap<>(fullSects.size());
+		public ParentSectionGrouping(List<? extends FaultSection> subSects) {
+			parentMappings = new HashMap<>();
 			for (FaultSection sect : subSects) {
 				int parentID = sect.getParentSectionId();
 				Preconditions.checkState(parentID >= 0);
 				if (!parentMappings.containsKey(parentID))
 					parentMappings.put(parentID, parentMappings.size());
 			}
-			this.parentMappings = parentMappings;
 		}
 
 		@Override
 		public int getGroupIndex(FaultSection subSect) {
 			Preconditions.checkNotNull(parentMappings);
-			return parentMappings.get(subSect.getParentSectionId());
+			Integer ret = parentMappings.get(subSect.getParentSectionId());
+			Preconditions.checkNotNull(ret, "Parent section %s was not in the initialized section list",
+					subSect.getParentSectionId());
+			return ret;
 		}
 
 		@Override
@@ -232,21 +236,22 @@ public interface DeformationModelDistSampler extends ShortNamed {
 		}
 
 		@Override
-		public void init(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) {
+		public void init(List<? extends FaultSection> subSects) {
 			Random rand = new Random(seed);
-			grouping = groupingType.get(subSects, fullSects);
+			grouping = groupingType.get(subSects);
 			groupFractiles = new double[grouping.getNumGroups()];
 			for (int i=0; i<groupFractiles.length; i++)
 				groupFractiles[i] = rand.nextDouble();
 		}
 
 		public double getFractile(FaultSection subSect) {
+			Preconditions.checkNotNull(grouping, "Sampler has not been initialized");
 			return groupFractiles[grouping.getGroupIndex(subSect)];
 		}
 
 		@Override
 		public int hashCode() {
-			return Objects.hash(seed, grouping);
+			return Objects.hash(seed, groupingType);
 		}
 
 		@Override
@@ -258,7 +263,7 @@ public interface DeformationModelDistSampler extends ShortNamed {
 			if (getClass() != obj.getClass())
 				return false;
 			GroupedFractileSampler other = (GroupedFractileSampler) obj;
-			return seed == other.seed && Objects.equals(grouping, other.grouping);
+			return seed == other.seed && groupingType == other.groupingType;
 		}
 
 		@Override
@@ -293,7 +298,7 @@ public interface DeformationModelDistSampler extends ShortNamed {
 		}
 
 		@Override
-		public void init(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) {
+		public void init(List<? extends FaultSection> subSects) {
 			// do nothing
 		}
 

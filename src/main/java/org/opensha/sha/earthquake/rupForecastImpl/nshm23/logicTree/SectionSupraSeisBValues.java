@@ -13,8 +13,10 @@ import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.JsonObject;
@@ -256,30 +258,38 @@ public interface SectionSupraSeisBValues extends LogicTreeNode {
 	@DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 	@DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 	@Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-	public static abstract class SectSpecificDistributionSample implements FixedWeight {
+	public static abstract class SectSpecificDistributionSample<S extends SectDistributionSampler>
+	implements FixedWeight, ValuedLogicTreeNode<S> {
 		
 		private double weight;
 		private String name;
 		private String shortName;
-		private String filePrefix;
+		private String prefix;
+		private S sampler;
+		private Class<? extends S> valueClass;
 
-		public SectSpecificDistributionSample(double weight, String name, String shortName, String filePrefix) {
-			this.weight = weight;
-			this.name = name;
-			this.shortName = shortName; 
-			this.filePrefix = filePrefix;
+		public SectSpecificDistributionSample(String name, String shortName, String prefix, double weight, S sampler) {
+			init(sampler, (Class<? extends S>) sampler.getClass(), weight, name, shortName, prefix);
 		}
 		
-		public abstract ContinuousDistribution getSectDistribution(FaultSystemRupSet rupSet,
-				LogicTreeBranch<? extends LogicTreeNode> branch, int sectIndex);
+		public abstract void initDistributions(FaultSystemRupSet rupSet, LogicTreeBranch<? extends LogicTreeNode> branch);
 		
-		public abstract double getSectFractile(int sectIndex);
+		public abstract ContinuousDistribution getSectDistribution(FaultSection subSect);
 
 		@Override
 		public double[] getSectBValues(FaultSystemRupSet rupSet, LogicTreeBranch<? extends LogicTreeNode> branch) {
+			initDistributions(rupSet, branch);
+			
+			S sampler = getValue();
+			List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
+			sampler.init(subSects);
+			
 			double[] ret = new double[rupSet.getNumSections()];
-			for (int s=0; s<ret.length; s++)
-				ret[s] = getSectDistribution(rupSet, branch, s).inverseCumulativeProbability(getSectFractile(s));
+			for (int s=0; s<ret.length; s++) {
+				FaultSection sect = subSects.get(s);
+				ContinuousDistribution dist = getSectDistribution(sect);
+				ret[s] = sampler.getValue(sect, dist);
+			}
 			return ret;
 		}
 
@@ -290,7 +300,7 @@ public interface SectionSupraSeisBValues extends LogicTreeNode {
 
 		@Override
 		public String getFilePrefix() {
-			return filePrefix;
+			return prefix;
 		}
 
 		@Override
@@ -306,6 +316,27 @@ public interface SectionSupraSeisBValues extends LogicTreeNode {
 		@Override
 		public double getNodeWeight() {
 			return weight;
+		}
+
+		@Override
+		public S getValue() {
+			return sampler;
+		}
+
+		@Override
+		public Class<? extends S> getValueType() {
+			return valueClass;
+		}
+
+		@Override
+		public void init(S value, Class<? extends S> valueClass, double weight, String name, String shortName,
+				String filePrefix) {
+			this.valueClass = valueClass;
+			this.weight = weight;
+			this.name = name;
+			this.shortName = shortName; 
+			this.prefix = filePrefix;
+			this.sampler = value;
 		}
 		
 	}
