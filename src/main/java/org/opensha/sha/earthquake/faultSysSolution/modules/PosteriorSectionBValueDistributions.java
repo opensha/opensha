@@ -9,9 +9,20 @@ import org.apache.commons.statistics.distribution.ContinuousDistribution;
 import org.opensha.commons.data.function.EvenlyDiscrFuncContinuousDistribution;
 import org.opensha.commons.data.function.EvenlyDiscrFuncContinuousDistribution.DiscretizationType;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.logicTree.Affects;
+import org.opensha.commons.logicTree.DoesNotAffect;
+import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.json.ContinuousDistributionTypeAdapter;
 import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampleLevels;
+import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler;
+import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler.FixedFractileSampler;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
@@ -20,7 +31,8 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 
-public class PosteriorSectionBValueDistributions implements JSON_BackedModule, AverageableModule<PosteriorSectionBValueDistributions> {
+public class PosteriorSectionBValueDistributions implements JSON_BackedModule,
+AverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureModule<PosteriorSectionBValueDistributions> {
 	
 	/* required */
 	private ContinuousDistribution priorDist;
@@ -190,10 +202,12 @@ public class PosteriorSectionBValueDistributions implements JSON_BackedModule, A
 				sectPosteriors = new ArrayList<>();
 				in.beginArray();
 				while (in.hasNext()) {
-					if (in.peek() == JsonToken.NULL)
+					if (in.peek() == JsonToken.NULL) {
+						in.skipValue();
 						sectPosteriors.add(null);
-					else
+					}else {
 						sectPosteriors.add(distAdapter.read(in));
+					}
 				}
 				in.endArray();
 				break;
@@ -204,6 +218,7 @@ public class PosteriorSectionBValueDistributions implements JSON_BackedModule, A
 				in.beginArray();
 				while (in.hasNext()) {
 					if (in.peek() == JsonToken.NULL) {
+						in.skipValue();
 						sectPaleoSiteWeights.add(null);
 					} else {
 						weights.clear();
@@ -220,10 +235,12 @@ public class PosteriorSectionBValueDistributions implements JSON_BackedModule, A
 				paleoSitePosteriors = new ArrayList<>();
 				in.beginArray();
 				while (in.hasNext()) {
-					if (in.peek() == JsonToken.NULL)
+					if (in.peek() == JsonToken.NULL) {
+						in.skipValue();
 						paleoSitePosteriors.add(null);
-					else
+					} else {
 						paleoSitePosteriors.add(distAdapter.read(in));
+					}
 				}
 				in.endArray();
 				break;
@@ -232,10 +249,12 @@ public class PosteriorSectionBValueDistributions implements JSON_BackedModule, A
 				paleoSiteMisfits = new ArrayList<>();
 				in.beginArray();
 				while (in.hasNext()) {
-					if (in.peek() == JsonToken.NULL)
+					if (in.peek() == JsonToken.NULL) {
+						in.skipValue();
 						paleoSiteMisfits.add(null);
-					else
+					} else {
 						paleoSiteMisfits.add(funcAdapter.read(in));
+					}
 				}
 				in.endArray();
 				break;
@@ -254,6 +273,46 @@ public class PosteriorSectionBValueDistributions implements JSON_BackedModule, A
 	@Override
 	public AveragingAccumulator<PosteriorSectionBValueDistributions> averagingAccumulator() {
 		return new Accumulator();
+	}
+	
+	public static EvenlyDiscretizedFunc detectBValues(PosteriorSectionBValueDistributions module) {
+		for (ContinuousDistribution dist : module.sectPosteriors) {
+			if (dist != null)
+				if (dist instanceof EvenlyDiscrFuncContinuousDistribution funcDist) 
+					return funcDist.getFunc();
+//					return funcDist.getDiscretizationType();
+		}
+		if (module.paleoSitePosteriors != null) {
+			for (ContinuousDistribution dist : module.paleoSitePosteriors) {
+				if (dist != null)
+					if (dist instanceof EvenlyDiscrFuncContinuousDistribution funcDist)
+						return funcDist.getFunc();
+//						return funcDist.getDiscretizationType();
+			}
+		}
+		
+		if (module.paleoSiteMisfits != null) {
+			for (EvenlyDiscretizedFunc misfit : module.paleoSiteMisfits)
+				if (misfit != null)
+					return misfit.deepClone();
+		}
+		return null;
+	}
+	
+	private static DiscretizationType detectDistributionType(PosteriorSectionBValueDistributions module) {
+		for (ContinuousDistribution dist : module.sectPosteriors) {
+			if (dist != null)
+				if (dist instanceof EvenlyDiscrFuncContinuousDistribution funcDist) 
+					return funcDist.getDiscretizationType();
+		}
+		if (module.paleoSitePosteriors != null) {
+			for (ContinuousDistribution dist : module.paleoSitePosteriors) {
+				if (dist != null)
+					if (dist instanceof EvenlyDiscrFuncContinuousDistribution funcDist)
+						return funcDist.getDiscretizationType();
+			}
+		}
+		return null;
 	}
 	
 	private static class Accumulator implements AveragingAccumulator<PosteriorSectionBValueDistributions> {
@@ -284,31 +343,7 @@ public class PosteriorSectionBValueDistributions implements JSON_BackedModule, A
 				// first
 				
 				// find b-value discretization
-				for (ContinuousDistribution dist : module.sectPosteriors) {
-					if (dist != null) {
-						if (dist instanceof EvenlyDiscrFuncContinuousDistribution funcDist) { 
-							bValues = funcDist.getFunc();
-							discrType = funcDist.getDiscretizationType();
-						}
-						break;
-					}
-				}
-				if (bValues != null && module.paleoSitePosteriors != null) {
-					for (ContinuousDistribution dist : module.paleoSitePosteriors) {
-						if (dist instanceof EvenlyDiscrFuncContinuousDistribution funcDist) {
-							bValues = funcDist.getFunc();
-							discrType = funcDist.getDiscretizationType();
-						}
-						break;
-					}
-				}
-				
-				if (bValues != null && module.paleoSiteMisfits != null) {
-					bValues = module.paleoSiteMisfits.getFirst();
-				}
-				
-				if (discrType == null)
-					discrType = DiscretizationType.INTERPOLATE;
+				bValues = detectBValues(module);
 				if (bValues == null) {
 					// not specified, discretize ourselves
 					Preconditions.checkState(Double.isFinite(module.priorDist.getSupportLowerBound()),
@@ -320,6 +355,11 @@ public class PosteriorSectionBValueDistributions implements JSON_BackedModule, A
 					bValues = new EvenlyDiscretizedFunc(module.priorDist.getSupportLowerBound(),
 							module.priorDist.getSupportUpperBound(), 21);
 				}
+				
+				// find function discretization
+				discrType = detectDistributionType(module);
+				if (discrType == null)
+					discrType = DiscretizationType.INTERPOLATE;
 				
 				firstPrior = module.priorDist;
 				priorAvg = new FuncAverager();
@@ -337,13 +377,13 @@ public class PosteriorSectionBValueDistributions implements JSON_BackedModule, A
 				if (module.paleoSitePosteriors != null) {
 					paleoSitePosteriorAvg = new ArrayList<>(module.paleoSitePosteriors.size());
 					for (int i=0; i<module.paleoSitePosteriors.size(); i++)
-						paleoSitePosteriorAvg.add(new FuncAverager());
+						paleoSitePosteriorAvg.add(null);
 				}
 				
 				if (module.paleoSiteMisfits != null) {
 					paleoSiteMisfitAvg = new ArrayList<>(module.paleoSiteMisfits.size());
 					for (int i=0; i<module.paleoSiteMisfits.size(); i++)
-						paleoSiteMisfitAvg.add(new FuncAverager());
+						paleoSiteMisfitAvg.add(null);
 				}
 			}
 			
@@ -409,8 +449,19 @@ public class PosteriorSectionBValueDistributions implements JSON_BackedModule, A
 					paleoSitePosteriorAvg = null;
 				} else {
 					Preconditions.checkState(module.paleoSitePosteriors.size() == paleoSitePosteriorAvg.size());
-					for (int p=0; p<paleoSitePosteriorAvg.size(); p++)
-						paleoSitePosteriorAvg.get(p).add(module.paleoSitePosteriors.get(p), relWeight, bValues, discrType);
+					for (int p=0; p<paleoSitePosteriorAvg.size(); p++) {
+						FuncAverager avg = paleoSitePosteriorAvg.get(p);
+						ContinuousDistribution dist = module.paleoSitePosteriors.get(p);
+						if (avg == null && dist == null)
+							continue;
+						if (avg == null) {
+							avg = new FuncAverager();
+							paleoSitePosteriorAvg.set(p, avg);
+						} else if (dist == null) {
+							continue;
+						}
+						avg.add(dist, relWeight, bValues, discrType);
+					}
 				}
 			}
 			
@@ -419,8 +470,19 @@ public class PosteriorSectionBValueDistributions implements JSON_BackedModule, A
 					paleoSiteMisfitAvg = null;
 				} else {
 					Preconditions.checkState(module.paleoSiteMisfits.size() == paleoSiteMisfitAvg.size());
-					for (int p=0; p<paleoSiteMisfitAvg.size(); p++)
-						paleoSiteMisfitAvg.get(p).add(module.paleoSiteMisfits.get(p), relWeight);
+					for (int p=0; p<paleoSiteMisfitAvg.size(); p++) {
+						FuncAverager avg = paleoSiteMisfitAvg.get(p);
+						EvenlyDiscretizedFunc misfit = module.paleoSiteMisfits.get(p);
+						if (avg == null && misfit == null)
+							continue;
+						if (avg == null) {
+							avg = new FuncAverager();
+							paleoSiteMisfitAvg.set(p, avg);
+						} else if (misfit == null) {
+							continue;
+						}
+						avg.add(misfit, relWeight);
+					}
 				}
 			}
 			
@@ -454,18 +516,19 @@ public class PosteriorSectionBValueDistributions implements JSON_BackedModule, A
 			if (paleoSitePosteriorAvg != null) {
 				paleoSitePosteriors = new ArrayList<>(paleoSitePosteriorAvg.size());
 				for (FuncAverager avg : paleoSitePosteriorAvg)
-					paleoSitePosteriors.add(new EvenlyDiscrFuncContinuousDistribution(avg.getAverage(), discrType));
+					paleoSitePosteriors.add(avg == null ?
+							null : new EvenlyDiscrFuncContinuousDistribution(avg.getAverage(), discrType));
 			}
 			
 			List<EvenlyDiscretizedFunc> paleoSiteMisfits = null;
 			if (paleoSiteMisfitAvg != null) {
 				paleoSiteMisfits = new ArrayList<>(paleoSiteMisfitAvg.size());
 				for (FuncAverager avg : paleoSiteMisfitAvg)
-					paleoSiteMisfits.add(avg.getAverage());
+					paleoSiteMisfits.add(avg == null ? null : avg.getAverage());
 			}
 			// prevent reuse
 			sumWeight = Double.NaN;
-			sectPosteriors = null;
+			sectPosteriorAvg = null;
 			return new PosteriorSectionBValueDistributions(prior, sectPosteriors, sectPaleoWeights, paleoSitePosteriors, paleoSiteMisfits);
 		}
 		
@@ -504,6 +567,111 @@ public class PosteriorSectionBValueDistributions implements JSON_BackedModule, A
 			sumWeight = Double.NaN;
 			return ret;
 		}
+	}
+	
+	@DoesNotAffect(FaultSystemRupSet.SECTS_FILE_NAME)
+	@DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
+	@DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
+	@Affects(FaultSystemSolution.RATES_FILE_NAME)
+	@DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
+	@DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
+	@Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
+	public static class SamplingNode<S extends SectDistributionSampler> extends SectionSupraSeisBValues.SectSpecificDistributionSample<S> {
+		
+		private PosteriorSectionBValueDistributions dists;
+
+		public SamplingNode(String name, String shortName, String prefix, double weight, S sampler) {
+			super(name, shortName, prefix, weight, sampler);
+		}
+
+		@Override
+		public void initDistributions(FaultSystemRupSet rupSet, LogicTreeBranch<? extends LogicTreeNode> branch) {
+			dists = rupSet.requireModule(PosteriorSectionBValueDistributions.class);
+		}
+
+		@Override
+		public ContinuousDistribution getSectDistribution(FaultSection subSect) {
+			return dists.getSectDistribution(subSect.getSectionId());
+		}
+		
+	}
+	
+	public static class UniformSamplingLevel
+	extends SectDistributionSampleLevels.UniformSamplingLevel<SamplingNode<FixedFractileSampler>> {
+
+		public UniformSamplingLevel(String levelName, String levelShortName) {
+			super(levelName, levelShortName, 0d, "b Distribution Sample ", "bDistSample", "bDistSample");
+		}
+
+		@Override
+		public SamplingNode<FixedFractileSampler> build(FixedFractileSampler value,
+				double weight, String name, String shortName, String filePrefix) {
+			return new SamplingNode<>(name, shortName, filePrefix, weight, value);
+		}
+
+		@Override
+		public Class<? extends SamplingNode<FixedFractileSampler>> getType() {
+			return (Class<? extends SamplingNode<FixedFractileSampler>>) (Class<?>) SamplingNode.class;
+		}
+		
+	}
+
+	@Override
+	public PosteriorSectionBValueDistributions getForRuptureSubSet(FaultSystemRupSet rupSubSet,
+			RuptureSubSetMappings mappings) {
+		return new PosteriorSectionBValueDistributions(priorDist,
+				getForSectionSubSet(sectPosteriors, mappings),
+				getWeightsForSectionSubSet(sectPaleoSiteWeights, mappings),
+				copyList(paleoSitePosteriors), copyList(paleoSiteMisfits));
+	}
+
+	@Override
+	public PosteriorSectionBValueDistributions getForSplitRuptureSet(FaultSystemRupSet splitRupSet,
+			RuptureSetSplitMappings mappings) {
+		return new PosteriorSectionBValueDistributions(priorDist,
+				getForSplitSections(sectPosteriors, mappings),
+				getWeightsForSplitSections(sectPaleoSiteWeights, mappings),
+				copyList(paleoSitePosteriors), copyList(paleoSiteMisfits));
+	}
+	
+	private static <E> List<E> copyList(List<E> list) {
+		return list == null ? null : new ArrayList<>(list);
+	}
+	
+	private static <E> List<E> getForSectionSubSet(List<E> origList, RuptureSubSetMappings mappings) {
+		List<E> ret = new ArrayList<>(mappings.getNumRetainedSects());
+		for (int s=0; s<mappings.getNumRetainedSects(); s++)
+			ret.add(origList.get(mappings.getOrigSectID(s)));
+		return ret;
+	}
+	
+	private static List<double[]> getWeightsForSectionSubSet(List<double[]> origWeights, RuptureSubSetMappings mappings) {
+		if (origWeights == null)
+			return null;
+		List<double[]> ret = new ArrayList<>(mappings.getNumRetainedSects());
+		for (int s=0; s<mappings.getNumRetainedSects(); s++)
+			ret.add(copyArray(origWeights.get(mappings.getOrigSectID(s))));
+		return ret;
+	}
+	
+	private static <E> List<E> getForSplitSections(List<E> origList, RuptureSetSplitMappings mappings) {
+		List<E> ret = new ArrayList<>(mappings.getNewNumSections());
+		for (int s=0; s<mappings.getNewNumSections(); s++)
+			ret.add(origList.get(mappings.getOrigSectID(s)));
+		return ret;
+	}
+	
+	private static List<double[]> getWeightsForSplitSections(List<double[]> origWeights, RuptureSetSplitMappings mappings) {
+		if (origWeights == null)
+			return null;
+		List<double[]> ret = new ArrayList<>(mappings.getNewNumSections());
+		for (int s=0; s<mappings.getNewNumSections(); s++)
+			ret.add(copyArray(origWeights.get(mappings.getOrigSectID(s))));
+		return ret;
+	}
+	
+	private static double[] copyArray(double[] array) {
+		return array == null ? null : array.clone();
 	}
 
 }
