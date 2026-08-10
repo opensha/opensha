@@ -98,14 +98,11 @@ public final class SectDistributionSampleLevels {
 		private double fractileFloor;
 
 		protected UniformSamplingLevel(String levelName, String levelShortName) {
-			this(levelName, levelShortName, 0d);
-		}
-
-		public UniformSamplingLevel(String levelName, String levelShortName, double fractileFloor) {
-			this(levelName, levelShortName, fractileFloor, "Distribution Sample ", "Dist-Sample-", "DistSample");
+			super(levelName, levelShortName);
+			this.fractileFloor = 0d;
 		}
 		
-		public UniformSamplingLevel(String levelName, String levelShortName, double fractileFloor,
+		protected UniformSamplingLevel(String levelName, String levelShortName, double fractileFloor,
 				String nodeNamePrefix, String nodeShortNamePrefix, String nodeFilePrefix) {
 			super(levelName, levelShortName, nodeNamePrefix, nodeShortNamePrefix, nodeFilePrefix);
 			this.fractileFloor = fractileFloor;
@@ -189,6 +186,23 @@ public final class SectDistributionSampleLevels {
 						weightEach, name, shortName, "Bin"+i));
 			}
 			return new BinnedUniformSamplingLevel(this, nodes);
+		}
+
+		@Override
+		public JsonObject toJsonObject() {
+			JsonObject obj = super.toJsonObject();
+			
+			obj.add("fractileFloor", new JsonPrimitive(fractileFloor));
+			
+			return obj;
+		}
+
+		@Override
+		public void initFromJsonObject(JsonObject jsonObj) {
+			super.initFromJsonObject(jsonObj);
+			
+			if (jsonObj.has("fractileFloor"))
+				fractileFloor = jsonObj.get("fractileFloor").getAsDouble();
 		}
 		
 	}

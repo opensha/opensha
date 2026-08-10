@@ -11,7 +11,9 @@ import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomlyGeneratedLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.SamplingMethod;
 import org.opensha.commons.logicTree.LogicTreeNode.RandomlyGeneratedNode;
 
 import com.google.common.base.Preconditions;
@@ -37,12 +39,13 @@ public final class LogicTreeConfig {
 		private LogicTree<LogicTreeNode> suppliedAnalysisTree;
 		private LogicTree<LogicTreeNode> suppliedOriginalTree;
 		private List<LogicTreeLevel<? extends LogicTreeNode>> levels;
-		private final List<RandomlyGeneratedLevel<?>> randomLevels = new ArrayList<>();
+		private final List<RandomLevel<?,?>> randomLevels = new ArrayList<>();
 		private LogicTreeNode[] requiredNodes;
 		private boolean forceRequiredNonZeroWeight;
 		private int samplingBranchCountMultiplier = 1;
 		private Integer downsampleCount;
 		private long randomSeed = 12345678L;
+		private SamplingMethod samplingMethod;
 		private Class<? extends LogicTreeNode> sortBy;
 
 		public Builder forSuppliedLogicTree(LogicTree<LogicTreeNode> suppliedLogicTree) {
@@ -88,9 +91,16 @@ public final class LogicTreeConfig {
 			return this;
 		}
 
-		public Builder addRandomLevel(RandomlyGeneratedLevel<?> randomLevel) {
+		public Builder addRandomLevel(RandomLevel<?,?> randomLevel) {
 			if (randomLevel != null)
 				this.randomLevels.add(randomLevel);
+			return this;
+		}
+
+		public Builder addRandomLevels(List<? extends RandomLevel<?,?>> randomLevels) {
+			if (randomLevels != null)
+				for (RandomLevel<?,?> level : randomLevels)
+					addRandomLevel(level);
 			return this;
 		}
 
@@ -109,6 +119,11 @@ public final class LogicTreeConfig {
 			return this;
 		}
 
+		public Builder samplingMethod(SamplingMethod samplingMethod) {
+			this.samplingMethod = samplingMethod;
+			return this;
+		}
+
 		public Builder sortBy(Class<? extends LogicTreeNode> sortBy) {
 			this.sortBy = sortBy;
 			return this;
@@ -122,7 +137,8 @@ public final class LogicTreeConfig {
 				source = new SuppliedSource(suppliedLogicTree, suppliedAnalysisTree, suppliedOriginalTree);
 			} else {
 				source = new LevelBasedSource(levels, requiredNodes, forceRequiredNonZeroWeight,
-						randomLevels, samplingBranchCountMultiplier, downsampleCount, randomSeed, sortBy);
+						randomLevels, samplingBranchCountMultiplier, downsampleCount, randomSeed,
+						samplingMethod, sortBy);
 			}
 			return new LogicTreeConfig(source);
 		}
@@ -185,16 +201,17 @@ public final class LogicTreeConfig {
 		private final List<LogicTreeLevel<? extends LogicTreeNode>> levels;
 		private final LogicTreeNode[] requiredNodes;
 		private final boolean forceRequiredNonZeroWeight;
-		private final List<RandomlyGeneratedLevel<?>> randomLevels;
+		private final List<RandomLevel<?,?>> randomLevels;
 		private final int samplingBranchCountMultiplier;
 		private final Integer downsampleCount;
 		private final long randomSeed;
+		private final SamplingMethod samplingMethod;
 		private final Class<? extends LogicTreeNode> sortBy;
 
 		LevelBasedSource(List<LogicTreeLevel<? extends LogicTreeNode>> levels, LogicTreeNode[] requiredNodes,
-				boolean forceRequiredNonZeroWeight, List<RandomlyGeneratedLevel<?>> randomLevels,
+				boolean forceRequiredNonZeroWeight, List<RandomLevel<?,?>> randomLevels,
 				int samplingBranchCountMultiplier, Integer downsampleCount, long randomSeed,
-				Class<? extends LogicTreeNode> sortBy) {
+				SamplingMethod samplingMethod, Class<? extends LogicTreeNode> sortBy) {
 			this.levels = List.copyOf(levels);
 			this.requiredNodes = requiredNodes;
 			this.forceRequiredNonZeroWeight = forceRequiredNonZeroWeight;
@@ -202,6 +219,7 @@ public final class LogicTreeConfig {
 			this.samplingBranchCountMultiplier = samplingBranchCountMultiplier;
 			this.downsampleCount = downsampleCount;
 			this.randomSeed = randomSeed;
+			this.samplingMethod = samplingMethod;
 			this.sortBy = sortBy;
 		}
 
@@ -226,8 +244,8 @@ public final class LogicTreeConfig {
 				modLevels.addAll(randomLevels);
 				int numBranches = logicTree.size()*samplingBranchCountMultiplier;
 				Random rand = new Random(randomSeed);
-				List<List<? extends RandomlyGeneratedNode>> levelNodes = new ArrayList<>();
-				for (RandomlyGeneratedLevel<?> level : randomLevels) {
+				List<List<? extends LogicTreeNode>> levelNodes = new ArrayList<>();
+				for (RandomLevel<?,?> level : randomLevels) {
 					level.build(rand.nextLong(), numBranches);
 					levelNodes.add(level.getNodes());
 				}
@@ -240,7 +258,7 @@ public final class LogicTreeConfig {
 						for (LogicTreeNode val : branch)
 							modValues.add(val);
 						int randIndex = modBranches.size();
-						for (List<? extends RandomlyGeneratedNode> randNodes : levelNodes)
+						for (List<? extends LogicTreeNode> randNodes : levelNodes)
 							modValues.add(randNodes.get(randIndex));
 						LogicTreeBranch<LogicTreeNode> modBranch = new LogicTreeBranch<>(modLevels, modValues);
 						modBranch.setOrigBranchWeight(branch.getOrigBranchWeight());
