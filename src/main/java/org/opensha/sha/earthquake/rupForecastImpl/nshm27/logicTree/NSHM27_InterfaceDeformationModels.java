@@ -58,6 +58,10 @@ public class NSHM27_InterfaceDeformationModels extends RupSetDeformationModelDis
 			super(NAME, SHORT_NAME, MIN_DM_FRACTILE, "DM Sample ", "DM-Sample-", "DMSample");
 		}
 
+		protected SamplingLevel(String name, String shortName) {
+			super(name, shortName, MIN_DM_FRACTILE, "DM Sample ", "DM-Sample-", "DMSample");
+		}
+
 		@Override
 		public NSHM27_InterfaceDeformationModels build(FixedFractileSampler value, double weight, String name,
 				String shortName, String filePrefix) {

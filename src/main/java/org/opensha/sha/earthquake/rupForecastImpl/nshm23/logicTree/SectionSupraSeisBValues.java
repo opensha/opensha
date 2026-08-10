@@ -251,13 +251,6 @@ public interface SectionSupraSeisBValues extends LogicTreeNode {
 		
 	}
 	
-	@DoesNotAffect(FaultSystemRupSet.SECTS_FILE_NAME)
-	@DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
-	@DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
-	@Affects(FaultSystemSolution.RATES_FILE_NAME)
-	@DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
-	@DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
-	@Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 	public static abstract class SectSpecificDistributionSample<S extends SectDistributionSampler>
 	implements FixedWeight, ValuedLogicTreeNode<S> {
 		
