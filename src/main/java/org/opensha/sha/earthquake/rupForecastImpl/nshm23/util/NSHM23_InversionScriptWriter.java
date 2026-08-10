@@ -8,7 +8,12 @@ import java.util.List;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.RandomlyGeneratedLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.SamplingMethod;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PosteriorSectionBValueDistributions;
 import org.opensha.sha.earthquake.faultSysSolution.mpj.HPCConfig;
 import org.opensha.sha.earthquake.faultSysSolution.mpj.HazardConfig;
 import org.opensha.sha.earthquake.faultSysSolution.mpj.InversionConfig;
@@ -20,7 +25,9 @@ import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_InvConfigFactory;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_PaleoUncertainties;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues;
 import org.opensha.sha.util.NEHRP_TestCity;
 
 public class NSHM23_InversionScriptWriter {
@@ -32,6 +39,28 @@ public class NSHM23_InversionScriptWriter {
 
 		File localMainDir = new File("/home/kevin/OpenSHA/fss_inversions");
 		File remoteMainDir = new File("/project2/scec_608/kmilner/fss_inversions");
+		
+		List<String> nameAdds = new ArrayList<>();
+		
+		List<LogicTreeLevel<? extends LogicTreeNode>> levels = NSHM23_LogicTreeBranch.levelsOnFault;
+		List<RandomLevel<?,?>> randomLevels = new ArrayList<>();
+		int samplingBranchCountMultiplier = 1;
+		
+		levels = new ArrayList<>(levels);
+		for (int l=levels.size(); --l>=0;) {
+			LogicTreeLevel<? extends LogicTreeNode> level = levels.get(l);
+			if (SectionSupraSeisBValues.class.isAssignableFrom(level.getType())
+					|| NSHM23_PaleoUncertainties.class.isAssignableFrom(level.getType()))
+				levels.remove(l);
+		}
+//		nameAdds.add("bPosterior10x");
+//		randomLevels.add(new PosteriorSectionBValueDistributions.UniformSamplingLevel(
+//				"Section posterior b-value samples", "Posterior-b samples"));
+//		samplingBranchCountMultiplier = 10;
+		nameAdds.add("bUniform10x");
+		randomLevels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(
+				"Section b-value samples", "b-value samples", NSHM23_InvConfigFactory.SUPRA_B_PRIOR_DIST));
+		samplingBranchCountMultiplier = 10;
 
 		GriddedRegion hazardRegion = new GriddedRegion(
 				NSHM23_RegionLoader.loadFullConterminousWUS(), HAZARD_GRID_SPACING, GriddedRegion.ANCHOR_0_0);
@@ -40,6 +69,7 @@ public class NSHM23_InversionScriptWriter {
 				.baseName("nshm23_branches")
 				.addNameToken(NSHM23_FaultModels.WUS_FM_v3.name())
 //				.addNameToken("gridded_rebuild")
+				.addNameTokens(nameAdds)
 				.build();
 
 		HPCConfig hpc = HPCConfig.builder(hpcSite)
@@ -48,7 +78,10 @@ public class NSHM23_InversionScriptWriter {
 				.build();
 
 		LogicTreeConfig logicTreeConfig = LogicTreeConfig.builder()
-				.forLogicTreeLevels(NSHM23_LogicTreeBranch.levelsOnFault)
+				.forLogicTreeLevels(levels)
+				.addRandomLevels(randomLevels)
+				.samplingMethod(SamplingMethod.LATIN_HYPERCUBE)
+				.samplingBranchCountMultiplier(samplingBranchCountMultiplier)
 				.requiredNodes(NSHM23_FaultModels.WUS_FM_v3)
 				.forceRequiredNonZeroWeight(true)
 				.sortBy(NSHM23_SegmentationModels.class)

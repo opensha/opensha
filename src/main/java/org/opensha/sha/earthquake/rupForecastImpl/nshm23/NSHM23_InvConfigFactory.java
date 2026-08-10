@@ -11,9 +11,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import org.apache.commons.statistics.distribution.ContinuousDistribution;
+import org.apache.commons.statistics.distribution.UniformContinuousDistribution;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.IntegerSampler.ExclusionIntegerSampler;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
@@ -68,10 +71,12 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PosteriorSectionBValueDistributions;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
@@ -92,6 +97,8 @@ import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
 import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
+import org.opensha.sha.earthquake.nshmp.inversion.mfdPreInversion.PaleoBValueEstimator;
+import org.opensha.sha.earthquake.nshmp.inversion.mfdPreInversion.PaleoBValueEstimator.MFDCalcInputs;
 import org.opensha.sha.earthquake.nshmp.seismicity.CrustalGridSourceBuilder;
 import org.opensha.sha.earthquake.nshmp.seismicity.CrustalGridSourceBuilder.NearFaultCarveOutModel;
 import org.opensha.sha.earthquake.nshmp.seismicity.CrustalGridSourceBuilder.NucleationPDF_3D;
@@ -191,6 +198,8 @@ ExclusionaryInversionConfigurationFactory {
 	public static SubSectConstraintModels SUB_SECT_CONSTR_DEFAULT = SubSectConstraintModels.TOT_NUCL_RATE;
 	
 	public static SlipAlongRuptureModelBranchNode SLIP_ALONG_DEFAULT = NSHM23_SlipAlongRuptureModels.UNIFORM;
+	
+	public static ContinuousDistribution SUPRA_B_PRIOR_DIST = UniformContinuousDistribution.of(0d, 1d);
 	
 	public NSHM23_InvConfigFactory() {
 		numItersPerRup = NUM_ITERS_PER_RUP_DEFAULT;
@@ -698,6 +707,34 @@ ExclusionaryInversionConfigurationFactory {
 					}
 				}, BranchSamplingManager.class);
 			}
+			
+			if (branch.hasValue(PosteriorSectionBValueDistributions.SamplingNode.class)) {
+				// we're doing posterior b-value sampling
+				
+				if (!rupSet.hasAvailableModule(PosteriorSectionBValueDistributions.class)) {
+					// we don't already have posterior b-value distributions calculated
+					// calculate them now; offering them can create deadlock issues
+					
+					EvenlyDiscretizedFunc bVals = new EvenlyDiscretizedFunc(0d, 1d, 21);
+					
+					PaleoBValueEstimator estimator = new PaleoBValueEstimator(SUPRA_B_PRIOR_DIST, bVals, new NSHM23_InvConfigFactory());
+					
+					// pre-load these so it's not trying to do so on every MFD calc call, which can result in deadlock issues
+					rupSet.requireModule(ClusterRuptures.class);
+					rupSet.requireModule(AveSlipModule.class);
+					rupSet.requireModule(SlipAlongRuptureModel.class);
+					
+					Function<MFDCalcInputs, InversionTargetMFDs> mfdCalc = (I) -> {
+						return doGetConstraintBuilder(I.rupSet(), I.branch()).getRateOnlyTargetMFDs();
+					};
+					
+					estimator.setTargetMFDCalc(mfdCalc);
+					
+					PosteriorSectionBValueDistributions posteriors = estimator.calculate(rupSet, branch, false);
+					rupSet.addModule(posteriors);
+				}
+			}
+			
 			return rupSet;
 		}
 
@@ -838,7 +875,7 @@ ExclusionaryInversionConfigurationFactory {
 		return ret;
 	}
 	
-	private static NSHM23_ConstraintBuilder getConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+	public static NSHM23_ConstraintBuilder getConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 		if (branch.hasValue(NSHM23_SegmentationModels.AVERAGE) || branch.hasValue(SupraSeisBValues.AVERAGE))
 			// return averaged instance, looping over b-values and/or segmentation branches
 			return getAveragedConstraintBuilder(rupSet, branch);
@@ -865,8 +902,8 @@ ExclusionaryInversionConfigurationFactory {
 		}
 //		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal, sectSpecificBValues);
 		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal, sectSpecificBValues,
-				APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT, SupraSeisBValInversionTargetMFDs.ADD_SECT_COUNT_UNCERTAINTIES_DEFAULT,
-				NSHM23_ConstraintBuilder.ADJ_FOR_INCOMPATIBLE_DATA_DEFAULT);
+					APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT, SupraSeisBValInversionTargetMFDs.ADD_SECT_COUNT_UNCERTAINTIES_DEFAULT,
+					NSHM23_ConstraintBuilder.ADJ_FOR_INCOMPATIBLE_DATA_DEFAULT);
 		
 		RupSetFaultModel fm = branch.getValue(RupSetFaultModel.class);
 		constrBuilder.parkfieldSelection(getParkfieldSelectionCriteria(fm));
