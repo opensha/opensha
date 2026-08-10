@@ -21,10 +21,11 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
-import org.opensha.sha.earthquake.faultSysSolution.logicTree.dmSampling.DeformationModelDistSampler.AverageSampler;
-import org.opensha.sha.earthquake.faultSysSolution.logicTree.dmSampling.DeformationModelDistSampler.FixedFractileSampler;
-import org.opensha.sha.earthquake.faultSysSolution.logicTree.dmSampling.DeformationModelDistSampler.FixedSampler;
 import org.opensha.sha.earthquake.faultSysSolution.logicTree.dmSampling.RupSetDeformationModelDistribution;
+import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampleLevels;
+import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler.AverageSampler;
+import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler.FixedFractileSampler;
+import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler.FixedSampler;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.subduction.InterfaceDeformationProjection;
@@ -48,13 +49,13 @@ public class NSHM27_InterfaceDeformationModels extends RupSetDeformationModelDis
 	
 //	public static final double MIN_DM_FRACTILE = 0.0000001; // 0.00001% (1 in 10,000,000)
 	public static final double MIN_DM_FRACTILE = 0.000001; // 0.0001% (1 in 1,000,000)	
-	public static class SamplingLevel extends RupSetDeformationModelDistribution.UniformSamplingLevel<NSHM27_InterfaceDeformationModels> {
+	public static class SamplingLevel extends SectDistributionSampleLevels.UniformSamplingLevel<NSHM27_InterfaceDeformationModels> {
 		
 		public static String NAME = "Interface Deformation Model Sample";
 		public static String SHORT_NAME = "DMSample";
 
 		public SamplingLevel() {
-			super(NAME, SHORT_NAME, MIN_DM_FRACTILE);
+			super(NAME, SHORT_NAME, MIN_DM_FRACTILE, "DM Sample ", "DM-Sample-", "DMSample");
 		}
 
 		@Override

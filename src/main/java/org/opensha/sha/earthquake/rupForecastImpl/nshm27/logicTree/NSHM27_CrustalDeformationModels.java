@@ -23,13 +23,14 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
-import org.opensha.sha.earthquake.faultSysSolution.logicTree.dmSampling.DeformationModelDistSampler;
-import org.opensha.sha.earthquake.faultSysSolution.logicTree.dmSampling.DeformationModelDistSampler.AverageSampler;
-import org.opensha.sha.earthquake.faultSysSolution.logicTree.dmSampling.DeformationModelDistSampler.FixedFractileSampler;
-import org.opensha.sha.earthquake.faultSysSolution.logicTree.dmSampling.DeformationModelDistSampler.FixedSampler;
-import org.opensha.sha.earthquake.faultSysSolution.logicTree.dmSampling.DeformationModelDistSampler.GroupedFractileSampler;
-import org.opensha.sha.earthquake.faultSysSolution.logicTree.dmSampling.DeformationModelDistSampler.SectionGroupingType;
 import org.opensha.sha.earthquake.faultSysSolution.logicTree.dmSampling.RupSetDeformationModelDistribution;
+import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampleLevels;
+import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler;
+import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler.AverageSampler;
+import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler.FixedFractileSampler;
+import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler.FixedSampler;
+import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler.GroupedFractileSampler;
+import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler.SectionGroupingType;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalDeformationModels;
@@ -50,13 +51,13 @@ public class NSHM27_CrustalDeformationModels extends RupSetDeformationModelDistr
 	private static final String PATH = "/data/erf/nshm27/gnmi/deformation_models/crustal/2026_03_02";
 	private static Map<Integer, ContinuousDistribution> dists = null;
 	
-	public static class SamplingLevel extends RupSetDeformationModelDistribution.GroupedSamplingLevel<NSHM27_CrustalDeformationModels> {
+	public static class SamplingLevel extends SectDistributionSampleLevels.GroupedSamplingLevel<NSHM27_CrustalDeformationModels> {
 		
 		public static String NAME = "Crustal Deformation Model Sample";
 		public static String SHORT_NAME = "DMSample";
 
 		public SamplingLevel() {
-			super(NAME, SHORT_NAME, SectionGroupingType.PARENT);
+			super(NAME, SHORT_NAME, SectionGroupingType.PARENT, "DM Sample ", "DM-Sample-", "DMSample");
 		}
 
 		@Override
@@ -134,7 +135,7 @@ public class NSHM27_CrustalDeformationModels extends RupSetDeformationModelDistr
 	private NSHM27_CrustalDeformationModels() {}
 	
 	NSHM27_CrustalDeformationModels(String name, String shortName, String filePrefix,
-			double weight, DeformationModelDistSampler sampler) {
+			double weight, SectDistributionSampler sampler) {
 		super(name, shortName, filePrefix, weight, sampler);
 	}
 
