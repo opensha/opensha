@@ -71,12 +71,12 @@ import net.mahdilamb.colormap.Colors;
 
 public class PaleoBValueEstimator {
 	
-	/* Direct Inputs */
+	/* direct inputs */
 	private final ContinuousDistribution priorDist;
 	private final EvenlyDiscretizedFunc bVals;
 	private final InversionConfigurationFactory factory;
 	
-	/* Configurable with defaults */
+	/* [potentially-]configurable with defaults */
 	private DoubleFunction<Double> logLikelihoodFunction;
 	private double connectivityWeightB;
 	// if true, sections use weighted combinations of distributions
@@ -84,7 +84,7 @@ public class PaleoBValueEstimator {
 	private boolean sectUseWeightedDistribution = false;
 	private DiscretizationType interpType = DiscretizationType.INTERPOLATE;
 	
-	/* Intermediate Outputs for last calculation */
+	/* Intermediate Outputs for most recent calculation (used for some diagnostics) */
 	private InversionTargetMFDs[] bValTargetMFDs;
 	private LogicTreeBranch<? extends LogicTreeNode> branch;
 	
