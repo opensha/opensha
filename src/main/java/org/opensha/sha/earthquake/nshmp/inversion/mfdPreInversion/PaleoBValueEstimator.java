@@ -57,6 +57,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PosteriorSectionBValueDistributions;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBySectDetailPlots;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBySectDetailPlots.AlongStrikePlot;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
@@ -195,6 +196,23 @@ public class PaleoBValueEstimator {
 		System.out.println("DONE calculating for "+bVals.size()+" b-values");
 		System.out.println("Calculating site b-value paleo misfits");
 		
+		SectSlipRates slips = rs.getSectSlipRates();
+		
+		boolean[] zeroSlipSites = new boolean[paleoConstraints.size()];
+		for (int s=0; s<paleoConstraints.size(); s++) {
+			SectMappedUncertainDataConstraint paleoConstr = paleoConstraints.get(s);
+			if (slips.getSlipRate(paleoConstr.sectionIndex) == 0d) {
+				// zero slip rate at a paleo site? keep finite outputs, but don't let it influence b-values
+				System.err.println("WARNING: zero slip rate for section "
+						+rs.getFaultSectionData(paleoConstr.sectionIndex)+" mapped to paleo site "+paleoConstr.getName());
+				zeroSlipSites[s] = true;
+				for (int i=0; i<bVals.size(); i++) {
+					paleoBValMisfits.get(s).set(i, 0d);
+					paleoBValEstRates.get(s).set(i, 0d);
+				}
+			}
+		}
+		
 		for (int i=0; i<bValTargetMFDs.length; i++) {
 			rs.removeModuleInstances(InversionTargetMFDs.class);
 			double b = bVals.getX(i);
@@ -204,6 +222,8 @@ public class PaleoBValueEstimator {
 			}
 			for (int s=0; s<paleoConstraints.size(); s++) {
 				SectMappedUncertainDataConstraint paleoConstr = paleoConstraints.get(s);
+				if (zeroSlipSites[s])
+					continue;
 				IncrementalMagFreqDist mfd = bValTargetMFDs[i].
 						getOnFaultSupraSeisNucleationMFDs().get(paleoConstr.sectionIndex);
 				double[] sumParticScalars = new double[mfd.size()];
@@ -253,6 +273,10 @@ public class PaleoBValueEstimator {
 			for (int s=0; s<paleoConstraints.size(); s++) {
 				SectMappedUncertainDataConstraint paleoConstr = paleoConstraints.get(s);
 				System.out.println(paleoConstr.name+" ("+paleoConstr.sectionName+"):");
+				if (zeroSlipSites[s]) {
+					System.out.println("\tZero slip rate");
+					continue;
+				}
 				EvenlyDiscretizedFunc result = paleoBValMisfits.get(s);
 				for (int b=0; b<bVals.size(); b++)
 					System.out.print("\t"+df.format(result.getY(b)));
@@ -317,43 +341,52 @@ public class PaleoBValueEstimator {
 			}
 
 			double[] logLikelihoods = new double[bVals.size()];
-			double[] posteriorWeights = new double[bVals.size()];
-			double sumWeights = 0d;
-			for (int i=0; i<posteriorWeights.length; i++) {
-				double b = bVals.getX(i);
-				double priorDensity = priorDist.density(b);
-				Preconditions.checkState(Double.isFinite(priorDensity) && priorDensity > 0d,
-						"Prior density=%s must be finite and positive for b=%s, site=%s",
-						priorDensity, b, paleoConstr.name);
+			ContinuousDistribution posterior;
+			if (zeroSlipSites[s]) {
+				for (int i=0; i<logLikelihoods.length; i++)
+					logLikelihoods[i] = 0d;
+				posterior = priorDist;
+			} else {
+				double sumWeights = 0d;
+				double[] posteriorWeights = new double[bVals.size()];
+				for (int i=0; i<posteriorWeights.length; i++) {
+					double b = bVals.getX(i);
+					double priorDensity = priorDist.density(b);
+					Preconditions.checkState(Double.isFinite(priorDensity) && priorDensity > 0d,
+							"Prior density=%s must be finite and positive for b=%s, site=%s",
+							priorDensity, b, paleoConstr.name);
+					
+					// z-score
+					double misfit = paleoBValMisfits.get(s).getY(i);
+					Preconditions.checkState(Double.isFinite(misfit), "Misfit=%s must be finite for b=%s, site=%s",
+							misfit, b, paleoConstr.name);
+
+					// Unnormalized posterior density:
+					// prior density * Gaussian likelihood
+					double logLikelihood = logLikelihoodFunction.apply(misfit);
+					logLikelihoods[i] = logLikelihood;
+					posteriorWeights[i] = priorDensity * Math.exp(logLikelihood);
+					sumWeights += posteriorWeights[i];
+				}
+
+				Preconditions.checkState(Double.isFinite(sumWeights) && sumWeights > 0d,
+						"Sum of posterior weights=%s must be finite and positive for site=%s", sumWeights,
+						paleoConstr.name);
+
+				EvenlyDiscretizedFunc posteriorPDF = new EvenlyDiscretizedFunc(
+						bVals.getMinX(), bVals.getMaxX(), bVals.size());
+
+				// Normalize such that sum(pdf[i] * delta) = 1
+				double normalization = sumWeights * posteriorPDF.getDelta();
+
+				for (int i=0; i<posteriorWeights.length; i++)
+					posteriorPDF.set(i, posteriorWeights[i] / normalization);
 				
-				// z-score
-				double misfit = paleoBValMisfits.get(s).getY(i);
-				Preconditions.checkState(Double.isFinite(misfit), "Misfit=%s must be finite for b=%s, site=%s",
-						misfit, b, paleoConstr.name);
-
-				// Unnormalized posterior density:
-				// prior density * Gaussian likelihood
-				double logLikelihood = logLikelihoodFunction.apply(misfit);
-				logLikelihoods[i] = logLikelihood;
-				posteriorWeights[i] = priorDensity * Math.exp(logLikelihood);
-				sumWeights += posteriorWeights[i];
+				posterior = new EvenlyDiscrFuncContinuousDistribution(posteriorPDF, interpType);
 			}
-
-			Preconditions.checkState(Double.isFinite(sumWeights) && sumWeights > 0d,
-					"Sum of posterior weights=%s must be finite and positive for site=%s", sumWeights,
-					paleoConstr.name);
-
-			EvenlyDiscretizedFunc posteriorPDF = new EvenlyDiscretizedFunc(
-					bVals.getMinX(), bVals.getMaxX(), bVals.size());
-
-			// Normalize such that sum(pdf[i] * delta) = 1
-			double normalization = sumWeights * posteriorPDF.getDelta();
-
-			for (int i=0; i<posteriorWeights.length; i++)
-				posteriorPDF.set(i, posteriorWeights[i] / normalization);
 			
 			siteLogLikelihoods.add(logLikelihoods);
-			sitePosteriorDists.add(new EvenlyDiscrFuncContinuousDistribution(posteriorPDF, interpType));
+			sitePosteriorDists.add(posterior);
 			
 			siteRups[s] = new BitSet(numRups);
 			for (int r : rs.getRupturesForSection(paleoConstr.sectionIndex))
@@ -432,7 +465,7 @@ public class PaleoBValueEstimator {
 					for (int rupIndex : rups) {
 						rupPaleoIndexes.clear();
 						for (int paleoIndex : connectedPaleoIndexes)
-							if (siteRups[paleoIndex].get(rupIndex))
+							if (!zeroSlipSites[paleoIndex] && siteRups[paleoIndex].get(rupIndex))
 								rupPaleoIndexes.set(paleoIndex);
 						int numPaleo = rupPaleoIndexes.cardinality();
 						if (numPaleo == 0) {
