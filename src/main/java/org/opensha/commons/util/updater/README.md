@@ -111,7 +111,13 @@ a daemon thread that first runs `cleanupOldVersions` and then `runUpdateCheck`:
    [Disabling update prompts globally](#disabling-update-prompts-globally)).
 8. **Selects the asset** on the stable release whose name starts with
    `assetPrefix + "-"`. Release assets are named `<prefix>-<version>.jar`, e.g.
-   `HazardCurveGUI-26.1.1.jar`.
+   `HazardCurveGUI-26.1.1.jar`. If no asset matches, the user is told a new
+   version of OpenSHA is available but the updated application could not be
+   found in that release, and is referred to the release page
+   (`GitHubRelease.getHtmlUrl()`) for more information; nothing is downloaded.
+   If the release can no longer be fetched at that point &mdash; a transient
+   failure after the version was already detected &mdash; the URL is omitted
+   and the user is asked to update manually.
 9. **Downloads** the asset to a `.<name>.part` temp file beside the running JAR,
    streaming with progress updates to the prompt.
 10. **Verifies** the SHA-256 of the downloaded bytes against the GitHub-provided

@@ -345,7 +345,36 @@ public class ApplicationUpdaterTest {
 		ApplicationUpdater u = new ApplicationUpdater(client, prompt,
 				new ApplicationVersion(26, 1, 0), (a, p) -> null, p -> {});
 		u.runUpdateCheck("Test App", shortName, "HazardCurveGUI");
-		verify(prompt, atLeastOnce()).showMessage(contains("No downloadable asset"));
+		// The asset-not-found case is a terminal error shown via the blocking
+		// showErrorMessage (a modal dialog the user dismisses), not the transient
+		// non-modal showMessage progress line, so showMessage/close are unused here.
+		verify(prompt, atLeastOnce()).showErrorMessage(contains("new version of OpenSHA"));
+		verify(prompt, atLeastOnce()).showErrorMessage(contains("could not be found"));
+		verify(prompt, atLeastOnce()).showErrorMessage(contains("https://example.com/v26.1.1"));
+		verify(prompt, atLeastOnce()).showErrorMessage(contains("release page"));
+		verify(prompt, never()).showMessage(anyString());
+		verify(prompt, never()).close();
+	}
+
+	@Test
+	public final void testRunUpdateCheckNoMatchingAssetNullReleaseFallsBack() throws IOException {
+		GitHubRelease rel = release("v26.1.1", false, "notes", "OtherGUI-26.1.1.jar");
+		// getLatestStableRelease() is invoked three times in runUpdateCheck:
+		// 1) getLatestStableVersion, 2) getLatestStableReleaseNotes, 3) the asset-fetch
+		// release. Make the third return null to simulate a transient fetch failure
+		// after the version was already detected, so selectAsset sees a null release
+		// and the null-URL fallback path is exercised.
+		when(client.getLatestRelease()).thenReturn(rel, rel, null);
+		when(prompt.prompt(anyString(), any(), anyString())).thenReturn(UpdatePrompt.Choice.UPDATE_NOW);
+		ApplicationUpdater u = new ApplicationUpdater(client, prompt,
+				new ApplicationVersion(26, 1, 0), (a, p) -> null, p -> {});
+		u.runUpdateCheck("Test App", shortName, "HazardCurveGUI");
+		verify(prompt, atLeastOnce()).showErrorMessage(contains("new version of OpenSHA"));
+		verify(prompt, atLeastOnce()).showErrorMessage(contains("could not be found"));
+		verify(prompt, atLeastOnce()).showErrorMessage(contains("Please update manually"));
+		verify(prompt, never()).showErrorMessage(contains("https://example.com"));
+		verify(prompt, never()).showMessage(anyString());
+		verify(prompt, never()).close();
 	}
 
 	@Test
