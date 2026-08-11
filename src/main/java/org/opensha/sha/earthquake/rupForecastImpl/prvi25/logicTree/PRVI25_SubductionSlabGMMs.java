@@ -7,18 +7,18 @@ import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_AttenRelSupplier;
 import org.opensha.sha.imr.logicTree.ScalarIMRsLogicTreeNode;
 import org.opensha.sha.util.TectonicRegionType;
 
-import gov.usgs.earthquake.nshmp.gmm.Gmm;
+import org.opensha.nshmp.shaded.gmm.NshmpGmm;
 
 @AffectsNone
 public enum PRVI25_SubductionSlabGMMs implements ScalarIMRsLogicTreeNode.SingleTRT {
-	AS_PROVIDED(Gmm.PRVI_2025_INTRASLAB, "As Provided", 0.5),
-	DATA_ADJUSTED(Gmm.PRVI_2025_INTRASLAB_ADJUSTED, "Data Adjusted", 0.5);
+	AS_PROVIDED(NshmpGmm.PRVI_2025_INTRASLAB, "As Provided", 0.5),
+	DATA_ADJUSTED(NshmpGmm.PRVI_2025_INTRASLAB_ADJUSTED, "Data Adjusted", 0.5);
 	
-	private Gmm gmm;
+	private NshmpGmm gmm;
 	private String shortName;
 	private double weight;
 
-	private PRVI25_SubductionSlabGMMs(Gmm gmm, String shortName, double weight) {
+	private PRVI25_SubductionSlabGMMs(NshmpGmm gmm, String shortName, double weight) {
 		this.gmm = gmm;
 		this.shortName = shortName;
 		this.weight = weight;
@@ -44,7 +44,7 @@ public enum PRVI25_SubductionSlabGMMs implements ScalarIMRsLogicTreeNode.SingleT
 		return TectonicRegionType.SUBDUCTION_SLAB;
 	}
 	
-	public Gmm getGMM() {
+	public NshmpGmm getGMM() {
 		return gmm;
 	}
 

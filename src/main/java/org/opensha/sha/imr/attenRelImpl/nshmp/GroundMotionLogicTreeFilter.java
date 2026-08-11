@@ -10,14 +10,14 @@ import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
-import gov.usgs.earthquake.nshmp.gmm.GroundMotion;
-import gov.usgs.earthquake.nshmp.tree.Branch;
-import gov.usgs.earthquake.nshmp.tree.LogicTree;
-import gov.usgs.earthquake.nshmp.tree.LogicTree.Builder;
+import org.opensha.nshmp.shaded.gmm.NshmpGroundMotion;
+import org.opensha.nshmp.shaded.tree.NshmpBranch;
+import org.opensha.nshmp.shaded.tree.NshmpLogicTree;
+import org.opensha.nshmp.shaded.tree.NshmpLogicTree.Builder;
 
 public interface GroundMotionLogicTreeFilter {
 	
-	public LogicTree<GroundMotion> filter(LogicTree<GroundMotion> tree);
+	public NshmpLogicTree<NshmpGroundMotion> filter(NshmpLogicTree<NshmpGroundMotion> tree);
 	
 	@JsonAdapter(StringMatchingAdapter.class)
 	public static class StringMatching implements GroundMotionLogicTreeFilter {
@@ -35,10 +35,10 @@ public interface GroundMotionLogicTreeFilter {
 		}
 
 		@Override
-		public LogicTree<GroundMotion> filter(LogicTree<GroundMotion> tree) {
-			List<Branch<GroundMotion>> matches = new ArrayList<>(expectedSize < 0 ? tree.size() : expectedSize);
+		public NshmpLogicTree<NshmpGroundMotion> filter(NshmpLogicTree<NshmpGroundMotion> tree) {
+			List<NshmpBranch<NshmpGroundMotion>> matches = new ArrayList<>(expectedSize < 0 ? tree.size() : expectedSize);
 			double sumWeight = 0d;
-			for (Branch<GroundMotion> branch : tree) {
+			for (NshmpBranch<NshmpGroundMotion> branch : tree) {
 				boolean match = true;
 				String id = branch.id();
 				for (int r=0; match && r<required.length; r++)
@@ -51,11 +51,11 @@ public interface GroundMotionLogicTreeFilter {
 			Preconditions.checkState(!matches.isEmpty() && sumWeight > 0d);
 			expectedSize = matches.size();
 			if (matches.size() == 1) {
-				Branch<GroundMotion> branch = matches.get(0);
-				return LogicTree.singleton(tree.name(), branch.id(), branch.value());
+				NshmpBranch<NshmpGroundMotion> branch = matches.get(0);
+				return NshmpLogicTree.singleton(tree.name(), branch.id(), branch.value());
 			}
-			Builder<GroundMotion> builder = LogicTree.builder(tree.name());
-			for (Branch<GroundMotion> branch : matches)
+			Builder<NshmpGroundMotion> builder = NshmpLogicTree.builder(tree.name());
+			for (NshmpBranch<NshmpGroundMotion> branch : matches)
 				builder.addBranch(branch.id(), branch.value(), branch.weight()/sumWeight);
 			return builder.build();
 		}
