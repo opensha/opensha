@@ -407,7 +407,8 @@ public class IMEventSetCalculatorGUI extends JFrame implements ActionListener, C
             handler.setParent(applet);
         }
         applet.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        applet.setSize(900, 700);
+        applet.setSize(HazardCurveApplication.getDefaultInitialDimension());
+        HazardCurveApplication.center(applet);
 
         applet.setVisible(true);
         return applet;

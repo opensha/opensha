@@ -20,6 +20,9 @@ import org.opensha.commons.util.ApplicationVersion;
  *       the flow before any download, so {@link #setProgress(double)} is not
  *       called for those choices.</li>
  *   <li>{@link #showMessage(String)} announces completion/failure.</li>
+ *   <li>{@link #showErrorMessage(String)} displays a blocking error the user
+ *       must dismiss before the flow continues (used for terminal failures
+ *       such as the update asset being missing from the latest release).</li>
  *   <li>{@link #close()} releases any window resources.</li>
  * </ol>
  *
@@ -63,6 +66,19 @@ public interface UpdatePrompt {
 	 * @param message the message to display
 	 */
 	void showMessage(String message);
+
+	/**
+	 * Show a terminal error the user must read and dismiss. Unlike
+	 * {@link #showMessage(String)} (a transient progress/status line), this
+	 * blocks the caller until the user acknowledges the error, so a message
+	 * that requires the user's attention &mdash; such as "a new version is
+	 * available but the updated application could not be found in that
+	 * release" &mdash; is guaranteed to be seen rather than flashing and
+	 * disappearing. No {@link #close()} is needed after this call.
+	 *
+	 * @param message the error message to display
+	 */
+	void showErrorMessage(String message);
 
 	/**
 	 * Close and dispose any window(s) held by this prompt.
