@@ -26,8 +26,16 @@ public class UnmodifiableEvenlyDiscrFunc extends EvenlyDiscretizedFunc {
 	}
 
 	@Override
-	public UnmodifiableEvenlyDiscrFunc deepClone() {
-		return new UnmodifiableEvenlyDiscrFunc(this);
+	public EvenlyDiscretizedFunc deepClone() {
+		EvenlyDiscretizedFunc clone = new EvenlyDiscretizedFunc(getMinX(), getMaxX(), size());
+		for (int i=0; i<size(); i++)
+			clone.set(i, getY(i));
+		clone.setName(getName());
+		clone.setInfo(getInfo());
+		clone.setTolerance(getTolerance());
+		clone.setXAxisName(getXAxisName());
+		clone.setYAxisName(getYAxisName());
+		return clone;
 	}
 
 	@Override
