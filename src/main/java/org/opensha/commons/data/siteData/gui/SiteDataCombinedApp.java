@@ -7,6 +7,7 @@ import javax.swing.JTabbedPane;
 
 import org.opensha.commons.gui.DisclaimerDialog;
 import org.opensha.commons.util.updater.ApplicationUpdater;
+import org.opensha.sha.gui.HazardCurveApplication;
 import org.opensha.commons.util.ApplicationVersion;
 import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 
@@ -60,7 +61,8 @@ public class SiteDataCombinedApp extends JFrame {
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		pack();
 		setTitle(APP_NAME+" ("+getAppVersion().getDisplayString()+")");
-		setLocationRelativeTo(null);
+		setSize(HazardCurveApplication.getDefaultInitialDimension());
+		HazardCurveApplication.center(this);
 		setVisible(true);
 	}
 
