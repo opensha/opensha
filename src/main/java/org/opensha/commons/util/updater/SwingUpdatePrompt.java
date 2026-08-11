@@ -11,6 +11,7 @@ import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JEditorPane;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
@@ -173,11 +174,37 @@ public class SwingUpdatePrompt implements UpdatePrompt {
 	public void showMessage(String message) {
 		if (GraphicsEnvironment.isHeadless())
 			return;
+        // This message will flash and disappear since it's not blocking the EDT.
 		SwingUtilities.invokeLater(() -> {
 			ensureProgressUI();
 			progressLabel.setText(message);
 			progressBar.setIndeterminate(false);
 		});
+	}
+
+	@Override
+	public void showErrorMessage(String message) {
+		if (GraphicsEnvironment.isHeadless())
+			return;
+		// runUpdateCheck runs on a background thread; shows an error dialog
+		// on the EDT and block this thread until the user dismisses it (mirroring
+		// prompt()). This guarantees the user sees the message.
+		final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+		Runnable showDialog = () -> {
+			JOptionPane.showMessageDialog(null, message, "Update Error",
+					JOptionPane.ERROR_MESSAGE);
+			latch.countDown();
+		};
+		if (SwingUtilities.isEventDispatchThread()) {
+			showDialog.run();
+		} else {
+			SwingUtilities.invokeLater(showDialog);
+			try {
+				latch.await();
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+		}
 	}
 
 	@Override
@@ -266,7 +293,10 @@ public class SwingUpdatePrompt implements UpdatePrompt {
 	 * application name, a test latest version, and a Markdown release-notes
 	 * string (including a "Release Notes" section heading, headings, lists,
 	 * inline code, and a link) so the rendering and the three-button row can be
-	 * eyeballed without launching a full OpenSHA application. Run with
+	 * eyeballed without launching a full OpenSHA application. After the prompt is
+	 * dismissed it also shows the terminal error dialog ({@link #showErrorMessage})
+	 * used when an update asset is missing from a release, so that too can be
+	 * eyeballed. Run with
 	 * {@code java -cp ... org.opensha.commons.util.updater.SwingUpdatePrompt}.
 	 *
 	 * @param args ignored
@@ -299,8 +329,16 @@ public class SwingUpdatePrompt implements UpdatePrompt {
                 code block
                 ```
                 """;
-		UpdatePrompt.Choice choice = new SwingUpdatePrompt().prompt(appName, latestVersion, releaseNotes);
+		UpdatePrompt prompt = new SwingUpdatePrompt();
+		UpdatePrompt.Choice choice = prompt.prompt(appName, latestVersion, releaseNotes);
 		System.out.println("User chose: " + choice);
+		// Also eyeball the terminal error dialog shown when the updated
+		// application asset is missing from the latest release.
+		prompt.showErrorMessage("A new version of OpenSHA is available (" + latestVersion
+				+ "), but the updated application could not be found in that release.\n"
+				+ "See the release page for more information:\n"
+				+ "https://github.com/opensha/opensha/releases/tag/v" + latestVersion);
+		System.out.println("Error dialog dismissed");
 		System.exit(0);
 	}
 }

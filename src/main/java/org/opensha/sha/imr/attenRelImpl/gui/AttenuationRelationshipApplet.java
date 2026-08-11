@@ -76,6 +76,7 @@ import org.opensha.sha.gcim.imr.attenRelImpl.KS_2006_AttenRel;
 import org.opensha.sha.gcim.imr.attenRelImpl.ASI_WrapperAttenRel.BA_2008_ASI_AttenRel;
 import org.opensha.sha.gcim.imr.attenRelImpl.DSI_WrapperAttenRel.BA_2008_DSI_AttenRel;
 import org.opensha.sha.gcim.imr.attenRelImpl.SI_WrapperAttenRel.BA_2008_SI_AttenRel;
+import org.opensha.sha.gui.HazardCurveApplication;
 import org.opensha.sha.gui.controls.CurveDisplayAppAPI;
 import org.opensha.sha.gui.controls.XY_ValuesControlPanel;
 import org.opensha.sha.gui.util.IconFetcher;
@@ -186,9 +187,6 @@ implements ParameterChangeFailListener, ParameterChangeWarningListener, ItemList
 	Insets plotInsets = new Insets( 4, 10, 4, 4 );
 	Insets defaultInsets = new Insets( 4, 4, 4, 4 );
 	Insets emptyInsets = new Insets( 0, 0, 0, 0 );
-
-	protected final static int W = 900;
-	protected final static int H = 730;
 	protected final static Font BUTTON_FONT = new java.awt.Font( "Dialog", 1, 11 );
 	protected final static Font TITLE_FONT = new java.awt.Font( "Dialog", Font.BOLD, 12 );
 
@@ -528,7 +526,7 @@ implements ParameterChangeFailListener, ParameterChangeWarningListener, ItemList
 
 		border1 = BorderFactory.createLineBorder(new Color(80, 80, 133),2);
 		this.setFont( new java.awt.Font( "Dialog", 0, 10 ) );
-		this.setSize(new Dimension(900, 690) );
+//		HazardCur
 		this.getContentPane().setLayout( new BorderLayout());
 		outerPanel.setLayout( GBL );
 		mainPanel.setBorder(border1 );
@@ -568,7 +566,9 @@ implements ParameterChangeFailListener, ParameterChangeWarningListener, ItemList
 		});
 
 		buttonPanel.setLayout(flowLayout1 );
-
+		
+		Dimension dims = HazardCurveApplication.getDefaultInitialDimension();
+		setSize(dims);
 
 		parametersSplitPane.setOrientation(JSplitPane.VERTICAL_SPLIT);
 		parametersSplitPane.setBorder( null );
@@ -584,8 +584,8 @@ implements ParameterChangeFailListener, ParameterChangeWarningListener, ItemList
 
 		plotSplitPane.setBottomComponent( buttonPanel );
 		plotSplitPane.setTopComponent(mainPanel );
-		plotSplitPane.setDividerLocation(500 );
-
+		plotSplitPane.setResizeWeight(1.0);
+		plotSplitPane.setDividerLocation(dims.height - 150 );
 
 		attenRelLabel.setForeground( darkBlue );
 		attenRelLabel.setFont(new java.awt.Font( "Dialog", Font.BOLD, 13 ));
@@ -678,21 +678,18 @@ implements ParameterChangeFailListener, ParameterChangeWarningListener, ItemList
 		parametersSplitPane.setBottomComponent( sheetPanel );
 		parametersSplitPane.setTopComponent( inputPanel );
 		parametersSplitPane.setDividerLocation(220 );
+		// asdf
 
 		parametersSplitPane.setOneTouchExpandable( false );
 
 		mainSplitPane.setBottomComponent( outerControlPanel );
 		mainSplitPane.setTopComponent(plotPanel );
-		mainSplitPane.setDividerLocation(630 );
+		mainSplitPane.setResizeWeight(1d);
+		mainSplitPane.setDividerLocation(HazardCurveApplication.getDefaultDividerLocation(dims));
 
 		//frame.setTitle( applet.getAppletInfo() + ":  [" + applet.getCurrentAttenuationRelationshipName() + ']' );
 		setTitle( this.getAppInfo() + " (Version: "+getAppVersion().getDisplayString()+")");
-		setSize( W, H );
-		Dimension d = Toolkit.getDefaultToolkit().getScreenSize();
-		setLocation( ( d.width - getSize().width ) / 2, ( d.height - getSize().height ) / 2 );
-
-
-
+		HazardCurveApplication.center(this);
 
 		fileMenu.setText("File");
 		fileExitMenu.setText("Exit");
