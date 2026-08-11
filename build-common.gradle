@@ -12,12 +12,15 @@ java {
 }
 compileJava.options.encoding = "UTF-8"
 
+eclipse {
+    classpath {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}
+
 repositories {
 	mavenCentral()
-	maven {
-		url = "https://code.usgs.gov/api/v4/groups/1352/-/packages/maven"
-		name = "NSHMP GitLab Group"
-	}
 }
 
 configurations {

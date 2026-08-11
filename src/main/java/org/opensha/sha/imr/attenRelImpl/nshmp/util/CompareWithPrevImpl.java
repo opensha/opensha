@@ -27,8 +27,8 @@ import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
 import org.opensha.sha.util.NEHRP_TestCity;
 
-import gov.usgs.earthquake.nshmp.gmm.Gmm;
-import gov.usgs.earthquake.nshmp.gmm.GmmInput;
+import org.opensha.nshmp.shaded.gmm.NshmpGmm;
+import org.opensha.nshmp.shaded.gmm.NshmpGmmInput;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 
 class CompareWithPrevImpl {
@@ -46,19 +46,19 @@ class CompareWithPrevImpl {
 		boolean paramDebug = true;
 		
 //		ScalarIMR gmpePrevImpl = AttenRelRef.ASK_2014.get();
-//		NSHMP_GMM_WrapperFullParam gmpeNewWrapper = new NSHMP_GMM_WrapperFullParam(Gmm.ASK_14_BASE, fullParams);
+//		NSHMP_GMM_WrapperFullParam gmpeNewWrapper = new NSHMP_GMM_WrapperFullParam(NshmpGmm.ASK_14_BASE, fullParams);
 //		ScalarIMR gmpePrevImpl = AttenRelRef.BSSA_2014.get();
-//		NSHMP_GMM_WrapperFullParam gmpeNewWrapper = new NSHMP_GMM_WrapperFullParam(Gmm.BSSA_14_BASE, fullParams);
+//		NSHMP_GMM_WrapperFullParam gmpeNewWrapper = new NSHMP_GMM_WrapperFullParam(NshmpGmm.BSSA_14_BASE, fullParams);
 //		ScalarIMR gmpePrevImpl = AttenRelRef.CB_2014.get();
-//		NSHMP_GMM_WrapperFullParam gmpeNewWrapper = new NSHMP_GMM_WrapperFullParam(Gmm.CB_14_BASE, fullParams);
+//		NSHMP_GMM_WrapperFullParam gmpeNewWrapper = new NSHMP_GMM_WrapperFullParam(NshmpGmm.CB_14_BASE, fullParams);
 //		ScalarIMR gmpePrevImpl = AttenRelRef.CY_2014.get();
-//		NSHMP_GMM_WrapperFullParam gmpeNewWrapper = new NSHMP_GMM_WrapperFullParam(Gmm.CY_14_BASE, fullParams);
+//		NSHMP_GMM_WrapperFullParam gmpeNewWrapper = new NSHMP_GMM_WrapperFullParam(NshmpGmm.CY_14_BASE, fullParams);
 //		ScalarIMR gmpePrevImpl = AttenRelRef.BA_2008.get();
-//		NSHMP_GMM_WrapperFullParam gmpeNewWrapper = new NSHMP_GMM_WrapperFullParam(Gmm.BA_08_BASE, fullParams);
+//		NSHMP_GMM_WrapperFullParam gmpeNewWrapper = new NSHMP_GMM_WrapperFullParam(NshmpGmm.BA_08_BASE, fullParams);
 //		ScalarIMR gmpePrevImpl = AttenRelRef.CY_2008.get();
-//		NSHMP_GMM_WrapperFullParam gmpeNewWrapper = new NSHMP_GMM_WrapperFullParam(Gmm.CY_08_BASE, fullParams);
+//		NSHMP_GMM_WrapperFullParam gmpeNewWrapper = new NSHMP_GMM_WrapperFullParam(NshmpGmm.CY_08_BASE, fullParams);
 		ScalarIMR gmpePrevImpl = AttenRelRef.CB_2008.get();
-		NSHMP_GMM_Wrapper gmpeNewWrapper = new NSHMP_GMM_Wrapper.Single(Gmm.CB_08_BASE, fullParams);
+		NSHMP_GMM_Wrapper gmpeNewWrapper = new NSHMP_GMM_Wrapper.Single(NshmpGmm.CB_08_BASE, fullParams);
 		
 		double period = 0.2d;
 
@@ -136,8 +136,8 @@ class CompareWithPrevImpl {
 					gmm.setEqkRupture(randRup);
 					printGMMParams(gmm);
 					if (gmm instanceof NSHMP_GMM_Wrapper) {
-						GmmInput input = ((NSHMP_GMM_Wrapper)gmm).getCurrentGmmInput();
-						System.out.println("GmmInput:\t"+input);
+						NshmpGmmInput input = ((NSHMP_GMM_Wrapper)gmm).getCurrentGmmInput();
+						System.out.println("NshmpGmmInput:\t"+input);
 					}
 					System.out.println("\tMean: "+(float)gmm.getMean());
 					System.out.println("\tStd. Dev.: "+(float)gmm.getStdDev());

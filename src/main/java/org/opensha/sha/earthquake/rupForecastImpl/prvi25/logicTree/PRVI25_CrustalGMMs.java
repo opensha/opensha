@@ -7,18 +7,18 @@ import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_AttenRelSupplier;
 import org.opensha.sha.imr.logicTree.ScalarIMRsLogicTreeNode;
 import org.opensha.sha.util.TectonicRegionType;
 
-import gov.usgs.earthquake.nshmp.gmm.Gmm;
+import org.opensha.nshmp.shaded.gmm.NshmpGmm;
 
 @AffectsNone
 public enum PRVI25_CrustalGMMs implements ScalarIMRsLogicTreeNode.SingleTRT {
-	AS_PROVIDED(Gmm.PRVI_2025_ACTIVE_CRUST, "As Provided", 0.5),
-	DATA_ADJUSTED(Gmm.PRVI_2025_ACTIVE_CRUST_ADJUSTED, "Data Adjusted", 0.5);
+	AS_PROVIDED(NshmpGmm.PRVI_2025_ACTIVE_CRUST, "As Provided", 0.5),
+	DATA_ADJUSTED(NshmpGmm.PRVI_2025_ACTIVE_CRUST_ADJUSTED, "Data Adjusted", 0.5);
 	
-	private Gmm gmm;
+	private NshmpGmm gmm;
 	private String shortName;
 	private double weight;
 
-	private PRVI25_CrustalGMMs(Gmm gmm, String shortName, double weight) {
+	private PRVI25_CrustalGMMs(NshmpGmm gmm, String shortName, double weight) {
 		this.gmm = gmm;
 		this.shortName = shortName;
 		this.weight = weight;
