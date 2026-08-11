@@ -7,7 +7,6 @@ import org.gradle.api.tasks.testing.TestListener
 import org.gradle.api.tasks.testing.TestResult
 
 apply plugin: 'java-library'
-apply plugin: 'eclipse'
 
 ext {
 	parentProject = null
