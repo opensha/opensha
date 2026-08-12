@@ -29,6 +29,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.Constra
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.LaplacianSmoothingInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModel;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.ParkfieldInversionConstraint;
@@ -418,10 +419,11 @@ public class NSHM23_ConstraintBuilder {
 		// don't allow slip rate std devs below the floor value
 		builder.slipStdDevFloor(NSHM23_DeformationModels.STD_DEV_FLOOR);
 		SupraSeisBValInversionTargetMFDs target = builder.build();
-		targetCache = target;
-		if (processUncertainties)
+		if (processUncertainties) {
+			targetCache = target;
 			// if we didn't process uncertainties, it's not a full version, don't attach
 			rupSet.addModule(target);
+		}
 		return target;
 	}
 	
@@ -778,6 +780,10 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	public NSHM23_ConstraintBuilder supraPaleoSmooth() {
+		return supraPaleoSmooth(false);
+	}
+	
+	public NSHM23_ConstraintBuilder supraPaleoSmooth(boolean paleoVisibleRate) {
 		HashSet<Integer> paleoParentIDs = new HashSet<>();
 		
 		PaleoseismicConstraintData paleoData = rupSet.requireModule(PaleoseismicConstraintData.class);
@@ -789,7 +795,9 @@ public class NSHM23_ConstraintBuilder {
 		Preconditions.checkState(!paleos.isEmpty());
 		for (SectMappedUncertainDataConstraint paleo : paleos)
 			paleoParentIDs.add(rupSet.getFaultSectionData(paleo.sectionIndex).getParentSectionId());
-		LaplacianSmoothingInversionConstraint constraint = new LaplacianSmoothingInversionConstraint(rupSet, 1000, paleoParentIDs);
+		PaleoProbabilityModel paleoProbModel = paleoVisibleRate ? paleoData.getPaleoProbModel() : null;
+		LaplacianSmoothingInversionConstraint constraint =
+				new LaplacianSmoothingInversionConstraint(rupSet, 1000, paleoParentIDs, paleoProbModel);
 		if (constraint.getNumRows() > 0)
 			// make sure it actually has rows, can not if only 2-section parents
 			constraints.add(constraint);

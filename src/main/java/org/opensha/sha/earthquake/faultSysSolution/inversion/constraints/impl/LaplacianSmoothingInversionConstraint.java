@@ -30,15 +30,22 @@ public class LaplacianSmoothingInversionConstraint extends InversionConstraint {
 	
 	private transient FaultSystemRupSet rupSet;
 	private HashSet<Integer> parentIDs;
+	private PaleoProbabilityModel paleoProbModel;
 
 	public LaplacianSmoothingInversionConstraint(FaultSystemRupSet rupSet, double weight) {
 		this(rupSet, weight, null);
 	}
 
 	public LaplacianSmoothingInversionConstraint(FaultSystemRupSet rupSet, double weight, HashSet<Integer> parentIDs) {
+		this(rupSet, weight, parentIDs, null);
+	}
+
+	public LaplacianSmoothingInversionConstraint(FaultSystemRupSet rupSet, double weight,
+			HashSet<Integer> parentIDs, PaleoProbabilityModel paleoProbModel) {
 		super(NAME+(parentIDs == null ? "" : " (select parents)"), SHORT_NAME, weight, false);
 		this.rupSet = rupSet;
 		this.parentIDs = parentIDs;
+		this.paleoProbModel = paleoProbModel;
 	}
 
 	@Override
@@ -125,16 +132,26 @@ public class LaplacianSmoothingInversionConstraint extends InversionConstraint {
 				}
 				
 				// Loop over ruptures in this subsection-MFD bin
+				int middleSectIndex = sectsForParent.get(j).getSectionId();
 				for (int rup: sect1Rups) { 
-					setA(A, rowIndex, rup, weight);
+					double scalar = weight;
+					if (paleoProbModel != null)
+						scalar *= paleoProbModel.getProbPaleoVisible(rupSet, rup, middleSectIndex);
+					setA(A, rowIndex, rup, scalar);
 					numNonZeroElements++;
 				}
 				for (int rup: sect2Rups) {
-					setA(A, rowIndex, rup, -weight);
+					double scalar = weight;
+					if (paleoProbModel != null)
+						scalar *= paleoProbModel.getProbPaleoVisible(rupSet, rup, middleSectIndex);
+					setA(A, rowIndex, rup, -scalar);
 					numNonZeroElements++;
 				}
 				for (int rup: sect3Rups) {
-					setA(A, rowIndex, rup, weight);
+					double scalar = weight;
+					if (paleoProbModel != null)
+						scalar *= paleoProbModel.getProbPaleoVisible(rupSet, rup, middleSectIndex);
+					setA(A, rowIndex, rup, scalar);
 					numNonZeroElements++;
 				}
 				d[rowIndex]=0;

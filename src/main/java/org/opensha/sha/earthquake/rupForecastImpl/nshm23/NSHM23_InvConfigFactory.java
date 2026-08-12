@@ -732,6 +732,10 @@ ExclusionaryInversionConfigurationFactory {
 					
 					PosteriorSectionBValueDistributions posteriors = estimator.calculate(rupSet, branch, false);
 					rupSet.addModule(posteriors);
+					
+					// add regular inversion target MFDs (don't offer, make sure they're recalculated after doing this)
+					rupSet.addAvailableModule(() -> getConstraintBuilder(rupSet, branch).getTargetMFDs(),
+							SupraSeisBValInversionTargetMFDs.class);
 				}
 			}
 			
