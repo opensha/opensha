@@ -73,6 +73,28 @@ public interface DiscretizedFunc extends XY_DataSet {
 	 * @return
 	 */
 	public int getClosestXIndex( double x);
+	
+
+	
+	/**
+	 * @return the minimum x-value with a positive y-value, or NaN if empty or all are zero
+	 */
+	public default double getMinXWithPositiveY() {
+		for (int i=0; i<size(); i++)
+			if(getY(i)>0)
+				return getX(i);
+		return Double.NaN;
+	}
+
+	/**
+	 * @return the maximum x-value with a positive y-value, or NaN if empty or all are zero
+	 */
+	public default double getMaxXWithPositiveY() {
+		for (int i=size()-1; i>=0; i--)
+			if(getY(i)>0)
+				return getX(i);
+		return Double.NaN;
+	}
 
 	/* ***************/
 	/* INTERPOLATION */

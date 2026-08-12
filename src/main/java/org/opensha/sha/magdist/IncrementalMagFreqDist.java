@@ -449,7 +449,7 @@ implements IncrementalMagFreqDistAPI,java.io.Serializable {
 	}
 
 	/**
-	 * This returns the maximum magnitude with a non-zero rate
+	 * This returns the minimum magnitude with a non-zero rate
 	 * @return
 	 */
 	public double getMinMagWithNonZeroRate() {

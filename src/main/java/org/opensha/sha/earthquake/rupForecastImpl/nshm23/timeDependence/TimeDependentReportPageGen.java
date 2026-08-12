@@ -1746,7 +1746,7 @@ public class TimeDependentReportPageGen {
 				else
 					fractileForMean = cumRI_Dist.getInterpolatedY(meanRI);				
 			}
-			double minMag = parIncrPartMPD_Map.get(id).getMinX_WithNonZeroRate();
+			double minMag = parIncrPartMPD_Map.get(id).getMinXWithPositiveY();
 			csv_parentDataSring += ","+meanRI+","+fractileForMean+","+nts+","+fractDOLE+","+minMag;
 			for(double mag:magThreshVals) {
 				csv_parentDataSring += ","+parCumPartMPD_Map.get(id).getY(mag)+","+
@@ -1770,7 +1770,7 @@ public class TimeDependentReportPageGen {
 						else
 							fractileForU3_Mean = cumRI_Dist.getInterpolatedY(meanRI_U3);						
 					}
-					double minMagU3 = u3_parIncrPartMPD_Map.get(u3_id).getMinX_WithNonZeroRate();
+					double minMagU3 = u3_parIncrPartMPD_Map.get(u3_id).getMinXWithPositiveY();
 
 					csv_parentDataSring += ","+meanRI_U3+","+(meanRI/meanRI_U3)+","+fractileForU3_Mean+","+ntsU3+","+fractDOLE_U3+","+minMagU3;
 					for(double mag:magThreshVals) {

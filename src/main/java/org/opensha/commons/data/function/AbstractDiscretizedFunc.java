@@ -438,29 +438,6 @@ Named,java.io.Serializable{
 	}
 	
 	/**
-	 * This returns the maximum magnitude with a non-zero rate
-	 * @return
-	 */
-	public double getMinX_WithNonZeroRate() {
-		for(int i=0; i<size(); i++) {
-			if(getY(i)>0) return getX(i);
-		}
-		return Double.NaN;
-	}
-
-	/**
-	 * This returns the maximum magnitude with a non-zero rate
-	 * @return
-	 */
-	public double getMaxX_WithNonZeroRate() {
-		for(int i=size()-1; i>=0; i--) {
-			if(getY(i)>0) return getX(i);
-		}
-		return  Double.NaN;
-	}
-
-	
-	/**
 	 * Standard java function, usually used for debugging, prints out
 	 * the state of the list, such as number of points, the value of each point, etc.
 	 * @return
