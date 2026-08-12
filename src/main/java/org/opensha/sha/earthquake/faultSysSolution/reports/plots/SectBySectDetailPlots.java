@@ -562,8 +562,10 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		}
 		
 		PosteriorSectionBValueDistributions posteriorB = rupSet.getModule(PosteriorSectionBValueDistributions.class);
-		if (posteriorB != null && rupSet.hasModule(PaleoseismicConstraintData.class))
-			getPosteriorBLines(meta, parentName, parentSects, resourcesDir, topLink);
+		if (posteriorB != null && rupSet.hasModule(PaleoseismicConstraintData.class)) {
+			lines.add("");
+			lines.addAll(getPosteriorBLines(meta, parentName, parentSects, resourcesDir, topLink));
+		}
 
 		lines.add("");
 		lines.addAll(getConnectivityLines(meta, parentSectIndex, parentName, distAzCalc, sectsByParent,
@@ -2495,6 +2497,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 					break;
 				}
 			}
+			System.out.println("Have posterior paleo data; any for "+faultName+"? "+hasPaleoPosterior);
 		}
 		
 		if (meta.primary.rupSet.hasModule(AveSlipModule.class) && meta.hasPrimarySol()) {
