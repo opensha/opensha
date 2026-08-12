@@ -10,8 +10,8 @@ import org.opensha.commons.param.event.ParameterChangeListener;
 
 import com.google.common.base.Preconditions;
 
-import gov.usgs.earthquake.nshmp.gmm.GmmInput;
-import gov.usgs.earthquake.nshmp.gmm.GmmInput.Field;
+import org.opensha.nshmp.shaded.gmm.NshmpGmmInput;
+import org.opensha.nshmp.shaded.gmm.NshmpGmmInput.Field;
 
 /**
  * This manages translations between nshmp-lib {@link Field} values and their OpenSHA counterparts.
@@ -19,7 +19,7 @@ import gov.usgs.earthquake.nshmp.gmm.GmmInput.Field;
  * The static {@link #nshmpToOpenSHA(Field, double)} and {@link #openshaToNSHMP(Field, Double)} methods translate
  * values directly, accounting for differences in units (e.g., for Z1.0) or using null vs NaN to express no value.
  * 
- * The class instance handles value changes and generation of {@link GmmInput} instances. {@link Field} values are set
+ * The class instance handles value changes and generation of {@link NshmpGmmInput} instances. {@link Field} values are set
  * using OpenSHA units, and will be translated to nshmp-lib units. If parameters are used, the corresponding parameter
  * for each field will also be updated when each {@link Field} value changes. See method notes for details on how
  * parameter change events are handled.
@@ -168,11 +168,11 @@ class FieldParameterValueManager {
 	}
 	
 	/**
-	 * This sets all values to those from the given GmmInput, updating any parameters as needed
+	 * This sets all values to those from the given NshmpGmmInput, updating any parameters as needed
 	 * 
 	 * @param externalInput
 	 */
-	void setGmmInput(GmmInput externalInput) {
+	void setGmmInput(NshmpGmmInput externalInput) {
 		gmmInputBuilder.setAll(externalInput);
 		
 		// see if we need to update any parameters
@@ -189,12 +189,12 @@ class FieldParameterValueManager {
 	}
 	
 	/**
-	 * This builds a {@link GmmInput} for the current set of {@link Field} values. All Fields that have never been set,
+	 * This builds a {@link NshmpGmmInput} for the current set of {@link Field} values. All Fields that have never been set,
 	 * e.g. those that are unused by a model, will be set to NaN.
 	 * 
 	 * @return
 	 */
-	GmmInput getGmmInput() {
+	NshmpGmmInput getGmmInput() {
 		return gmmInputBuilder.build();
 	}
 	

@@ -7,7 +7,7 @@ import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_GMM_Wrapper;
 import org.opensha.sha.imr.logicTree.ScalarIMR_ParamsLogicTreeNode;
 import org.opensha.sha.util.TectonicRegionType;
 
-import gov.usgs.earthquake.nshmp.gmm.UsgsPrviBackbone2025;
+import org.opensha.nshmp.shaded.gmm.NshmpUsgsPrviBackbone2025;
 
 @AffectsNone
 public enum PRVI25_GMM_CrustalSigmaModel implements ScalarIMR_ParamsLogicTreeNode {

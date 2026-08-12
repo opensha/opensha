@@ -94,9 +94,9 @@ public class UCERF3_PaleoRateConstraintFetcher {
 			HSSFRow row = sheet.getRow(r);
 			if(row==null) continue;
 			HSSFCell cell = row.getCell(1);
-			if(cell==null || cell.getCellType()==HSSFCell.CELL_TYPE_STRING) continue;
+			if(cell==null || cell.getCellType()==org.apache.poi.ss.usermodel.CellType.STRING) continue;
 			HSSFCell nameCell = row.getCell(0);
-			if (nameCell == null || nameCell.getCellType()!=HSSFCell.CELL_TYPE_STRING
+			if (nameCell == null || nameCell.getCellType()!=org.apache.poi.ss.usermodel.CellType.STRING
 					|| nameCell.getStringCellValue().trim().isEmpty())
 				continue;
 			lat = cell.getNumericCellValue();
@@ -182,7 +182,7 @@ public class UCERF3_PaleoRateConstraintFetcher {
 			if (mappingCol > 0) {
 				HSSFCell mappingCell = row.getCell(mappingCol);
 				if (mappingCell == null)
-					mappingCell = row.createCell(mappingCol, HSSFCell.CELL_TYPE_STRING);
+					mappingCell = row.createCell(mappingCol, org.apache.poi.ss.usermodel.CellType.STRING);
 //				System.out.println("Writing mapping at "+r+","+mappingCol+": "+name);
 				mappingCell.setCellValue(name);
 			}
@@ -242,9 +242,9 @@ public class UCERF3_PaleoRateConstraintFetcher {
 			HSSFRow row = sheet.getRow(r);
 			if(row==null) continue;
 			HSSFCell cell = row.getCell(1);
-			if(cell==null || cell.getCellType()==HSSFCell.CELL_TYPE_STRING) continue;
+			if(cell==null || cell.getCellType()==org.apache.poi.ss.usermodel.CellType.STRING) continue;
 			HSSFCell nameCell = row.getCell(0);
-			if (nameCell == null || nameCell.getCellType()!=HSSFCell.CELL_TYPE_STRING
+			if (nameCell == null || nameCell.getCellType()!=org.apache.poi.ss.usermodel.CellType.STRING
 					|| nameCell.getStringCellValue().trim().isEmpty())
 				continue;
 			lat = cell.getNumericCellValue();

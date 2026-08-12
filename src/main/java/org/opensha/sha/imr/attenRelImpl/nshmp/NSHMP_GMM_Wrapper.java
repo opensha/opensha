@@ -1,8 +1,8 @@
 package org.opensha.sha.imr.attenRelImpl.nshmp;
 
-import static gov.usgs.earthquake.nshmp.gmm.GmmInput.Field.MW;
-import static gov.usgs.earthquake.nshmp.gmm.GmmInput.Field.RJB;
-import static gov.usgs.earthquake.nshmp.gmm.GmmInput.Field.VS30;
+import static org.opensha.nshmp.shaded.gmm.NshmpGmmInput.Field.MW;
+import static org.opensha.nshmp.shaded.gmm.NshmpGmmInput.Field.RJB;
+import static org.opensha.nshmp.shaded.gmm.NshmpGmmInput.Field.VS30;
 import static org.opensha.commons.geo.GeoTools.TO_RAD;
 
 import java.util.ArrayList;
@@ -64,27 +64,27 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 
-import gov.usgs.earthquake.nshmp.gmm.Gmm;
-import gov.usgs.earthquake.nshmp.gmm.Gmm.Type;
-import gov.usgs.earthquake.nshmp.gmm.GmmInput;
-import gov.usgs.earthquake.nshmp.gmm.GmmInput.Constraints;
-import gov.usgs.earthquake.nshmp.gmm.GmmInput.Field;
-import gov.usgs.earthquake.nshmp.gmm.GroundMotion;
-import gov.usgs.earthquake.nshmp.gmm.GroundMotionModel;
-import gov.usgs.earthquake.nshmp.gmm.Imt;
-import gov.usgs.earthquake.nshmp.tree.Branch;
-import gov.usgs.earthquake.nshmp.tree.LogicTree;
-import gov.usgs.earthquake.nshmp.tree.LogicTree.Builder;
+import org.opensha.nshmp.shaded.gmm.NshmpGmm;
+import org.opensha.nshmp.shaded.gmm.NshmpGmm.Type;
+import org.opensha.nshmp.shaded.gmm.NshmpGmmInput;
+import org.opensha.nshmp.shaded.gmm.NshmpGmmInput.Constraints;
+import org.opensha.nshmp.shaded.gmm.NshmpGmmInput.Field;
+import org.opensha.nshmp.shaded.gmm.NshmpGroundMotion;
+import org.opensha.nshmp.shaded.gmm.NshmpGroundMotionModel;
+import org.opensha.nshmp.shaded.gmm.NshmpImt;
+import org.opensha.nshmp.shaded.tree.NshmpBranch;
+import org.opensha.nshmp.shaded.tree.NshmpLogicTree;
+import org.opensha.nshmp.shaded.tree.NshmpLogicTree.Builder;
 
 /**
- * This wraps the Gmm implementations in nshmp-lib: https://code.usgs.gov/ghsc/nshmp/nshmp-lib
+ * This wraps the NshmpGmm implementations in nshmp-lib: https://code.usgs.gov/ghsc/nshmp/nshmp-lib
  * <br>
  * If supplied with the 'parameterize' flag, it will conform to the full AttenuationRelationship specification, filling
  * in relevant parameter values. If not, parameters will be skipped for computational efficiency except for site
  * parameters (those are needed so that calculators know which site parameters are required).
  * <br>
- * If the Gmm passed in is null, this can still be used to build fully populated {@link GmmInput} instances, but
- * attempts to calculate exceedance probabilities or GMM values will throw exceptions. Otherwise, {@link GmmInput}
+ * If the NshmpGmm passed in is null, this can still be used to build fully populated {@link NshmpGmmInput} instances, but
+ * attempts to calculate exceedance probabilities or GMM values will throw exceptions. Otherwise, {@link NshmpGmmInput}
  * instances will be built only for relevant fields.
  * 
  * @author kevin
@@ -95,7 +95,7 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 	public final static String C = "NSHMP_GMM_WrapperFullParam";
 	
 	// inputs
-//	private Gmm gmm;
+//	private NshmpGmm gmm;
 	private String name;
 	private String shortName;
 	private ImmutableList<Field> fieldsUsedList;
@@ -107,16 +107,16 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 	
 	// instances/caches
 	// most recently used IMT, reset whenever IMT changes
-	private Imt imt;
+	private NshmpImt imt;
 	// thi
 	private FieldParameterValueManager valueManager;
-	// current GmmInput, reset to null whenever anything changes
-	private GmmInput gmmInput;
-	private LogicTree<GroundMotion> gmTree;
+	// current NshmpGmmInput, reset to null whenever anything changes
+	private NshmpGmmInput gmmInput;
+	private NshmpLogicTree<NshmpGroundMotion> gmTree;
 	
 	// if enabled, will cache GmmInputs on a per-rupture basis
 	private boolean cacheInputsPerRupture = false;
-	private Map<EqkRupture, GmmInput> perRuptureInputCache;
+	private Map<EqkRupture, NshmpGmmInput> perRuptureInputCache;
 	
 	// params not in parent class
 	private DistanceX_Parameter distanceXParam;
@@ -150,34 +150,34 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 	
 	public static class Single extends NSHMP_GMM_Wrapper {
 		
-		private Gmm gmm;
-		private EnumMap<Imt, GroundMotionModel> instanceMap;
+		private NshmpGmm gmm;
+		private EnumMap<NshmpImt, NshmpGroundMotionModel> instanceMap;
 		
-		public Single(Gmm gmm) {
+		public Single(NshmpGmm gmm) {
 			this(gmm, gmm.name());
 		}
 		
-		public Single(Gmm gmm, boolean parameterize) {
+		public Single(NshmpGmm gmm, boolean parameterize) {
 			this(gmm, gmm.name(), parameterize);
 		}
 		
-		public Single(Gmm gmm, String shortName) {
+		public Single(NshmpGmm gmm, String shortName) {
 			this(gmm, shortName, true);
 		}
 		
-		public Single(Gmm gmm, String shortName, boolean parameterize) {
+		public Single(NshmpGmm gmm, String shortName, boolean parameterize) {
 			this(gmm, shortName, parameterize, null);
 		}
 		
-		public Single(Gmm gmm, String shortName, boolean parameterize, Component component) {
+		public Single(NshmpGmm gmm, String shortName, boolean parameterize, Component component) {
 			this(gmm, gmm.toString(), shortName, parameterize, component);
 		}
 		
-		public Single(Gmm gmm, String name, String shortName, boolean parameterize, Component component) {
+		public Single(NshmpGmm gmm, String name, String shortName, boolean parameterize, Component component) {
 			super(name, shortName, parameterize, component);
-			Preconditions.checkNotNull(gmm, "Gmm must be supplied; use InputCacheGen if you don't have a Gmm");
+			Preconditions.checkNotNull(gmm, "NshmpGmm must be supplied; use InputCacheGen if you don't have a NshmpGmm");
 			this.gmm = gmm;
-			instanceMap = new EnumMap<>(Imt.class);
+			instanceMap = new EnumMap<>(NshmpImt.class);
 			init();
 		}
 
@@ -186,13 +186,13 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 			return gmm.type();
 		}
 		
-		public Gmm getGmmRef() {
+		public NshmpGmm getGmmRef() {
 			return gmm;
 		}
 		
-		private GroundMotionModel getBuildGMM(Imt imt) {
+		private NshmpGroundMotionModel getBuildGMM(NshmpImt imt) {
 			Preconditions.checkNotNull(imt);
-			GroundMotionModel gmmInstance = instanceMap.get(imt);
+			NshmpGroundMotionModel gmmInstance = instanceMap.get(imt);
 			if (gmmInstance == null) {
 				gmmInstance = gmm.instance(imt);
 				instanceMap.put(imt, gmmInstance);
@@ -201,21 +201,21 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 		}
 		
 		/**
-		 * @return a {@link GroundMotionModel} instance parameterized for the current IMT
+		 * @return a {@link NshmpGroundMotionModel} instance parameterized for the current IMT
 		 */
-		public GroundMotionModel getCurrentGMM_Instance() {
+		public NshmpGroundMotionModel getCurrentGMM_Instance() {
 			return getBuildGMM(getCurrentIMT());
 		}
 
 		@Override
-		public LogicTree<GroundMotion> buildGroundMotionTree() {
-			GroundMotionModel gmmInstance = getCurrentGMM_Instance();
+		public NshmpLogicTree<NshmpGroundMotion> buildGroundMotionTree() {
+			NshmpGroundMotionModel gmmInstance = getCurrentGMM_Instance();
 			
 			return gmmInstance.calc(getCurrentGmmInput());
 		}
 
 		@Override
-		protected Set<Imt> getSupportedIMTs() {
+		protected Set<NshmpImt> getSupportedIMTs() {
 			return gmm.supportedImts();
 		}
 
@@ -263,12 +263,12 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 		}
 
 		@Override
-		protected LogicTree<GroundMotion> buildGroundMotionTree() {
+		protected NshmpLogicTree<NshmpGroundMotion> buildGroundMotionTree() {
 			throw new UnsupportedOperationException("This is a cache-building instance only");
 		}
 
 		@Override
-		protected Set<Imt> getSupportedIMTs() {
+		protected Set<NshmpImt> getSupportedIMTs() {
 			return null;
 		}
 
@@ -285,31 +285,31 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 	
 	public static class WeightedCombination extends NSHMP_GMM_Wrapper {
 		
-		private WeightedList<Gmm> gmms;
-		private List<EnumMap<Imt, GroundMotionModel>> instanceMaps;
+		private WeightedList<NshmpGmm> gmms;
+		private List<EnumMap<NshmpImt, NshmpGroundMotionModel>> instanceMaps;
 		private List<Constraints> constraintsList;
 		
-		public WeightedCombination(Map<Gmm, Double> gmms, String name, String shortName) {
+		public WeightedCombination(Map<NshmpGmm, Double> gmms, String name, String shortName) {
 			this(gmmMapToList(gmms), name, shortName);
 		}
 		
-		public WeightedCombination(WeightedList<Gmm> gmms, String name, String shortName) {
+		public WeightedCombination(WeightedList<NshmpGmm> gmms, String name, String shortName) {
 			this(gmms, name, shortName, true);
 		}
 		
-		public WeightedCombination(Map<Gmm, Double> gmms, String name, String shortName, boolean parameterize) {
+		public WeightedCombination(Map<NshmpGmm, Double> gmms, String name, String shortName, boolean parameterize) {
 			this(gmmMapToList(gmms), name, shortName, parameterize, null);
 		}
 		
-		public WeightedCombination(WeightedList<Gmm> gmms, String name, String shortName, boolean parameterize) {
+		public WeightedCombination(WeightedList<NshmpGmm> gmms, String name, String shortName, boolean parameterize) {
 			this(gmms, name, shortName, parameterize, null);
 		}
 		
-		public WeightedCombination(Map<Gmm, Double> gmms, String name, String shortName, boolean parameterize, Component component) {
+		public WeightedCombination(Map<NshmpGmm, Double> gmms, String name, String shortName, boolean parameterize, Component component) {
 			this(gmmMapToList(gmms), name, shortName, parameterize, component);
 		}
 		
-		public WeightedCombination(WeightedList<Gmm> gmms, String name, String shortName, boolean parameterize, Component component) {
+		public WeightedCombination(WeightedList<NshmpGmm> gmms, String name, String shortName, boolean parameterize, Component component) {
 			super(name, shortName, parameterize, component);
 			Preconditions.checkNotNull(gmms, "Gmms must be supplied; use InputCacheGen if you don't have any Gmms");
 			if (!gmms.isNormalized())
@@ -319,13 +319,13 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 			this.gmms = gmms;
 			instanceMaps = new ArrayList<>(gmms.size());
 			for (int i=0; i<gmms.size(); i++)
-				instanceMaps.add(new EnumMap<>(Imt.class));
+				instanceMaps.add(new EnumMap<>(NshmpImt.class));
 			init();
 		}
 		
-		private static WeightedList<Gmm> gmmMapToList(Map<Gmm, Double> map) {
-			WeightedList<Gmm> list = new WeightedList<>(map.size());
-			for (Gmm gmm : map.keySet())
+		private static WeightedList<NshmpGmm> gmmMapToList(Map<NshmpGmm, Double> map) {
+			WeightedList<NshmpGmm> list = new WeightedList<>(map.size());
+			for (NshmpGmm gmm : map.keySet())
 				list.add(gmm, map.get(gmm));
 			return list;
 		}
@@ -343,9 +343,9 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 			return type;
 		}
 		
-		private GroundMotionModel getBuildGMM(Gmm gmm, EnumMap<Imt, GroundMotionModel> instanceMap, Imt imt) {
+		private NshmpGroundMotionModel getBuildGMM(NshmpGmm gmm, EnumMap<NshmpImt, NshmpGroundMotionModel> instanceMap, NshmpImt imt) {
 			Preconditions.checkNotNull(imt);
-			GroundMotionModel gmmInstance = instanceMap.get(imt);
+			NshmpGroundMotionModel gmmInstance = instanceMap.get(imt);
 			if (gmmInstance == null) {
 				gmmInstance = gmm.instance(imt);
 				instanceMap.put(imt, gmmInstance);
@@ -354,20 +354,20 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 		}
 
 		@Override
-		protected LogicTree<GroundMotion> buildGroundMotionTree() {
-			Builder<GroundMotion> builder = LogicTree.builder("multi-gmms");
-			GmmInput input = getCurrentGmmInput();
-			Imt imt = getCurrentIMT();
+		protected NshmpLogicTree<NshmpGroundMotion> buildGroundMotionTree() {
+			Builder<NshmpGroundMotion> builder = NshmpLogicTree.builder("multi-gmms");
+			NshmpGmmInput input = getCurrentGmmInput();
+			NshmpImt imt = getCurrentIMT();
 			for (int i=0; i<gmms.size(); i++) {
-				Gmm gmm = gmms.getValue(i);
+				NshmpGmm gmm = gmms.getValue(i);
 				double weight = gmms.getWeight(i);
-				GroundMotionModel model = getBuildGMM(gmm, instanceMaps.get(i), imt);
+				NshmpGroundMotionModel model = getBuildGMM(gmm, instanceMaps.get(i), imt);
 				String prefix = gmm.name();
-				LogicTree<GroundMotion> subTree = model.calc(input);
+				NshmpLogicTree<NshmpGroundMotion> subTree = model.calc(input);
 				if (subTree.size() == 1) {
 					builder.addBranch(prefix, subTree.get(0).value(), weight);
 				} else {
-					for (Branch<GroundMotion> branch : subTree)
+					for (NshmpBranch<NshmpGroundMotion> branch : subTree)
 						builder.addBranch(prefix+"-"+branch.id(), branch.value(), branch.weight()*weight);
 				}
 			}
@@ -375,10 +375,10 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 		}
 
 		@Override
-		protected Set<Imt> getSupportedIMTs() {
-			Set<Imt> ret = null;
+		protected Set<NshmpImt> getSupportedIMTs() {
+			Set<NshmpImt> ret = null;
 			for (int i=0; i<gmms.size(); i++) {
-				Set<Imt> subIMTs = gmms.getValue(i).supportedImts();
+				Set<NshmpImt> subIMTs = gmms.getValue(i).supportedImts();
 				if (ret == null)
 					ret = EnumSet.copyOf(subIMTs);
 				else
@@ -397,7 +397,7 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 			for (Field field : Field.values()) {
 				for (Constraints constraints : constraintsList) {
 					if (constraints.get(field).isPresent()) {
-						// this field is used by at least one Gmm
+						// this field is used by at least one NshmpGmm
 						
 						// make sure we support this field
 						FieldParameterValueManager.ensureSupported(field);
@@ -432,20 +432,20 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 	}
 	
 	/**
-	 * @return the current nshmp-lib {@link Imt} in use
+	 * @return the current nshmp-lib {@link NshmpImt} in use
 	 */
-	public Imt getCurrentIMT() {
+	public NshmpImt getCurrentIMT() {
 		if (imt == null) {
 			// IMT has changed
 			String imName = im.getName();
 			if (imName.equals(SA_Param.NAME))
-				imt = Imt.fromPeriod(SA_Param.getPeriodInSA_Param(im));
+				imt = NshmpImt.fromPeriod(SA_Param.getPeriodInSA_Param(im));
 			else if (imName.equals(PGA_Param.NAME))
-				imt = Imt.PGA;
+				imt = NshmpImt.PGA;
 			else if (imName.equals(PGV_Param.NAME))
-				imt = Imt.PGV;
+				imt = NshmpImt.PGV;
 			else if (imName.equals(PGD_Param.NAME))
-				imt = Imt.PGD;
+				imt = NshmpImt.PGD;
 			else
 				throw new IllegalStateException("Unexpected IM: "+imName);
 		}
@@ -462,26 +462,26 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 	}
 	
 	/**
-	 * @return a {@link GmmInput} for the current parameters, site, and rupture
+	 * @return a {@link NshmpGmmInput} for the current parameters, site, and rupture
 	 */
-	public GmmInput getCurrentGmmInput() {
+	public NshmpGmmInput getCurrentGmmInput() {
 		if (gmmInput == null)
 			gmmInput = valueManager.getGmmInput();
 		return gmmInput;
 	}
 	
 	/**
-	 * Sets the passed in {@link GmmInput} as the current input for the GMM.
+	 * Sets the passed in {@link NshmpGmmInput} as the current input for the GMM.
 	 * @param gmmInput
 	 */
-	public void setCurrentGmmInput(GmmInput gmmInput) {
+	public void setCurrentGmmInput(NshmpGmmInput gmmInput) {
 		clearCachedGmmInputs();
 		this.gmmInput = gmmInput;
 		valueManager.setGmmInput(gmmInput);
 	}
 	
 	/**
-	 * Enables or disables caching of {@link GmmInput} values on a per-rupture basis; that cache will be cleared
+	 * Enables or disables caching of {@link NshmpGmmInput} values on a per-rupture basis; that cache will be cleared
 	 * whenever a parameter is set externally, or the {@link Site} is changed.
 	 */
 	public void setCacheInputsPerRupture(boolean cacheInputsPerRupture) {
@@ -489,7 +489,7 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 	}
 	
 	/**
-	 * Copies the current per-rupture {@link GmmInput} cache from the given GMM. This is a shallow copy, so any updates
+	 * Copies the current per-rupture {@link NshmpGmmInput} cache from the given GMM. This is a shallow copy, so any updates
 	 * made on either GMM will affect the other (until they are cleared by a site or parameter change) 
 	 * @param other
 	 */
@@ -515,24 +515,24 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 		return treeFilter;
 	}
 	
-	protected abstract LogicTree<GroundMotion> buildGroundMotionTree();
+	protected abstract NshmpLogicTree<NshmpGroundMotion> buildGroundMotionTree();
 	
 	/**
 	 * @return nshmp-lib ground motion logic tree for the current IMT and inputs
 	 */
-	public LogicTree<GroundMotion> getGroundMotionTree() {
+	public NshmpLogicTree<NshmpGroundMotion> getGroundMotionTree() {
 		if (gmTree != null)
 			// already built for these inputs and IMT
 			return gmTree;
 		
-//		GroundMotionModel gmmInstance = getCurrentGMM_Instance();
+//		NshmpGroundMotionModel gmmInstance = getCurrentGMM_Instance();
 //		
-//		LogicTree<GroundMotion> gmTree = gmmInstance.calc(getCurrentGmmInput());
+//		NshmpLogicTree<NshmpGroundMotion> gmTree = gmmInstance.calc(getCurrentGmmInput());
 //		if (treeFilter != null)
 //			gmTree = treeFilter.filter(gmTree);
 //		this.gmTree = gmTree;
 		
-		LogicTree<GroundMotion> gmTree = buildGroundMotionTree();
+		NshmpLogicTree<NshmpGroundMotion> gmTree = buildGroundMotionTree();
 		if (treeFilter != null)
 			gmTree = treeFilter.filter(gmTree);
 		this.gmTree = gmTree;
@@ -545,13 +545,13 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 		return getWeightedMean(getGroundMotionTree());
 	}
 	
-	public static double getWeightedMean(LogicTree<GroundMotion> gmTree) {
+	public static double getWeightedMean(NshmpLogicTree<NshmpGroundMotion> gmTree) {
 		if (gmTree.size() == 1)
 			return gmTree.get(0).value().mean();
 		
 		double weightSum = 0d;
 		double valWeightSum = 0d;
-		for (Branch<GroundMotion> branch : gmTree) {
+		for (NshmpBranch<NshmpGroundMotion> branch : gmTree) {
 			weightSum += branch.weight();
 			valWeightSum = Math.fma(branch.weight(), branch.value().mean(), valWeightSum);
 		}
@@ -566,13 +566,13 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 		return getWeightedStdDev(getGroundMotionTree());
 	}
 
-	public static double getWeightedStdDev(LogicTree<GroundMotion> gmTree) {
+	public static double getWeightedStdDev(NshmpLogicTree<NshmpGroundMotion> gmTree) {
 		if (gmTree.size() == 1)
 			return gmTree.get(0).value().sigma();
 		
 		double weightSum = 0d;
 		double valWeightSum = 0d;
-		for (Branch<GroundMotion> branch : gmTree) {
+		for (NshmpBranch<NshmpGroundMotion> branch : gmTree) {
 			weightSum += branch.weight();
 			valWeightSum = Math.fma(branch.weight(), branch.value().sigma(), valWeightSum);
 		}
@@ -590,7 +590,7 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 	}
 	
 	public static DiscretizedFunc getWeightedExceedProbabilities(
-			LogicTree<GroundMotion> gmTree, GaussianExceedProbCalculator exceedCalc, DiscretizedFunc intensityMeasureLevels)
+			NshmpLogicTree<NshmpGroundMotion> gmTree, GaussianExceedProbCalculator exceedCalc, DiscretizedFunc intensityMeasureLevels)
 			throws ParameterException {
 		
 		final int size = intensityMeasureLevels.size();
@@ -610,7 +610,7 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 				xVals[i] = intensityMeasureLevels.getX(i);
 		}
 		
-		for (Branch<GroundMotion> branch : gmTree) {
+		for (NshmpBranch<NshmpGroundMotion> branch : gmTree) {
 			weight = branch.weight();
 			weightSum += weight;
 			mean = branch.value().mean();
@@ -651,7 +651,7 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 			IMRException {
 		double weightSum = 0d;
 		double weightValSum = 0d;
-		for (Branch<GroundMotion> branch : getGroundMotionTree()) {
+		for (NshmpBranch<NshmpGroundMotion> branch : getGroundMotionTree()) {
 			double weight = branch.weight();
 			weightSum += weight;
 			double mean = branch.value().mean();
@@ -683,7 +683,7 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 	public double getIML_AtExceedProb(double exceedProb) throws ParameterException {
 		double weightSum = 0d;
 		double weightValSum = 0d;
-		for (Branch<GroundMotion> branch : getGroundMotionTree()) {
+		for (NshmpBranch<NshmpGroundMotion> branch : getGroundMotionTree()) {
 			double weight = branch.weight();
 			weightSum += weight;
 			double mean = branch.value().mean();
@@ -697,17 +697,17 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 		return weightValSum/weightSum;
 	}
 	
-	protected abstract Set<Imt> getSupportedIMTs();
+	protected abstract Set<NshmpImt> getSupportedIMTs();
 
 	@Override
 	protected void initSupportedIntensityMeasureParams() {
 		supportedIMParams.clear();
 		
-		Set<Imt> imts = getSupportedIMTs();
+		Set<NshmpImt> imts = getSupportedIMTs();
 		if (imts == null)
 			return;
 		boolean hasSA = false;
-		for (Imt imt : imts) {
+		for (NshmpImt imt : imts) {
 			if (imt.isSA()) {
 				hasSA = true;
 				break;
@@ -717,7 +717,7 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 			// we support SA
 			DoubleDiscreteConstraint periodConstraint = new DoubleDiscreteConstraint();
 			Double firstPeriod = null;
-			for (Imt imt : imts) {
+			for (NshmpImt imt : imts) {
 				if (imt.isSA()) {
 					periodConstraint.addDouble(imt.period());
 					if (firstPeriod == null)
@@ -744,7 +744,7 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 			supportedIMParams.addParameter(saParam);
 		}
 
-		if (imts.contains(Imt.PGA)) {
+		if (imts.contains(NshmpImt.PGA)) {
 			//  Create PGA Parameter (pgaParam):
 			pgaParam = new PGA_Param();
 			pgaParam.setNonEditable();
@@ -755,7 +755,7 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 				defaultIMT = PGA_Param.NAME;
 		}
 
-		if (imts.contains(Imt.PGV)) {
+		if (imts.contains(NshmpImt.PGV)) {
 			//  Create PGV Parameter (pgvParam):
 			pgvParam = new PGV_Param();
 			pgvParam.setNonEditable();
@@ -766,7 +766,7 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 				defaultIMT = PGV_Param.NAME;
 		}
 
-		if (imts.contains(Imt.PGD)) {
+		if (imts.contains(NshmpImt.PGD)) {
 			//  Create PGD Parameter (pgdParam):
 			pgdParam = new PGD_Param();
 			pgdParam.setNonEditable();
@@ -1114,7 +1114,7 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 					perRuptureInputCache = new HashMap<>();
 				if (eqkRupture instanceof DistCacheWrapperRupture)
 					rupForCache = ((DistCacheWrapperRupture)eqkRupture).getOriginalRupture();
-				GmmInput cached = perRuptureInputCache.get(rupForCache);
+				NshmpGmmInput cached = perRuptureInputCache.get(rupForCache);
 				if (cached != null) {
 					setCurrentGmmInput(cached);
 					return;
@@ -1146,7 +1146,7 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 			setPropagationEffectParams();
 			
 			if (usePerRupCache) {
-				// cache the GmmInput for future reuse
+				// cache the NshmpGmmInput for future reuse
 				perRuptureInputCache.put(rupForCache, getCurrentGmmInput());
 			}
 		}

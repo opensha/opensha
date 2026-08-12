@@ -11,12 +11,12 @@ import org.opensha.sha.imr.attenRelImpl.nshmp.GroundMotionLogicTreeFilter;
 
 import com.google.common.base.Preconditions;
 
-import gov.usgs.earthquake.nshmp.gmm.Gmm;
-import gov.usgs.earthquake.nshmp.gmm.GmmInput;
-import gov.usgs.earthquake.nshmp.gmm.GroundMotion;
-import gov.usgs.earthquake.nshmp.gmm.GroundMotionModel;
-import gov.usgs.earthquake.nshmp.tree.Branch;
-import gov.usgs.earthquake.nshmp.tree.LogicTree;
+import org.opensha.nshmp.shaded.gmm.NshmpGmm;
+import org.opensha.nshmp.shaded.gmm.NshmpGmmInput;
+import org.opensha.nshmp.shaded.gmm.NshmpGroundMotion;
+import org.opensha.nshmp.shaded.gmm.NshmpGroundMotionModel;
+import org.opensha.nshmp.shaded.tree.NshmpBranch;
+import org.opensha.nshmp.shaded.tree.NshmpLogicTree;
 
 public abstract class NSHMP_GMM_EpistemicBranchLevel extends AdapterBackedLevel {
 	
@@ -27,16 +27,16 @@ public abstract class NSHMP_GMM_EpistemicBranchLevel extends AdapterBackedLevel 
 		this.nodes = nodes;
 	}
 	
-	public static List<NSHMP_GMM_Branch> buildNodes(Gmm gmm, String shortName, boolean expandTree) {
+	public static List<NSHMP_GMM_Branch> buildNodes(NshmpGmm gmm, String shortName, boolean expandTree) {
 		return buildNodes(List.of(gmm), List.of(shortName), List.of(1d), expandTree);
 	}
 	
-	public static List<NSHMP_GMM_Branch> buildNodes(List<Gmm> gmms, List<String> gmmShortNames,
+	public static List<NSHMP_GMM_Branch> buildNodes(List<NshmpGmm> gmms, List<String> gmmShortNames,
 			List<Double> gmmWeights, boolean expandTree) {
 		return buildNodes(gmms, gmmShortNames, gmmWeights, expandTree, null);
 	}
 	
-	public static List<NSHMP_GMM_Branch> buildNodes(List<Gmm> gmms, List<String> gmmShortNames,
+	public static List<NSHMP_GMM_Branch> buildNodes(List<NshmpGmm> gmms, List<String> gmmShortNames,
 			List<Double> gmmWeights, boolean expandTree, String commonFilePrefix) {
 		Preconditions.checkArgument(!gmms.isEmpty());
 		Preconditions.checkArgument(gmmShortNames.size() == gmms.size());
@@ -49,18 +49,18 @@ public abstract class NSHMP_GMM_EpistemicBranchLevel extends AdapterBackedLevel 
 		if (gmms.size() > 1)
 			commonShortPrefix = StringUtils.getCommonPrefix(gmmShortNames.toArray(new String[0]));
 		
-		GmmInput input = GmmInput.builder().withDefaults().build();
+		NshmpGmmInput input = NshmpGmmInput.builder().withDefaults().build();
 		
 		List<NSHMP_GMM_Branch> nodes = new ArrayList<>();
 		for (int i=0; i<gmms.size(); i++) {
-			Gmm gmm = gmms.get(i);
+			NshmpGmm gmm = gmms.get(i);
 			double gmmWeight = gmmWeights.get(i);
 			
 			// see what kind of logic tree we have
 			boolean doExpand = expandTree;
-			LogicTree<GroundMotion> result = null;
+			NshmpLogicTree<NshmpGroundMotion> result = null;
 			if (doExpand) {
-				GroundMotionModel gmmInstance = gmm.instance(gmm.supportedImts().iterator().next());
+				NshmpGroundMotionModel gmmInstance = gmm.instance(gmm.supportedImts().iterator().next());
 				result = gmmInstance.calc(input);
 				doExpand = result.size() > 1;
 			}
@@ -92,7 +92,7 @@ public abstract class NSHMP_GMM_EpistemicBranchLevel extends AdapterBackedLevel 
 				nodes.add(new NSHMP_GMM_Branch(gmm, null, namePrefix, shortNamePrefix, commonFilePrefix+getFilePrefix(shortNamePrefix), gmmWeight));
 			} else {
 				// expand the ground motion logic tree
-				for (Branch<GroundMotion> branch : result) {
+				for (NshmpBranch<NshmpGroundMotion> branch : result) {
 					String name = namePrefix+": "+branch.id();
 					String shortName = shortNamePrefix;
 					if (!shortName.isBlank())

@@ -1,10 +1,5 @@
 package org.opensha.commons.calc.nnls;
 
-
-import org.netlib.util.Dsign;
-import org.netlib.util.doubleW;
-
-
 class G1 {
 
 // C      IMPLICIT DOUBLE PRECISION (A-H,O-Z) 
@@ -23,9 +18,9 @@ static double yr;
 
 public static void g1 (double a,
 double b,
-doubleW cosa,
-doubleW sina,
-doubleW sig)  {
+DoubleW cosa,
+DoubleW sina,
+DoubleW sig)  {
 
 double as = Math.abs(a), bs = Math.abs(b);
 
@@ -33,7 +28,7 @@ if (as > bs)
 {
 xr = b/a;
 yr = Math.sqrt(1.0+xr*xr);
-cosa.val = (double)(Dsign.dsign(1.0/yr,a));
+cosa.val = dsign(1.0/yr,a);
 sina.val = cosa.val*xr;
 sig.val = as*yr;
 }
@@ -48,11 +43,19 @@ else
 {
 xr = a/b;
 yr = Math.sqrt(1.0+xr*xr);
-sina.val = (double)(Dsign.dsign(1.0/yr,b));
+sina.val = dsign(1.0/yr,b);
 cosa.val = sina.val*xr;
 sig.val = bs*yr;
 }
 }
+}
+
+private static double dsign(double a, double b) {
+	if (b > 0.0)
+		return Math.abs(a);
+	if (b < 0.0)
+		return -Math.abs(a);
+	return 0.0;
 }
 
 } // End class.

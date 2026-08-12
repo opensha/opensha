@@ -451,24 +451,24 @@ public class GenerateTestExcelSheets {
 		 // a priori rate ratio
 		 String colStr="B";
 		 HSSFCell cell = ratioRow1.createCell((short)1);
-		 cell.setCellType(HSSFCell.CELL_TYPE_FORMULA);
+		 cell.setCellType(org.apache.poi.ss.usermodel.CellType.FORMULA);
 		 cell.setCellFormula(colStr+totRow2+"/"+colStr+totRow1);
 		 cell = ratioRow2.createCell((short)1);
-		 cell.setCellType(HSSFCell.CELL_TYPE_FORMULA);
+		 cell.setCellType(org.apache.poi.ss.usermodel.CellType.FORMULA);
 		 cell.setCellFormula(colStr+totRow3+"/"+colStr+totRow1);
 		 cell = ratioRow3.createCell((short)1);
-		 cell.setCellType(HSSFCell.CELL_TYPE_FORMULA);
+		 cell.setCellType(org.apache.poi.ss.usermodel.CellType.FORMULA);
 		 cell.setCellFormula(colStr+totRow3+"/"+colStr+totRow2);
 		 // Char rate ratio
 		 colStr="D";
 		 cell = ratioRow1.createCell((short)3);
-		 cell.setCellType(HSSFCell.CELL_TYPE_FORMULA);
+		 cell.setCellType(org.apache.poi.ss.usermodel.CellType.FORMULA);
 		 cell.setCellFormula(colStr+totRow2+"/"+colStr+totRow1);
 		 cell = ratioRow2.createCell((short)3);
-		 cell.setCellType(HSSFCell.CELL_TYPE_FORMULA);
+		 cell.setCellType(org.apache.poi.ss.usermodel.CellType.FORMULA);
 		 cell.setCellFormula(colStr+totRow3+"/"+colStr+totRow1);
 		 cell = ratioRow3.createCell((short)3);
-		 cell.setCellType(HSSFCell.CELL_TYPE_FORMULA);
+		 cell.setCellType(org.apache.poi.ss.usermodel.CellType.FORMULA);
 		 cell.setCellFormula(colStr+totRow3+"/"+colStr+totRow2);
 		 // totals for other rates
 		 for(int k=0; k<slipModelOptions.size(); ++k) {
@@ -477,13 +477,13 @@ public class GenerateTestExcelSheets {
 				 int totCol = 4 + j*slipModelOptions.size()+k;
 				 colStr=""+(char)('A'+totCol);
 				 cell = ratioRow1.createCell((short)totCol);
-				 cell.setCellType(HSSFCell.CELL_TYPE_FORMULA);
+				 cell.setCellType(org.apache.poi.ss.usermodel.CellType.FORMULA);
 				 cell.setCellFormula(colStr+totRow2+"/"+colStr+totRow1);
 				 cell = ratioRow2.createCell((short)totCol);
-				 cell.setCellType(HSSFCell.CELL_TYPE_FORMULA);
+				 cell.setCellType(org.apache.poi.ss.usermodel.CellType.FORMULA);
 				 cell.setCellFormula(colStr+totRow3+"/"+colStr+totRow1);
 				 cell = ratioRow3.createCell((short)totCol);
-				 cell.setCellType(HSSFCell.CELL_TYPE_FORMULA);
+				 cell.setCellType(org.apache.poi.ss.usermodel.CellType.FORMULA);
 				 cell.setCellFormula(colStr+totRow3+"/"+colStr+totRow2);
 			 }
 		 }
@@ -496,12 +496,12 @@ public class GenerateTestExcelSheets {
 		 // a priori rate total
 		 HSSFCell cell = row.createCell((short)1);
 		 String colStr="B";
-		 cell.setCellType(HSSFCell.CELL_TYPE_FORMULA);
+		 cell.setCellType(org.apache.poi.ss.usermodel.CellType.FORMULA);
 		 cell.setCellFormula("SUM("+colStr+sumStartIndex+":"+colStr+(sumEndIndex+")"));
 		 // Char rate total
 		 cell = row.createCell((short)3);
 		 colStr="D";
-		 cell.setCellType(HSSFCell.CELL_TYPE_FORMULA);
+		 cell.setCellType(org.apache.poi.ss.usermodel.CellType.FORMULA);
 		 cell.setCellFormula("SUM("+colStr+sumStartIndex+":"+colStr+(sumEndIndex+")"));
 		 // totals for other rates
 		 for(int k=0; k<slipModelOptions.size(); ++k) {
@@ -511,7 +511,7 @@ public class GenerateTestExcelSheets {
 				 cell = row.createCell((short)totCol);
 				 colStr=""+(char)('A'+totCol);
 				 //System.out.println(colStr);
-				 cell.setCellType(HSSFCell.CELL_TYPE_FORMULA);
+				 cell.setCellType(org.apache.poi.ss.usermodel.CellType.FORMULA);
 				 cell.setCellFormula("SUM("+colStr+sumStartIndex+":"+colStr+(sumEndIndex+")"));
 			 }
 		 }
