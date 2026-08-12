@@ -32,7 +32,7 @@ import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 
 public class PosteriorSectionBValueDistributions implements JSON_BackedModule,
-AverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureModule<PosteriorSectionBValueDistributions> {
+BranchAverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureModule<PosteriorSectionBValueDistributions> {
 	
 	/* required */
 	private ContinuousDistribution priorDist;
@@ -203,7 +203,7 @@ AverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureModule<
 				in.beginArray();
 				while (in.hasNext()) {
 					if (in.peek() == JsonToken.NULL) {
-						in.skipValue();
+						in.nextNull();
 						sectPosteriors.add(null);
 					}else {
 						sectPosteriors.add(distAdapter.read(in));
@@ -213,12 +213,16 @@ AverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureModule<
 				break;
 			}
 			case "sectPaleoSiteWeights": {
+				if (in.peek() == JsonToken.NULL) {
+					in.nextNull();
+					break;
+				}
 				List<Double> weights = new ArrayList<>();
 				sectPaleoSiteWeights = new ArrayList<>();
 				in.beginArray();
 				while (in.hasNext()) {
 					if (in.peek() == JsonToken.NULL) {
-						in.skipValue();
+						in.nextNull();
 						sectPaleoSiteWeights.add(null);
 					} else {
 						weights.clear();
@@ -230,13 +234,18 @@ AverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureModule<
 					}
 				}
 				in.endArray();
+				break;
 			}
 			case "paleoSitePosteriors": {
+				if (in.peek() == JsonToken.NULL) {
+					in.nextNull();
+					break;
+				}
 				paleoSitePosteriors = new ArrayList<>();
 				in.beginArray();
 				while (in.hasNext()) {
 					if (in.peek() == JsonToken.NULL) {
-						in.skipValue();
+						in.nextNull();
 						paleoSitePosteriors.add(null);
 					} else {
 						paleoSitePosteriors.add(distAdapter.read(in));
@@ -246,11 +255,15 @@ AverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureModule<
 				break;
 			}
 			case "paleoSiteMisfits": {
+				if (in.peek() == JsonToken.NULL) {
+					in.nextNull();
+					break;
+				}
 				paleoSiteMisfits = new ArrayList<>();
 				in.beginArray();
 				while (in.hasNext()) {
 					if (in.peek() == JsonToken.NULL) {
-						in.skipValue();
+						in.nextNull();
 						paleoSiteMisfits.add(null);
 					} else {
 						paleoSiteMisfits.add(funcAdapter.read(in));
