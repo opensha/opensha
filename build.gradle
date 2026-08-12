@@ -6,6 +6,22 @@ import org.gradle.api.tasks.testing.TestDescriptor
 import org.gradle.api.tasks.testing.TestListener
 import org.gradle.api.tasks.testing.TestResult
 
+// Publishing plugins. The buildscript classpath must resolve where the plugin
+// is applied, so the apply lives here alongside the classpath declaration; the
+// rest of the publishing configuration lives in build-publish.gradle (applied
+// below, after build-common.gradle, so its dependencies/DSLs exist).
+buildscript {
+	repositories {
+		mavenCentral()
+		gradlePluginPortal()
+	}
+	dependencies {
+		classpath 'com.vanniktech:gradle-maven-publish-plugin:0.37.0'
+	}
+}
+apply plugin: 'maven-publish'
+apply plugin: 'com.vanniktech.maven.publish.base'
+
 apply plugin: 'java-library'
 apply plugin: 'eclipse'
 
@@ -14,6 +30,7 @@ ext {
 }
 
 apply from: 'build-common.gradle'
+apply from: 'build-publish.gradle'
 
 // added any resource exclusions here that we don't need in builds
 sourceSets {

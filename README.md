@@ -67,6 +67,46 @@ If that doesn't work and gradle dependency update still fails to take in eclipse
 * Option 2: Run this command in the terminal for each project: `./gradlew cleanEclipse eclipse --refresh-dependencies`
     - Then right click on each project in eclipse and do a refresh (regular refresh, not a gradle refresh) so that eclipse sees that the project classpath files have been updated
 
+## Using OpenSHA as a dependency
+
+OpenSHA can be imported directly into any Gradle or Maven application as a single artifact, `org.opensha:opensha:<version>`, published to [Maven Central](https://central.sonatype.com).
+
+### Importing OpenSHA
+
+Gradle:
+
+```groovy
+implementation 'org.opensha:opensha:26.8.0'
+```
+
+Maven:
+
+```xml
+<dependency>
+  <groupId>org.opensha</groupId>
+  <artifactId>opensha</artifactId>
+  <version>26.8.0</version>
+</dependency>
+```
+
+The published jar is a "semi-fat" artifact: it bundles OpenSHA's own classes together with the vendored USGS `EventWebService` classes (`gov.usgs.earthquake.event`), so consumers do not need a separate `EventWebService` dependency. The MPJ parallel runtime is intentionally not declared as a Maven dependency; supply your own MPJ implementation on the classpath, or run OpenSHA's MPJ applications in single-node mode.
+
+### Publishing a release to Maven Central
+
+Releases are published through the **Publish Release to Maven Central Staging** GitHub workflow (`.github/workflows/publish-release.yml`). To publish a version:
+
+1. Tag the release and push the tag, e.g. `git tag v26.8.0 && git push origin v26.8.0`.
+2. In the **Actions** tab, run the workflow with the version tag as the input (e.g. `v26.8.0`).
+3. The workflow uploads the artifact to the Central Portal [staging area](https://central.sonatype.com/publishing/deployments), where a maintainer closes and publishes it manually.
+
+The workflow requires a `maven-central-staging` GitHub environment with the following secrets: `MAVEN_CENTRAL_USERNAME`, `MAVEN_CENTRAL_PASSWORD`, `GPG_KEY_CONTENTS`, `SIGNING_KEY_ID`, `SIGNING_PASSWORD`.
+
+### How the workflow works
+
+The workflow checks out the supplied tag, sets up JDK 21, strips the leading `v` from the version input, and runs `./gradlew publishToMavenCentral --no-configuration-cache`. The bare version is injected as the `releaseVersion` Gradle property (via `ORG_GRADLE_PROJECT_releaseVersion`), and the five secrets are injected the same way (`ORG_GRADLE_PROJECT_mavenCentral*` and `ORG_GRADLE_PROJECT_signingInMemory*`).
+
+In `build-publish.gradle`, the presence of `releaseVersion` flips the `mavenPublishing` gate on, which calls `publishToMavenCentral(false)` — uploading to the Central Portal **staging** area with `automaticRelease = false`, i.e. a maintainer then closes and publishes manually — and `signAllPublications()`, which signs every artifact with in-memory GPG. Without `releaseVersion`, the gate stays off, so `./gradlew publishToLocalTestMaven` publishes an **unsigned, keyless** copy of the artifact (binary, sources, and Javadoc jars) to `build/local-maven/` for consumer testing before anything is pushed to Central. The version is derived from the checked-in `build.version` file unless overridden by `releaseVersion`.
+
 ## Repository history
 
 OpenSHA has been in active development since the early 2000's. It was originally in CVS version control, and was ported to [this SVN repository](https://source.usc.edu/svn/opensha/trunk/) circa 2008. In 2017, it was migrated to GitHub and split into a number of sub-projects. History from the SVN repository was not retained, but it is [archived here](https://github.com/opensha/opensha-svn-archive). The main codebase, which was re-unified into this repository in 2021, was previously stored in the now-archived [opensha-commons](https://github.com/opensha/opensha-commons), [opensha-core](https://github.com/opensha/opensha-core), [opensha-ucerf3](https://github.com/opensha/opensha-ucerf3), and [opensha-apps](https://github.com/opensha/opensha-apps).
