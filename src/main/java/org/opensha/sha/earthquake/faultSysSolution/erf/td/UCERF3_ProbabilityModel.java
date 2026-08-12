@@ -12,6 +12,7 @@ import org.opensha.commons.exceptions.ConstraintException;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
+import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.EnumParameter;
 import org.opensha.commons.param.impl.EnumParameterizedModelarameter;
 import org.opensha.sha.earthquake.calc.recurInterval.EqkProbDistCalc;
@@ -34,6 +35,7 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 	private EnumParameterizedModelarameter<HistoricalOpenIntervals, HistoricalOpenInterval> histOpenIntervalParam;
 	// TODO: refactor to remove BPT from the name of this and the corresponding enum
 	private BPTAveragingTypeParam averagingTypeParam;
+	private DoubleParameter renewalModelBiasCorr;
 	
 	private ParameterList params;
 	
@@ -96,6 +98,12 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 		averagingTypeParam.addParameterChangeListener(this);
 		if (averagingTypeParam.getConstraint().size() > 1)
 			params.addParameter(averagingTypeParam);
+		
+		renewalModelBiasCorr = new DoubleParameter("Renewal Model Bias Correction", 0.01, 100.0, Double.valueOf(1));
+		renewalModelBiasCorr.setInfo("The probabiliy for each rupture is multiplied by this value to correct for any bias inferred from Monte Carlo simulations");
+		renewalModelBiasCorr.setDefaultValue(1.0);
+		renewalModelBiasCorr.addParameterChangeListener(this);
+		params.addParameter(renewalModelBiasCorr);
 		
 		sectAreas = fltSysRupSet.getAreaForAllSections();
 	}
@@ -366,10 +374,11 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 			
 		}
 		
-
-		
 		if(Double.isNaN(probGain))
 			throw new RuntimeException("probGain=NaN for fltSysRupIndex="+fltSysRupIndex);
+		
+		if(renewalModelBiasCorr.getValue() != 1.0)
+			probGain *= renewalModelBiasCorr.getValue();
 		
 		return probGain;
 	}

@@ -37,8 +37,6 @@ public enum AperiodicityModels {
 	NSHM26_LOW("NSHM (2026) Low") {
 		@Override
 		public AperiodicityModel instance(FaultSystemSolution fltSysSolution) {
-			// TODO. this is an example stub
-			// these could, e.g., be magnitude-dependent
 			EnumMap<TectonicRegionType, AperiodicityModel> models = new EnumMap<>(TectonicRegionType.class);
 			models.put(TectonicRegionType.ACTIVE_SHALLOW, UCERF3_LOW.instance(fltSysSolution));
 			models.put(TectonicRegionType.STABLE_SHALLOW, models.get(TectonicRegionType.ACTIVE_SHALLOW)); // same instance
@@ -54,8 +52,6 @@ public enum AperiodicityModels {
 	NSHM26_MIDDLE("NSHM (2026) Middle") {
 		@Override
 		public AperiodicityModel instance(FaultSystemSolution fltSysSolution) {
-			// TODO. this is an example stub
-			// these could, e.g., be magnitude-dependent
 			EnumMap<TectonicRegionType, AperiodicityModel> models = new EnumMap<>(TectonicRegionType.class);
 			models.put(TectonicRegionType.ACTIVE_SHALLOW, UCERF3_MIDDLE.instance(fltSysSolution));
 			models.put(TectonicRegionType.STABLE_SHALLOW, models.get(TectonicRegionType.ACTIVE_SHALLOW)); // same instance
@@ -71,8 +67,6 @@ public enum AperiodicityModels {
 	NSHM26_HIGH("NSHM (2026) High") {
 		@Override
 		public AperiodicityModel instance(FaultSystemSolution fltSysSolution) {
-			// TODO. this is an example stub
-			// these could, e.g., be magnitude-dependent
 			EnumMap<TectonicRegionType, AperiodicityModel> models = new EnumMap<>(TectonicRegionType.class);
 			models.put(TectonicRegionType.ACTIVE_SHALLOW, UCERF3_HIGH.instance(fltSysSolution));
 			models.put(TectonicRegionType.STABLE_SHALLOW, models.get(TectonicRegionType.ACTIVE_SHALLOW)); // same instance
@@ -109,18 +103,11 @@ public enum AperiodicityModels {
 		public AperiodicityModel instance(FaultSystemSolution fltSysSolution) {
 			return new AperiodicityModel.SingleValued(0.3, true); // true -> adjustable
 		}
-	},
-	
-	SINGLE_VALUED_0pt4("Single Value 0.4") {
-		@Override
-		public AperiodicityModel instance(FaultSystemSolution fltSysSolution) {
-			return new AperiodicityModel.SingleValued(0.4, false); // true -> adjustable
-		}
 	};
 
 	
 	public static EnumSet<AperiodicityModels> UCERF3_MODELS = EnumSet.of(UCERF3_LOW, UCERF3_MIDDLE, UCERF3_HIGH);
-	public static EnumSet<AperiodicityModels> NSHM26_MODELS = EnumSet.of(NSHM26_MIDDLE);
+	public static EnumSet<AperiodicityModels> NSHM26_MODELS = EnumSet.of(NSHM26_LOW,NSHM26_MIDDLE,NSHM26_HIGH);
 	public static EnumSet<AperiodicityModels> SINGLE_VALUED_MODELS = EnumSet.of(SINGLE_VALUED);
 	
 	private String name;

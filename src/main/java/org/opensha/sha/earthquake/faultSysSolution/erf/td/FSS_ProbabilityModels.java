@@ -116,6 +116,48 @@ public enum FSS_ProbabilityModels {
 			((UCERF3_ProbabilityModel)probModel).setAperiodicityModelChoice(model);
 		}
 	},
+	/**
+	 * no adjustable parameters???
+	 */
+	NSHM26_BRANCH_AVE("NSHM27-TD Branch Average") {
+		@Override
+		public FSS_ProbabilityModel getProbabilityModel(FaultSystemSolution sol, double[] longTermPartRateForSectArray) {
+			WeightedList<FSS_ProbabilityModel> models = new WeightedList<>(4);
+			
+			FSS_ProbabilityModel u3Low = NSHM26.getProbabilityModel(sol, longTermPartRateForSectArray);
+			setAperiodicityModel(u3Low, AperiodicityModels.NSHM26_LOW);
+			// we'll show these parameters in the GUI, and the ParamLinker calls below will make sure any changes are
+			// propagated to each other U3 model. Keep all but the aperiodicity parameter
+			ParameterList params = new ParameterList();
+			for (Parameter<?> param : u3Low.getAdjustableParameters())
+				if (!param.getName().equals(AperiodicityModels.PARAM_NAME))
+					params.addParameter(param);
+			models.add(u3Low, 0.1);
+			
+			FSS_ProbabilityModel u3Middle = NSHM26.getProbabilityModel(sol, longTermPartRateForSectArray);
+			setAperiodicityModel(u3Middle, AperiodicityModels.NSHM26_MIDDLE);
+			// link parameters in the reference model to this one 
+			for (Parameter<?> param : params)
+				ParamLinker.link(param, u3Middle.getAdjustableParameters().getParameter(param.getName()));
+			models.add(u3Middle, 0.4);
+			
+			FSS_ProbabilityModel u3High = NSHM26.getProbabilityModel(sol, longTermPartRateForSectArray);
+			setAperiodicityModel(u3High, AperiodicityModels.NSHM26_HIGH);
+			// link parameters in the reference model to this one 
+			for (Parameter<?> param : params)
+				ParamLinker.link(param, u3High.getAdjustableParameters().getParameter(param.getName()));
+			models.add(u3High, 0.3);
+			
+			models.add(new FSS_ProbabilityModel.Poisson(sol), 0.2);
+			
+			return new FSS_ProbabilityModel.WeightedCombination(this.toString(), models, params);
+		}
+		
+		private void setAperiodicityModel(FSS_ProbabilityModel probModel, AperiodicityModels model) {
+			Preconditions.checkState(probModel instanceof UCERF3_ProbabilityModel);
+			((UCERF3_ProbabilityModel)probModel).setAperiodicityModelChoice(model);
+		}
+	},
 	WG02("WGCEP (2002)") {
 		@Override
 		public WG02_ProbabilityModel getProbabilityModel(FaultSystemSolution sol, double[] longTermPartRateForSectArray) {

@@ -1167,23 +1167,23 @@ public class TimeDependentReportPageGen {
 		FSS_ProbabilityModel probModel = erf.getProbabilityModel();
 		boolean isPoisson = false;
 		
-		boolean aveRecurIntervals=true;
-		boolean aveNormTimeSinceLast=true;
+//		boolean aveRecurIntervals=true;
+//		boolean aveNormTimeSinceLast=true;
 		if (probModel instanceof UCERF3_ProbabilityModel) {			// U3 calculation type
 			UCERF3_ProbabilityModel u3ProbModel = (UCERF3_ProbabilityModel)probModel;
-			aveRecurIntervals = u3ProbModel.getAveragingTypeChoice().isAveRI();
-			aveNormTimeSinceLast = u3ProbModel.getAveragingTypeChoice().isAveNTS();
+//			aveRecurIntervals = u3ProbModel.getAveragingTypeChoice().isAveRI();
+//			aveNormTimeSinceLast = u3ProbModel.getAveragingTypeChoice().isAveNTS();
 			u3ProbModel.setSaveDebugInfo(false); // ??????????????
 		} else if (probModel instanceof WG02_ProbabilityModel) {
 //			WG02_ProbabilityModel wgProbModel = (WG02_ProbabilityModel)probModel; // not needed
-			aveRecurIntervals = true; 		// default value applied by WG02
-			aveNormTimeSinceLast = true;
+//			aveRecurIntervals = true; 		// default value applied by WG02
+//			aveNormTimeSinceLast = true;
 		}
 		else if (probModel instanceof FSS_ProbabilityModel.Poisson) {
 			isPoisson = true;
 		}
 		else {
-//			throw new RuntimeException("Unsupported type of FSS_ProbabilityModel: "+probModel.getName());
+//			do nothing		throw new RuntimeException("Unsupported type of FSS_ProbabilityModel: "+probModel.getName());
 		}
 		int startYear = 0;
 		if(!isPoisson)
@@ -1415,6 +1415,7 @@ public class TimeDependentReportPageGen {
 		double[] probGain_Mgt7pt7 = new double[subSects.size()];
 
 		erf.updateForecast();
+		
 		for (int s=0; s<subSects.size(); s++) {
 			td_Mgt6pt7_prob[s] = FaultSysSolERF_Calc.calcParticipationProbForSect(erf, 6.7, s);
 			log_Mgt6pt7_prob[s] = Math.log10(td_Mgt6pt7_prob[s]);
@@ -1424,9 +1425,6 @@ public class TimeDependentReportPageGen {
 		}
 		
 		
-//		System.out.println("Starting Parent Section MPDs");
-//		long timeMillis = System.currentTimeMillis();
-		
 		// parent section cum part mag prob dists
 		Map<Integer, EvenlyDiscretizedFunc> parCumPartMPD_Map = FaultSysSolERF_Calc.calcParentSectSupraSeisPartCumMagProbDists(
 				erf, 5.0, 50, 0.1);
@@ -1434,8 +1432,6 @@ public class TimeDependentReportPageGen {
 				erf, 5.05, 50, 0.1);
 		
 		// temporarily set the forecast as Poisson, to get long-term rates, & no background 
-//		IncludeBackgroundOption includeBackgroundOption = (IncludeBackgroundOption)erf.getParameter(IncludeBackgroundParam.NAME).getValue();
-//		erf.getParameter(IncludeBackgroundParam.NAME).setValue(IncludeBackgroundOption.EXCLUDE);
 		erf.setProbabilityModelChoice(FSS_ProbabilityModels.POISSON);
 		erf.getTimeSpan().setDuration(duration); // THIS IS NEEDED
 		erf.updateForecast();
@@ -1452,20 +1448,19 @@ public class TimeDependentReportPageGen {
 		makeParentMPD_Plots(parCumPartMPD_Map,parIncrPartMPD_Map,
 				parTI_CumPartMPD_Map, parTI_IncrPartMPD_Map, 
 				parentNameID_Map, parentMPD_Dir);
-//		timeMillis = System.currentTimeMillis()-timeMillis;
-//		System.out.println("Parent Sections Took (sec):"+ timeMillis/1000);	
 		
 			
-		// UCERF3 Comparison
+		// These are for UCERF3 section indexing
 		double[] ucerf3_Mgt6pt7_prob=null;
 		double[] ucerf3_Mgt7pt7_prob=null;
 		double[] ucerf3_recurInt=null;
 		double[] ucerf3_timeSinceYrs = null;
 		double[] ucerf3_normTimeSince = null;
 
-		double[] Mgt6pt7_prob_ratio_ToU3 = new double[subSects.size()]; // size of current model
-		double[] Mgt7pt7_prob_ratio_ToU3 = new double[subSects.size()];
-		double[] supraRI_ratioToU3 = new double[subSects.size()];
+		// These are for 2023 section indexing
+		double[] td_Mgt6pt7_prob_ratio_ToU3 = new double[subSects.size()]; // size of 2023 model
+		double[] td_Mgt7pt7_prob_ratio_ToU3 = new double[subSects.size()];
+		double[] recurInt_ratioToU3 = new double[subSects.size()];
 		double[] slipRateRatioToU3 = new double[subSects.size()];
 		double[] normTimeSinceU3 = new double[subSects.size()]; //this one is for nshm23 subsection indexing
 		double[] timeSinceYrsU3 = new double[subSects.size()]; //this one is for nshm23 subsection indexing
@@ -1475,9 +1470,10 @@ public class TimeDependentReportPageGen {
 
 		
 		// these are for possible U3 comparison plots for web page 
-		String ucerf3_RI_FractileOnLogicTree_HistorgramPrefix = "ucerf3_RI_FractileOnLogicTree_Historgram";
-		String supraRI_ratioToU3_HistorgramPrefix = "supraRI_ratioToU3_Historgram";
-		String supraRI_ratioToU3_RateWt_HistorgramPrefix = "supraRI_ratioToU3_RateWt_Historgram";
+		String ri_FractileOnLogicTree_HistogramPrefix = "RI_FractileOnLogicTree_Histogram";
+		String ucerf3_RI_FractileOnLogicTree_HistogramPrefix = "U3_RI_FractileOnLogicTree_Histogram";
+		String ri_ratioToU3_HistogramPrefix = "RI_ratioToU3_Histogram";
+		String ri_ratioToU3_RateWt_HistogramPrefix = "RI_ratioToU3_RateWt_Histogram";
 		String ri_RatioVsSlipRateRatioScatterPlotPrefix = "RI_RatioVsSlipRateRatioScatterPlot";
 		HashMap<Integer,Integer> nshmFromU3_ParentSectID_Map = null;
 		HashMap<Integer,Integer> u3_from_nshm_ParentSectID_Map = null;
@@ -1527,18 +1523,18 @@ public class TimeDependentReportPageGen {
 			}
 			// these are current model to ucerf3 ratios (full number of sections)
 			for(int s=0;s<subSects.size();s++) {
-				Mgt6pt7_prob_ratio_ToU3[s] = Double.NaN;
-				Mgt7pt7_prob_ratio_ToU3[s] = Double.NaN;
-				supraRI_ratioToU3[s] = Double.NaN;
+				td_Mgt6pt7_prob_ratio_ToU3[s] = Double.NaN;
+				td_Mgt7pt7_prob_ratio_ToU3[s] = Double.NaN;
+				recurInt_ratioToU3[s] = Double.NaN;
 				slipRateRatioToU3[s] = Double.NaN;
 				normTimeSinceU3[s] = Double.NaN;
 				timeSinceYrsU3[s] = Double.NaN;
 			}
-			HistogramFunction supraRI_ratioToU3_Historgram = new HistogramFunction(0.05,50,0.1);
-			HistogramFunction supraRI_ratioToU3_RateWt_Historgram = new HistogramFunction(0.05,50,0.1);
-			HistogramFunction supraRI_FractileOnLogicTree_Historgram = new HistogramFunction(0.0,21,0.05);
-			HistogramFunction ucerf3_RI_FractileOnLogicTree_Historgram = new HistogramFunction(0.0,21,0.05);
-			DiscretizedFunc[] SectRI_CumDistArray = getNSHM23_WUS_SectRI_CumDistFuncArray();			
+			HistogramFunction ri_ratioToU3_Histogram = new HistogramFunction(0.05,50,0.1);
+			HistogramFunction ri_ratioToU3_RateWt_Histogram = new HistogramFunction(0.05,50,0.1);
+			HistogramFunction ri_FractileOnLogicTree_Histogram = new HistogramFunction(0.0,21,0.05);
+			HistogramFunction ucerf3_RI_FractileOnLogicTree_Histogram = new HistogramFunction(0.0,21,0.05);
+			DiscretizedFunc[] sectRI_CumDistArray = getNSHM23_WUS_SectRI_CumDistFuncArray();			
 			
 			// get section mapping
 			HashMap<Integer,Integer> nshmFromU3_SectID_Map = getSubsectionID_Mapping(ucerf3_erf.getSolution(),erf.getSolution()); // FINISH THIS
@@ -1548,85 +1544,85 @@ public class TimeDependentReportPageGen {
 //String name2 = erf.getSolution().getRupSet().getFaultSectionData(nshmID).getName();
 //System.out.println(name1+"\t"+name2);
 				if(ucerf3_Mgt6pt7_prob[u3_ID]>0.0)
-					Mgt6pt7_prob_ratio_ToU3[nshmID] = td_Mgt6pt7_prob[nshmID]/ucerf3_Mgt6pt7_prob[u3_ID];
+					td_Mgt6pt7_prob_ratio_ToU3[nshmID] = td_Mgt6pt7_prob[nshmID]/ucerf3_Mgt6pt7_prob[u3_ID];
 				else
-					Mgt6pt7_prob_ratio_ToU3[nshmID] = Double.NaN;
+					td_Mgt6pt7_prob_ratio_ToU3[nshmID] = Double.NaN;
 				if(ucerf3_Mgt7pt7_prob[u3_ID]>0.0)
-					Mgt7pt7_prob_ratio_ToU3[nshmID] = td_Mgt7pt7_prob[nshmID]/ucerf3_Mgt7pt7_prob[u3_ID];
+					td_Mgt7pt7_prob_ratio_ToU3[nshmID] = td_Mgt7pt7_prob[nshmID]/ucerf3_Mgt7pt7_prob[u3_ID];
 				else
-					Mgt7pt7_prob_ratio_ToU3[nshmID] = Double.NaN;
-				supraRI_ratioToU3[nshmID] = recurInt[nshmID]/ucerf3_recurInt[u3_ID];
+					td_Mgt7pt7_prob_ratio_ToU3[nshmID] = Double.NaN;
+				recurInt_ratioToU3[nshmID] = recurInt[nshmID]/ucerf3_recurInt[u3_ID];
 				slipRateRatioToU3[nshmID] = sectSlipRatesArray[nshmID]/u3_sectSlipRatesArray[u3_ID];
 				timeSinceYrsU3[nshmID] = ucerf3_timeSinceYrs[u3_ID];
 				normTimeSinceU3[nshmID] = ucerf3_normTimeSince[u3_ID];
-				if(supraRI_ratioToU3[nshmID]<supraRI_ratioToU3_Historgram.getMaxX()) {
-					supraRI_ratioToU3_Historgram.add(supraRI_ratioToU3[nshmID], 1.0);
-					supraRI_ratioToU3_RateWt_Historgram.add(supraRI_ratioToU3[nshmID], 1.0/recurInt[nshmID]); // wt is 2023 rate
+				if(recurInt_ratioToU3[nshmID]<ri_ratioToU3_Histogram.getMaxX()) {
+					ri_ratioToU3_Histogram.add(recurInt_ratioToU3[nshmID], 1.0);
+					ri_ratioToU3_RateWt_Histogram.add(recurInt_ratioToU3[nshmID], 1.0/recurInt[nshmID]); // wt is 2023 rate
 				}
 				else {
-					supraRI_ratioToU3_Historgram.add(supraRI_ratioToU3_Historgram.getMaxX(), 1.0);
-					supraRI_ratioToU3_RateWt_Historgram.add(supraRI_ratioToU3_Historgram.getMaxX(), 1.0/recurInt[nshmID]); // wt is 2023 rate
+					ri_ratioToU3_Histogram.add(ri_ratioToU3_Histogram.getMaxX(), 1.0);
+					ri_ratioToU3_RateWt_Histogram.add(ri_ratioToU3_Histogram.getMaxX(), 1.0/recurInt[nshmID]); // wt is 2023 rate
 				}
 				// get logic tree fractile for recurInt[nshmID]
-				double fractile = SectRI_CumDistArray[nshmID].getInterpolatedY(recurInt[nshmID]);
-				supraRI_FractileOnLogicTree_Historgram.add(fractile,1.0);
+				double fractile = sectRI_CumDistArray[nshmID].getInterpolatedY(recurInt[nshmID]);
+				ri_FractileOnLogicTree_Histogram.add(fractile,1.0);
 				
-				if(ucerf3_recurInt[u3_ID]<SectRI_CumDistArray[nshmID].getMinX()) // below all NSHM 2023 values
-					ucerf3_RI_FractileOnLogicTree_Historgram.add(0, 1.0);
-				else if(ucerf3_recurInt[u3_ID]>SectRI_CumDistArray[nshmID].getMaxX()) // above all NSHM 2023 values
-					ucerf3_RI_FractileOnLogicTree_Historgram.add(1.0, 1.0);
+				if(ucerf3_recurInt[u3_ID]<sectRI_CumDistArray[nshmID].getMinX()) // below all NSHM 2023 values
+					ucerf3_RI_FractileOnLogicTree_Histogram.add(0, 1.0);
+				else if(ucerf3_recurInt[u3_ID]>sectRI_CumDistArray[nshmID].getMaxX()) // above all NSHM 2023 values
+					ucerf3_RI_FractileOnLogicTree_Histogram.add(1.0, 1.0);
 				else {
-					fractile = SectRI_CumDistArray[nshmID].getInterpolatedY(ucerf3_recurInt[u3_ID]);
-					ucerf3_RI_FractileOnLogicTree_Historgram.add(fractile,1.0);					
+					fractile = sectRI_CumDistArray[nshmID].getInterpolatedY(ucerf3_recurInt[u3_ID]);
+					ucerf3_RI_FractileOnLogicTree_Histogram.add(fractile,1.0);					
 				}
 			}
 			
 			// plot RI ratios vs slip-rate ratios
-			makeRI_RatioVsSlipRateRatioScatterPlot(supraRI_ratioToU3, slipRateRatioToU3, 
+			makeRI_RatioVsSlipRateRatioScatterPlot(recurInt_ratioToU3, slipRateRatioToU3, 
 					resourcesDir, ri_RatioVsSlipRateRatioScatterPlotPrefix);
 			
-			// plot the supraRI_FractileOnLogicTree_Historgram
-			supraRI_FractileOnLogicTree_Historgram.setName("supraRI_FractileOnLogicTree_Historgram");
-			supraRI_FractileOnLogicTree_Historgram.setInfo("Mean = "+supraRI_FractileOnLogicTree_Historgram.computeMean()+
-					"\nCOV = "+supraRI_FractileOnLogicTree_Historgram.computeCOV());
+			// plot the supraRI_FractileOnLogicTree_Histogram
+			ri_FractileOnLogicTree_Histogram.setName(ri_FractileOnLogicTree_HistogramPrefix);
+			ri_FractileOnLogicTree_Histogram.setInfo("Mean = "+ri_FractileOnLogicTree_Histogram.computeMean()+
+					"\nCOV = "+ri_FractileOnLogicTree_Histogram.computeCOV());
 			ArrayList<XY_DataSet> funcs = new ArrayList<XY_DataSet>();
-			funcs.add(supraRI_FractileOnLogicTree_Historgram);
+			funcs.add(ri_FractileOnLogicTree_Histogram);
 			ArrayList<PlotCurveCharacterstics> plotChars = new ArrayList<PlotCurveCharacterstics>();
 			plotChars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 2f, Color.RED));
-			Range yAxisRange = new Range(0, supraRI_FractileOnLogicTree_Historgram.getMaxY()*1.1);
-			ProbModelsPlottingUtils.writeAndOrPlotFuncs(funcs,plotChars,"supraRI_FractileOnLogicTree_Historgram","Fractile","Density",new Range(0,1),yAxisRange,
-					false,false,7.0,6.0, new File(resourcesDir,"supraRI_FractileOnLogicTree_Historgram"), false);
+			Range yAxisRange = new Range(0, ri_FractileOnLogicTree_Histogram.getMaxY()*1.1);
+			ProbModelsPlottingUtils.writeAndOrPlotFuncs(funcs,plotChars,ri_FractileOnLogicTree_HistogramPrefix,"Fractile","Density",new Range(0,1),yAxisRange,
+					false,false,7.0,6.0, new File(resourcesDir,ri_FractileOnLogicTree_HistogramPrefix), false);
 
-			ucerf3_RI_FractileOnLogicTree_Historgram.setName(ucerf3_RI_FractileOnLogicTree_HistorgramPrefix);
-			ucerf3_RI_FractileOnLogicTree_Historgram.setInfo("Mean = "+ucerf3_RI_FractileOnLogicTree_Historgram.computeMean()+
-					"\nCOV = "+ucerf3_RI_FractileOnLogicTree_Historgram.computeCOV());
+			ucerf3_RI_FractileOnLogicTree_Histogram.setName(ucerf3_RI_FractileOnLogicTree_HistogramPrefix);
+			ucerf3_RI_FractileOnLogicTree_Histogram.setInfo("Mean = "+ucerf3_RI_FractileOnLogicTree_Histogram.computeMean()+
+					"\nCOV = "+ucerf3_RI_FractileOnLogicTree_Histogram.computeCOV());
 			funcs = new ArrayList<XY_DataSet>();
-			funcs.add(ucerf3_RI_FractileOnLogicTree_Historgram);
-			yAxisRange = new Range(0, ucerf3_RI_FractileOnLogicTree_Historgram.getMaxY()*1.1);
-			ProbModelsPlottingUtils.writeAndOrPlotFuncs(funcs,plotChars,ucerf3_RI_FractileOnLogicTree_HistorgramPrefix,"Fractile","Density",new Range(0,1),yAxisRange,
-					false,false,7.0,6.0, new File(resourcesDir,ucerf3_RI_FractileOnLogicTree_HistorgramPrefix), false);
+			funcs.add(ucerf3_RI_FractileOnLogicTree_Histogram);
+			yAxisRange = new Range(0, ucerf3_RI_FractileOnLogicTree_Histogram.getMaxY()*1.1);
+			ProbModelsPlottingUtils.writeAndOrPlotFuncs(funcs,plotChars,ucerf3_RI_FractileOnLogicTree_HistogramPrefix,"Fractile","Density",new Range(0,1),yAxisRange,
+					false,false,7.0,6.0, new File(resourcesDir,ucerf3_RI_FractileOnLogicTree_HistogramPrefix), false);
 
-			// plot supraRI_ratioToU3_Historgram
-			supraRI_ratioToU3_Historgram.setName(supraRI_ratioToU3_HistorgramPrefix);
-			supraRI_ratioToU3_Historgram.setInfo("Mean = "+supraRI_ratioToU3_Historgram.computeMean()+
-					"\nCOV = "+supraRI_ratioToU3_Historgram.computeCOV()+"\n\nLast bin includes all ratios greater than maximum X");
+			// plot supraRI_ratioToU3_Histogram
+			ri_ratioToU3_Histogram.setName(ri_ratioToU3_HistogramPrefix);
+			ri_ratioToU3_Histogram.setInfo("Mean = "+ri_ratioToU3_Histogram.computeMean()+
+					"\nCOV = "+ri_ratioToU3_Histogram.computeCOV()+"\n\nLast bin includes all ratios greater than maximum X");
 			funcs = new ArrayList<XY_DataSet>();
-			funcs.add(supraRI_ratioToU3_Historgram);
+			funcs.add(ri_ratioToU3_Histogram);
 			plotChars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 2f, Color.RED));
-			yAxisRange = new Range(0, supraRI_ratioToU3_Historgram.getMaxY()*1.1);
-			ProbModelsPlottingUtils.writeAndOrPlotFuncs(funcs,plotChars,supraRI_ratioToU3_HistorgramPrefix,"Ratio","Density",new Range(0,5),yAxisRange,
-					false,false,7.0,6.0, new File(resourcesDir,supraRI_ratioToU3_HistorgramPrefix), false);
+			yAxisRange = new Range(0, ri_ratioToU3_Histogram.getMaxY()*1.1);
+			ProbModelsPlottingUtils.writeAndOrPlotFuncs(funcs,plotChars,ri_ratioToU3_HistogramPrefix,"Ratio","Density",new Range(0,5),yAxisRange,
+					false,false,7.0,6.0, new File(resourcesDir,ri_ratioToU3_HistogramPrefix), false);
 
-			// plot supraRI_ratioToU3_Historgram - rate weighted
-			supraRI_ratioToU3_RateWt_Historgram.normalizeToPDF();
-			supraRI_ratioToU3_RateWt_Historgram.setName(supraRI_ratioToU3_RateWt_HistorgramPrefix);
-			supraRI_ratioToU3_RateWt_Historgram.setInfo("Mean = "+supraRI_ratioToU3_RateWt_Historgram.computeMean()+
-					"\nCOV = "+supraRI_ratioToU3_RateWt_Historgram.computeCOV()+"\n\nLast bin includes all ratios greater than maximum X");
+			// plot supraRI_ratioToU3_Histogram - rate weighted
+			ri_ratioToU3_RateWt_Histogram.normalizeToPDF();
+			ri_ratioToU3_RateWt_Histogram.setName(ri_ratioToU3_RateWt_HistogramPrefix);
+			ri_ratioToU3_RateWt_Histogram.setInfo("Mean = "+ri_ratioToU3_RateWt_Histogram.computeMean()+
+					"\nCOV = "+ri_ratioToU3_RateWt_Histogram.computeCOV()+"\n\nLast bin includes all ratios greater than maximum X");
 			funcs = new ArrayList<XY_DataSet>();
-			funcs.add(supraRI_ratioToU3_RateWt_Historgram);
-			yAxisRange = new Range(0, supraRI_ratioToU3_RateWt_Historgram.getMaxY()*1.1);
-			ProbModelsPlottingUtils.writeAndOrPlotFuncs(funcs,plotChars,supraRI_ratioToU3_RateWt_HistorgramPrefix,"Ratio","Density",new Range(0,5),yAxisRange,
-					false,false,7.0,6.0, new File(resourcesDir,supraRI_ratioToU3_RateWt_HistorgramPrefix), false);
+			funcs.add(ri_ratioToU3_RateWt_Histogram);
+			yAxisRange = new Range(0, ri_ratioToU3_RateWt_Histogram.getMaxY()*1.1);
+			ProbModelsPlottingUtils.writeAndOrPlotFuncs(funcs,plotChars,ri_ratioToU3_RateWt_HistogramPrefix,"Ratio","Density",new Range(0,5),yAxisRange,
+					false,false,7.0,6.0, new File(resourcesDir,ri_ratioToU3_RateWt_HistogramPrefix), false);
 
 			
 			// Make parent part MFD comparison plots
@@ -1668,12 +1664,12 @@ public class TimeDependentReportPageGen {
 
 
 
-		String csv_dataSring = "sectID,yrOfLast,yrsSince,normTimeSince,recurInt,prob_Mgt6pt7,poisProb_Mgt6pt7,"+
+		String csv_sectDataString = "sectID,yrOfLast,yrsSince,normTimeSince,recurInt,prob_Mgt6pt7,poisProb_Mgt6pt7,"+
 							"probGain_Mgt6pt7,prob_Mgt7pt7,poisProb_Mgt7pt7,probGain_Mgt7pt7,"+
 							"sectName,parentSectID,parentSectName,DOLE_MappingType";
 		if(ucerf3_erf !=null) 
-			csv_dataSring += ",recurInt_ratioToU3, prob_Mgt6pt7_ratio_ToU3,prob_Mgt7pt7_ratio_ToU3,slipRateRatioToU3,timeSinceYrsU3,normTimeSinceU3";
-		csv_dataSring += "\n";
+			csv_sectDataString += ",recurInt_ratioToU3, prob_Mgt6pt7_ratio_ToU3,prob_Mgt7pt7_ratio_ToU3,slipRateRatioToU3,timeSinceYrsU3,normTimeSinceU3";
+		csv_sectDataString += "\n";
 		for (int s=0; s<subSects.size(); s++) {
 			pois_Mgt6pt7_prob[s] = FaultSysSolERF_Calc.calcParticipationProbForSect(erf, 6.7, s);
 			probGain_Mgt6pt7[s] = td_Mgt6pt7_prob[s]/pois_Mgt6pt7_prob[s];
@@ -1685,81 +1681,40 @@ public class TimeDependentReportPageGen {
 			String modParentName=null;
 			if(parentName != null)
 				modParentName = parentName.replace(",","_");
-			csv_dataSring += s+","+(startYear-timeSince[s])+","+timeSince[s]+","+normTimeSince[s]+","+recurInt[s]+","+
+			csv_sectDataString += s+","+(startYear-timeSince[s])+","+timeSince[s]+","+normTimeSince[s]+","+recurInt[s]+","+
 					td_Mgt6pt7_prob[s]+","+pois_Mgt6pt7_prob[s]+","+probGain_Mgt6pt7[s]+","+
 					td_Mgt7pt7_prob[s]+","+pois_Mgt7pt7_prob[s]+","+probGain_Mgt7pt7[s]+","+
 					modName+","+subSects.get(s).getParentSectionId()+","+modParentName+","+sectMappingTypes[s];
 			if(ucerf3_erf !=null) 
-				csv_dataSring += ","+supraRI_ratioToU3[s]+","+ Mgt6pt7_prob_ratio_ToU3[s]+","+Mgt7pt7_prob_ratio_ToU3[s]+","
+				csv_sectDataString += ","+recurInt_ratioToU3[s]+","+ td_Mgt6pt7_prob_ratio_ToU3[s]+","+td_Mgt7pt7_prob_ratio_ToU3[s]+","
 						+slipRateRatioToU3[s]+","+timeSinceYrsU3[s]+","+normTimeSinceU3[s];
-			csv_dataSring += "\n";
+			csv_sectDataString += "\n";
 		}
 		
 		// write out sectionOutputData.csv
 		FileWriter fw2 = new FileWriter(new File(outputDir+"/sectionOutputData.csv"));
-		fw2.write(csv_dataSring); 
+		fw2.write(csv_sectDataString); 
 		fw2.close();
 		
 		// reset ERF to original state
 		erf.setCustomProbabilityModel(probModel);
 //		erf.getParameter(IncludeBackgroundParam.NAME).setValue(includeBackgroundOption);
 		erf.updateForecast();
-		
-		
-		
-		
-//		// Write out ave parent RI comparison file
-//		String csvParRI_DataString = "parID,meanRI,U3meanRI,ratio,fractileForMean,fractileForU3_Mean,parName,U3parID,U3parName\n";
-//		for(int u3parID:rateListForParentMapU3.keySet()) {
-//			if(nshmFromU3_ParentSectID_Map.keySet().contains(u3parID)) {
-//				int parID = nshmFromU3_ParentSectID_Map.get(u3parID);
-//				DescriptiveStatistics statsU3 = new DescriptiveStatistics(rateListForParentMapU3.get(u3parID));
-//				DescriptiveStatistics stats = new DescriptiveStatistics(sectRateListForParentMap.get(parID));
-//				double u3Mean = 1.0/statsU3.getMean();
-//				double mean = 1.0/stats.getMean();
-//				
-//				double fractileForMean;
-//				DiscretizedFunc cumRI_Dist = parSectAveRI_CumDistMap.get(parID);
-//				if(mean<cumRI_Dist.getMinX())
-//					fractileForMean=0;
-//				else if(mean>cumRI_Dist.getMaxX())
-//					fractileForMean=1;
-//				else
-//					fractileForMean = cumRI_Dist.getInterpolatedY(mean);
-//
-//				double fractileForU3_Mean;
-//				if(u3Mean<cumRI_Dist.getMinX())
-//					fractileForU3_Mean=0;
-//				else if(u3Mean>cumRI_Dist.getMaxX())
-//					fractileForU3_Mean=1;
-//				else
-//					fractileForU3_Mean = cumRI_Dist.getInterpolatedY(u3Mean);
-//
-//				String parName = parentNameID_Map.get(parID).replace(",", " ");
-//				String parNameU3 = u3_parentNameID_Map.get(u3parID).replace(",", " ");
-//				csvParRI_DataString+=parID+","+mean+","+u3Mean+","+(mean/u3Mean)
-//						+","+fractileForMean+","+fractileForU3_Mean
-//						+","+parName+","+u3parID+","+parNameU3+"\n";
-//			}
-//		}
-//		FileWriter fwParRI_csv = new FileWriter(new File(outputDir+"/parentSectAveRI_CompWithU3.csv"));
-//		fwParRI_csv.write(csvParRI_DataString); 
-//		fwParRI_csv.close();
 
 		
-		// make parent section prob etc csv data file
+		// make parent section csv data file
 		double[] magThreshVals = {5.0,6.7,7.7};
 		Map<Integer, double[]> sectRateListForParentMap = FaultSysSolERF_Calc.getTotSectSupraSeisRateListForParentSectMap(erf);
 		Map<Integer, double[]> aveNTS_AndFractForParentDataMap = FaultSysSolERF_Calc.getAveNormTimeSinceAndFractForParentSect(erf);
 		Map<Integer, double[]> sectRateListForParentMapU3 = null;
 		Map<Integer, double[]> aveNTS_AndFractForParentDataMapU3 = null;
 		// header line
-		String csv_parentDataSring = "parID,parName,meanRI,RI_fractile,aveNormTimeSince,fractWithDOLE";
+		String csv_parentDataSring = "parID,parName,meanRI,RI_fractile,aveNormTimeSince,fractWithDOLE,minMag";
 		for(double mag:magThreshVals) {
 			csv_parentDataSring += ",probMgt"+mag+",gainMgt"+mag;
 		}
 		if(ucerf3_erf !=null) {
-			csv_parentDataSring += ",parID_U3,parNameU3,meanRI_U3,meanRI_ratioToU3,RI_fractile_U3,aveNormTimeSinceU3,fractWithDOLE_U3";
+			csv_parentDataSring += ",parID_U3,parNameU3,meanRI_U3,meanRI_ratioToU3,RI_fractile_U3,aveNormTimeSinceU3,fractWithDOLE_U3,minMagU3";
 			for(double mag:magThreshVals)
 				csv_parentDataSring += 	",probMgt"+mag+"_U3"+
 										",gainMgt"+mag+"_U3"+
@@ -1791,7 +1746,8 @@ public class TimeDependentReportPageGen {
 				else
 					fractileForMean = cumRI_Dist.getInterpolatedY(meanRI);				
 			}
-			csv_parentDataSring += ","+meanRI+","+fractileForMean+","+nts+","+fractDOLE;
+			double minMag = parIncrPartMPD_Map.get(id).getMinX_WithNonZeroRate();
+			csv_parentDataSring += ","+meanRI+","+fractileForMean+","+nts+","+fractDOLE+","+minMag;
 			for(double mag:magThreshVals) {
 				csv_parentDataSring += ","+parCumPartMPD_Map.get(id).getY(mag)+","+
 						(parCumPartMPD_Map.get(id).getY(mag)/parTI_CumPartMPD_Map.get(id).getY(mag));
@@ -1814,7 +1770,9 @@ public class TimeDependentReportPageGen {
 						else
 							fractileForU3_Mean = cumRI_Dist.getInterpolatedY(meanRI_U3);						
 					}
-					csv_parentDataSring += ","+meanRI_U3+","+(meanRI/meanRI_U3)+","+fractileForU3_Mean+","+ntsU3+","+fractDOLE_U3;
+					double minMagU3 = u3_parIncrPartMPD_Map.get(u3_id).getMinX_WithNonZeroRate();
+
+					csv_parentDataSring += ","+meanRI_U3+","+(meanRI/meanRI_U3)+","+fractileForU3_Mean+","+ntsU3+","+fractDOLE_U3+","+minMagU3;
 					for(double mag:magThreshVals) {
 						double probU3 = u3_parCumPartMPD_Map.get(u3_id).getY(mag);
 						double gainU3 = probU3/u3_parTI_CumPartMPD_Map.get(u3_id).getY(mag);
@@ -1909,11 +1867,11 @@ public class TimeDependentReportPageGen {
 			u3MapMaker.setWriteGeoJSON(true);
 			u3MapMaker.setDefaultPlotWidthPixels(1200);
 		
-			u3MapMaker.plotSectScalars(Mgt6pt7_prob_ratio_ToU3, probGainCPT, "M≥6.7 Prob. Ratio to UCERF3");
+			u3MapMaker.plotSectScalars(td_Mgt6pt7_prob_ratio_ToU3, probGainCPT, "M≥6.7 Prob. Ratio to UCERF3");
 			u3MapMaker.plot(resourcesDir, mgt6pt7_prob_ratio_ToU3_Prefix, " ");
-			u3MapMaker.plotSectScalars(Mgt7pt7_prob_ratio_ToU3, probGainCPT, "M≥7.7 Prob. Ratio to UCERF3");
+			u3MapMaker.plotSectScalars(td_Mgt7pt7_prob_ratio_ToU3, probGainCPT, "M≥7.7 Prob. Ratio to UCERF3");
 			u3MapMaker.plot(resourcesDir, mgt7pt7_prob_ratio_ToU3_Prefix, " ");
-			u3MapMaker.plotSectScalars(supraRI_ratioToU3, probGainCPT, "Recurrence Interval Ratio to UCERF3");
+			u3MapMaker.plotSectScalars(recurInt_ratioToU3, probGainCPT, "Recurrence Interval Ratio to UCERF3");
 			u3MapMaker.plot(resourcesDir, supraRI_ratioToU3_Prefix, " ");			
 		}
 
@@ -2166,7 +2124,7 @@ public class TimeDependentReportPageGen {
 			lines.add("Histogram of 2023 to UCERF3 section recurrence intervals"); lines.add("");
 			table = MarkdownUtils.tableBuilder();
 			table.initNewLine();
-			table.addColumn("![2023 vs UCERF3 RI ratio histogram]("+relPath+"/"+supraRI_ratioToU3_HistorgramPrefix+".png)");
+			table.addColumn("![2023 vs UCERF3 RI ratio histogram]("+relPath+"/"+ri_ratioToU3_HistogramPrefix+".png)");
 			table.finalizeLine().initNewLine();
 			lines.addAll(table.build());
 			lines.add(topLink); lines.add("");
@@ -2175,7 +2133,7 @@ public class TimeDependentReportPageGen {
 			lines.add("Same as above, but contribution of each section to histogram is rate weighted (1.0/RI)"); lines.add("");
 			table = MarkdownUtils.tableBuilder();
 			table.initNewLine();
-			table.addColumn("![2023 vs UCERF3 RI ratio histogram - rate weighted]("+relPath+"/"+supraRI_ratioToU3_RateWt_HistorgramPrefix+".png)");
+			table.addColumn("![2023 vs UCERF3 RI ratio histogram - rate weighted]("+relPath+"/"+ri_ratioToU3_RateWt_HistogramPrefix+".png)");
 			table.finalizeLine().initNewLine();
 			lines.addAll(table.build());
 			lines.add(topLink); lines.add("");
@@ -2193,23 +2151,21 @@ public class TimeDependentReportPageGen {
 			lines.add("Where the UCERF3 recurrence interval lands on the 2023 logic-tree distribution."); lines.add("");
 			table = MarkdownUtils.tableBuilder();
 			table.initNewLine();
-			table.addColumn("![UCERF3 fractile]("+relPath+"/"+ucerf3_RI_FractileOnLogicTree_HistorgramPrefix+".png)");
+			table.addColumn("![UCERF3 fractile]("+relPath+"/"+ucerf3_RI_FractileOnLogicTree_HistogramPrefix+".png)");
 			table.finalizeLine().initNewLine();
 			lines.addAll(table.build());
 			lines.add(topLink); lines.add("");
-			
-			lines.add("## Parent Section Magnitude Probability Distributions");  
-			lines.add("These are participation distributions, meaning the probability of one or more events touching any part of the parent fault."); lines.add("");
-			lines.add("Parent section MPDs: [resources/parentMPD_Dir](resources/parentMPD_Dir) (both incremenatal and cumulative plots, including comparisons to Poisson)");
-			if(ucerf3_erf !=null) {
-				lines.add("");
-				lines.add("Comparisons to UCERF3: [resources/parentMPD_U3comparison_Dir](resources/parentMPD_U3comparison_Dir) (incremenatal plots only)");
-			}
-			lines.add("");
-			lines.add(topLink); lines.add("");
-		
 		}
 		
+		lines.add("## Parent Section Magnitude Probability Distributions");  
+		lines.add("These are participation distributions, meaning the probability of one or more events touching any part of the parent fault."); lines.add("");
+		lines.add("Parent section MPDs: [resources/parentMPD_Dir](resources/parentMPD_Dir) (both incremenatal and cumulative plots, including comparisons to Poisson)");
+		if(ucerf3_erf !=null) {
+			lines.add("");
+			lines.add("Comparisons to UCERF3: [resources/parentMPD_U3comparison_Dir](resources/parentMPD_U3comparison_Dir) (incremenatal plots only)");
+		}
+		lines.add("");
+		lines.add(topLink); lines.add("");
 
 		lines.add("## Data Files");  
 		String u3_String = "";
@@ -2436,9 +2392,9 @@ public class TimeDependentReportPageGen {
 			EvenlyDiscretizedFunc parIncrTI_MPD = parTI_IncrPartMPD_Map.get(parID);
 			String parName = perentNameID_Map.get(parID);
 			String parentMFD_FileNamePrefix = parName.replace(" ","").replace(",","_");
-			parCumMPD.setName( "TD Cum. MFD");
-			parCumTI_MPD.setName(" TI Cum. MFD");
-			parIncrMPD.setName(" TD Incr. MFD");
+			parCumMPD.setName( "TD Cum. MPD");
+			parCumTI_MPD.setName(" TI Cum. MPD");
+			parIncrMPD.setName(" TD Incr. MPD");
 			parIncrTI_MPD.setName(" TI Incr. MFD");
 			parCumMPD.setInfo(parName + " TD Cumumlative Part Mag Prob Dist");
 			parCumTI_MPD.setInfo(parName + " TI Cumulative Part Mag Prob Dist");
@@ -2446,7 +2402,8 @@ public class TimeDependentReportPageGen {
 			parIncrTI_MPD.setInfo(parName + " TI Incramental Part Mag Prob Dist");
 			
 			// 
-			double maxY = Math.max(parCumTI_MPD.getMaxY(), parCumMPD.getMaxY())*2.0;
+			double maxY = Math.max(parCumTI_MPD.getMaxY(), parCumMPD.getMaxY())*1.2;
+			
 			double minY = Double.MAX_VALUE;
 			double y1=0, y2=0;
 			for(int i=parCumMPD.size()-1;i>-1;i--) { // start from end and move backward
@@ -2462,6 +2419,7 @@ public class TimeDependentReportPageGen {
 					minY = Math.min(y1,y2);
 				break;
 			}
+			minY /= 1.2;
 			
 			ArrayList<XY_DataSet> funcs = new ArrayList<XY_DataSet>();
 			funcs.add(parIncrMPD);
@@ -2560,6 +2518,8 @@ public class TimeDependentReportPageGen {
 					if(func.getY(i) != 0 && minY>func.getY(i))
 						minY=func.getY(i);
 			}
+			maxY *= 1.2;
+			minY /= 1.2;
 
 			ArrayList<PlotCurveCharacterstics> plotChars = new ArrayList<PlotCurveCharacterstics>();
 			plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.RED));
@@ -2571,7 +2531,7 @@ public class TimeDependentReportPageGen {
 			String xAxisLabel = "Magnitude";
 			String yAxisLabel =  mfdTypeString+" Participation Prob";
 			Range xAxisRange = null;
-			Range yAxisRange = new Range(minY,maxY*1.1);
+			Range yAxisRange = new Range(minY,maxY);
 			boolean logX = false;
 			boolean logY = true;
 			double widthInches = 7; // inches
