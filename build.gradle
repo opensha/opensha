@@ -23,7 +23,6 @@ apply plugin: 'maven-publish'
 apply plugin: 'com.vanniktech.maven.publish.base'
 
 apply plugin: 'java-library'
-apply plugin: 'eclipse'
 
 ext {
 	parentProject = null
