@@ -60,16 +60,22 @@ public final class LogicTreeConfig {
 		public Builder forSuppliedLogicTree(LogicTree<LogicTreeNode> suppliedLogicTree,
 				LogicTree<LogicTreeNode> suppliedAnalysisTree,
 				LogicTree<LogicTreeNode> suppliedOriginalTree) {
-			this.suppliedLogicTree = suppliedLogicTree;
-			this.suppliedAnalysisTree = suppliedAnalysisTree;
-			this.suppliedOriginalTree = suppliedOriginalTree;
-			this.levels = null;
-			this.randomLevels.clear();
-			this.requiredNodes = null;
-			this.downsampleCount = null;
-			this.forceRequiredNonZeroWeight = false;
-			this.sortBy = null;
-			this.samplingBranchCountMultiplier = 1;
+			if (suppliedLogicTree == null) {
+				this.suppliedLogicTree = null;
+				this.suppliedAnalysisTree = null;
+				this.suppliedOriginalTree = null;
+			} else {
+				this.suppliedLogicTree = suppliedLogicTree;
+				this.suppliedAnalysisTree = suppliedAnalysisTree;
+				this.suppliedOriginalTree = suppliedOriginalTree;
+				this.levels = null;
+				this.randomLevels.clear();
+				this.requiredNodes = null;
+				this.downsampleCount = null;
+				this.forceRequiredNonZeroWeight = false;
+				this.sortBy = null;
+				this.samplingBranchCountMultiplier = 1;
+			}
 			return this;
 		}
 
@@ -246,7 +252,7 @@ public final class LogicTreeConfig {
 				Random rand = new Random(randomSeed);
 				List<List<? extends LogicTreeNode>> levelNodes = new ArrayList<>();
 				for (RandomLevel<?,?> level : randomLevels) {
-					level.build(rand.nextLong(), numBranches);
+					level.build(rand.nextLong(), numBranches, samplingMethod);
 					levelNodes.add(level.getNodes());
 				}
 

@@ -145,7 +145,7 @@ public final class SectDistributionSampleLevels {
 			Preconditions.checkState(numBins > 1);
 			List<SimpleValuedNode<Range<Double>>> nodes = new ArrayList<>(numBins);
 			double weightEach = 1d/(double)numBins;
-			DecimalFormat df = new DecimalFormat("0.#");
+			DecimalFormat df = new DecimalFormat("0.#%");
 			for (int i=0; i<numBins; i++) {
 				double binStart = (double)i / numBins;
 				double binEnd = (double)(i + 1) / numBins;
