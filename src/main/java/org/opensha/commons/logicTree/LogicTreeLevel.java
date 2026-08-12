@@ -965,8 +965,14 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		}
 	}
 	
+	public static interface FractileSamplingLevel<E, N extends ValuedLogicTreeNode<? super E>> {
+		
+		public double getFractile(E value);
+	}
+	
 	public static abstract class AbstractContinuousDistributionSampledLevel<N extends ValuedLogicTreeNode<Double>>
-	extends AbstractRandomlySampledLevel<Double, N> implements BinnableLevel<Double, N, ContinuousDistributionBinnedLevel> {
+	extends AbstractRandomlySampledLevel<Double, N> implements BinnableLevel<Double, N, ContinuousDistributionBinnedLevel>,
+	FractileSamplingLevel<Double, N> {
 
 		private ContinuousDistribution dist;
 		private int precisionScale;
@@ -1285,6 +1291,11 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			}
 			
 			return new ContinuousDistributionBinnedLevel(this, nodes);
+		}
+
+		@Override
+		public double getFractile(Double value) {
+			return dist.cumulativeProbability(value);
 		}
 		
 	}

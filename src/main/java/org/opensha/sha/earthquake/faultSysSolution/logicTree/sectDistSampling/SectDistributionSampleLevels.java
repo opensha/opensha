@@ -11,6 +11,7 @@ import org.opensha.commons.logicTree.LogicTreeLevel.AbstractRandomlySampledLevel
 import org.opensha.commons.logicTree.LogicTreeLevel.BinnableLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.BinnedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.DataBackedLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.FractileSamplingLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.SamplingMethod;
 import org.opensha.commons.logicTree.LogicTreeLevel.ValueBackedLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
@@ -93,7 +94,8 @@ public final class SectDistributionSampleLevels {
 
 	public static abstract class UniformSamplingLevel<E extends ValuedLogicTreeNode<? super FixedFractileSampler>>
 	extends AbstractRandomlySampledLevel<FixedFractileSampler, E>
-	implements BinnableLevel<FixedFractileSampler, E, BinnedUniformSamplingLevel> {
+	implements BinnableLevel<FixedFractileSampler, E, BinnedUniformSamplingLevel>,
+	FractileSamplingLevel<FixedFractileSampler, E> {
 
 		private double fractileFloor;
 
@@ -203,6 +205,11 @@ public final class SectDistributionSampleLevels {
 			
 			if (jsonObj.has("fractileFloor"))
 				fractileFloor = jsonObj.get("fractileFloor").getAsDouble();
+		}
+
+		@Override
+		public double getFractile(FixedFractileSampler value) {
+			return value.getFixedFractile();
 		}
 		
 	}
