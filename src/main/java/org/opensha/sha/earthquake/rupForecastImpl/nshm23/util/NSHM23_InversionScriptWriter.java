@@ -8,6 +8,7 @@ import java.util.List;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
@@ -45,22 +46,32 @@ public class NSHM23_InversionScriptWriter {
 		List<LogicTreeLevel<? extends LogicTreeNode>> levels = NSHM23_LogicTreeBranch.levelsOnFault;
 		List<RandomLevel<?,?>> randomLevels = new ArrayList<>();
 		int samplingBranchCountMultiplier = 1;
+		LogicTree<LogicTreeNode> customTree = null;
+		LogicTree<LogicTreeNode> analysisTree = null;
 		
 		levels = new ArrayList<>(levels);
 		for (int l=levels.size(); --l>=0;) {
 			LogicTreeLevel<? extends LogicTreeNode> level = levels.get(l);
-			if (SectionSupraSeisBValues.class.isAssignableFrom(level.getType())
-					|| NSHM23_PaleoUncertainties.class.isAssignableFrom(level.getType()))
+			if (SectionSupraSeisBValues.class.isAssignableFrom(level.getType()))
+//					|| NSHM23_PaleoUncertainties.class.isAssignableFrom(level.getType()))
 				levels.remove(l);
 		}
-//		nameAdds.add("bPosterior10x");
-//		randomLevels.add(new PosteriorSectionBValueDistributions.UniformSamplingLevel(
-//				"Section posterior b-value samples", "Posterior-b samples"));
-//		samplingBranchCountMultiplier = 10;
-		nameAdds.add("bUniform10x");
-		randomLevels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(
-				"Section b-value samples", "b-value samples", NSHM23_InvConfigFactory.SUPRA_B_PRIOR_DIST));
+		nameAdds.add("bPosterior10x");
+		randomLevels.add(new PosteriorSectionBValueDistributions.UniformSamplingLevel(
+				"Section posterior b-value samples", "Posterior-b samples"));
 		samplingBranchCountMultiplier = 10;
+//		nameAdds.add("bUniform10x");
+//		randomLevels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(
+//				"Section b-value samples", "b-value samples", NSHM23_InvConfigFactory.SUPRA_B_PRIOR_DIST));
+//		samplingBranchCountMultiplier = 10;
+		
+		for (RandomLevel<?,?> level : randomLevels)
+			levels.add(level);
+		randomLevels = null;
+		int samples = 1000;
+		customTree = LogicTree.buildSampled(levels, samples, 123456789l, SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE);
+		analysisTree = LogicTree.applyBinning(customTree);
+		nameAdds.add(samples+"samples");
 
 		GriddedRegion hazardRegion = new GriddedRegion(
 				NSHM23_RegionLoader.loadFullConterminousWUS(), HAZARD_GRID_SPACING, GriddedRegion.ANCHOR_0_0);
@@ -85,6 +96,7 @@ public class NSHM23_InversionScriptWriter {
 				.requiredNodes(NSHM23_FaultModels.WUS_FM_v3)
 				.forceRequiredNonZeroWeight(true)
 				.sortBy(NSHM23_SegmentationModels.class)
+				.forSuppliedLogicTree(customTree, analysisTree)
 				.build();
 
 		InversionConfig inversion = InversionConfig.builder()
