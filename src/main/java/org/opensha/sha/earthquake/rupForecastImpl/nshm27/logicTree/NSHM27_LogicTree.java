@@ -18,6 +18,7 @@ import org.opensha.commons.logicTree.LogicTreeLevel.SamplingMethod;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.logicTree.TectonicRegionBranchTreeNode;
 import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeBranchOrderIteration;
+import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeNodeSwapIteration;
 import org.opensha.commons.util.RandomSeedUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -347,8 +348,9 @@ public class NSHM27_LogicTree {
 			// sample the tree combinations as well
 			PairwiseLogicTreeBranchOrderIteration<LogicTreeNode> treeOptimizer = new PairwiseLogicTreeBranchOrderIteration<>(
 					List.of(commonTree, interfaceTree, intraslabTree, crustalTree));
-			int nIters = Integer.max(10000, numSamples*100);
-			treeOptimizer.iterate(nIters, rand, false);
+//			int nIters = Integer.max(10000, numSamples*100);
+			int nIters = Integer.min(1000000, Integer.max(10000, numSamples*100));
+			treeOptimizer.iterate(nIters, rand);
 			List<LogicTree<LogicTreeNode>> optimizedTrees = treeOptimizer.getReorderedTrees();
 			Preconditions.checkState(optimizedTrees.size() == 4);
 			commonTree = optimizedTrees.get(0);
@@ -412,8 +414,14 @@ public class NSHM27_LogicTree {
 //		buildLogicTree(NSHM27_SeismicityRegions.AMSAM, TectonicRegionType.SUBDUCTION_INTERFACE, 2000, 123456789l,
 //				SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE);
 //		System.exit(0);
-//		int numSamples = 100;
+//		int numSamples = 1000;
 		int numSamples = 5000;
+//		int numSamples = 10000;
+//		int numSamples = 100000;
+		
+		PairwiseLogicTreeNodeSwapIteration.VERBOSE_DEFAULT = false;
+		PairwiseLogicTreeBranchOrderIteration.VERBOSE_DEFAULT = PairwiseLogicTreeNodeSwapIteration.VERBOSE_DEFAULT;
+		
 //		SamplingMethod samplingMethod = SamplingMethod.MONTE_CARLO;
 		SamplingMethod samplingMethod = SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE;
 		TectonicRegionType[] trts = {TectonicRegionType.SUBDUCTION_INTERFACE, TectonicRegionType.SUBDUCTION_SLAB, TectonicRegionType.ACTIVE_SHALLOW};

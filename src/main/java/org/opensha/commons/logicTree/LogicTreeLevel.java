@@ -965,8 +965,22 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		}
 	}
 	
+	/**
+	 * Interface for a continuous sampling levels where each sample can be mapped to a fractile within the underlying
+	 * distribution. This is used to enable continuous pairwise optimization by
+	 * {@link SamplingMethod#PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE}, and can apply beyond simple
+	 * {@link AbstractContinuousDistributionSampledLevel} instances.
+	 * @param <E>
+	 * @param <N>
+	 */
+	public static interface FractileSamplingLevel<E, N extends ValuedLogicTreeNode<? super E>> {
+		
+		public double getFractile(E value);
+	}
+	
 	public static abstract class AbstractContinuousDistributionSampledLevel<N extends ValuedLogicTreeNode<Double>>
-	extends AbstractRandomlySampledLevel<Double, N> implements BinnableLevel<Double, N, ContinuousDistributionBinnedLevel> {
+	extends AbstractRandomlySampledLevel<Double, N> implements BinnableLevel<Double, N, ContinuousDistributionBinnedLevel>,
+	FractileSamplingLevel<Double, N> {
 
 		private ContinuousDistribution dist;
 		private int precisionScale;
@@ -1285,6 +1299,11 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			}
 			
 			return new ContinuousDistributionBinnedLevel(this, nodes);
+		}
+
+		@Override
+		public double getFractile(Double value) {
+			return dist.cumulativeProbability(value);
 		}
 		
 	}

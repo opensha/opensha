@@ -16,6 +16,7 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.logicTree.LogicTreeLevel.AbstractRandomlySampledLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.BinnableLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.FractileSamplingLevel;
 import org.opensha.sha.earthquake.nshmp.seismicity.SeismicityRateFileLoader;
 import org.opensha.sha.earthquake.nshmp.seismicity.SeismicityRateFileLoader.PureGR;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.NSHM27_InvConfigFactory;
@@ -34,7 +35,8 @@ import com.google.gson.JsonPrimitive;
 import com.google.gson.TypeAdapter;
 
 public class NSHM27_SeisRateModelSamples extends AbstractRandomlySampledLevel<ClassificationDependentGR, NSHM27_SiesRateModelSample>
-implements BinnableLevel<ClassificationDependentGR, NSHM27_SiesRateModelSample, BinnedSamplesLevel> {
+implements BinnableLevel<ClassificationDependentGR, NSHM27_SiesRateModelSample, BinnedSamplesLevel>,
+FractileSamplingLevel<ClassificationDependentGR, NSHM27_SiesRateModelSample> {
 	
 	private NSHM27_SeismicityRegions region;
 	private TectonicRegionType trt;
@@ -285,6 +287,11 @@ implements BinnableLevel<ClassificationDependentGR, NSHM27_SiesRateModelSample, 
 			binNodes.add(new BinnedSamplesNode(name, shortName, "Bin"+i, probEach, range));
 		}
 		return new BinnedSamplesLevel(this, binNodes);
+	}
+
+	@Override
+	public double getFractile(ClassificationDependentGR value) {
+		return value.getSampleFractile();
 	}
 
 }

@@ -97,7 +97,7 @@ public interface DB_AccessAPI {
 
 
 	/**
-	 * Get the sytem date from oracle database
+	 * Get the system date from oracle database
 	 * @return
 	 */
 	public String getSystemDate() throws java.sql.SQLException;

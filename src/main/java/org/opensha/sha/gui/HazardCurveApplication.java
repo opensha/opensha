@@ -302,7 +302,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	
 	private static String errorInInitializationMessage = "Problem occured " +
 				"during initialization the ERF's. All parameters are set to default.";
-	
+
 	private ChangeListener trtChangeListener = (e) -> {
 		imrGuiBean.setTectonicRegions(getIncludedTectonicRegionTypes());
 	};
