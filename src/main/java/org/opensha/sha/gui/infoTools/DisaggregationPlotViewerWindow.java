@@ -1,15 +1,19 @@
 package org.opensha.sha.gui.infoTools;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Graphics2D;
 import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
 
+import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
@@ -209,13 +213,36 @@ public class DisaggregationPlotViewerWindow extends JFrame implements HyperlinkL
 		}
 		//addImageToWindow(imageFileName);
 		if (imageURL != null) {
+			JLabel label;
 			try {
-				JLabel imageLabel = new JLabel(new ImageIcon(new URL(imageURL)));
-				mapScrollPane.setViewportView(imageLabel);
-			} catch (Exception e) {
+				URL url = new URL(imageURL);
+
+				// the PNG has a transparent background; composite it over white
+				// so it renders cleanly in the window instead of showing the
+				// underlying UI background through the transparency.
+				BufferedImage transChart = ImageIO.read(url);
+				BufferedImage finalImage = new BufferedImage(
+						transChart.getWidth(),
+						transChart.getHeight(),
+						BufferedImage.TYPE_INT_RGB);
+
+				Graphics2D g2d = finalImage.createGraphics();
+
+				g2d.setColor(Color.WHITE);
+				g2d.fillRect(0, 0, finalImage.getWidth(), finalImage.getHeight());
+
+				g2d.drawImage(transChart, 0, 0, null);
+				g2d.dispose(); // Free up system resources used by the graphics context
+
+				ImageIcon icon = new ImageIcon(finalImage);
+				label = new JLabel(icon);
+			} catch (IOException e) {
 				e.printStackTrace();
-				throw new RuntimeException("Could not load disaggregation plot image: " + imageURL, e);
+				label = new JLabel("ERROR fetching image:\n\n" + e.getMessage());
 			}
+
+			// setup our GUI display
+			mapScrollPane.setViewportView(label);
 		} else {
 			mapScrollPane.setViewportView(imagePanel);
 //			mapPanel.add(imagePanel, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0
