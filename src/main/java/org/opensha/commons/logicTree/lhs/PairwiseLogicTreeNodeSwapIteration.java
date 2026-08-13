@@ -8,9 +8,15 @@ import java.util.Random;
 import org.apache.commons.numbers.core.Precision;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
-import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.logicTree.LogicTreeLevel.AbstractCombinedSamplingLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.BinnableLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.BinnedLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.FractileSamplingLevel;
+import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeTools.CategoricalLevelData;
+import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeTools.FractileLevelData;
+import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeTools.LevelData;
+import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeTools.PairwiseScorer;
 
 import com.google.common.base.Preconditions;
 
@@ -19,211 +25,188 @@ import com.google.common.base.Preconditions;
  * @param <E>
  */
 public class PairwiseLogicTreeNodeSwapIteration<E extends LogicTreeNode> {
-	
-	private List<LogicTreeLevel<? extends E>> levels;
-	private List<LogicTreeBranch<E>> branches;
-	private List<double[]> levelFixedWeights;
-	private int numLevelsToIterate;
-	private List<LogicTreeLevel<?>> pairwiseLevels;
-	private List<Integer> binnedLevelIndexes;
-	
+
+	private final List<LogicTreeLevel<? extends E>> levels;
+	private final List<LogicTreeBranch<E>> branches;
+	private final List<LevelData> levelData;
+	private final List<Integer> movableLevelIndexes;
+	private final PairwiseScorer scorer;
+
 	private boolean trackSwaps = false;
 	private List<int[]> originalBranchIndexes;
-	
-	@SuppressWarnings("unchecked")
-	public PairwiseLogicTreeNodeSwapIteration(List<LogicTreeLevel<? extends E>> levels, List<LogicTreeBranch<E>> branches,
-			List<double[]> levelFixedWeights) {
+	private double initialScore = Double.NaN;
+	private double finalScore = Double.NaN;
+
+	public PairwiseLogicTreeNodeSwapIteration(List<LogicTreeLevel<? extends E>> levels,
+			List<LogicTreeBranch<E>> branches, List<double[]> levelFixedWeights) {
 		Preconditions.checkState(levelFixedWeights.size() == levels.size());
 		Preconditions.checkState(levels.size() > 1);
 		Preconditions.checkState(branches.size() > 1);
 		this.levels = levels;
 		this.branches = branches;
-		this.levelFixedWeights = levelFixedWeights;
-		
-		pairwiseLevels = new ArrayList<>(levels);
-		numLevelsToIterate = 0;
-		binnedLevelIndexes = new ArrayList<>(levels.size());
-		for (int l=0; l<levels.size(); l++) {
-			LogicTreeLevel<? extends E> level = levels.get(l);
-			double[] weights = levelFixedWeights.get(l);
-			if (weights != null) {
-				double sum = 0d;
-				int numNonZero = 0;
-				for (double weight : weights) {
-					if (weight > 0)
-						numNonZero++;
-					sum += weight;
-				}
-				if (numNonZero == 1) {
-					levelFixedWeights.set(l, null);
-					continue;
-				}
-				if ((float)sum != 1f) {
-					for (int i=0; i<weights.length; i++)
-						weights[i] /= sum;
-				}
-				numLevelsToIterate++;
-			} else if (level instanceof BinnableLevel<?,?,?>) {
-				LogicTreeLevel<? extends LogicTreeNode> binnedLevel =
-						(LogicTreeLevel<? extends LogicTreeNode>)((BinnableLevel<?,?,?>)level).toBinnedLevel();
-				binnedLevelIndexes.add(l);
-				List<? extends LogicTreeNode> binnedNodes = binnedLevel.getNodes();
-				weights = new double[binnedNodes.size()];
-				double sum = 0d;
-				int numNonZero = 0;
-				for (int n=0; n<binnedNodes.size(); n++) {
-					weights[n] = binnedNodes.get(n).getNodeWeight(null);
-					sum += weights[n];
-					if (weights[n] > 0)
-						numNonZero++;
-				}
-				if (numNonZero == 1)
-					continue;
-				if ((float)sum != 1f) {
-					for (int i=0; i<weights.length; i++)
-						weights[i] /= sum;
-				}
-				levelFixedWeights.set(l, weights);
-				pairwiseLevels.set(l, binnedLevel);
-				numLevelsToIterate++;
-			}
-		}
+		this.levelData = buildLevelData(levelFixedWeights);
+		this.movableLevelIndexes = new ArrayList<>();
+		for (int l=0; l<levelData.size(); l++)
+			if (levelData.get(l) != null)
+				movableLevelIndexes.add(l);
+		this.scorer = new PairwiseScorer(levelData);
 	}
-	
-	public void iterate(int numIterations, Random r, boolean verbose) {
-		iterate(numIterations, PairwiseLogicTreeTools.OBJECTIVE_FUNCTION_DEFAULT, r, verbose);
-	}
-	
-	public void iterate(int numIterations, PairwiseLogicTreeTools.ObjectiveFunction of, Random r, boolean verbose) {
-		if (numLevelsToIterate < 2) {
-			System.err.println("WARNING: won't pairwise-iterate LHS sampling because we only have "+numLevelsToIterate+" candidate level");
-			return;
-		}
-		
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private List<LevelData> buildLevelData(List<double[]> levelFixedWeights) {
 		int numSamples = branches.size();
-		
-		System.out.println("Pairwise iterating "+numSamples+" LHS samples with "+numIterations+" iterations");
-		
-		// remap each branch instead onto a set of indexes of their (possibly-binned) values
-		List<int[]> branchNodeIndexes = new ArrayList<>(numSamples);
-		if (trackSwaps)
-			originalBranchIndexes = new ArrayList<>(numSamples);
-		for (int b=0; b<numSamples; b++) {
-			int[] indexes = new int[levels.size()];
-			for (int i=0; i<indexes.length; i++)
-				indexes[i] = -1;
-			branchNodeIndexes.add(indexes);
-			if (trackSwaps) {
-				int[] branchIndexes = new int[levels.size()];
-				for (int i=0; i<branchIndexes.length; i++)
-					branchIndexes[i] = b;
-				originalBranchIndexes.add(branchIndexes);
-			}
-		}
+		List<LevelData> ret = new ArrayList<>(levels.size());
 		for (int l=0; l<levels.size(); l++) {
-			double[] weights = levelFixedWeights.get(l);
-			if (weights == null)
+			LogicTreeLevel<?> level = levels.get(l);
+			if (level instanceof AbstractCombinedSamplingLevel<?,?>
+					&& PairwiseLogicTreeTools.hasFractileSubLevel((AbstractCombinedSamplingLevel<?,?>)level)) {
+				List<LogicTreeNode> sampledNodes = new ArrayList<>(numSamples);
+				for (int b=0; b<numSamples; b++)
+					sampledNodes.add(branches.get(b).getValue(l));
+				ret.add(PairwiseLogicTreeTools.combinedLevelData(l,
+						(AbstractCombinedSamplingLevel)level, sampledNodes));
 				continue;
-			LogicTreeLevel<?> level = pairwiseLevels.get(l);
-			BinnedLevel<?, ? extends LogicTreeNode> binnedLevel = null;
-			if (binnedLevelIndexes.contains(l)) {
-				binnedLevel = (BinnedLevel<?, ? extends LogicTreeNode>)level;
 			}
-			List<? extends LogicTreeNode> nodes = pairwiseLevels.get(l).getNodes();
-			Preconditions.checkState(nodes.size() == weights.length);
+			if (level instanceof FractileSamplingLevel<?,?>) {
+				double[] fractiles = new double[numSamples];
+				for (int b=0; b<numSamples; b++)
+					fractiles[b] = PairwiseLogicTreeTools.fractile((FractileSamplingLevel)level,
+							branches.get(b).getValue(l));
+				ret.add(PairwiseLogicTreeTools.hasMultipleFractiles(fractiles)
+						? new FractileLevelData(l, fractiles) : null);
+				continue;
+			}
+
+			LogicTreeLevel<?> categoricalLevel = level;
+			BinnedLevel<?, ? extends LogicTreeNode> binnedLevel = null;
+			if (levelFixedWeights.get(l) == null) {
+				if (!(level instanceof BinnableLevel<?,?,?>)) {
+					ret.add(null);
+					continue;
+				}
+				categoricalLevel = ((BinnableLevel<?,?,?>)level).toBinnedLevel();
+				binnedLevel = (BinnedLevel<?, ? extends LogicTreeNode>)categoricalLevel;
+			}
+
+			List<? extends LogicTreeNode> nodes = categoricalLevel.getNodes();
+			int[] values = new int[numSamples];
 			for (int b=0; b<numSamples; b++) {
 				LogicTreeNode node = branches.get(b).getValue(l);
 				if (binnedLevel != null) {
 					node = binnedLevel.getBinUnchecked(node);
 					Preconditions.checkNotNull(node);
 				}
-				int index = nodes.indexOf(node);
-				Preconditions.checkState(index >= 0 && index < weights.length, "bad index=%s for %s with %s weights",
-						index, node.getName(), weights.length);
-				branchNodeIndexes.get(b)[l] = index;
+				values[b] = nodes.indexOf(node);
+				Preconditions.checkState(values[b] >= 0, "Node %s not found in level %s", node, level.getName());
+			}
+			ret.add(PairwiseLogicTreeTools.hasMultipleCategories(values)
+					? new CategoricalLevelData(l, nodes.size(), values) : null);
+		}
+		return ret;
+	}
+
+	public void iterate(int numIterations, Random r, boolean verbose) {
+		if (movableLevelIndexes.size() < 2 || scorer.size() == 0) {
+			System.err.println("WARNING: won't pairwise-iterate LHS sampling because fewer than 2 levels vary");
+			return;
+		}
+
+		int numSamples = branches.size();
+		System.out.println("Pairwise iterating "+numSamples+" LHS samples with "+numIterations+" iterations");
+
+		if (trackSwaps) {
+			originalBranchIndexes = new ArrayList<>(numSamples);
+			for (int b=0; b<numSamples; b++) {
+				int[] indexes = new int[levels.size()];
+				for (int l=0; l<indexes.length; l++)
+					indexes[l] = b;
+				originalBranchIndexes.add(indexes);
 			}
 		}
-		
-		
-		PairwiseLogicTreeTools.PairwiseMisfits[][] misfits = PairwiseLogicTreeTools.calcPairwiseMisfits(branchNodeIndexes, levelFixedWeights, of);
+
 		if (verbose) {
 			System.out.println("===============================");
 			System.out.println("Initial misfits:");
-			PairwiseLogicTreeTools.printPairwiseMisfitStats(pairwiseLevels, branchNodeIndexes, levelFixedWeights);
+			printStats();
 			System.out.println("===============================");
 		}
-		double misfit = PairwiseLogicTreeTools.calcMisfitSum(misfits);
-		double misfit0 = misfit;
+		double score = scorer.score();
+		initialScore = score;
 		DecimalFormat pDF = new DecimalFormat("0.00%");
 		for (int n=0; n<numIterations; n++) {
-			if (verbose && n % 1000 == 0) {
-				System.out.println("Pairwise misfit iteration "+n+"; misfit="+(float)misfit+"; reduction="+pDF.format((misfit0-misfit)/misfit0));
-			}
-			// branch indexes for which we will (possibly) swap a level
+			if (verbose && n % 1000 == 0)
+				System.out.println("Pairwise misfit iteration "+n+"; score="+(float)score
+						+"; avgScore="+(float)(score/scorer.size())
+						+"; reduction="+formatReduction(pDF, initialScore, score));
+
 			int branchIndex1 = r.nextInt(numSamples);
 			int branchIndex2 = r.nextInt(numSamples);
 			while (branchIndex1 == branchIndex2)
 				branchIndex2 = r.nextInt(numSamples);
-			
-			// level index which we will (possibly) swap values
-			int levelIndex = r.nextInt(levels.size());
-			while (levelFixedWeights.get(levelIndex) == null)
-				levelIndex = r.nextInt(levels.size());
-			
-			int[] branchIndexes1 = branchNodeIndexes.get(branchIndex1);
-			int[] branchIndexes2 = branchNodeIndexes.get(branchIndex2);
-			if (branchIndexes1[levelIndex] == branchIndexes2[levelIndex])
-				// already the same, no swap possible
+
+			int levelIndex = movableLevelIndexes.get(r.nextInt(movableLevelIndexes.size()));
+			if (levelData.get(levelIndex).matches(branchIndex1, branchIndex2))
 				continue;
-			
-			// do the swap
-			double deltaMisfit = PairwiseLogicTreeTools.swap(misfits, branchIndexes1, branchIndexes2, levelIndex);
-			if (deltaMisfit > 0 || ((float)deltaMisfit == 0f && r.nextBoolean())) {
-				// we made things worse, reverse it
-				PairwiseLogicTreeTools.swap(misfits, branchIndexes1, branchIndexes2, levelIndex);
+
+			double deltaScore = scorer.evaluateSwap(branchIndex1, branchIndex2, levelIndex);
+			if (deltaScore > 0d || ((float)deltaScore == 0f && r.nextBoolean())) {
+				scorer.discardSwap();
 			} else {
-				// we improved things, keep it
-				misfit += deltaMisfit;
-				// apply the swap to the actual branch values
+				scorer.applySwap();
+				score += deltaScore;
 				E value1 = branches.get(branchIndex1).getValue(levelIndex);
 				E value2 = branches.get(branchIndex2).getValue(levelIndex);
 				branches.get(branchIndex1).setValue(levelIndex, value2);
 				branches.get(branchIndex2).setValue(levelIndex, value1);
 				if (trackSwaps) {
-					int prevIndex1 = originalBranchIndexes.get(branchIndex1)[levelIndex];
-					int prevIndex2 = originalBranchIndexes.get(branchIndex2)[levelIndex];
-					originalBranchIndexes.get(branchIndex1)[levelIndex] = prevIndex2;
-					originalBranchIndexes.get(branchIndex2)[levelIndex] = prevIndex1;
+					int previous = originalBranchIndexes.get(branchIndex1)[levelIndex];
+					originalBranchIndexes.get(branchIndex1)[levelIndex] =
+							originalBranchIndexes.get(branchIndex2)[levelIndex];
+					originalBranchIndexes.get(branchIndex2)[levelIndex] = previous;
 				}
 			}
 		}
-		// recalculate it to check against any drift
-		misfits = PairwiseLogicTreeTools.calcPairwiseMisfits(branchNodeIndexes, levelFixedWeights, of);
-		double finalMisfit = PairwiseLogicTreeTools.calcMisfitSum(misfits);
-		Preconditions.checkState(Precision.equals(misfit, finalMisfit, 1e-3),
-				"Misfit drift! Calculated final=%s, iterated=%s, diff=%s", finalMisfit, misfit, misfit-finalMisfit);
+
+		finalScore = scorer.recalculateScore();
+		Preconditions.checkState(Precision.equals(score, finalScore, 1e-3),
+				"Score drift! Calculated final=%s, iterated=%s, diff=%s", finalScore, score, score-finalScore);
 		if (verbose)
 			System.out.println("===============================");
-		System.out.println("Final misfit after "+numIterations+" iterations: "+(float)finalMisfit+"; reduction="+pDF.format((misfit0-finalMisfit)/misfit0));
+		System.out.println("Final normalized score after "+numIterations+" iterations: "+(float)finalScore
+				+"; avg="+(float)(finalScore/scorer.size())+"; reduction="+formatReduction(pDF, initialScore, finalScore));
 		if (verbose) {
-			PairwiseLogicTreeTools.printPairwiseMisfitStats(pairwiseLevels, branchNodeIndexes, levelFixedWeights);
-			System.out.println("Misfits for each possible objective function (we used "+of.name()+"):");
-			for (PairwiseLogicTreeTools.ObjectiveFunction of2 : PairwiseLogicTreeTools.ObjectiveFunction.values())
-				System.out.println("\t"+of2.name()+":\t"
-						+(float)PairwiseLogicTreeTools.calcMisfitSum(PairwiseLogicTreeTools.calcPairwiseMisfits(
-								branchNodeIndexes, levelFixedWeights, of2)));
+			printStats();
 			System.out.println("===============================");
 		}
 	}
-	
+
+	private void printStats() {
+		scorer.printStats(levels);
+	}
+
+	private static String formatReduction(DecimalFormat pDF, double initialScore, double score) {
+		if (initialScore == 0d)
+			return pDF.format(0d);
+		return pDF.format((initialScore-score)/initialScore);
+	}
+
 	public void setTrackSwaps(boolean trackSwaps) {
 		this.trackSwaps = trackSwaps;
 		this.originalBranchIndexes = null;
 	}
-	
+
 	public List<int[]> getOriginalBranchIndexes() {
 		Preconditions.checkNotNull(originalBranchIndexes, "trackSwaps must be true and set before iterate");
 		return originalBranchIndexes;
 	}
-	
+
+	public double getInitialScore() {
+		Preconditions.checkState(Double.isFinite(initialScore), "iterate must be called first");
+		return initialScore;
+	}
+
+	public double getFinalScore() {
+		Preconditions.checkState(Double.isFinite(finalScore), "iterate must be called first");
+		return finalScore;
+	}
 }
