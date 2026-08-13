@@ -233,7 +233,7 @@ public class Abrahamson_2000_AttenRel extends AttenuationRelationship {
 
 	@Override
 	public void setPropagationEffectParams(SurfaceDistances distances) {
-		distanceRupParam.setValue(distances.getDistanceRup());
+		distanceRupParam.setValueIgnoreWarning(distances.getDistanceRup());
 		setDirectivityParams();
 	}
 

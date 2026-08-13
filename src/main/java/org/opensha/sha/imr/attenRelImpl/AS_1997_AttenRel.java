@@ -228,7 +228,7 @@ public class AS_1997_AttenRel extends AttenuationRelationship {
 
 	@Override
 	public void setPropagationEffectParams(SurfaceDistances distances) {
-		distanceRupParam.setValue(distances.getDistanceRup());
+		distanceRupParam.setValueIgnoreWarning(distances.getDistanceRup());
 
 		// here is the hanging wall term.  This should really be implemented as a
 		// formal propagation-effect parameter.
