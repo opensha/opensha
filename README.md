@@ -89,7 +89,7 @@ Maven:
 </dependency>
 ```
 
-The published jar is a "semi-fat" artifact: it bundles OpenSHA's own classes together with the vendored USGS `EventWebService` classes (`gov.usgs.earthquake.event`), so consumers do not need a separate `EventWebService` dependency. The MPJ parallel runtime is intentionally not declared as a Maven dependency; supply your own MPJ implementation on the classpath, or run OpenSHA's MPJ applications in single-node mode.
+The published jar is a "semi-fat" artifact: it bundles OpenSHA's own classes together with the USGS `EventWebService` classes (`gov.usgs.earthquake.event`), which is not available on Maven Central. It also omits the MPJ parallel library, which is platform- and implementation-dependent; users wishing to use OpenSHA's MPJ calculators must supply their own MPJ implementations (e.g., MPJExpress or FastMPJ).
 
 ### Publishing a release to Maven Central
 
