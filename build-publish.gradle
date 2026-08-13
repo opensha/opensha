@@ -1,0 +1,263 @@
+/*
+ * Publishing configuration for the OpenSHA framework artifact.
+ *
+ * - Local testing: ./gradlew publishToLocalTestMaven  ->  build/local-maven (unsigned/keyless)
+ * - Maven Central staging: gated on -PreleaseVersion=...  (see mavenPublishing block).
+ *
+ * The published artifact 'opensha' is a "semi-fat" jar: opensha main classes +
+ * the vendored EventWebService classes only (no other api deps). Sources and
+ * Javadoc jars contain opensha sources/docs only (EventWebService has no
+ * sources).
+ */
+
+/* ---------------------------------------------------------------------------
+ * Version: single source of truth = build.version (major.minor.build).
+ * -PreleaseVersion=... overrides for releases and gates Maven Central + signing.
+ * ------------------------------------------------------------------------- */
+def versionProps = new Properties()
+file("${projectDir}/build.version").withInputStream { versionProps.load(it) }
+project.ext.baseVersion = "${versionProps.getProperty('major.version')}.${versionProps.getProperty('minor.version')}.${versionProps.getProperty('build.number')}"
+
+group = 'org.opensha'
+version = findProperty('releaseVersion') ?: project.ext.baseVersion
+
+/* ---------------------------------------------------------------------------
+ * Semi-fat jar: opensha main classes + EventWebService classes only.
+ * Does NOT touch the plain 'jar', 'fatJar', or app-jar tasks.
+ * ------------------------------------------------------------------------- */
+// Distinct output dir so the semi-fat jar never collides with the plain 'jar'
+// task's build/libs/${project.name}-${version}.jar (same baseName/version, no
+// classifier). The published repo filename is still opensha-<version>.jar
+// (derived from the publication's artifactId/version, not this path).
+def publishLibDir = layout.buildDirectory.dir('publish-libs')
+def publishJarFile = publishLibDir.map { it.file("${project.name}-${version}.jar") }
+
+tasks.register('semiFatJar', Jar) {
+	group = 'build'
+	description = 'Assembles the publishable opensha jar: main classes + EventWebService classes only.'
+	archiveBaseName = project.name
+	archiveVersion = project.version
+	archiveClassifier = ''
+	destinationDirectory = publishLibDir
+	duplicatesStrategy = 'exclude'
+
+	from sourceSets.main.output
+
+	from(zipTree(file('lib/EventWebService.jar'))) {
+		exclude 'META-INF/*.SF'
+		exclude 'META-INF/*.DSA'
+		exclude 'META-INF/*.RSA'
+		exclude 'META-INF/MANIFEST.MF'
+		exclude 'javadoc/**'
+	}
+
+	// Include build.version (mirrors the plain 'jar' task).
+	from(project.projectDir) {
+		include 'build.version'
+	}
+
+	// Mirror fatJar: write git build files into projectDir before building,
+	// include them, and clean them up afterwards. writeBuildFiles comes from
+	// build-git.gradle (applied transitively via build-common.gradle).
+	doFirst {
+		writeBuildFiles()
+	}
+	from(project.projectDir) {
+		include 'build.githash'
+		include 'build.gitbranch'
+		include 'build.gitremoteurl'
+		include 'build.date'
+	}
+	doLast {
+		delete new File(projectDir, 'build.githash')
+		delete new File(projectDir, 'build.gitbranch')
+		delete new File(projectDir, 'build.gitremoteurl')
+		delete new File(projectDir, 'build.date')
+	}
+}
+
+/* ---------------------------------------------------------------------------
+ * Sources jar: opensha .java sources only (EventWebService has no sources).
+ * ------------------------------------------------------------------------- */
+def sourcesJarFile = layout.buildDirectory.map { it.file("libs/${project.name}-${version}-sources.jar") }
+
+tasks.register('sourcesJar', Jar) {
+	group = 'build'
+	description = 'Packages opensha main sources for publication.'
+	archiveBaseName = project.name
+	archiveVersion = project.version
+	archiveClassifier = 'sources'
+	duplicatesStrategy = 'exclude'
+	from sourceSets.main.allJava
+}
+
+/* ---------------------------------------------------------------------------
+ * Javadoc + javadoc jar: opensha javadoc only. opensha is a large legacy
+ * codebase, so suppress doclint and do not let stray doc errors fail a publish.
+ * ------------------------------------------------------------------------- */
+def javadocJarFile = layout.buildDirectory.map { it.file("libs/${project.name}-${version}-javadoc.jar") }
+
+javadoc {
+	options.encoding = 'UTF-8'
+	options.docEncoding = 'UTF-8'
+	options.charSet = 'UTF-8'
+	options.addStringOption('Xdoclint:none', '-quiet')
+	failOnError = false
+}
+
+tasks.register('javadocJar', Jar) {
+	group = 'build'
+	description = 'Packages opensha Javadoc for publication.'
+	archiveBaseName = project.name
+	archiveVersion = project.version
+	archiveClassifier = 'javadoc'
+	duplicatesStrategy = 'exclude'
+	dependsOn javadoc
+	from javadoc
+}
+
+/* ---------------------------------------------------------------------------
+ * POM metadata (BSD-3-Clause; canonical upstream scm = opensha/opensha).
+ * ------------------------------------------------------------------------- */
+def configureOpenshaPom = { MavenPom pom ->
+	pom.name = 'OpenSHA'
+	pom.description = 'OpenSHA earthquake hazard and engineering seismology toolkit.'
+	pom.url = 'https://github.com/opensha/opensha'
+	pom.licenses {
+		license {
+			name = 'BSD 3-Clause'
+			url = 'https://opensource.org/licenses/BSD-3-Clause'
+		}
+	}
+	pom.organization {
+		name = 'OpenSHA'
+		url = 'https://opensha.org'
+	}
+	pom.developers {
+		developer {
+			id = 'abhatthal'
+			name = 'Akash Bhatthal'
+			url = 'https://github.com/abhatthal'
+		}
+		developer {
+			id = 'kmilner'
+			name = 'Kevin Milner'
+			url = 'https://github.com/kevinmilner'
+		}
+	}
+	pom.scm {
+		connection = 'scm:git:https://github.com/opensha/opensha.git'
+		developerConnection = 'scm:git:https://github.com/opensha/opensha.git'
+		url = 'https://github.com/opensha/opensha'
+	}
+}
+
+/* ---------------------------------------------------------------------------
+ * POM dependencies: auto-iterate the api configuration and emit <dependency>
+ * nodes for deps with non-null group+name+version. File dependencies
+ * (mpj-0.44.jar, EventWebService.jar) have null group and are skipped
+ * automatically. runtimeOnly deps are emitted with scope 'runtime'.
+ *
+ * NOTE: the legacy oracle deps (sdoapi, ojdbc5) are 'api' and are included by
+ * default. To exclude them, uncomment the com.oracle.database filter below.
+ * ------------------------------------------------------------------------- */
+def addPomDependencies = { MavenPom pom ->
+	pom.withXml {
+		def dependenciesNode = asNode().dependencies[0]
+		if (dependenciesNode == null) {
+			dependenciesNode = asNode().appendNode('dependencies')
+		}
+
+		// api dependencies -> scope 'compile'
+		configurations.api.allDependencies.each { dep ->
+			if (dep.group != null && dep.name != null && dep.version != null) {
+				// Optional: skip legacy oracle deps:
+				// if (dep.group.startsWith('com.oracle.database')) return
+				def node = dependenciesNode.appendNode('dependency')
+				node.appendNode('groupId', dep.group)
+				node.appendNode('artifactId', dep.name)
+				node.appendNode('version', dep.version)
+				node.appendNode('scope', 'compile')
+				if (dep.excludeRules) {
+					def exclusions = node.appendNode('exclusions')
+					dep.excludeRules.each { rule ->
+						def ex = exclusions.appendNode('exclusion')
+						ex.appendNode('groupId', rule.group)
+						ex.appendNode('artifactId', rule.module ?: '*')
+					}
+				}
+			}
+		}
+
+		// runtimeOnly dependencies -> scope 'runtime'
+		configurations.runtimeOnly.allDependencies.each { dep ->
+			if (dep.group != null && dep.name != null && dep.version != null) {
+				def node = dependenciesNode.appendNode('dependency')
+				node.appendNode('groupId', dep.group)
+				node.appendNode('artifactId', dep.name)
+				node.appendNode('version', dep.version)
+				node.appendNode('scope', 'runtime')
+			}
+		}
+	}
+}
+
+/* ---------------------------------------------------------------------------
+ * Publication: single 'opensha' artifact. Local testing uses the 'localTest'
+ * repository below (unsigned); Maven Central publishing is gated on
+ * releaseVersion (see mavenPublishing block) so local runs stay keyless.
+ * ------------------------------------------------------------------------- */
+publishing {
+	publications {
+		opensha(MavenPublication) {
+			groupId = project.group
+			artifactId = 'opensha'
+			version = project.version
+
+			artifact(publishJarFile) {
+				builtBy tasks.named('semiFatJar')
+			}
+			artifact(sourcesJarFile) {
+				classifier = 'sources'
+				builtBy tasks.named('sourcesJar')
+			}
+			artifact(javadocJarFile) {
+				classifier = 'javadoc'
+				builtBy tasks.named('javadocJar')
+			}
+
+			pom {
+				configureOpenshaPom(delegate)
+				addPomDependencies(delegate)
+			}
+		}
+	}
+	repositories {
+		maven {
+			name = 'localTest'
+			url = layout.buildDirectory.dir('local-maven')
+		}
+	}
+}
+
+tasks.register('publishToLocalTestMaven') {
+	group = 'publishing'
+	description = 'Publishes the opensha binary, sources, and Javadoc jars to build/local-maven for local consumer testing.'
+	dependsOn 'publishAllPublicationsToLocalTestRepository'
+}
+
+/*
+ * Maven Central publishing (staging, manual release). Mirrors opensha-nshmp-shaded.
+ *
+ * Only enabled when releaseVersion is set (i.e. the publish-release GitHub
+ * Actions workflow), so that local 'publishToLocalTestMaven' remains unsigned
+ * and keyless. publishToMavenCentral(false) uploads to the Central Portal
+ * STAGING area; you then Close + Publish manually at
+ * https://central.sonatype.com/publishing/deployments.
+ */
+mavenPublishing {
+	if (findProperty('releaseVersion') != null) {
+		publishToMavenCentral(false)   // automaticRelease = false -> staging
+		signAllPublications()          // in-memory GPG signing
+	}
+}

@@ -12,6 +12,7 @@ java {
 }
 compileJava.options.encoding = "UTF-8"
 
+apply plugin: 'eclipse'
 eclipse {
     classpath {
         downloadSources = true
