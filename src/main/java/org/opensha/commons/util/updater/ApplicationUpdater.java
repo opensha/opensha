@@ -89,8 +89,6 @@ public class ApplicationUpdater {
 	private static final String PREF_SKIP_VERSION = "skipVersion_";
 	private static final String PREF_CLEANUP_ASKED = "cleanupAsked_";
 
-    // TODO: Publish updated alpha testing JARs, update README
-    // TODO: Commit and push working tree
 	private static final Preferences prefs = Preferences.userNodeForPackage(ApplicationUpdater.class);
 
 	private final GitHubClient client;
@@ -404,9 +402,18 @@ public class ApplicationUpdater {
 			GitHubAsset asset = selectAsset(release, assetPrefix);
 			if (asset == null) {
 				log.error("No release asset matched prefix '" + assetPrefix + "' for " + appName);
-				prompt.showMessage("No downloadable asset matched this application. "
-						+ "Please update manually.");
-				prompt.close();
+				String releasePage = release == null ? null : release.getHtmlUrl();
+				String message;
+				if (releasePage != null) {
+					message = "A new version of OpenSHA is available (" + latest
+							+ "), but the updated application could not be found in that "
+							+ "release.\nSee the release page for more information:\n" + releasePage;
+				} else {
+					message = "A new version of OpenSHA is available (" + latest
+							+ "), but the updated application could not be found.\n"
+							+ "Please update manually.";
+				}
+				prompt.showErrorMessage(message);
 				return;
 			}
 			Path downloaded;
@@ -414,7 +421,7 @@ public class ApplicationUpdater {
 				downloaded = downloader.download(asset, prompt);
 			} catch (IOException e) {
 				log.error("Download failed for " + asset.getName(), e);
-				prompt.showMessage("Download failed: " + e.getMessage()
+				prompt.showErrorMessage("Download failed: " + e.getMessage()
 						+ "\nPlease try again later.");
 				prompt.close();
 				return;
@@ -483,7 +490,7 @@ public class ApplicationUpdater {
 			if (runningJar == null) {
 				log.error("Cannot launch update: not running from a JAR (code source is not a file). "
 						+ "Update is staged at " + downloadedJar);
-				prompt.showMessage("Application is not running from a JAR; cannot auto-launch. "
+				prompt.showErrorMessage("Application is not running from a JAR; cannot auto-launch. "
 						+ "Please launch the new JAR manually: " + downloadedJar);
 				return;
 			}
@@ -500,7 +507,7 @@ public class ApplicationUpdater {
 		} catch (Throwable t) {
 			log.error("Launch failed", t);
 			try {
-				prompt.showMessage("Launch failed: " + t.getMessage()
+				prompt.showErrorMessage("Launch failed: " + t.getMessage()
 						+ "\nThe new JAR is staged beside the old one; launch it manually.");
 			} catch (Throwable ignore) {}
 		}

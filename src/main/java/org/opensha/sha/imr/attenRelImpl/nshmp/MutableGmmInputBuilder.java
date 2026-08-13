@@ -2,11 +2,11 @@ package org.opensha.sha.imr.attenRelImpl.nshmp;
 
 import java.util.BitSet;
 
-import gov.usgs.earthquake.nshmp.gmm.GmmInput;
-import gov.usgs.earthquake.nshmp.gmm.GmmInput.Field;
+import org.opensha.nshmp.shaded.gmm.NshmpGmmInput;
+import org.opensha.nshmp.shaded.gmm.NshmpGmmInput.Field;
 
 /**
- * Builder of {@link GmmInput} that is mutable. The nshmp-lib version can only set a value once before build() is called.
+ * Builder of {@link NshmpGmmInput} that is mutable. The nshmp-lib version can only set a value once before build() is called.
  * 
  * Values that have never been set will hold NaN
  */
@@ -31,7 +31,7 @@ class MutableGmmInputBuilder {
 		bitSet.set(index);
 	}
 	
-	static double valueForField(GmmInput input, Field field) {
+	static double valueForField(NshmpGmmInput input, Field field) {
 		switch (field) {
 		case DIP:
 			return input.dip;
@@ -65,17 +65,17 @@ class MutableGmmInputBuilder {
 		}
 	}
 	
-	void setAll(GmmInput input) {
+	void setAll(NshmpGmmInput input) {
 		for (Field field : FIELDS)
 			setValue(field, valueForField(input, field));
 	}
 	
 	/**
 	 * 
-	 * @return GmmInput containing all fields that have been set, and anything else set to NaN
+	 * @return NshmpGmmInput containing all fields that have been set, and anything else set to NaN
 	 */
-	GmmInput build() {
-		GmmInput.Builder builder = GmmInput.builder();
+	NshmpGmmInput build() {
+		NshmpGmmInput.Builder builder = NshmpGmmInput.builder();
 		
 		for (int i=0; i<LEN; i++) {
 			// this field has been set

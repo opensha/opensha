@@ -3,28 +3,28 @@ package org.opensha.sha.imr.attenRelImpl.nshmp;
 import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.ScalarIMR;
 
-import gov.usgs.earthquake.nshmp.gmm.Gmm;
+import org.opensha.nshmp.shaded.gmm.NshmpGmm;
 
 public class NSHMP_AttenRelSupplier implements AttenRelSupplier {
 	
-	private Gmm gmm;
+	private NshmpGmm gmm;
 	private String shortName;
 	private boolean parameterize;
 	private GroundMotionLogicTreeFilter treefilter;
 
-	public NSHMP_AttenRelSupplier(Gmm gmm) {
+	public NSHMP_AttenRelSupplier(NshmpGmm gmm) {
 		this(gmm, true);
 	}
 	
-	public NSHMP_AttenRelSupplier(Gmm gmm, boolean parameterize) {
+	public NSHMP_AttenRelSupplier(NshmpGmm gmm, boolean parameterize) {
 		this(gmm, gmm.name(), parameterize);
 	}
 	
-	public NSHMP_AttenRelSupplier(Gmm gmm, String shortName, boolean parameterize) {
+	public NSHMP_AttenRelSupplier(NshmpGmm gmm, String shortName, boolean parameterize) {
 		this(gmm, shortName, parameterize, null);
 	}
 	
-	public NSHMP_AttenRelSupplier(Gmm gmm, String shortName, boolean parameterize, GroundMotionLogicTreeFilter treefilter) {
+	public NSHMP_AttenRelSupplier(NshmpGmm gmm, String shortName, boolean parameterize, GroundMotionLogicTreeFilter treefilter) {
 		this.gmm = gmm;
 		this.shortName = shortName;
 		this.parameterize = parameterize;

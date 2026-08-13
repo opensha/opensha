@@ -61,7 +61,7 @@ public class UCERF2_PaleoRateConstraintFetcher {
 			HSSFRow row = sheet.getRow(r);
 			if(row==null) continue;
 			HSSFCell cell = row.getCell(1);
-			if(cell==null || cell.getCellType()==HSSFCell.CELL_TYPE_STRING) continue;
+			if(cell==null || cell.getCellType()==org.apache.poi.ss.usermodel.CellType.STRING) continue;
 			lat = cell.getNumericCellValue();
 			siteName = row.getCell(0).getStringCellValue().trim();
 			lon = row.getCell(2).getNumericCellValue();

@@ -595,7 +595,7 @@ public class TablesAndPlotsGen {
 			if (row == null)
 				continue;
 			HSSFCell cell = row.getCell(allSRL_col);
-			if (cell == null || cell.getCellType() != HSSFCell.CELL_TYPE_NUMERIC)
+			if (cell == null || cell.getCellType() != org.apache.poi.ss.usermodel.CellType.NUMERIC)
 				continue;
 			double length = cell.getNumericCellValue();
 			hist.add(length, 1d);

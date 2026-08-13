@@ -6,9 +6,11 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Graphics;
+import java.awt.GraphicsEnvironment;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -300,7 +302,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	
 	private static String errorInInitializationMessage = "Problem occured " +
 				"during initialization the ERF's. All parameters are set to default.";
-	
+
 	private ChangeListener trtChangeListener = (e) -> {
 		imrGuiBean.setTectonicRegions(getIncludedTectonicRegionTypes());
 	};
@@ -590,11 +592,10 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 		// frame setup
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setTitle("Hazard Curve Application (" + getAppVersion().getDisplayString() + ")");
-		setSize(1000, 720);
-		contentSplitPane.setDividerLocation(500);
-		Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
-		int xPos = (dim.width - getWidth()) / 2;
-		setLocation(xPos, 0);
+		Dimension appDim = getDefaultInitialDimension();
+		setSize(appDim);
+		contentSplitPane.setDividerLocation(getDefaultDividerLocation(appDim));
+		center(this);
 		setJMenuBar(menuBar);
 		getRootPane().setDefaultButton(computeButton);
 
@@ -608,6 +609,62 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 		//				IMR_GuiBean.IMR_PARAM_NAME).getEditor().
 		//				getValueEditor()).setSelectedIndex(9);
 
+	}
+	
+	public static int getDefaultDividerLocation(Dimension dims) {
+		// this sets the divider location from the left, i.e., the width of the chart
+		
+		// set to the greater of 500 or 60%
+		return Integer.max(500, (int)(dims.width*0.6));
+	}
+	
+	/*
+	 * Minimum dimensions for the app
+	 */
+	protected static int MIN_APP_WIDTH = 1000;
+	protected static int MIN_APP_HEIGHT = 720;
+	
+	/*
+	 * Preferred dimensions if the screen allows it
+	 */
+	protected static int PREF_APP_WIDTH = 1200;
+	protected static double PREF_APP_ASPECT_RATIO = 1.5;
+	/**
+	 * Buffer for app size relative to available screen size
+	 */
+	protected static int APP_SCREEN_BUFFER = 50;
+	
+	public static Dimension getDefaultInitialDimension() {
+		// initial default; used if detection fails
+		int width = MIN_APP_WIDTH;
+		int height = MIN_APP_HEIGHT;
+		
+		try {
+			double aspectRatio = PREF_APP_ASPECT_RATIO;
+			int prefWidth = PREF_APP_WIDTH;
+			int prefHeight = (int)(prefWidth / aspectRatio);
+			Rectangle bounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+			
+			width = Integer.max(MIN_APP_WIDTH, Integer.min(prefWidth, bounds.width - APP_SCREEN_BUFFER));
+			if (width < prefWidth)
+				// recalculate aspect ratio
+				prefHeight = (int)(prefWidth / aspectRatio);
+			height = Integer.max(MIN_APP_HEIGHT, Integer.min(prefHeight, bounds.height - APP_SCREEN_BUFFER));
+//			System.out.println("App dimensions: "+width+" x "+height);
+		} catch (Exception e) {}
+		return new Dimension(width, height);
+	}
+	
+	/**
+	 * Centers the application on the user's main screen, after accounting for an OS menu bars and such
+	 */
+	public static void center(JFrame window) {
+		try {
+			Rectangle bounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+			int xPos = (bounds.width - window.getWidth()) / 2;
+			int yPos = (bounds.height - window.getHeight()) / 2;
+			window.setLocation(xPos, yPos);
+		} catch (Exception e) {}
 	}
 
 	/* implementation */ 

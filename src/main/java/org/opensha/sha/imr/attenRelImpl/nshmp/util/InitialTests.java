@@ -12,66 +12,66 @@ import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.attenRelImpl.nshmp.GroundMotionLogicTreeFilter;
 import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_GMM_Wrapper;
 
-import gov.usgs.earthquake.nshmp.gmm.Gmm;
-import gov.usgs.earthquake.nshmp.gmm.GmmInput;
-import gov.usgs.earthquake.nshmp.gmm.GmmInput.Constraints;
-import gov.usgs.earthquake.nshmp.gmm.GmmInput.Field;
-import gov.usgs.earthquake.nshmp.gmm.GroundMotion;
-import gov.usgs.earthquake.nshmp.gmm.GroundMotionModel;
-import gov.usgs.earthquake.nshmp.gmm.GroundMotions;
-import gov.usgs.earthquake.nshmp.gmm.Imt;
-import gov.usgs.earthquake.nshmp.gmm.UsgsPrviBackbone2025;
-import gov.usgs.earthquake.nshmp.tree.Branch;
-import gov.usgs.earthquake.nshmp.tree.LogicTree;
+import org.opensha.nshmp.shaded.gmm.NshmpGmm;
+import org.opensha.nshmp.shaded.gmm.NshmpGmmInput;
+import org.opensha.nshmp.shaded.gmm.NshmpGmmInput.Constraints;
+import org.opensha.nshmp.shaded.gmm.NshmpGmmInput.Field;
+import org.opensha.nshmp.shaded.gmm.NshmpGroundMotion;
+import org.opensha.nshmp.shaded.gmm.NshmpGroundMotionModel;
+import org.opensha.nshmp.shaded.gmm.NshmpGroundMotions;
+import org.opensha.nshmp.shaded.gmm.NshmpImt;
+import org.opensha.nshmp.shaded.gmm.NshmpUsgsPrviBackbone2025;
+import org.opensha.nshmp.shaded.tree.NshmpBranch;
+import org.opensha.nshmp.shaded.tree.NshmpLogicTree;
 
 class InitialTests {
 
 	public static void main(String[] args) {
 		GroundMotionLogicTreeFilter filter = null;
 		
-//		Gmm[] gmms = Gmm.values();
+//		NshmpGmm[] gmms = NshmpGmm.values();
 		
-//		Gmm[] gmms = {
-//				Gmm.ASK_14,
-//				Gmm.ASK_14_BASE,
-//				Gmm.ASK_14_BASIN,
-//				Gmm.ASK_14_CYBERSHAKE,
-//				Gmm.ASK_14_VS30_MEASURED
+//		NshmpGmm[] gmms = {
+//				NshmpGmm.ASK_14,
+//				NshmpGmm.ASK_14_BASE,
+//				NshmpGmm.ASK_14_BASIN,
+//				NshmpGmm.ASK_14_CYBERSHAKE,
+//				NshmpGmm.ASK_14_VS30_MEASURED
 //		};
 		
-//		Gmm[] gmms = {
-//				Gmm.COMBINED_ACTIVE_CRUST_2023,
-//				Gmm.COMBINED_ACTIVE_CRUST_2023_LOS_ANGELES,
-//				Gmm.COMBINED_ACTIVE_CRUST_2023_SAN_FRANCISCO,
+//		NshmpGmm[] gmms = {
+//				NshmpGmm.COMBINED_ACTIVE_CRUST_2023,
+//				NshmpGmm.COMBINED_ACTIVE_CRUST_2023_LOS_ANGELES,
+//				NshmpGmm.COMBINED_ACTIVE_CRUST_2023_SAN_FRANCISCO,
 //		};
 		
-//		Gmm[] gmms = {
-//				Gmm.COMBINED_INTERFACE_2023_SEATTLE
+//		NshmpGmm[] gmms = {
+//				NshmpGmm.COMBINED_INTERFACE_2023_SEATTLE
 //		};
 		
-//		Gmm[] gmms = {
-//				Gmm.PRVI_2025_ACTIVE_CRUST,
-//				Gmm.PRVI_2025_ACTIVE_CRUST_ADJUSTED,
-//				Gmm.PRVI_2025_INTERFACE,
-//				Gmm.PRVI_2025_INTERFACE_ADJUSTED,
-//				Gmm.PRVI_2025_INTRASLAB,
-//				Gmm.PRVI_2025_INTRASLAB_ADJUSTED,
-//				Gmm.TOTAL_TREE_PRVI_ACTIVE_CRUST_2025,
-//				Gmm.TOTAL_TREE_PRVI_INTERFACE_2025,
-//				Gmm.TOTAL_TREE_PRVI_INTRASLAB_2025,
-//				Gmm.COMBINED_PRVI_ACTIVE_CRUST_2025,
-//				Gmm.COMBINED_PRVI_INTERFACE_2025,
-//				Gmm.COMBINED_PRVI_INTRASLAB_2025,
+//		NshmpGmm[] gmms = {
+//				NshmpGmm.PRVI_2025_ACTIVE_CRUST,
+//				NshmpGmm.PRVI_2025_ACTIVE_CRUST_ADJUSTED,
+//				NshmpGmm.PRVI_2025_INTERFACE,
+//				NshmpGmm.PRVI_2025_INTERFACE_ADJUSTED,
+//				NshmpGmm.PRVI_2025_INTRASLAB,
+//				NshmpGmm.PRVI_2025_INTRASLAB_ADJUSTED,
+//				NshmpGmm.TOTAL_TREE_PRVI_ACTIVE_CRUST_2025,
+//				NshmpGmm.TOTAL_TREE_PRVI_INTERFACE_2025,
+//				NshmpGmm.TOTAL_TREE_PRVI_INTRASLAB_2025,
+//				NshmpGmm.COMBINED_PRVI_ACTIVE_CRUST_2025,
+//				NshmpGmm.COMBINED_PRVI_INTERFACE_2025,
+//				NshmpGmm.COMBINED_PRVI_INTRASLAB_2025,
 //		};
-//		filter = new GroundMotionLogicTreeFilter.StringMatching(GroundMotions.EPI_LO, UsgsPrviBackbone2025.SIGMA_PRVI_ID);
+//		filter = new GroundMotionLogicTreeFilter.StringMatching(NshmpGroundMotions.EPI_LO, NshmpUsgsPrviBackbone2025.SIGMA_PRVI_ID);
 		
-		Gmm[] gmms = { Gmm.TOTAL_TREE_CONUS_STABLE_CRUST_2023 };
+		NshmpGmm[] gmms = { NshmpGmm.TOTAL_TREE_CONUS_STABLE_CRUST_2023 };
 		
-//		GroundMotionModel gmm = Gmm.ASK_14.instance(Imt.PGA);
-//		GroundMotionModel gmm = Gmm.ASK_14_BASE.instance(Imt.PGA);
+//		NshmpGroundMotionModel gmm = NshmpGmm.ASK_14.instance(NshmpImt.PGA);
+//		NshmpGroundMotionModel gmm = NshmpGmm.ASK_14_BASE.instance(NshmpImt.PGA);
 		
 		List<NSHMP_GMM_Wrapper> wrappers = new ArrayList<>();
-		for (Gmm gmm : gmms) {
+		for (NshmpGmm gmm : gmms) {
 			try {
 				wrappers.add(new NSHMP_GMM_Wrapper.Single(gmm));
 				
@@ -100,18 +100,18 @@ class InitialTests {
 		
 //		wrappers.add((NSHMP_GMM_Wrapper)AttenRelRef.USGS_NSHM23_ACTIVE.get());
 //		
-//		GmmInput input = GmmInput.builder().withDefaults().build();
+//		NshmpGmmInput input = NshmpGmmInput.builder().withDefaults().build();
 		
 		for (NSHMP_GMM_Wrapper wrapper : wrappers) {
 			System.out.println("GMM: "+wrapper.getName());
 			wrapper.setParamDefaults();
 			
-			LogicTree<GroundMotion> result;
+			NshmpLogicTree<NshmpGroundMotion> result;
 			
 //			System.out.print("\tBuilding instance...");
-//			GroundMotionModel gmm;
+//			NshmpGroundMotionModel gmm;
 //			try {
-//				gmm = gmmRef.instance(Imt.PGA);
+//				gmm = gmmRef.instance(NshmpImt.PGA);
 //				System.out.println("Success!");
 //			} catch (Exception e) {
 //				System.out.println("FAILED: "+e.getMessage());
@@ -127,10 +127,10 @@ class InitialTests {
 //				continue;
 //			}
 //			
-//			System.out.println("\tReturned LogicTree:");
-//			for (Branch<GroundMotion> gmBranch : result) {
+//			System.out.println("\tReturned NshmpLogicTree:");
+//			for (NshmpBranch<NshmpGroundMotion> gmBranch : result) {
 //				double weight = gmBranch.weight();
-//				GroundMotion value = gmBranch.value();
+//				NshmpGroundMotion value = gmBranch.value();
 //				String id = gmBranch.id();
 //				System.out.println("\t\t"+id+" (weight="+(float)weight+"): "+value);
 //			}
@@ -155,10 +155,10 @@ class InitialTests {
 				wrapper.setGroundMotionTreeFilter(filter);
 			
 			if (wrapper instanceof NSHMP_GMM_Wrapper.Single) {
-				GroundMotionModel instance = ((NSHMP_GMM_Wrapper.Single)wrapper).getCurrentGMM_Instance();
+				NshmpGroundMotionModel instance = ((NSHMP_GMM_Wrapper.Single)wrapper).getCurrentGMM_Instance();
 				System.out.println("\tInstance class: "+instance.getClass().getName());
 				Class<?> superclass = instance.getClass().getSuperclass();
-				while (getAllInterfaces(superclass).contains(GroundMotionModel.class)) {
+				while (getAllInterfaces(superclass).contains(NshmpGroundMotionModel.class)) {
 //				while (true) {
 					System.out.println("\t\tSuperclass:\t"+superclass.getName());
 					superclass = superclass.getSuperclass();
@@ -166,7 +166,7 @@ class InitialTests {
 						break;
 				}
 			}
-//			while (GroundMotionModel.class.instan)
+//			while (NshmpGroundMotionModel.class.instan)
 //			instance.getClass().super
 			
 			System.out.println("\tParameter List:");
@@ -201,10 +201,10 @@ class InitialTests {
 				continue;
 			}
 			
-			System.out.println("\tReturned LogicTree:");
-			for (Branch<GroundMotion> gmBranch : result) {
+			System.out.println("\tReturned NshmpLogicTree:");
+			for (NshmpBranch<NshmpGroundMotion> gmBranch : result) {
 				double weight = gmBranch.weight();
-				GroundMotion value = gmBranch.value();
+				NshmpGroundMotion value = gmBranch.value();
 				String id = gmBranch.id();
 				System.out.println("\t\t"+id+" (weight="+(float)weight+"): "+value);
 			}
@@ -217,11 +217,11 @@ class InitialTests {
 		NSHMP_GMM_Wrapper listGMM = (NSHMP_GMM_Wrapper)AttenRelRef.USGS_NSHM23_ACTIVE.get();
 		listGMM.setParamDefaults();
 		System.out.println("Testing list GMM: "+listGMM.getName());
-		LogicTree<GroundMotion> result = listGMM.getGroundMotionTree();
-		System.out.println("\tReturned LogicTree:");
-		for (Branch<GroundMotion> gmBranch : result) {
+		NshmpLogicTree<NshmpGroundMotion> result = listGMM.getGroundMotionTree();
+		System.out.println("\tReturned NshmpLogicTree:");
+		for (NshmpBranch<NshmpGroundMotion> gmBranch : result) {
 			double weight = gmBranch.weight();
-			GroundMotion value = gmBranch.value();
+			NshmpGroundMotion value = gmBranch.value();
 			String id = gmBranch.id();
 			System.out.println("\t\t"+id+" (weight="+(float)weight+"): "+value);
 		}

@@ -1,0 +1,46 @@
+# Required repository secrets (in the 'maven-central-staging' environment):
+#   MAVEN_CENTRAL_USERNAME / MAVEN_CENTRAL_PASSWORD  - Maven Central user token
+#   SIGNING_KEY_ID          - last 8 chars of the GPG key ID
+#   SIGNING_PASSWORD        - GPG key passphrase
+#   GPG_KEY_CONTENTS        - armored GPG private key (gpg --export-secret-keys --armor)
+name: Publish Release to Maven Central Staging
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag to publish (e.g. v26.8.0)'
+        required: true
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: maven-central-staging
+    steps:
+      # 1. Checkout the specific tag provided in the input
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.version }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      # 2. Strip the leading 'v' to get the bare version, injected as releaseVersion
+      #    (its presence also flips the mavenPublishing gate in build-publish.gradle on).
+      - name: Derive version from input
+        id: ver
+        run: |
+          INPUT_VER="${{ inputs.version }}"
+          echo "version=${INPUT_VER#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish
+        run: ./gradlew publishToMavenCentral --no-configuration-cache
+        env:
+          ORG_GRADLE_PROJECT_releaseVersion: ${{ steps.ver.outputs.version }}
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_KEY_CONTENTS }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.SIGNING_KEY_ID }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}

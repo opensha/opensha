@@ -29,17 +29,17 @@ import org.opensha.sha.util.TectonicRegionType;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
-import gov.usgs.earthquake.nshmp.gmm.Gmm;
-import gov.usgs.earthquake.nshmp.gmm.Gmm.Type;
-import gov.usgs.earthquake.nshmp.gmm.GmmInput;
-import gov.usgs.earthquake.nshmp.gmm.GmmInput.Constraints;
-import gov.usgs.earthquake.nshmp.gmm.GmmInput.Field;
-import gov.usgs.earthquake.nshmp.gmm.GroundMotion;
-import gov.usgs.earthquake.nshmp.gmm.GroundMotionModel;
-import gov.usgs.earthquake.nshmp.gmm.Imt;
-import gov.usgs.earthquake.nshmp.tree.Branch;
-import gov.usgs.earthquake.nshmp.tree.LogicTree;
-import gov.usgs.earthquake.nshmp.tree.LogicTree.Builder;
+import org.opensha.nshmp.shaded.gmm.NshmpGmm;
+import org.opensha.nshmp.shaded.gmm.NshmpGmm.Type;
+import org.opensha.nshmp.shaded.gmm.NshmpGmmInput;
+import org.opensha.nshmp.shaded.gmm.NshmpGmmInput.Constraints;
+import org.opensha.nshmp.shaded.gmm.NshmpGmmInput.Field;
+import org.opensha.nshmp.shaded.gmm.NshmpGroundMotion;
+import org.opensha.nshmp.shaded.gmm.NshmpGroundMotionModel;
+import org.opensha.nshmp.shaded.gmm.NshmpImt;
+import org.opensha.nshmp.shaded.tree.NshmpBranch;
+import org.opensha.nshmp.shaded.tree.NshmpLogicTree;
+import org.opensha.nshmp.shaded.tree.NshmpLogicTree.Builder;
 
 /**
  * Experimental GMM for joint crustal-subduction ruptures. Currently assumes hardcoded crustal and interface magnitude
@@ -50,16 +50,16 @@ public class JointRuptureExperimentalIMR extends NSHMP_GMM_Wrapper {
 	public static final String NAME = "Joint Rupture Experimental IMR";
 	public static final String SHORT_NAME = "JointRupExperimentIMR";
 	
-	public static final Gmm DEFAULT_CRUSTAL_GMM = Gmm.ASK_14_BASE;
-	public static final Gmm DEFAULT_INTERFACE_GMM = Gmm.PSBAH_20_GLOBAL_INTERFACE_NO_EPI;
+	public static final NshmpGmm DEFAULT_CRUSTAL_GMM = NshmpGmm.ASK_14_BASE;
+	public static final NshmpGmm DEFAULT_INTERFACE_GMM = NshmpGmm.PSBAH_20_GLOBAL_INTERFACE_NO_EPI;
 
 	public static final String CRUSTAL_GMM_PROP_NAME = "JointRupCrustalGMM";
 	public static final String INTERFACE_GMM_PROP_NAME = "JointRupInterfaceGMM";
 	
-	private Gmm crustalGMM;
-	private EnumMap<Imt, GroundMotionModel> crustalInstanceMap;
-	private Gmm interfaceGMM;
-	private EnumMap<Imt, GroundMotionModel> interfaceInstanceMap;
+	private NshmpGmm crustalGMM;
+	private EnumMap<NshmpImt, NshmpGroundMotionModel> crustalInstanceMap;
+	private NshmpGmm interfaceGMM;
+	private EnumMap<NshmpImt, NshmpGroundMotionModel> interfaceInstanceMap;
 	
 	private Constraints[] allConstraints;
 	
@@ -67,19 +67,19 @@ public class JointRuptureExperimentalIMR extends NSHMP_GMM_Wrapper {
 		this(getOrDefault(CRUSTAL_GMM_PROP_NAME, DEFAULT_CRUSTAL_GMM), getOrDefault(INTERFACE_GMM_PROP_NAME, DEFAULT_INTERFACE_GMM));
 	}
 	
-	private static Gmm getOrDefault(String propertyName, Gmm defaultValue) {
+	private static NshmpGmm getOrDefault(String propertyName, NshmpGmm defaultValue) {
 		String propVal = System.getProperty(propertyName);
 		if (propVal == null)
 			return defaultValue;
-		return Gmm.valueOf(propertyName);
+		return NshmpGmm.valueOf(propertyName);
 	}
 	
-	public JointRuptureExperimentalIMR(Gmm crustalGMM, Gmm interfaceGMM) {
+	public JointRuptureExperimentalIMR(NshmpGmm crustalGMM, NshmpGmm interfaceGMM) {
 		super(NAME, SHORT_NAME, false, null);
 		this.crustalGMM = crustalGMM;
-		this.crustalInstanceMap = new EnumMap<>(Imt.class);
+		this.crustalInstanceMap = new EnumMap<>(NshmpImt.class);
 		this.interfaceGMM = interfaceGMM;
-		this.interfaceInstanceMap = new EnumMap<>(Imt.class);
+		this.interfaceInstanceMap = new EnumMap<>(NshmpImt.class);
 		
 		allConstraints = new Constraints[] {
 				crustalGMM.constraints(),
@@ -101,9 +101,9 @@ public class JointRuptureExperimentalIMR extends NSHMP_GMM_Wrapper {
 		return null;
 	}
 	
-	private GroundMotionModel getBuildGMM(Gmm gmm, EnumMap<Imt, GroundMotionModel> instanceMap, Imt imt) {
+	private NshmpGroundMotionModel getBuildGMM(NshmpGmm gmm, EnumMap<NshmpImt, NshmpGroundMotionModel> instanceMap, NshmpImt imt) {
 		Preconditions.checkNotNull(imt);
-		GroundMotionModel gmmInstance = instanceMap.get(imt);
+		NshmpGroundMotionModel gmmInstance = instanceMap.get(imt);
 		if (gmmInstance == null) {
 			gmmInstance = gmm.instance(imt);
 			instanceMap.put(imt, gmmInstance);
@@ -112,8 +112,8 @@ public class JointRuptureExperimentalIMR extends NSHMP_GMM_Wrapper {
 	}
 
 	@Override
-	protected LogicTree<GroundMotion> buildGroundMotionTree() {
-		GmmInput origInput = getCurrentGmmInput();
+	protected NshmpLogicTree<NshmpGroundMotion> buildGroundMotionTree() {
+		NshmpGmmInput origInput = getCurrentGmmInput();
 		
 		EqkRupture eqkRup = getEqkRupture();
 		Preconditions.checkNotNull(eqkRup);
@@ -121,8 +121,8 @@ public class JointRuptureExperimentalIMR extends NSHMP_GMM_Wrapper {
 		
 		double origMag = eqkRup.getMag();
 		
-		GmmInput crustalInput = null;
-		GmmInput interfaceInput = null;
+		NshmpGmmInput crustalInput = null;
+		NshmpGmmInput interfaceInput = null;
 		
 		if (surf instanceof CompoundSurface) {
 			// possibly joint
@@ -238,11 +238,11 @@ public class JointRuptureExperimentalIMR extends NSHMP_GMM_Wrapper {
 			else
 				interfaceInput = origInput;
 		}
-		Imt imt = getCurrentIMT();
-		LogicTree<GroundMotion> crustalTree = null;
+		NshmpImt imt = getCurrentIMT();
+		NshmpLogicTree<NshmpGroundMotion> crustalTree = null;
 		if (crustalInput != null)
 			crustalTree = getBuildGMM(crustalGMM, crustalInstanceMap, imt).calc(crustalInput);
-		LogicTree<GroundMotion> interfaceTree = null;
+		NshmpLogicTree<NshmpGroundMotion> interfaceTree = null;
 		if (interfaceInput != null)
 			interfaceTree = getBuildGMM(interfaceGMM, interfaceInstanceMap, imt).calc(interfaceInput);
 		
@@ -253,13 +253,13 @@ public class JointRuptureExperimentalIMR extends NSHMP_GMM_Wrapper {
 		if (interfaceTree == null)
 			return crustalTree;
 		// we have both, convolve
-		Builder<GroundMotion> builder = LogicTree.builder("joint-gmms");
-		for (Branch<GroundMotion> crustalBranch : crustalTree) {
-			for (Branch<GroundMotion> interfaceBranch : interfaceTree) {
+		Builder<NshmpGroundMotion> builder = NshmpLogicTree.builder("joint-gmms");
+		for (NshmpBranch<NshmpGroundMotion> crustalBranch : crustalTree) {
+			for (NshmpBranch<NshmpGroundMotion> interfaceBranch : interfaceTree) {
 				double weight = crustalBranch.weight() * interfaceBranch.weight();
 				String id = "joint-"+crustalBranch.id()+"-"+interfaceBranch.id();
 				
-				GroundMotion value = calcJointGroundMotion(crustalBranch.value(), interfaceBranch.value());
+				NshmpGroundMotion value = calcJointGroundMotion(crustalBranch.value(), interfaceBranch.value());
 				builder.addBranch(id, value, weight);
 			}
 		}
@@ -281,7 +281,7 @@ public class JointRuptureExperimentalIMR extends NSHMP_GMM_Wrapper {
 	 * rho ~ 0.5 is the suggested base ("shared event + shared site, independent
 	 * paths"); bracket with 0.3 / 0.7 for sensitivity.
 	 */
-	public static GroundMotion calcJointGroundMotion(GroundMotion crustalGM, GroundMotion interfaceGM) {
+	public static NshmpGroundMotion calcJointGroundMotion(NshmpGroundMotion crustalGM, NshmpGroundMotion interfaceGM) {
 		double mc = Math.exp(crustalGM.mean());
 		double mi = Math.exp(interfaceGM.mean());
 		double mc2 = mc * mc;
@@ -312,7 +312,7 @@ public class JointRuptureExperimentalIMR extends NSHMP_GMM_Wrapper {
 //
 //		// First-order var is non-negative for rho in [-1,1]; clamp for safety.
 //		double sigma = Math.sqrt(Math.max(varJ, 0.0));
-		GroundMotion jointGM = GroundMotion.create(lnMean, sigma);
+		NshmpGroundMotion jointGM = NshmpGroundMotion.create(lnMean, sigma);
 //		System.out.println("JointGM:\t"+jointGM);
 //		System.out.println("\tCrustal:\t"+crustalGM);
 //		System.out.println("\tInterface:\t"+interfaceGM);
@@ -335,8 +335,8 @@ public class JointRuptureExperimentalIMR extends NSHMP_GMM_Wrapper {
 	}
 
 	@Override
-	protected Set<Imt> getSupportedIMTs() {
-		HashSet<Imt> imts = new HashSet<>(crustalGMM.supportedImts());
+	protected Set<NshmpImt> getSupportedIMTs() {
+		HashSet<NshmpImt> imts = new HashSet<>(crustalGMM.supportedImts());
 		imts.retainAll(interfaceGMM.supportedImts());
 		Preconditions.checkState(!imts.isEmpty(), "No common IMTs supported by both crustal and interface GMMs");
 		return imts;
@@ -348,7 +348,7 @@ public class JointRuptureExperimentalIMR extends NSHMP_GMM_Wrapper {
 		for (Field field : Field.values()) {
 			for (Constraints constraints : allConstraints) {
 				if (constraints.get(field).isPresent()) {
-					// this field is used by at least one Gmm
+					// this field is used by at least one NshmpGmm
 					
 					builder.add(field);
 					break;
