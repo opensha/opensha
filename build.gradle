@@ -195,9 +195,14 @@ createAppTask("appJarIM-GUI", "IMEventSetCalculatorGUI"+appSuffix, "org.opensha.
 
 task appZipIM(type: Zip) {
 	dependsOn 'appJarIM-CLT'
-	from ('build/libs/') {
-		include 'IMEventSetCalculatorCLT-'+getDate()+'-'+getGitHash()+'.jar'
-		rename (('IMEventSetCalculatorCLT-'+getDate()+'-'+getGitHash()+'.jar'), 'IMEventSetCalculatorCLT.jar')
+	// Reference the CLT jar produced by appJarIM-CLT directly, rather than
+	// reconstructing its filename. createAppTask leaves archiveVersion unset, so
+	// Gradle appends project.version (set by build-publish.gradle), producing a
+	// name like IMEventSetCalculatorCLT-<date>-<githash>-<version>.jar. A hardcoded
+	// glob without the version segment would never match. Using the task's own
+	// archiveFile keeps the zip in sync regardless of date/githash/version.
+	from(tasks.named('appJarIM-CLT').get().archiveFile) {
+		rename { 'IMEventSetCalculatorCLT.jar' }
 	}
 	from ('src/main/java/org/opensha/sha/calc/IM_EventSet/') {
 		include '*.txt'
