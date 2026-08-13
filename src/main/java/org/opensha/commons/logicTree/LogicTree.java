@@ -762,8 +762,9 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			Preconditions.checkState(allFixedWeights,
 					"Cannot (yet) do pairwise-iteration on a logic tree with branch-dependent weighting");
 			PairwiseLogicTreeNodeSwapIteration<E> iteration = new PairwiseLogicTreeNodeSwapIteration<>(levels, branches, levelFixedWeights);
-			int nIters = Integer.max(10000, numSamples*100);
-			iteration.iterate(nIters, r, false);
+			int nIters = Integer.min(10000000, Integer.max(100000, numSamples*1000));
+			iteration.iterate(nIters, r);
+//			System.exit(0);
 		}
 		
 		LogicTree<E> tree = fromExisting(levels, branches);
@@ -860,13 +861,6 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		tree.samplingMethod = inputTree.samplingMethod;
 		
 		return tree;
-	}
-	
-	public static void main(String[] args) {
-		LogicTree<U3LogicTreeBranchNode<?>> fullU3 = buildExhaustive(U3LogicTreeBranch.getLogicTreeLevels(), true);
-		System.out.println("Built "+fullU3.branches.size()+" U3 branches. Weight: "+(float)fullU3.getTotalWeight());
-		System.out.println("FM3.1 branches: "+fullU3.matchingAll(FaultModels.FM3_1).branches.size());
-		System.out.println("FM3.1or2 branches: "+fullU3.matchingAny(FaultModels.FM3_1, FaultModels.FM3_2).branches.size());
 	}
 
 	@Override

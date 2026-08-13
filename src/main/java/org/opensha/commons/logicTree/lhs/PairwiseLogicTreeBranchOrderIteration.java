@@ -4,6 +4,7 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.numbers.core.Precision;
 import org.opensha.commons.logicTree.BranchWeightProvider;
@@ -22,6 +23,7 @@ import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeTools.LevelData;
 import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeTools.PairwiseScorer;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 
 /**
  * Pairwise optimizer for index-by-index combinations of multiple already-sampled logic trees. It leaves the first
@@ -46,6 +48,8 @@ public class PairwiseLogicTreeBranchOrderIteration<E extends LogicTreeNode> {
 
 	private double initialMisfit = Double.NaN;
 	private double finalMisfit = Double.NaN;
+	
+	public static boolean VERBOSE_DEFAULT = false;
 
 	@SuppressWarnings("unchecked")
 	public PairwiseLogicTreeBranchOrderIteration(List<LogicTree<E>> trees) {
@@ -190,6 +194,10 @@ public class PairwiseLogicTreeBranchOrderIteration<E extends LogicTreeNode> {
 		return ret;
 	}
 
+	public void iterate(int numIterations, Random r) {
+		iterate(numIterations, r, VERBOSE_DEFAULT);
+	}
+
 	public void iterate(int numIterations, Random r, boolean verbose) {
 		Preconditions.checkState(!movableTreeIndexes.isEmpty(),
 				"No non-fixed tree has any level with multiple sampled choices");
@@ -199,21 +207,31 @@ public class PairwiseLogicTreeBranchOrderIteration<E extends LogicTreeNode> {
 		if (verbose) {
 			System.out.println("===============================");
 			System.out.println("Initial cross-tree misfits:");
-			printStats();
+			scorer.printStats(pairwiseLevels);
 			System.out.println("===============================");
 		}
 		double score = scorer.score();
 		initialMisfit = score;
 
-		System.out.println("Pairwise iterating "+trees.size()+" logic trees with "+numSamples
-				+" branches and "+numIterations+" iterations");
+		DecimalFormat iterDF = new DecimalFormat("0");
+		iterDF.setGroupingSize(3);
+		iterDF.setGroupingUsed(true);
 
-		DecimalFormat pDF = new DecimalFormat("0.00%");
+		System.out.println("Pairwise iterating "+trees.size()+" logic trees with "+iterDF.format(numSamples)
+				+" branches and "+iterDF.format(numIterations)+" iterations");
+
+		int maxPrintDelta = Integer.max(100, numIterations/50);
+		int initialPrintDelta = Integer.min(1000, maxPrintDelta);
+		int printDelta = initialPrintDelta;
+		
+		Stopwatch watch = Stopwatch.createStarted();
+		
 		for (int n=0; n<numIterations; n++) {
-			if (verbose && n % 1000 == 0)
-				System.out.println("Pairwise tree iteration "+n+"; totScore="+(float)score
-						+"; avgScore="+(float)(score/scorer.size())
-						+"; reduction="+formatReduction(pDF, initialMisfit, score));
+			if (verbose && n % printDelta == 0) {
+				System.out.println("Pairwise tree iteration "+iterDF.format(n)+";\t"+scorer.summaryStats());
+				if (n == printDelta*10)
+					printDelta = Integer.min(printDelta*10, maxPrintDelta);
+			}
 
 			int branchIndex1 = r.nextInt(numSamples);
 			int branchIndex2 = r.nextInt(numSamples);
@@ -237,18 +255,21 @@ public class PairwiseLogicTreeBranchOrderIteration<E extends LogicTreeNode> {
 				myBranchIndexes[branchIndex2] = originalIndex1;
 			}
 		}
+		watch.stop();
 
 		finalMisfit = scorer.recalculateScore();
 		Preconditions.checkState(Precision.equals(score, finalMisfit, 1e-3),
 				"Score drift! Calculated final=%s, iterated=%s, diff=%s", finalMisfit, score, score-finalMisfit);
-		if (verbose)
-			System.out.println("===============================");
-		System.out.println("Final normalized score after "+numIterations+" iterations: sum="+(float)finalMisfit
-				+"; avg="+(float)(finalMisfit/scorer.size())+"; reduction="+formatReduction(pDF, initialMisfit, finalMisfit));
 		if (verbose) {
-			printStats();
+			System.out.println("===============================");
+			scorer.printStats(pairwiseLevels);
 			System.out.println("===============================");
 		}
+		System.out.println("Final normalized score after "+iterDF.format(numIterations)+" iterations:\t"+scorer.summaryStats());
+		double elapsed = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+		System.out.println("\tTook "+(float)elapsed+" seconds\t("+iterDF.format(numIterations/elapsed)+" iter/sec)");
+		if (verbose)
+			System.out.println("===============================");
 	}
 
 	private boolean matchesAll(int sample1, int sample2, int[] levelIndexes) {
@@ -257,16 +278,6 @@ public class PairwiseLogicTreeBranchOrderIteration<E extends LogicTreeNode> {
 					&& !levelData.get(levelIndex).matches(sample1, sample2))
 				return false;
 		return true;
-	}
-
-	private void printStats() {
-		scorer.printStats(pairwiseLevels);
-	}
-
-	private static String formatReduction(DecimalFormat pDF, double initialMisfit, double misfit) {
-		if (initialMisfit == 0d)
-			return pDF.format(0d);
-		return pDF.format((initialMisfit-misfit)/initialMisfit);
 	}
 
 	public double getInitialMisfit() {

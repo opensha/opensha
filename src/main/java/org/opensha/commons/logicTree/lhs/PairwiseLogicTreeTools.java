@@ -46,14 +46,23 @@ final class PairwiseLogicTreeTools {
 		 * @param sample2
 		 */
 		abstract void swap(int sample1, int sample2);
+	}
 
-		/**
-		 * Measures the similarity between two samples after removing the similarity expected from the level's overall
-		 * distribution.
-		 *
-		 * @return baseline-adjusted similarity between the samples
-		 */
-		abstract double centeredKernel(int sample1, int sample2);
+	/** Level data that can be scored directly with a kernel. */
+	static abstract class KernelLevelData extends LevelData {
+
+		KernelLevelData(int levelIndex, int numSamples) {
+			super(levelIndex, numSamples);
+		}
+
+		/** @return number of distinct states used by the cached kernel representation */
+		abstract int numKernelStates();
+
+		/** @return cached kernel state for the given sample */
+		abstract int kernelState(int sample);
+
+		/** @return baseline-adjusted similarity between two cached kernel states */
+		abstract double centeredKernelForStates(int state1, int state2);
 
 		/**
 		 * Summarizes the amount of variation among samples in this level. This is used to calculate the pairwise score
@@ -67,7 +76,7 @@ final class PairwiseLogicTreeTools {
 	/**
 	 * Level data for categorical data, i.e., samples from a set of fixed choices
 	 */
-	static final class CategoricalLevelData extends LevelData {
+	static final class CategoricalLevelData extends KernelLevelData {
 		final int numCategories;
 		final int[] marginalCounts;
 		final double[] marginalFractions;
@@ -114,12 +123,19 @@ final class PairwiseLogicTreeTools {
 		}
 
 		@Override
-		double centeredKernel(int sample1, int sample2) {
-			// H*K*H for K(i,j)=1 when samples i and j have the same category.
-			int value1 = values[sample1];
-			int value2 = values[sample2];
-			return (value1 == value2 ? 1d : 0d) - marginalFractions[value1]
-					- marginalFractions[value2] + kernelGrandMean;
+		int numKernelStates() {
+			return numCategories;
+		}
+
+		@Override
+		int kernelState(int sample) {
+			return values[sample];
+		}
+
+		@Override
+		double centeredKernelForStates(int state1, int state2) {
+			return (state1 == state2 ? 1d : 0d) - marginalFractions[state1]
+					- marginalFractions[state2] + kernelGrandMean;
 		}
 
 		@Override
@@ -131,22 +147,20 @@ final class PairwiseLogicTreeTools {
 	/**
 	 * Level data for samples from continuous distributions, i.e., levels that implement {@link FractileSamplingLevel}.
 	 */
-	static final class FractileLevelData extends LevelData {
-		final double[] fractiles;
+	static final class FractileLevelData extends KernelLevelData {
 		final short[] fractileBins;
 		final float[][] centeredKernels;
 		final double kernelTrace;
 
 		FractileLevelData(int levelIndex, double[] fractiles) {
 			super(levelIndex, fractiles.length);
-			this.fractiles = fractiles;
 			this.fractileBins = new short[numSamples];
 			int[] binCounts = new int[FRACTILE_BINS];
 			for (int i=0; i<numSamples; i++) {
 				double fractile = fractiles[i];
 				Preconditions.checkArgument(Double.isFinite(fractile) && fractile >= 0d && fractile <= 1d,
 						"Fractile must be finite and in [0,1], have " + fractile + " for level " + levelIndex);
-				fractileBins[i] = (short)fractileBin(fractile);
+				fractileBins[i] = checkedFractileBin(fractile);
 				binCounts[fractileBins[i]]++;
 			}
 
@@ -177,17 +191,24 @@ final class PairwiseLogicTreeTools {
 
 		@Override
 		void swap(int sample1, int sample2) {
-			double value = fractiles[sample1];
-			fractiles[sample1] = fractiles[sample2];
-			fractiles[sample2] = value;
 			short bin = fractileBins[sample1];
 			fractileBins[sample1] = fractileBins[sample2];
 			fractileBins[sample2] = bin;
 		}
 
 		@Override
-		double centeredKernel(int sample1, int sample2) {
-			return centeredKernels[fractileBins[sample1]][fractileBins[sample2]];
+		int numKernelStates() {
+			return FRACTILE_BINS;
+		}
+
+		@Override
+		int kernelState(int sample) {
+			return fractileBins[sample];
+		}
+
+		@Override
+		double centeredKernelForStates(int state1, int state2) {
+			return centeredKernels[state1][state2];
 		}
 
 		@Override
@@ -233,23 +254,17 @@ final class PairwiseLogicTreeTools {
 			nodeValues[sample1] = nodeValues[sample2];
 			nodeValues[sample2] = value;
 		}
-
-		// A combined level has no single kernel: CompositePairCriterion scores its selector
-		// and conditional kernels separately, then combines their normalized scores.
-		@Override double centeredKernel(int sample1, int sample2) { throw new UnsupportedOperationException(); }
-		@Override double kernelTrace() { throw new UnsupportedOperationException(); }
 	}
 
 	/**
 	 * Used by {@link CombinedLevelData} to track data for choices (categorical or fractile) within combined levels
 	 */
-	static final class ConditionalLevelData extends LevelData {
+	static final class ConditionalLevelData extends KernelLevelData {
 		final boolean fractile;
 		final boolean[] selected;
 		final int[] categories;
-		final double[] fractiles;
 		final short[] fractileBins;
-		final double[] kernelRowMeans;
+		final double[] kernelStateRowMeans;
 		final double kernelGrandMean;
 		final float[][] centeredFractileKernels;
 		final double kernelTrace;
@@ -268,7 +283,6 @@ final class PairwiseLogicTreeTools {
 			this.fractile = fractiles != null;
 			this.selected = selected;
 			this.categories = categories;
-			this.fractiles = fractiles;
 			this.fractileBins = this.fractile ? new short[numSamples] : null;
 			int selectedCount = 0;
 			for (boolean value : selected)
@@ -278,7 +292,8 @@ final class PairwiseLogicTreeTools {
 
 			// Center only among samples that selected this sublevel. Unselected samples are
 			// represented by zero rows/columns when this conditional kernel is embedded globally.
-			kernelRowMeans = new double[numSamples];
+			int numActiveStates = this.fractile ? FRACTILE_BINS : numCategories;
+			kernelStateRowMeans = new double[numActiveStates];
 			double grandMean = 0d;
 			if (this.fractile) {
 				int[] binCounts = new int[FRACTILE_BINS];
@@ -286,29 +301,28 @@ final class PairwiseLogicTreeTools {
 					if (selected[i]) {
 						double value = fractiles[i];
 						Preconditions.checkArgument(Double.isFinite(value) && value >= 0d && value <= 1d);
-						fractileBins[i] = (short)fractileBin(value);
+						fractileBins[i] = checkedFractileBin(value);
 						binCounts[fractileBins[i]]++;
 					}
-				double[] meansByBin = new double[FRACTILE_BINS];
 				for (int bin1=0; bin1<FRACTILE_BINS; bin1++)
 					for (int bin2=0; bin2<FRACTILE_BINS; bin2++)
-						meansByBin[bin1] += binCounts[bin2]*rawFractileKernel(bin1, bin2)/selectedCount;
+						kernelStateRowMeans[bin1] += binCounts[bin2]
+								*rawFractileKernel(bin1, bin2)/selectedCount;
 				for (int i=0; i<numSamples; i++) {
 					if (!selected[i])
 						continue;
-					kernelRowMeans[i] = meansByBin[fractileBins[i]];
-					grandMean += kernelRowMeans[i];
+					grandMean += kernelStateRowMeans[fractileBins[i]];
 				}
 			} else {
 				int[] counts = new int[numCategories];
 				for (int i=0; i<numSamples; i++)
 					if (selected[i])
 						counts[categories[i]]++;
+				for (int category=0; category<numCategories; category++)
+					kernelStateRowMeans[category] = (double)counts[category]/selectedCount;
 				for (int i=0; i<numSamples; i++)
-					if (selected[i]) {
-						kernelRowMeans[i] = (double)counts[categories[i]]/selectedCount;
-						grandMean += kernelRowMeans[i];
-					}
+					if (selected[i])
+						grandMean += kernelStateRowMeans[categories[i]];
 			}
 			this.kernelGrandMean = grandMean/selectedCount;
 			if (this.fractile) {
@@ -316,29 +330,17 @@ final class PairwiseLogicTreeTools {
 				for (int bin1=0; bin1<FRACTILE_BINS; bin1++)
 					for (int bin2=0; bin2<FRACTILE_BINS; bin2++)
 						centeredFractileKernels[bin1][bin2] = (float)(rawFractileKernel(bin1, bin2)
-								-kernelMeanForBin(bin1)-kernelMeanForBin(bin2)+kernelGrandMean);
+								-kernelStateRowMeans[bin1]-kernelStateRowMeans[bin2]+kernelGrandMean);
 			} else {
 				centeredFractileKernels = null;
 			}
 
 			double trace = 0d;
-			for (int i=0; i<numSamples; i++)
-				if (selected[i])
-					trace += centeredKernel(i, i);
+			for (int i=0; i<numSamples; i++) {
+				int state = kernelState(i);
+				trace += centeredKernelForStates(state, state);
+			}
 			this.kernelTrace = trace;
-		}
-
-		private double kernelMeanForBin(int bin) {
-			for (int i=0; i<numSamples; i++)
-				if (selected[i] && fractileBins[i] == bin)
-					return kernelRowMeans[i];
-			return 0d;
-		}
-
-		private double rawKernel(int sample1, int sample2) {
-			if (fractile)
-				return rawFractileKernel(fractileBins[sample1], fractileBins[sample2]);
-			return categories[sample1] == categories[sample2] ? 1d : 0d;
 		}
 
 		@Override
@@ -357,9 +359,6 @@ final class PairwiseLogicTreeTools {
 			selected[sample1] = selected[sample2];
 			selected[sample2] = selectedValue;
 			if (fractile) {
-				double value = fractiles[sample1];
-				fractiles[sample1] = fractiles[sample2];
-				fractiles[sample2] = value;
 				short bin = fractileBins[sample1];
 				fractileBins[sample1] = fractileBins[sample2];
 				fractileBins[sample2] = bin;
@@ -368,19 +367,28 @@ final class PairwiseLogicTreeTools {
 				categories[sample1] = categories[sample2];
 				categories[sample2] = value;
 			}
-			double value = kernelRowMeans[sample1];
-			kernelRowMeans[sample1] = kernelRowMeans[sample2];
-			kernelRowMeans[sample2] = value;
 		}
 
 		@Override
-		double centeredKernel(int sample1, int sample2) {
-			if (!selected[sample1] || !selected[sample2])
+		int numKernelStates() {
+			return kernelStateRowMeans.length+1;
+		}
+
+		@Override
+		int kernelState(int sample) {
+			if (!selected[sample])
+				return kernelStateRowMeans.length;
+			return fractile ? fractileBins[sample] : categories[sample];
+		}
+
+		@Override
+		double centeredKernelForStates(int state1, int state2) {
+			if (state1 == kernelStateRowMeans.length || state2 == kernelStateRowMeans.length)
 				return 0d;
 			if (fractile)
-				return centeredFractileKernels[fractileBins[sample1]][fractileBins[sample2]];
-			return rawKernel(sample1, sample2) - kernelRowMeans[sample1]
-					- kernelRowMeans[sample2] + kernelGrandMean;
+				return centeredFractileKernels[state1][state2];
+			return (state1 == state2 ? 1d : 0d) - kernelStateRowMeans[state1]
+					- kernelStateRowMeans[state2] + kernelGrandMean;
 		}
 
 		@Override
@@ -576,14 +584,37 @@ final class PairwiseLogicTreeTools {
 	 */
 	static final class KernelPairCriterion extends PairCriterion {
 		final int numSamples;
+		final KernelLevelData kernelLevel1;
+		final KernelLevelData kernelLevel2;
+		final KernelLevelData leftKernelLevel;
+		final KernelLevelData rightKernelLevel;
+		// [left kernel state][right state] = left centered-kernel matrix * joint state counts
+		final double[][] leftKernelTimesJointCounts;
+		int pendingLeftState1;
+		int pendingLeftState2;
+		int pendingRightState1;
+		int pendingRightState2;
 
-		KernelPairCriterion(LevelData level1, LevelData level2) {
+		KernelPairCriterion(KernelLevelData level1, KernelLevelData level2) {
 			super(level1, level2, expectedRandomL2(level1, level2));
 			this.numSamples = level1.numSamples;
+			this.kernelLevel1 = level1;
+			this.kernelLevel2 = level2;
+			// Delta evaluation loops over right states, so put the smaller state space there.
+			if (level1.numKernelStates() >= level2.numKernelStates()) {
+				this.leftKernelLevel = level1;
+				this.rightKernelLevel = level2;
+			} else {
+				this.leftKernelLevel = level2;
+				this.rightKernelLevel = level1;
+			}
+			this.leftKernelTimesJointCounts =
+					new double[leftKernelLevel.numKernelStates()][rightKernelLevel.numKernelStates()];
+			rebuildLeftKernelTimesJointCounts();
 			rawScore = calculateRawScore();
 		}
 
-		private static double expectedRandomL2(LevelData level1, LevelData level2) {
+		private static double expectedRandomL2(KernelLevelData level1, KernelLevelData level2) {
 			double n = level1.numSamples;
 			// For independently permuted centered Gram matrices K and L,
 			// E[sum(K .* L)] = trace(K)*trace(L)/(N-1).
@@ -592,48 +623,98 @@ final class PairwiseLogicTreeTools {
 
 		@Override
 		double calculateSwapDelta(int sample1, int sample2, boolean[] swappedLevels) {
-			boolean swapLevel1 = swappedLevels[level1.levelIndex];
-			LevelData swapped = swapLevel1 ? level1 : level2;
-			LevelData fixed = swapLevel1 ? level2 : level1;
-			return kernelDelta(swapped, fixed, sample1, sample2)/((double)numSamples*numSamples);
+			KernelLevelData swapped = swappedLevels[level1.levelIndex] ? kernelLevel1 : kernelLevel2;
+			KernelLevelData fixed = swapped == kernelLevel1 ? kernelLevel2 : kernelLevel1;
+			pendingLeftState1 = leftKernelLevel.kernelState(sample1);
+			pendingLeftState2 = leftKernelLevel.kernelState(sample2);
+			pendingRightState1 = rightKernelLevel.kernelState(sample1);
+			pendingRightState2 = rightKernelLevel.kernelState(sample2);
+
+			int swappedState1 = swapped.kernelState(sample1);
+			int swappedState2 = swapped.kernelState(sample2);
+			int fixedState1 = fixed.kernelState(sample1);
+			int fixedState2 = fixed.kernelState(sample2);
+			double delta = (swapped.centeredKernelForStates(swappedState2, swappedState2)
+					-swapped.centeredKernelForStates(swappedState1, swappedState1))
+					*(fixed.centeredKernelForStates(fixedState1, fixedState1)
+							-fixed.centeredKernelForStates(fixedState2, fixedState2));
+
+			int leftPlus, leftMinus, rightPlus, rightMinus;
+			if (swapped == leftKernelLevel) {
+				leftPlus = pendingLeftState2;
+				leftMinus = pendingLeftState1;
+				rightPlus = pendingRightState1;
+				rightMinus = pendingRightState2;
+			} else {
+				leftPlus = pendingLeftState1;
+				leftMinus = pendingLeftState2;
+				rightPlus = pendingRightState2;
+				rightMinus = pendingRightState1;
+			}
+
+			// This is the old per-sample sum grouped and partially multiplied by kernel state.
+			double offDiagonal = 0d;
+			for (int rightState=0; rightState<rightKernelLevel.numKernelStates(); rightState++)
+				offDiagonal += (leftKernelTimesJointCounts[leftPlus][rightState]
+						-leftKernelTimesJointCounts[leftMinus][rightState])
+						*(rightKernelLevel.centeredKernelForStates(rightPlus, rightState)
+								-rightKernelLevel.centeredKernelForStates(rightMinus, rightState));
+
+			// The grouped sum includes the two swapped samples; the separate diagonal term above handles them.
+			offDiagonal -= kernelDifference(leftKernelLevel, leftPlus, leftMinus, pendingLeftState1)
+					*kernelDifference(rightKernelLevel, rightPlus, rightMinus, pendingRightState1);
+			offDiagonal -= kernelDifference(leftKernelLevel, leftPlus, leftMinus, pendingLeftState2)
+					*kernelDifference(rightKernelLevel, rightPlus, rightMinus, pendingRightState2);
+			delta += 2d*offDiagonal;
+			return delta/((double)numSamples*numSamples);
 		}
 
-		private static double kernelDelta(LevelData swapped, LevelData fixed, int sample1, int sample2) {
-			// Swapping two rows/columns of one Gram matrix changes only terms touching
-			// those samples. Symmetry combines the off-diagonal terms into this O(N) sum.
-			double delta = (swapped.centeredKernel(sample2, sample2)-swapped.centeredKernel(sample1, sample1))
-					*(fixed.centeredKernel(sample1, sample1)-fixed.centeredKernel(sample2, sample2));
-			for (int sample=0; sample<swapped.numSamples; sample++) {
-				if (sample == sample1 || sample == sample2)
-					continue;
-				double swappedDifference = swapped.centeredKernel(sample2, sample)
-						- swapped.centeredKernel(sample1, sample);
-				double fixedDifference = fixed.centeredKernel(sample1, sample)
-						- fixed.centeredKernel(sample2, sample);
-				delta += 2d*swappedDifference*fixedDifference;
-			}
-			return delta;
+		private static double kernelDifference(KernelLevelData level, int plusState, int minusState, int otherState) {
+			return level.centeredKernelForStates(plusState, otherState)
+					-level.centeredKernelForStates(minusState, otherState);
 		}
 
 		@Override
 		void applySwap(double rawDelta) {
+			// Swapping either level changes two columns of the joint state table. Update its
+			// kernel transform directly while LevelData still contains the pre-swap states.
+			for (int leftKernelState=0; leftKernelState<leftKernelTimesJointCounts.length; leftKernelState++) {
+				double difference = leftKernelLevel.centeredKernelForStates(leftKernelState, pendingLeftState2)
+						-leftKernelLevel.centeredKernelForStates(leftKernelState, pendingLeftState1);
+				leftKernelTimesJointCounts[leftKernelState][pendingRightState1] += difference;
+				leftKernelTimesJointCounts[leftKernelState][pendingRightState2] -= difference;
+			}
 			rawScore += rawDelta;
 		}
 
+		private void rebuildLeftKernelTimesJointCounts() {
+			for (double[] row : leftKernelTimesJointCounts)
+				Arrays.fill(row, 0d);
+			for (int sample=0; sample<numSamples; sample++) {
+				int leftState = leftKernelLevel.kernelState(sample);
+				int rightState = rightKernelLevel.kernelState(sample);
+				for (int leftKernelState=0; leftKernelState<leftKernelTimesJointCounts.length; leftKernelState++)
+					leftKernelTimesJointCounts[leftKernelState][rightState] +=
+							leftKernelLevel.centeredKernelForStates(leftKernelState, leftState);
+			}
+		}
+
 		private double calculateRawScore() {
-			// Frobenius inner product of the centered kernels, scaled by N^2. For the CDF
-			// kernel this is the exact L2 integral after fractile quantization.
+			// Sum the Frobenius inner product from the same transformed joint-state cache.
 			double numerator = 0d;
-			for (int i=0; i<numSamples; i++) {
-				numerator += level1.centeredKernel(i, i)*level2.centeredKernel(i, i);
-				for (int j=i+1; j<numSamples; j++)
-					numerator += 2d*level1.centeredKernel(i, j)*level2.centeredKernel(i, j);
+			for (int sample=0; sample<numSamples; sample++) {
+				int leftState = leftKernelLevel.kernelState(sample);
+				int rightState = rightKernelLevel.kernelState(sample);
+				for (int otherRightState=0; otherRightState<rightKernelLevel.numKernelStates(); otherRightState++)
+					numerator += leftKernelTimesJointCounts[leftState][otherRightState]
+							*rightKernelLevel.centeredKernelForStates(rightState, otherRightState);
 			}
 			return numerator/((double)numSamples*numSamples);
 		}
 
 		@Override
 		double recalculateRawScore() {
+			rebuildLeftKernelTimesJointCounts();
 			rawScore = calculateRawScore();
 			return rawScore;
 		}
@@ -748,7 +829,8 @@ final class PairwiseLogicTreeTools {
 	private static PairCriterion buildSimpleCriterion(LevelData level1, LevelData level2) {
 		if (level1 instanceof CategoricalLevelData && level2 instanceof CategoricalLevelData)
 			return new CategoricalPairCriterion((CategoricalLevelData)level1, (CategoricalLevelData)level2);
-		return new KernelPairCriterion(level1, level2);
+		Preconditions.checkState(level1 instanceof KernelLevelData && level2 instanceof KernelLevelData);
+		return new KernelPairCriterion((KernelLevelData)level1, (KernelLevelData)level2);
 	}
 
 	/**
@@ -765,6 +847,8 @@ final class PairwiseLogicTreeTools {
 		boolean swapPending;
 		int pendingSample1;
 		int pendingSample2;
+		
+		final double initialScore;
 
 		/**
 		 * Builds criteria for every pair of non-null levels.
@@ -800,6 +884,8 @@ final class PairwiseLogicTreeTools {
 			this.swappedLevels = new boolean[levels.size()];
 			this.rawSwapDeltas = new double[criteria.size()];
 			this.affectedCriteria = new boolean[criteria.size()];
+			
+			initialScore = score();
 		}
 
 		/**
@@ -817,6 +903,16 @@ final class PairwiseLogicTreeTools {
 			for (PairCriterion criterion : criteria)
 				score += criterion.normalizedScore();
 			return score;
+		}
+		
+		/**
+		 * @return the worst normalized level pair score
+		 */
+		double worstScore() {
+			double worst = 0d;
+			for (PairCriterion criterion : criteria)
+				worst = Math.max(worst, criterion.normalizedScore());
+			return worst;
 		}
 		
 		/**
@@ -908,23 +1004,53 @@ final class PairwiseLogicTreeTools {
 			}
 			return score;
 		}
+		
+		private static final DecimalFormat pDF = new DecimalFormat("0.00%");
+		private static final DecimalFormat scoreDF = new DecimalFormat("0.000000");
 
 		/**
 		 * Prints raw, random-expected, and normalized scores for each level pair.
 		 * @param namedLevels original levels used to label each pair
 		 */
 		void printStats(List<? extends LogicTreeLevel<?>> namedLevels) {
-			DecimalFormat scoreDF = new DecimalFormat("0.000000");
 			System.out.println("Pairwise normalized scores (random expectation = 1 per pair):");
+			List<String> pairNames = new ArrayList<>(criteria.size());
+			List<String> pairStats = new ArrayList<>(criteria.size());
+			int longestPairName = 0;
 			for (PairCriterion criterion : criteria) {
-				String name1 = namedLevels.get(criterion.level1.levelIndex).getName();
-				String name2 = namedLevels.get(criterion.level2.levelIndex).getName();
-				System.out.println("\t"+name1+" / "+name2+" ["+criterion.typeName()+"]: raw="
-						+scoreDF.format(criterion.rawScore)+", random="
-						+scoreDF.format(criterion.expectedRandomScore)+", normalized="
-						+scoreDF.format(criterion.normalizedScore()));
+				String name1 = namedLevels.get(criterion.level1.levelIndex).getShortName();
+				String name2 = namedLevels.get(criterion.level2.levelIndex).getShortName();
+				String pairName = name1+" / "+name2+" ["+criterion.typeName()+"]:";
+				longestPairName = Integer.max(longestPairName, pairName.length());
+				pairNames.add(pairName);
+//				pairStats.add("raw="+scoreDF.format(criterion.rawScore)+";\trandom="
+//						+scoreDF.format(criterion.expectedRandomScore)+";\tnormalized="
+//						+scoreDF.format(criterion.normalizedScore()));
+				pairStats.add(scoreDF.format(criterion.normalizedScore())
+						+"\t(raw="+scoreDF.format(criterion.rawScore)
+						+";\trand="+scoreDF.format(criterion.expectedRandomScore)+")");
+			}
+			
+			for (int p=0; p<pairNames.size(); p++) {
+				String name = pairNames.get(p);
+				String stats = pairStats.get(p);
+				while (name.length() < longestPairName)
+					name += " ";
+				System.out.println(name+"\t"+stats);
 			}
 			System.out.println("Total normalized score: "+scoreDF.format(score()));
+		}
+
+		String summaryStats() {
+			double score = score();
+			return "avg="+scoreDF.format(avgScore())+";\tworst="+scoreDF.format(worstScore())+";\tsum="+scoreDF.format(score)
+					+";\treduction="+formatReduction(initialScore, score);
+		}
+
+		private static String formatReduction(double initialScore, double score) {
+			if (initialScore == 0d)
+				return pDF.format(0d);
+			return pDF.format((initialScore-score)/initialScore);
 		}
 	}
 
@@ -1060,6 +1186,13 @@ final class PairwiseLogicTreeTools {
 
 	private static int fractileBin(double fractile) {
 		return Math.min(FRACTILE_BINS-1, (int)(fractile*FRACTILE_BINS));
+	}
+
+	private static short checkedFractileBin(double fractile) {
+		int bin = fractileBin(fractile);
+		Preconditions.checkState(bin >= 0 && bin <= Short.MAX_VALUE,
+				"Fractile bin index %s overflows short storage; FRACTILE_BINS=%s", bin, FRACTILE_BINS);
+		return (short)bin;
 	}
 
 	private static double rawFractileKernel(int bin1, int bin2) {

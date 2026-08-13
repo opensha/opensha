@@ -4,6 +4,7 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.numbers.core.Precision;
 import org.opensha.commons.logicTree.LogicTreeBranch;
@@ -19,6 +20,7 @@ import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeTools.LevelData;
 import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeTools.PairwiseScorer;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 
 /**
  * Pairwise optimizer for logic tree node combinations across a sampled logic tree.
@@ -36,6 +38,8 @@ public class PairwiseLogicTreeNodeSwapIteration<E extends LogicTreeNode> {
 	private List<int[]> originalBranchIndexes;
 	private double initialScore = Double.NaN;
 	private double finalScore = Double.NaN;
+	
+	public static boolean VERBOSE_DEFAULT = false;
 
 	public PairwiseLogicTreeNodeSwapIteration(List<LogicTreeLevel<? extends E>> levels,
 			List<LogicTreeBranch<E>> branches, List<double[]> levelFixedWeights) {
@@ -104,6 +108,10 @@ public class PairwiseLogicTreeNodeSwapIteration<E extends LogicTreeNode> {
 		}
 		return ret;
 	}
+	
+	public void iterate(int numIterations, Random r) {
+		iterate(numIterations, r, VERBOSE_DEFAULT);
+	}
 
 	public void iterate(int numIterations, Random r, boolean verbose) {
 		if (movableLevelIndexes.size() < 2 || scorer.size() == 0) {
@@ -111,8 +119,12 @@ public class PairwiseLogicTreeNodeSwapIteration<E extends LogicTreeNode> {
 			return;
 		}
 
+		DecimalFormat iterDF = new DecimalFormat("0");
+		iterDF.setGroupingSize(3);
+		iterDF.setGroupingUsed(true);
+
 		int numSamples = branches.size();
-		System.out.println("Pairwise iterating "+numSamples+" LHS samples with "+numIterations+" iterations");
+		System.out.println("Pairwise iterating "+iterDF.format(numSamples)+" LHS samples with "+iterDF.format(numIterations)+" iterations");
 
 		if (trackSwaps) {
 			originalBranchIndexes = new ArrayList<>(numSamples);
@@ -127,17 +139,24 @@ public class PairwiseLogicTreeNodeSwapIteration<E extends LogicTreeNode> {
 		if (verbose) {
 			System.out.println("===============================");
 			System.out.println("Initial misfits:");
-			printStats();
+			scorer.printStats(levels);
 			System.out.println("===============================");
 		}
+		
 		double score = scorer.score();
 		initialScore = score;
-		DecimalFormat pDF = new DecimalFormat("0.00%");
+		
+		int maxPrintDelta = Integer.max(100, numIterations/50);
+		int initialPrintDelta = Integer.min(1000, maxPrintDelta);
+		int printDelta = initialPrintDelta;
+		
+		Stopwatch watch = Stopwatch.createStarted();
 		for (int n=0; n<numIterations; n++) {
-			if (verbose && n % 1000 == 0)
-				System.out.println("Pairwise misfit iteration "+n+"; score="+(float)score
-						+"; avgScore="+(float)(score/scorer.size())
-						+"; reduction="+formatReduction(pDF, initialScore, score));
+			if (verbose && n % printDelta == 0) {
+				System.out.println("Pairwise misfit iteration "+iterDF.format(n)+";\t"+scorer.summaryStats());
+				if (n == printDelta*10)
+					printDelta = Integer.min(printDelta*10, maxPrintDelta);
+			}
 
 			int branchIndex1 = r.nextInt(numSamples);
 			int branchIndex2 = r.nextInt(numSamples);
@@ -166,28 +185,21 @@ public class PairwiseLogicTreeNodeSwapIteration<E extends LogicTreeNode> {
 				}
 			}
 		}
+		watch.stop();
 
 		finalScore = scorer.recalculateScore();
 		Preconditions.checkState(Precision.equals(score, finalScore, 1e-3),
 				"Score drift! Calculated final=%s, iterated=%s, diff=%s", finalScore, score, score-finalScore);
-		if (verbose)
-			System.out.println("===============================");
-		System.out.println("Final normalized score after "+numIterations+" iterations: "+(float)finalScore
-				+"; avg="+(float)(finalScore/scorer.size())+"; reduction="+formatReduction(pDF, initialScore, finalScore));
 		if (verbose) {
-			printStats();
+			System.out.println("===============================");
+			scorer.printStats(levels);
 			System.out.println("===============================");
 		}
-	}
-
-	private void printStats() {
-		scorer.printStats(levels);
-	}
-
-	private static String formatReduction(DecimalFormat pDF, double initialScore, double score) {
-		if (initialScore == 0d)
-			return pDF.format(0d);
-		return pDF.format((initialScore-score)/initialScore);
+		System.out.println("Final normalized score after "+iterDF.format(numIterations)+" iterations:\t"+scorer.summaryStats());
+		double elapsed = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+		System.out.println("\tTook "+(float)elapsed+" seconds\t("+iterDF.format(numIterations/elapsed)+" iter/sec)");
+		if (verbose)
+			System.out.println("===============================");
 	}
 
 	public void setTrackSwaps(boolean trackSwaps) {

@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 
 import org.junit.Test;
 import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeTools.CategoricalLevelData;
@@ -14,6 +15,7 @@ import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeTools.CombinedLevelDat
 import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeTools.ConditionalLevelData;
 import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeTools.FractileLevelData;
 import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeTools.KernelPairCriterion;
+import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeTools.KernelLevelData;
 import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeTools.LevelData;
 import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeTools.PairwiseScorer;
 
@@ -103,7 +105,14 @@ public class PairwiseLogicTreeToolsTest {
 		CategoricalLevelData other = new CategoricalLevelData(1, 2, new int[] { 0, 1, 0, 1, 0, 0, 1, 1 });
 
 		double selectorScore = new CategoricalPairCriterion(selector, other).normalizedScore();
-		double conditionalScore = new KernelPairCriterion(conditional, other).normalizedScore();
+		KernelPairCriterion conditionalCriterion = new KernelPairCriterion(conditional, other);
+		assertEquals(bruteKernelScore(conditional, other), conditionalCriterion.rawScore, TOL);
+		double conditionalScore = conditionalCriterion.normalizedScore();
+		double previousConditional = bruteKernelScore(conditional, other);
+		double conditionalDelta = conditionalCriterion.calculateSwapDelta(1, 6, new boolean[] { true, false });
+		conditional.swap(1, 6);
+		assertEquals(bruteKernelScore(conditional, other)-previousConditional, conditionalDelta, TOL);
+		conditional.swap(1, 6);
 		PairwiseScorer scorer = new PairwiseScorer(List.of(combined, other));
 		assertEquals(0.5d*(selectorScore+conditionalScore), scorer.score(), TOL);
 
@@ -153,6 +162,54 @@ public class PairwiseLogicTreeToolsTest {
 				new CategoricalLevelData(0, 3, categories.clone()),
 				new FractileLevelData(1, fractiles2.clone()));
 		assertEquals(exactCategoricalFractileCDFL2(categories, quantize(fractiles2)), criterion.rawScore, 1e-9);
+	}
+
+	@Test
+	public void testFactorizedKernelDeltasMatchBruteForce() {
+		int numSamples = 80;
+		int[] categories = new int[numSamples];
+		double[] fractiles = new double[numSamples];
+		Random random = new Random(12345L);
+		for (int i=0; i<numSamples; i++) {
+			categories[i] = random.nextInt(4);
+			fractiles[i] = random.nextDouble();
+		}
+		CategoricalLevelData categorical = new CategoricalLevelData(0, 4, categories);
+		FractileLevelData fractile = new FractileLevelData(1, fractiles);
+		KernelPairCriterion criterion = new KernelPairCriterion(categorical, fractile);
+		assertEquals(bruteKernelScore(categorical, fractile), criterion.rawScore, TOL);
+
+		for (int iteration=0; iteration<200; iteration++) {
+			int sample1 = random.nextInt(numSamples);
+			int sample2 = random.nextInt(numSamples);
+			while (sample1 == sample2)
+				sample2 = random.nextInt(numSamples);
+			boolean swapCategorical = iteration % 2 == 0;
+			boolean[] swappedLevels = { swapCategorical, !swapCategorical };
+			double previous = bruteKernelScore(categorical, fractile);
+			double delta = criterion.calculateSwapDelta(sample1, sample2, swappedLevels);
+			LevelData swapped = swapCategorical ? categorical : fractile;
+			swapped.swap(sample1, sample2);
+			double expectedDelta = bruteKernelScore(categorical, fractile)-previous;
+			swapped.swap(sample1, sample2);
+			assertEquals(expectedDelta, delta, 1e-11);
+
+			criterion.applySwap(delta);
+			swapped.swap(sample1, sample2);
+			assertEquals(bruteKernelScore(categorical, fractile), criterion.rawScore, 1e-10);
+		}
+	}
+
+	private static double bruteKernelScore(KernelLevelData level1, KernelLevelData level2) {
+		double numerator = 0d;
+		for (int i=0; i<level1.numSamples; i++) {
+			int state1i = level1.kernelState(i);
+			int state2i = level2.kernelState(i);
+			for (int j=0; j<level1.numSamples; j++)
+				numerator += level1.centeredKernelForStates(state1i, level1.kernelState(j))
+						*level2.centeredKernelForStates(state2i, level2.kernelState(j));
+		}
+		return numerator/((double)level1.numSamples*level1.numSamples);
 	}
 
 	private static double[] quantize(double[] values) {
@@ -262,7 +319,7 @@ public class PairwiseLogicTreeToolsTest {
 		return ret;
 	}
 
-	private static double meanKernelScoreOverPermutations(LevelData fixed, double[] values) {
+	private static double meanKernelScoreOverPermutations(KernelLevelData fixed, double[] values) {
 		int[] permutation = identity(values.length);
 		double sum = 0d;
 		int count = 0;
@@ -275,13 +332,16 @@ public class PairwiseLogicTreeToolsTest {
 		return sum/count;
 	}
 
-	private static LevelData copy(LevelData level) {
+	private static KernelLevelData copy(KernelLevelData level) {
 		if (level instanceof CategoricalLevelData) {
 			CategoricalLevelData categorical = (CategoricalLevelData)level;
 			return new CategoricalLevelData(0, categorical.numCategories, categorical.values.clone());
 		}
 		FractileLevelData fractile = (FractileLevelData)level;
-		return new FractileLevelData(0, fractile.fractiles.clone());
+		double[] values = new double[fractile.numSamples];
+		for (int i=0; i<values.length; i++)
+			values[i] = (fractile.fractileBins[i]+0.5d)/PairwiseLogicTreeTools.FRACTILE_BINS;
+		return new FractileLevelData(0, values);
 	}
 
 	private static int[] identity(int size) {
