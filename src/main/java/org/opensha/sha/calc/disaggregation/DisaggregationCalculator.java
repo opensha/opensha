@@ -406,7 +406,7 @@ implements DisaggregationCalculatorAPI {
 		        }
 
 				// get the cond prob
-				condProb = imr.getExceedProbability(iml);
+				condProb = imr.getExceedProbability(rupture, iml);
 				// should the following throw an exception?
 				if (condProb == 0 && D)
 					System.out.println(S +
