@@ -2,6 +2,8 @@ package org.opensha.sha.earthquake.faultSysSolution.erf.td;
 
 import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.WeightedValue;
+import org.opensha.commons.param.ParamLinker;
+import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.ParameterizedModel;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -148,8 +150,13 @@ public interface FSS_ProbabilityModel extends ParameterizedModel {
 	}
 	
 	/**
-	 * Weighted-combination of probability models. Note that it is assumed that each passed in model has all parameters
-	 * set to their final values, and no parameters will be passed on to the ERF/GUI
+	 * Weighted-combination of probability models.
+	 * <p>
+	 * By default, it is assumed that each passed in model has all parameters set to their final values, and no
+	 * parameters will be passed on to the ERF/GUI.
+	 * <p>
+	 * Optionally, you can pass in a list of parameters to be displayed. Those passed in must be configured to update
+	 * the values in each individual probability model (e.g., via {@link ParamLinker#link(Parameter, Parameter)}).
 	 */
 	public static class WeightedCombination implements FSS_ProbabilityModel {
 		
@@ -158,10 +165,25 @@ public interface FSS_ProbabilityModel extends ParameterizedModel {
 		private ParameterList params;
 		private String name;
 
+		/**
+		 * Weighted combination of effectively-final probability models; no parameters will be known to the ERF nor
+		 * shown in the GUI 
+		 * @param probModels
+		 */
 		public WeightedCombination(WeightedList<? extends FSS_ProbabilityModel> probModels) {
 			this(null, probModels, null);
 		}
 
+		/**
+		 * Weighted combination of probability models with a list of adjustable parameters. If non-null, the supplied
+		 * parameter list will be shown in the GUI and updates to these parameters be detected by the ERF.
+		 * <p>
+		 * If you supply common parameters, be sure to link them such that a change in the common parameter is propagated
+		 * to each downstream probability model. See {@link ParamLinker#link(Parameter, Parameter)}).
+		 * @param name
+		 * @param probModels
+		 * @param params
+		 */
 		public WeightedCombination(String name, WeightedList<? extends FSS_ProbabilityModel> probModels, ParameterList params) {
 			this.name = name;
 			refModel = probModels.getValue(0);
