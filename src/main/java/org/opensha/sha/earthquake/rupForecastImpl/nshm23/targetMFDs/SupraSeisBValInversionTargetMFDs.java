@@ -1655,8 +1655,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 
 	@Override
 	public AveragingAccumulator<InversionTargetMFDs> averagingAccumulator() {
-//		return new Averager();
-		return null;
+		return new SupraBAverager();
 	}
 	
 	public static class SupraBAverager extends InversionTargetMFDs.Averager {
