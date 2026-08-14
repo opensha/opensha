@@ -1570,9 +1570,12 @@ ExclusionaryInversionConfigurationFactory {
 		if (nuclMFDWeight > 0d)
 			constrBuilder.sectSupraNuclMFDs().weight(nuclMFDWeight);
 		
-		if (paleoSmoothWeight > 0d)
+		if (paleoSmoothWeight > 0d) {
 			// need to explicitly specify class for weighting as the constraint could be skipped
 			constrBuilder.supraPaleoSmooth().weight(LaplacianSmoothingInversionConstraint.class, paleoSmoothWeight);
+			// TODO: for NSHM29, consider trying this as well:
+//			constrBuilder.supraPaleoSmooth(true).weight(LaplacianSmoothingInversionConstraint.class, paleoSmoothWeight);
+		}
 		
 		// this will skip any ruptures below the minimim magnitude
 		ExclusionIntegerSampler sampler = rupSet.hasModule(ModSectMinMags.class) ? constrBuilder.getSkipBelowMinSampler() : null;
