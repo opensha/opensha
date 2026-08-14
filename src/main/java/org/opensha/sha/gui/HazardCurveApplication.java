@@ -1914,8 +1914,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 
 		imrGuiBean = new IMR_MultiGuiBean(imrs);
 		imrGuiBean.addIMRChangeListener(this);
-		// imrGuiBean.setMaxChooserChars(30);
-        imrGuiBean.setChooserBoxSize(new Dimension(220, 25));
+		imrGuiBean.setChooserBoxSize(new Dimension(220, 25));
 		imrGuiBean.rebuildGUI();
 	}
 
@@ -2793,4 +2792,3 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 		}
 	}
 }
-
