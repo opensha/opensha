@@ -177,10 +177,6 @@ public class TimeDepFaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 	@Override
 	public void updateForecast() {
 		super.updateForecast();
-		
-		if (!isPoisson()) {
-			int numWithDOLE = probModel.getNumSectsWithDOLE();
-		}
 	}
 	
 	/**
