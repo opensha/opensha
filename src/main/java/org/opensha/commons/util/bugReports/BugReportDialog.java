@@ -30,6 +30,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
+import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkEvent.EventType;
@@ -50,9 +51,10 @@ public class BugReportDialog extends JDialog implements ActionListener, Hyperlin
 	private BugReport bug;
 	private static String message = "Oops...something went wrong!";
 	
-	private static Color topTextColor = new Color(0, 0, 180);
-	private static Color topBottomColor = new Color(150, 150, 220);
-	private static Color mainColor = Color.WHITE;
+	private static final double HEADER_SHADE_FRACTION = 0.1;
+	private Color mainColor;
+	private Color textColor;
+	private Color headerFooterColor;
 	
 	private JButton quitButton = new JButton("Exit Application");
 	private JButton continueButton = new JButton("Continue Using Application");
@@ -145,6 +147,10 @@ public class BugReportDialog extends JDialog implements ActionListener, Hyperlin
 	}
 
 	private void init() {
+		mainColor = getThemeColor("Panel.background", Color.WHITE);
+		textColor = getThemeColor("Panel.foreground", Color.BLACK);
+		headerFooterColor = blend(mainColor, textColor, HEADER_SHADE_FRACTION);
+
 		this.setTitle(message);
 
 		this.setLayout(new BorderLayout());
@@ -173,26 +179,37 @@ public class BugReportDialog extends JDialog implements ActionListener, Hyperlin
 			panel.setBackground(backgroundColor);
 		return panel;
 	}
+
+	private static Color getThemeColor(String key, Color fallback) {
+		Color color = UIManager.getColor(key);
+		return color == null ? fallback : color;
+	}
+
+	private static Color blend(Color base, Color overlay, double fraction) {
+		double baseFraction = 1d - fraction;
+		return new Color(
+				(int)Math.round(base.getRed() * baseFraction + overlay.getRed() * fraction),
+				(int)Math.round(base.getGreen() * baseFraction + overlay.getGreen() * fraction),
+				(int)Math.round(base.getBlue() * baseFraction + overlay.getBlue() * fraction));
+	}
 	
 	private JPanel getTopPanel() {
 		JPanel topPanel = new JPanel();
 		topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.X_AXIS));
 		JLabel messageLabel = new JLabel(message + "   ");
 		messageLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 24));
-		messageLabel.setForeground(topTextColor);
-		messageLabel.setBackground(topBottomColor);
 		try {
 			BufferedImage cautionImage = ImageIO.read(
-					this.getClass().getResource("/images/icons/software_bug.png"));
+					this.getClass().getResource("/images/icons/software_bug_amber.png"));
 			ImagePanel imagePanel = new ImagePanel(cautionImage);
-			imagePanel.setBackground(topBottomColor);
+			imagePanel.setBackground(headerFooterColor);
 			topPanel.add(imagePanel);
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		topPanel.add(messageLabel);
-		topPanel.setBackground(topBottomColor);
+		topPanel.setBackground(headerFooterColor);
 		topPanel.setBorder(new EmptyBorder(new Insets(3, 3, 3, 3)));
 		
 		return topPanel;
@@ -243,6 +260,7 @@ public class BugReportDialog extends JDialog implements ActionListener, Hyperlin
 		mainText.setEditable(false);
 		mainText.setPreferredSize(new Dimension(this.getWidth()-6, 100));
 		mainText.setBackground(mainColor);
+		mainText.setForeground(textColor);
 		mainText.addHyperlinkListener(this);
 		
 		centerPanel.add(mainText);
@@ -275,10 +293,10 @@ public class BugReportDialog extends JDialog implements ActionListener, Hyperlin
 		bottomPanel.add(technicalButton);
 		technicalButton.setEnabled(bug.getDescription() != null);
 		technicalButton.addActionListener(this);
-		bottomPanel.setBackground(topBottomColor);
+		bottomPanel.setBackground(headerFooterColor);
 		bottomPanel.setBorder(new EmptyBorder(new Insets(3, 3, 3, 3)));
 		
-		return wrapInPanel(bottomPanel, topBottomColor);
+		return wrapInPanel(bottomPanel, headerFooterColor);
 	}
 
 	@Override
@@ -337,6 +355,11 @@ public class BugReportDialog extends JDialog implements ActionListener, Hyperlin
 	public static void main(String args[]) throws IOException {
 //		Throwable t = new RuntimeException(new IllegalArgumentException("Value (183.0) is out of range."));
 //		Throwable t = new java.net.ConnectException("asdf");
+		try {
+			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+		} catch (Exception e) {
+			System.err.println("WARNING: could not set system look and feel");
+		}
 		Throwable t = new IllegalStateException("Buffers have not been created");
 		
 		BugReport bug = new BugReport(t,

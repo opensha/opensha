@@ -940,6 +940,38 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 	}
 	
 	/**
+	 * This rescales a cpt fir differetn scaling above and below a specified anchor point. E..g, let's say there
+	 * was a diverging CPT in the range [0, 1] with the central value at 0.5, and you wanted to turn it into a ratio
+	 * CPT over the range [0, 3] with the central value of 1. You would call anchoredRescale(0, 3, 0.5, 1)
+	 * and it would rescale the original [0, 0.5] to cover [0, 1], and the original [0.5, 1] to cover [1, 3].
+	 * 
+	 * @param min new minimum bound
+	 * @param max new maximum bound
+	 * @param origAnchor the anchoring point in the original range
+	 * @param newAnchor the anchoring point in the new range
+	 * @return anchored-rescaled version of this CPT
+	 */
+	public CPT anchoredRescale(double min, double max, double origAnchor, double newAnchor) {
+		Preconditions.checkState(getMaxValueRaw() > getMinValueRaw(), "in order to rescale, current max must be > min");
+		Preconditions.checkArgument(max > min, "new max must be > min: %s !> %s", max, min);
+		Preconditions.checkState(origAnchor > getMinValueRaw() && origAnchor < getMaxValueRaw(),
+				"original anchor is not within range");
+		Preconditions.checkState(newAnchor > min && newAnchor < max,
+				"new anchor is not within range");
+		CPT cpt = (CPT)clone();
+		cpt.clear();
+		
+		CPT first = this.trim(getMinValueRaw(), origAnchor).rescale(min, newAnchor);
+		for (CPTVal val : first)
+			cpt.add((CPTVal)val.clone());
+		CPT last = this.trim(origAnchor, getMaxValueRaw()).rescale(newAnchor, max);
+		for (CPTVal val : last)
+			cpt.add((CPTVal)val.clone());
+		
+		return cpt;
+	}
+	
+	/**
 	 * @return reversed version of this CPT file
 	 */
 	public CPT reverse() {
