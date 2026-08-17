@@ -1,41 +1,23 @@
 package org.opensha.sha.imr;
 
-import static org.opensha.nshmp.shaded.gmm.NshmpGmm.ASK_14;
-import static org.opensha.nshmp.shaded.gmm.NshmpGmm.ASK_14_BASIN;
-import static org.opensha.nshmp.shaded.gmm.NshmpGmm.ASK_14_CYBERSHAKE;
-import static org.opensha.nshmp.shaded.gmm.NshmpGmm.BSSA_14;
-import static org.opensha.nshmp.shaded.gmm.NshmpGmm.BSSA_14_BASIN;
-import static org.opensha.nshmp.shaded.gmm.NshmpGmm.BSSA_14_CYBERSHAKE;
-import static org.opensha.nshmp.shaded.gmm.NshmpGmm.CB_14;
-import static org.opensha.nshmp.shaded.gmm.NshmpGmm.CB_14_BASIN;
-import static org.opensha.nshmp.shaded.gmm.NshmpGmm.CB_14_CYBERSHAKE;
-import static org.opensha.nshmp.shaded.gmm.NshmpGmm.CY_14;
-import static org.opensha.nshmp.shaded.gmm.NshmpGmm.CY_14_BASIN;
-import static org.opensha.nshmp.shaded.gmm.NshmpGmm.CY_14_CYBERSHAKE;
 import static org.opensha.commons.util.DevStatus.*;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.function.Supplier;
 
 import org.apache.commons.lang3.ArrayUtils;
-import org.opensha.commons.data.Named;
 import org.opensha.commons.data.WeightedList;
-import org.opensha.commons.data.WeightedList.Unmodifiable;
 import org.opensha.commons.data.WeightedValue;
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
 import org.opensha.commons.util.DevStatus;
 import org.opensha.commons.util.ServerPrefs;
 import org.opensha.nshmp2.imr.NSHMP08_CEUS;
-import org.opensha.nshmp2.imr.NSHMP08_WUS;
 import org.opensha.nshmp2.imr.impl.AB2006_140_AttenRel;
 import org.opensha.nshmp2.imr.impl.AB2006_200_AttenRel;
 import org.opensha.nshmp2.imr.impl.Campbell_2003_AttenRel;
@@ -251,17 +233,6 @@ public enum AttenRelRef implements AttenRelSupplier {
 		}
 		
 	},
-	
-	USGS_PRVI_ACTIVE(null, "USGS PRVI25 Active Crustal",
-			"PRVI25-Active", DEVELOPMENT) {
-		
-		@Override
-		public AttenuationRelationship instance(
-				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.TOTAL_TREE_PRVI_ACTIVE_CRUST_2025, getName(), getShortName(), false, null);
-		}
-		
-	},
 
 	USGS_NSHM23_STABLE(null, "USGS NSHM23 Stable Crustal",
 			"NSHM23-Stable", PRODUCTION) {
@@ -289,8 +260,19 @@ public enum AttenRelRef implements AttenRelSupplier {
 		
 	},
 	
+	USGS_PRVI_ACTIVE(null, "USGS PRVI25 Active Crustal",
+			"PRVI25-Active", PRODUCTION) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.TOTAL_TREE_PRVI_ACTIVE_CRUST_2025, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
 	USGS_PRVI_INTERFACE(null, "USGS PRVI25 Interface",
-			"PRVI25-Interface", DEVELOPMENT) {
+			"PRVI25-Interface", PRODUCTION) {
 		
 		@Override
 		public AttenuationRelationship instance(
@@ -301,7 +283,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 	},
 	
 	USGS_PRVI_SLAB(null, "USGS PRVI25 Intraslab",
-			"PRVI25-Intraslab", DEVELOPMENT) {
+			"PRVI25-Intraslab", PRODUCTION) {
 		
 		@Override
 		public AttenuationRelationship instance(
