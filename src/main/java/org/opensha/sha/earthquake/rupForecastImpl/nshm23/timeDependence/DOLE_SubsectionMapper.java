@@ -3,6 +3,7 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm23.timeDependence;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -108,14 +109,16 @@ public class DOLE_SubsectionMapper {
 	// UPDATE
 	public static final String REL_PATH = "/data/erf/nshm23/date_of_last_event/2025_12_18";
 	public static final String PALEO_DOLE_PATH = REL_PATH+"/PaleoDOLE_v1.2.geojson";
-	public static final String HIST_PATH = REL_PATH+"/HistDOLE_v1.3.geojson";
+	public static final String HIST_PATH = REL_PATH+"/HistDole_v1.3.geojson";
 //	/Users/field/eclipse-workspace/git/opensha/src/main/resources/data/erf/nshm23/date_of_last_event/2025_12_18/HistDole_v1.3.geojson 
 	
 	private static final String YEAR_PROP_NAME = "CalYear";
 	
 	private static final FeatureCollection loadGeoJSON(String path) throws IOException {
+		InputStream is = DOLE_SubsectionMapper.class.getResourceAsStream(path);
+		Preconditions.checkNotNull(is, "Path not found: %s", path);
 		BufferedReader bRead = new BufferedReader(
-				new InputStreamReader(DOLE_SubsectionMapper.class.getResourceAsStream(path)));
+				new InputStreamReader(is));
 		return FeatureCollection.read(bRead);
 	}
 	
@@ -748,8 +751,41 @@ public class DOLE_SubsectionMapper {
 		clustersCSV.writeToFile(new File("/tmp/clusters.csv"));
 	}
 
+	
+	private static void writeHistMappingCSV() throws IOException {
+		List<? extends FaultSection> subSects = NSHM23_DeformationModels.GEOLOGIC.build(NSHM23_FaultModels.WUS_FM_v3);
+
+		System.out.println("Loading hist rup data");
+		List<PaleoDOLE_Data> paleoData = new ArrayList<>();
+		List<HistoricalRupture> histRupData = loadHistRups();
+		
+		mapDOLE(subSects, histRupData, paleoData, PaleoMappingAlgorithm.CLOSEST_SECT, true);
+		
+		// mapping CSV for morgan
+		CSVFile<String> mappingCSV = new CSVFile<>(false);
+		mappingCSV.addLine("Event ID", "Fault Name", "Fault ID", "Calendar Year", "Start Latitude", "Start Longitude",
+				"End Latitude", "End Longitude", "Mapped Section 1", "Mapped Section 2 (if equidistant)");
+		for (HistoricalRupture data : histRupData) {
+			List<String> line = new ArrayList<>();
+			line.add(data.eventID);
+			line.add(data.faultName);
+			line.add(data.faultID+"");
+			line.add(data.year+"");
+			line.add((float)data.trace.first().lat+"");
+			line.add((float)data.trace.first().lon+"");
+			line.add((float)data.trace.last().lat+"");
+			line.add((float)data.trace.last().lon+"");
+			for (FaultSection sect : data.getMappedSubSects())
+				line.add(sect.getSectionId()+"");
+			mappingCSV.addLine(line);
+		}
+		mappingCSV.writeToFile(new File("/tmp/historical_mappings.csv"));
+	}
+
 	public static void main(String[] args) throws IOException {
 
+		writeHistMappingCSV();
+		System.exit(0);
 		// this only tests WUS
 //		List<? extends FaultSection> subSects = NSHM23_DeformationModels.GEOLOGIC.build(NSHM23_FaultModels.WUS_FM_v3);
 		
