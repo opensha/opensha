@@ -940,6 +940,151 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 	}
 	
 	/**
+	 * This rescales a cpt fir differetn scaling above and below a specified anchor point. E..g, let's say there
+	 * was a diverging CPT in the range [0, 1] with the central value at 0.5, and you wanted to turn it into a ratio
+	 * CPT over the range [0, 3] with the central value of 1. You would call anchoredRescale(0, 3, 0.5, 1)
+	 * and it would rescale the original [0, 0.5] to cover [0, 1], and the original [0.5, 1] to cover [1, 3].
+	 * 
+	 * @param min new minimum bound
+	 * @param max new maximum bound
+	 * @param origAnchor the anchoring point in the original range
+	 * @param newAnchor the anchoring point in the new range
+	 * @return anchored-rescaled version of this CPT
+	 */
+	public CPT anchoredRescale(double min, double max, double origAnchor, double newAnchor) {
+		Preconditions.checkState(getMaxValueRaw() > getMinValueRaw(), "in order to rescale, current max must be > min");
+		Preconditions.checkArgument(max > min, "new max must be > min: %s !> %s", max, min);
+		Preconditions.checkState(origAnchor > getMinValueRaw() && origAnchor < getMaxValueRaw(),
+				"original anchor is not within range");
+		Preconditions.checkState(newAnchor > min && newAnchor < max,
+				"new anchor is not within range");
+		CPT cpt = (CPT)clone();
+		cpt.clear();
+		
+		CPT first = this.trim(getMinValueRaw(), origAnchor).rescale(min, newAnchor);
+		for (CPTVal val : first)
+			cpt.add((CPTVal)val.clone());
+		CPT last = this.trim(origAnchor, getMaxValueRaw()).rescale(newAnchor, max);
+		for (CPTVal val : last)
+			cpt.add((CPTVal)val.clone());
+		
+		return cpt;
+	}
+	
+	/**
+	 * Returns a copy of this CPT with the value at the midpoint of the supplied
+	 * interval expanded to fill that interval. The color at the midpoint is used
+	 * throughout the expanded interval, and the portions of the CPT below and
+	 * above the midpoint are rescaled to end at {@code start} and begin at
+	 * {@code end}, respectively.
+	 *
+	 * @param start lower bound of the expanded interval
+	 * @param end upper bound of the expanded interval
+	 * @return a new CPT with the midpoint expanded over {@code [start, end]}
+	 */
+	public CPT expandAt(double start, double end) {
+		return expandAt(0.5 * (start + end), start, end);
+	}
+
+	/**
+	 * Returns a copy of this CPT with {@code splitPoint} expanded to fill the
+	 * supplied interval. The color at {@code splitPoint} is used throughout the
+	 * expanded interval, and the portions of the CPT below and above
+	 * {@code splitPoint} are rescaled to end at {@code start} and begin at
+	 * {@code end}, respectively.
+	 *
+	 * @param splitPoint value in this CPT to expand
+	 * @param start lower bound of the expanded interval
+	 * @param end upper bound of the expanded interval
+	 * @return a new CPT with {@code splitPoint} expanded over {@code [start, end]}
+	 */
+	public CPT expandAt(double splitPoint, double start, double end) {
+		return expandAt(getColor(splitPoint), splitPoint, start, end);
+	}
+
+	/**
+	 * Returns a copy of this CPT with {@code splitPoint} expanded to fill the
+	 * supplied interval using the specified color. The portion of the CPT below
+	 * {@code splitPoint} is rescaled to end at {@code start}, the portion above
+	 * {@code splitPoint} is rescaled to begin at {@code end}, and the interval
+	 * {@code [start, end]} is filled with {@code color}.
+	 * <p>
+	 * {@code splitPoint} must lie strictly between {@code start} and {@code end},
+	 * and the expanded interval must lie strictly within the range of this CPT.
+	 *
+	 * @param color color to use throughout the expanded interval
+	 * @param splitPoint value in this CPT to expand
+	 * @param start lower bound of the expanded interval
+	 * @param end upper bound of the expanded interval
+	 * @return a new CPT with {@code splitPoint} expanded over {@code [start, end]}
+	 */
+	public CPT expandAt(Color color, double splitPoint, double start, double end) {
+		Preconditions.checkNotNull(color, "color cannot be null");
+		Preconditions.checkArgument(Double.isFinite(start), "start must be finite: %s", start);
+		Preconditions.checkArgument(Double.isFinite(end), "end must be finite: %s", end);
+		Preconditions.checkArgument(Double.isFinite(splitPoint), "splitPoint must be finite: %s", splitPoint);
+		Preconditions.checkArgument(end > start,
+				"end must be greater than start: start=%s, end=%s", start, end);
+		Preconditions.checkArgument(start > getMinValueRaw(),
+				"start must be greater than the CPT minimum (%s): %s", getMinValueRaw(), start);
+		Preconditions.checkArgument(end < getMaxValueRaw(),
+				"end must be less than the CPT maximum (%s): %s", getMaxValueRaw(), end);
+		Preconditions.checkArgument(splitPoint > start && splitPoint < end,
+				"splitPoint must be between start and end: start=%s, splitPoint=%s, end=%s",
+				start, splitPoint, end);
+
+		CPT cpt = (CPT)clone();
+		cpt.clear();
+
+		for (CPTVal val : trim(getMinValueRaw(), splitPoint).rescale(getMinValueRaw(), start))
+			cpt.add((CPTVal)val.clone());
+
+		cpt.add(new CPTVal(start, color, end, color));
+
+		for (CPTVal val : trim(splitPoint, getMaxValueRaw()).rescale(end, getMaxValueRaw()))
+			cpt.add((CPTVal)val.clone());
+
+		return cpt;
+	}
+
+	/**
+	 * Returns a copy of this CPT with the supplied interval masked by a constant
+	 * color. Values outside {@code [start, end]} are unchanged, while the interval
+	 * from {@code start} to {@code end} is filled with {@code color}.
+	 * <p>
+	 * The masked interval must lie strictly within the range of this CPT.
+	 *
+	 * @param color color to use throughout the masked interval
+	 * @param start lower bound of the masked interval
+	 * @param end upper bound of the masked interval
+	 * @return a new CPT with {@code [start, end]} masked by {@code color}
+	 */
+	public CPT mask(Color color, double start, double end) {
+		Preconditions.checkNotNull(color, "color cannot be null");
+		Preconditions.checkArgument(Double.isFinite(start), "start must be finite: %s", start);
+		Preconditions.checkArgument(Double.isFinite(end), "end must be finite: %s", end);
+		Preconditions.checkArgument(end > start,
+				"end must be greater than start: start=%s, end=%s", start, end);
+		Preconditions.checkArgument(start > getMinValueRaw(),
+				"start must be greater than the CPT minimum (%s): %s", getMinValueRaw(), start);
+		Preconditions.checkArgument(end < getMaxValueRaw(),
+				"end must be less than the CPT maximum (%s): %s", getMaxValueRaw(), end);
+
+		CPT cpt = (CPT)clone();
+		cpt.clear();
+
+		for (CPTVal val : trim(getMinValueRaw(), start))
+			cpt.add((CPTVal)val.clone());
+
+		cpt.add(new CPTVal(start, color, end, color));
+
+		for (CPTVal val : trim(end, getMaxValueRaw()))
+			cpt.add((CPTVal)val.clone());
+
+		return cpt;
+	}
+	
+	/**
 	 * @return reversed version of this CPT file
 	 */
 	public CPT reverse() {
