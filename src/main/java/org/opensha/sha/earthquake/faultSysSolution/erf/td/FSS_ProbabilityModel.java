@@ -200,6 +200,15 @@ public interface FSS_ProbabilityModel extends ParameterizedModel {
 				name = "Weighted combination of "+probModels.size()+" models";
 			this.probModels = probModels;
 		}
+		
+		/*
+		 * This returns the WeightedList of models (used to verify parameter settings).  
+		 * May be dangerous to have this.
+		 */
+		public WeightedList<? extends FSS_ProbabilityModel> getProbModelList() {
+			return probModels;
+		}
+
 
 		@Override
 		public double getProbability(int fltSysRupIndex, double ruptureRate, long forecastStartTimeMillis, double durationYears) {

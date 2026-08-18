@@ -34,7 +34,7 @@ public enum AperiodicityModels {
 			return new AperiodicityModel.MagnitudeBinned(fltSysSolution.getRupSet(), aperValues, aperMagBoundaries);
 		}
 	},
-	NSHM26_LOW("NSHM (2026) Low") {
+	NSHM27_LOW("NSHM (2027) Low") {
 		@Override
 		public AperiodicityModel instance(FaultSystemSolution fltSysSolution) {
 			EnumMap<TectonicRegionType, AperiodicityModel> models = new EnumMap<>(TectonicRegionType.class);
@@ -49,7 +49,7 @@ public enum AperiodicityModels {
 					models, fallback, params);
 		}
 	},
-	NSHM26_MIDDLE("NSHM (2026) Middle") {
+	NSHM27_MIDDLE("NSHM (2027) Middle") {
 		@Override
 		public AperiodicityModel instance(FaultSystemSolution fltSysSolution) {
 			EnumMap<TectonicRegionType, AperiodicityModel> models = new EnumMap<>(TectonicRegionType.class);
@@ -64,7 +64,7 @@ public enum AperiodicityModels {
 					models, fallback, params);
 		}
 	},
-	NSHM26_HIGH("NSHM (2026) High") {
+	NSHM27_HIGH("NSHM (2027) High") {
 		@Override
 		public AperiodicityModel instance(FaultSystemSolution fltSysSolution) {
 			EnumMap<TectonicRegionType, AperiodicityModel> models = new EnumMap<>(TectonicRegionType.class);
@@ -79,7 +79,7 @@ public enum AperiodicityModels {
 					models, fallback, params);
 		}
 	},
-	NSHM26_SLIPRATE_TEST("NSHM (2026) Slip-Rate-Dep Test") {
+	NSHM27_SLIPRATE_TEST("NSHM (2027) Slip-Rate-Dep Test") {
 		@Override
 		public AperiodicityModel instance(FaultSystemSolution fltSysSolution) {
 			// TODO. this is an example stub
@@ -101,13 +101,13 @@ public enum AperiodicityModels {
 	SINGLE_VALUED("Single Value") {
 		@Override
 		public AperiodicityModel instance(FaultSystemSolution fltSysSolution) {
-			return new AperiodicityModel.SingleValued(0.3, true); // true -> adjustable
+			return new AperiodicityModel.SingleValued(0.4, true); // true -> adjustable
 		}
 	};
 
 	
 	public static EnumSet<AperiodicityModels> UCERF3_MODELS = EnumSet.of(UCERF3_LOW, UCERF3_MIDDLE, UCERF3_HIGH);
-	public static EnumSet<AperiodicityModels> NSHM26_MODELS = EnumSet.of(NSHM26_LOW,NSHM26_MIDDLE,NSHM26_HIGH);
+	public static EnumSet<AperiodicityModels> NSHM26_MODELS = EnumSet.of(NSHM27_LOW,NSHM27_MIDDLE,NSHM27_HIGH);
 	public static EnumSet<AperiodicityModels> SINGLE_VALUED_MODELS = EnumSet.of(SINGLE_VALUED);
 	
 	private String name;

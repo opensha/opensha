@@ -31,23 +31,23 @@ public enum FSS_ProbabilityModels {
 		public UCERF3_ProbabilityModel getProbabilityModel(FaultSystemSolution sol, double[] longTermPartRateForSectArray) {
 			return new UCERF3_ProbabilityModel(
 					sol, longTermPartRateForSectArray,
-					AperiodicityModels.NSHM26_MIDDLE,
+					AperiodicityModels.NSHM27_MIDDLE,
 					RenewalModels.BPT,
 					HistoricalOpenIntervals.UCERF3,
 					BPTAveragingTypeOptions.AVE_RI_AVE_NORM_TIME_SINCE);
 		}
 	},
 	/**
-	 * NSHM (2026) TD implementation with options defaulting and restricted to those supported by the (to be) published
+	 * NSHM (2027) TD implementation with options defaulting and restricted to those supported by the (to be) published
 	 * model.
 	 */
-	NSHM26("NSHM (2026)") {
+	NSHM27("NSHM (2027)") {
 		@Override
 		public UCERF3_ProbabilityModel getProbabilityModel(FaultSystemSolution sol, double[] longTermPartRateForSectArray) {
 			return new UCERF3_ProbabilityModel(
 					sol, longTermPartRateForSectArray,
 					// initialize with NSHM26 middle aperiodicity and allow only the NSHM26 aperiodicity branches
-					AperiodicityModels.NSHM26_MIDDLE, AperiodicityModels.NSHM26_MODELS,
+					AperiodicityModels.NSHM27_MIDDLE, AperiodicityModels.NSHM26_MODELS,
 					// initialize with BPT but allow any of the renewal model distributions
 					RenewalModels.BPT, EnumSet.allOf(RenewalModels.class),
 					// allow all for now until we create our own
@@ -117,15 +117,15 @@ public enum FSS_ProbabilityModels {
 		}
 	},
 	/**
-	 * no adjustable parameters???
+	 * 
 	 */
-	NSHM26_BRANCH_AVE("NSHM27-TD Branch Average") {
+	NSHM27_BRANCH_AVE_BPT("NSHM27-TD Branch Average BPT") {
 		@Override
 		public FSS_ProbabilityModel getProbabilityModel(FaultSystemSolution sol, double[] longTermPartRateForSectArray) {
 			WeightedList<FSS_ProbabilityModel> models = new WeightedList<>(4);
 			
-			FSS_ProbabilityModel u3Low = NSHM26.getProbabilityModel(sol, longTermPartRateForSectArray);
-			setAperiodicityModel(u3Low, AperiodicityModels.NSHM26_LOW);
+			FSS_ProbabilityModel u3Low = NSHM27.getProbabilityModel(sol, longTermPartRateForSectArray);
+			setAperiodicityModel(u3Low, AperiodicityModels.NSHM27_LOW, RenewalModels.BPT);
 			// we'll show these parameters in the GUI, and the ParamLinker calls below will make sure any changes are
 			// propagated to each other U3 model. Keep all but the aperiodicity parameter
 			ParameterList params = new ParameterList();
@@ -134,15 +134,15 @@ public enum FSS_ProbabilityModels {
 					params.addParameter(param);
 			models.add(u3Low, 0.1);
 			
-			FSS_ProbabilityModel u3Middle = NSHM26.getProbabilityModel(sol, longTermPartRateForSectArray);
-			setAperiodicityModel(u3Middle, AperiodicityModels.NSHM26_MIDDLE);
+			FSS_ProbabilityModel u3Middle = NSHM27.getProbabilityModel(sol, longTermPartRateForSectArray);
+			setAperiodicityModel(u3Middle, AperiodicityModels.NSHM27_MIDDLE, RenewalModels.BPT);
 			// link parameters in the reference model to this one 
 			for (Parameter<?> param : params)
 				ParamLinker.link(param, u3Middle.getAdjustableParameters().getParameter(param.getName()));
 			models.add(u3Middle, 0.4);
 			
-			FSS_ProbabilityModel u3High = NSHM26.getProbabilityModel(sol, longTermPartRateForSectArray);
-			setAperiodicityModel(u3High, AperiodicityModels.NSHM26_HIGH);
+			FSS_ProbabilityModel u3High = NSHM27.getProbabilityModel(sol, longTermPartRateForSectArray);
+			setAperiodicityModel(u3High, AperiodicityModels.NSHM27_HIGH, RenewalModels.BPT);
 			// link parameters in the reference model to this one 
 			for (Parameter<?> param : params)
 				ParamLinker.link(param, u3High.getAdjustableParameters().getParameter(param.getName()));
@@ -153,9 +153,118 @@ public enum FSS_ProbabilityModels {
 			return new FSS_ProbabilityModel.WeightedCombination(this.toString(), models, params);
 		}
 		
-		private void setAperiodicityModel(FSS_ProbabilityModel probModel, AperiodicityModels model) {
+		private void setAperiodicityModel(FSS_ProbabilityModel probModel, AperiodicityModels model, RenewalModels renewalChoice) {
 			Preconditions.checkState(probModel instanceof UCERF3_ProbabilityModel);
 			((UCERF3_ProbabilityModel)probModel).setAperiodicityModelChoice(model);
+			((UCERF3_ProbabilityModel)probModel).setRenewalModelChoice(renewalChoice);
+		}
+	},
+	/**
+	 * 
+	 */
+	NSHM27_BRANCH_AVE_WEIBULL("NSHM27-TD Branch Average Weibull") {
+		@Override
+		public FSS_ProbabilityModel getProbabilityModel(FaultSystemSolution sol, double[] longTermPartRateForSectArray) {
+			WeightedList<FSS_ProbabilityModel> models = new WeightedList<>(4);
+			
+			FSS_ProbabilityModel u3Low = NSHM27.getProbabilityModel(sol, longTermPartRateForSectArray);
+			setAperiodicityModel(u3Low, AperiodicityModels.NSHM27_LOW, RenewalModels.WEIBULL);
+			// we'll show these parameters in the GUI, and the ParamLinker calls below will make sure any changes are
+			// propagated to each other U3 model. Keep all but the aperiodicity parameter
+			ParameterList params = new ParameterList();
+			for (Parameter<?> param : u3Low.getAdjustableParameters())
+				if (!param.getName().equals(AperiodicityModels.PARAM_NAME))
+					params.addParameter(param);
+			models.add(u3Low, 0.1);
+			
+			FSS_ProbabilityModel u3Middle = NSHM27.getProbabilityModel(sol, longTermPartRateForSectArray);
+			setAperiodicityModel(u3Middle, AperiodicityModels.NSHM27_MIDDLE, RenewalModels.WEIBULL);
+			// link parameters in the reference model to this one 
+			for (Parameter<?> param : params)
+				ParamLinker.link(param, u3Middle.getAdjustableParameters().getParameter(param.getName()));
+			models.add(u3Middle, 0.4);
+			
+			FSS_ProbabilityModel u3High = NSHM27.getProbabilityModel(sol, longTermPartRateForSectArray);
+			setAperiodicityModel(u3High, AperiodicityModels.NSHM27_HIGH, RenewalModels.WEIBULL);
+			// link parameters in the reference model to this one 
+			for (Parameter<?> param : params)
+				ParamLinker.link(param, u3High.getAdjustableParameters().getParameter(param.getName()));
+			models.add(u3High, 0.3);
+			
+			models.add(new FSS_ProbabilityModel.Poisson(sol), 0.2);
+			
+			return new FSS_ProbabilityModel.WeightedCombination(this.toString(), models, params);
+		}
+		
+		private void setAperiodicityModel(FSS_ProbabilityModel probModel, AperiodicityModels model, RenewalModels renewalChoice) {
+			Preconditions.checkState(probModel instanceof UCERF3_ProbabilityModel);
+			((UCERF3_ProbabilityModel)probModel).setAperiodicityModelChoice(model);
+			((UCERF3_ProbabilityModel)probModel).setRenewalModelChoice(renewalChoice);
+		}
+	},
+	/**
+	 * 
+	 */
+	NSHM27_BRANCH_AVE("NSHM27-TD Branch Average") {
+		@Override
+		public FSS_ProbabilityModel getProbabilityModel(FaultSystemSolution sol, double[] longTermPartRateForSectArray) {
+			WeightedList<FSS_ProbabilityModel> models = new WeightedList<>(4);
+
+			FSS_ProbabilityModel u3Low = NSHM27.getProbabilityModel(sol, longTermPartRateForSectArray);
+			setModelParams(u3Low, AperiodicityModels.NSHM27_LOW, RenewalModels.WEIBULL);
+			// we'll show these parameters in the GUI, and the ParamLinker calls below will make sure any changes are
+			// propagated to each other U3 model. Keep all but the aperiodicity and renewal model parameter
+			ParameterList params = new ParameterList();
+			for (Parameter<?> param : u3Low.getAdjustableParameters())
+				if (!param.getName().equals(AperiodicityModels.PARAM_NAME) && !param.getName().equals(RenewalModels.PARAM_NAME))
+					params.addParameter(param);
+			models.add(u3Low, 0.1/2.0);
+			
+			FSS_ProbabilityModel u3Middle = NSHM27.getProbabilityModel(sol, longTermPartRateForSectArray);
+			setModelParams(u3Middle, AperiodicityModels.NSHM27_MIDDLE, RenewalModels.WEIBULL);
+			// link parameters in the reference model to this one 
+			for (Parameter<?> param : params)
+				ParamLinker.link(param, u3Middle.getAdjustableParameters().getParameter(param.getName()));
+			models.add(u3Middle, 0.4/2.0);
+			
+			FSS_ProbabilityModel u3High = NSHM27.getProbabilityModel(sol, longTermPartRateForSectArray);
+			setModelParams(u3High, AperiodicityModels.NSHM27_HIGH, RenewalModels.WEIBULL);
+			// link parameters in the reference model to this one 
+			for (Parameter<?> param : params)
+				ParamLinker.link(param, u3High.getAdjustableParameters().getParameter(param.getName()));
+			models.add(u3High, 0.3/2.0);
+			
+			FSS_ProbabilityModel u3Low2 = NSHM27.getProbabilityModel(sol, longTermPartRateForSectArray);
+			setModelParams(u3Low2, AperiodicityModels.NSHM27_LOW, RenewalModels.BPT);
+			// link parameters in the reference model to this one 
+			for (Parameter<?> param : params)
+				ParamLinker.link(param, u3Low2.getAdjustableParameters().getParameter(param.getName()));
+			models.add(u3Low2, 0.1/2.0);
+			
+			FSS_ProbabilityModel u3Middle2 = NSHM27.getProbabilityModel(sol, longTermPartRateForSectArray);
+			setModelParams(u3Middle2, AperiodicityModels.NSHM27_MIDDLE, RenewalModels.BPT);
+			// link parameters in the reference model to this one 
+			for (Parameter<?> param : params)
+				ParamLinker.link(param, u3Middle2.getAdjustableParameters().getParameter(param.getName()));
+			models.add(u3Middle2, 0.4/2.0);
+			
+			FSS_ProbabilityModel u3High2 = NSHM27.getProbabilityModel(sol, longTermPartRateForSectArray);
+			setModelParams(u3High2, AperiodicityModels.NSHM27_HIGH, RenewalModels.BPT);
+			// link parameters in the reference model to this one 
+			for (Parameter<?> param : params)
+				ParamLinker.link(param, u3High2.getAdjustableParameters().getParameter(param.getName()));
+			models.add(u3High2, 0.3/2.0);
+
+			models.add(new FSS_ProbabilityModel.Poisson(sol), 0.2);
+			
+			return new FSS_ProbabilityModel.WeightedCombination(this.toString(), models, params);
+		}
+		
+		private void setModelParams(FSS_ProbabilityModel probModel, AperiodicityModels model, RenewalModels renewalChoice) {
+			Preconditions.checkState(probModel instanceof UCERF3_ProbabilityModel);
+			((UCERF3_ProbabilityModel)probModel).setAperiodicityModelChoice(model);
+			((UCERF3_ProbabilityModel)probModel).setRenewalModelChoice(renewalChoice);
+// ((UCERF3_ProbabilityModel)probModel).setCustomHistOpenIntervalModel(new HistoricalOpenInterval.SingleYear(2027, true));
 		}
 	},
 	WG02("WGCEP (2002)") {
