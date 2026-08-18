@@ -231,7 +231,7 @@ public class JointRuptureExperimentalIMR extends NSHMP_GMM_Wrapper {
 			Preconditions.checkState(Double.isFinite(area) && area > 0d,
 					"Can't determine single-sect TRT without valid area; area=%s", area);
 			double magIfCrustal = getCrustalMag(area);
-			double magIfInterface = getCrustalMag(area);
+			double magIfInterface = getInterfaceMag(area);
 			boolean crustal = Math.abs(origMag - magIfCrustal) < Math.abs(origMag - magIfInterface);
 			if (crustal)
 				crustalInput = origInput;
