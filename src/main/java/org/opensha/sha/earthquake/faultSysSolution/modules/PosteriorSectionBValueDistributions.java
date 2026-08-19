@@ -39,34 +39,58 @@ BranchAverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureM
 	private List<ContinuousDistribution> sectPosteriors;
 	
 	/* optional */
+	private List<ContinuousDistribution> sectPriors;
 	private List<double[]> sectPaleoSiteWeights;
 	private List<ContinuousDistribution> paleoSitePosteriors;
 	private List<EvenlyDiscretizedFunc> paleoSiteMisfits;
+	private List<EvenlyDiscretizedFunc> paleoSiteLogLikelihoods;
 	
 	@SuppressWarnings("unused") // deserialization
 	private PosteriorSectionBValueDistributions() {};
 	
 	public PosteriorSectionBValueDistributions(ContinuousDistribution priorDist, List<ContinuousDistribution> sectPosteriors) {
-		this(priorDist, sectPosteriors, null, null, null);
+		this(priorDist, sectPosteriors, null, null, null, null, null);
 	}
 	
 	public PosteriorSectionBValueDistributions(ContinuousDistribution priorDist, List<ContinuousDistribution> sectPosteriors,
 			List<double[]> sectPaleoSiteWeights, List<ContinuousDistribution> paleoSitePosteriors,
 			List<EvenlyDiscretizedFunc> paleoSiteMisfits) {
-		init(priorDist, sectPosteriors, sectPaleoSiteWeights, paleoSitePosteriors, paleoSiteMisfits);
+		this(priorDist, sectPosteriors, null, sectPaleoSiteWeights, paleoSitePosteriors, paleoSiteMisfits, null);
+	}
+
+	public PosteriorSectionBValueDistributions(ContinuousDistribution priorDist, List<ContinuousDistribution> sectPosteriors,
+			List<ContinuousDistribution> sectPriors, List<double[]> sectPaleoSiteWeights,
+			List<ContinuousDistribution> paleoSitePosteriors, List<EvenlyDiscretizedFunc> paleoSiteMisfits) {
+		this(priorDist, sectPosteriors, sectPriors, sectPaleoSiteWeights, paleoSitePosteriors, paleoSiteMisfits, null);
+	}
+
+	public PosteriorSectionBValueDistributions(ContinuousDistribution priorDist, List<ContinuousDistribution> sectPosteriors,
+			List<ContinuousDistribution> sectPriors, List<double[]> sectPaleoSiteWeights,
+			List<ContinuousDistribution> paleoSitePosteriors, List<EvenlyDiscretizedFunc> paleoSiteMisfits,
+			List<EvenlyDiscretizedFunc> paleoSiteLogLikelihoods) {
+		init(priorDist, sectPosteriors, sectPriors, sectPaleoSiteWeights, paleoSitePosteriors, paleoSiteMisfits,
+				paleoSiteLogLikelihoods);
 	}
 
 	private void init(ContinuousDistribution priorDist, List<ContinuousDistribution> sectPosteriors,
-			List<double[]> sectPaleoSiteWeights, List<ContinuousDistribution> paleoSitePosteriors,
-			List<EvenlyDiscretizedFunc> paleoSiteMisfits) {
+			List<ContinuousDistribution> sectPriors, List<double[]> sectPaleoSiteWeights,
+			List<ContinuousDistribution> paleoSitePosteriors,
+			List<EvenlyDiscretizedFunc> paleoSiteMisfits, List<EvenlyDiscretizedFunc> paleoSiteLogLikelihoods) {
 		Preconditions.checkNotNull(priorDist, "Prior cannot be null");
 		this.priorDist = priorDist;
 		Preconditions.checkNotNull(sectPosteriors, "Sect posteriors cannot be null");
 		this.sectPosteriors = Collections.unmodifiableList(sectPosteriors);
+		if (sectPriors != null)
+			Preconditions.checkState(sectPriors.size() == sectPosteriors.size());
+		this.sectPriors = sectPriors == null ? null : Collections.unmodifiableList(sectPriors);
 		if (paleoSitePosteriors != null && paleoSiteMisfits != null)
 			Preconditions.checkState(paleoSiteMisfits.size() == paleoSitePosteriors.size());
 		this.paleoSitePosteriors = paleoSitePosteriors == null ? null : Collections.unmodifiableList(paleoSitePosteriors);
 		this.paleoSiteMisfits = paleoSiteMisfits == null ? null : Collections.unmodifiableList(paleoSiteMisfits);
+		if (paleoSitePosteriors != null && paleoSiteLogLikelihoods != null)
+			Preconditions.checkState(paleoSiteLogLikelihoods.size() == paleoSitePosteriors.size());
+		this.paleoSiteLogLikelihoods = paleoSiteLogLikelihoods == null ? null
+				: Collections.unmodifiableList(paleoSiteLogLikelihoods);
 		if (sectPaleoSiteWeights != null) {
 			this.sectPaleoSiteWeights = Collections.unmodifiableList(sectPaleoSiteWeights);
 			int expectedNum = paleoSitePosteriors == null ? -1 : paleoSitePosteriors.size(); 
@@ -82,6 +106,17 @@ BranchAverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureM
 
 	public ContinuousDistribution getPriorDist() {
 		return priorDist;
+	}
+
+	public List<ContinuousDistribution> getSectPriors() {
+		return sectPriors;
+	}
+
+	public ContinuousDistribution getSectPrior(int sectIndex) {
+		if (sectPriors == null)
+			return priorDist;
+		ContinuousDistribution sectPrior = sectPriors.get(sectIndex);
+		return sectPrior == null ? priorDist : sectPrior;
 	}
 
 	public List<ContinuousDistribution> getSectPosteriors() {
@@ -107,6 +142,11 @@ BranchAverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureM
 	public List<EvenlyDiscretizedFunc> getPaleoSiteMisfits() {
 		// already unmodifiable or null
 		return paleoSiteMisfits;
+	}
+
+	public List<EvenlyDiscretizedFunc> getPaleoSiteLogLikelihoods() {
+		// already unmodifiable or null
+		return paleoSiteLogLikelihoods;
 	}
 
 	@Override
@@ -137,6 +177,17 @@ BranchAverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureM
 				distAdapter.write(out, dist);
 		}
 		out.endArray();
+
+		if (sectPriors != null) {
+			out.name("sectPriors").beginArray();
+			for (ContinuousDistribution dist : sectPriors) {
+				if (dist == null)
+					out.nullValue();
+				else
+					distAdapter.write(out, dist);
+			}
+			out.endArray();
+		}
 		
 		if (sectPaleoSiteWeights != null) {
 			out.name("sectPaleoSiteWeights").beginArray();
@@ -176,6 +227,17 @@ BranchAverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureM
 			}
 			out.endArray();
 		}
+
+		if (paleoSiteLogLikelihoods != null) {
+			out.name("paleoSiteLogLikelihoods").beginArray();
+			for (EvenlyDiscretizedFunc logLikelihood : paleoSiteLogLikelihoods) {
+				if (logLikelihood == null)
+					out.nullValue();
+				else
+					funcAdapter.write(out, logLikelihood);
+			}
+			out.endArray();
+		}
 		
 		out.endObject();
 	}
@@ -186,10 +248,12 @@ BranchAverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureM
 		
 		ContinuousDistribution priorDist = null;
 		List<ContinuousDistribution> sectPosteriors = null;
+		List<ContinuousDistribution> sectPriors = null;
 		
 		List<double[]> sectPaleoSiteWeights = null;
 		List<ContinuousDistribution> paleoSitePosteriors = null;
 		List<EvenlyDiscretizedFunc> paleoSiteMisfits = null; 
+		List<EvenlyDiscretizedFunc> paleoSiteLogLikelihoods = null;
 		
 		while (in.hasNext()) {
 			String name = in.nextName();
@@ -207,6 +271,24 @@ BranchAverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureM
 						sectPosteriors.add(null);
 					}else {
 						sectPosteriors.add(distAdapter.read(in));
+					}
+				}
+				in.endArray();
+				break;
+			}
+			case "sectPriors": {
+				if (in.peek() == JsonToken.NULL) {
+					in.nextNull();
+					break;
+				}
+				sectPriors = new ArrayList<>();
+				in.beginArray();
+				while (in.hasNext()) {
+					if (in.peek() == JsonToken.NULL) {
+						in.nextNull();
+						sectPriors.add(null);
+					} else {
+						sectPriors.add(distAdapter.read(in));
 					}
 				}
 				in.endArray();
@@ -272,6 +354,24 @@ BranchAverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureM
 				in.endArray();
 				break;
 			}
+			case "paleoSiteLogLikelihoods": {
+				if (in.peek() == JsonToken.NULL) {
+					in.nextNull();
+					break;
+				}
+				paleoSiteLogLikelihoods = new ArrayList<>();
+				in.beginArray();
+				while (in.hasNext()) {
+					if (in.peek() == JsonToken.NULL) {
+						in.nextNull();
+						paleoSiteLogLikelihoods.add(null);
+					} else {
+						paleoSiteLogLikelihoods.add(funcAdapter.read(in));
+					}
+				}
+				in.endArray();
+				break;
+			}
 			default:
 				System.err.println("Unexpected JSON value: "+name);
 				in.skipValue();
@@ -280,7 +380,8 @@ BranchAverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureM
 		
 		in.endObject();
 		
-		init(priorDist, sectPosteriors, sectPaleoSiteWeights, paleoSitePosteriors, paleoSiteMisfits);
+		init(priorDist, sectPosteriors, sectPriors, sectPaleoSiteWeights, paleoSitePosteriors, paleoSiteMisfits,
+				paleoSiteLogLikelihoods);
 	}
 
 	@Override
@@ -340,10 +441,12 @@ BranchAverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureM
 		private FuncAverager priorAvg;
 		
 		private List<FuncAverager> sectPosteriorAvg;
+		private List<FuncAverager> sectPriorAvg;
 		private List<double[]> sectPaleoWeightAvg;
 		
 		private List<FuncAverager> paleoSitePosteriorAvg;
 		private List<FuncAverager> paleoSiteMisfitAvg;
+		private List<FuncAverager> paleoSiteLogLikelihoodAvg;
 
 		@Override
 		public Class<PosteriorSectionBValueDistributions> getType() {
@@ -380,6 +483,12 @@ BranchAverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureM
 				sectPosteriorAvg = new ArrayList<>(module.sectPosteriors.size());
 				for (int i=0; i<module.sectPosteriors.size(); i++)
 					sectPosteriorAvg.add(null);
+
+				if (module.sectPriors != null) {
+					sectPriorAvg = new ArrayList<>(module.sectPriors.size());
+					for (int i=0; i<module.sectPriors.size(); i++)
+						sectPriorAvg.add(null);
+				}
 				
 				if (module.sectPaleoSiteWeights != null) {
 					sectPaleoWeightAvg = new ArrayList<>(module.sectPaleoSiteWeights.size());
@@ -397,6 +506,12 @@ BranchAverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureM
 					paleoSiteMisfitAvg = new ArrayList<>(module.paleoSiteMisfits.size());
 					for (int i=0; i<module.paleoSiteMisfits.size(); i++)
 						paleoSiteMisfitAvg.add(null);
+				}
+
+				if (module.paleoSiteLogLikelihoods != null) {
+					paleoSiteLogLikelihoodAvg = new ArrayList<>(module.paleoSiteLogLikelihoods.size());
+					for (int i=0; i<module.paleoSiteLogLikelihoods.size(); i++)
+						paleoSiteLogLikelihoodAvg.add(null);
 				}
 			}
 			
@@ -425,6 +540,32 @@ BranchAverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureM
 				}
 				// average it in
 				avg.add(dist, relWeight, bValues, discrType);
+			}
+
+			if (sectPriorAvg != null) {
+				if (module.sectPriors == null) {
+					sectPriorAvg = null;
+				} else {
+					Preconditions.checkState(module.sectPriors.size() == sectPriorAvg.size());
+					for (int s=0; s<sectPriorAvg.size(); s++) {
+						FuncAverager avg = sectPriorAvg.get(s);
+						ContinuousDistribution dist = module.sectPriors.get(s);
+						if (avg == null && dist == null)
+							continue;
+						if (avg == null) {
+							avg = new FuncAverager();
+							sectPriorAvg.set(s, avg);
+							if (sumWeight > 0d) {
+								avg.runningWeightSum = priorAvg.runningWeightSum.deepClone();
+								avg.sumWeight = sumWeight;
+							}
+						} else if (dist == null) {
+							avg.add(module.priorDist, relWeight, bValues, discrType);
+							continue;
+						}
+						avg.add(dist, relWeight, bValues, discrType);
+					}
+				}
 			}
 
 			// this must be after the above because we use the running-prior-avg before this module to fill in nulls above
@@ -498,6 +639,27 @@ BranchAverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureM
 					}
 				}
 			}
+
+			if (paleoSiteLogLikelihoodAvg != null) {
+				if (module.paleoSiteLogLikelihoods == null) {
+					paleoSiteLogLikelihoodAvg = null;
+				} else {
+					Preconditions.checkState(module.paleoSiteLogLikelihoods.size() == paleoSiteLogLikelihoodAvg.size());
+					for (int p=0; p<paleoSiteLogLikelihoodAvg.size(); p++) {
+						FuncAverager avg = paleoSiteLogLikelihoodAvg.get(p);
+						EvenlyDiscretizedFunc logLikelihood = module.paleoSiteLogLikelihoods.get(p);
+						if (avg == null && logLikelihood == null)
+							continue;
+						if (avg == null) {
+							avg = new FuncAverager();
+							paleoSiteLogLikelihoodAvg.set(p, avg);
+						} else if (logLikelihood == null) {
+							continue;
+						}
+						avg.add(logLikelihood, relWeight);
+					}
+				}
+			}
 			
 			sumWeight += relWeight;
 		}
@@ -511,6 +673,13 @@ BranchAverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureM
 			for (FuncAverager avg : sectPosteriorAvg)
 				sectPosteriors.add(avg == null ?
 						null : new EvenlyDiscrFuncContinuousDistribution(avg.getAverage(), discrType));
+
+			List<ContinuousDistribution> sectPriors = null;
+			if (sectPriorAvg != null) {
+				sectPriors = new ArrayList<>(sectPriorAvg.size());
+				for (FuncAverager avg : sectPriorAvg)
+					sectPriors.add(avg == null ? null : new EvenlyDiscrFuncContinuousDistribution(avg.getAverage(), discrType));
+			}
 			
 			
 			List<double[]> sectPaleoWeights = null;
@@ -539,10 +708,18 @@ BranchAverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureM
 				for (FuncAverager avg : paleoSiteMisfitAvg)
 					paleoSiteMisfits.add(avg == null ? null : avg.getAverage());
 			}
+
+			List<EvenlyDiscretizedFunc> paleoSiteLogLikelihoods = null;
+			if (paleoSiteLogLikelihoodAvg != null) {
+				paleoSiteLogLikelihoods = new ArrayList<>(paleoSiteLogLikelihoodAvg.size());
+				for (FuncAverager avg : paleoSiteLogLikelihoodAvg)
+					paleoSiteLogLikelihoods.add(avg == null ? null : avg.getAverage());
+			}
 			// prevent reuse
 			sumWeight = Double.NaN;
 			sectPosteriorAvg = null;
-			return new PosteriorSectionBValueDistributions(prior, sectPosteriors, sectPaleoWeights, paleoSitePosteriors, paleoSiteMisfits);
+			return new PosteriorSectionBValueDistributions(prior, sectPosteriors, sectPriors, sectPaleoWeights,
+					paleoSitePosteriors, paleoSiteMisfits, paleoSiteLogLikelihoods);
 		}
 		
 	}
@@ -634,8 +811,9 @@ BranchAverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureM
 			RuptureSubSetMappings mappings) {
 		return new PosteriorSectionBValueDistributions(priorDist,
 				getForSectionSubSet(sectPosteriors, mappings),
+				getForSectionSubSet(sectPriors, mappings),
 				getWeightsForSectionSubSet(sectPaleoSiteWeights, mappings),
-				copyList(paleoSitePosteriors), copyList(paleoSiteMisfits));
+				copyList(paleoSitePosteriors), copyList(paleoSiteMisfits), copyList(paleoSiteLogLikelihoods));
 	}
 
 	@Override
@@ -643,8 +821,9 @@ BranchAverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureM
 			RuptureSetSplitMappings mappings) {
 		return new PosteriorSectionBValueDistributions(priorDist,
 				getForSplitSections(sectPosteriors, mappings),
+				getForSplitSections(sectPriors, mappings),
 				getWeightsForSplitSections(sectPaleoSiteWeights, mappings),
-				copyList(paleoSitePosteriors), copyList(paleoSiteMisfits));
+				copyList(paleoSitePosteriors), copyList(paleoSiteMisfits), copyList(paleoSiteLogLikelihoods));
 	}
 	
 	private static <E> List<E> copyList(List<E> list) {
@@ -652,6 +831,8 @@ BranchAverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureM
 	}
 	
 	private static <E> List<E> getForSectionSubSet(List<E> origList, RuptureSubSetMappings mappings) {
+		if (origList == null)
+			return null;
 		List<E> ret = new ArrayList<>(mappings.getNumRetainedSects());
 		for (int s=0; s<mappings.getNumRetainedSects(); s++)
 			ret.add(origList.get(mappings.getOrigSectID(s)));
@@ -668,6 +849,8 @@ BranchAverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureM
 	}
 	
 	private static <E> List<E> getForSplitSections(List<E> origList, RuptureSetSplitMappings mappings) {
+		if (origList == null)
+			return null;
 		List<E> ret = new ArrayList<>(mappings.getNewNumSections());
 		for (int s=0; s<mappings.getNewNumSections(); s++)
 			ret.add(origList.get(mappings.getOrigSectID(s)));
