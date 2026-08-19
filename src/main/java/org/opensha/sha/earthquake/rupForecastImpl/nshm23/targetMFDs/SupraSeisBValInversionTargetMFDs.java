@@ -784,6 +784,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 
 					List<Double> mags = new ArrayList<>();
 					List<Integer> rups = new ArrayList<>();
+					List<Integer> zeroRateExcludedRups = new ArrayList<>();
 					// section minimum magnitude may be below the actual minimum magnitude, check that here
 					double minAbove = Double.POSITIVE_INFINITY;
 					// also, if we have a segmentation model, use the max mag that has a nonzero probability
@@ -804,6 +805,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 							}
 							if (zeroRateAllowed != null && !zeroRateAllowed.get(r)) {
 								numZeroRateExcluded++;
+								zeroRateExcludedRups.add(r);
 								continue;
 							}
 							minAbove = Math.min(mag, minAbove);
@@ -823,6 +825,30 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 								sectMaxSingleFaultMag = Math.max(sectMaxSingleFaultMag, mag);
 						} else {
 							numMinMagExcluded++;
+						}
+					}
+					if (rups.isEmpty() && creepReducedSlipRate > 0d && !zeroRateExcludedRups.isEmpty()) {
+						// Preserve a supra-seismogenic target for a positive-slip section if the zero-slip heuristic
+						// eliminated all otherwise branch-allowed ruptures that contain it.
+						System.err.println("WARNING: Section "+s+" has no ruptures after zero-slip filtering; restoring "
+								+zeroRateExcludedRups.size()+" otherwise allowed ruptures on "+sect.getSectionId()+". "+sect.getName());
+						for (int r : zeroRateExcludedRups) {
+							double mag = rupSet.getMagForRup(r);
+							minAbove = Math.min(mag, minAbove);
+							sectMaxMag = Math.max(sectMaxMag, mag);
+							mags.add(mag);
+							rups.add(r);
+							utilization.set(r);
+							sectRupInBinCounts[s][refMFD.getClosestXIndex(mag)]++;
+							boolean singleFault = true;
+							for (int rupSect : rupSet.getSectionsIndicesForRup(r)) {
+								if (rupSet.getFaultSectionData(rupSect).getParentSectionId() != parentID) {
+									singleFault = false;
+									break;
+								}
+							}
+							if (singleFault)
+								sectMaxSingleFaultMag = Math.max(sectMaxSingleFaultMag, mag);
 						}
 					}
 					sectRupUtilizations.add(utilization);
