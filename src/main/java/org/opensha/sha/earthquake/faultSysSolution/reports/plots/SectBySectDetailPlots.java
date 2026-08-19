@@ -2663,6 +2663,16 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			for (PlotSpec spec : specs)
 				spec.setXAxisInverted(true);
 		}
+		for (int i=0; i<specs.size(); i++) {
+			if (yLogs.get(i)) {
+				Range yRange = yRanges.get(i);
+				if (yRange.getLowerBound() <= 0d) {
+					Preconditions.checkState(yRange.getUpperBound() > 0d, "Both lower and upper bound <=0 for %s",
+							specs.get(i).getYAxisLabel());
+					yRanges.set(i, new Range(yRange.getUpperBound()*0.01, yRange.getUpperBound()));
+				}
+			}
+		}
 		gp.drawGraphPanel(specs, xLogs, yLogs, xRanges, yRanges);
 		
 		if (specWeights != null)
