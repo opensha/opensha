@@ -14,6 +14,7 @@ import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler;
+import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler.AverageSampler;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -169,6 +170,19 @@ public interface SectionSupraSeisBValues extends LogicTreeNode {
 		public static DistributionSamplingLevel fromJson(JsonObject json) {
 			LogicTreeLevel.Adapter<Default> adapter = new LogicTreeLevel.Adapter<>();
 			return (DistributionSamplingLevel)adapter.fromJsonTree(json);
+		}
+		
+	}
+	
+	public static class DistributionAverageLevel extends FixedValueLevel {
+
+		@SuppressWarnings("unused") // deserialization
+		private DistributionAverageLevel(String name, String shortName) {
+			super(name, shortName);
+		}
+
+		public DistributionAverageLevel(String name, String shortName, ContinuousDistribution dist) {
+			super(name, shortName, dist.getMean());
 		}
 		
 	}
@@ -330,6 +344,14 @@ public interface SectionSupraSeisBValues extends LogicTreeNode {
 			this.shortName = shortName; 
 			this.prefix = filePrefix;
 			this.sampler = value;
+		}
+		
+	}
+	
+	public static abstract class SectSpecificDistributionAverage extends SectSpecificDistributionSample<AverageSampler> {
+
+		public SectSpecificDistributionAverage(String name, String shortName, String prefix, double weight) {
+			super(name, shortName, prefix, weight, new AverageSampler());
 		}
 		
 	}

@@ -786,6 +786,33 @@ BranchAverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureM
 		
 	}
 	
+	@DoesNotAffect(FaultSystemRupSet.SECTS_FILE_NAME)
+	@DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
+	@DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
+	@Affects(FaultSystemSolution.RATES_FILE_NAME)
+	@DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
+	@DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
+	@Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
+	public static class AverageNode extends SectionSupraSeisBValues.SectSpecificDistributionAverage {
+		
+		private PosteriorSectionBValueDistributions dists;
+
+		public AverageNode(String name, String shortName, String prefix, double weight) {
+			super(name, shortName, prefix, weight);
+		}
+
+		@Override
+		public void initDistributions(FaultSystemRupSet rupSet, LogicTreeBranch<? extends LogicTreeNode> branch) {
+			dists = rupSet.requireModule(PosteriorSectionBValueDistributions.class);
+		}
+
+		@Override
+		public ContinuousDistribution getSectDistribution(FaultSection subSect) {
+			return dists.getSectDistribution(subSect.getSectionId());
+		}
+		
+	}
+	
 	public static class UniformSamplingLevel
 	extends SectDistributionSampleLevels.UniformSamplingLevel<SamplingNode<FixedFractileSampler>> {
 

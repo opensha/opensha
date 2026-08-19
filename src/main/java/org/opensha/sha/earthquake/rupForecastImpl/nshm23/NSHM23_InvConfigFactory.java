@@ -124,6 +124,8 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_Region
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels.ExcludeRupsThroughCreepingSegmentationModel;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues.DistributionAverageLevel;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues.SectSpecificDistributionAverage;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.random.BranchSamplingManager;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.random.RandomBValSampler;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SeisSmoothingAlgorithms;
@@ -203,6 +205,9 @@ ExclusionaryInversionConfigurationFactory {
 	public static SlipAlongRuptureModelBranchNode SLIP_ALONG_DEFAULT = NSHM23_SlipAlongRuptureModels.UNIFORM;
 	
 	public static ContinuousDistribution SUPRA_B_PRIOR_DIST = UniformContinuousDistribution.of(0d, 1d);
+	
+	// if true, smoothing on paleo sections will also apply to the paleo-visible rate (as well as normal rate)
+	public static boolean SMOOTH_PALEO_VISIBLE = false; 
 	
 	public NSHM23_InvConfigFactory() {
 		numItersPerRup = NUM_ITERS_PER_RUP_DEFAULT;
@@ -731,7 +736,7 @@ ExclusionaryInversionConfigurationFactory {
 						return doGetConstraintBuilder(I.rupSet(), I.branch()).getRateOnlyTargetMFDs();
 					};
 					
-					estimator.setTargetMFDCalc(mfdCalc);
+					estimator.setTargetMFDCalc(getMFDCalcFunc());
 					
 //					estimator.setGaussianLogLikelihood();
 					estimator.setStudentsTLogLikelihood(5);
@@ -815,6 +820,28 @@ ExclusionaryInversionConfigurationFactory {
 		
 	}
 	
+	public static Function<MFDCalcInputs, InversionTargetMFDs> getMFDCalcFunc() {
+		return (I)->{
+			if (I.branch().hasValue(NSHM23_SegmentationModels.AVERAGE)) {
+				LogicTreeBranch<? extends LogicTreeNode> modBranch = I.branch().copy();
+				AveragingAccumulator<InversionTargetMFDs> accumulator = null;
+				for (NSHM23_SegmentationModels segModel : NSHM23_SegmentationModels.values()) {
+					double weight = segModel.getNodeWeight();
+					if (weight > 0d) {
+						modBranch.setValueUnchecked(segModel);
+						SupraSeisBValInversionTargetMFDs mfds = getConstraintBuilder(I.rupSet(), modBranch).getRateOnlyTargetMFDs();
+						if (accumulator == null)
+							accumulator = mfds.averagingAccumulator();
+						accumulator.process(mfds, weight);
+					}
+				}
+				return accumulator.getAverage();
+			} else {
+				return getConstraintBuilder(I.rupSet(), I.branch()).getRateOnlyTargetMFDs();
+			}
+		};
+	}
+	
 	private static NSHM23_ConstraintBuilder getAveragedConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 		// TODO maybe add sampling support?
 		SectionSupraSeisBValues[] bVals;
@@ -891,7 +918,8 @@ ExclusionaryInversionConfigurationFactory {
 	}
 	
 	public static NSHM23_ConstraintBuilder getConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-		if (branch.hasValue(NSHM23_SegmentationModels.AVERAGE) || branch.hasValue(SupraSeisBValues.AVERAGE))
+		if (branch.hasValue(NSHM23_SegmentationModels.AVERAGE) || branch.hasValue(SupraSeisBValues.AVERAGE)
+				|| branch.hasValue(SectSpecificDistributionAverage.class) || branch.getLevelIndex(DistributionAverageLevel.class) >= 0)
 			// return averaged instance, looping over b-values and/or segmentation branches
 			return getAveragedConstraintBuilder(rupSet, branch);
 		return doGetConstraintBuilder(rupSet, branch);
@@ -1584,8 +1612,10 @@ ExclusionaryInversionConfigurationFactory {
 		if (paleoSmoothWeight > 0d) {
 			// need to explicitly specify class for weighting as the constraint could be skipped
 			constrBuilder.supraPaleoSmooth().weight(LaplacianSmoothingInversionConstraint.class, paleoSmoothWeight);
-			// TODO: for NSHM29, consider trying this as well:
-//			constrBuilder.supraPaleoSmooth(true).weight(LaplacianSmoothingInversionConstraint.class, paleoSmoothWeight);
+			if (SMOOTH_PALEO_VISIBLE) {
+				// TODO: for NSHM29, consider trying this as well:
+				constrBuilder.supraPaleoSmooth(true).weight(LaplacianSmoothingInversionConstraint.class, paleoSmoothWeight);
+			}
 		}
 		
 		// this will skip any ruptures below the minimim magnitude
