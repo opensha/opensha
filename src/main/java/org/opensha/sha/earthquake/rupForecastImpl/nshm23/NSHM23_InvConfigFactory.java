@@ -98,7 +98,10 @@ import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
 import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
 import org.opensha.sha.earthquake.nshmp.inversion.mfdPreInversion.PaleoBValueEstimator;
+import org.opensha.sha.earthquake.nshmp.inversion.mfdPreInversion.PaleoBValueEstimator.BackgroundDistribution;
 import org.opensha.sha.earthquake.nshmp.inversion.mfdPreInversion.PaleoBValueEstimator.MFDCalcInputs;
+import org.opensha.sha.earthquake.nshmp.inversion.mfdPreInversion.PaleoBValueEstimator.PosteriorCombination;
+import org.opensha.sha.earthquake.nshmp.inversion.mfdPreInversion.PaleoBValueEstimator.WeightingType;
 import org.opensha.sha.earthquake.nshmp.seismicity.CrustalGridSourceBuilder;
 import org.opensha.sha.earthquake.nshmp.seismicity.CrustalGridSourceBuilder.NearFaultCarveOutModel;
 import org.opensha.sha.earthquake.nshmp.seismicity.CrustalGridSourceBuilder.NucleationPDF_3D;
@@ -729,6 +732,14 @@ ExclusionaryInversionConfigurationFactory {
 					};
 					
 					estimator.setTargetMFDCalc(mfdCalc);
+					
+//					estimator.setGaussianLogLikelihood();
+					estimator.setStudentsTLogLikelihood(5);
+					estimator.setLikelihoodInRecurrence(true);
+					estimator.setWeightingType(WeightingType.CONNECTED_FRACTION);
+					estimator.setBackgroundDistribution(BackgroundDistribution.GENERIC_PRIOR);
+					estimator.setPosteriorCombination(PosteriorCombination.WEIGHTED_SITE_LIKELIHOODS);
+//					estimator.setPosteriorCombination(PosteriorCombination.WEIGHTED_SITE_DISTRIBUTIONS);
 					
 					PosteriorSectionBValueDistributions posteriors = estimator.calculate(rupSet, branch, false);
 					rupSet.addModule(posteriors);
