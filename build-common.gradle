@@ -105,6 +105,7 @@ if (project.parentProject != null) {
 	}
 } else {
 	jar {
+		archiveVersion = ''
 	// include version files
 		from(project.projectDir) {
 			include 'build.version'
@@ -125,6 +126,7 @@ if (project.parentProject != null) {
 			delete new File(projectDir, "build.date")
 		}
 		archiveBaseName = project.name + '-all'
+		archiveVersion = ''
 		// include all 'api' dependencies
 		from {
 			configurations.fatJarResolvable.collect { it.isDirectory() ? it : zipTree(it).matching {
