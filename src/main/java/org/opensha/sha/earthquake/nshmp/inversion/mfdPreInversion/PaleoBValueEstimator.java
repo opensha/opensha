@@ -375,14 +375,20 @@ public class PaleoBValueEstimator {
 					double paleoVisibleProb =  paleoProb.getProbPaleoVisible(rs, rupIndex, paleoConstr.sectionIndex);
 					sumPaleoScalars[magIndex] += paleoVisibleProb;
 				}
+				double totParticRate = 0d;
 				double paleoVisibleRate = 0d;
 				for (int m=0; m<mfd.size(); m++) {
 					double totNuclRate = mfd.getY(m);
 					if (totNuclRate > 0d) {
 						double particRate = totNuclRate * sumParticScalars[m]/binCounts[m];
+						totParticRate += particRate;
 						paleoVisibleRate += particRate * sumPaleoScalars[m]/binCounts[m];
 					}
 				}
+				FaultSection sect = rs.getFaultSectionData(paleoConstr.sectionIndex);
+				Preconditions.checkState(paleoVisibleRate > 0d && Double.isFinite(paleoVisibleRate),
+						"Bad paleoVisibleRate=%s for constraint %s mapped to section %s with reducedSlip=%s, mfdSumY=%s, and particRate=%s",
+						paleoVisibleRate, paleoConstr, sect, sect.getReducedAveSlipRate(), mfd.calcSumOfY_Vals(), totParticRate);
 //				double misfit = (paleoVisibleRate - paleoConstr.bestEstimate)/paleoConstr.getPreferredStdDev();
 				double misfit;
 				if (likelihoodInRecurrence) {
