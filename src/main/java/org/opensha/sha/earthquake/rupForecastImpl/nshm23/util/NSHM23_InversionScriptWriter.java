@@ -56,14 +56,18 @@ public class NSHM23_InversionScriptWriter {
 //					|| NSHM23_PaleoUncertainties.class.isAssignableFrom(level.getType()))
 				levels.remove(l);
 		}
-//		nameAdds.add("bPosterior10x");
-//		randomLevels.add(new PosteriorSectionBValueDistributions.UniformSamplingLevel(
-//				"Section posterior b-value samples", "Posterior-b samples"));
-//		samplingBranchCountMultiplier = 10;
-		nameAdds.add("bUniform10x");
-		randomLevels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(
-				"Section b-value samples", "b-value samples", NSHM23_InvConfigFactory.SUPRA_B_PRIOR_DIST));
+		nameAdds.add("bPosterior10x");
+		randomLevels.add(new PosteriorSectionBValueDistributions.UniformSamplingLevel(
+				"Section posterior b-value samples", "Posterior-b samples"));
 		samplingBranchCountMultiplier = 10;
+		nameAdds.add("students_t_5");
+//		nameAdds.add("comb_likelihood");
+		nameAdds.add("comb_dist_avg");
+		nameAdds.add("paleo_ris");
+//		nameAdds.add("bUniform10x");
+//		randomLevels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(
+//				"Section b-value samples", "b-value samples", NSHM23_InvConfigFactory.SUPRA_B_PRIOR_DIST));
+//		samplingBranchCountMultiplier = 10;
 		
 		for (RandomLevel<?,?> level : randomLevels)
 			levels.add(level);
