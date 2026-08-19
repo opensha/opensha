@@ -5,12 +5,25 @@
  * This file requires that the 'parentProject' property be defined (should be null for top level project)
  */
 
+
+/*
+ * Modern gradle recommends using toolchains but they come with an annoyance: you must have exactly the specified java
+ * version installed, or it fails. So if we specify Java 21 but you have 25, it will fail. That can be overcome by
+ * having gradle download it's own Java 21 (or whatever we're on), but that's unecessary and requires a separate plugin
+ * be configured in each downstream project's settings.gradle.  
+ * 
+ * Instead, we just keep the old source/target compatibility flags, but also now supply the JavaCompile release option
+ * which prevents accidentally using new APIs.
+ */
 java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-    }
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
 }
-compileJava.options.encoding = "UTF-8"
+
+tasks.withType(JavaCompile).configureEach {
+	options.release = 21
+	options.encoding = "UTF-8"
+}
 
 apply plugin: 'eclipse'
 eclipse {
