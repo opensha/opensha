@@ -132,25 +132,27 @@ public class LaplacianSmoothingInversionConstraint extends InversionConstraint {
 				}
 				
 				// Loop over ruptures in this subsection-MFD bin
-				int middleSectIndex = sectsForParent.get(j).getSectionId();
+				int sect1Index = sectsForParent.get(j-1).getSectionId();
+				int sect2Index = sectsForParent.get(j).getSectionId();
+				int sect3Index = sectsForParent.get(j+1).getSectionId();
 				for (int rup: sect1Rups) { 
 					double scalar = weight;
 					if (paleoProbModel != null)
-						scalar *= paleoProbModel.getProbPaleoVisible(rupSet, rup, middleSectIndex);
+						scalar *= paleoProbModel.getProbPaleoVisible(rupSet, rup, sect1Index);
 					setA(A, rowIndex, rup, scalar);
 					numNonZeroElements++;
 				}
 				for (int rup: sect2Rups) {
 					double scalar = weight;
 					if (paleoProbModel != null)
-						scalar *= paleoProbModel.getProbPaleoVisible(rupSet, rup, middleSectIndex);
+						scalar *= paleoProbModel.getProbPaleoVisible(rupSet, rup, sect2Index);
 					setA(A, rowIndex, rup, -scalar);
 					numNonZeroElements++;
 				}
 				for (int rup: sect3Rups) {
 					double scalar = weight;
 					if (paleoProbModel != null)
-						scalar *= paleoProbModel.getProbPaleoVisible(rupSet, rup, middleSectIndex);
+						scalar *= paleoProbModel.getProbPaleoVisible(rupSet, rup, sect3Index);
 					setA(A, rowIndex, rup, scalar);
 					numNonZeroElements++;
 				}
