@@ -71,7 +71,7 @@ public class BA_2008_AttenRel extends AttenuationRelationship implements
 	public final static String NAME = "Boore & Atkinson (2008)";
 
 	// URL Info String
-	private final static String URL_INFO_STRING = "http://www.opensha.org/glossary-attenuationRelation-BOORE_ATKIN_2008";
+	private final static String URL_INFO_STRING = "https://doi.org/10.1193/1.2830434";
 
 
 	// coefficients:

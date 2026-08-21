@@ -1271,12 +1271,15 @@ public class ShakeMap_2003_AttenRel extends AttenuationRelationship {
 	}
 
 	/**
-	 * This provides a URL where more info on this model can be obtained
-	 * @throws MalformedURLException if returned URL is not a valid URL.
-	 * @return the URL to the AttenuationRelationship document on the Web.
+	 * This is a hybrid/composite ShakeMap model rather than a single published
+	 * ground-motion model, so it has no DOI or web document to link to. Returns
+	 * {@code null} so the plotter intentionally reports that no information
+	 * exists, rather than linking to an unrelated page.
+	 * @return null; no information URL exists for this model.
 	 */
 	public URL getInfoURL() throws MalformedURLException{
-		return new URL("http://www.opensha.org/glossary-attenuationRelation-SHAKE_MAP_2003");
+		// No DOI/paper exists for ShakeMap (2003); intentionally return null.
+		return null;
 	}
 
 }
