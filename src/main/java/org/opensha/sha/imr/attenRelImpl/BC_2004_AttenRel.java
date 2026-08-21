@@ -1,5 +1,7 @@
 package org.opensha.sha.imr.attenRelImpl;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.ListIterator;
@@ -495,6 +497,15 @@ public class BC_2004_AttenRel extends AttenuationRelationship {
 	 */
 	public String getShortName() {
 		return SHORT_NAME;
+	}
+
+	/**
+	 * This provides a URL where more info on this model can be obtained
+	 * @throws MalformedURLException if returned URL is not a valid URL.
+	 * @return the URL to the AttenuationRelationship document on the Web.
+	 */
+	public URL getInfoURL() throws MalformedURLException{
+		return new URL("https://doi.org/10.1785/0120030216");
 	}
 
 	/**
