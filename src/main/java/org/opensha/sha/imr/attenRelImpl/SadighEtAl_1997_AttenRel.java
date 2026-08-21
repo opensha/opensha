@@ -802,7 +802,7 @@ public class SadighEtAl_1997_AttenRel extends AttenuationRelationship {
 	 * @return the URL to the AttenuationRelationship document on the Web.
 	 */
 	public URL getInfoURL() throws MalformedURLException{
-		return new URL("http://www.opensha.org/glossary-attenuationRelation-SADIGH_ETAL_1997");
+		return new URL("https://doi.org/10.1785/gssrl.68.1.180");
 	}
 
 

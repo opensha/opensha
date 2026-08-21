@@ -91,7 +91,7 @@ public class McVerryetal_2000_AttenRel extends AttenuationRelationship implement
   public final static String NAME = "McVerry et al (2000)";
   
   // URL Info String
-  private final static String URL_INFO_STRING = "http://www.opensha.org/documentation/modelsImplemented/attenRel/McVerryetal_2000.html";
+  private final static String URL_INFO_STRING = "https://doi.org/10.5459/bnzsee.39.1.1-58";
 
 
   //Note unlike the NGA equations period=-1 here is PGA, 0.0 gives the 'primed' coefficients
@@ -780,6 +780,6 @@ public class McVerryetal_2000_AttenRel extends AttenuationRelationship implement
    * @return the URL to the AttenuationRelationship document on the Web.
    */
   public URL getInfoURL() throws MalformedURLException{
-	  return new URL("http://www.opensha.org/documentation/modelsImplemented/attenRel/McVerryetal_2000.html");
+	  return new URL("https://doi.org/10.5459/bnzsee.39.1.1-58");
   }
 }

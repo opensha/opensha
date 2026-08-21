@@ -111,7 +111,7 @@ public class AS_2008_AttenRel extends AttenuationRelationship implements
 	private static final long serialVersionUID = 1234567890987654358L;
 
 	// URL Info String
-	private final static String URL_INFO_STRING = "http://www.opensha.org/glossary-attenuationRelation-ABRAHAM_SILVA_2008";
+	private final static String URL_INFO_STRING = "https://doi.org/10.1193/1.2924360";
 
 	// style of faulting param options
 	public final static String FLT_TYPE_STRIKE_SLIP = "Strike-Slip";

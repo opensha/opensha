@@ -893,12 +893,15 @@ public class CY_2006_AttenRel extends AttenuationRelationship implements
   }
 
   /**
-   * 
-   * @throws MalformedURLException if returned URL is not a valid URL.
-   * @return the URL to the AttenuationRelationship document on the Web.
+   * This is a preliminary (pre-publication) implementation of the Chiou &amp;
+   * Youngs (2008) model and was never published as its own paper, so it has no
+   * DOI. Returns {@code null} so the plotter intentionally reports that no
+   * information exists, rather than linking to the unrelated final (2008) paper.
+   * @return null; no information URL exists for this preliminary model.
    */
   public URL getInfoURL() throws MalformedURLException{
-	  return new URL("http://www.opensha.org/documentation/modelsImplemented/attenRel/CY_2006.html");
+	  // No DOI for this 2006 prelim model; intentionally return null.
+	  return null;
   }     
   
 }

@@ -1,5 +1,8 @@
 package org.opensha.sha.imr.attenRelImpl.ngaw2;
 
+import java.net.MalformedURLException;
+import java.net.URL;
+
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
 
 @SuppressWarnings("javadoc")
@@ -14,6 +17,10 @@ public class NGAW2_Wrappers {
 			super(ASK_2014.SHORT_NAME, new ASK_2014(), true);
 			this.listener = l;
 		}
+
+		public URL getInfoURL() throws MalformedURLException {
+			return new URL("https://doi.org/10.1193/070913eqs198m");
+		}
 		
 	}
 	public static class BSSA_2014_Wrapper extends NGAW2_WrapperFullParam {
@@ -25,6 +32,10 @@ public class NGAW2_Wrappers {
 		public BSSA_2014_Wrapper(ParameterChangeWarningListener l) {
 			super(BSSA_2014.SHORT_NAME, new BSSA_2014(), true);
 			this.listener = l;
+		}
+
+		public URL getInfoURL() throws MalformedURLException {
+			return new URL("https://doi.org/10.1193/070113eqs184m");
 		}
 		
 	}
@@ -38,6 +49,10 @@ public class NGAW2_Wrappers {
 			super(CB_2014.SHORT_NAME, new CB_2014(), true);
 			this.listener = l;
 		}
+
+		public URL getInfoURL() throws MalformedURLException {
+			return new URL("https://doi.org/10.1193/062913eqs175m");
+		}
 		
 	}
 	public static class CY_2014_Wrapper extends NGAW2_WrapperFullParam {
@@ -49,6 +64,10 @@ public class NGAW2_Wrappers {
 		public CY_2014_Wrapper(ParameterChangeWarningListener l) {
 			super(CY_2014.SHORT_NAME, new CY_2014(), true);
 			this.listener = l;
+		}
+
+		public URL getInfoURL() throws MalformedURLException {
+			return new URL("https://doi.org/10.1193/072813eqs219m");
 		}
 		
 	}
@@ -73,6 +92,10 @@ public class NGAW2_Wrappers {
 		public Idriss_2014_Wrapper(ParameterChangeWarningListener l) {
 			super(Idriss_2014.SHORT_NAME, new Idriss_2014(), false);
 			this.listener = l;
+		}
+
+		public URL getInfoURL() throws MalformedURLException {
+			return new URL("https://doi.org/10.1193/070613eqs195m");
 		}
 		
 	}
