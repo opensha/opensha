@@ -20,6 +20,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampleLevels;
 import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler;
+import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler.AverageSampler;
 import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler.FixedFractileSampler;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -829,6 +830,26 @@ BranchAverageableModule<PosteriorSectionBValueDistributions>, SplittableRuptureM
 		@Override
 		public Class<? extends SamplingNode<FixedFractileSampler>> getType() {
 			return (Class<? extends SamplingNode<FixedFractileSampler>>) (Class<?>) SamplingNode.class;
+		}
+		
+	}
+	
+	public static class AverageLevel
+	extends SectDistributionSampleLevels.AverageLevel<SamplingNode<AverageSampler>> {
+
+		public AverageLevel(String levelName, String levelShortName) {
+			super(levelName, levelShortName);
+		}
+
+		@Override
+		public SamplingNode<AverageSampler> build(AverageSampler value,
+				double weight, String name, String shortName, String filePrefix) {
+			return new SamplingNode<>(name, shortName, filePrefix, weight, value);
+		}
+
+		@Override
+		public Class<? extends SamplingNode<AverageSampler>> getType() {
+			return (Class<? extends SamplingNode<AverageSampler>>) (Class<?>) SamplingNode.class;
 		}
 		
 	}

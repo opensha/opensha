@@ -62,6 +62,8 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.Compl
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.GenerationFunctionType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
+import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampleLevels;
+import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
@@ -125,7 +127,9 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_Scalin
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels.ExcludeRupsThroughCreepingSegmentationModel;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues.DistributionAverageLevel;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues.DistributionSamplingLevel;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues.SectSpecificDistributionAverage;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues.SectSpecificDistributionSample;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.random.BranchSamplingManager;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.random.RandomBValSampler;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SeisSmoothingAlgorithms;
@@ -207,7 +211,8 @@ ExclusionaryInversionConfigurationFactory {
 	public static ContinuousDistribution SUPRA_B_PRIOR_DIST = UniformContinuousDistribution.of(0d, 1d);
 	
 	// if true, smoothing on paleo sections will also apply to the paleo-visible rate (as well as normal rate)
-	public static boolean SMOOTH_PALEO_VISIBLE = false; 
+	public static final boolean SMOOTH_PALEO_VISIBLE_DEFAULT = false;
+	private boolean smoothPaleoVisible = SMOOTH_PALEO_VISIBLE_DEFAULT;
 	
 	public NSHM23_InvConfigFactory() {
 		numItersPerRup = NUM_ITERS_PER_RUP_DEFAULT;
@@ -226,6 +231,14 @@ ExclusionaryInversionConfigurationFactory {
 
 	public void setSolveClustersIndividually(boolean solveClustersIndividually) {
 		this.solveClustersIndividually = solveClustersIndividually;
+	}
+	
+	public void setSmoothPaleoVisible(boolean smoothPaleoVisible) {
+		this.smoothPaleoVisible = smoothPaleoVisible;
+	}
+	
+	public boolean isSmoothPaleoVisible() {
+		return smoothPaleoVisible;
 	}
 	
 	private synchronized void checkAddDistAzCalc(FaultSystemRupSet rupSet, RupSetFaultModel fm) {
@@ -732,10 +745,6 @@ ExclusionaryInversionConfigurationFactory {
 					rupSet.requireModule(AveSlipModule.class);
 					rupSet.requireModule(SlipAlongRuptureModel.class);
 					
-					Function<MFDCalcInputs, InversionTargetMFDs> mfdCalc = (I) -> {
-						return doGetConstraintBuilder(I.rupSet(), I.branch()).getRateOnlyTargetMFDs();
-					};
-					
 					estimator.setTargetMFDCalc(getMFDCalcFunc());
 					
 //					estimator.setGaussianLogLikelihood();
@@ -842,13 +851,77 @@ ExclusionaryInversionConfigurationFactory {
 		};
 	}
 	
+	/**
+	 * Generic b-value level that accepts all values as members
+	 */
+	private static class GenericBLevel extends LogicTreeLevel<SectionSupraSeisBValues> {
+		
+		private LogicTreeLevel<?> level;
+
+		public GenericBLevel(LogicTreeLevel<?> level) {
+			this.level = level;
+		}
+
+		@Override
+		public String getShortName() {
+			return level.getShortName();
+		}
+
+		@Override
+		public String getName() {
+			return level.getName();
+		}
+
+		@Override
+		public Class<? extends SectionSupraSeisBValues> getType() {
+			return SectionSupraSeisBValues.class;
+		}
+
+		@Override
+		public List<? extends SectionSupraSeisBValues> getNodes() {
+			throw new IllegalStateException();
+		}
+
+		@Override
+		public boolean isMember(LogicTreeNode node) {
+			return node instanceof SectionSupraSeisBValues;
+		}
+		
+	}
+	
 	private static NSHM23_ConstraintBuilder getAveragedConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-		// TODO maybe add sampling support?
+		List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
+		for (int i=0; i<branch.size(); i++)
+			levels.add(branch.getLevel(i));
+		List<LogicTreeNode> nodes = new ArrayList<>(levels.size());
+		for (int i=0; i<branch.size(); i++)
+			nodes.add(branch.getValue(i));
+		
 		SectionSupraSeisBValues[] bVals;
-		if (branch.hasValue(SupraSeisBValues.AVERAGE))
+		if (branch.hasValue(SupraSeisBValues.AVERAGE)) {
 			bVals = SupraSeisBValues.values();
-		else
+		} else if (branch.hasValue(SectSpecificDistributionAverage.class)) {
+			List<SectSpecificDistributionSample<SectDistributionSampler>> bValsList =
+					branch.requireValue(SectSpecificDistributionAverage.class).getDiscretizedSamplers(rupSet, branch, 10);
+			bVals = bValsList.toArray(new SectionSupraSeisBValues[10]);
+			
+			int levelIndex = branch.getLevelTypeIndex(SectSpecificDistributionAverage.class);
+			Preconditions.checkState(levelIndex >= 0);
+			
+			// replace level
+			levels.set(levelIndex, new GenericBLevel(branch.getLevel(levelIndex)));
+			nodes.set(levelIndex, null);
+		} else if (branch.getLevelIndex(DistributionAverageLevel.class) >= 0) {
+			int levelIndex = branch.getLevelIndex(DistributionAverageLevel.class);
+			DistributionAverageLevel level = ((DistributionAverageLevel)branch.getLevel(levelIndex));
+			bVals = level.getDiscretizedValues(10).toArray(new SectionSupraSeisBValues[10]);
+			
+			// replace level
+			levels.set(levelIndex, new GenericBLevel(level));
+			nodes.set(levelIndex, null);
+		} else {
 			bVals = new SectionSupraSeisBValues[] { branch.requireValue(SectionSupraSeisBValues.class) };
+		}
 		
 		NSHM23_SegmentationModels[] segModels;
 		if (branch.hasValue(NSHM23_SegmentationModels.AVERAGE))
@@ -859,12 +932,7 @@ ExclusionaryInversionConfigurationFactory {
 		List<LogicTreeBranch<?>> avgBranches = new ArrayList<>();
 		List<Double> avgWeights = new ArrayList<>();
 		
-		List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
-		for (int i=0; i<branch.size(); i++)
-			levels.add(branch.getLevel(i));
-		LogicTreeBranch<LogicTreeNode> branchCopy = new LogicTreeBranch<>(levels);
-		for (LogicTreeNode node : branch)
-			branchCopy.setValue(node);
+		LogicTreeBranch<LogicTreeNode> branchCopy = new LogicTreeBranch<>(levels, nodes);
 		for (SectionSupraSeisBValues bVal : bVals) {
 			for (NSHM23_SegmentationModels segModel : segModels) {
 				// create copy of the branch
@@ -1612,7 +1680,7 @@ ExclusionaryInversionConfigurationFactory {
 		if (paleoSmoothWeight > 0d) {
 			// need to explicitly specify class for weighting as the constraint could be skipped
 			constrBuilder.supraPaleoSmooth().weight(LaplacianSmoothingInversionConstraint.class, paleoSmoothWeight);
-			if (SMOOTH_PALEO_VISIBLE) {
+			if (smoothPaleoVisible) {
 				// TODO: for NSHM29, consider trying this as well:
 				constrBuilder.supraPaleoSmooth(true).weight(LaplacianSmoothingInversionConstraint.class, paleoSmoothWeight);
 			}
@@ -2833,6 +2901,13 @@ ExclusionaryInversionConfigurationFactory {
 			
 		}
 		
+	}
+	
+	public static class SmoothPaleoVisible extends NSHM23_InvConfigFactory {
+		
+		public SmoothPaleoVisible() {
+			setSmoothPaleoVisible(true);
+		}
 	}
 	
 	public static void main(String[] args) throws IOException {

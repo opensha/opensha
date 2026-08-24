@@ -14,6 +14,7 @@ import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomlyGeneratedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.SamplingMethod;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfigurationFactory;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PosteriorSectionBValueDistributions;
 import org.opensha.sha.earthquake.faultSysSolution.mpj.HPCConfig;
 import org.opensha.sha.earthquake.faultSysSolution.mpj.HazardConfig;
@@ -43,6 +44,7 @@ public class NSHM23_InversionScriptWriter {
 		
 		List<String> nameAdds = new ArrayList<>();
 		
+		Class<? extends InversionConfigurationFactory> factoryClass = NSHM23_InvConfigFactory.class;
 		List<LogicTreeLevel<? extends LogicTreeNode>> levels = NSHM23_LogicTreeBranch.levelsOnFault;
 		List<RandomLevel<?,?>> randomLevels = new ArrayList<>();
 		int samplingBranchCountMultiplier = 1;
@@ -56,18 +58,23 @@ public class NSHM23_InversionScriptWriter {
 //					|| NSHM23_PaleoUncertainties.class.isAssignableFrom(level.getType()))
 				levels.remove(l);
 		}
-		nameAdds.add("bPosterior10x");
-		randomLevels.add(new PosteriorSectionBValueDistributions.UniformSamplingLevel(
-				"Section posterior b-value samples", "Posterior-b samples"));
-		samplingBranchCountMultiplier = 10;
-		nameAdds.add("students_t_5");
-//		nameAdds.add("comb_likelihood");
-		nameAdds.add("comb_dist_avg");
-		nameAdds.add("paleo_ris");
-//		nameAdds.add("bUniform10x");
-//		randomLevels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(
-//				"Section b-value samples", "b-value samples", NSHM23_InvConfigFactory.SUPRA_B_PRIOR_DIST));
+		
+//		nameAdds.add("bPosterior10x");
+//		randomLevels.add(new PosteriorSectionBValueDistributions.UniformSamplingLevel(
+//				"Section posterior b-value samples", "Posterior-b samples"));
 //		samplingBranchCountMultiplier = 10;
+//		nameAdds.add("students_t_5");
+//		nameAdds.add("comb_likelihood");
+////		nameAdds.add("comb_dist_avg");
+//		nameAdds.add("paleo_ris");
+		
+		nameAdds.add("bUniform10x");
+		randomLevels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(
+				"Section b-value samples", "b-value samples", NSHM23_InvConfigFactory.SUPRA_B_PRIOR_DIST));
+		samplingBranchCountMultiplier = 10;
+		
+		factoryClass = NSHM23_InvConfigFactory.SmoothPaleoVisible.class;
+		nameAdds.add("smooth_paleo_visible");
 		
 		for (RandomLevel<?,?> level : randomLevels)
 			levels.add(level);
@@ -104,7 +111,7 @@ public class NSHM23_InversionScriptWriter {
 				.build();
 
 		InversionConfig inversion = InversionConfig.builder()
-				.factoryClass(NSHM23_InvConfigFactory.class)
+				.factoryClass(factoryClass)
 				.estimateWallTimeMinutes(600000d, 2000, 200000d)
 				.parallelBranchAverage(true)
 				.build();

@@ -1137,6 +1137,11 @@ public class PaleoBValueEstimator {
 
 	public static void plotFaultSiteAverages(File outputDir, String prefix, FaultSystemRupSet rs,
 			PosteriorSectionBValueDistributions posteriors, NamedFaults faults) throws IOException {
+		plotFaultSiteAverages(outputDir, prefix, rs, posteriors, faults, true);
+	}
+
+	public static void plotFaultSiteAverages(File outputDir, String prefix, FaultSystemRupSet rs,
+			PosteriorSectionBValueDistributions posteriors, NamedFaults faults, boolean includeWeightedLikelihoods) throws IOException {
 		Preconditions.checkNotNull(rs);
 		Preconditions.checkNotNull(posteriors);
 		Preconditions.checkNotNull(faults);
@@ -1154,8 +1159,10 @@ public class PaleoBValueEstimator {
 		List<Integer> allIndexes = usablePaleoIndexes(siteLogLikelihoods, siteDists.size());
 		ContinuousDistribution allAverage = combineSiteDistributions(posteriors.getPriorDist(), bVals,
 				getAll(siteDists, allIndexes), getAll(siteLogLikelihoods, allIndexes), PosteriorCombination.WEIGHTED_SITE_DISTRIBUTIONS, "all paleo sites");
-		ContinuousDistribution allLikelihoodCombined = combineSiteDistributions(posteriors.getPriorDist(), bVals,
-				getAll(siteDists, allIndexes), getAll(siteLogLikelihoods, allIndexes), PosteriorCombination.WEIGHTED_SITE_LIKELIHOODS, "all paleo sites");
+		ContinuousDistribution allLikelihoodCombined = null;
+		if (includeWeightedLikelihoods)
+			allLikelihoodCombined = combineSiteDistributions(posteriors.getPriorDist(), bVals,
+					getAll(siteDists, allIndexes), getAll(siteLogLikelihoods, allIndexes), PosteriorCombination.WEIGHTED_SITE_LIKELIHOODS, "all paleo sites");
 		plotSitesDistribution(outputDir, prefix+"_all_paleo_sites", "All Paleo Sites", bVals, posteriors.getPriorDist(),
 				getAll(siteDists, allIndexes), allAverage, allLikelihoodCombined, getAll(siteMisfits, allIndexes));
 
@@ -1182,9 +1189,11 @@ public class PaleoBValueEstimator {
 			ContinuousDistribution average = combineSiteDistributions(posteriors.getPriorDist(), bVals,
 					getAll(siteDists, paleoIndexes), getAll(siteLogLikelihoods, paleoIndexes), PosteriorCombination.WEIGHTED_SITE_DISTRIBUTIONS,
 					"fault="+faultName);
-			ContinuousDistribution combined = combineSiteDistributions(posteriors.getPriorDist(), bVals,
-					getAll(siteDists, paleoIndexes), getAll(siteLogLikelihoods, paleoIndexes), PosteriorCombination.WEIGHTED_SITE_LIKELIHOODS,
-					"fault="+faultName);
+			ContinuousDistribution combined = null;
+			if (includeWeightedLikelihoods)
+				combined = combineSiteDistributions(posteriors.getPriorDist(), bVals,
+						getAll(siteDists, paleoIndexes), getAll(siteLogLikelihoods, paleoIndexes), PosteriorCombination.WEIGHTED_SITE_LIKELIHOODS,
+						"fault="+faultName);
 			plotSitesDistribution(outputDir, prefix+"_"+FileNameUtils.simplify(faultName), faultName, bVals,
 					posteriors.getPriorDist(), getAll(siteDists, paleoIndexes), average, combined, getAll(siteMisfits, paleoIndexes));
 		}
@@ -1199,9 +1208,11 @@ public class PaleoBValueEstimator {
 			ContinuousDistribution average = combineSiteDistributions(posteriors.getPriorDist(), bVals,
 					getAll(siteDists, paleoIndexes), getAll(siteLogLikelihoods, paleoIndexes),
 					PosteriorCombination.WEIGHTED_SITE_DISTRIBUTIONS, "fault style="+style);
-			ContinuousDistribution combined = combineSiteDistributions(posteriors.getPriorDist(), bVals,
-					getAll(siteDists, paleoIndexes), getAll(siteLogLikelihoods, paleoIndexes),
-					PosteriorCombination.WEIGHTED_SITE_LIKELIHOODS, "fault style="+style);
+			ContinuousDistribution combined = null;
+			if (includeWeightedLikelihoods)
+				combined =  combineSiteDistributions(posteriors.getPriorDist(), bVals,
+						getAll(siteDists, paleoIndexes), getAll(siteLogLikelihoods, paleoIndexes),
+						PosteriorCombination.WEIGHTED_SITE_LIKELIHOODS, "fault style="+style);
 			plotSitesDistribution(outputDir, prefix+"_"+style.name(), style.toString(), bVals, posteriors.getPriorDist(),
 					getAll(siteDists, paleoIndexes), average, combined, getAll(siteMisfits, paleoIndexes));
 		}
@@ -1339,18 +1350,20 @@ public class PaleoBValueEstimator {
 
 		if (siteDists.size() > 1) {
 			// plot average and comb-likelihood
-			EvenlyDiscretizedFunc combDistFunc = bVals.deepClone();
-			for (int i=0; i<combDistFunc.size(); i++)
-				combDistFunc.set(i, combLikelihoodDist.density(combDistFunc.getX(i)));
-			combDistFunc.setName("Combined likelihoods");
-			pdfFuncs.add(combDistFunc);
-			pdfChars.add(posteriorLikelihoodDistChar);
+			if (combLikelihoodDist != null) {
+				EvenlyDiscretizedFunc combDistFunc = bVals.deepClone();
+				for (int i=0; i<combDistFunc.size(); i++)
+					combDistFunc.set(i, combLikelihoodDist.density(combDistFunc.getX(i)));
+				combDistFunc.setName("Combined likelihoods");
+				pdfFuncs.add(combDistFunc);
+				pdfChars.add(posteriorLikelihoodDistChar);
+			}
 
-			combDistFunc = bVals.deepClone();
-			for (int i=0; i<combDistFunc.size(); i++)
-				combDistFunc.set(i, averageDist.density(combDistFunc.getX(i)));
-			combDistFunc.setName("Average");
-			pdfFuncs.add(combDistFunc);
+			EvenlyDiscretizedFunc avgDistFunc = bVals.deepClone();
+			for (int i=0; i<avgDistFunc.size(); i++)
+				avgDistFunc.set(i, averageDist.density(avgDistFunc.getX(i)));
+			avgDistFunc.setName("Average");
+			pdfFuncs.add(avgDistFunc);
 			pdfChars.add(posteriorAvgDistChar);
 		} else {
 			// they're the same, plot one
@@ -1870,7 +1883,7 @@ public class PaleoBValueEstimator {
 			}
 		}
 
-		PlotSpec plot = new PlotSpec(funcs, chars, " ", xLabel, "b-value");
+		PlotSpec plot = new PlotSpec(funcs, chars, " ", xLabel, "Target b-value");
 		plot.setLegendInset(RectangleAnchor.BOTTOM_LEFT, 0.025, 0.025, 0.95, false);
 
 		Range yRange = new Range(bVals.getMinX()-0.02, bVals.getMaxX()+0.02);
