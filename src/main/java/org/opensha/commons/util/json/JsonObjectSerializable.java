@@ -2,9 +2,17 @@ package org.opensha.commons.util.json;
 
 import java.io.IOException;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 
+import org.opensha.commons.util.ExceptionUtils;
+
+import com.google.common.base.Preconditions;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.TypeAdapter;
 import com.google.gson.internal.Streams;
+import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
 /**
@@ -37,6 +45,55 @@ public interface JsonObjectSerializable {
 	
 	public static void writeJsonObjectToWriter(JsonObject jsonObj, JsonWriter out) throws IOException {
 		Streams.write(jsonObj, out);
+	}
+	
+	public static JsonObject readJsonObjectFromReader(JsonReader in) throws IOException {
+		JsonElement dataElem = JsonParser.parseReader(in);
+		if (dataElem == null)
+			return null;
+		Preconditions.checkState(dataElem.isJsonObject(), "Data must be a JsonObject");
+		return dataElem.getAsJsonObject();
+	}
+	
+	public static abstract class JsonObjectAdapter<E extends JsonObjectSerializable> extends TypeAdapter<E> {
+		
+		public abstract E instance(JsonObject json);
+
+		@Override
+		public void write(JsonWriter out, E value) throws IOException {
+			JsonObject json = value.toJsonObject();
+			writeJsonObjectToWriter(json, out);
+		}
+
+		@Override
+		public E read(JsonReader in) throws IOException {
+			JsonObject json = readJsonObjectFromReader(in);
+			return instance(json);
+		}
+		
+	}
+	
+	public static class ReflectiveJsonObjectAdapter<E extends JsonObjectSerializable> extends JsonObjectAdapter<E> {
+		
+		private Class<E> clazz;
+
+		public ReflectiveJsonObjectAdapter(Class<?> clazz) {
+			this.clazz = (Class<E>)(Class)clazz;
+		}
+
+		@Override
+		public E instance(JsonObject json) {
+			E obj;
+			try {
+				obj = clazz.getDeclaredConstructor().newInstance();
+			} catch (InstantiationException | IllegalAccessException | IllegalArgumentException
+					| InvocationTargetException | NoSuchMethodException | SecurityException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+			obj.initFromJsonObject(json);
+			return obj;
+		}
+		
 	}
 
 }

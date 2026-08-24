@@ -20,6 +20,23 @@ import java.lang.reflect.InvocationTargetException;
 public class JsonAdapterHelper {
 
 	/**
+	 * Returns the {@link TypeAdapter} class declared via {@link JsonAdapter} on the supplied class.
+	 *
+	 * @param clazz class for which to find an adapter
+	 * @return adapter class if present and assignable to {@link TypeAdapter}, otherwise {@code null}
+	 */
+    public static Class getTypeAdapterClass(Class<?> clazz) {
+        JsonAdapter annotation = clazz.getAnnotation(JsonAdapter.class);
+        if (annotation != null) {
+            Class c = annotation.value();
+            if (TypeAdapter.class.isAssignableFrom(c)) {
+                return c;
+            }
+        }
+        return null;
+    }
+
+	/**
 	 * Returns the {@link TypeAdapter} class declared via {@link JsonAdapter} on the supplied object's runtime class.
 	 *
 	 * @param o object whose class should be inspected
@@ -70,6 +87,27 @@ public class JsonAdapterHelper {
         if (c == null && revertToGsonDefault) {
         	checkInitDefaultGson();
         	return defaultGson.getAdapter(o.getClass());
+        }
+        return initTypeAdapter(c, revertToGsonDefault);
+    }
+
+    /**
+     * Initializes and returns the {@link TypeAdapter} for the supplied class.
+     *
+     * @param clazz class for which to find an adapter
+     * @param revertToGsonDefault if {@code true}, return Gson's default adapter for the runtime class when no
+     *        {@link JsonAdapter} annotation is present (or initialization fails)
+     * @return initialized adapter instance, or {@code null} if none can be determined
+     */
+    public static TypeAdapter getTypeAdapter(Class<?> clazz, boolean revertToGsonDefault) {
+        Class c = getTypeAdapterClass(clazz);
+        if (c == null) {
+        	if (JsonObjectSerializable.class.isAssignableFrom(clazz)) {
+        		return new JsonObjectSerializable.ReflectiveJsonObjectAdapter<>(clazz);
+        	} else if (revertToGsonDefault) {
+        		checkInitDefaultGson();
+            	return defaultGson.getAdapter(clazz);
+        	}
         }
         return initTypeAdapter(c, revertToGsonDefault);
     }
