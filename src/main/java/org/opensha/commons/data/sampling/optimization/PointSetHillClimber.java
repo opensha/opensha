@@ -1,6 +1,6 @@
 package org.opensha.commons.data.sampling.optimization;
 
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import org.opensha.commons.data.sampling.SwappablePointSet;
 
@@ -14,7 +14,7 @@ public final class PointSetHillClimber {
 	private PointSetHillClimber() {}
 
 	public static PointSetOptimizationResult optimize(IncrementalPointSetScorer scorer, long iterations,
-			Random random) {
+			RandomGenerator random) {
 		if (scorer == null)
 			throw new NullPointerException("Incremental scorer cannot be null");
 		if (random == null)

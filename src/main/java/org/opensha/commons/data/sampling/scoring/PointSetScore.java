@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -59,5 +60,24 @@ public final class PointSetScore {
 	/** @return weighted mean of per-order normalized scores */
 	public double getNormalizedScore() {
 		return normalizedScore;
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder("PointSetScore[normalizedScore=")
+				.append(formatScore(normalizedScore)).append(", orderMeans={");
+		boolean first = true;
+		for (Map.Entry<Integer, Double> entry : orderMeanScores.entrySet()) {
+			if (first)
+				first = false;
+			else
+				builder.append(", ");
+			builder.append(entry.getKey()).append('=').append(formatScore(entry.getValue()));
+		}
+		return builder.append("}]").toString();
+	}
+
+	private static String formatScore(double score) {
+		return String.format(Locale.US, "%.5f", score);
 	}
 }

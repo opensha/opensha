@@ -9,6 +9,23 @@ public final class ArrayPointSet implements PointSet {
 	private final int dimensions;
 
 	/**
+	 * @param set external PointSet of any type
+	 */
+	public ArrayPointSet(PointSet set) {
+		this(points(set));
+	}
+	
+	private static double[][] points(PointSet set) {
+		final int size = set.size();
+		final int dimensions = set.dimensions();
+		double[][] points = new double[size][dimensions];
+		for (int p=0; p<size; p++)
+			for (int d=0; d<dimensions; d++)
+				points[p][d] = set.get(p, d);
+		return points;
+	}
+
+	/**
 	 * @param points coordinates arranged as {@code [point][dimension]}
 	 */
 	public ArrayPointSet(double[][] points) {

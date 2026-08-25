@@ -5,6 +5,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 
 import org.junit.Test;
@@ -108,6 +109,8 @@ public class PointSetScorerTest {
 		assertEquals(2, score.getProjectionScores().size());
 		assertEquals((2d*score.getOrderMeanScore(1)+score.getOrderMeanScore(2))/3d,
 				score.getNormalizedScore(), TOL);
+		assertEquals(String.format(Locale.US, "PointSetScore[normalizedScore=%.5f, orderMeans={1=%.5f, 2=%.5f}]",
+				score.getNormalizedScore(), score.getOrderMeanScore(1), score.getOrderMeanScore(2)), score.toString());
 	}
 
 	@Test
