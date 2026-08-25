@@ -1,5 +1,7 @@
 package org.opensha.commons.data.sampling.optimization;
 
+import java.util.Locale;
+
 /** Summary of a completed point-set optimization run. */
 public final class PointSetOptimizationResult {
 
@@ -33,5 +35,12 @@ public final class PointSetOptimizationResult {
 
 	public double getScoreReduction() {
 		return initialScore-finalScore;
+	}
+
+	@Override
+	public String toString() {
+		return String.format(Locale.US,
+				"PointSetOptimizationResult[iterations=%d, accepted=%d, score=%.5f -> %.5f]",
+				iterations, acceptedSwaps, initialScore, finalScore);
 	}
 }

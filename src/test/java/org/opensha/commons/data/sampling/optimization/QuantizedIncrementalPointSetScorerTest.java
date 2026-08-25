@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 
 import org.junit.Test;
@@ -120,6 +121,9 @@ public class QuantizedIncrementalPointSetScorerTest {
 		assertTrue(result.getAcceptedSwaps() <= result.getIterations());
 		assertEquals(result.getInitialScore()-result.getFinalScore(), result.getScoreReduction(), TOL);
 		assertTrue(result.getFinalScore() < result.getInitialScore());
+		assertEquals(String.format(Locale.US,
+				"PointSetOptimizationResult[iterations=1000000, accepted=%d, score=%.5f -> %.5f]",
+				result.getAcceptedSwaps(), result.getInitialScore(), result.getFinalScore()), result.toString());
 		assertFalse(incremental.hasPendingSwap());
 		PointSetScore reference = new QuantizedPointSetScorer(bins).score(points);
 		assertEquals(reference.getNormalizedScore(), result.getFinalScore(), TOL);
