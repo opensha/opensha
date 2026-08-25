@@ -649,7 +649,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		
 		@SuppressWarnings("unchecked")
 		public default TypeAdapter<E> getValueTypeAdapter() {
-			return JsonAdapterHelper.initTypeAdapter(getValueType(), true);
+			return JsonAdapterHelper.getTypeAdapter(getValueType(), true);
 		}
 		
 		public N build(E value, double weight, String name, String shortName, String filePrefix);
@@ -901,7 +901,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		
 		@SuppressWarnings("unchecked")
 		public TypeAdapter<E> getValueTypeAdapter() {
-			return JsonAdapterHelper.initTypeAdapter(getValueType(), true);
+			return JsonAdapterHelper.getTypeAdapter(getValueType(), true);
 		}
 		
 	}
