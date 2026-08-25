@@ -136,6 +136,8 @@ public class SolHazardMapCalc {
 	
 	private boolean pointSourceOptimizations = true;
 
+	private boolean distCacheWrapper = true;
+
 	private SourceFilterManager sourceFilter = FaultSysHazardCalcSettings.SOURCE_FILTER_DEFAULT;
 	
 	static final SourceFilterManager SITE_SKIP_SOURCE_FILTER_DEFAULT = new SourceFilterManager(SourceFilters.TRT_DIST_CUTOFFS);
@@ -330,7 +332,24 @@ public class SolHazardMapCalc {
 	public void setPointSourceOptimizations(boolean pointSourceOptimizations) {
 		this.pointSourceOptimizations = pointSourceOptimizations;
 	}
-	
+
+	/**
+	 * Sets whether each calculation thread wraps the ERF in a {@link DistCachedERFWrapper}, which gives every rupture
+	 * surface its own single-valued distance cache and so avoids cache collisions between threads. Enabled by default.
+	 * <p>
+	 * Disable this if the {@link ScalarIMR} needs to see the original rupture surfaces. The wrapper replaces each
+	 * surface with a {@link org.opensha.sha.faultSurface.cache.CustomCacheWrappedSurface}, so a GMM that inspects the
+	 * surface (e.g. testing for a {@link org.opensha.sha.faultSurface.CompoundSurface} in order to treat its sections
+	 * separately) will not recognise it and will fall back to
+	 * whatever it does for a surface it cannot decompose. Disabling this is safe at any thread count, the distance
+	 * caches just collide more, so it costs calculation time.
+	 *
+	 * @param distCacheWrapper
+	 */
+	public void setDistCacheWrapper(boolean distCacheWrapper) {
+		this.distCacheWrapper = distCacheWrapper;
+	}
+
 	public void setSourceFilter(SourceFilterManager sourceFilter) {
 		this.sourceFilter = sourceFilter;
 	}
@@ -477,7 +496,7 @@ public class SolHazardMapCalc {
 			IncludeBackgroundOption bgOption = (IncludeBackgroundOption) erf.getParameter(IncludeBackgroundParam.NAME).getValue();
 			if (bgOption == IncludeBackgroundOption.INCLUDE || bgOption == IncludeBackgroundOption.ONLY)
 				gridProv = erf.getSolution().requireModule(GridSourceProvider.class);
-			this.erf = new DistCachedERFWrapper(erf);
+			this.erf = distCacheWrapper ? new DistCachedERFWrapper(erf) : erf;
 		}
 
 		@Override
