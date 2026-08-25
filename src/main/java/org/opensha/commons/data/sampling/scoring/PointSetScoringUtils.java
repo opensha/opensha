@@ -36,7 +36,7 @@ final class PointSetScoringUtils {
 	static List<PointSetProjection> resolveProjections(PointSet pointSet, PointSetScoringConfig config) {
 		if (config == null)
 			throw new NullPointerException("Scoring configuration cannot be null");
-		return config.resolveProjections(pointSet.dimensions());
+		return config.resolveProjections(pointSet);
 	}
 
 	/** Validates that every dimension selected by a projection exists in the point set. */

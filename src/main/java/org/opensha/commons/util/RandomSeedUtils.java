@@ -6,6 +6,25 @@ import java.util.List;
 import com.google.common.base.Preconditions;
 
 public class RandomSeedUtils {
+
+	/**
+	 * Builds a stable 64-bit seed salt from one or more strings. String boundaries and every UTF-16 code unit
+	 * participate in the hash; the result is then avalanched with {@link #mix64(long)}.
+	 */
+	public static long seedForStrings(String... values) {
+		Preconditions.checkArgument(values != null && values.length > 0, "Values must be non-null and nonempty");
+		long hash = 0xcbf29ce484222325L;
+		for (String value : values) {
+			Preconditions.checkNotNull(value, "String values cannot be null");
+			hash ^= value.length();
+			hash *= 0x100000001b3L;
+			for (int i=0; i<value.length(); i++) {
+				hash ^= value.charAt(i);
+				hash *= 0x100000001b3L;
+			}
+		}
+		return mix64(hash);
+	}
 	
 	/**
 	 * Generates a 64-bit random seed that is a repeatable and psuedo-unique combination of the input seeds.

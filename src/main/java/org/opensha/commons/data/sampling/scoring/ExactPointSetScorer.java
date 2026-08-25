@@ -60,8 +60,10 @@ public final class ExactPointSetScorer implements PointSetScorer {
 		if (projection == null)
 			throw new NullPointerException("Projection cannot be null");
 		PointSetScoringUtils.validatePointSet(pointSet);
-		// scoreProjection bypasses configuration resolution, so validate its dimension indexes directly.
-		PointSetScoringUtils.validateProjection(projection, pointSet.dimensions());
+		// Resolve a one-projection configuration so this convenience path enforces the same inactive-dimension rules as
+		// the general scoring API.
+		PointSetScoringUtils.resolveProjections(pointSet,
+				PointSetScoringConfig.builder().projections(projection).build());
 		return scoreProjectionPrepared(ExactPointSetData.build(pointSet), projection);
 	}
 

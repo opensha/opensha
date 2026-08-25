@@ -8,6 +8,13 @@ import org.opensha.commons.data.sampling.scoring.DiscretizedDiscrepancyKernel;
  */
 public interface SamplingDimension {
 
+	/**
+	 * @return whether this dimension participates in scoring and optimization
+	 */
+	default boolean isActive() {
+		return true;
+	}
+
 	/** @return discrepancy kernel for this dimension's ideal target distribution */
 	DiscrepancyKernel getDiscrepancyKernel();
 

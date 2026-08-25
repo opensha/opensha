@@ -57,7 +57,7 @@ public final class QuantizedIncrementalPointSetScorer implements IncrementalPoin
 			throw new IllegalArgumentException("Point set must contain at least one point and dimension");
 		this.pointSet = pointSet;
 		this.config = config;
-		this.projections = config.resolveProjections(pointSet.dimensions());
+		this.projections = config.resolveProjections(pointSet);
 		for (PointSetProjection projection : projections)
 			if (projection.order() > 2)
 				throw new IllegalArgumentException("Incremental scoring supports only order-1 and order-2 projections, have "
@@ -182,6 +182,8 @@ public final class QuantizedIncrementalPointSetScorer implements IncrementalPoin
 		for (int d=0; d<pointSet.dimensions(); d++) {
 			if (pointSet.getDimension(d) == null)
 				throw new NullPointerException("Point-set dimension " + d + " is null");
+			if (!pointSet.getDimension(d).isActive())
+				continue;
 			kernels[d] = pointSet.getDimension(d).getDiscretizedKernel(continuousBins);
 			if (kernels[d] == null || kernels[d].stateCount() < 2)
 				throw new IllegalStateException("Dimension " + d + " must supply at least two discretized states");

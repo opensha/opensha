@@ -19,6 +19,8 @@ final class DiscretizedPointSetData {
 		DiscretizedDiscrepancyKernel[] kernels = new DiscretizedDiscrepancyKernel[pointSet.dimensions()];
 		int[][] states = new int[pointSet.dimensions()][pointSet.size()];
 		for (int d=0; d<pointSet.dimensions(); d++) {
+			if (!pointSet.getDimension(d).isActive())
+				continue;
 			kernels[d] = pointSet.getDimension(d).getDiscretizedKernel(continuousBins);
 			if (kernels[d] == null)
 				throw new NullPointerException("Discretized kernel for dimension " + d + " is null");

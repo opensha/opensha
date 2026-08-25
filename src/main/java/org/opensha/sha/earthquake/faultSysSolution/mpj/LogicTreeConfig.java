@@ -4,8 +4,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Random;
 
+import org.opensha.commons.data.sampling.PointSet;
+import org.opensha.commons.data.sampling.SamplingDimension;
 import org.opensha.commons.logicTree.BranchWeightProvider;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
@@ -13,7 +14,8 @@ import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomlyGeneratedLevel;
-import org.opensha.commons.logicTree.LogicTreeLevel.SamplingMethod;
+import org.opensha.commons.logicTree.sampling.SampledLogicTreeBuilder;
+import org.opensha.commons.logicTree.sampling.SamplingMethod;
 import org.opensha.commons.logicTree.LogicTreeNode.RandomlyGeneratedNode;
 
 import com.google.common.base.Preconditions;
@@ -249,10 +251,15 @@ public final class LogicTreeConfig {
 				List<LogicTreeLevel<? extends LogicTreeNode>> modLevels = new ArrayList<>(resolvedLevels);
 				modLevels.addAll(randomLevels);
 				int numBranches = logicTree.size()*samplingBranchCountMultiplier;
-				Random rand = new Random(randomSeed);
+				List<SamplingDimension> randomDimensions = new ArrayList<>(randomLevels.size());
+				for (RandomLevel<?, ?> level : randomLevels)
+					randomDimensions.add(level.getSamplingDimension());
+				PointSet randomPoints = SampledLogicTreeBuilder.preparePointSet(
+						numBranches, randomDimensions, randomSeed, samplingMethod);
 				List<List<? extends LogicTreeNode>> levelNodes = new ArrayList<>();
-				for (RandomLevel<?,?> level : randomLevels) {
-					level.build(rand.nextLong(), numBranches, samplingMethod);
+				for (int l=0; l<randomLevels.size(); l++) {
+					RandomLevel<?,?> level = randomLevels.get(l);
+					level.build(randomPoints.getDimensionValues(l));
 					levelNodes.add(level.getNodes());
 				}
 

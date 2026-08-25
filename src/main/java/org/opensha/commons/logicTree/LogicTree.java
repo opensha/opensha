@@ -19,14 +19,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-import org.opensha.commons.data.WeightedList;
+import org.opensha.commons.data.sampling.ArrayPointSet;
+import org.opensha.commons.data.sampling.DimensionedPointSet;
+import org.opensha.commons.data.sampling.PointSet;
+import org.opensha.commons.data.sampling.PointSetTransform;
+import org.opensha.commons.data.sampling.PointSetJsonAdapter;
+import org.opensha.commons.data.sampling.SamplingDimension;
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.logicTree.LogicTreeLevel.BinnedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.IndexedLevel;
-import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
-import org.opensha.commons.logicTree.LogicTreeLevel.SamplingMethod;
-import org.opensha.commons.logicTree.LogicTreeNode.FixedWeightNode;
-import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeNodeSwapIteration;
+import org.opensha.commons.logicTree.sampling.SamplingMethod;
+import org.opensha.commons.logicTree.sampling.SampledLogicTreeBuilder;
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 
 import com.google.common.base.Preconditions;
@@ -62,9 +65,10 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	
 	private BranchWeightProvider weightProvider = DEFAULT_WEIGHTS;
 	
-	private long randomSeed;
+	private Long samplingRandomSeed;
 	private int origNumBranches;
 	private SamplingMethod samplingMethod;
+	private PointSet samplingPointSet;
 	
 	private LogicTree(BranchWeightProvider weightProvider) {
 		this.weightProvider = weightProvider;
@@ -184,17 +188,21 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	 * @param origNumBranches the original number of branches if this is a downsampled logic tree, otherwise 0
 	 * @param samplingMethod the sampling method used when sampling this logic tree, or null
 	 */
-	public void setSamplingParameters(long randomSeed, int origNumBranches, SamplingMethod samplingMethod) {
-		this.randomSeed = randomSeed;
+	public void setSamplingParameters(Long randomSeed, int origNumBranches, SamplingMethod samplingMethod) {
+		this.samplingRandomSeed = randomSeed;
 		this.origNumBranches = origNumBranches;
 		this.samplingMethod = samplingMethod;
+	}
+
+	public boolean isSampled() {
+		return samplingMethod != null || samplingRandomSeed != null || origNumBranches > 0;
 	}
 	
 	/**
 	 * @return the random seed used to sample this tree if it was sampled, or 0 otherwise
 	 */
 	public long getSamplingRandomSeed() {
-		return randomSeed;
+		return samplingRandomSeed == null ? 0L : samplingRandomSeed;
 	}
 	
 	/**
@@ -209,6 +217,29 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	 */
 	public SamplingMethod getSamplingMethod() {
 		return samplingMethod;
+	}
+
+	public boolean hasSamplingPointSet() {
+		return samplingPointSet != null;
+	}
+
+	public PointSet getSamplingPointSet() {
+		return samplingPointSet;
+	}
+
+	public void setSamplingPointSet(PointSet pointSet) {
+		if (pointSet == null) {
+			samplingPointSet = null;
+			return;
+		}
+		Preconditions.checkArgument(pointSet.size() == size(), "Point count %s != branch count %s",
+				pointSet.size(), size());
+		Preconditions.checkArgument(pointSet.dimensions() == levels.size(), "Point dimensions %s != level count %s",
+				pointSet.dimensions(), levels.size());
+		List<SamplingDimension> dimensions = new ArrayList<>(pointSet.dimensions());
+		for (int d=0; d<pointSet.dimensions(); d++)
+			dimensions.add(pointSet.getDimension(d));
+		samplingPointSet = new DimensionedPointSet(new ArrayPointSet(pointSet), dimensions);
 	}
 	
 	/**
@@ -434,7 +465,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		}
 		
 		ret.origNumBranches = size();
-		ret.randomSeed = seed;
+		ret.samplingRandomSeed = seed;
 		ret.samplingMethod = SamplingMethod.MONTE_CARLO;
 		
 		return ret;
@@ -625,153 +656,25 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	public static <E extends LogicTreeNode> LogicTree<E> buildSampled(
 			List<LogicTreeLevel<? extends E>> levels, int numSamples, long seed,
 			SamplingMethod samplingMethod, LogicTreeNode... required) {
-		Preconditions.checkState(numSamples > 0, "NumSamples must be positive");
-		Preconditions.checkState(!levels.isEmpty(), "Must supply at least 1 level");
-		Random r = new Random(seed);
-		List<LogicTreeBranch<E>> branches = new ArrayList<>(numSamples);
-		// initialize empty
-		double weightEach = 1d/(double)numSamples;
-		for (int i=0; i<numSamples; i++) {
-			LogicTreeBranch<E> branch = new LogicTreeBranch<>(levels);
-			branch.setOrigBranchWeight(weightEach);
-			branches.add(branch);
-		}
-		LogicTreeBranch<?> branch0 = branches.get(0);
-		boolean allFixedWeights = true;
-		List<double[]> levelFixedWeights = null;
-		if (samplingMethod == SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE) {
-			levelFixedWeights = new ArrayList<>(levels.size());
-			for (int i=0; i<levels.size(); i++)
-				levelFixedWeights.add(null);
-		}
-		for (int l=0; l<levels.size(); l++) {
-			LogicTreeLevel<?> level = levels.get(l);
-			List<? extends LogicTreeNode> samples;
-			if (level instanceof RandomLevel<?,?>) {
-				((RandomLevel<?,?>)level).build(r.nextLong(), numSamples, samplingMethod);
-				samples = ((RandomLevel<?,?>)level).getNodes();
-				Preconditions.checkState(samples.size() == numSamples);
-			} else {
-				LogicTreeNode fixed = null;
-				if (required != null && required.length > 0) {
-					for (LogicTreeNode node : required) {
-						if (level.isMember(node)) {
-							if (fixed != null)
-								throw new IllegalStateException("Multiple required members belong to level "
-										+level.getName()+": "+fixed.getName()+" and "+node.getName());
-							fixed = node;
-						}
-					}
-				}
-				List<LogicTreeNode> mySamples = new ArrayList<>(numSamples);
-				if (fixed != null) {
-					for (int i=0; i<numSamples; i++)
-						mySamples.add(fixed);
-				} else {
-					List<? extends LogicTreeNode> nodes = level.getNodes();
-					boolean fixedWeights = FixedWeightNode.class.isAssignableFrom(level.getType());
-					if (!fixedWeights) {
-						// see if it's effectively fixed weight
-						fixedWeights = true;
-						for (LogicTreeNode node : nodes) {
-							double weight0 = node.getNodeWeight(branches.get(0));
-							for (LogicTreeBranch<?> branch : branches) {
-								if (weight0 != node.getNodeWeight(branch)) {
-									fixedWeights = false;
-									break;
-								}
-							}
-							if (!fixedWeights)
-								break;
-						}
-					}
-					
-					if (fixedWeights) {
-						// fixed weights, simple
-						WeightedList<LogicTreeNode> weightedNodes = new WeightedList<>(nodes.size());
-						double[] myWeights = new double[nodes.size()];
-						for (int n=0; n<nodes.size(); n++) {
-							LogicTreeNode node = nodes.get(n);
-							double weight = node instanceof FixedWeightNode ? ((FixedWeightNode)node).getNodeWeight() : node.getNodeWeight(branch0);
-							myWeights[n] = weight;
-							if (weight > 0d)
-								weightedNodes.add(node, weight);
-						}
-						Preconditions.checkState(!weightedNodes.isEmpty());
-						if (levelFixedWeights != null)
-							levelFixedWeights.set(l, myWeights);
-						if (weightedNodes.size() == 1) {
-							for (int i=0; i<numSamples; i++)
-								mySamples.add(weightedNodes.get(0).value);
-						} else if (samplingMethod.isLHS()) {
-							mySamples.addAll(weightedNodes.sampleEvenly(numSamples, r));
-						} else {
-							mySamples.addAll(weightedNodes.sampleMonteCarlo(numSamples, r));
-						}
-					} else {
-						// weights vary based on upstream
-						// this implies monte carlo
-						allFixedWeights = false;
-						IntegerPDF_FunctionSampler sampler = null;
-						if (samplingMethod.isLHS())
-							System.err.println("WARNING: Latin hypercube sampling selected but nodes of "+level.getName()
-									+" vary based on upstream choices; will revert to Monte Carlo sampling for this level");
-						double[] curWeights = new double[nodes.size()];
-						for (int i=0; i<numSamples; i++) {
-							LogicTreeNode firstNonzero = null;
-							int numNonZero = 0;
-							LogicTreeBranch<E> branch = branches.get(i);
-							for (int n=0; n<curWeights.length; n++) {
-								LogicTreeNode node = nodes.get(n);
-								double weight = node.getNodeWeight(branch);
-								fixedWeights &= (i == 0 || weight == curWeights[n]);
-								curWeights[n] = node.getNodeWeight(branch);
-								if (curWeights[n] > 0) {
-									if (numNonZero == 0)
-										firstNonzero = node;
-									else
-										firstNonzero = null;
-									numNonZero++;
-								}
-								if (sampler != null && curWeights[n] != sampler.getY(n))
-									// can't reuse this sampler
-									sampler = null;
-							}
-							if (numNonZero == 1) {
-								// only one with nonzero weight
-								mySamples.add(firstNonzero);
-							} else {
-								// multiple, need to sample
-								if (sampler == null)
-									sampler = new IntegerPDF_FunctionSampler(curWeights);
-								mySamples.add(nodes.get(sampler.getRandomInt(r)));
-							}
-						}
-					}
-					
-				}
-				samples = mySamples;
-			}
-			Preconditions.checkState(samples.size() == numSamples);
-			for (int i=0; i<numSamples; i++)
-				branches.get(i).setValue(l, (E)samples.get(i));
-		}
-		
-		if (samplingMethod == SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE && levels.size() > 1) {
-			Preconditions.checkState(numSamples > 1, "Must have >1 samples for pairwise-iteration");
-			Preconditions.checkState(allFixedWeights,
-					"Cannot (yet) do pairwise-iteration on a logic tree with branch-dependent weighting");
-			PairwiseLogicTreeNodeSwapIteration<E> iteration = new PairwiseLogicTreeNodeSwapIteration<>(levels, branches, levelFixedWeights);
-			int nIters = Integer.min(10000000, Integer.max(100000, numSamples*1000));
-			iteration.iterate(nIters, r);
-//			System.exit(0);
-		}
-		
-		LogicTree<E> tree = fromExisting(levels, branches);
-		tree.randomSeed = seed;
-		tree.origNumBranches = 0;
-		tree.samplingMethod = samplingMethod;
-		return tree;
+		return buildSampled(levels, numSamples, seed, samplingMethod, null, required);
+	}
+
+	public static <E extends LogicTreeNode> LogicTree<E> buildSampled(
+			List<LogicTreeLevel<? extends E>> levels, int numSamples, long seed,
+			SamplingMethod samplingMethod, PointSetTransform transform, LogicTreeNode... required) {
+		return new SampledLogicTreeBuilder<E>(levels, required).transform(transform)
+				.build(numSamples, seed, samplingMethod);
+	}
+
+	public static <E extends LogicTreeNode> LogicTree<E> buildSampled(
+			List<LogicTreeLevel<? extends E>> levels, PointSet pointSet, LogicTreeNode... required) {
+		return buildSampled(levels, pointSet, null, required);
+	}
+
+	public static <E extends LogicTreeNode> LogicTree<E> buildSampled(
+			List<LogicTreeLevel<? extends E>> levels, PointSet pointSet,
+			PointSetTransform transform, LogicTreeNode... required) {
+		return new SampledLogicTreeBuilder<E>(levels, required).transform(transform).build(pointSet);
 	}
 	
 	public static LogicTree<LogicTreeNode> unrollTRTs(
@@ -798,7 +701,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		
 		LogicTree<LogicTreeNode> tree = fromExisting(modLevels, modBranches);
 		
-		tree.randomSeed = inputTree.randomSeed;
+		tree.samplingRandomSeed = inputTree.samplingRandomSeed;
 		tree.origNumBranches = inputTree.origNumBranches;
 		tree.samplingMethod = inputTree.samplingMethod;
 		
@@ -856,7 +759,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		}
 		LogicTree<LogicTreeNode> tree = fromExisting(modLevels, modBranches);
 		
-		tree.randomSeed = inputTree.randomSeed;
+		tree.samplingRandomSeed = inputTree.samplingRandomSeed;
 		tree.origNumBranches = inputTree.origNumBranches;
 		tree.samplingMethod = inputTree.samplingMethod;
 		
@@ -885,6 +788,11 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		LogicTree<E> tree = adapter.read(in);
 		this.levels = tree.levels;
 		this.branches = tree.branches;
+		this.weightProvider = tree.weightProvider;
+		this.samplingRandomSeed = tree.samplingRandomSeed;
+		this.origNumBranches = tree.origNumBranches;
+		this.samplingMethod = tree.samplingMethod;
+		this.samplingPointSet = tree.samplingPointSet;
 	}
 	
 	public void write(File jsonFile) throws IOException {
@@ -989,12 +897,16 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 				out.endArray();
 			}
 			
-			if (value.randomSeed != 0l)
-				out.name("randomSeed").value(value.randomSeed);
+			if (value.samplingRandomSeed != null)
+				out.name("randomSeed").value(value.samplingRandomSeed);
 			if (value.origNumBranches > 0)
 				out.name("origNumBranches").value(value.origNumBranches);
 			if (value.samplingMethod != null)
 				out.name("samplingMethod").value(value.samplingMethod.name());
+			if (value.samplingPointSet != null) {
+				out.name("samplingPointSet");
+				PointSetJsonAdapter.INSTANCE.write(out, value.samplingPointSet);
+			}
 			
 			out.endObject();
 		}
@@ -1015,9 +927,10 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			
 			List<Map<String, E>> nodeMatchCache = null;
 			
-			long randomSeed = 0l;
+			Long randomSeed = null;
 			int origNumBranches = 0;
 			SamplingMethod samplingMethod = null;
+			PointSet samplingPointSet = null;
 			
 			while (in.hasNext()) {
 				switch (in.nextName()) {
@@ -1159,6 +1072,9 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 				case "samplingMethod":
 					samplingMethod = SamplingMethod.valueOf(in.nextString());
 					break;
+				case "samplingPointSet":
+					samplingPointSet = PointSetJsonAdapter.INSTANCE.read(in);
+					break;
 
 				default:
 					in.skipValue();
@@ -1193,9 +1109,11 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			}
 			LogicTree<E> tree = new LogicTree<>(levels, branches, weightProvider);
 			
-			tree.randomSeed = randomSeed;
+			tree.samplingRandomSeed = randomSeed;
 			tree.origNumBranches = origNumBranches;
 			tree.samplingMethod = samplingMethod;
+			if (samplingPointSet != null)
+				tree.setSamplingPointSet(samplingPointSet);
 			
 			return tree;
 		}

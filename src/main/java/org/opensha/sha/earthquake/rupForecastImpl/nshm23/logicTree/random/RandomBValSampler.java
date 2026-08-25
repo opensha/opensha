@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
+import org.opensha.commons.data.sampling.generator.MonteCarloPointSetGenerator;
+
 import org.opensha.commons.calc.WeightedSampler;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
@@ -97,7 +99,7 @@ public class RandomBValSampler implements BranchDependentSampler<RandomBValSampl
 		public Level(int numSamples, long seed) {
 			super("Section b-value Samples", "b Samples",
 					"Section b-value Sample ", "bSample", "bSample");
-			build(seed, numSamples);
+			build(new MonteCarloPointSetGenerator(new Random(seed)).generate(numSamples, 1).getDimensionValues(0));
 		}
 
 		@Override

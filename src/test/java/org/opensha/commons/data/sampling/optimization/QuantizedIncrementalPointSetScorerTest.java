@@ -15,6 +15,7 @@ import org.opensha.commons.data.sampling.CategoricalSamplingDimension;
 import org.opensha.commons.data.sampling.ContinuousSamplingDimension;
 import org.opensha.commons.data.sampling.DimensionSwapGroup;
 import org.opensha.commons.data.sampling.DimensionedPointSet;
+import org.opensha.commons.data.sampling.InactiveSamplingDimension;
 import org.opensha.commons.data.sampling.PermutedPointSet;
 import org.opensha.commons.data.sampling.PointSet;
 import org.opensha.commons.data.sampling.SamplingDimension;
@@ -107,6 +108,18 @@ public class QuantizedIncrementalPointSetScorerTest {
 	public void testHigherOrderConfigRejected() {
 		PointSetScoringConfig config = PointSetScoringConfig.builder().maxOrder(3).build();
 		new QuantizedIncrementalPointSetScorer(buildPointSet(12, 4321L), 5, config);
+	}
+
+	@Test
+	public void testIndependentGroupsExcludeInactiveDimensions() {
+		PointSet source = new DimensionedPointSet(new ArrayPointSet(new double[][] {
+				{ 0.1, 0.2, 0.3 }, { 0.4, 0.5, 0.6 }
+		}), List.of(ContinuousSamplingDimension.INSTANCE, InactiveSamplingDimension.INSTANCE,
+				ContinuousSamplingDimension.INSTANCE));
+		PermutedPointSet points = PermutedPointSet.independentDimensions(source);
+		assertEquals(2, points.swapGroupCount());
+		assertEquals(0, points.getSwapGroup(0).dimension(0));
+		assertEquals(2, points.getSwapGroup(1).dimension(0));
 	}
 
 	@Test

@@ -9,7 +9,7 @@ import org.apache.commons.cli.Options;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.logicTree.LogicTree;
-import org.opensha.commons.logicTree.LogicTreeLevel.SamplingMethod;
+import org.opensha.commons.logicTree.sampling.SamplingMethod;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.mpj.HPCConfig;
 import org.opensha.sha.earthquake.faultSysSolution.mpj.HazardConfig;

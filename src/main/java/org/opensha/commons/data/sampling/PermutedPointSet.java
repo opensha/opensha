@@ -59,14 +59,15 @@ public final class PermutedPointSet implements SwappablePointSet {
 	}
 
 	/**
-	 * Builds a view with one independently swappable group per dimension.
+	 * Builds a view with one independently swappable group per active dimension.
 	 */
 	public static PermutedPointSet independentDimensions(PointSet source) {
 		if (source == null)
 			throw new NullPointerException("Source point set cannot be null");
 		List<DimensionSwapGroup> groups = new ArrayList<>(source.dimensions());
 		for (int d=0; d<source.dimensions(); d++)
-			groups.add(new DimensionSwapGroup(d));
+			if (source.getDimension(d).isActive())
+				groups.add(new DimensionSwapGroup(d));
 		return new PermutedPointSet(source, groups);
 	}
 

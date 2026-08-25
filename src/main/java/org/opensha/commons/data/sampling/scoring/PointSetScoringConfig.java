@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.opensha.commons.data.sampling.PointSet;
+
 /**
  * Projection selection and per-order aggregation weights for {@link PointSetScorer}.
  */
@@ -68,6 +70,38 @@ public final class PointSetScoringConfig {
 		List<PointSetProjection> resolved = new ArrayList<>();
 		for (int order=1; order<=Math.min(maxOrder, dimensions); order++)
 			enumerateProjections(dimensions, new int[order], 0, 0, resolved);
+		return Collections.unmodifiableList(resolved);
+	}
+
+	/** Resolves projections while omitting dimensions marked inactive by the point set. */
+	public List<PointSetProjection> resolveProjections(PointSet pointSet) {
+		if (pointSet == null)
+			throw new NullPointerException("Point set cannot be null");
+		if (hasExplicitProjections()) {
+			for (PointSetProjection projection : projections) {
+				PointSetScoringUtils.validateProjection(projection, pointSet.dimensions());
+				for (int i=0; i<projection.order(); i++) {
+					int dimension = projection.dimension(i);
+					if (!pointSet.getDimension(dimension).isActive())
+						throw new IllegalArgumentException("Explicit projection " + projection
+								+ " contains inactive dimension " + dimension);
+				}
+			}
+			return projections;
+		}
+		int activeCount = 0;
+		for (int d=0; d<pointSet.dimensions(); d++)
+			if (pointSet.getDimension(d).isActive())
+				activeCount++;
+		if (activeCount == 0)
+			throw new IllegalArgumentException("Point set contains no active dimensions to score");
+		int[] active = new int[activeCount];
+		for (int d=0, index=0; d<pointSet.dimensions(); d++)
+			if (pointSet.getDimension(d).isActive())
+				active[index++] = d;
+		List<PointSetProjection> resolved = new ArrayList<>();
+		for (int order=1; order<=Math.min(maxOrder, active.length); order++)
+			enumerateActiveProjections(active, new int[order], 0, 0, resolved);
 		return Collections.unmodifiableList(resolved);
 	}
 
@@ -157,6 +191,19 @@ public final class PointSetScoringConfig {
 		for (int dimension=minimum; dimension<dimensions-remaining; dimension++) {
 			indexes[position] = dimension;
 			enumerateProjections(dimensions, indexes, position+1, dimension+1, projections);
+		}
+	}
+
+	private static void enumerateActiveProjections(int[] active, int[] indexes, int position, int minimum,
+			List<PointSetProjection> projections) {
+		if (position == indexes.length) {
+			projections.add(new PointSetProjection(indexes));
+			return;
+		}
+		int remaining = indexes.length-position-1;
+		for (int activeIndex=minimum; activeIndex<active.length-remaining; activeIndex++) {
+			indexes[position] = active[activeIndex];
+			enumerateActiveProjections(active, indexes, position+1, activeIndex+1, projections);
 		}
 	}
 }

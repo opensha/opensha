@@ -6,19 +6,19 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Random;
+import java.util.function.DoubleFunction;
 import java.util.function.Supplier;
 
 import org.apache.commons.numbers.core.Precision;
-import org.apache.commons.rng.UniformRandomProvider;
-import org.apache.commons.rng.simple.RandomSource;
 import org.apache.commons.statistics.distribution.ContinuousDistribution;
-import org.apache.commons.statistics.distribution.ContinuousDistribution.Sampler;
 import org.opensha.commons.data.ShortNamed;
 import org.opensha.commons.data.WeightedList;
+import org.opensha.commons.data.sampling.CategoricalSamplingDimension;
+import org.opensha.commons.data.sampling.ContinuousSamplingDimension;
+import org.opensha.commons.data.sampling.InactiveSamplingDimension;
+import org.opensha.commons.data.sampling.SamplingDimension;
 import org.opensha.commons.logicTree.Affects.Affected;
 import org.opensha.commons.logicTree.DoesNotAffect.NotAffected;
 import org.opensha.commons.logicTree.LogicTreeBranch.NodeTypeAdapter;
@@ -27,8 +27,8 @@ import org.opensha.commons.logicTree.LogicTreeNode.FixedWeightNode;
 import org.opensha.commons.logicTree.LogicTreeNode.RandomlyGeneratedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.SimpleValuedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.ValuedLogicTreeNode;
-import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.FileNameUtils;
+import org.opensha.commons.util.RandomSeedUtils;
 import org.opensha.commons.util.json.ContinuousDistributionTypeAdapter;
 import org.opensha.commons.util.json.DoubleRangeAdapter;
 import org.opensha.commons.util.json.JsonAdapterHelper;
@@ -54,6 +54,32 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 	public abstract List<? extends E> getNodes();
 	
 	public abstract boolean isMember(LogicTreeNode node);
+
+	/**
+	 * Describes this level's intrinsic unit-coordinate semantics. A tree mapper can still mark a required or otherwise
+	 * fixed level inactive for a particular sampling operation.
+	 */
+	public SamplingDimension getSamplingDimension() {
+		List<? extends E> nodes = getNodes();
+		if (nodes.size() < 2)
+			return InactiveSamplingDimension.INSTANCE;
+		if (!FixedWeightNode.class.isAssignableFrom(getType()))
+			return ContinuousSamplingDimension.INSTANCE;
+		List<Double> weights = new ArrayList<>();
+		for (E node : nodes) {
+			double weight = ((FixedWeightNode)node).getNodeWeight();
+			if (!Double.isFinite(weight) || weight < 0d)
+				throw new IllegalStateException("Node " + node.getName() + " has invalid fixed weight " + weight);
+			if (weight > 0d)
+				weights.add(weight);
+		}
+		if (weights.size() < 2)
+			return InactiveSamplingDimension.INSTANCE;
+		double[] array = new double[weights.size()];
+		for (int i=0; i<array.length; i++)
+			array[i] = weights.get(i);
+		return CategoricalSamplingDimension.forWeights(array);
+	}
 	
 	public String getFilePrefix() {
 		return FileNameUtils.simplify(getShortName());
@@ -742,58 +768,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		
 	}
 	
-	public enum SamplingMethod implements ShortNamed {
-		/**
-		 * Purely random-sampling
-		 */
-		MONTE_CARLO("Monte Carlo", "MCS", "mcs"),
-		/**
-		 * Stratify the uncertainties into equal-probability bins, sample a value from each bin, and then shuffle the
-		 * order. This ensures the full marginal distribution is sampled for each level
-		 */
-		LATIN_HYPERCUBE("Latin Hypercube", "LHS", "lhs"),
-		/**
-		 * Extension of {@link #LATIN_HYPERCUBE} in which samples are balanced between pairs of choices and not just
-		 * their own marginal distributions. This is done iteratively.
-		 */
-		PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE("Pairwise-Optimized Latin Hypercube", "Pairwise-LHS", "lhs_pairwise");
-		
-		private String name;
-		private String shortName;
-		private String filePrefix;
-
-		private SamplingMethod(String name, String shortName, String filePrefix) {
-			this.name = name;
-			this.shortName = shortName;
-			this.filePrefix = filePrefix;
-		}
-		
-		public boolean isMC() {
-			return !isLHS();
-		}
-		
-		public boolean isLHS() {
-			return this == LATIN_HYPERCUBE || this == PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE;
-		}
-
-		@Override
-		public String getName() {
-			return name;
-		}
-
-		@Override
-		public String getShortName() {
-			return shortName;
-		}
-		
-		public String getFilePrefix() {
-			return filePrefix;
-		}
-	}
-	
 	public static abstract class RandomLevel<E, N extends ValuedLogicTreeNode<? super E>> extends IndexedValuedLevel<E,N> {
-		
-		private long origSeed = -1l;
 		
 		protected List<N> nodes;
 		
@@ -806,20 +781,22 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			super(levelName, levelShortName, nodeNamePrefix, nodeShortNamePrefix, nodeFilePrefix);
 		}
 		
-		public final void build(long seed, int numNodes) {
-			build(seed, numNodes, SamplingMethod.MONTE_CARLO);
+		public final void build(double[] unitSamples) {
+			build(unitSamples, 1d/unitSamples.length);
+		}
+
+		public final void build(double[] unitSamples, double weightEach) {
+			Preconditions.checkArgument(unitSamples != null && unitSamples.length > 0,
+					"Unit samples must be non-null and nonempty");
+			Preconditions.checkArgument(Double.isFinite(weightEach) && weightEach > 0d,
+					"Node weight must be finite and positive");
+			for (int i=0; i<unitSamples.length; i++)
+				Preconditions.checkArgument(Double.isFinite(unitSamples[i]) && unitSamples[i] >= 0d && unitSamples[i] < 1d,
+						"Unit sample " + i + " must be finite and in [0,1), have " + unitSamples[i]);
+			doBuild(unitSamples, weightEach);
 		}
 		
-		public final void build(long seed, int numNodes, SamplingMethod samplingMethod) {
-			build(seed, numNodes, samplingMethod, 1d/(double)numNodes);
-		}
-		
-		public final void build(long seed, int numNodes, SamplingMethod samplingMethod, double weightEach) {
-			this.origSeed = seed;
-			doBuild(seed, numNodes, samplingMethod, weightEach);
-		}
-		
-		protected abstract void doBuild(long seed, int numNodes, SamplingMethod samplingMethod, double weightEach);
+		protected abstract void doBuild(double[] unitSamples, double weightEach);
 
 		public final boolean isBuilt() {
 			return nodes != null;
@@ -830,24 +807,10 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			this.nodes = nodes;
 		}
 
-		public final long getOriginalSeed() {
-			return origSeed;
-		}
 
 		@Override
-		public JsonObject toJsonObject() {
-			JsonObject json = super.toJsonObject();
-			json.add("nodeType", new JsonPrimitive(getType().getName()));
-			if (origSeed != -1l)
-				json.add("originalSeed", new JsonPrimitive(origSeed));
-			return json;
-		}
-
-		@Override
-		public void initFromJsonObject(JsonObject jsonObj) {
-			super.initFromJsonObject(jsonObj);
-			if (jsonObj.has("originalSeed"))
-				origSeed = jsonObj.get("originalSeed").getAsLong();
+		public SamplingDimension getSamplingDimension() {
+			return ContinuousSamplingDimension.INSTANCE;
 		}
 		
 	}
@@ -868,6 +831,12 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			for (int i=0; i<numValues; i++) {
 				nodes.add(build(i, randomValueSupplier.get(), weightEach));
 			}
+		}
+
+		protected void build(double[] unitSamples, DoubleFunction<? extends E> valueForUnitSample, double weightEach) {
+			nodes = new ArrayList<>(unitSamples.length);
+			for (int i=0; i<unitSamples.length; i++)
+				nodes.add(build(i, valueForUnitSample.apply(unitSamples[i]), weightEach));
 		}
 		
 		void setValuesUnchecked(List<Object> values, double weightEach) {
@@ -945,36 +914,59 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		}
 
 		@Override
-		protected void doBuild(long seed, int numSamples, SamplingMethod samplingMethod, double weightEach) {
-			if (samplingMethod.isLHS()) {
-				doBuildLHS(seed, numSamples, weightEach);
-			} else {
-				// monte-carlo otherwise
-				Random rand = new Random(seed);
-				build(()->{return weightedValues.sample(rand);}, numSamples, weightEach);
-			}
+		protected void doBuild(double[] unitSamples, double weightEach) {
+			build(unitSamples, this::valueForUnitSample, weightEach);
 		}
-		
-		protected void doBuildLHS(long seed, int numSamples, double weightEach) {
-			List<E> samples = weightedValues.sampleEvenly(numSamples, new Random(seed));
-			
-			Iterator<E> it = samples.iterator();
-			build(() -> {
-				return it.next();
-			}, numSamples, weightEach);
+
+		private E valueForUnitSample(double unitSample) {
+			double sum = 0d;
+			E lastPositive = null;
+			for (int i=0; i<weightedValues.size(); i++)
+				if (weightedValues.getWeight(i) > 0d) {
+					sum += weightedValues.getWeight(i);
+					lastPositive = weightedValues.getValue(i);
+				}
+			Preconditions.checkState(sum > 0d, "Weighted sampling level has no positive weights");
+			double target = unitSample*sum;
+			double cumulative = 0d;
+			for (int i=0; i<weightedValues.size(); i++) {
+				cumulative += weightedValues.getWeight(i);
+				if (target < cumulative)
+					return weightedValues.getValue(i);
+			}
+			// Only reachable through floating-point roundoff; never select a trailing zero-weight value.
+			return lastPositive;
+		}
+
+		@Override
+		public SamplingDimension getSamplingDimension() {
+			List<Double> weights = new ArrayList<>();
+			for (int i=0; i<weightedValues.size(); i++)
+				if (weightedValues.getWeight(i) > 0d)
+					weights.add(weightedValues.getWeight(i));
+			if (weights.size() < 2)
+				return InactiveSamplingDimension.INSTANCE;
+			double[] array = new double[weights.size()];
+			for (int i=0; i<array.length; i++)
+				array[i] = weights.get(i);
+			return CategoricalSamplingDimension.forWeights(array);
 		}
 	}
 	
 	/**
 	 * Interface for a continuous sampling levels where each sample can be mapped to a fractile within the underlying
-	 * distribution. This is used to enable continuous pairwise optimization by
-	 * {@link SamplingMethod#PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE}, and can apply beyond simple
-	 * {@link AbstractContinuousDistributionSampledLevel} instances.
+	 * distribution. This is used to enable pairwise (and higher-D) optimization and scoring when building or evaluating
+	 * low-discrepancy samples. It can apply beyond simple {@link AbstractContinuousDistributionSampledLevel} instances.
 	 * @param <E>
 	 * @param <N>
 	 */
 	public static interface FractileSamplingLevel<E, N extends ValuedLogicTreeNode<? super E>> {
 		
+		/**
+		 *
+		 * @param value
+		 * @return the fractile for the given value
+		 */
 		public double getFractile(E value);
 	}
 	
@@ -1004,46 +996,13 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		}
 		
 		@Override
-		protected void doBuild(long seed, int numSamples, SamplingMethod samplingMethod, double weightEach) {
-			build(RandomSource.XO_RO_SHI_RO_128_PP.create(seed), numSamples, samplingMethod, weightEach);
+		protected void doBuild(double[] unitSamples, double weightEach) {
+			build(unitSamples, unitSample -> getRoundedToPrecision(dist.inverseCumulativeProbability(unitSample)), weightEach);
 		}
-		
-		protected void build(UniformRandomProvider rand, int numSamples, SamplingMethod samplingMethod, double weightEach) {
-			if (samplingMethod.isLHS())
-				buildLHS(rand, numSamples, weightEach);
-			else
-				// fallback
-				buildMonteCarlo(rand, numSamples, weightEach);
-		}
-		
-		protected void buildLHS(UniformRandomProvider rand, int numSamples, double weightEach) {
-			double[] samples = new double[numSamples];
-			for (int i=0; i<numSamples; i++) {
-				double binStart = (double)i / numSamples;
-				double binEnd = (double)(i + 1) / numSamples;
-				double p = rand.nextDouble(binStart, binEnd);
-				samples[i] = getRoundedToPrecision(dist.inverseCumulativeProbability(p));
-			}
-			// shuffle them according to the uniform random provider
-			DataUtils.shuffle(samples, rand);
-			
-			build(new Supplier<Double>() {
-				int index = 0;
-				@Override
-				public Double get() {
-					if (index >= samples.length)
-						throw new IllegalStateException("No more LHS samples available");
-					return samples[index++];
-				}
-			}, numSamples, weightEach);
-		}
-		
-		protected void buildMonteCarlo(UniformRandomProvider rand, int numSamples, double weightEach) {
-			Sampler sampler = dist.createSampler(rand);
-			build(()->{
-				double sample = getRoundedToPrecision(sampler.sample());
-				return sample;
-			}, numSamples, weightEach);
+
+		@Override
+		public SamplingDimension getSamplingDimension() {
+			return ContinuousSamplingDimension.INSTANCE;
 		}
 		
 		public ContinuousDistribution getDistribution() {
@@ -1559,91 +1518,114 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		}
 
 		@Override
-		protected void doBuild(long seed, int numNodes, SamplingMethod samplingMethod, double weightEach) {
-			Random rand = new Random(seed);
-			
-			long[] levelSeeds = new long[levels.size()];
+		protected void doBuild(double[] unitSamples, double weightEach) {
+			double outerSum = 0d;
 			for (int l=0; l<levels.size(); l++)
-				levelSeeds[l] = rand.nextLong();
-			
-			// first randomly assign sub-levels to indexes
-			WeightedList<Integer> levelIndexesList = new WeightedList<>(levels.size());
-			for (int l=0; l<levels.size(); l++)
-				levelIndexesList.add(l, levels.getWeight(l));
-			
-			List<Integer> nodeLevelIndexesList;
-			if (samplingMethod.isLHS())
-				nodeLevelIndexesList = levelIndexesList.sampleEvenly(numNodes, rand);
-			else
-				nodeLevelIndexesList = levelIndexesList.sampleMonteCarlo(numNodes, rand);
-			
-			// figure out how many were sampled for each sub-level
+				outerSum += levels.getWeight(l);
+			Preconditions.checkState(outerSum > 0d, "Combined level has no positive-weight sublevels");
+
+			int numNodes = unitSamples.length;
 			List<List<Integer>> levelSampleIndexes = new ArrayList<>(levels.size());
+			List<List<Double>> levelUnitSamples = new ArrayList<>(levels.size());
 			for (int l=0; l<levels.size(); l++)
 				levelSampleIndexes.add(new ArrayList<>());
+			for (int l=0; l<levels.size(); l++)
+				levelUnitSamples.add(new ArrayList<>());
 			for (int i=0; i<numNodes; i++) {
-				int levelIndex = nodeLevelIndexesList.get(i);
-				levelSampleIndexes.get(levelIndex).add(i);
+				double target = unitSamples[i]*outerSum;
+				double lower = 0d;
+				int selected = -1;
+				for (int l=0; l<levels.size(); l++) {
+					double weight = levels.getWeight(l);
+					if (weight > 0d && target < lower+weight) {
+						selected = l;
+						double local = (target-lower)/weight;
+						levelSampleIndexes.get(l).add(i);
+						levelUnitSamples.get(l).add(Math.min(local, Math.nextDown(1d)));
+						break;
+					}
+					lower += weight;
+				}
+				Preconditions.checkState(selected >= 0, "Failed to select combined sublevel for sample %s", unitSamples[i]);
 			}
-			
-			// now actually build them
+
 			List<int[]> nodeLevelIndexes = new ArrayList<>(numNodes);
 			for (int i=0; i<numNodes; i++)
 				nodeLevelIndexes.add(null);
-			
+
 			for (int l=0; l<levels.size(); l++) {
 				List<Integer> indexes = levelSampleIndexes.get(l);
 				int numLevelSamples = indexes.size();
 				if (numLevelSamples == 0)
-					// this level was never sampled
 					continue;
 				LogicTreeLevel<? extends E> level = levels.getValue(l);
-//				System.out.println("Level "+l+". "+level.getShortName()+" has "+numLevelSamples+" samples");
 				if (level instanceof RandomLevel) {
 					RandomLevel<E, ?> randomLevel = (RandomLevel<E, ?>)level;
-					randomLevel.build(levelSeeds[l], numLevelSamples, samplingMethod, weightEach);
-					
+					double[] localSamples = new double[numLevelSamples];
+					for (int i=0; i<numLevelSamples; i++)
+						localSamples[i] = levelUnitSamples.get(l).get(i);
+					randomLevel.build(localSamples, weightEach);
 					for (int i=0; i<numLevelSamples; i++) {
 						int nodeIndex = indexes.get(i);
 						int[] nodeLevelIndex = {l,i};
 						Preconditions.checkState(nodeLevelIndexes.set(nodeIndex, nodeLevelIndex) == null);
 					}
-				} else if (level.getNodes().size() == 1) {
-					// single value
-					for (int i=0; i<numLevelSamples; i++) {
-						int nodeIndex = indexes.get(i);
-						int[] nodeLevelIndex = {l,0};
-						Preconditions.checkState(nodeLevelIndexes.set(nodeIndex, nodeLevelIndex) == null);
-					}
 				} else {
-					// sample values from the level
 					List<? extends E> levelNodes = level.getNodes();
-					WeightedList<Integer> weightedNodes = new WeightedList<>();
-					for (int i=0; i<levelNodes.size(); i++) {
-						E node = levelNodes.get(i);
-						double nodeWeight = node.getNodeWeight();
-						if (nodeWeight > 0d)
-							weightedNodes.add(i, nodeWeight);
-					}
-					Random levelRand = new Random(levelSeeds[l]);
-					List<Integer> levelSampledIndexes;
-					if (samplingMethod.isLHS())
-						levelSampledIndexes = weightedNodes.sampleEvenly(numLevelSamples, levelRand);
-					else
-						levelSampledIndexes = weightedNodes.sampleMonteCarlo(numLevelSamples, levelRand);
+					double nodeWeightSum = 0d;
+					for (E node : levelNodes)
+						if (node.getNodeWeight() > 0d)
+							nodeWeightSum += node.getNodeWeight();
 					for (int i=0; i<numLevelSamples; i++) {
+						double target = levelUnitSamples.get(l).get(i)*nodeWeightSum;
+						double cumulative = 0d;
+						int levelNodeIndex = -1;
+						for (int n=0; n<levelNodes.size(); n++) {
+							double nodeWeight = levelNodes.get(n).getNodeWeight();
+							if (nodeWeight <= 0d)
+								continue;
+							cumulative += nodeWeight;
+							if (target < cumulative) {
+								levelNodeIndex = n;
+								break;
+							}
+						}
+						Preconditions.checkState(levelNodeIndex >= 0);
 						int nodeIndex = indexes.get(i);
-						int levelNodeIndex = levelSampledIndexes.get(i);
 						int[] nodeLevelIndex = {l,levelNodeIndex};
 						Preconditions.checkState(nodeLevelIndexes.set(nodeIndex, nodeLevelIndex) == null);
 					}
 				}
 			}
-			
+
 			for (int i=0; i<numNodes; i++)
 				Preconditions.checkNotNull(nodeLevelIndexes.get(i));
-			
 			setValues(nodeLevelIndexes, weightEach);
+		}
+
+		@Override
+		public SamplingDimension getSamplingDimension() {
+			List<Double> categoryWeights = new ArrayList<>();
+			for (int l=0; l<levels.size(); l++) {
+				double outerWeight = levels.getWeight(l);
+				if (outerWeight <= 0d)
+					continue;
+				SamplingDimension dimension = levels.getValue(l).getSamplingDimension();
+				if (dimension.isActive() && !(dimension instanceof CategoricalSamplingDimension))
+					return ContinuousSamplingDimension.INSTANCE;
+				if (dimension instanceof CategoricalSamplingDimension categorical) {
+					for (double probability : categorical.getProbabilities())
+						categoryWeights.add(outerWeight*probability);
+				} else {
+					categoryWeights.add(outerWeight);
+				}
+			}
+			if (categoryWeights.size() < 2)
+				return InactiveSamplingDimension.INSTANCE;
+			double[] weights = new double[categoryWeights.size()];
+			for (int i=0; i<weights.length; i++)
+				weights[i] = categoryWeights.get(i);
+			return CategoricalSamplingDimension.forWeights(weights);
 		}
 
 		@Override
@@ -1926,19 +1908,12 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		}
 		
 		@Override
-		protected void doBuild(long seed, int num, SamplingMethod samplingMethod, double weightEach) {
-			// sampling method currently ignored for randomly-generated (always Monte Carlo)
-			buildNodes(new Random(seed), num, weightEach);
-		}
-		
-		protected void buildNodes(Random rand, int num, double weightEach) {
-			List<E> nodes = new ArrayList<>(num);
-			
-			Preconditions.checkState(num >= 1);
-			for (int i=0; i<num; i++)
-				nodes.add(build(i, rand.nextLong(), weightEach));
-			
-			this.nodes = nodes;
+		protected void doBuild(double[] unitSamples, double weightEach) {
+			long salt = RandomSeedUtils.seedForStrings(getClass().getName(), getName(), getShortName());
+			List<Long> seeds = new ArrayList<>(unitSamples.length);
+			for (double unitSample : unitSamples)
+				seeds.add(RandomSeedUtils.uniqueSeedCombination(salt, Double.doubleToLongBits(unitSample)));
+			buildNodes(seeds, weightEach);
 		}
 		
 		protected void buildNodes(List<Long> seeds, double weightEach) {

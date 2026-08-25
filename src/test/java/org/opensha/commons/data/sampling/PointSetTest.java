@@ -25,6 +25,33 @@ public class PointSetTest {
 		assertSame(ContinuousSamplingDimension.INSTANCE, pointSet.getDimension(0));
 	}
 
+	@Test
+	public void testPointAndDimensionCopies() {
+		PointSet points = new ArrayPointSet(new double[][] { { 0.1, 0.2 }, { 0.3, 0.4 } });
+		double[] point = points.getPoint(1);
+		double[] dimension = points.getDimensionValues(0);
+		assertEquals(0.4, point[1], 0d);
+		assertEquals(0.3, dimension[1], 0d);
+		point[1] = 0.9;
+		dimension[1] = 0.9;
+		assertEquals(0.4, points.get(1, 1), 0d);
+		assertEquals(0.3, points.get(1, 0), 0d);
+	}
+
+	@Test
+	public void testDimensionSubsetDelegatesCoordinatesAndTypes() {
+		PointSet source = new DimensionedPointSet(
+				new ArrayPointSet(new double[][] { { 0.1, 0.2, 0.3 }, { 0.4, 0.5, 0.6 } }),
+				List.of(ContinuousSamplingDimension.INSTANCE, InactiveSamplingDimension.INSTANCE,
+						CategoricalSamplingDimension.forWeights(1d, 2d)));
+		DimensionSubsetPointSet subset = DimensionSubsetPointSet.range(source, 1, 3);
+		assertEquals(2, subset.dimensions());
+		assertEquals(0.5, subset.get(1, 0), 0d);
+		assertSame(InactiveSamplingDimension.INSTANCE, subset.getDimension(0));
+		assertSame(source.getDimension(2), subset.getDimension(1));
+		assertEquals(2, subset.getSourceDimensionIndex(1));
+	}
+
 	@Test(expected=IllegalArgumentException.class)
 	public void testEmptyPointSetRejected() {
 		new ArrayPointSet(new double[0][]);

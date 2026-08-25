@@ -16,7 +16,7 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.ContinuousDistributionSampledLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.FileBackedLevel;
-import org.opensha.commons.logicTree.LogicTreeLevel.SamplingMethod;
+import org.opensha.commons.logicTree.sampling.SamplingMethod;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.logicTree.LogicTreeNode.FileBackedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.ValuedLogicTreeNode;

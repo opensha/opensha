@@ -13,6 +13,7 @@ import org.opensha.commons.data.sampling.ArrayPointSet;
 import org.opensha.commons.data.sampling.CategoricalSamplingDimension;
 import org.opensha.commons.data.sampling.ContinuousSamplingDimension;
 import org.opensha.commons.data.sampling.DimensionedPointSet;
+import org.opensha.commons.data.sampling.InactiveSamplingDimension;
 import org.opensha.commons.data.sampling.PointSet;
 import org.opensha.commons.data.sampling.SamplingDimension;
 
@@ -28,6 +29,31 @@ public class PointSetScorerTest {
 		assertEquals(1d/48d, score.getRawScore(), TOL);
 		assertEquals(1d/12d, score.getExpectedRandomScore(), TOL);
 		assertEquals(0.25, score.getNormalizedScore(), TOL);
+	}
+
+	@Test
+	public void testInactiveDimensionsAreExcluded() {
+		PointSet activeOnly = new ArrayPointSet(new double[][] { { 0.2 }, { 0.7 } });
+		PointSet withInactive = decorate(new ArrayPointSet(new double[][] { { 0.9, 0.2 }, { 0.1, 0.7 } }),
+				InactiveSamplingDimension.INSTANCE, ContinuousSamplingDimension.INSTANCE);
+		PointSetScore expected = scorer.score(activeOnly);
+		PointSetScore actual = scorer.score(withInactive);
+		assertEquals(expected.getNormalizedScore(), actual.getNormalizedScore(), TOL);
+		assertEquals(new PointSetProjection(1), actual.getProjectionScores().get(0).getProjection());
+	}
+
+	@Test(expected=IllegalArgumentException.class)
+	public void testExplicitInactiveProjectionRejected() {
+		PointSet points = decorate(new ArrayPointSet(new double[][] { { 0.2, 0.3 } }),
+				InactiveSamplingDimension.INSTANCE, ContinuousSamplingDimension.INSTANCE);
+		scorer.score(points, PointSetScoringConfig.builder().projections(new PointSetProjection(0)).build());
+	}
+
+	@Test(expected=IllegalArgumentException.class)
+	public void testAllInactiveRejected() {
+		PointSet points = decorate(new ArrayPointSet(new double[][] { { 0.2 } }),
+				InactiveSamplingDimension.INSTANCE);
+		scorer.score(points);
 	}
 
 	@Test
@@ -132,6 +158,13 @@ public class PointSetScorerTest {
 	public void testDirectProjectionDimensionValidated() {
 		scorer.scoreProjection(new ArrayPointSet(new double[][] { { 0.25 }, { 0.75 } }),
 				new PointSetProjection(1));
+	}
+
+	@Test(expected=IllegalArgumentException.class)
+	public void testDirectInactiveProjectionRejected() {
+		PointSet points = decorate(new ArrayPointSet(new double[][] { { 0.25 }, { 0.75 } }),
+				InactiveSamplingDimension.INSTANCE);
+		scorer.scoreProjection(points, new PointSetProjection(0));
 	}
 
 	@Test

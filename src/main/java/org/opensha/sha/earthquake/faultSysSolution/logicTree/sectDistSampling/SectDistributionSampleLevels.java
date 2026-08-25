@@ -3,21 +3,17 @@ package org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
-import org.apache.commons.rng.RestorableUniformRandomProvider;
-import org.apache.commons.rng.simple.RandomSource;
 import org.opensha.commons.logicTree.LogicTreeLevel.AbstractRandomlySampledLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.BinnableLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.BinnedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.DataBackedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.FractileSamplingLevel;
-import org.opensha.commons.logicTree.LogicTreeLevel.SamplingMethod;
 import org.opensha.commons.logicTree.LogicTreeLevel.ValueBackedLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.logicTree.LogicTreeNode.SimpleValuedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.ValuedLogicTreeNode;
-import org.opensha.commons.util.DataUtils;
+import org.opensha.commons.util.RandomSeedUtils;
 import org.opensha.commons.util.json.DoubleRangeAdapter;
 import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler.AverageSampler;
 import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler.FixedFractileSampler;
@@ -63,35 +59,18 @@ public final class SectDistributionSampleLevels {
 		}
 
 		@Override
-		protected void doBuild(long seed, int numNodes, SamplingMethod samplingMethod, double weightEach) {
-			List<E> nodes = new ArrayList<>(numNodes);
-			Random rand = new Random(seed);
-			for (int i=0; i<numNodes; i++)
-				nodes.add(build(i, new GroupedFractileSampler(rand.nextLong(), groupingType), weightEach));
+		protected void doBuild(double[] unitSamples, double weightEach) {
+			List<E> nodes = new ArrayList<>(unitSamples.length);
+			long salt = RandomSeedUtils.seedForStrings(getClass().getName(), getName(), getShortName());
+			for (int i=0; i<unitSamples.length; i++) {
+				long seed = RandomSeedUtils.uniqueSeedCombination(salt, Double.doubleToLongBits(unitSamples[i]));
+				nodes.add(build(i, new GroupedFractileSampler(seed, groupingType), weightEach));
+			}
 			this.nodes = nodes;
 		}
 		
 	}
 	
-	private static double[] buildCmlProbSamples(long seed, int numSamples, SamplingMethod samplingMethod) {
-		RestorableUniformRandomProvider rand = RandomSource.XO_RO_SHI_RO_128_PP.create(seed);
-		
-		double[] samples = new double[numSamples];
-		if (samplingMethod.isLHS()) {
-			for (int i=0; i<numSamples; i++) {
-				double binStart = (double)i / numSamples;
-				double binEnd = (double)(i + 1) / numSamples;
-				samples[i] = rand.nextDouble(binStart, binEnd);
-			}
-			DataUtils.shuffle(samples, rand);
-		} else {
-			for (int i=0; i<numSamples; i++)
-				samples[i] = rand.nextDouble();
-		}
-		
-		return samples;
-	}
-
 	public static abstract class UniformSamplingLevel<E extends ValuedLogicTreeNode<? super FixedFractileSampler>>
 	extends AbstractRandomlySampledLevel<FixedFractileSampler, E>
 	implements BinnableLevel<FixedFractileSampler, E, BinnedUniformSamplingLevel>,
@@ -116,8 +95,8 @@ public final class SectDistributionSampleLevels {
 		}
 
 		@Override
-		protected void doBuild(long seed, int numNodes, SamplingMethod samplingMethod, double weightEach) {
-			double[] samples = buildCmlProbSamples(seed, numNodes, samplingMethod);
+		protected void doBuild(double[] unitSamples, double weightEach) {
+			double[] samples = unitSamples.clone();
 			if (fractileFloor > 0d) {
 				Preconditions.checkState(fractileFloor < 1d);
 				int numBelow = 0;
@@ -128,11 +107,11 @@ public final class SectDistributionSampleLevels {
 					}
 				}
 				if (numBelow > 0)
-					System.out.println(getName()+": set "+numBelow+"/"+numNodes+" to fractileFloor="+(float)fractileFloor);
+					System.out.println(getName()+": set "+numBelow+"/"+samples.length+" to fractileFloor="+(float)fractileFloor);
 			}
 			
-			List<E> nodes = new ArrayList<>(numNodes);
-			for (int i=0; i<numNodes; i++)
+			List<E> nodes = new ArrayList<>(samples.length);
+			for (int i=0; i<samples.length; i++)
 				nodes.add(build(i, new FixedFractileSampler(samples[i]), weightEach));
 			this.nodes = nodes;
 		}

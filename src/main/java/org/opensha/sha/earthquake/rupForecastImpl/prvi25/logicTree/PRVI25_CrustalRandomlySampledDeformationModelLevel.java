@@ -2,6 +2,7 @@ package org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree;
 
 import java.util.Random;
 
+import org.opensha.commons.data.sampling.generator.MonteCarloPointSetGenerator;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomlyGeneratedLevel;
 
 public class PRVI25_CrustalRandomlySampledDeformationModelLevel extends RandomlyGeneratedLevel<PRVI25_CrustalRandomlySampledDeformationModels> {
@@ -19,7 +20,7 @@ public class PRVI25_CrustalRandomlySampledDeformationModelLevel extends Randomly
 	
 	public PRVI25_CrustalRandomlySampledDeformationModelLevel(int numSamples, long seed) {
 		this();
-		build(seed, numSamples);
+		build(new MonteCarloPointSetGenerator(new Random(seed)).generate(numSamples, 1).getDimensionValues(0));
 	}
 
 	@Override

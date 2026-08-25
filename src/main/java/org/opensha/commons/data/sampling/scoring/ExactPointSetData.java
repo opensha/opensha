@@ -19,6 +19,8 @@ final class ExactPointSetData {
 		PreparedDimension[] dimensions = new PreparedDimension[pointSet.dimensions()];
 		for (int d=0; d<dimensions.length; d++) {
 			SamplingDimension dimension = pointSet.getDimension(d);
+			if (!dimension.isActive())
+				continue;
 			DiscrepancyKernel kernel = dimension.getDiscrepancyKernel();
 			if (kernel == null)
 				throw new NullPointerException("Discrepancy kernel for dimension " + d + " is null");
