@@ -2,6 +2,10 @@ package org.opensha.commons.data.sampling.scoring;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.opensha.commons.data.sampling.PointSet;
 import org.opensha.commons.data.sampling.scoring.ExactPointSetData.PreparedDimension;
@@ -11,9 +15,30 @@ import org.opensha.commons.data.sampling.scoring.ExactPointSetData.PreparedDimen
  * distribution and divided by its expected score for IID samples from that target.
  * <p>
  * This reference implementation is intentionally unquantized. For {@code P} projections of order {@code k}, its
- * dominant cost is {@code O(P*N^2*k)} and it does not allocate point-pair matrices.
+ * dominant cost is {@code O(P*N^2*k)} and it does not allocate point-pair matrices. Instances configured with more
+ * than one worker score projections concurrently; calculations within each projection retain their serial order.
  */
 public final class ExactPointSetScorer implements PointSetScorer {
+
+	private final int parallelism;
+
+	/** Builds a serial exact scorer. */
+	public ExactPointSetScorer() {
+		this(1);
+	}
+
+	/**
+	 * @param parallelism maximum number of projections scored concurrently
+	 */
+	public ExactPointSetScorer(int parallelism) {
+		if (parallelism < 1)
+			throw new IllegalArgumentException("Parallelism must be positive, have " + parallelism);
+		this.parallelism = parallelism;
+	}
+
+	public int getParallelism() {
+		return parallelism;
+	}
 
 	@Override
 	public PointSetScore score(PointSet pointSet, PointSetScoringConfig config) {
@@ -21,9 +46,7 @@ public final class ExactPointSetScorer implements PointSetScorer {
 		List<PointSetProjection> projections = PointSetScoringUtils.resolveProjections(pointSet, config);
 		ExactPointSetData prepared = ExactPointSetData.build(pointSet);
 
-		List<ProjectionScore> scores = new ArrayList<>(projections.size());
-		for (PointSetProjection projection : projections)
-			scores.add(scoreProjectionPrepared(prepared, projection));
+		List<ProjectionScore> scores = scoreProjections(prepared, projections);
 		return PointSetScoringUtils.aggregate(scores, config);
 	}
 
@@ -37,9 +60,44 @@ public final class ExactPointSetScorer implements PointSetScorer {
 		if (projection == null)
 			throw new NullPointerException("Projection cannot be null");
 		PointSetScoringUtils.validatePointSet(pointSet);
-		PointSetScoringUtils.resolveProjections(pointSet,
-				PointSetScoringConfig.builder().projections(projection).build());
+		// scoreProjection bypasses configuration resolution, so validate its dimension indexes directly.
+		PointSetScoringUtils.validateProjection(projection, pointSet.dimensions());
 		return scoreProjectionPrepared(ExactPointSetData.build(pointSet), projection);
+	}
+
+	private List<ProjectionScore> scoreProjections(ExactPointSetData prepared,
+			List<PointSetProjection> projections) {
+		if (parallelism == 1 || projections.size() == 1) {
+			List<ProjectionScore> scores = new ArrayList<>(projections.size());
+			for (PointSetProjection projection : projections)
+				scores.add(scoreProjectionPrepared(prepared, projection));
+			return scores;
+		}
+
+		ExecutorService executor = Executors.newFixedThreadPool(Math.min(parallelism, projections.size()));
+		List<Future<ProjectionScore>> futures = new ArrayList<>(projections.size());
+		try {
+			for (PointSetProjection projection : projections)
+				futures.add(executor.submit(() -> scoreProjectionPrepared(prepared, projection)));
+			List<ProjectionScore> scores = new ArrayList<>(projections.size());
+			for (Future<ProjectionScore> future : futures)
+				scores.add(future.get());
+			return scores;
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException("Interrupted while scoring point-set projections", e);
+		} catch (ExecutionException e) {
+			Throwable cause = e.getCause();
+			if (cause instanceof RuntimeException)
+				throw (RuntimeException)cause;
+			if (cause instanceof Error)
+				throw (Error)cause;
+			throw new IllegalStateException("Projection scoring failed", cause);
+		} finally {
+			for (Future<ProjectionScore> future : futures)
+				future.cancel(true);
+			executor.shutdownNow();
+		}
 	}
 
 	private ProjectionScore scoreProjectionPrepared(ExactPointSetData prepared, PointSetProjection projection) {

@@ -62,7 +62,7 @@ public final class PointSetScoringConfig {
 			throw new IllegalArgumentException("Point-set dimensionality must be positive, have " + dimensions);
 		if (hasExplicitProjections()) {
 			for (PointSetProjection projection : projections)
-				validateProjection(projection, dimensions);
+				PointSetScoringUtils.validateProjection(projection, dimensions);
 			return projections;
 		}
 		List<PointSetProjection> resolved = new ArrayList<>();
@@ -145,13 +145,6 @@ public final class PointSetScoringConfig {
 			return new PointSetScoringConfig(maxOrder, projectionCopy,
 					Collections.unmodifiableMap(new HashMap<>(orderWeights)));
 		}
-	}
-
-	private static void validateProjection(PointSetProjection projection, int dimensions) {
-		for (int i=0; i<projection.order(); i++)
-			if (projection.dimension(i) >= dimensions)
-				throw new IllegalArgumentException("Projection " + projection + " references dimension "
-						+ projection.dimension(i) + " but point set has " + dimensions + " dimensions");
 	}
 
 	private static void enumerateProjections(int dimensions, int[] indexes, int position, int minimum,

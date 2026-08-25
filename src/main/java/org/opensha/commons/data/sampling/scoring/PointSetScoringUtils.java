@@ -39,6 +39,18 @@ final class PointSetScoringUtils {
 		return config.resolveProjections(pointSet.dimensions());
 	}
 
+	/** Validates that every dimension selected by a projection exists in the point set. */
+	static void validateProjection(PointSetProjection projection, int dimensions) {
+		if (projection == null)
+			throw new NullPointerException("Projection cannot be null");
+		if (dimensions < 1)
+			throw new IllegalArgumentException("Point-set dimensionality must be positive, have " + dimensions);
+		for (int i=0; i<projection.order(); i++)
+			if (projection.dimension(i) >= dimensions)
+				throw new IllegalArgumentException("Projection " + projection + " references dimension "
+						+ projection.dimension(i) + " but point set has " + dimensions + " dimensions");
+	}
+
 	static PointSetScore aggregate(List<ProjectionScore> scores, PointSetScoringConfig config) {
 		Map<Integer, Double> orderSums = new TreeMap<>();
 		Map<Integer, Integer> orderCounts = new TreeMap<>();

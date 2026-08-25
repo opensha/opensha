@@ -98,6 +98,43 @@ public class PointSetScorerTest {
 	}
 
 	@Test
+	public void testParallelExactScoringMatchesSerialExactly() {
+		double[][] values = new double[48][5];
+		Random random = new Random(19384L);
+		for (int p=0; p<values.length; p++)
+			for (int d=0; d<values[p].length; d++)
+				values[p][d] = random.nextDouble();
+		PointSet points = decorate(new ArrayPointSet(values), ContinuousSamplingDimension.INSTANCE,
+				CategoricalSamplingDimension.forWeights(0.2, 0.3, 0.5), ContinuousSamplingDimension.INSTANCE,
+				CategoricalSamplingDimension.forWeights(0.65, 0.35), ContinuousSamplingDimension.INSTANCE);
+		PointSetScore serial = new ExactPointSetScorer().score(points, 3);
+		ExactPointSetScorer parallelScorer = new ExactPointSetScorer(4);
+		PointSetScore parallel = parallelScorer.score(points, 3);
+		assertEquals(4, parallelScorer.getParallelism());
+		assertEquals(serial.getNormalizedScore(), parallel.getNormalizedScore(), 0d);
+		assertEquals(serial.getOrderMeanScores(), parallel.getOrderMeanScores());
+		assertEquals(serial.getProjectionScores().size(), parallel.getProjectionScores().size());
+		for (int i=0; i<serial.getProjectionScores().size(); i++) {
+			ProjectionScore expected = serial.getProjectionScores().get(i);
+			ProjectionScore actual = parallel.getProjectionScores().get(i);
+			assertEquals(expected.getProjection(), actual.getProjection());
+			assertEquals(expected.getRawScore(), actual.getRawScore(), 0d);
+			assertEquals(expected.getExpectedRandomScore(), actual.getExpectedRandomScore(), 0d);
+		}
+	}
+
+	@Test(expected=IllegalArgumentException.class)
+	public void testNonPositiveExactScorerParallelismRejected() {
+		new ExactPointSetScorer(0);
+	}
+
+	@Test(expected=IllegalArgumentException.class)
+	public void testDirectProjectionDimensionValidated() {
+		scorer.scoreProjection(new ArrayPointSet(new double[][] { { 0.25 }, { 0.75 } }),
+				new PointSetProjection(1));
+	}
+
+	@Test
 	public void testExplicitProjectionsAndWeights() {
 		PointSet points = new ArrayPointSet(new double[][] {
 				{ 0.1, 0.2, 0.3 }, { 0.4, 0.8, 0.6 }, { 0.9, 0.5, 0.7 }
