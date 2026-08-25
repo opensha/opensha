@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.opensha.commons.data.sampling.PointSet;
-import org.opensha.commons.data.sampling.SamplingDimension;
+import org.opensha.commons.data.sampling.scoring.ExactPointSetData.PreparedDimension;
 
 /**
  * Exact product-kernel discrepancy scorer for finite point sets. Each projection is compared with its ideal product
@@ -19,10 +19,11 @@ public final class ExactPointSetScorer implements PointSetScorer {
 	public PointSetScore score(PointSet pointSet, PointSetScoringConfig config) {
 		PointSetScoringUtils.validatePointSet(pointSet);
 		List<PointSetProjection> projections = PointSetScoringUtils.resolveProjections(pointSet, config);
+		ExactPointSetData prepared = ExactPointSetData.build(pointSet);
 
 		List<ProjectionScore> scores = new ArrayList<>(projections.size());
 		for (PointSetProjection projection : projections)
-			scores.add(scoreProjectionValidated(pointSet, projection));
+			scores.add(scoreProjectionPrepared(prepared, projection));
 		return PointSetScoringUtils.aggregate(scores, config);
 	}
 
@@ -38,24 +39,18 @@ public final class ExactPointSetScorer implements PointSetScorer {
 		PointSetScoringUtils.validatePointSet(pointSet);
 		PointSetScoringUtils.resolveProjections(pointSet,
 				PointSetScoringConfig.builder().projections(projection).build());
-		return scoreProjectionValidated(pointSet, projection);
+		return scoreProjectionPrepared(ExactPointSetData.build(pointSet), projection);
 	}
 
-	private ProjectionScore scoreProjectionValidated(PointSet pointSet, PointSetProjection projection) {
-		int n = pointSet.size();
-		DiscrepancyKernel[] kernels = new DiscrepancyKernel[projection.order()];
+	private ProjectionScore scoreProjectionPrepared(ExactPointSetData prepared, PointSetProjection projection) {
+		int n = prepared.numPoints;
+		PreparedDimension[] dimensions = new PreparedDimension[projection.order()];
 		double targetGrandMean = 1d;
 		double targetDiagonalMean = 1d;
 		for (int i=0; i<projection.order(); i++) {
-			SamplingDimension dimension = pointSet.getDimension(projection.dimension(i));
-			if (dimension == null)
-				throw new NullPointerException("Point-set dimension " + projection.dimension(i) + " is null");
-			DiscrepancyKernel kernel = dimension.getDiscrepancyKernel();
-			if (kernel == null)
-				throw new NullPointerException("Discrepancy kernel for dimension " + projection.dimension(i) + " is null");
-			kernels[i] = kernel;
-			targetGrandMean *= requireFinite(kernel.targetGrandMean(), "target grand mean", projection);
-			targetDiagonalMean *= requireFinite(kernel.targetDiagonalMean(), "target diagonal mean", projection);
+			dimensions[i] = prepared.dimensions[projection.dimension(i)];
+			targetGrandMean *= dimensions[i].targetGrandMean;
+			targetDiagonalMean *= dimensions[i].targetDiagonalMean;
 		}
 		requireFinite(targetGrandMean, "product target grand mean", projection);
 		requireFinite(targetDiagonalMean, "product target diagonal mean", projection);
@@ -66,8 +61,7 @@ public final class ExactPointSetScorer implements PointSetScorer {
 		for (int p=0; p<n; p++) {
 			double product = 1d;
 			for (int i=0; i<projection.order(); i++)
-				product *= requireFinite(kernels[i].targetMean(pointSet.get(p, projection.dimension(i))),
-						"target mean", projection);
+				product *= dimensions[i].targetMeans[p];
 			requireFinite(product, "product target mean", projection);
 			targetSum += product;
 		}
@@ -79,18 +73,16 @@ public final class ExactPointSetScorer implements PointSetScorer {
 		double pairSum = 0d;
 		for (int p1=0; p1<n; p1++) {
 			double diagonalProduct = 1d;
-			for (int i=0; i<projection.order(); i++) {
-				double value = pointSet.get(p1, projection.dimension(i));
-				diagonalProduct *= requireFinite(kernels[i].value(value, value), "diagonal kernel value", projection);
-			}
+			for (int i=0; i<projection.order(); i++)
+				diagonalProduct *= dimensions[i].diagonalValues[p1];
 			requireFinite(diagonalProduct, "product diagonal kernel value", projection);
 			pairSum += diagonalProduct;
 			for (int p2=0; p2<p1; p2++) {
 				double product = 1d;
 				for (int i=0; i<projection.order(); i++) {
-					int dimension = projection.dimension(i);
-					product *= requireFinite(kernels[i].value(pointSet.get(p1, dimension), pointSet.get(p2, dimension)),
-							"kernel value", projection);
+					product *= requireFinite(dimensions[i].pairValue(p1, p2), "kernel value", projection);
+					if (product == 0d)
+						break;
 				}
 				requireFinite(product, "product kernel value", projection);
 				pairSum += 2d*product;

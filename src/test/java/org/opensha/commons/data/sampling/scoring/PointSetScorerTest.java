@@ -174,6 +174,25 @@ public class PointSetScorerTest {
 	}
 
 	@Test
+	public void testExactScorerReadsCoordinatesOnlyDuringValidationAndPreparation() {
+		ArrayPointSet delegate = new ArrayPointSet(new double[][] {
+				{ 0.1, 0.2, 0.3 }, { 0.4, 0.8, 0.6 }, { 0.9, 0.5, 0.7 }, { 0.25, 0.35, 0.45 }
+		});
+		int[] coordinateReads = { 0 };
+		PointSet counting = new PointSet() {
+			@Override public int size() { return delegate.size(); }
+			@Override public int dimensions() { return delegate.dimensions(); }
+			@Override public double get(int pointIndex, int dimensionIndex) {
+				coordinateReads[0]++;
+				return delegate.get(pointIndex, dimensionIndex);
+			}
+		};
+		scorer.score(counting, 3);
+		// One complete read validates input and a second snapshots it; projection loops must not return to the PointSet.
+		assertEquals(2*delegate.size()*delegate.dimensions(), coordinateReads[0]);
+	}
+
+	@Test
 	public void testQuantizedBalancedStatesHaveZeroScore() {
 		PointSet points = new ArrayPointSet(new double[][] { { 0.1 }, { 0.4 }, { 0.6 }, { 0.9 } });
 		ProjectionScore score = new QuantizedPointSetScorer(2)
