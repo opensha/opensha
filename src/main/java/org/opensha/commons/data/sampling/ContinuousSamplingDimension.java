@@ -1,6 +1,7 @@
 package org.opensha.commons.data.sampling;
 
 import org.opensha.commons.data.sampling.scoring.DiscrepancyKernel;
+import org.opensha.commons.data.sampling.scoring.DiscretizedDiscrepancyKernel;
 
 /**
  * Standard continuous unit-interval dimension.
@@ -44,5 +45,84 @@ public final class ContinuousSamplingDimension implements SamplingDimension {
 	@Override
 	public DiscrepancyKernel getDiscrepancyKernel() {
 		return KERNEL;
+	}
+
+	@Override
+	public DiscretizedDiscrepancyKernel getDiscretizedKernel(int preferredBins) {
+		if (preferredBins < 2)
+			throw new IllegalArgumentException("Continuous discretization requires at least 2 bins, have " + preferredBins);
+		return new ContinuousDiscretizedKernel(preferredBins);
+	}
+
+	private static final class ContinuousDiscretizedKernel implements DiscretizedDiscrepancyKernel {
+		private final int bins;
+		private final double[] representatives;
+		private final double[][] values;
+		private final double[] targetMeans;
+		private final double targetGrandMean;
+		private final double targetDiagonalMean;
+
+		ContinuousDiscretizedKernel(int bins) {
+			this.bins = bins;
+			this.representatives = new double[bins];
+			for (int state=0; state<bins; state++)
+				representatives[state] = (state+0.5d)/bins;
+			this.values = new double[bins][bins];
+			this.targetMeans = new double[bins];
+			double diagonalMean = 0d;
+			for (int state1=0; state1<bins; state1++) {
+				for (int state2=0; state2<bins; state2++) {
+					values[state1][state2] = KERNEL.value(representatives[state1], representatives[state2]);
+					targetMeans[state1] += values[state1][state2]/bins;
+				}
+				diagonalMean += values[state1][state1]/bins;
+			}
+			double grandMean = 0d;
+			for (double targetMean : targetMeans)
+				grandMean += targetMean/bins;
+			this.targetGrandMean = grandMean;
+			this.targetDiagonalMean = diagonalMean;
+		}
+
+		@Override
+		public int stateCount() {
+			return bins;
+		}
+
+		@Override
+		public int state(double value) {
+			validateCoordinate(value);
+			return Math.min(bins-1, (int)(value*bins));
+		}
+
+		@Override
+		public double representativeValue(int state) {
+			return representatives[state];
+		}
+
+		@Override
+		public double value(int state1, int state2) {
+			return values[state1][state2];
+		}
+
+		@Override
+		public double targetMean(int state) {
+			return targetMeans[state];
+		}
+
+		@Override
+		public double targetGrandMean() {
+			return targetGrandMean;
+		}
+
+		@Override
+		public double targetDiagonalMean() {
+			return targetDiagonalMean;
+		}
+	}
+
+	private static void validateCoordinate(double value) {
+		if (!Double.isFinite(value) || value < 0d || value >= 1d)
+			throw new IllegalArgumentException("Coordinate must be finite and in [0,1), have " + value);
 	}
 }

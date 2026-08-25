@@ -51,6 +51,27 @@ public final class PointSetScoringConfig {
 	}
 
 	/**
+	 * Resolves this configuration to the concrete projections for a point-set dimensionality. Explicit projections are
+	 * validated; otherwise all combinations through the configured maximum order are generated.
+	 *
+	 * @param dimensions point-set dimensionality
+	 * @return immutable projection list
+	 */
+	public List<PointSetProjection> resolveProjections(int dimensions) {
+		if (dimensions < 1)
+			throw new IllegalArgumentException("Point-set dimensionality must be positive, have " + dimensions);
+		if (hasExplicitProjections()) {
+			for (PointSetProjection projection : projections)
+				validateProjection(projection, dimensions);
+			return projections;
+		}
+		List<PointSetProjection> resolved = new ArrayList<>();
+		for (int order=1; order<=Math.min(maxOrder, dimensions); order++)
+			enumerateProjections(dimensions, new int[order], 0, 0, resolved);
+		return Collections.unmodifiableList(resolved);
+	}
+
+	/**
 	 * Returns the aggregation weight for a projection order. Unspecified orders use 1 for orders 1 and 2, then halve
 	 * with each subsequent order.
 	 */
@@ -123,6 +144,26 @@ public final class PointSetScoringConfig {
 					: Collections.unmodifiableList(new ArrayList<>(projections));
 			return new PointSetScoringConfig(maxOrder, projectionCopy,
 					Collections.unmodifiableMap(new HashMap<>(orderWeights)));
+		}
+	}
+
+	private static void validateProjection(PointSetProjection projection, int dimensions) {
+		for (int i=0; i<projection.order(); i++)
+			if (projection.dimension(i) >= dimensions)
+				throw new IllegalArgumentException("Projection " + projection + " references dimension "
+						+ projection.dimension(i) + " but point set has " + dimensions + " dimensions");
+	}
+
+	private static void enumerateProjections(int dimensions, int[] indexes, int position, int minimum,
+			List<PointSetProjection> projections) {
+		if (position == indexes.length) {
+			projections.add(new PointSetProjection(indexes));
+			return;
+		}
+		int remaining = indexes.length-position-1;
+		for (int dimension=minimum; dimension<dimensions-remaining; dimension++) {
+			indexes[position] = dimension;
+			enumerateProjections(dimensions, indexes, position+1, dimension+1, projections);
 		}
 	}
 }

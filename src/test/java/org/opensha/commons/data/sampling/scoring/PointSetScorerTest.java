@@ -170,6 +170,52 @@ public class PointSetScorerTest {
 		scorer.scoreProjection(invalid, new PointSetProjection(0));
 	}
 
+	@Test
+	public void testQuantizedBalancedStatesHaveZeroScore() {
+		PointSet points = new ArrayPointSet(new double[][] { { 0.1 }, { 0.4 }, { 0.6 }, { 0.9 } });
+		ProjectionScore score = new QuantizedPointSetScorer(2)
+				.scoreProjection(points, new PointSetProjection(0));
+		assertEquals(0d, score.getRawScore(), TOL);
+		assertEquals((0.5-0.375)/points.size(), score.getExpectedRandomScore(), TOL);
+	}
+
+	@Test
+	public void testQuantizedSupportsThreeDimensions() {
+		double[][] values = {
+				{ 0.08, 0.12, 0.75 },
+				{ 0.31, 0.61, 0.10 },
+				{ 0.57, 0.47, 0.42 },
+				{ 0.83, 0.91, 0.68 }
+		};
+		PointSet points = decorate(new ArrayPointSet(values), ContinuousSamplingDimension.INSTANCE,
+				CategoricalSamplingDimension.forWeights(1d, 2d, 1d), ContinuousSamplingDimension.INSTANCE);
+		PointSetProjection projection = new PointSetProjection(0, 1, 2);
+		ProjectionScore score = new QuantizedPointSetScorer(4).scoreProjection(points, projection);
+		assertEquals(bruteDiscretizedRawScore(points, projection, 4), score.getRawScore(), TOL);
+	}
+
+	@Test
+	public void testQuantizedIIDRandomNormalization() {
+		int samples = 64;
+		int realizations = 250;
+		Random random = new Random(72194L);
+		CategoricalSamplingDimension categorical = CategoricalSamplingDimension.forWeights(0.2, 0.3, 0.5);
+		PointSetScoringConfig config = PointSetScoringConfig.builder()
+				.projections(new PointSetProjection(0, 1, 2)).build();
+		PointSetScorer scorer = new QuantizedPointSetScorer(8);
+		double sum = 0d;
+		for (int r=0; r<realizations; r++) {
+			double[][] values = new double[samples][3];
+			for (int p=0; p<samples; p++)
+				for (int d=0; d<3; d++)
+					values[p][d] = random.nextDouble();
+			PointSet points = decorate(new ArrayPointSet(values), ContinuousSamplingDimension.INSTANCE,
+					categorical, ContinuousSamplingDimension.INSTANCE);
+			sum += scorer.score(points, config).getNormalizedScore();
+		}
+		assertEquals(1d, sum/realizations, 0.15);
+	}
+
 	private static PointSet decorate(PointSet pointSet, SamplingDimension... dimensions) {
 		return new DimensionedPointSet(pointSet, List.of(dimensions));
 	}
@@ -196,6 +242,40 @@ public class PointSetScorerTest {
 				for (int i=0; i<projection.order(); i++) {
 					int dimension = projection.dimension(i);
 					product *= kernels.get(i).value(points.get(p1, dimension), points.get(p2, dimension));
+				}
+				pairs += product;
+			}
+		}
+		return grandMean-2d*target/points.size()+pairs/((double)points.size()*points.size());
+	}
+
+	private static double bruteDiscretizedRawScore(PointSet points, PointSetProjection projection, int bins) {
+		List<DiscretizedDiscrepancyKernel> kernels = new ArrayList<>();
+		double grandMean = 1d;
+		for (int i=0; i<projection.order(); i++) {
+			DiscretizedDiscrepancyKernel kernel =
+					points.getDimension(projection.dimension(i)).getDiscretizedKernel(bins);
+			kernels.add(kernel);
+			grandMean *= kernel.targetGrandMean();
+		}
+		double target = 0d;
+		for (int p=0; p<points.size(); p++) {
+			double product = 1d;
+			for (int i=0; i<projection.order(); i++) {
+				int dimension = projection.dimension(i);
+				product *= kernels.get(i).targetMean(kernels.get(i).state(points.get(p, dimension)));
+			}
+			target += product;
+		}
+		double pairs = 0d;
+		for (int p1=0; p1<points.size(); p1++) {
+			for (int p2=0; p2<points.size(); p2++) {
+				double product = 1d;
+				for (int i=0; i<projection.order(); i++) {
+					int dimension = projection.dimension(i);
+					DiscretizedDiscrepancyKernel kernel = kernels.get(i);
+					product *= kernel.value(kernel.state(points.get(p1, dimension)),
+							kernel.state(points.get(p2, dimension)));
 				}
 				pairs += product;
 			}

@@ -15,6 +15,21 @@ public final class ProjectionScore {
 		this.expectedRandomScore = expectedRandomScore;
 	}
 
+	/**
+	 * Builds a projection result from a raw discrepancy and its positive IID-random expectation. This factory is used by
+	 * scorer implementations outside this package, including stateful optimization sessions.
+	 */
+	public static ProjectionScore of(PointSetProjection projection, double rawScore, double expectedRandomScore) {
+		if (projection == null)
+			throw new NullPointerException("Projection cannot be null");
+		if (!Double.isFinite(rawScore) || rawScore < 0d)
+			throw new IllegalArgumentException("Raw score must be finite and nonnegative, have " + rawScore);
+		if (!Double.isFinite(expectedRandomScore) || expectedRandomScore <= 0d)
+			throw new IllegalArgumentException("Expected random score must be finite and positive, have "
+					+ expectedRandomScore);
+		return new ProjectionScore(projection, rawScore, expectedRandomScore);
+	}
+
 	public PointSetProjection getProjection() {
 		return projection;
 	}

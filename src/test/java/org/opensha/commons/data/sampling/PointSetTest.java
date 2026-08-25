@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
+import org.opensha.commons.data.sampling.scoring.DiscretizedDiscrepancyKernel;
 
 public class PointSetTest {
 
@@ -79,6 +80,38 @@ public class PointSetTest {
 			assertEquals(dimension.categoryProbability(i), fromBounds.categoryProbability(i), TOL);
 	}
 
+	@Test
+	public void testContinuousKernelDiscretization() {
+		DiscretizedDiscrepancyKernel kernel =
+				ContinuousSamplingDimension.INSTANCE.getDiscretizedKernel(2);
+		assertEquals(2, kernel.stateCount());
+		assertEquals(0, kernel.state(0d));
+		assertEquals(0, kernel.state(Math.nextDown(0.5)));
+		assertEquals(1, kernel.state(0.5));
+		assertEquals(1, kernel.state(Math.nextDown(1d)));
+		assertEquals(0.25, kernel.representativeValue(0), 0d);
+		assertEquals(0.75, kernel.representativeValue(1), 0d);
+		assertEquals(0.75, kernel.value(0, 0), TOL);
+		assertEquals(0.25, kernel.value(0, 1), TOL);
+		assertEquals(0.5, kernel.targetMean(0), TOL);
+		assertEquals(0.25, kernel.targetMean(1), TOL);
+		assertEquals(0.375, kernel.targetGrandMean(), TOL);
+		assertEquals(0.5, kernel.targetDiagonalMean(), TOL);
+	}
+
+	@Test
+	public void testCategoricalDiscretizationUsesExactCategories() {
+		CategoricalSamplingDimension dimension = CategoricalSamplingDimension.forWeights(0.2, 0.3, 0.5);
+		DiscretizedDiscrepancyKernel kernel = dimension.getDiscretizedKernel(100);
+		assertEquals(3, kernel.stateCount());
+		assertEquals(0, kernel.state(0.1));
+		assertEquals(1, kernel.state(0.2));
+		assertEquals(2, kernel.state(0.7));
+		assertEquals(0.3, kernel.targetMean(1), TOL);
+		assertEquals(0.38, kernel.targetGrandMean(), TOL);
+		assertEquals(1d, kernel.targetDiagonalMean(), 0d);
+	}
+
 	@Test(expected=IllegalArgumentException.class)
 	public void testNonPositiveCategoricalWeightRejected() {
 		CategoricalSamplingDimension.forWeights(1d, 0d);
@@ -118,6 +151,53 @@ public class PointSetTest {
 	public void testDecoratorDimensionCountChecked() {
 		new DimensionedPointSet(new ArrayPointSet(new double[][] { { 0.1, 0.2 } }),
 				List.of(ContinuousSamplingDimension.INSTANCE));
+	}
+
+	@Test
+	public void testGroupedPermutationOverlay() {
+		double[][] values = {
+				{ 0.1, 0.2, 0.3, 0.4 },
+				{ 0.5, 0.6, 0.7, 0.8 },
+				{ 0.9, 0.15, 0.25, 0.35 }
+		};
+		ArrayPointSet source = new ArrayPointSet(values);
+		PermutedPointSet permuted = new PermutedPointSet(source,
+				new DimensionSwapGroup(1, 2), new DimensionSwapGroup(3));
+		assertEquals(2, permuted.swapGroupCount());
+		assertEquals(0, permuted.getSourcePointIndex(0, 0));
+
+		permuted.swap(0, 0, 2);
+		assertEquals(1L, permuted.modificationCount());
+		assertEquals(values[2][1], permuted.get(0, 1), 0d);
+		assertEquals(values[2][2], permuted.get(0, 2), 0d);
+		assertEquals(values[0][1], permuted.get(2, 1), 0d);
+		assertEquals(values[0][2], permuted.get(2, 2), 0d);
+		// Dimension 0 is unlisted and fixed; dimension 3 belongs to a different group.
+		assertEquals(values[0][0], permuted.get(0, 0), 0d);
+		assertEquals(values[0][3], permuted.get(0, 3), 0d);
+
+		permuted.swap(1, 0, 1);
+		assertEquals(2L, permuted.modificationCount());
+		assertEquals(values[1][3], permuted.get(0, 3), 0d);
+		assertEquals(values[2][1], permuted.get(0, 1), 0d);
+		// Source coordinates are unchanged.
+		assertEquals(values[0][1], source.get(0, 1), 0d);
+	}
+
+	@Test
+	public void testIndependentDimensionPermutationFactory() {
+		ArrayPointSet source = new ArrayPointSet(new double[][] { { 0.1, 0.2 }, { 0.7, 0.8 } });
+		PermutedPointSet permuted = PermutedPointSet.independentDimensions(source);
+		assertEquals(2, permuted.swapGroupCount());
+		permuted.swap(0, 0, 1);
+		assertEquals(0.7, permuted.get(0, 0), 0d);
+		assertEquals(0.2, permuted.get(0, 1), 0d);
+	}
+
+	@Test(expected=IllegalArgumentException.class)
+	public void testOverlappingSwapGroupsRejected() {
+		new PermutedPointSet(new ArrayPointSet(new double[][] { { 0.1, 0.2, 0.3 } }),
+				new DimensionSwapGroup(0, 1), new DimensionSwapGroup(1, 2));
 	}
 
 	private static final class MutablePointSet implements PointSet {

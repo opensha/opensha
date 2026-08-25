@@ -22,6 +22,20 @@ public final class PointSetScore {
 		this.normalizedScore = normalizedScore;
 	}
 
+	/**
+	 * Aggregates projection results using the configuration's per-order averaging and weights.
+	 */
+	public static PointSetScore aggregate(List<ProjectionScore> projectionScores, PointSetScoringConfig config) {
+		if (projectionScores == null)
+			throw new NullPointerException("Projection scores cannot be null");
+		if (config == null)
+			throw new NullPointerException("Scoring configuration cannot be null");
+		for (ProjectionScore score : projectionScores)
+			if (score == null)
+				throw new NullPointerException("Projection score cannot be null");
+		return PointSetScoringUtils.aggregate(projectionScores, config);
+	}
+
 	public List<ProjectionScore> getProjectionScores() {
 		return projectionScores;
 	}

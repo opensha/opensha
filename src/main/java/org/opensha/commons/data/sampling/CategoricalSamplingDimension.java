@@ -3,6 +3,7 @@ package org.opensha.commons.data.sampling;
 import java.util.Arrays;
 
 import org.opensha.commons.data.sampling.scoring.DiscrepancyKernel;
+import org.opensha.commons.data.sampling.scoring.DiscretizedDiscrepancyKernel;
 
 /**
  * A categorical interpretation of the unit interval. Categories occupy contiguous intervals in index order and are
@@ -39,6 +40,42 @@ public final class CategoricalSamplingDimension implements SamplingDimension {
 		@Override
 		public double targetDiagonalMean() {
 			// Every value necessarily shares its own category, so all diagonal equality-kernel entries are 1.
+			return 1d;
+		}
+	};
+	private final DiscretizedDiscrepancyKernel discretizedKernel = new DiscretizedDiscrepancyKernel() {
+		@Override
+		public int stateCount() {
+			return categoryCount();
+		}
+
+		@Override
+		public int state(double value) {
+			return categoryIndex(value);
+		}
+
+		@Override
+		public double representativeValue(int state) {
+			return 0.5d*(categoryLowerBound(state)+categoryUpperBound(state));
+		}
+
+		@Override
+		public double value(int state1, int state2) {
+			return state1 == state2 ? 1d : 0d;
+		}
+
+		@Override
+		public double targetMean(int state) {
+			return probabilities[state];
+		}
+
+		@Override
+		public double targetGrandMean() {
+			return targetGrandMean;
+		}
+
+		@Override
+		public double targetDiagonalMean() {
 			return 1d;
 		}
 	};
@@ -168,6 +205,13 @@ public final class CategoricalSamplingDimension implements SamplingDimension {
 	@Override
 	public DiscrepancyKernel getDiscrepancyKernel() {
 		return kernel;
+	}
+
+	@Override
+	public DiscretizedDiscrepancyKernel getDiscretizedKernel(int preferredBins) {
+		if (preferredBins < 1)
+			throw new IllegalArgumentException("Preferred bin count must be positive, have " + preferredBins);
+		return discretizedKernel;
 	}
 
 	private static void validateCoordinate(double value) {
