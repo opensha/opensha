@@ -59,22 +59,22 @@ public class NSHM23_InversionScriptWriter {
 				levels.remove(l);
 		}
 		
-//		nameAdds.add("bPosterior10x");
-//		randomLevels.add(new PosteriorSectionBValueDistributions.UniformSamplingLevel(
-//				"Section posterior b-value samples", "Posterior-b samples"));
-//		samplingBranchCountMultiplier = 10;
-//		nameAdds.add("students_t_5");
-//		nameAdds.add("comb_likelihood");
-////		nameAdds.add("comb_dist_avg");
-//		nameAdds.add("paleo_ris");
-		
-		nameAdds.add("bUniform10x");
-		randomLevels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(
-				"Section b-value samples", "b-value samples", NSHM23_InvConfigFactory.SUPRA_B_PRIOR_DIST));
+		nameAdds.add("bPosterior10x");
+		randomLevels.add(new PosteriorSectionBValueDistributions.UniformSamplingLevel(
+				"Section posterior b-value samples", "Posterior-b samples"));
 		samplingBranchCountMultiplier = 10;
+		nameAdds.add("students_t_5");
+		nameAdds.add("comb_likelihood");
+//		nameAdds.add("comb_dist_avg");
+		nameAdds.add("paleo_ris");
 		
-		factoryClass = NSHM23_InvConfigFactory.SmoothPaleoVisible.class;
-		nameAdds.add("smooth_paleo_visible");
+//		nameAdds.add("bUniform10x");
+//		randomLevels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(
+//				"Section b-value samples", "b-value samples", NSHM23_InvConfigFactory.SUPRA_B_PRIOR_DIST));
+//		samplingBranchCountMultiplier = 10;
+		
+//		factoryClass = NSHM23_InvConfigFactory.SmoothPaleoVisible.class;
+//		nameAdds.add("smooth_paleo_visible");
 		
 		for (RandomLevel<?,?> level : randomLevels)
 			levels.add(level);

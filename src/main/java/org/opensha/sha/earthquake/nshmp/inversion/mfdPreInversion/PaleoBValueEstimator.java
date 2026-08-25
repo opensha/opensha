@@ -219,10 +219,14 @@ public class PaleoBValueEstimator {
 	public static DoubleFunction<Double> GAUSSIAN_LIKELIHOOD = (misfit) -> -0.5 * misfit * misfit;
 
 	public static DoubleFunction<Double> getStudentsTLogLikelihood(double nu) {
+		return getStudentsTLogLikelihood(nu, true);
+	}
+
+	public static DoubleFunction<Double> getStudentsTLogLikelihood(double nu, boolean scaled) {
 		TDistribution tDist = TDistribution.of(nu);
 		// Preserve the meaning of the original 95% bounds: make the t's
 		// 95% interval coincide with the Gaussian-derived 95% interval.
-		double scaleFactor = tDist.inverseCumulativeProbability(0.975) / 1.96;
+		double scaleFactor = scaled ? tDist.inverseCumulativeProbability(0.975) / 1.96 : 1d;
 		return (misfit) -> tDist.logDensity(misfit * scaleFactor);
 	}
 
@@ -752,7 +756,7 @@ public class PaleoBValueEstimator {
 		System.out.println("DONE calculating section b-value posteriors for "+numSet+"/"+numSects+" sections");
 
 		return new PosteriorSectionBValueDistributions(priorDist, sectPosteriors, sectPriors, sectPaleoWeights,
-				sitePosteriorDists, paleoBValMisfits, paleoBValLogLikelihoods);
+				sitePosteriorDists, paleoBValMisfits, paleoBValLogLikelihoods, paleoBValEstRates);
 	}
 
 	private ContinuousDistribution buildAverageDistribution(List<Integer> paleoIndexes,
@@ -1131,6 +1135,157 @@ public class PaleoBValueEstimator {
 		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
 
 		gp.drawGraphPanel(List.of(pdfPlot, misfitsPlot), false, false, List.of(new Range(bVals.getMinX(), bVals.getMaxX())), null);
+
+		PlotUtils.writePlots(outputDir, prefix, gp, 800, 1200, true, true, false);
+	}
+
+	public static void plotSiteDistributions(File outputDir, FaultSystemRupSet rs,
+			PosteriorSectionBValueDistributions posteriors) throws IOException {
+		List<? extends SectMappedUncertainDataConstraint> paleoConstraints =
+				rs.requireModule(PaleoseismicConstraintData.class).getPaleoRateConstraints();
+		List<EvenlyDiscretizedFunc> misfits = posteriors.getPaleoSiteMisfits();
+		List<EvenlyDiscretizedFunc> logLikelihoods = posteriors.getPaleoSiteLogLikelihoods();
+		List<EvenlyDiscretizedFunc> estRates = posteriors.getPaleoSiteEstRates();
+		ContinuousDistribution prior = posteriors.getPriorDist();
+		List<ContinuousDistribution> sitePosteriors = posteriors.getPaleoSitePosteriors();
+		
+		for (int i=0; i<paleoConstraints.size(); i++) {
+			SectMappedUncertainDataConstraint constraint = paleoConstraints.get(i);
+			String prefix = FileNameUtils.simplify(constraint.name);
+			ContinuousDistribution posterior = sitePosteriors.get(i);
+			EvenlyDiscretizedFunc siteEstRates = estRates == null ? null : estRates.get(i);
+			EvenlyDiscretizedFunc siteLogLikelihoods = logLikelihoods == null ? null : logLikelihoods.get(i);
+			EvenlyDiscretizedFunc siteMisfits = misfits.get(i);
+			plotSiteDistribution(outputDir, prefix, constraint, prior, posterior, siteEstRates, siteLogLikelihoods, siteMisfits);
+		}
+	}
+
+	public static void plotSiteDistribution(File outputDir, String prefix, SectMappedUncertainDataConstraint paleoConstraint,
+			ContinuousDistribution priorDist, ContinuousDistribution posteriorDist,
+			EvenlyDiscretizedFunc estRates, EvenlyDiscretizedFunc logLikelihoods, EvenlyDiscretizedFunc misfits) throws IOException {
+		Preconditions.checkState(misfits != null);
+		EvenlyDiscretizedFunc bVals = misfits.deepClone();
+		
+		List<PlotSpec> plots = new ArrayList<>();
+		List<Boolean> yLogs = new ArrayList<>();
+		List<Range> yRanges = new ArrayList<>();
+		
+		for (int p=0; p<4; p++) {
+			List<XY_DataSet> funcs = new ArrayList<>();
+			List<PlotCurveCharacterstics> chars = new ArrayList<>();
+			String yLabel;
+			Range yRange;
+			boolean yLog;
+			boolean legend;
+			if (p == 0) {
+				// rates
+				if (estRates == null)
+					continue;
+				
+				boolean ri = true;
+				yLabel = "Paleoseismic RI (yrs)";
+				
+//				boolean ri = false;
+//				yLabel = "Paleoseismic rate (1/yr)";
+				
+//				legend = true;
+				legend = false;
+				
+				double pref = ri ? 1d/paleoConstraint.bestEstimate : paleoConstraint.bestEstimate;
+				BoundedUncertainty bounds = paleoConstraint.estimateUncertaintyBounds(UncertaintyBoundType.CONF_95);
+				double lower = ri ? 1d/bounds.upperBound : bounds.lowerBound;
+				double upper = ri ? 1d/bounds.lowerBound : bounds.upperBound;
+				
+				DefaultXY_DataSet prefFunc = new DefaultXY_DataSet(bVals.getMinX(), pref, bVals.getMaxX(), pref);
+				prefFunc.setName("Observed (preferred & 95% bounds)");
+				funcs.add(prefFunc);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Colors.tab_blue));
+				
+				DefaultXY_DataSet lowerFunc = new DefaultXY_DataSet(bVals.getMinX(), lower, bVals.getMaxX(), lower);
+				funcs.add(lowerFunc);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 1.5f, Colors.tab_lightblue));
+				DefaultXY_DataSet upperFunc = new DefaultXY_DataSet(bVals.getMinX(), upper, bVals.getMaxX(), upper);
+				funcs.add(upperFunc);
+				chars.add(chars.getLast());
+				
+				estRates = estRates.deepClone();
+				estRates.setName(ri ? "Estimated RI" : "Estimated rate");
+				if (ri) {
+					for (int i=0; i<estRates.size(); i++)
+						estRates.set(i, 1d/estRates.getY(i));
+				}
+				funcs.add(estRates);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
+				
+				if (ri) {
+					yLog = false;
+					double minY = 100*Math.floor(Math.min(lower-20, estRates.getMinY())/100d);
+					double maxY = 100*Math.ceil(Math.max(upper+20, estRates.getMaxY())/100d);
+					yRange = new Range(minY, maxY);
+				} else {
+					yLog = true;
+					yRange = null;
+				}
+			} else if (p == 1) {
+				// misfits
+				yLabel = "|Misfit (z-score)|";
+				yLog = false;
+				yRange = null;
+				legend = false;
+				
+				misfits = misfits.deepClone();
+				for (int i=0; i<misfits.size(); i++)
+					misfits.set(i, Math.abs(misfits.getY(i)));
+				funcs.add(misfits);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
+			} else if (p == 2) {
+				// likelihoods
+				if (logLikelihoods == null)
+					continue;
+				yLabel = "Log-likelihood";
+				yLog = false;
+				yRange = null;
+				legend = false;
+				
+				funcs.add(logLikelihoods);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
+			} else if (p == 3) {
+				// pdfs
+				yLabel = "Posterior density";
+				yLog = false;
+				yRange = null;
+//				legend = true;
+				legend = false;
+				
+				EvenlyDiscretizedFunc priorFunc = bVals.deepClone();
+				for (int i=0; i<priorFunc.size(); i++)
+					priorFunc.set(i, priorDist.density(bVals.getX(i)));
+				priorFunc.setName("Prior");
+				funcs.add(priorFunc);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Colors.tab_green));
+				
+				EvenlyDiscretizedFunc posteriorFunc = bVals.deepClone();
+				for (int i=0; i<posteriorFunc.size(); i++)
+					posteriorFunc.set(i, posteriorDist.density(bVals.getX(i)));
+				posteriorFunc.setName("Posterior");
+				funcs.add(posteriorFunc);
+				chars.add(getForThickness(posteriorAvgDistChar, 4f));
+			} else {
+				throw new IllegalStateException();
+			}
+			
+			PlotSpec plot = new PlotSpec(funcs, chars, paleoConstraint.name, "b-value", yLabel);
+			plot.setLegendInset(legend);
+//			if (legend)
+//				plot.setLegendInset(RectangleAnchor.BOTTOM);
+			plots.add(plot);
+			yLogs.add(yLog);
+			yRanges.add(yRange);
+		}
+
+		HeadlessGraphPanel gp = PlotUtils.initScreenHeadless();
+
+		gp.drawGraphPanel(plots, List.of(false), yLogs, List.of(new Range(bVals.getMinX(), bVals.getMaxX())), yRanges);
 
 		PlotUtils.writePlots(outputDir, prefix, gp, 800, 1200, true, true, false);
 	}
