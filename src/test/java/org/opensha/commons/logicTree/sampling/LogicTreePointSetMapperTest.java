@@ -21,6 +21,7 @@ import org.opensha.commons.logicTree.LogicTreeLevel.ContinuousDistributionSample
 import org.opensha.commons.logicTree.LogicTreeLevel.FileBackedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomlyGeneratedLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.logicTree.NestedLogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode.FileBackedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.RandomlyGeneratedNode;
 import org.opensha.commons.logicTree.TectonicRegionBranchTreeNode;
@@ -71,6 +72,7 @@ public class LogicTreePointSetMapperTest {
 		assertTrue(tree.isSampled());
 		assertEquals(0L, tree.getSamplingRandomSeed());
 		assertTrue(tree.hasSamplingPointSet());
+		assertEquals(SamplingPointSetLayout.DIRECT, tree.getSamplingPointSetLayout());
 		PointSet attached = tree.getSamplingPointSet();
 		double original = attached.get(0, 0);
 		double[] pointCopy = attached.getPoint(0);
@@ -170,12 +172,47 @@ public class LogicTreePointSetMapperTest {
 			branches.add(branch);
 		}
 		LogicTree<LogicTreeNode> outer = LogicTree.fromExisting(List.of(outerLevel), branches);
+		outer.setSamplingPointSet(inner.getSamplingPointSet(), SamplingPointSetLayout.EXPANDED);
+		assertTrue(outerLevel instanceof NestedLogicTreeLevel);
+		assertEquals(SamplingPointSetLayout.EXPANDED, outer.getSamplingPointSetLayout());
 
 		Gson gson = new GsonBuilder().serializeSpecialFloatingPointValues().create();
 		String first = gson.toJson(outer, LogicTree.class);
 		LogicTree<LogicTreeNode> loaded = LogicTree.read(new StringReader(first));
 		String second = gson.toJson(loaded, LogicTree.class);
 		assertEquals(first, second);
+		assertEquals(SamplingPointSetLayout.EXPANDED, loaded.getSamplingPointSetLayout());
+	}
+
+	@Test(expected=IllegalArgumentException.class)
+	public void testExpandedPointSetDimensionCountValidated() {
+		FileBackedLevel innerLevel = binaryLevel("Inner", "Inner");
+		LogicTree<LogicTreeNode> inner = LogicTree.buildSampled(List.of(innerLevel),
+				new ArrayPointSet(new double[][] { { 0.1 }, { 0.9 } }));
+		TectonicRegionBranchTreeNode.Level outerLevel = new TectonicRegionBranchTreeNode.Level(
+				TectonicRegionType.ACTIVE_SHALLOW, inner, "Outer", "Outer", "Branch ", "B", "b");
+		List<LogicTreeBranch<LogicTreeNode>> branches = new java.util.ArrayList<>();
+		for (TectonicRegionBranchTreeNode node : outerLevel.getNodes())
+			branches.add(new LogicTreeBranch<>(List.of(outerLevel), List.of(node)));
+		LogicTree<LogicTreeNode> outer = LogicTree.fromExisting(List.of(outerLevel), branches);
+		outer.setSamplingPointSet(new ArrayPointSet(new double[][] {
+				{ 0.1, 0.2 }, { 0.8, 0.9 }
+		}), SamplingPointSetLayout.EXPANDED);
+	}
+
+	@Test(expected=IllegalStateException.class)
+	public void testExpandedNestedRowAlignmentValidated() {
+		FileBackedLevel innerLevel = binaryLevel("Inner", "Inner");
+		LogicTree<LogicTreeNode> inner = LogicTree.buildSampled(List.of(innerLevel),
+				new ArrayPointSet(new double[][] { { 0.1 }, { 0.4 }, { 0.6 }, { 0.9 } }));
+		TectonicRegionBranchTreeNode.Level outerLevel = new TectonicRegionBranchTreeNode.Level(
+				TectonicRegionType.ACTIVE_SHALLOW, inner, "Outer", "Outer", "Branch ", "B", "b");
+		List<LogicTreeBranch<LogicTreeNode>> branches = List.of(
+				new LogicTreeBranch<>(List.of(outerLevel), List.of(outerLevel.getNodes().get(0))),
+				new LogicTreeBranch<>(List.of(outerLevel), List.of(outerLevel.getNodes().get(1))));
+		LogicTree<LogicTreeNode> outer = LogicTree.fromExisting(List.of(outerLevel), branches);
+		outer.setSamplingPointSet(new ArrayPointSet(new double[][] { { 0.1 }, { 0.9 } }),
+				SamplingPointSetLayout.EXPANDED);
 	}
 
 	private static FileBackedLevel binaryLevel(String name, String shortName) {

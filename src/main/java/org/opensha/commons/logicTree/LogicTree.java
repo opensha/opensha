@@ -29,6 +29,7 @@ import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.logicTree.LogicTreeLevel.BinnedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.IndexedLevel;
 import org.opensha.commons.logicTree.sampling.SamplingMethod;
+import org.opensha.commons.logicTree.sampling.SamplingPointSetLayout;
 import org.opensha.commons.logicTree.sampling.SampledLogicTreeBuilder;
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 
@@ -41,10 +42,6 @@ import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
-
-import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
-import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
 /**
  * Representation of a logic tree: collection of logic tree branches that have the same set of levels
@@ -69,6 +66,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	private int origNumBranches;
 	private SamplingMethod samplingMethod;
 	private PointSet samplingPointSet;
+	private SamplingPointSetLayout samplingPointSetLayout;
 	
 	private LogicTree(BranchWeightProvider weightProvider) {
 		this.weightProvider = weightProvider;
@@ -227,19 +225,38 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		return samplingPointSet;
 	}
 
+	public SamplingPointSetLayout getSamplingPointSetLayout() {
+		return samplingPointSetLayout;
+	}
+
 	public void setSamplingPointSet(PointSet pointSet) {
 		if (pointSet == null) {
 			samplingPointSet = null;
+			samplingPointSetLayout = null;
 			return;
 		}
+		SamplingPointSetLayout layout = pointSet.dimensions() == levels.size()
+				? SamplingPointSetLayout.DIRECT : SamplingPointSetLayout.EXPANDED;
+		setSamplingPointSet(pointSet, layout);
+	}
+
+	public void setSamplingPointSet(PointSet pointSet, SamplingPointSetLayout layout) {
+		if (pointSet == null) {
+			setSamplingPointSet(null);
+			return;
+		}
+		Preconditions.checkNotNull(layout, "Sampling point-set layout cannot be null");
 		Preconditions.checkArgument(pointSet.size() == size(), "Point count %s != branch count %s",
 				pointSet.size(), size());
-		Preconditions.checkArgument(pointSet.dimensions() == levels.size(), "Point dimensions %s != level count %s",
-				pointSet.dimensions(), levels.size());
+		int expectedDimensions = layout.dimensions(this);
+		Preconditions.checkArgument(pointSet.dimensions() == expectedDimensions,
+				"Point dimensions %s != %s level count %s", pointSet.dimensions(), layout.name().toLowerCase(),
+				expectedDimensions);
 		List<SamplingDimension> dimensions = new ArrayList<>(pointSet.dimensions());
 		for (int d=0; d<pointSet.dimensions(); d++)
 			dimensions.add(pointSet.getDimension(d));
 		samplingPointSet = new DimensionedPointSet(new ArrayPointSet(pointSet), dimensions);
+		samplingPointSetLayout = layout;
 	}
 	
 	/**
@@ -793,6 +810,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		this.origNumBranches = tree.origNumBranches;
 		this.samplingMethod = tree.samplingMethod;
 		this.samplingPointSet = tree.samplingPointSet;
+		this.samplingPointSetLayout = tree.samplingPointSetLayout;
 	}
 	
 	public void write(File jsonFile) throws IOException {
@@ -904,6 +922,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			if (value.samplingMethod != null)
 				out.name("samplingMethod").value(value.samplingMethod.name());
 			if (value.samplingPointSet != null) {
+				out.name("samplingPointSetLayout").value(value.samplingPointSetLayout.name());
 				out.name("samplingPointSet");
 				PointSetJsonAdapter.INSTANCE.write(out, value.samplingPointSet);
 			}
@@ -931,6 +950,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			int origNumBranches = 0;
 			SamplingMethod samplingMethod = null;
 			PointSet samplingPointSet = null;
+			SamplingPointSetLayout samplingPointSetLayout = null;
 			
 			while (in.hasNext()) {
 				switch (in.nextName()) {
@@ -1072,6 +1092,9 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 				case "samplingMethod":
 					samplingMethod = SamplingMethod.valueOf(in.nextString());
 					break;
+				case "samplingPointSetLayout":
+					samplingPointSetLayout = SamplingPointSetLayout.valueOf(in.nextString());
+					break;
 				case "samplingPointSet":
 					samplingPointSet = PointSetJsonAdapter.INSTANCE.read(in);
 					break;
@@ -1112,8 +1135,14 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			tree.samplingRandomSeed = randomSeed;
 			tree.origNumBranches = origNumBranches;
 			tree.samplingMethod = samplingMethod;
-			if (samplingPointSet != null)
-				tree.setSamplingPointSet(samplingPointSet);
+			if (samplingPointSet != null) {
+				if (samplingPointSetLayout == null)
+					tree.setSamplingPointSet(samplingPointSet);
+				else
+					tree.setSamplingPointSet(samplingPointSet, samplingPointSetLayout);
+			} else if (samplingPointSetLayout != null) {
+				throw new IllegalStateException("Sampling point-set layout supplied without a point set");
+			}
 			
 			return tree;
 		}

@@ -19,6 +19,7 @@ import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
 import org.opensha.commons.logicTree.sampling.SampledLogicTreeBuilder;
 import org.opensha.commons.logicTree.sampling.SamplingMethod;
+import org.opensha.commons.logicTree.sampling.SamplingPointSetLayout;
 import org.opensha.commons.logicTree.sampling.LogicTreePointSetMapper;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.logicTree.TectonicRegionBranchTreeNode;
@@ -369,6 +370,7 @@ public class NSHM27_LogicTree {
 
 		LogicTree<LogicTreeNode> tree = buildMultiRegimeTree(seisReg, trees.get(0), trees.get(1), trees.get(2), trees.get(3));
 		tree.setSamplingParameters(samplingMethod.usesRandomSeed() ? seed : null, 0, samplingMethod);
+		tree.setSamplingPointSet(fullPoints, SamplingPointSetLayout.EXPANDED);
 		return tree;
 	}
 	
