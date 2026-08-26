@@ -15,6 +15,7 @@ import org.opensha.commons.data.sampling.ArrayPointSet;
 import org.opensha.commons.data.sampling.InactiveSamplingDimension;
 import org.opensha.commons.data.sampling.PointSet;
 import org.opensha.commons.logicTree.LogicTree;
+import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.ContinuousDistributionSampledLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.FileBackedLevel;
@@ -22,6 +23,8 @@ import org.opensha.commons.logicTree.LogicTreeLevel.RandomlyGeneratedLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.logicTree.LogicTreeNode.FileBackedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.RandomlyGeneratedNode;
+import org.opensha.commons.logicTree.TectonicRegionBranchTreeNode;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -147,6 +150,32 @@ public class LogicTreePointSetMapperTest {
 		LogicTree<LogicTreeNode> loaded = LogicTree.read(new StringReader(json));
 		assertEquals(tree.size(), loaded.size());
 		assertEquals(SamplingMethod.MONTE_CARLO, loaded.getSamplingMethod());
+	}
+
+	@Test
+	public void testNestedTreePointSetProbabilitiesRoundTripExactly() throws Exception {
+		FileBackedLevel innerLevel = new FileBackedLevel("Inner", "Inner", List.of(
+				new FileBackedNode("A", "A", 0.3, "a"),
+				new FileBackedNode("B", "B", 0.3, "b"),
+				new FileBackedNode("C", "C", 0.3, "c"),
+				new FileBackedNode("D", "D", 0.1, "d")));
+		LogicTree<LogicTreeNode> inner = LogicTree.buildSampled(List.of(innerLevel),
+				new ArrayPointSet(new double[][] { { 0.1 }, { 0.4 }, { 0.7 }, { 0.95 } }));
+		TectonicRegionBranchTreeNode.Level outerLevel = new TectonicRegionBranchTreeNode.Level(
+				TectonicRegionType.ACTIVE_SHALLOW, inner, "Outer", "Outer", "Branch ", "B", "b");
+		List<LogicTreeBranch<LogicTreeNode>> branches = new java.util.ArrayList<>();
+		for (TectonicRegionBranchTreeNode node : outerLevel.getNodes()) {
+			LogicTreeBranch<LogicTreeNode> branch = new LogicTreeBranch<>(List.of(outerLevel), List.of(node));
+			branch.setOrigBranchWeight(0.25);
+			branches.add(branch);
+		}
+		LogicTree<LogicTreeNode> outer = LogicTree.fromExisting(List.of(outerLevel), branches);
+
+		Gson gson = new GsonBuilder().serializeSpecialFloatingPointValues().create();
+		String first = gson.toJson(outer, LogicTree.class);
+		LogicTree<LogicTreeNode> loaded = LogicTree.read(new StringReader(first));
+		String second = gson.toJson(loaded, LogicTree.class);
+		assertEquals(first, second);
 	}
 
 	private static FileBackedLevel binaryLevel(String name, String shortName) {

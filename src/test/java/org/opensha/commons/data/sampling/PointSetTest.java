@@ -108,6 +108,35 @@ public class PointSetTest {
 	}
 
 	@Test
+	public void testCategoricalProbabilitiesPreservedExactly() {
+		double[] probabilities = {
+				0.09999999999999998, 0.19999999999999996, 0.29999999999999993,
+				0.29999999999999993, 0.09999999999999998
+		};
+		CategoricalSamplingDimension dimension =
+				CategoricalSamplingDimension.forProbabilities(probabilities);
+		for (int i=0; i<probabilities.length; i++)
+			assertEquals(probabilities[i], dimension.categoryProbability(i), 0d);
+	}
+
+	@Test
+	public void testPointSetJsonProbabilityRoundTripIsStable() throws Exception {
+		double[] probabilities = {
+				0.09999999999999998, 0.19999999999999996, 0.29999999999999993,
+				0.29999999999999993, 0.09999999999999998
+		};
+		PointSet points = new DimensionedPointSet(new ArrayPointSet(new double[][] { { 0.25 } }),
+				List.of(CategoricalSamplingDimension.forProbabilities(probabilities)));
+		String first = PointSetJsonAdapter.INSTANCE.toJson(points);
+		PointSet loaded = PointSetJsonAdapter.INSTANCE.fromJson(first);
+		String second = PointSetJsonAdapter.INSTANCE.toJson(loaded);
+		assertEquals(first, second);
+		for (int i=0; i<probabilities.length; i++)
+			assertEquals(probabilities[i],
+					((CategoricalSamplingDimension)loaded.getDimension(0)).categoryProbability(i), 0d);
+	}
+
+	@Test
 	public void testContinuousKernelDiscretization() {
 		DiscretizedDiscrepancyKernel kernel =
 				ContinuousSamplingDimension.INSTANCE.getDiscretizedKernel(2);

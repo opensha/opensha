@@ -106,9 +106,9 @@ public final class PointSetJsonAdapter extends TypeAdapter<PointSet> {
 			case "categorical":
 				if (probabilities == null)
 					throw new IOException("Categorical dimension is missing probabilities");
-				double[] weights = new double[probabilities.size()];
-				for (int i=0; i<weights.length; i++) weights[i] = probabilities.get(i);
-				dimensions.add(CategoricalSamplingDimension.forWeights(weights));
+				double[] array = new double[probabilities.size()];
+				for (int i=0; i<array.length; i++) array[i] = probabilities.get(i);
+				dimensions.add(CategoricalSamplingDimension.forProbabilities(array));
 				break;
 			default: throw new IOException("Unsupported sampling dimension type: " + type);
 			}

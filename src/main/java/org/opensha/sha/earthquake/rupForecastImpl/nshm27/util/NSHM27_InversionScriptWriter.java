@@ -54,6 +54,12 @@ public class NSHM27_InversionScriptWriter {
 			// for Kevin's convenience within eclipse
 			System.err.println("No command line arguments, using hardcoded defaults; use --help to see available options instead.");
 			
+//			int samples = 5000;
+			int samples = 2 << 9; // 512
+//			int samples = 2 << 10; // 1024
+//			int samples = 2 << 11; // 2048
+//			int samples = 2 << 12; // 4096
+//			int samples = 2 << 13; // 8192
 			args = new String[] {
 					"--region", NSHM27_SeismicityRegions.AMSAM.name(),
 //					"--region", NSHM27_SeismicityRegions.GNMI.name(),
@@ -64,10 +70,11 @@ public class NSHM27_InversionScriptWriter {
 					"--local-dir", "/home/kevin/OpenSHA/fss_inversions",
 					"--remote-dir", "/project2/scec_608/kmilner/fss_inversions",
 					
-					"--sampling-method", SamplingMethod.MONTE_CARLO.name(),
+//					"--sampling-method", SamplingMethod.MONTE_CARLO.name(),
+					"--sampling-method", SamplingMethod.OWEN_SCRAMBLED_SOBOL.name(),
 //					"--sampling-method", SamplingMethod.LATIN_HYPERCUBE.name(),
 //					"--sampling-method", SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE.name(),
-					"--samples", "5000",
+					"--samples", samples+"",
 //					"--unique-seed",
 					
 //					"--hazard-grid-spacing", "0.2",

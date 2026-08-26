@@ -122,6 +122,32 @@ public final class CategoricalSamplingDimension implements SamplingDimension {
 	}
 
 	/**
+	 * Builds a categorical dimension from probabilities that are already normalized. Unlike {@link #forWeights(double...)},
+	 * this preserves the supplied probability values exactly rather than dividing them by their sum. This is useful when
+	 * restoring serialized dimension metadata without introducing normalization roundoff.
+	 *
+	 * @param probabilities finite, positive probabilities whose sum is one within floating-point tolerance
+	 * @return categorical dimension
+	 */
+	public static CategoricalSamplingDimension forProbabilities(double... probabilities) {
+		if (probabilities == null)
+			throw new NullPointerException("Probabilities cannot be null");
+		if (probabilities.length < 2)
+			throw new IllegalArgumentException("At least two categories are required");
+		double sum = 0d;
+		for (int i=0; i<probabilities.length; i++) {
+			double probability = probabilities[i];
+			if (!Double.isFinite(probability) || probability <= 0d)
+				throw new IllegalArgumentException("Probability " + i
+						+ " must be finite and positive, have " + probability);
+			sum += probability;
+		}
+		if (!Double.isFinite(sum) || Math.abs(sum-1d) > BOUNDARY_TOLERANCE)
+			throw new IllegalArgumentException("Probabilities must sum to 1, have " + sum);
+		return new CategoricalSamplingDimension(probabilities.clone());
+	}
+
+	/**
 	 * Builds a categorical dimension from cumulative upper interval boundaries. The final boundary must equal 1 within
 	 * floating-point tolerance. For example, {@code [0.2, 0.5, 1]} defines probabilities {@code [0.2, 0.3, 0.5]}.
 	 *
