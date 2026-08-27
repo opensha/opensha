@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
 import org.opensha.commons.data.sampling.ArrayPointSet;
@@ -76,6 +77,51 @@ public class PointSetScorerTest {
 		assertEquals(expectedRaw, score.getRawScore(), TOL);
 		assertEquals((1d-(square(0.2)+square(0.3)+square(0.5)))/values.length,
 				score.getExpectedRandomScore(), TOL);
+	}
+
+	@Test
+	public void testPureCategoricalProjectionMatchesIndependentBruteForce() {
+		double[][] values = {
+				{ 0.05, 0.10, 0.80 },
+				{ 0.15, 0.45, 0.20 },
+				{ 0.35, 0.75, 0.55 },
+				{ 0.60, 0.20, 0.10 },
+				{ 0.90, 0.90, 0.70 },
+				{ 0.95, 0.30, 0.40 }
+		};
+		PointSet points = decorate(new ArrayPointSet(values),
+				CategoricalSamplingDimension.forWeights(0.2, 0.3, 0.5),
+				CategoricalSamplingDimension.forWeights(0.4, 0.6),
+				CategoricalSamplingDimension.forWeights(0.25, 0.25, 0.25, 0.25));
+		PointSetProjection projection = new PointSetProjection(0, 1, 2);
+		assertEquals(bruteRawScore(points, projection), scorer.scoreProjection(points, projection).getRawScore(), TOL);
+	}
+
+	@Test
+	public void testMixedProjectionChecksCategoriesBeforeContinuousKernel() {
+		AtomicInteger kernelValueCalls = new AtomicInteger();
+		DiscrepancyKernel countingKernel = new DiscrepancyKernel() {
+			@Override public double value(double value1, double value2) {
+				kernelValueCalls.incrementAndGet();
+				return 1d-Math.max(value1, value2);
+			}
+			@Override public double targetMean(double value) { return 0.5d*(1d-value*value); }
+			@Override public double targetGrandMean() { return 1d/3d; }
+			@Override public double targetDiagonalMean() { return 0.5d; }
+		};
+		SamplingDimension countingContinuous = new SamplingDimension() {
+			@Override public DiscrepancyKernel getDiscrepancyKernel() { return countingKernel; }
+			@Override public DiscretizedDiscrepancyKernel getDiscretizedKernel(int preferredBins) {
+				return ContinuousSamplingDimension.INSTANCE.getDiscretizedKernel(preferredBins);
+			}
+		};
+		PointSet points = decorate(new ArrayPointSet(new double[][] {
+				{ 0.1, 0.1 }, { 0.3, 0.2 }, { 0.6, 0.7 }, { 0.9, 0.8 }
+		}), countingContinuous, CategoricalSamplingDimension.forWeights(0.5, 0.5));
+		scorer.scoreProjection(points, new PointSetProjection(0, 1));
+		// Preparation evaluates four diagonal values. Only the two same-category off-diagonal pairs should reach the
+		// continuous kernel; the other four pairs are rejected by categorical equality first.
+		assertEquals(6, kernelValueCalls.get());
 	}
 
 	@Test

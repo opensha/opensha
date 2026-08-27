@@ -1,6 +1,7 @@
 package org.opensha.commons.data.sampling.scoring;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -14,9 +15,10 @@ import org.opensha.commons.data.sampling.scoring.ExactPointSetData.PreparedDimen
  * Exact product-kernel discrepancy scorer for finite point sets. Each projection is compared with its ideal product
  * distribution and divided by its expected score for IID samples from that target.
  * <p>
- * This reference implementation is intentionally unquantized. For {@code P} projections of order {@code k}, its
- * dominant cost is {@code O(P*N^2*k)} and it does not allocate point-pair matrices. Instances configured with more
- * than one worker score projections concurrently; calculations within each projection retain their serial order.
+ * This reference implementation is intentionally unquantized. Its worst-case cost for {@code P} projections of order
+ * {@code k} is {@code O(P*N^2*k)}, although fully categorical projections are scored from joint-category counts in
+ * {@code O(P*N*(k+log(N)))} time. It does not allocate point-pair matrices. Instances configured with more than one
+ * worker score projections concurrently; calculations within each projection retain their serial order.
  */
 public final class ExactPointSetScorer implements PointSetScorer {
 
@@ -105,10 +107,13 @@ public final class ExactPointSetScorer implements PointSetScorer {
 	private ProjectionScore scoreProjectionPrepared(ExactPointSetData prepared, PointSetProjection projection) {
 		int n = prepared.numPoints;
 		PreparedDimension[] dimensions = new PreparedDimension[projection.order()];
+		int categoricalCount = 0;
 		double targetGrandMean = 1d;
 		double targetDiagonalMean = 1d;
 		for (int i=0; i<projection.order(); i++) {
 			dimensions[i] = prepared.dimensions[projection.dimension(i)];
+			if (dimensions[i].categoricalStates != null)
+				categoricalCount++;
 			targetGrandMean *= dimensions[i].targetGrandMean;
 			targetDiagonalMean *= dimensions[i].targetDiagonalMean;
 		}
@@ -122,37 +127,105 @@ public final class ExactPointSetScorer implements PointSetScorer {
 			double product = 1d;
 			for (int i=0; i<projection.order(); i++)
 				product *= dimensions[i].targetMeans[p];
-			requireFinite(product, "product target mean", projection);
 			targetSum += product;
 		}
 		requireFinite(targetSum, "target-mean sum", projection);
 
-		// Compare every pair of observed projected points. Multiplying kernels means a pair is similar in the projection
-		// only to the extent that it is similar in every included dimension. Use symmetry to halve kernel evaluations
-		// without materializing an N x N matrix.
-		double pairSum = 0d;
-		for (int p1=0; p1<n; p1++) {
-			double diagonalProduct = 1d;
-			for (int i=0; i<projection.order(); i++)
-				diagonalProduct *= dimensions[i].diagonalValues[p1];
-			requireFinite(diagonalProduct, "product diagonal kernel value", projection);
-			pairSum += diagonalProduct;
-			for (int p2=0; p2<p1; p2++) {
-				double product = 1d;
-				for (int i=0; i<projection.order(); i++) {
-					product *= requireFinite(dimensions[i].pairValue(p1, p2), "kernel value", projection);
-					if (product == 0d)
-						break;
-				}
-				requireFinite(product, "product kernel value", projection);
-				pairSum += 2d*product;
-			}
+		double pairSum;
+		if (categoricalCount == dimensions.length) {
+			// For equality kernels, the complete product is one exactly when two points occupy the same joint category.
+			// Therefore sum_ij k(x_i,x_j) is simply the sum of squared joint-category counts, avoiding all N^2 pairs.
+			pairSum = categoricalPairSum(dimensions, n);
+		} else {
+			pairSum = kernelPairSum(dimensions, categoricalCount, n);
 		}
 		requireFinite(pairSum, "kernel-pair sum", projection);
 
 		// Shared finalization applies target-target - 2*sample-target + sample-sample and IID normalization.
 		return PointSetScoringUtils.projectionScore(projection, n, targetGrandMean, targetDiagonalMean,
 				targetSum, pairSum);
+	}
+
+	private static double kernelPairSum(PreparedDimension[] dimensions, int categoricalCount, int numPoints) {
+		PreparedDimension[] pairDimensions = dimensions;
+		if (categoricalCount > 0) {
+			// Equality checks are cheap and commonly reject a pair. Put them first so continuous kernels are only evaluated
+			// for points that match in every categorical dimension.
+			pairDimensions = new PreparedDimension[dimensions.length];
+			int categoricalIndex = 0;
+			int otherIndex = categoricalCount;
+			for (PreparedDimension dimension : dimensions)
+				pairDimensions[dimension.categoricalStates == null ? otherIndex++ : categoricalIndex++] = dimension;
+		}
+
+		double pairSum = 0d;
+		for (int p1=0; p1<numPoints; p1++) {
+			double diagonalProduct = 1d;
+			for (PreparedDimension dimension : dimensions)
+				diagonalProduct *= dimension.diagonalValues[p1];
+			pairSum += diagonalProduct;
+			pointPair:
+			for (int p2=0; p2<p1; p2++) {
+				for (int i=0; i<categoricalCount; i++) {
+					int[] states = pairDimensions[i].categoricalStates;
+					if (states[p1] != states[p2])
+						continue pointPair;
+				}
+				double product = 1d;
+				for (int i=categoricalCount; i<pairDimensions.length; i++) {
+					PreparedDimension dimension = pairDimensions[i];
+					product *= dimension.kernel.value(dimension.values[p1], dimension.values[p2]);
+					if (product == 0d)
+						break;
+				}
+				pairSum += 2d*product;
+			}
+		}
+		return pairSum;
+	}
+
+	private static double categoricalPairSum(PreparedDimension[] dimensions, int numPoints) {
+		long combinations = 1L;
+		for (PreparedDimension dimension : dimensions) {
+			if (combinations > Long.MAX_VALUE/dimension.categoricalStateCount)
+				return categoricalPairSumQuadratic(dimensions, numPoints);
+			combinations *= dimension.categoricalStateCount;
+		}
+
+		long[] jointStates = new long[numPoints];
+		for (int p=0; p<numPoints; p++) {
+			long jointState = 0L;
+			for (PreparedDimension dimension : dimensions)
+				jointState = jointState*dimension.categoricalStateCount+dimension.categoricalStates[p];
+			jointStates[p] = jointState;
+		}
+		Arrays.sort(jointStates);
+
+		double pairSum = 0d;
+		int runStart = 0;
+		while (runStart < jointStates.length) {
+			int runEnd = runStart+1;
+			while (runEnd < jointStates.length && jointStates[runEnd] == jointStates[runStart])
+				runEnd++;
+			long count = runEnd-runStart;
+			pairSum += (double)count*count;
+			runStart = runEnd;
+		}
+		return pairSum;
+	}
+
+	private static double categoricalPairSumQuadratic(PreparedDimension[] dimensions, int numPoints) {
+		double pairSum = numPoints; // every point matches itself
+		for (int p1=0; p1<numPoints; p1++) {
+			pointPair:
+			for (int p2=0; p2<p1; p2++) {
+				for (PreparedDimension dimension : dimensions)
+					if (dimension.categoricalStates[p1] != dimension.categoricalStates[p2])
+						continue pointPair;
+				pairSum += 2d;
+			}
+		}
+		return pairSum;
 	}
 
 	private static double requireFinite(double value, String quantity, PointSetProjection projection) {

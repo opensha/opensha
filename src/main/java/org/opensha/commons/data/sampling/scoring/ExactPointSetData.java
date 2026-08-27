@@ -43,6 +43,7 @@ final class ExactPointSetData {
 				}
 			}
 			dimensions[d] = new PreparedDimension(kernel, values, targetMeans, diagonalValues, categoricalStates,
+					categoricalStates == null ? 0 : ((CategoricalSamplingDimension)dimension).categoryCount(),
 					requireFinite(kernel.targetGrandMean(), "target grand mean", d, -1),
 					requireFinite(kernel.targetDiagonalMean(), "target diagonal mean", d, -1));
 		}
@@ -62,24 +63,20 @@ final class ExactPointSetData {
 		final double[] targetMeans;
 		final double[] diagonalValues;
 		final int[] categoricalStates;
+		final int categoricalStateCount;
 		final double targetGrandMean;
 		final double targetDiagonalMean;
 
 		PreparedDimension(DiscrepancyKernel kernel, double[] values, double[] targetMeans, double[] diagonalValues,
-				int[] categoricalStates, double targetGrandMean, double targetDiagonalMean) {
+				int[] categoricalStates, int categoricalStateCount, double targetGrandMean, double targetDiagonalMean) {
 			this.kernel = kernel;
 			this.values = values;
 			this.targetMeans = targetMeans;
 			this.diagonalValues = diagonalValues;
 			this.categoricalStates = categoricalStates;
+			this.categoricalStateCount = categoricalStateCount;
 			this.targetGrandMean = targetGrandMean;
 			this.targetDiagonalMean = targetDiagonalMean;
-		}
-
-		double pairValue(int point1, int point2) {
-			if (categoricalStates != null)
-				return categoricalStates[point1] == categoricalStates[point2] ? 1d : 0d;
-			return kernel.value(values[point1], values[point2]);
 		}
 	}
 }
