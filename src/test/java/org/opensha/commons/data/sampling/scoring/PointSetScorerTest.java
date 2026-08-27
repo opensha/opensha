@@ -170,7 +170,7 @@ public class PointSetScorerTest {
 	}
 
 	@Test
-	public void testParallelExactScoringMatchesSerialExactly() {
+	public void testParallelExactScoringMatchesSerial() {
 		double[][] values = new double[48][5];
 		Random random = new Random(19384L);
 		for (int p=0; p<values.length; p++)
@@ -183,15 +183,36 @@ public class PointSetScorerTest {
 		ExactPointSetScorer parallelScorer = new ExactPointSetScorer(4);
 		PointSetScore parallel = parallelScorer.score(points, 3);
 		assertEquals(4, parallelScorer.getParallelism());
-		assertEquals(serial.getNormalizedScore(), parallel.getNormalizedScore(), 0d);
-		assertEquals(serial.getOrderMeanScores(), parallel.getOrderMeanScores());
-		assertEquals(serial.getProjectionScores().size(), parallel.getProjectionScores().size());
-		for (int i=0; i<serial.getProjectionScores().size(); i++) {
-			ProjectionScore expected = serial.getProjectionScores().get(i);
-			ProjectionScore actual = parallel.getProjectionScores().get(i);
-			assertEquals(expected.getProjection(), actual.getProjection());
-			assertEquals(expected.getRawScore(), actual.getRawScore(), 0d);
-			assertEquals(expected.getExpectedRandomScore(), actual.getExpectedRandomScore(), 0d);
+		assertEquivalentScores(serial, parallel, TOL);
+		assertEquivalentScores(parallel, parallelScorer.score(points, 3), 0d);
+	}
+
+	@Test
+	public void testOptimizedExactScorerMatchesReference() {
+		double[][] values = new double[36][6];
+		Random random = new Random(721653L);
+		for (int point=0; point<values.length; point++)
+			for (int dimension=0; dimension<values[point].length; dimension++)
+				values[point][dimension] = random.nextDouble();
+		PointSet points = decorate(new ArrayPointSet(values),
+				ContinuousSamplingDimension.INSTANCE,
+				CategoricalSamplingDimension.forWeights(0.2, 0.3, 0.5),
+				ContinuousSamplingDimension.INSTANCE,
+				CategoricalSamplingDimension.forWeights(0.65, 0.35),
+				ContinuousSamplingDimension.INSTANCE,
+				CategoricalSamplingDimension.forWeights(0.1, 0.2, 0.3, 0.4));
+		PointSetScoringConfig automatic = PointSetScoringConfig.builder().maxOrder(4).build();
+		PointSetScoringConfig explicit = PointSetScoringConfig.builder().projections(
+				new PointSetProjection(0),
+				new PointSetProjection(1, 3),
+				new PointSetProjection(0, 2, 4),
+				new PointSetProjection(0, 1, 3, 5),
+				new PointSetProjection(1, 2, 4, 5)).build();
+		PointSetScorer reference = new ReferenceExactPointSetScorer();
+		for (PointSetScoringConfig config : List.of(automatic, explicit)) {
+			PointSetScore expected = reference.score(points, config);
+			assertEquivalentScores(expected, new ExactPointSetScorer().score(points, config), TOL);
+			assertEquivalentScores(expected, new ExactPointSetScorer(4).score(points, config), TOL);
 		}
 	}
 
@@ -435,6 +456,21 @@ public class PointSetScorerTest {
 				count++;
 		return count;
 
+	}
+
+	private static void assertEquivalentScores(PointSetScore expected, PointSetScore actual, double tolerance) {
+		assertEquals(expected.getNormalizedScore(), actual.getNormalizedScore(), tolerance);
+		assertEquals(expected.getOrderMeanScores().keySet(), actual.getOrderMeanScores().keySet());
+		for (int order : expected.getOrderMeanScores().keySet())
+			assertEquals(expected.getOrderMeanScore(order), actual.getOrderMeanScore(order), tolerance);
+		assertEquals(expected.getProjectionScores().size(), actual.getProjectionScores().size());
+		for (int i=0; i<expected.getProjectionScores().size(); i++) {
+			ProjectionScore expectedProjection = expected.getProjectionScores().get(i);
+			ProjectionScore actualProjection = actual.getProjectionScores().get(i);
+			assertEquals(expectedProjection.getProjection(), actualProjection.getProjection());
+			assertEquals(expectedProjection.getRawScore(), actualProjection.getRawScore(), tolerance);
+			assertEquals(expectedProjection.getExpectedRandomScore(), actualProjection.getExpectedRandomScore(), 0d);
+		}
 	}
 
 	private static double square(double value) {

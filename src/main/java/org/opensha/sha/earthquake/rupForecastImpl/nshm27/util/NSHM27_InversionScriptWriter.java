@@ -2,6 +2,7 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm27.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.cli.CommandLine;
@@ -45,6 +46,7 @@ public class NSHM27_InversionScriptWriter {
 		ops.addRequiredOption(null, "samples", true, "Number of logic tree samples.");
 		ops.addOption(null, "unique-seed", false, "Flag to use a unique seed from this calculation rather than the "
 				+ "deterministic seed based on the region and sample count/method.");
+		ops.addOption(null, "name-add", true, "Add arbitrary additional directory name strings");
 		
 		return ops;
 	}
@@ -99,6 +101,11 @@ public class NSHM27_InversionScriptWriter {
 		GriddedRegion hazardRegion = new GriddedRegion(
 				NSHM27_MapRegions.valueOf(seisReg.name()).load(), gridSpacing, GriddedRegion.ANCHOR_0_0);
 		List<Site> hazardSites = NSHM27_RegionLoader.loadHazardSites(seisReg);
+		
+		List<String> nameAdds = new ArrayList<>();
+		if (cmd.hasOption("name-add"))
+			for (String nameAdd : cmd.getOptionValues("name-add"))
+				nameAdds.add(nameAdd);
 
 		RunConfig run = RunConfig.builder()
 				.baseName("nshm27")
@@ -106,6 +113,7 @@ public class NSHM27_InversionScriptWriter {
 				.addNameToken(numBranchSamples+"samples")
 				.addNameToken(samplingMethod.getFilePrefix())
 				.addNameToken(deterministicSeed ? null : "unique_seed")
+				.addNameTokens(nameAdds)
 				.build();
 
 		HPCConfig hpc = HPCConfig.builder(cmd)

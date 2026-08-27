@@ -78,5 +78,11 @@ final class ExactPointSetData {
 			this.targetGrandMean = targetGrandMean;
 			this.targetDiagonalMean = targetDiagonalMean;
 		}
+
+		double pairValue(int point1, int point2) {
+			if (categoricalStates != null)
+				return categoricalStates[point1] == categoricalStates[point2] ? 1d : 0d;
+			return kernel.value(values[point1], values[point2]);
+		}
 	}
 }
