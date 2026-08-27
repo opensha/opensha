@@ -14,7 +14,6 @@ import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomlyGeneratedLevel;
-import org.opensha.commons.logicTree.sampling.SampledLogicTreeBuilder;
 import org.opensha.commons.logicTree.sampling.SamplingMethod;
 import org.opensha.commons.logicTree.LogicTreeNode.RandomlyGeneratedNode;
 
@@ -254,8 +253,7 @@ public final class LogicTreeConfig {
 				List<SamplingDimension> randomDimensions = new ArrayList<>(randomLevels.size());
 				for (RandomLevel<?, ?> level : randomLevels)
 					randomDimensions.add(level.getSamplingDimension());
-				PointSet randomPoints = SampledLogicTreeBuilder.preparePointSet(
-						numBranches, randomDimensions, randomSeed, samplingMethod);
+				PointSet randomPoints = samplingMethod.prepare(numBranches, randomDimensions, randomSeed);
 				List<List<? extends LogicTreeNode>> levelNodes = new ArrayList<>();
 				for (int l=0; l<randomLevels.size(); l++) {
 					RandomLevel<?,?> level = randomLevels.get(l);

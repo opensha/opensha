@@ -247,6 +247,9 @@ public final class CategoricalSamplingDimension implements SamplingDimension {
 
 	@Override
 	public String toString() {
-		return "CategoricalSamplingDimension" + Arrays.toString(probabilities);
+		float[] probFloats = new float[probabilities.length];
+		for (int i=0; i<probFloats.length; i++)
+			probFloats[i] = (float)probabilities[i];
+		return "CategoricalSamplingDimension" + Arrays.toString(probFloats);
 	}
 }

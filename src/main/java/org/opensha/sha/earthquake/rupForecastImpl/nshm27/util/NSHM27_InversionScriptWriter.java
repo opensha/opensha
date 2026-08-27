@@ -55,11 +55,12 @@ public class NSHM27_InversionScriptWriter {
 			System.err.println("No command line arguments, using hardcoded defaults; use --help to see available options instead.");
 			
 //			int samples = 5000;
-			int samples = 2 << 9; // 512
-//			int samples = 2 << 10; // 1024
-//			int samples = 2 << 11; // 2048
-//			int samples = 2 << 12; // 4096
-//			int samples = 2 << 13; // 8192
+			// 1 << N = 2^N
+			int samples = 1 << 9; // 512
+//			int samples = 1 << 10; // 1024
+//			int samples = 1 << 11; // 2048
+//			int samples = 1 << 12; // 4096
+//			int samples = 1 << 13; // 8192
 			args = new String[] {
 					"--region", NSHM27_SeismicityRegions.AMSAM.name(),
 //					"--region", NSHM27_SeismicityRegions.GNMI.name(),
@@ -75,9 +76,9 @@ public class NSHM27_InversionScriptWriter {
 //					"--sampling-method", SamplingMethod.LATIN_HYPERCUBE.name(),
 //					"--sampling-method", SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE.name(),
 					"--samples", samples+"",
-//					"--unique-seed",
+					"--unique-seed",
 					
-//					"--hazard-grid-spacing", "0.2",
+					"--hazard-grid-spacing", "0.2",
 			};
 		}
 		

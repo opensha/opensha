@@ -2,9 +2,11 @@ package org.opensha.commons.data.sampling;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import org.junit.Test;
 import org.opensha.commons.data.sampling.scoring.DiscretizedDiscrepancyKernel;
@@ -50,6 +52,44 @@ public class PointSetTest {
 		assertSame(InactiveSamplingDimension.INSTANCE, subset.getDimension(0));
 		assertSame(source.getDimension(2), subset.getDimension(1));
 		assertEquals(2, subset.getSourceDimensionIndex(1));
+	}
+
+	@Test
+	public void testRandomDimensionPermutationIsNoCopyAndMovesMetadata() {
+		MutablePointSet coordinates = new MutablePointSet(new double[][] {
+				{ 0.1, 0.2, 0.3 }, { 0.4, 0.5, 0.6 }
+		});
+		CategoricalSamplingDimension categorical = CategoricalSamplingDimension.forWeights(1d, 2d);
+		PointSet source = new DimensionedPointSet(coordinates, List.of(
+				ContinuousSamplingDimension.INSTANCE, categorical, InactiveSamplingDimension.INSTANCE));
+		PointSet transformed = new RandomDimensionPermutationTransform(new Random(1L)).apply(source);
+		DimensionPermutedPointSet permuted = (DimensionPermutedPointSet)transformed;
+
+		boolean[] used = new boolean[source.dimensions()];
+		boolean moved = false;
+		for (int d=0; d<source.dimensions(); d++) {
+			int sourceDimension = permuted.getSourceDimensionIndex(d);
+			assertTrue(!used[sourceDimension]);
+			used[sourceDimension] = true;
+			moved |= sourceDimension != d;
+			assertSame(source.getDimension(sourceDimension), permuted.getDimension(d));
+			assertEquals(source.get(0, sourceDimension), permuted.get(0, d), 0d);
+		}
+		assertTrue(moved);
+
+		int sourceDimension = permuted.getSourceDimensionIndex(0);
+		coordinates.values[0][sourceDimension] = 0.85;
+		assertEquals(0.85, permuted.get(0, 0), 0d);
+	}
+
+	@Test(expected=IllegalArgumentException.class)
+	public void testDimensionPermutationRejectsRepeatedSource() {
+		new DimensionPermutedPointSet(new ArrayPointSet(new double[][] { { 0.1, 0.2 } }), 0, 0);
+	}
+
+	@Test(expected=IllegalArgumentException.class)
+	public void testDimensionPermutationRequiresEveryDimension() {
+		new DimensionPermutedPointSet(new ArrayPointSet(new double[][] { { 0.1, 0.2 } }), 0);
 	}
 
 	@Test(expected=IllegalArgumentException.class)

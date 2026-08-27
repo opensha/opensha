@@ -17,7 +17,6 @@ import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
-import org.opensha.commons.logicTree.sampling.SampledLogicTreeBuilder;
 import org.opensha.commons.logicTree.sampling.SamplingMethod;
 import org.opensha.commons.logicTree.sampling.SamplingPointSetLayout;
 import org.opensha.commons.logicTree.sampling.LogicTreePointSetMapper;
@@ -354,8 +353,7 @@ public class NSHM27_LogicTree {
 		List<SamplingDimension> dimensions = new ArrayList<>();
 		for (LogicTreePointSetMapper<LogicTreeNode> mapper : mappers)
 			dimensions.addAll(mapper.getSamplingDimensions());
-		PointSet fullPoints = SampledLogicTreeBuilder.preparePointSet(
-				numSamples, dimensions, seed, samplingMethod);
+		PointSet fullPoints = samplingMethod.prepare(numSamples, dimensions, seed);
 
 		List<LogicTree<LogicTreeNode>> trees = new ArrayList<>(mappers.size());
 		int start = 0;

@@ -62,13 +62,27 @@ public class PlotUtils {
 	}
 	
 	public static void setAxisVisible(GraphPanel gp, boolean xVisible, boolean yVisible) {
-		gp.getXAxis().setTickLabelsVisible(xVisible);
-		gp.getYAxis().setTickLabelsVisible(yVisible);
+		if (isCombinedPlot(gp.getPlot())) {
+			for (XYPlot plot : getSubPlots(gp.getPlot())) {
+				plot.getDomainAxis().setTickLabelsVisible(xVisible);
+				plot.getRangeAxis().setTickLabelsVisible(yVisible);
+			}
+		} else {
+			gp.getXAxis().setTickLabelsVisible(xVisible);
+			gp.getYAxis().setTickLabelsVisible(yVisible);
+		}
 	}
 	
 	public static void setGridLinesVisible(GraphPanel gp, boolean xVisible, boolean yVisible) {
-		gp.getPlot().setDomainGridlinesVisible(xVisible);
-		gp.getPlot().setRangeGridlinesVisible(yVisible);
+		if (isCombinedPlot(gp.getPlot())) {
+			for (XYPlot plot : getSubPlots(gp.getPlot())) {
+				plot.setDomainGridlinesVisible(xVisible);
+				plot.setRangeGridlinesVisible(yVisible);
+			}
+		} else {
+			gp.getPlot().setDomainGridlinesVisible(xVisible);
+			gp.getPlot().setRangeGridlinesVisible(yVisible);
+		}
 	}
 	
 	public static void fixAspectRatio(GraphPanel gp, int width, boolean isLatLon) {

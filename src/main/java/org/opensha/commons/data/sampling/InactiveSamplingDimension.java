@@ -27,4 +27,9 @@ public final class InactiveSamplingDimension implements SamplingDimension {
 	public DiscretizedDiscrepancyKernel getDiscretizedKernel(int preferredBins) {
 		return ContinuousSamplingDimension.INSTANCE.getDiscretizedKernel(preferredBins);
 	}
+	
+	@Override
+	public String toString() {
+		return "InactiveSamplingDimension";
+	}
 }

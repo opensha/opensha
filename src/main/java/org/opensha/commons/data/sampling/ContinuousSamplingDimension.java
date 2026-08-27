@@ -53,6 +53,11 @@ public final class ContinuousSamplingDimension implements SamplingDimension {
 			throw new IllegalArgumentException("Continuous discretization requires at least 2 bins, have " + preferredBins);
 		return new ContinuousDiscretizedKernel(preferredBins);
 	}
+	
+	@Override
+	public String toString() {
+		return "ContinuousSamplingDimension";
+	}
 
 	private static final class ContinuousDiscretizedKernel implements DiscretizedDiscrepancyKernel {
 		private final int bins;

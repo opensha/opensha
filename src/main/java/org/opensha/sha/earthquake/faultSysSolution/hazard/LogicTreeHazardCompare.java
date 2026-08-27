@@ -191,11 +191,12 @@ public class LogicTreeHazardCompare {
 				else
 					tree = LogicTree.read(treeFile);
 				ignorePrecomputed = true;
+				branch0 = tree.getBranch(0);
 			} else {
 				// read it from the hazard file if available
 				tree = loadTreeFromResults(hazardFile, forceFileBacked);
+				branch0 = loadBranch0FromResults(hazardFile, forceFileBacked);
 			}
-			branch0 = loadBranch0FromResults(hazardFile, forceFileBacked);
 			if (cmd.hasOption("ignore-precomputed-maps"))
 				ignorePrecomputed = true;
 			mainName = args[cnt++];
@@ -215,11 +216,12 @@ public class LogicTreeHazardCompare {
 					else
 						compTree = LogicTree.read(treeFile);
 					ignorePrecomputed = true;
+					compBranch0 = compTree.getBranch(0);
 				} else {
 					// read it from the hazard file if available
 					compTree = loadTreeFromResults(compHazardFile, forceFileBacked);
+					compBranch0 = loadBranch0FromResults(compHazardFile, forceFileBacked);
 				}
-				compBranch0 = loadBranch0FromResults(compHazardFile, forceFileBacked);
 				compName = args[cnt++];
 			} else {
 				compResultsFile = null;
