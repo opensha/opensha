@@ -31,7 +31,7 @@ import com.google.common.base.Preconditions;
 @Affects(MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME)
 @Affects(MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM23_DeclusteringAlgorithms implements LogicTreeNode {
+public enum NSHM23_DeclusteringAlgorithms implements LogicTreeNode.FixedWeightNode {
 	
 	GK("Gardner-Knopoff", "GK", 0.4d),
 	NN("Nearest-Neighbor", "NN", 0.4d),
@@ -59,7 +59,7 @@ public enum NSHM23_DeclusteringAlgorithms implements LogicTreeNode {
 	}
 
 	@Override
-	public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+	public double getNodeWeight() {
 		return weight;
 	}
 

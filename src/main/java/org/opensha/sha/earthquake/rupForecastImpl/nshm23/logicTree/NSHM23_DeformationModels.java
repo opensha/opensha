@@ -27,6 +27,7 @@ import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.logicTree.LogicTreeNode.FixedWeightNode;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
@@ -75,7 +76,7 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
-public enum NSHM23_DeformationModels implements RupSetDeformationModel {
+public enum NSHM23_DeformationModels implements RupSetDeformationModel, FixedWeightNode {
 	GEOLOGIC("NSHM23 Geologic Deformation Model", "Geologic") {
 		protected double getWeight() {
 			return ORIGINAL_WEIGHTS ? 0.2 : 0.26;
@@ -384,7 +385,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	protected abstract double getWeight();
 
 	@Override
-	public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+	public double getNodeWeight() {
 		return getWeight();
 	}
 
