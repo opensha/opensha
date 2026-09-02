@@ -111,9 +111,13 @@ public enum SamplingMethod implements ShortNamed {
 		PermutedPointSet permuted = PermutedPointSet.independentDimensions(pointSet);
 		if (permuted.swapGroupCount() < 2)
 			return pointSet;
+		long iterations = pairwiseIterations(pointSet.size());
 		QuantizedIncrementalPointSetScorer scorer =
 				new QuantizedIncrementalPointSetScorer(permuted, PAIRWISE_CONTINUOUS_BINS);
-		PointSetHillClimber.optimize(scorer, pairwiseIterations(pointSet.size()), random);
+		System.out.println("Pairwise-optimizing sample of size "+pointSet.size()+" with "+iterations+" iterations");
+		System.out.println("\tInitial 2D score:\t"+(float)scorer.getCurrentScore().getOrderMeanScore(2));
+		PointSetHillClimber.optimize(scorer, iterations, random);
+		System.out.println("\tDONE; final 2D score:\t"+(float)scorer.getCurrentScore().getOrderMeanScore(2));
 		return permuted;
 	}
 
