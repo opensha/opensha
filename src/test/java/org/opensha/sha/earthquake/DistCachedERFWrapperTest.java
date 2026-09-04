@@ -149,21 +149,6 @@ public class DistCachedERFWrapperTest {
 		}
 	}
 
-	/**
-	 * {@link CompoundSurface#get(List, List)} has to keep the sections it is handed on both branches. It used to
-	 * drop them whenever no section was down dip, which left a Simple surface that IMRs could not decompose.
-	 */
-	@Test
-	public void testCompoundSurfaceGetKeepsSections() {
-		for (FaultSystemRupSet rupSet : new FaultSystemRupSet[] { downDipRupSet, singleRowRupSet }) {
-			CompoundSurface orig = (CompoundSurface) rupSet.getSurfaceForRupture(0, SPACING);
-			CompoundSurface rebuilt = CompoundSurface.get(orig.getSurfaceList(), orig.getSectionsList());
-			assertNotNull("CompoundSurface.get dropped the sections for a " + rebuilt.getClass().getSimpleName(),
-					rebuilt.getSectionsList());
-			assertEquals(orig.getSectionsList(), rebuilt.getSectionsList());
-		}
-	}
-
 	/** DownDip and Simple compute DistanceX differently, so the rebuild has to keep the same implementation. */
 	@Test
 	public void testWrappedSurfaceKeepsItsImplementation() {

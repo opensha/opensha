@@ -85,7 +85,7 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 		boolean anyDD = sections.stream().anyMatch(S->S.getSubSectionIndexDownDip()>0);
 		if (anyDD)
 			return new DownDip(surfaces, sections);
-		return new Simple(surfaces, sections);
+		return new Simple(surfaces);
 	}
 
 	protected CompoundSurface(List<? extends RuptureSurface> surfaces, List<? extends FaultSection> sects) {

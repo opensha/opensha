@@ -12,6 +12,7 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.sha.calc.disaggregation.DisaggregationSourceRuptureInfo;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
 import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.cache.CacheEnabledSurface;
 import org.opensha.sha.faultSurface.cache.CustomCacheWrappedSurface;
@@ -131,10 +132,15 @@ public class DistCachedERFWrapper extends AbstractERF {
 				}
 			}
 			// this is rebuilt for each thread, and a CompoundSurface already builds its own single-valued
-			// distance cache, so it needs no further wrapping. Leaving it a CompoundSurface, with its section
-			// list intact, preserves the DownDip vs Simple choice (and so DistanceX) and lets IMRs that
-			// inspect the sections still decompose it.
-			wrappedSurf = CompoundSurface.get(subSurfs, ((CompoundSurface)origSurf).getSectionsList());
+			// distance cache, so it needs no further wrapping. Rebuilding the same implementation with the same
+			// section list preserves the DownDip vs Simple choice (and so DistanceX) and lets IMRs that inspect
+			// the sections still decompose it. Built directly rather than via CompoundSurface.get(List, List),
+			// which drops the section list whenever nothing is down dip.
+			List<? extends FaultSection> sects = ((CompoundSurface)origSurf).getSectionsList();
+			if (origSurf instanceof CompoundSurface.DownDip)
+				wrappedSurf = new CompoundSurface.DownDip(subSurfs, sects);
+			else
+				wrappedSurf = new CompoundSurface.Simple(subSurfs, sects);
 			wrappedMap.put(origSurf, wrappedSurf);
 		} else if (origSurf instanceof CacheEnabledSurface) {
 			wrappedSurf = new CustomCacheWrappedSurface((CacheEnabledSurface)origSurf);
