@@ -57,7 +57,7 @@ public class DistCachedERFWrapper extends AbstractERF {
 	
 	private void initSources() {
 		List<ProbEqkSource> sources = new ArrayList<>();
-		Map<RuptureSurface, CustomCacheWrappedSurface> wrappedMap = new HashMap<>();
+		Map<RuptureSurface, RuptureSurface> wrappedMap = new HashMap<>();
 		for (ProbEqkSource source : erf) {
 			if (source instanceof FaultRuptureSource) {
 				RuptureSurface sourceSurf = getWrappedSurface(wrappedMap, source.getSourceSurface());
@@ -108,7 +108,7 @@ public class DistCachedERFWrapper extends AbstractERF {
 		}
 	}
 	
-	public static RuptureSurface getWrappedSurface(Map<RuptureSurface, CustomCacheWrappedSurface> wrappedMap,
+	public static RuptureSurface getWrappedSurface(Map<RuptureSurface, RuptureSurface> wrappedMap,
 			RuptureSurface origSurf) {
 		RuptureSurface wrappedSurf;
 		if (wrappedMap.containsKey(origSurf))
@@ -130,11 +130,15 @@ public class DistCachedERFWrapper extends AbstractERF {
 					subSurfs.add(subSurf);
 				}
 			}
-			wrappedSurf = new CustomCacheWrappedSurface(CompoundSurface.get(subSurfs));
-			wrappedMap.put(origSurf, (CustomCacheWrappedSurface)wrappedSurf);
+			// this is rebuilt for each thread, and a CompoundSurface already builds its own single-valued
+			// distance cache, so it needs no further wrapping. Leaving it a CompoundSurface, with its section
+			// list intact, preserves the DownDip vs Simple choice (and so DistanceX) and lets IMRs that
+			// inspect the sections still decompose it.
+			wrappedSurf = CompoundSurface.get(subSurfs, ((CompoundSurface)origSurf).getSectionsList());
+			wrappedMap.put(origSurf, wrappedSurf);
 		} else if (origSurf instanceof CacheEnabledSurface) {
 			wrappedSurf = new CustomCacheWrappedSurface((CacheEnabledSurface)origSurf);
-			wrappedMap.put(origSurf, (CustomCacheWrappedSurface)wrappedSurf);
+			wrappedMap.put(origSurf, wrappedSurf);
 		} else {
 			wrappedSurf = origSurf;
 		}

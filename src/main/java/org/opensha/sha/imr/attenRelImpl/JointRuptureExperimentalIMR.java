@@ -5,7 +5,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -62,6 +64,16 @@ public class JointRuptureExperimentalIMR extends NSHMP_GMM_Wrapper {
 	private EnumMap<NshmpImt, NshmpGroundMotionModel> interfaceInstanceMap;
 	
 	private Constraints[] allConstraints;
+
+	/**
+	 * Cache of the crustal/interface split of each joint rupture surface, see {@link JointSplit}. Keyed on surface
+	 * identity: the ERF hands out the same surface instance for a given rupture every time, and {@link CompoundSurface}
+	 * does not override equals, so identity is both correct and cheaper here.
+	 * <p>
+	 * Only joint ruptures are cached, so this holds one entry per joint rupture the calculation reaches rather than
+	 * one per rupture. Like the rest of this class it is not thread safe; each calculation thread uses its own IMR.
+	 */
+	private final Map<CompoundSurface, JointSplit> jointSplitCache = new IdentityHashMap<>();
 	
 	public JointRuptureExperimentalIMR() {
 		this(getOrDefault(CRUSTAL_GMM_PROP_NAME, DEFAULT_CRUSTAL_GMM), getOrDefault(INTERFACE_GMM_PROP_NAME, DEFAULT_INTERFACE_GMM));
@@ -127,99 +139,49 @@ public class JointRuptureExperimentalIMR extends NSHMP_GMM_Wrapper {
 		if (surf instanceof CompoundSurface) {
 			// possibly joint
 			CompoundSurface cSurf = (CompoundSurface)surf;
-			List<? extends RuptureSurface> surfs = cSurf.getSurfaceList();
 			List<? extends FaultSection> sects = cSurf.getSectionsList();
 			Preconditions.checkNotNull(sects);
-			
-			List<RuptureSurface> crustalSurfs = null;
-			List<FaultSection> crustalSects = null;
-			
-			List<RuptureSurface> interfaceSurfs = null;
-			List<FaultSection> interfaceSects = null;
-			
-			for (int i=0; i<surfs.size(); i++) {
-				RuptureSurface subSurf = surfs.get(i);
-				FaultSection subSect = sects.get(i);
+
+			// first pass, which only works out which tectonic regions are present. Most ruptures lie entirely within
+			// one of them and are then handled without building any lists at all; this runs for every rupture at
+			// every site, so it is worth keeping allocation free.
+			boolean anyCrustal = false;
+			boolean anyInterface = false;
+			for (FaultSection subSect : sects) {
 				TectonicRegionType trt = subSect.getTectonicRegionType();
 				switch (trt) {
 				case ACTIVE_SHALLOW:
-					if (crustalSurfs == null) {
-						crustalSurfs = new ArrayList<>();
-						crustalSects = new ArrayList<>();
-					}
-					crustalSurfs.add(subSurf);
-					crustalSects.add(subSect);
+					anyCrustal = true;
 					break;
 				case SUBDUCTION_INTERFACE:
-					if (interfaceSurfs == null) {
-						interfaceSurfs = new ArrayList<>();
-						interfaceSects = new ArrayList<>();
-					}
-					interfaceSurfs.add(subSurf);
-					interfaceSects.add(subSect);
+					anyInterface = true;
 					break;
 
 				default:
 					throw new IllegalStateException("Unexpected sub-surf TRT: "+trt);
 				}
 			}
-			
-			if (crustalSects == null) {
+
+			if (!anyCrustal) {
 				// all interface
 				interfaceInput = origInput;
-			} else if (interfaceSects == null) {
+			} else if (!anyInterface) {
 				// all crustal
 				crustalInput = origInput;
 			} else {
 				// joint
 //				System.out.println("Calculating for joint rupture; input="+origInput);
-				EqkRupture crustalRup = null;
-				EqkRupture interfaceRup = null;
-				double crustalArea = Double.NaN;
-				double interfaceArea = Double.NaN;
-				for (boolean crustal : new boolean[] {true,false}) {
-					List<RuptureSurface> mySurfs;
-					List<FaultSection> mySects;
-					if (crustal) {
-						mySurfs = crustalSurfs;
-						mySects = crustalSects;
-					} else {
-						mySurfs = interfaceSurfs;
-						mySects = interfaceSects;
-					}
-					double[] sectAreas = new double[mySects.size()];
-					double[] sectRakes = new double[mySects.size()];
-					double sumArea = 0d;
-					for (int i=0; i<sectAreas.length; i++) {
-						FaultSection mySect = mySects.get(i);
-						RuptureSurface mySurf = mySurfs.get(i);
-						sectAreas[i] = mySurf.getArea();
-						sectRakes[i] = mySect.getAveRake();
-						sumArea += sectAreas[i];
-					}
-					double subRake = FaultUtils.getInRakeRange(FaultUtils.getScaledAngleAverage(sectAreas, sectRakes));
-					double subMag = crustal ? getCrustalMag(sumArea) : getInterfaceMag(sumArea);
-//					System.out.println("SubArea="+sumArea+" for "+mySects.size()+" sects, mag="+subMag+", crustal="+crustal);
-					RuptureSurface subSurf = mySurfs.size() == 1 ? mySurfs.get(0) : CompoundSurface.get(mySurfs, mySects);
-					EqkRupture subRup = new EqkRupture(subMag, subRake, subSurf, null);
-					if (crustal) {
-						crustalRup = subRup;
-						crustalArea = sumArea;
-					} else {
-						interfaceRup = subRup;
-						interfaceArea = sumArea;
-					}
-				}
-				
-				double calcJointMag = getJointMag(crustalArea, interfaceArea);
+				JointSplit split = getJointSplit(cSurf, sects);
+
+				double calcJointMag = getJointMag(split.crustalArea, split.interfaceArea);
 //				System.out.println("JointMag="+calcJointMag+", OrigMag="+origMag+", diff="+(calcJointMag - origMag));
 				double fractMagDiff = Math.abs(calcJointMag - origMag)/origMag;
 				Preconditions.checkState(fractMagDiff < 0.05,
 						"Calculated jointMag=%s differs by more than 5% from ERF jointMag=%s, "
 						+ "bailing because the ERF isn't compatible with our assumptions", calcJointMag, origMag);
-				setEqkRupture(crustalRup);
+				setEqkRupture(split.crustalRup);
 				crustalInput = getCurrentGmmInput();
-				setEqkRupture(interfaceRup);
+				setEqkRupture(split.interfaceRup);
 				interfaceInput = getCurrentGmmInput();
 				// set back to the original rupture
 				setEqkRupture(eqkRup);
@@ -320,6 +282,121 @@ public class JointRuptureExperimentalIMR extends NSHMP_GMM_Wrapper {
 		return jointGM;
 	}
 	
+	/**
+	 * A joint rupture split into its crustal and interface halves: a sub-rupture for each, carrying that half of the
+	 * surface and the magnitude and rake that half implies, plus the two areas that the joint magnitude check needs.
+	 * <p>
+	 * This depends only on the rupture surface and the tectonic region types of its sections, never on the site or
+	 * the intensity measure, so it is built once per surface and reused for every site.
+	 */
+	protected static class JointSplit {
+
+		protected final EqkRupture crustalRup;
+		protected final EqkRupture interfaceRup;
+		protected final double crustalArea;
+		protected final double interfaceArea;
+
+		protected JointSplit(EqkRupture crustalRup, double crustalArea,
+				EqkRupture interfaceRup, double interfaceArea) {
+			this.crustalRup = crustalRup;
+			this.crustalArea = crustalArea;
+			this.interfaceRup = interfaceRup;
+			this.interfaceArea = interfaceArea;
+		}
+	}
+
+	/**
+	 * The {@link JointSplit} for the given joint rupture surface, built on first use and cached thereafter. Splitting
+	 * a rupture rebuilds a {@link CompoundSurface} for each half, which is far too expensive to repeat at every site.
+	 *
+	 * @param cSurf a rupture surface spanning both tectonic regions
+	 * @param sects its section list, in the same order as its sub-surfaces
+	 */
+	protected JointSplit getJointSplit(CompoundSurface cSurf, List<? extends FaultSection> sects) {
+		JointSplit split = jointSplitCache.get(cSurf);
+		if (split == null) {
+			split = buildJointSplit(cSurf, sects);
+			jointSplitCache.put(cSurf, split);
+		}
+		return split;
+	}
+
+	/**
+	 * Splits a joint rupture surface into a crustal and an interface sub-rupture. Each gets the sub-surfaces of its
+	 * own tectonic region, the magnitude that region's area scaling gives for their total area, and their
+	 * area-weighted average rake.
+	 */
+	protected static JointSplit buildJointSplit(CompoundSurface cSurf, List<? extends FaultSection> sects) {
+		List<? extends RuptureSurface> surfs = cSurf.getSurfaceList();
+
+		List<RuptureSurface> crustalSurfs = new ArrayList<>();
+		List<FaultSection> crustalSects = new ArrayList<>();
+
+		List<RuptureSurface> interfaceSurfs = new ArrayList<>();
+		List<FaultSection> interfaceSects = new ArrayList<>();
+
+		for (int i=0; i<surfs.size(); i++) {
+			RuptureSurface subSurf = surfs.get(i);
+			FaultSection subSect = sects.get(i);
+			TectonicRegionType trt = subSect.getTectonicRegionType();
+			switch (trt) {
+			case ACTIVE_SHALLOW:
+				crustalSurfs.add(subSurf);
+				crustalSects.add(subSect);
+				break;
+			case SUBDUCTION_INTERFACE:
+				interfaceSurfs.add(subSurf);
+				interfaceSects.add(subSect);
+				break;
+
+			default:
+				throw new IllegalStateException("Unexpected sub-surf TRT: "+trt);
+			}
+		}
+		Preconditions.checkState(!crustalSects.isEmpty() && !interfaceSects.isEmpty(),
+				"buildJointSplit called for a rupture that is not joint");
+
+		EqkRupture crustalRup = null;
+		EqkRupture interfaceRup = null;
+		double crustalArea = Double.NaN;
+		double interfaceArea = Double.NaN;
+		for (boolean crustal : new boolean[] {true,false}) {
+			List<RuptureSurface> mySurfs;
+			List<FaultSection> mySects;
+			if (crustal) {
+				mySurfs = crustalSurfs;
+				mySects = crustalSects;
+			} else {
+				mySurfs = interfaceSurfs;
+				mySects = interfaceSects;
+			}
+			double[] sectAreas = new double[mySects.size()];
+			double[] sectRakes = new double[mySects.size()];
+			double sumArea = 0d;
+			for (int i=0; i<sectAreas.length; i++) {
+				FaultSection mySect = mySects.get(i);
+				RuptureSurface mySurf = mySurfs.get(i);
+				sectAreas[i] = mySurf.getArea();
+				sectRakes[i] = mySect.getAveRake();
+				sumArea += sectAreas[i];
+			}
+			double subRake = FaultUtils.getInRakeRange(FaultUtils.getScaledAngleAverage(sectAreas, sectRakes));
+			double subMag = crustal ? getCrustalMag(sumArea) : getInterfaceMag(sumArea);
+//			System.out.println("SubArea="+sumArea+" for "+mySects.size()+" sects, mag="+subMag+", crustal="+crustal);
+			RuptureSurface subSurf = mySurfs.size() == 1 ? mySurfs.get(0) : CompoundSurface.get(mySurfs, mySects);
+			EqkRupture subRup = new EqkRupture(subMag, subRake, subSurf, null);
+			if (crustal) {
+				crustalRup = subRup;
+				crustalArea = sumArea;
+			} else {
+				interfaceRup = subRup;
+				interfaceArea = sumArea;
+			}
+		}
+		return new JointSplit(crustalRup, crustalArea, interfaceRup, interfaceArea);
+	}
+
+
 	public static double getCrustalMag(double area_km) {
 		return Math.log10(area_km) + 4.2;
 	}
