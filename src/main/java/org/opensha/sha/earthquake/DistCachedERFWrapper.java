@@ -12,6 +12,7 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.sha.calc.disaggregation.DisaggregationSourceRuptureInfo;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
 import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.cache.CacheEnabledSurface;
 import org.opensha.sha.faultSurface.cache.CustomCacheWrappedSurface;
@@ -57,7 +58,7 @@ public class DistCachedERFWrapper extends AbstractERF {
 	
 	private void initSources() {
 		List<ProbEqkSource> sources = new ArrayList<>();
-		Map<RuptureSurface, CustomCacheWrappedSurface> wrappedMap = new HashMap<>();
+		Map<RuptureSurface, RuptureSurface> wrappedMap = new HashMap<>();
 		for (ProbEqkSource source : erf) {
 			if (source instanceof FaultRuptureSource) {
 				RuptureSurface sourceSurf = getWrappedSurface(wrappedMap, source.getSourceSurface());
@@ -108,7 +109,7 @@ public class DistCachedERFWrapper extends AbstractERF {
 		}
 	}
 	
-	public static RuptureSurface getWrappedSurface(Map<RuptureSurface, CustomCacheWrappedSurface> wrappedMap,
+	public static RuptureSurface getWrappedSurface(Map<RuptureSurface, RuptureSurface> wrappedMap,
 			RuptureSurface origSurf) {
 		RuptureSurface wrappedSurf;
 		if (wrappedMap.containsKey(origSurf))
@@ -130,11 +131,19 @@ public class DistCachedERFWrapper extends AbstractERF {
 					subSurfs.add(subSurf);
 				}
 			}
-			wrappedSurf = new CustomCacheWrappedSurface(CompoundSurface.get(subSurfs));
-			wrappedMap.put(origSurf, (CustomCacheWrappedSurface)wrappedSurf);
+			// no cache wrapper needed here: this is rebuilt per thread and a CompoundSurface already builds its
+			// own single-valued cache. Built via the constructors rather than CompoundSurface.get(List, List),
+			// which drops the section list whenever nothing is down dip; keeping the implementation and sections
+			// preserves DistanceX and lets IMRs that inspect the sections still decompose it.
+			List<? extends FaultSection> sects = ((CompoundSurface)origSurf).getSectionsList();
+			if (origSurf instanceof CompoundSurface.DownDip)
+				wrappedSurf = new CompoundSurface.DownDip(subSurfs, sects);
+			else
+				wrappedSurf = new CompoundSurface.Simple(subSurfs, sects);
+			wrappedMap.put(origSurf, wrappedSurf);
 		} else if (origSurf instanceof CacheEnabledSurface) {
 			wrappedSurf = new CustomCacheWrappedSurface((CacheEnabledSurface)origSurf);
-			wrappedMap.put(origSurf, (CustomCacheWrappedSurface)wrappedSurf);
+			wrappedMap.put(origSurf, wrappedSurf);
 		} else {
 			wrappedSurf = origSurf;
 		}
