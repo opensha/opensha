@@ -17,6 +17,7 @@ import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.sha.calc.HazardCurveCalculator;
+import org.opensha.sha.earthquake.DistCachedERFWrapper;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
@@ -67,11 +68,17 @@ public class JointRuptureExperimentalIMR extends NSHMP_GMM_Wrapper {
 
 	/**
 	 * Cache of the crustal/interface split of each joint rupture surface, see {@link JointSplit}. Keyed on surface
-	 * identity: the ERF hands out the same surface instance for a given rupture every time, and {@link CompoundSurface}
-	 * does not override equals, so identity is both correct and cheaper here.
+	 * identity: a given ERF view hands out the same surface instance for a given rupture every time, and
+	 * {@link CompoundSurface} does not override equals, so identity is both correct and cheaper here.
 	 * <p>
 	 * Only joint ruptures are cached, so this holds one entry per joint rupture the calculation reaches rather than
 	 * one per rupture. Like the rest of this class it is not thread safe; each calculation thread uses its own IMR.
+	 * <p>
+	 * Identity is stable per ERF view, not globally: each thread of a multithreaded calculation typically wraps the
+	 * shared ERF in its own {@link DistCachedERFWrapper}, which rebuilds the compound surfaces, so threads see distinct
+	 * surface instances for the same rupture and each builds its own copy of this cache. An IMR that is fed surfaces
+	 * from multiple ERF views (pooled wrappers, or a forecast that has since been updated) will simply miss and rebuild
+	 * the split, with the stale entries retained until the IMR itself is discarded.
 	 */
 	private final Map<CompoundSurface, JointSplit> jointSplitCache = new IdentityHashMap<>();
 	

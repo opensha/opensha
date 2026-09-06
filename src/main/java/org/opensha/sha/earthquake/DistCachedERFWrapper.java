@@ -131,11 +131,10 @@ public class DistCachedERFWrapper extends AbstractERF {
 					subSurfs.add(subSurf);
 				}
 			}
-			// this is rebuilt for each thread, and a CompoundSurface already builds its own single-valued
-			// distance cache, so it needs no further wrapping. Rebuilding the same implementation with the same
-			// section list preserves the DownDip vs Simple choice (and so DistanceX) and lets IMRs that inspect
-			// the sections still decompose it. Built directly rather than via CompoundSurface.get(List, List),
-			// which drops the section list whenever nothing is down dip.
+			// no cache wrapper needed here: this is rebuilt per thread and a CompoundSurface already builds its
+			// own single-valued cache. Built via the constructors rather than CompoundSurface.get(List, List),
+			// which drops the section list whenever nothing is down dip; keeping the implementation and sections
+			// preserves DistanceX and lets IMRs that inspect the sections still decompose it.
 			List<? extends FaultSection> sects = ((CompoundSurface)origSurf).getSectionsList();
 			if (origSurf instanceof CompoundSurface.DownDip)
 				wrappedSurf = new CompoundSurface.DownDip(subSurfs, sects);
