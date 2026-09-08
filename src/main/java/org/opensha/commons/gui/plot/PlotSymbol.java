@@ -238,5 +238,23 @@ public enum PlotSymbol {
 
 		return path;
 	}
+	
+	/**
+	 * For a given filled symbol, returns the equivalent outline symbol. E.g.,, {@link #FILLED_CIRCLE} will yield
+	 * {@link PlotSymbol#CIRCLE}. If the passed in symbol is not a filled symbol, null is returned
+	 * @param filledSymbol
+	 * @return matching outline symbol, or null if no such mapping
+	 */
+	public static PlotSymbol getOutlineSymbol(PlotSymbol filledSymbol) {
+		return switch (filledSymbol) {
+		case FILLED_CIRCLE -> CIRCLE;
+		case FILLED_SQUARE -> SQUARE;
+		case FILLED_TRIANGLE -> TRIANGLE;
+		case FILLED_INV_TRIANGLE -> INV_TRIANGLE;
+		case FILLED_DIAMOND -> DIAMOND;
+		case FILLED_POLYGON -> POLYGON;
+		default -> null;
+		};
+	}
 
 }
