@@ -22,7 +22,6 @@ import org.opensha.commons.logicTree.sampling.SamplingPointSetLayout;
 import org.opensha.commons.logicTree.sampling.LogicTreePointSetMapper;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.logicTree.TectonicRegionBranchTreeNode;
-import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeNodeSwapIteration;
 import org.opensha.commons.util.RandomSeedUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -427,8 +426,6 @@ public class NSHM27_LogicTree {
 		int numSamples = 2 << 11;
 //		int numSamples = 10000;
 //		int numSamples = 100000;
-		
-		PairwiseLogicTreeNodeSwapIteration.VERBOSE_DEFAULT = false;
 		
 //		SamplingMethod samplingMethod = SamplingMethod.MONTE_CARLO;
 //		SamplingMethod samplingMethod = SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE;

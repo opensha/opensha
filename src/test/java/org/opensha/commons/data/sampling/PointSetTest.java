@@ -261,9 +261,14 @@ public class PointSetTest {
 				new DimensionSwapGroup(1, 2), new DimensionSwapGroup(3));
 		assertEquals(2, permuted.swapGroupCount());
 		assertEquals(0, permuted.getSourcePointIndex(0, 0));
+		assertEquals(0, permuted.getSourcePointIndexForSwapGroup(0, 0));
 
 		permuted.swap(0, 0, 2);
 		assertEquals(1L, permuted.modificationCount());
+		assertEquals(0, permuted.getSourcePointIndex(0, 0));
+		assertEquals(2, permuted.getSourcePointIndex(0, 1));
+		assertEquals(2, permuted.getSourcePointIndex(0, 2));
+		assertEquals(2, permuted.getSourcePointIndexForSwapGroup(0, 0));
 		assertEquals(values[2][1], permuted.get(0, 1), 0d);
 		assertEquals(values[2][2], permuted.get(0, 2), 0d);
 		assertEquals(values[0][1], permuted.get(2, 1), 0d);

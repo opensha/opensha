@@ -120,10 +120,44 @@ public final class PermutedPointSet implements SwappablePointSet {
 	}
 
 	/**
-	 * @return upstream point currently supplying the selected group's values at a logical point
+	 * Returns the point in the wrapped source that currently supplies one dimension at a logical point. This uses the
+	 * same argument order as {@link #get(int, int)}. Dimensions outside all swap groups are fixed, so this returns
+	 * {@code pointIndex} for them.
+	 *
+	 * @param pointIndex logical point in this permuted view
+	 * @param dimensionIndex dimension whose source assignment is requested
+	 * @return point index in {@link #getSource()}
 	 */
-	public int getSourcePointIndex(int groupIndex, int pointIndex) {
+	public int getSourcePointIndex(int pointIndex, int dimensionIndex) {
+		checkPointIndex(pointIndex);
+		checkDimensionIndex(dimensionIndex);
+		int groupIndex = dimensionGroups[dimensionIndex];
+		return groupIndex < 0 ? pointIndex : permutations[groupIndex][pointIndex];
+	}
+
+	/**
+	 * Returns the point in the wrapped source currently assigned to a logical point for an entire swap group. Most
+	 * callers should use {@link #getSourcePointIndex(int, int)}, which accepts a dimension index directly.
+	 *
+	 * @param groupIndex index in {@link #getSwapGroups()}
+	 * @param pointIndex logical point in this permuted view
+	 * @return point index in {@link #getSource()}
+	 */
+	public int getSourcePointIndexForSwapGroup(int groupIndex, int pointIndex) {
+		if (groupIndex < 0 || groupIndex >= permutations.length)
+			throw new IndexOutOfBoundsException("Swap-group index out of range: " + groupIndex);
+		checkPointIndex(pointIndex);
 		return permutations[groupIndex][pointIndex];
+	}
+
+	private void checkPointIndex(int pointIndex) {
+		if (pointIndex < 0 || pointIndex >= size())
+			throw new IndexOutOfBoundsException("Point index out of range: " + pointIndex);
+	}
+
+	private void checkDimensionIndex(int dimensionIndex) {
+		if (dimensionIndex < 0 || dimensionIndex >= dimensions())
+			throw new IndexOutOfBoundsException("Dimension index out of range: " + dimensionIndex);
 	}
 
 	public PointSet getSource() {
