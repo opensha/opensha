@@ -20,14 +20,72 @@ import org.opensha.commons.data.sampling.PermutedPointSet;
 import org.opensha.commons.data.sampling.PointSet;
 import org.opensha.commons.data.sampling.SamplingDimension;
 import org.opensha.commons.data.sampling.scoring.PointSetProjection;
+import org.opensha.commons.data.sampling.scoring.CenteredDiscrepancy;
 import org.opensha.commons.data.sampling.scoring.ProjectionDiscrepancyScore;
 import org.opensha.commons.data.sampling.scoring.ProjectionDiscrepancyConfig;
 import org.opensha.commons.data.sampling.scoring.ProjectionDiscrepancyScore.ProjectionResult;
 import org.opensha.commons.data.sampling.scoring.ProjectionDiscrepancyScorer;
+import org.opensha.commons.data.sampling.optimization.PointSetHillClimber.Result;
 
-public class QuantizedIncrementalPointSetScorerTest {
+public class PointSetObjectiveTest {
 
 	private static final double TOL = 2e-11;
+
+	@Test
+	public void testGenericSessionEvaluatesAViewAndLeavesPointSetUnchanged() {
+		PermutedPointSet points = PermutedPointSet.independentDimensions(new ArrayPointSet(new double[][] {
+				{ 0.1, 0.2 }, { 0.8, 0.9 }
+		}));
+		PointSetObjective objective = pointSet -> pointSet.get(0, 0)*pointSet.get(0, 1)
+				+pointSet.get(1, 0)*pointSet.get(1, 1);
+		PointSetObjective.SwapSession session = objective.prepare(points);
+		double initial = objective.evaluate(points);
+		double delta = session.evaluateSwap(0, 0, 1);
+		assertEquals(initial, objective.evaluate(points), 0d);
+		assertEquals(0.25d-initial, delta, TOL);
+		session.discardSwap();
+		assertEquals(initial, session.getCurrentValue(), 0d);
+
+		session.evaluateSwap(0, 0, 1);
+		session.applySwap();
+		assertEquals(0.25d, session.getCurrentValue(), TOL);
+		assertEquals(session.getCurrentValue(), objective.evaluate(points), TOL);
+	}
+
+	@Test
+	public void testScorerObjectivesSelectFastAndFallbackSessions() {
+		PermutedPointSet points = buildPointSet(24, 72134L);
+		ProjectionDiscrepancyScorer quantized = ProjectionDiscrepancyScorer.quantized(8);
+		PointSetObjective pairwise = quantized.objective();
+		PointSetObjective.SwapSession fast = pairwise.prepare(points);
+		assertTrue(fast instanceof QuantizedProjectionSwapSession);
+		assertEquals(quantized.score(points).getNormalizedScore(), fast.getCurrentValue(), TOL);
+
+		ProjectionDiscrepancyConfig higherOrder = ProjectionDiscrepancyConfig.builder().maxOrder(3).build();
+		PointSetObjective.SwapSession fallback = quantized.objective(higherOrder).prepare(points);
+		assertFalse(fallback instanceof QuantizedProjectionSwapSession);
+		assertEquals(quantized.score(points, higherOrder).getNormalizedScore(), fallback.getCurrentValue(), TOL);
+	}
+
+	@Test
+	public void testExactAndCenteredObjectivesCanBeOptimized() {
+		PermutedPointSet exactPoints = PermutedPointSet.independentDimensions(
+				new ArrayPointSet(new double[][] { { 0.1, 0.1 }, { 0.2, 0.8 }, { 0.8, 0.2 }, { 0.9, 0.9 } }));
+		PointSetObjective exact = ProjectionDiscrepancyScorer.exact().objective(
+				ProjectionDiscrepancyConfig.builder().maxOrder(2).build());
+		Result exactResult = PointSetHillClimber.optimize(exactPoints, exact, 100L,
+				new Random(32874L));
+		assertTrue(exactResult.getFinalValue() <= exactResult.getInitialValue());
+		assertEquals(exact.evaluate(exactPoints), exactResult.getFinalValue(), TOL);
+
+		PermutedPointSet centeredPoints = PermutedPointSet.independentDimensions(
+				new ArrayPointSet(new double[][] { { 0.1, 0.1 }, { 0.2, 0.8 }, { 0.8, 0.2 }, { 0.9, 0.9 } }));
+		PointSetObjective centered = CenteredDiscrepancy.objective();
+		Result centeredResult = PointSetHillClimber.optimize(centeredPoints, centered, 100L,
+				new Random(32874L));
+		assertTrue(centeredResult.getFinalValue() <= centeredResult.getInitialValue());
+		assertEquals(centered.evaluate(centeredPoints), centeredResult.getFinalValue(), TOL);
+	}
 
 	@Test
 	public void testRandomSwapDeltasAgainstReferenceScorer() {
@@ -36,8 +94,8 @@ public class QuantizedIncrementalPointSetScorerTest {
 		ProjectionDiscrepancyConfig config = ProjectionDiscrepancyConfig.builder()
 				.maxOrder(2).orderWeight(1, 0.7).orderWeight(2, 1.3).build();
 		ProjectionDiscrepancyScorer reference = ProjectionDiscrepancyScorer.quantized(bins);
-		QuantizedIncrementalPointSetScorer incremental =
-				new QuantizedIncrementalPointSetScorer(points, bins, config);
+		QuantizedProjectionSwapSession incremental =
+				new QuantizedProjectionSwapSession(points, bins, config);
 
 		assertScoresEqual(reference.score(points, config), incremental.getCurrentScore());
 		Random random = new Random(918273L);
@@ -49,7 +107,7 @@ public class QuantizedIncrementalPointSetScorerTest {
 				point2 = random.nextInt(points.size());
 			} while (point2 == point1);
 
-			double before = incremental.getCurrentNormalizedScore();
+			double before = incremental.getCurrentValue();
 			double delta = incremental.evaluateSwap(group, point1, point2);
 			assertTrue(incremental.hasPendingSwap());
 			// Evaluating a proposal must not alter either the point set or its current score.
@@ -57,18 +115,18 @@ public class QuantizedIncrementalPointSetScorerTest {
 
 			if (i % 4 == 0) {
 				incremental.discardSwap();
-				assertEquals(before, incremental.getCurrentNormalizedScore(), 0d);
+				assertEquals(before, incremental.getCurrentValue(), 0d);
 			} else {
 				incremental.applySwap();
-				assertEquals(before+delta, incremental.getCurrentNormalizedScore(), TOL);
+				assertEquals(before+delta, incremental.getCurrentValue(), TOL);
 			}
 			assertFalse(incremental.hasPendingSwap());
 			ProjectionDiscrepancyScore expected = reference.score(points, config);
-			assertEquals(expected.getNormalizedScore(), incremental.getCurrentNormalizedScore(), TOL);
+			assertEquals(expected.getNormalizedScore(), incremental.getCurrentValue(), TOL);
 			if (i % 25 == 0)
 				assertScoresEqual(expected, incremental.getCurrentScore());
 		}
-		assertScoresEqual(reference.score(points, config), incremental.recalculate());
+		assertEquals(reference.score(points, config).getNormalizedScore(), incremental.recalculate(), TOL);
 	}
 
 	@Test
@@ -77,13 +135,13 @@ public class QuantizedIncrementalPointSetScorerTest {
 		PermutedPointSet points = buildPointSet(32, 92834L);
 		ProjectionDiscrepancyConfig pairOnly = ProjectionDiscrepancyConfig.builder()
 				.projections(new PointSetProjection(1, 2)).build();
-		QuantizedIncrementalPointSetScorer incremental =
-				new QuantizedIncrementalPointSetScorer(points, bins, pairOnly);
-		double initial = incremental.getCurrentNormalizedScore();
+		QuantizedProjectionSwapSession incremental =
+				new QuantizedProjectionSwapSession(points, bins, pairOnly);
+		double initial = incremental.getCurrentValue();
 		for (int i=0; i<20; i++) {
 			assertEquals(0d, incremental.evaluateSwap(1, i, i+1), 0d);
 			incremental.applySwap();
-			assertEquals(initial, incremental.getCurrentNormalizedScore(), 0d);
+			assertEquals(initial, incremental.getCurrentValue(), 0d);
 		}
 		assertEquals(initial, ProjectionDiscrepancyScorer.quantized(bins).score(points, pairOnly).getNormalizedScore(), TOL);
 	}
@@ -91,7 +149,7 @@ public class QuantizedIncrementalPointSetScorerTest {
 	@Test
 	public void testTransactionAndExternalModificationChecks() {
 		PermutedPointSet points = buildPointSet(12, 1234L);
-		QuantizedIncrementalPointSetScorer incremental = new QuantizedIncrementalPointSetScorer(points, 5);
+		QuantizedProjectionSwapSession incremental = new QuantizedProjectionSwapSession(points, 5);
 		expectIllegalState(incremental::applySwap);
 		expectIllegalState(incremental::discardSwap);
 		incremental.evaluateSwap(0, 0, 1);
@@ -100,14 +158,8 @@ public class QuantizedIncrementalPointSetScorerTest {
 		incremental.discardSwap();
 
 		points.swap(0, 0, 1);
-		expectIllegalState(incremental::getCurrentNormalizedScore);
+		expectIllegalState(incremental::getCurrentValue);
 		expectIllegalState(() -> incremental.evaluateSwap(0, 1, 2));
-	}
-
-	@Test(expected=IllegalArgumentException.class)
-	public void testHigherOrderConfigRejected() {
-		ProjectionDiscrepancyConfig config = ProjectionDiscrepancyConfig.builder().maxOrder(3).build();
-		new QuantizedIncrementalPointSetScorer(buildPointSet(12, 4321L), 5, config);
 	}
 
 	@Test
@@ -126,20 +178,20 @@ public class QuantizedIncrementalPointSetScorerTest {
 	public void testHillClimber() {
 		int bins = 8;
 		PermutedPointSet points = buildPointSet(48, 83742L);
-		QuantizedIncrementalPointSetScorer incremental = new QuantizedIncrementalPointSetScorer(points, bins);
-		PointSetOptimizationResult result = PointSetHillClimber.optimize(incremental, 1_000_000L,
+		QuantizedProjectionSwapSession incremental = new QuantizedProjectionSwapSession(points, bins);
+		Result result = PointSetHillClimber.optimize(incremental, 1_000_000L,
 				new Random(28374L));
 		assertEquals(1_000_000L, result.getIterations());
 		assertTrue(result.getAcceptedSwaps() > 0L);
 		assertTrue(result.getAcceptedSwaps() <= result.getIterations());
-		assertEquals(result.getInitialScore()-result.getFinalScore(), result.getScoreReduction(), TOL);
-		assertTrue(result.getFinalScore() < result.getInitialScore());
+		assertEquals(result.getInitialValue()-result.getFinalValue(), result.getValueReduction(), TOL);
+		assertTrue(result.getFinalValue() < result.getInitialValue());
 		assertEquals(String.format(Locale.US,
-				"PointSetOptimizationResult[iterations=1000000, accepted=%d, score=%.5f -> %.5f]",
-				result.getAcceptedSwaps(), result.getInitialScore(), result.getFinalScore()), result.toString());
+				"PointSetHillClimber.Result[iterations=1000000, accepted=%d, value=%.5f -> %.5f]",
+				result.getAcceptedSwaps(), result.getInitialValue(), result.getFinalValue()), result.toString());
 		assertFalse(incremental.hasPendingSwap());
 		ProjectionDiscrepancyScore reference = ProjectionDiscrepancyScorer.quantized(bins).score(points);
-		assertEquals(reference.getNormalizedScore(), result.getFinalScore(), TOL);
+		assertEquals(reference.getNormalizedScore(), result.getFinalValue(), TOL);
 	}
 
 	private static PermutedPointSet buildPointSet(int size, long seed) {

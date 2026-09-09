@@ -2,6 +2,7 @@ package org.opensha.commons.data.sampling.scoring;
 
 import org.opensha.commons.data.sampling.ContinuousSamplingDimension;
 import org.opensha.commons.data.sampling.PointSet;
+import org.opensha.commons.data.sampling.optimization.PointSetObjective;
 
 /**
  * Calculates the squared centered discrepancy of continuous points in a unit hypercube. Centered discrepancy is a
@@ -44,6 +45,18 @@ public final class CenteredDiscrepancy {
 		ProjectionDiscrepancyUtils.validatePointSet(pointSet);
 		ProjectionDiscrepancyUtils.validateProjection(projection, pointSet.dimensions());
 		return scoreValidated(pointSet, projection);
+	}
+
+	/** @return optimization objective calculating centered discrepancy across every dimension */
+	public static PointSetObjective objective() {
+		return CenteredDiscrepancy::score;
+	}
+
+	/** @return optimization objective calculating centered discrepancy over the selected dimensions */
+	public static PointSetObjective objective(PointSetProjection projection) {
+		if (projection == null)
+			throw new NullPointerException("Projection cannot be null");
+		return pointSet -> score(pointSet, projection);
 	}
 
 	private static double scoreValidated(PointSet pointSet, PointSetProjection projection) {

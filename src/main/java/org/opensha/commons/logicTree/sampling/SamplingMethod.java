@@ -17,7 +17,9 @@ import org.opensha.commons.data.sampling.generator.OwenScrambledSobolPointSetGen
 import org.opensha.commons.data.sampling.generator.PointSetGenerator;
 import org.opensha.commons.data.sampling.generator.SobolPointSetGenerator;
 import org.opensha.commons.data.sampling.optimization.PointSetHillClimber;
-import org.opensha.commons.data.sampling.optimization.QuantizedIncrementalPointSetScorer;
+import org.opensha.commons.data.sampling.optimization.PointSetObjective;
+import org.opensha.commons.data.sampling.optimization.PointSetObjective.SwapSession;
+import org.opensha.commons.data.sampling.scoring.ProjectionDiscrepancyScorer;
 import org.opensha.commons.util.RandomSeedUtils;
 
 import com.google.common.base.Preconditions;
@@ -112,12 +114,13 @@ public enum SamplingMethod implements ShortNamed {
 		if (permuted.swapGroupCount() < 2)
 			return pointSet;
 		long iterations = pairwiseIterations(pointSet.size());
-		QuantizedIncrementalPointSetScorer scorer =
-				new QuantizedIncrementalPointSetScorer(permuted, PAIRWISE_CONTINUOUS_BINS);
+		ProjectionDiscrepancyScorer scorer = ProjectionDiscrepancyScorer.quantized(PAIRWISE_CONTINUOUS_BINS);
+		PointSetObjective objective = scorer.objective();
+		SwapSession session = objective.prepare(permuted);
 		System.out.println("Pairwise-optimizing sample of size "+pointSet.size()+" with "+iterations+" iterations");
-		System.out.println("\tInitial 2D score:\t"+(float)scorer.getCurrentScore().getOrderMeanScore(2));
-		PointSetHillClimber.optimize(scorer, iterations, random);
-		System.out.println("\tDONE; final 2D score:\t"+(float)scorer.getCurrentScore().getOrderMeanScore(2));
+		System.out.println("\tInitial objective:\t"+(float)session.getCurrentValue());
+		PointSetHillClimber.optimize(session, iterations, random);
+		System.out.println("\tDONE; final objective:\t"+(float)session.getCurrentValue());
 		return permuted;
 	}
 

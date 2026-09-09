@@ -1,6 +1,7 @@
 package org.opensha.commons.data.sampling.scoring;
 
 import org.opensha.commons.data.sampling.PointSet;
+import org.opensha.commons.data.sampling.optimization.PointSetObjective;
 
 /**
  * Strategy for scoring finite point sets against their ideal dimension distributions. Implementations can use exact,
@@ -58,6 +59,21 @@ public interface ProjectionDiscrepancyScorer {
 	 * @return point-set score
 	 */
 	ProjectionDiscrepancyScore score(PointSet pointSet, ProjectionDiscrepancyConfig config);
+
+	/** @return an optimization objective using the default projection configuration */
+	default PointSetObjective objective() {
+		return objective(ProjectionDiscrepancyConfig.defaults());
+	}
+
+	/**
+	 * Binds a projection configuration into a scalar optimization objective. The objective value is the aggregate
+	 * normalized discrepancy returned by {@link #score(PointSet, ProjectionDiscrepancyConfig)}.
+	 */
+	default PointSetObjective objective(ProjectionDiscrepancyConfig config) {
+		if (config == null)
+			throw new NullPointerException("Scoring configuration cannot be null");
+		return pointSet -> score(pointSet, config).getNormalizedScore();
+	}
 
 	/**
 	 * Scores one selected coordinate projection. This is equivalent to constructing an explicit one-projection

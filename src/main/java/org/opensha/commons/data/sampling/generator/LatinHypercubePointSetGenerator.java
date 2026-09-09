@@ -13,6 +13,8 @@ import org.opensha.commons.data.sampling.PointSet;
 public final class LatinHypercubePointSetGenerator implements PointSetGenerator {
 
 	private final RandomGenerator random;
+	
+	private static final double MAX_SAMPLE_VALUE = Math.nextDown(1d);
 
 	public LatinHypercubePointSetGenerator(RandomGenerator random) {
 		this.random = PointSetGeneratorUtils.requireRandom(random);
@@ -27,7 +29,7 @@ public final class LatinHypercubePointSetGenerator implements PointSetGenerator 
 			for (int stratum=0; stratum<numPoints; stratum++) {
 				double value = (stratum+random.nextDouble())/numPoints;
 				// At very large N, rounding the uppermost jittered stratum must not produce the excluded endpoint 1.
-				dimensionValues[stratum] = Math.min(value, Math.nextDown(1d));
+				dimensionValues[stratum] = Math.min(value, MAX_SAMPLE_VALUE);
 			}
 			PointSetGeneratorUtils.shuffle(dimensionValues, random);
 			for (int p=0; p<numPoints; p++)

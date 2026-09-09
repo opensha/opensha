@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.opensha.commons.data.sampling.PointSet;
 import org.opensha.commons.data.sampling.SamplingDimension.DiscretizedKernel;
+import org.opensha.commons.data.sampling.optimization.PointSetObjective;
 import org.opensha.commons.data.sampling.scoring.ProjectionDiscrepancyScore.ProjectionResult;
 
 /**
@@ -39,6 +40,13 @@ final class QuantizedProjectionDiscrepancyScorer implements ProjectionDiscrepanc
 		for (PointSetProjection projection : projections)
 			scores.add(scoreProjection(prepared, projection));
 		return ProjectionDiscrepancyUtils.aggregate(scores, config);
+	}
+
+	@Override
+	public PointSetObjective objective(ProjectionDiscrepancyConfig config) {
+		if (config == null)
+			throw new NullPointerException("Scoring configuration cannot be null");
+		return PointSetObjective.quantizedProjectionDiscrepancy(continuousBins, config);
 	}
 
 	@Override

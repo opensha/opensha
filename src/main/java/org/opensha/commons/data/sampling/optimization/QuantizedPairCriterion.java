@@ -3,6 +3,7 @@ package org.opensha.commons.data.sampling.optimization;
 import java.util.Arrays;
 
 import org.opensha.commons.data.sampling.SamplingDimension.DiscretizedKernel;
+import org.opensha.commons.data.sampling.optimization.QuantizedProjectionSwapSession.ProjectionState;
 import org.opensha.commons.data.sampling.scoring.PointSetProjection;
 import org.opensha.commons.data.sampling.scoring.ProjectionDiscrepancyScore.ProjectionResult;
 
@@ -11,7 +12,7 @@ import org.opensha.commons.data.sampling.scoring.ProjectionDiscrepancyScore.Proj
  * compact replacement for iterating over all sampled points: a swap moves at most two observations from their old
  * joint bins into two crossed bins, regardless of the point-set size.
  */
-final class QuantizedPairCriterion implements ProjectionScoreState {
+final class QuantizedPairCriterion implements ProjectionState {
 
 	private static final double NEGATIVE_TOLERANCE = 1e-11;
 
