@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Random;
 
 import org.junit.Test;
-import org.opensha.commons.data.sampling.scoring.DiscretizedDiscrepancyKernel;
+import org.opensha.commons.data.sampling.SamplingDimension.DiscretizedKernel;
 
 public class PointSetTest {
 
@@ -178,7 +178,7 @@ public class PointSetTest {
 
 	@Test
 	public void testContinuousKernelDiscretization() {
-		DiscretizedDiscrepancyKernel kernel =
+		DiscretizedKernel kernel =
 				ContinuousSamplingDimension.INSTANCE.getDiscretizedKernel(2);
 		assertEquals(2, kernel.stateCount());
 		assertEquals(0, kernel.state(0d));
@@ -198,7 +198,7 @@ public class PointSetTest {
 	@Test
 	public void testCategoricalDiscretizationUsesExactCategories() {
 		CategoricalSamplingDimension dimension = CategoricalSamplingDimension.forWeights(0.2, 0.3, 0.5);
-		DiscretizedDiscrepancyKernel kernel = dimension.getDiscretizedKernel(100);
+		DiscretizedKernel kernel = dimension.getDiscretizedKernel(100);
 		assertEquals(3, kernel.stateCount());
 		assertEquals(0, kernel.state(0.1));
 		assertEquals(1, kernel.state(0.2));

@@ -10,7 +10,7 @@ import java.util.Random;
 import org.apache.commons.math3.random.SobolSequenceGenerator;
 import org.junit.Test;
 import org.opensha.commons.data.sampling.PointSet;
-import org.opensha.commons.data.sampling.scoring.ExactPointSetScorer;
+import org.opensha.commons.data.sampling.scoring.ProjectionDiscrepancyScorer;
 
 public class PointSetGeneratorTest {
 
@@ -139,7 +139,7 @@ public class PointSetGeneratorTest {
 	public void testLowDiscrepancyGeneratorsBeatFixedMonteCarloBaseline() {
 		int size = 256;
 		int dimensions = 4;
-		ExactPointSetScorer scorer = new ExactPointSetScorer();
+		ProjectionDiscrepancyScorer scorer = ProjectionDiscrepancyScorer.exact();
 		double monteCarlo = scorer.score(
 				new MonteCarloPointSetGenerator(new Random(234L)).generate(size, dimensions)).getNormalizedScore();
 		double lhs = scorer.score(

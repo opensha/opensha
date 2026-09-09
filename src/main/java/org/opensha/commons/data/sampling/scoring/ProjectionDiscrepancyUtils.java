@@ -6,13 +6,14 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import org.opensha.commons.data.sampling.PointSet;
+import org.opensha.commons.data.sampling.scoring.ProjectionDiscrepancyScore.ProjectionResult;
 
 /** Shared validation, projection enumeration, and result aggregation for scorer implementations. */
-final class PointSetScoringUtils {
+final class ProjectionDiscrepancyUtils {
 
 	private static final double NEGATIVE_ROUNDOFF_TOLERANCE = 1e-12;
 
-	private PointSetScoringUtils() {}
+	private ProjectionDiscrepancyUtils() {}
 
 	static void validatePointSet(PointSet pointSet) {
 		if (pointSet == null)
@@ -33,7 +34,7 @@ final class PointSetScoringUtils {
 		}
 	}
 
-	static List<PointSetProjection> resolveProjections(PointSet pointSet, PointSetScoringConfig config) {
+	static List<PointSetProjection> resolveProjections(PointSet pointSet, ProjectionDiscrepancyConfig config) {
 		if (config == null)
 			throw new NullPointerException("Scoring configuration cannot be null");
 		return config.resolveProjections(pointSet);
@@ -51,10 +52,10 @@ final class PointSetScoringUtils {
 						+ projection.dimension(i) + " but point set has " + dimensions + " dimensions");
 	}
 
-	static PointSetScore aggregate(List<ProjectionScore> scores, PointSetScoringConfig config) {
+	static ProjectionDiscrepancyScore aggregate(List<ProjectionResult> scores, ProjectionDiscrepancyConfig config) {
 		Map<Integer, Double> orderSums = new TreeMap<>();
 		Map<Integer, Integer> orderCounts = new TreeMap<>();
-		for (ProjectionScore score : scores) {
+		for (ProjectionResult score : scores) {
 			int order = score.getProjection().order();
 			orderSums.merge(order, score.getNormalizedScore(), Double::sum);
 			orderCounts.merge(order, 1, Integer::sum);
@@ -73,10 +74,10 @@ final class PointSetScoringUtils {
 		}
 		if (!(weightSum > 0d))
 			throw new IllegalArgumentException("At least one included projection order must have positive weight");
-		return new PointSetScore(scores, orderMeans, weightedSum/weightSum);
+		return new ProjectionDiscrepancyScore(scores, orderMeans, weightedSum/weightSum);
 	}
 
-	static ProjectionScore projectionScore(PointSetProjection projection, int numPoints,
+	static ProjectionResult projectionScore(PointSetProjection projection, int numPoints,
 			double targetGrandMean, double targetDiagonalMean, double targetSum, double pairSum) {
 		requireFinite(targetGrandMean, "product target grand mean", projection);
 		requireFinite(targetDiagonalMean, "product target diagonal mean", projection);
@@ -98,7 +99,7 @@ final class PointSetScoringUtils {
 		if (!Double.isFinite(expectedRandomScore) || expectedRandomScore <= 0d)
 			throw new IllegalStateException("Expected IID-random score must be finite and positive, have "
 					+ expectedRandomScore + " for projection " + projection);
-		return ProjectionScore.of(projection, rawScore, expectedRandomScore);
+		return ProjectionResult.of(projection, rawScore, expectedRandomScore);
 	}
 
 	static double requireFinite(double value, String quantity, PointSetProjection projection) {

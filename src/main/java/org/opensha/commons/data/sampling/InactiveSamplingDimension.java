@@ -1,7 +1,7 @@
 package org.opensha.commons.data.sampling;
 
 import org.opensha.commons.data.sampling.scoring.DiscrepancyKernel;
-import org.opensha.commons.data.sampling.scoring.DiscretizedDiscrepancyKernel;
+import org.opensha.commons.data.sampling.SamplingDimension.DiscretizedKernel;
 
 /**
  * Marker for a retained coordinate that does not affect the sampled result. Inactive dimensions keep stable external
@@ -24,7 +24,7 @@ public final class InactiveSamplingDimension implements SamplingDimension {
 	}
 
 	@Override
-	public DiscretizedDiscrepancyKernel getDiscretizedKernel(int preferredBins) {
+	public DiscretizedKernel getDiscretizedKernel(int preferredBins) {
 		return ContinuousSamplingDimension.INSTANCE.getDiscretizedKernel(preferredBins);
 	}
 	

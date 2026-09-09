@@ -1,7 +1,7 @@
 package org.opensha.commons.data.sampling.optimization;
 
 import org.opensha.commons.data.sampling.SwappablePointSet;
-import org.opensha.commons.data.sampling.scoring.PointSetScore;
+import org.opensha.commons.data.sampling.scoring.ProjectionDiscrepancyScore;
 
 /**
  * Stateful scoring session for transactional point-set swaps. A proposal must be either applied or discarded before
@@ -15,7 +15,7 @@ public interface IncrementalPointSetScorer {
 	double getCurrentNormalizedScore();
 
 	/** @return detailed immutable snapshot of the current projection scores */
-	PointSetScore getCurrentScore();
+	ProjectionDiscrepancyScore getCurrentScore();
 
 	/**
 	 * Evaluates a grouped swap without changing the point set or committed scorer state.
@@ -33,5 +33,5 @@ public interface IncrementalPointSetScorer {
 	boolean hasPendingSwap();
 
 	/** Rebuilds retained scoring caches from the current committed state. */
-	PointSetScore recalculate();
+	ProjectionDiscrepancyScore recalculate();
 }

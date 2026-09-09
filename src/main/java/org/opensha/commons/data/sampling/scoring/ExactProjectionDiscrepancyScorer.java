@@ -8,8 +8,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.opensha.commons.data.sampling.CategoricalSamplingDimension;
 import org.opensha.commons.data.sampling.PointSet;
-import org.opensha.commons.data.sampling.scoring.ExactPointSetData.PreparedDimension;
+import org.opensha.commons.data.sampling.SamplingDimension;
+import org.opensha.commons.data.sampling.scoring.ExactProjectionDiscrepancyScorer.ExactScoringData.PreparedDimension;
+import org.opensha.commons.data.sampling.scoring.ProjectionDiscrepancyScore.ProjectionResult;
 
 /**
  * Optimized exact product-kernel discrepancy scorer. It visits each point pair once, evaluates each needed
@@ -19,65 +22,65 @@ import org.opensha.commons.data.sampling.scoring.ExactPointSetData.PreparedDimen
  * This implementation remains unquantized and deterministic. Its dominant continuous-projection cost is
  * {@code O(N^2*(d+P))}, where {@code d} is the number of used dimensions and {@code P} the number of prepared
  * projection-tree nodes. It uses {@code O(T*P)} accumulator memory for {@code T} workers and does not materialize
- * point-pair matrices. See {@link ReferenceExactPointSetScorer} for the direct formula-oriented implementation.
+ * point-pair matrices. A direct formula-oriented implementation is retained in the test suite as a correctness oracle.
  */
-public final class ExactPointSetScorer implements PointSetScorer {
+final class ExactProjectionDiscrepancyScorer implements ProjectionDiscrepancyScorer {
 
 	private final int parallelism;
 
 	/** Builds a serial exact scorer. */
-	public ExactPointSetScorer() {
+	ExactProjectionDiscrepancyScorer() {
 		this(1);
 	}
 
 	/** @param parallelism maximum number of point-pair ranges processed concurrently */
-	public ExactPointSetScorer(int parallelism) {
+	ExactProjectionDiscrepancyScorer(int parallelism) {
 		if (parallelism < 1)
 			throw new IllegalArgumentException("Parallelism must be positive, have " + parallelism);
 		this.parallelism = parallelism;
 	}
 
-	public int getParallelism() {
+	int getParallelism() {
 		return parallelism;
 	}
 
 	@Override
-	public PointSetScore score(PointSet pointSet, PointSetScoringConfig config) {
-		PointSetScoringUtils.validatePointSet(pointSet);
-		List<PointSetProjection> projections = PointSetScoringUtils.resolveProjections(pointSet, config);
-		List<ProjectionScore> scores = scorePrepared(ExactPointSetData.build(pointSet), projections);
-		return PointSetScoringUtils.aggregate(scores, config);
+	public ProjectionDiscrepancyScore score(PointSet pointSet, ProjectionDiscrepancyConfig config) {
+		ProjectionDiscrepancyUtils.validatePointSet(pointSet);
+		List<PointSetProjection> projections = ProjectionDiscrepancyUtils.resolveProjections(pointSet, config);
+		List<ProjectionResult> scores = scorePrepared(ExactScoringData.build(pointSet), projections);
+		return ProjectionDiscrepancyUtils.aggregate(scores, config);
 	}
 
 	/** Scores one projection directly, primarily for diagnostics and verification. */
-	public ProjectionScore scoreProjection(PointSet pointSet, PointSetProjection projection) {
+	public ProjectionResult scoreProjection(PointSet pointSet, PointSetProjection projection) {
 		if (pointSet == null)
 			throw new NullPointerException("Point set cannot be null");
 		if (projection == null)
 			throw new NullPointerException("Projection cannot be null");
-		PointSetScoringUtils.validatePointSet(pointSet);
-		PointSetScoringUtils.resolveProjections(pointSet,
-				PointSetScoringConfig.builder().projections(projection).build());
-		return scorePrepared(ExactPointSetData.build(pointSet), List.of(projection)).get(0);
+		ProjectionDiscrepancyUtils.validatePointSet(pointSet);
+		ProjectionDiscrepancyUtils.resolveProjections(pointSet,
+				ProjectionDiscrepancyConfig.builder().projections(projection).build());
+		return scorePrepared(ExactScoringData.build(pointSet), List.of(projection)).get(0);
 	}
 
-	private List<ProjectionScore> scorePrepared(ExactPointSetData prepared,
+	private List<ProjectionResult> scorePrepared(ExactScoringData prepared,
 			List<PointSetProjection> projections) {
 		ProjectionPlan plan = ProjectionPlan.build(prepared, projections);
 		double[] pairSums = calculatePairSums(prepared, plan);
 
-		List<ProjectionScore> scores = new ArrayList<>(projections.size());
+		List<ProjectionResult> scores = new ArrayList<>(projections.size());
 		for (int i=0; i<plan.projections.length; i++) {
 			PreparedProjection projection = plan.projections[i];
 			if (projection.pureCategorical)
 				pairSums[i] = categoricalPairSum(projection.dimensions, prepared.numPoints);
-			scores.add(PointSetScoringUtils.projectionScore(projection.projection, prepared.numPoints,
+			scores.add(ProjectionDiscrepancyUtils.projectionScore(projection.projection, prepared.numPoints,
 					projection.targetGrandMean, projection.targetDiagonalMean, projection.targetSum, pairSums[i]));
 		}
 		return scores;
 	}
 
-	private double[] calculatePairSums(ExactPointSetData prepared, ProjectionPlan plan) {
+	private double[] calculatePairSums(ExactScoringData prepared, ProjectionPlan plan) {
 		if (plan.nodeDimensions.length == 0)
 			return new double[plan.projections.length];
 		int workers = Math.min(parallelism, prepared.numPoints);
@@ -119,7 +122,7 @@ public final class ExactPointSetScorer implements PointSetScorer {
 	}
 
 	private static final class PairAccumulator {
-		private final ExactPointSetData prepared;
+		private final ExactScoringData prepared;
 		private final ProjectionPlan plan;
 		private final double[] dimensionValues;
 		private final int[] dimensionValueStamps;
@@ -127,7 +130,7 @@ public final class ExactPointSetScorer implements PointSetScorer {
 		private final double[] pairSums;
 		private int stamp;
 
-		PairAccumulator(ExactPointSetData prepared, ProjectionPlan plan) {
+		PairAccumulator(ExactScoringData prepared, ProjectionPlan plan) {
 			this.prepared = prepared;
 			this.plan = plan;
 			this.dimensionValues = new double[prepared.dimensions.length];
@@ -188,7 +191,7 @@ public final class ExactPointSetScorer implements PointSetScorer {
 			this.nodeProjectionIndexes = nodeProjectionIndexes;
 		}
 
-		static ProjectionPlan build(ExactPointSetData prepared, List<PointSetProjection> projections) {
+		static ProjectionPlan build(ExactScoringData prepared, List<PointSetProjection> projections) {
 			PreparedProjection[] preparedProjections = new PreparedProjection[projections.size()];
 			MutableNode root = MutableNode.root();
 			List<MutableNode> nodes = new ArrayList<>();
@@ -270,7 +273,7 @@ public final class ExactPointSetScorer implements PointSetScorer {
 			this.targetSum = targetSum;
 		}
 
-		static PreparedProjection build(ExactPointSetData prepared, PointSetProjection projection) {
+		static PreparedProjection build(ExactScoringData prepared, PointSetProjection projection) {
 			PreparedDimension[] dimensions = new PreparedDimension[projection.order()];
 			int[] dimensionIndexes = new int[projection.order()];
 			boolean pureCategorical = true;
@@ -338,5 +341,92 @@ public final class ExactPointSetScorer implements PointSetScorer {
 			}
 		}
 		return pairSum;
+	}
+
+	/** Coordinates and exact kernel quantities prepared once before any quadratic projection scoring. */
+	static final class ExactScoringData {
+
+		final int numPoints;
+		final PreparedDimension[] dimensions;
+
+		private ExactScoringData(int numPoints, PreparedDimension[] dimensions) {
+			this.numPoints = numPoints;
+			this.dimensions = dimensions;
+		}
+
+		static ExactScoringData build(PointSet pointSet) {
+			PreparedDimension[] dimensions = new PreparedDimension[pointSet.dimensions()];
+			for (int d=0; d<dimensions.length; d++) {
+				SamplingDimension dimension = pointSet.getDimension(d);
+				if (!dimension.isActive())
+					continue;
+				DiscrepancyKernel kernel = dimension.getDiscrepancyKernel();
+				if (kernel == null)
+					throw new NullPointerException("Discrepancy kernel for dimension " + d + " is null");
+				double[] values = new double[pointSet.size()];
+				double[] targetMeans = new double[pointSet.size()];
+				double[] diagonalValues = new double[pointSet.size()];
+				int[] categoricalStates = dimension instanceof CategoricalSamplingDimension
+						? new int[pointSet.size()] : null;
+				for (int p=0; p<pointSet.size(); p++) {
+					double value = pointSet.get(p, d);
+					values[p] = value;
+					if (categoricalStates == null) {
+						targetMeans[p] = requireFinite(kernel.targetMean(value), "target mean", d, p);
+						diagonalValues[p] = requireFinite(kernel.value(value, value),
+								"diagonal kernel value", d, p);
+					} else {
+						CategoricalSamplingDimension categorical = (CategoricalSamplingDimension)dimension;
+						int state = categorical.categoryIndex(value);
+						categoricalStates[p] = state;
+						targetMeans[p] = categorical.categoryProbability(state);
+						diagonalValues[p] = 1d;
+					}
+				}
+				dimensions[d] = new PreparedDimension(kernel, values, targetMeans, diagonalValues,
+						categoricalStates, categoricalStates == null ? 0
+								: ((CategoricalSamplingDimension)dimension).categoryCount(),
+						requireFinite(kernel.targetGrandMean(), "target grand mean", d, -1),
+						requireFinite(kernel.targetDiagonalMean(), "target diagonal mean", d, -1));
+			}
+			return new ExactScoringData(pointSet.size(), dimensions);
+		}
+
+		private static double requireFinite(double value, String quantity, int dimension, int point) {
+			if (!Double.isFinite(value))
+				throw new IllegalStateException("Non-finite " + quantity + " for dimension " + dimension
+						+ (point < 0 ? "" : ", point " + point) + ": " + value);
+			return value;
+		}
+
+		static final class PreparedDimension {
+			final DiscrepancyKernel kernel;
+			final double[] values;
+			final double[] targetMeans;
+			final double[] diagonalValues;
+			final int[] categoricalStates;
+			final int categoricalStateCount;
+			final double targetGrandMean;
+			final double targetDiagonalMean;
+
+			PreparedDimension(DiscrepancyKernel kernel, double[] values, double[] targetMeans,
+					double[] diagonalValues, int[] categoricalStates, int categoricalStateCount,
+					double targetGrandMean, double targetDiagonalMean) {
+				this.kernel = kernel;
+				this.values = values;
+				this.targetMeans = targetMeans;
+				this.diagonalValues = diagonalValues;
+				this.categoricalStates = categoricalStates;
+				this.categoricalStateCount = categoricalStateCount;
+				this.targetGrandMean = targetGrandMean;
+				this.targetDiagonalMean = targetDiagonalMean;
+			}
+
+			double pairValue(int point1, int point2) {
+				if (categoricalStates != null)
+					return categoricalStates[point1] == categoricalStates[point2] ? 1d : 0d;
+				return kernel.value(values[point1], values[point2]);
+			}
+		}
 	}
 }

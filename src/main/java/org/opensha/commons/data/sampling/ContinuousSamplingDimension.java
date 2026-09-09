@@ -1,7 +1,7 @@
 package org.opensha.commons.data.sampling;
 
 import org.opensha.commons.data.sampling.scoring.DiscrepancyKernel;
-import org.opensha.commons.data.sampling.scoring.DiscretizedDiscrepancyKernel;
+import org.opensha.commons.data.sampling.SamplingDimension.DiscretizedKernel;
 
 /**
  * Standard continuous unit-interval dimension.
@@ -48,7 +48,7 @@ public final class ContinuousSamplingDimension implements SamplingDimension {
 	}
 
 	@Override
-	public DiscretizedDiscrepancyKernel getDiscretizedKernel(int preferredBins) {
+	public DiscretizedKernel getDiscretizedKernel(int preferredBins) {
 		if (preferredBins < 2)
 			throw new IllegalArgumentException("Continuous discretization requires at least 2 bins, have " + preferredBins);
 		return new ContinuousDiscretizedKernel(preferredBins);
@@ -59,7 +59,7 @@ public final class ContinuousSamplingDimension implements SamplingDimension {
 		return "ContinuousSamplingDimension";
 	}
 
-	private static final class ContinuousDiscretizedKernel implements DiscretizedDiscrepancyKernel {
+	private static final class ContinuousDiscretizedKernel implements DiscretizedKernel {
 		private final int bins;
 		private final double[] representatives;
 		private final double[][] values;

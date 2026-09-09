@@ -12,15 +12,15 @@ import java.util.Set;
 import org.opensha.commons.data.sampling.PointSet;
 
 /**
- * Projection selection and per-order aggregation weights for {@link PointSetScorer}.
+ * Projection selection and per-order aggregation weights for {@link ProjectionDiscrepancyScorer}.
  */
-public final class PointSetScoringConfig {
+public final class ProjectionDiscrepancyConfig {
 
 	private final int maxOrder;
 	private final List<PointSetProjection> projections;
 	private final Map<Integer, Double> orderWeights;
 
-	private PointSetScoringConfig(int maxOrder, List<PointSetProjection> projections,
+	private ProjectionDiscrepancyConfig(int maxOrder, List<PointSetProjection> projections,
 			Map<Integer, Double> orderWeights) {
 		this.maxOrder = maxOrder;
 		this.projections = projections;
@@ -33,7 +33,7 @@ public final class PointSetScoringConfig {
 	}
 
 	/** @return default configuration scoring all 1D and 2D projections */
-	public static PointSetScoringConfig defaults() {
+	public static ProjectionDiscrepancyConfig defaults() {
 		return builder().build();
 	}
 
@@ -64,7 +64,7 @@ public final class PointSetScoringConfig {
 			throw new IllegalArgumentException("Point-set dimensionality must be positive, have " + dimensions);
 		if (hasExplicitProjections()) {
 			for (PointSetProjection projection : projections)
-				PointSetScoringUtils.validateProjection(projection, dimensions);
+				ProjectionDiscrepancyUtils.validateProjection(projection, dimensions);
 			return projections;
 		}
 		List<PointSetProjection> resolved = new ArrayList<>();
@@ -79,7 +79,7 @@ public final class PointSetScoringConfig {
 			throw new NullPointerException("Point set cannot be null");
 		if (hasExplicitProjections()) {
 			for (PointSetProjection projection : projections) {
-				PointSetScoringUtils.validateProjection(projection, pointSet.dimensions());
+				ProjectionDiscrepancyUtils.validateProjection(projection, pointSet.dimensions());
 				for (int i=0; i<projection.order(); i++) {
 					int dimension = projection.dimension(i);
 					if (!pointSet.getDimension(dimension).isActive())
@@ -173,10 +173,10 @@ public final class PointSetScoringConfig {
 			return this;
 		}
 
-		public PointSetScoringConfig build() {
+		public ProjectionDiscrepancyConfig build() {
 			List<PointSetProjection> projectionCopy = projections.isEmpty() ? Collections.emptyList()
 					: Collections.unmodifiableList(new ArrayList<>(projections));
-			return new PointSetScoringConfig(maxOrder, projectionCopy,
+			return new ProjectionDiscrepancyConfig(maxOrder, projectionCopy,
 					Collections.unmodifiableMap(new HashMap<>(orderWeights)));
 		}
 	}

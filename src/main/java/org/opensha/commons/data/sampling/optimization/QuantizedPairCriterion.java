@@ -2,9 +2,9 @@ package org.opensha.commons.data.sampling.optimization;
 
 import java.util.Arrays;
 
-import org.opensha.commons.data.sampling.scoring.DiscretizedDiscrepancyKernel;
+import org.opensha.commons.data.sampling.SamplingDimension.DiscretizedKernel;
 import org.opensha.commons.data.sampling.scoring.PointSetProjection;
-import org.opensha.commons.data.sampling.scoring.ProjectionScore;
+import org.opensha.commons.data.sampling.scoring.ProjectionDiscrepancyScore.ProjectionResult;
 
 /**
  * Retained state and exact swap deltas for one quantized two-dimensional projection. The {@link #counts} table is a
@@ -21,8 +21,8 @@ final class QuantizedPairCriterion implements ProjectionScoreState {
 	final int leftDimension;
 	final int rightDimension;
 	final int numPoints;
-	final DiscretizedDiscrepancyKernel leftKernel;
-	final DiscretizedDiscrepancyKernel rightKernel;
+	final DiscretizedKernel leftKernel;
+	final DiscretizedKernel rightKernel;
 	final int[][] states;
 	final int[][] counts;
 	// For each possible left state and occupied right state, this is its kernel similarity to all current left states.
@@ -42,7 +42,7 @@ final class QuantizedPairCriterion implements ProjectionScoreState {
 	private double pendingRawDelta;
 	private boolean pending;
 
-	QuantizedPairCriterion(PointSetProjection projection, DiscretizedDiscrepancyKernel[] kernels,
+	QuantizedPairCriterion(PointSetProjection projection, DiscretizedKernel[] kernels,
 			int[][] states, int numPoints) {
 		if (projection.order() != 2)
 			throw new IllegalArgumentException("Pair criterion requires an order-2 projection, have " + projection);
@@ -175,11 +175,11 @@ final class QuantizedPairCriterion implements ProjectionScoreState {
 	}
 
 	@Override
-	public ProjectionScore score() {
+	public ProjectionResult score() {
 		double snapshotRaw = rawScore;
 		if (snapshotRaw < 0d && snapshotRaw >= -NEGATIVE_TOLERANCE)
 			snapshotRaw = 0d;
-		return ProjectionScore.of(projection, snapshotRaw, expectedRandomScore);
+		return ProjectionResult.of(projection, snapshotRaw, expectedRandomScore);
 	}
 
 	private void addChange(int row, int column, int delta) {

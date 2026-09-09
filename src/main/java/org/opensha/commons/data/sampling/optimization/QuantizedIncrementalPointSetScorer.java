@@ -7,11 +7,11 @@ import java.util.Map;
 
 import org.opensha.commons.data.sampling.DimensionSwapGroup;
 import org.opensha.commons.data.sampling.SwappablePointSet;
-import org.opensha.commons.data.sampling.scoring.DiscretizedDiscrepancyKernel;
+import org.opensha.commons.data.sampling.SamplingDimension.DiscretizedKernel;
 import org.opensha.commons.data.sampling.scoring.PointSetProjection;
-import org.opensha.commons.data.sampling.scoring.PointSetScore;
-import org.opensha.commons.data.sampling.scoring.PointSetScoringConfig;
-import org.opensha.commons.data.sampling.scoring.ProjectionScore;
+import org.opensha.commons.data.sampling.scoring.ProjectionDiscrepancyScore;
+import org.opensha.commons.data.sampling.scoring.ProjectionDiscrepancyConfig;
+import org.opensha.commons.data.sampling.scoring.ProjectionDiscrepancyScore.ProjectionResult;
 
 /**
  * Incremental quantized scorer for point-set configurations containing only one- and two-dimensional projections.
@@ -23,9 +23,9 @@ public final class QuantizedIncrementalPointSetScorer implements IncrementalPoin
 	private static final double SCORE_TOLERANCE = 1e-10;
 
 	private final SwappablePointSet pointSet;
-	private final PointSetScoringConfig config;
+	private final ProjectionDiscrepancyConfig config;
 	private final List<PointSetProjection> projections;
-	private final DiscretizedDiscrepancyKernel[] kernels;
+	private final DiscretizedKernel[] kernels;
 	private final int[][] states;
 	private final int[] dimensionGroups;
 	private final List<ProjectionScoreState> projectionStates;
@@ -42,11 +42,11 @@ public final class QuantizedIncrementalPointSetScorer implements IncrementalPoin
 	private double pendingNormalizedDelta;
 
 	public QuantizedIncrementalPointSetScorer(SwappablePointSet pointSet, int continuousBins) {
-		this(pointSet, continuousBins, PointSetScoringConfig.defaults());
+		this(pointSet, continuousBins, ProjectionDiscrepancyConfig.defaults());
 	}
 
 	public QuantizedIncrementalPointSetScorer(SwappablePointSet pointSet, int continuousBins,
-			PointSetScoringConfig config) {
+			ProjectionDiscrepancyConfig config) {
 		if (pointSet == null)
 			throw new NullPointerException("Point set cannot be null");
 		if (config == null)
@@ -64,7 +64,7 @@ public final class QuantizedIncrementalPointSetScorer implements IncrementalPoin
 						+ projection);
 
 		this.dimensionGroups = buildDimensionGroups(pointSet);
-		this.kernels = new DiscretizedDiscrepancyKernel[pointSet.dimensions()];
+		this.kernels = new DiscretizedKernel[pointSet.dimensions()];
 		this.states = new int[pointSet.dimensions()][pointSet.size()];
 		prepareStates(continuousBins);
 		this.criteriaByGroup = new ArrayList<>(pointSet.swapGroupCount());
@@ -98,10 +98,10 @@ public final class QuantizedIncrementalPointSetScorer implements IncrementalPoin
 	}
 
 	@Override
-	public PointSetScore getCurrentScore() {
+	public ProjectionDiscrepancyScore getCurrentScore() {
 		checkSynchronized();
-		List<ProjectionScore> scores = snapshotProjectionScores();
-		PointSetScore score = PointSetScore.aggregate(scores, config);
+		List<ProjectionResult> scores = snapshotProjectionScores();
+		ProjectionDiscrepancyScore score = ProjectionDiscrepancyScore.aggregate(scores, config);
 		if (Math.abs(score.getNormalizedScore()-currentNormalizedScore) > SCORE_TOLERANCE)
 			throw new IllegalStateException("Incremental aggregate drift: cached=" + currentNormalizedScore
 					+ ", rebuilt=" + score.getNormalizedScore());
@@ -167,7 +167,7 @@ public final class QuantizedIncrementalPointSetScorer implements IncrementalPoin
 	}
 
 	@Override
-	public PointSetScore recalculate() {
+	public ProjectionDiscrepancyScore recalculate() {
 		checkSynchronized();
 		if (pending)
 			throw new IllegalStateException("Cannot recalculate while a swap proposal is pending");
@@ -211,7 +211,7 @@ public final class QuantizedIncrementalPointSetScorer implements IncrementalPoin
 			int group2 = dimensionGroups[projection.dimension(1)];
 			// Moving both coordinates together only reorders the existing 2D points, so this projection cannot change.
 			if (group1 == group2) {
-				ProjectionScore fixedScore = criterion.score();
+				ProjectionResult fixedScore = criterion.score();
 				projectionStates.add(() -> fixedScore);
 			} else {
 				projectionStates.add(criterion);
@@ -225,7 +225,7 @@ public final class QuantizedIncrementalPointSetScorer implements IncrementalPoin
 
 	private ProjectionScoreState fixedOneDimensionalScore(PointSetProjection projection) {
 		int dimension = projection.dimension(0);
-		DiscretizedDiscrepancyKernel kernel = kernels[dimension];
+		DiscretizedKernel kernel = kernels[dimension];
 		int[] counts = new int[kernel.stateCount()];
 		for (int state : states[dimension])
 			counts[state]++;
@@ -241,14 +241,14 @@ public final class QuantizedIncrementalPointSetScorer implements IncrementalPoin
 		if (rawScore < 0d && rawScore > -1e-11)
 			rawScore = 0d;
 		double expected = (kernel.targetDiagonalMean()-kernel.targetGrandMean())/pointSet.size();
-		ProjectionScore fixedScore = ProjectionScore.of(projection, rawScore, expected);
+		ProjectionResult fixedScore = ProjectionResult.of(projection, rawScore, expected);
 		return () -> fixedScore;
 	}
 
 	private double calculateAggregateFromStates() {
 		double score = 0d;
 		for (ProjectionScoreState state : projectionStates) {
-			ProjectionScore projection = state.score();
+			ProjectionResult projection = state.score();
 			score += aggregateCoefficient(projection.getProjection().order(), projection.getExpectedRandomScore())
 					*projection.getRawScore();
 		}
@@ -260,8 +260,8 @@ public final class QuantizedIncrementalPointSetScorer implements IncrementalPoin
 				*expectedRandomScore);
 	}
 
-	private List<ProjectionScore> snapshotProjectionScores() {
-		List<ProjectionScore> scores = new ArrayList<>(projectionStates.size());
+	private List<ProjectionResult> snapshotProjectionScores() {
+		List<ProjectionResult> scores = new ArrayList<>(projectionStates.size());
 		for (ProjectionScoreState state : projectionStates)
 			scores.add(state.score());
 		return scores;

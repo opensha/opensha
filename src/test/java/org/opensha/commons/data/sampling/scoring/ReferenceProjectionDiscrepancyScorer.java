@@ -4,42 +4,44 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.opensha.commons.data.sampling.PointSet;
-import org.opensha.commons.data.sampling.scoring.ExactPointSetData.PreparedDimension;
+import org.opensha.commons.data.sampling.scoring.ExactProjectionDiscrepancyScorer.ExactScoringData;
+import org.opensha.commons.data.sampling.scoring.ExactProjectionDiscrepancyScorer.ExactScoringData.PreparedDimension;
+import org.opensha.commons.data.sampling.scoring.ProjectionDiscrepancyScore.ProjectionResult;
 
 /**
  * Straightforward exact scorer retained as a readable statement of the product-kernel discrepancy calculation and as
  * a correctness reference for optimized implementations. It follows the formula directly, without quantization,
  * symmetry reduction, categorical shortcuts, shared projection products, or parallelism.
  * <p>
- * Its cost for {@code P} projections of order {@code k} is {@code O(P*N^2*k)}. Use {@link ExactPointSetScorer} for
+ * Its cost for {@code P} projections of order {@code k} is {@code O(P*N^2*k)}. Use {@link ExactProjectionDiscrepancyScorer} for
  * production scoring of nontrivial point sets.
  */
-public final class ReferenceExactPointSetScorer implements PointSetScorer {
+final class ReferenceProjectionDiscrepancyScorer implements ProjectionDiscrepancyScorer {
 
 	@Override
-	public PointSetScore score(PointSet pointSet, PointSetScoringConfig config) {
-		PointSetScoringUtils.validatePointSet(pointSet);
-		List<PointSetProjection> projections = PointSetScoringUtils.resolveProjections(pointSet, config);
-		ExactPointSetData prepared = ExactPointSetData.build(pointSet);
-		List<ProjectionScore> scores = new ArrayList<>(projections.size());
+	public ProjectionDiscrepancyScore score(PointSet pointSet, ProjectionDiscrepancyConfig config) {
+		ProjectionDiscrepancyUtils.validatePointSet(pointSet);
+		List<PointSetProjection> projections = ProjectionDiscrepancyUtils.resolveProjections(pointSet, config);
+		ExactScoringData prepared = ExactScoringData.build(pointSet);
+		List<ProjectionResult> scores = new ArrayList<>(projections.size());
 		for (PointSetProjection projection : projections)
 			scores.add(scoreProjection(prepared, projection));
-		return PointSetScoringUtils.aggregate(scores, config);
+		return ProjectionDiscrepancyUtils.aggregate(scores, config);
 	}
 
 	/** Scores one projection using the direct reference calculation. */
-	public ProjectionScore scoreProjection(PointSet pointSet, PointSetProjection projection) {
+	public ProjectionResult scoreProjection(PointSet pointSet, PointSetProjection projection) {
 		if (pointSet == null)
 			throw new NullPointerException("Point set cannot be null");
 		if (projection == null)
 			throw new NullPointerException("Projection cannot be null");
-		PointSetScoringUtils.validatePointSet(pointSet);
-		PointSetScoringUtils.resolveProjections(pointSet,
-				PointSetScoringConfig.builder().projections(projection).build());
-		return scoreProjection(ExactPointSetData.build(pointSet), projection);
+		ProjectionDiscrepancyUtils.validatePointSet(pointSet);
+		ProjectionDiscrepancyUtils.resolveProjections(pointSet,
+				ProjectionDiscrepancyConfig.builder().projections(projection).build());
+		return scoreProjection(ExactScoringData.build(pointSet), projection);
 	}
 
-	private static ProjectionScore scoreProjection(ExactPointSetData prepared, PointSetProjection projection) {
+	private static ProjectionResult scoreProjection(ExactScoringData prepared, PointSetProjection projection) {
 		PreparedDimension[] dimensions = new PreparedDimension[projection.order()];
 		double targetGrandMean = 1d;
 		double targetDiagonalMean = 1d;
@@ -67,7 +69,7 @@ public final class ReferenceExactPointSetScorer implements PointSetScorer {
 			}
 		}
 
-		return PointSetScoringUtils.projectionScore(projection, prepared.numPoints, targetGrandMean,
+		return ProjectionDiscrepancyUtils.projectionScore(projection, prepared.numPoints, targetGrandMean,
 				targetDiagonalMean, targetSum, pairSum);
 	}
 }

@@ -1,5 +1,7 @@
 package org.opensha.commons.data.sampling.scoring;
 
+import org.opensha.commons.data.sampling.scoring.ProjectionDiscrepancyScore.ProjectionResult;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -17,16 +19,17 @@ import org.opensha.commons.data.sampling.DimensionedPointSet;
 import org.opensha.commons.data.sampling.InactiveSamplingDimension;
 import org.opensha.commons.data.sampling.PointSet;
 import org.opensha.commons.data.sampling.SamplingDimension;
+import org.opensha.commons.data.sampling.SamplingDimension.DiscretizedKernel;
 
-public class PointSetScorerTest {
+public class ProjectionDiscrepancyScorerTest {
 
 	private static final double TOL = 1e-12;
-	private final ExactPointSetScorer scorer = new ExactPointSetScorer();
+	private final ExactProjectionDiscrepancyScorer scorer = new ExactProjectionDiscrepancyScorer();
 
 	@Test
 	public void testKnownContinuousOneDimensionalScore() {
 		PointSet points = new ArrayPointSet(new double[][] { { 0.25 }, { 0.75 } });
-		ProjectionScore score = scorer.scoreProjection(points, new PointSetProjection(0));
+		ProjectionResult score = scorer.scoreProjection(points, new PointSetProjection(0));
 		assertEquals(1d/48d, score.getRawScore(), TOL);
 		assertEquals(1d/12d, score.getExpectedRandomScore(), TOL);
 		assertEquals(0.25, score.getNormalizedScore(), TOL);
@@ -37,17 +40,17 @@ public class PointSetScorerTest {
 		PointSet activeOnly = new ArrayPointSet(new double[][] { { 0.2 }, { 0.7 } });
 		PointSet withInactive = decorate(new ArrayPointSet(new double[][] { { 0.9, 0.2 }, { 0.1, 0.7 } }),
 				InactiveSamplingDimension.INSTANCE, ContinuousSamplingDimension.INSTANCE);
-		PointSetScore expected = scorer.score(activeOnly);
-		PointSetScore actual = scorer.score(withInactive);
+		ProjectionDiscrepancyScore expected = scorer.score(activeOnly);
+		ProjectionDiscrepancyScore actual = scorer.score(withInactive);
 		assertEquals(expected.getNormalizedScore(), actual.getNormalizedScore(), TOL);
-		assertEquals(new PointSetProjection(1), actual.getProjectionScores().get(0).getProjection());
+		assertEquals(new PointSetProjection(1), actual.getProjectionResults().get(0).getProjection());
 	}
 
 	@Test(expected=IllegalArgumentException.class)
 	public void testExplicitInactiveProjectionRejected() {
 		PointSet points = decorate(new ArrayPointSet(new double[][] { { 0.2, 0.3 } }),
 				InactiveSamplingDimension.INSTANCE, ContinuousSamplingDimension.INSTANCE);
-		scorer.score(points, PointSetScoringConfig.builder().projections(new PointSetProjection(0)).build());
+		scorer.score(points, ProjectionDiscrepancyConfig.builder().projections(new PointSetProjection(0)).build());
 	}
 
 	@Test(expected=IllegalArgumentException.class)
@@ -60,7 +63,7 @@ public class PointSetScorerTest {
 	@Test
 	public void testKnownContinuousTwoDimensionalScore() {
 		PointSet points = new ArrayPointSet(new double[][] { { 0.5, 0.5 } });
-		ProjectionScore score = scorer.scoreProjection(points, new PointSetProjection(0, 1));
+		ProjectionResult score = scorer.scoreProjection(points, new PointSetProjection(0, 1));
 		assertEquals(23d/288d, score.getRawScore(), TOL);
 		assertEquals(5d/36d, score.getExpectedRandomScore(), TOL);
 		assertEquals(23d/40d, score.getNormalizedScore(), TOL);
@@ -72,7 +75,7 @@ public class PointSetScorerTest {
 		CategoricalSamplingDimension categorical =
 				CategoricalSamplingDimension.forWeights(0.2, 0.3, 0.5);
 		PointSet points = decorate(new ArrayPointSet(values), categorical);
-		ProjectionScore score = scorer.scoreProjection(points, new PointSetProjection(0));
+		ProjectionResult score = scorer.scoreProjection(points, new PointSetProjection(0));
 		double expectedRaw = square(0.2-0.2)+square(0.4-0.3)+square(0.4-0.5);
 		assertEquals(expectedRaw, score.getRawScore(), TOL);
 		assertEquals((1d-(square(0.2)+square(0.3)+square(0.5)))/values.length,
@@ -111,7 +114,7 @@ public class PointSetScorerTest {
 		};
 		SamplingDimension countingContinuous = new SamplingDimension() {
 			@Override public DiscrepancyKernel getDiscrepancyKernel() { return countingKernel; }
-			@Override public DiscretizedDiscrepancyKernel getDiscretizedKernel(int preferredBins) {
+			@Override public DiscretizedKernel getDiscretizedKernel(int preferredBins) {
 				return ContinuousSamplingDimension.INSTANCE.getDiscretizedKernel(preferredBins);
 			}
 		};
@@ -136,7 +139,7 @@ public class PointSetScorerTest {
 		PointSet points = decorate(new ArrayPointSet(values),
 				ContinuousSamplingDimension.INSTANCE, categorical, ContinuousSamplingDimension.INSTANCE);
 		PointSetProjection projection = new PointSetProjection(0, 1, 2);
-		ProjectionScore score = scorer.scoreProjection(points, projection);
+		ProjectionResult score = scorer.scoreProjection(points, projection);
 		assertEquals(bruteRawScore(points, projection), score.getRawScore(), TOL);
 	}
 
@@ -146,9 +149,9 @@ public class PointSetScorerTest {
 				{ 0.1, 0.2, 0.3, 0.4 },
 				{ 0.6, 0.7, 0.8, 0.9 }
 		};
-		PointSetScoringConfig config = PointSetScoringConfig.builder().maxOrder(3).build();
-		PointSetScore score = scorer.score(new ArrayPointSet(values), config);
-		assertEquals(14, score.getProjectionScores().size());
+		ProjectionDiscrepancyConfig config = ProjectionDiscrepancyConfig.builder().maxOrder(3).build();
+		ProjectionDiscrepancyScore score = scorer.score(new ArrayPointSet(values), config);
+		assertEquals(14, score.getProjectionResults().size());
 		assertEquals(3, score.getOrderMeanScores().size());
 		assertEquals(4, countOrder(score, 1));
 		assertEquals(6, countOrder(score, 2));
@@ -164,8 +167,8 @@ public class PointSetScorerTest {
 				{ 0.1, 0.2, 0.3, 0.4 },
 				{ 0.6, 0.7, 0.8, 0.9 }
 		};
-		PointSetScore score = scorer.score(new ArrayPointSet(values), 3);
-		assertEquals(14, score.getProjectionScores().size());
+		ProjectionDiscrepancyScore score = scorer.score(new ArrayPointSet(values), 3);
+		assertEquals(14, score.getProjectionResults().size());
 		assertEquals(3, score.getOrderMeanScores().size());
 	}
 
@@ -179,9 +182,9 @@ public class PointSetScorerTest {
 		PointSet points = decorate(new ArrayPointSet(values), ContinuousSamplingDimension.INSTANCE,
 				CategoricalSamplingDimension.forWeights(0.2, 0.3, 0.5), ContinuousSamplingDimension.INSTANCE,
 				CategoricalSamplingDimension.forWeights(0.65, 0.35), ContinuousSamplingDimension.INSTANCE);
-		PointSetScore serial = new ExactPointSetScorer().score(points, 3);
-		ExactPointSetScorer parallelScorer = new ExactPointSetScorer(4);
-		PointSetScore parallel = parallelScorer.score(points, 3);
+		ProjectionDiscrepancyScore serial = new ExactProjectionDiscrepancyScorer().score(points, 3);
+		ExactProjectionDiscrepancyScorer parallelScorer = new ExactProjectionDiscrepancyScorer(4);
+		ProjectionDiscrepancyScore parallel = parallelScorer.score(points, 3);
 		assertEquals(4, parallelScorer.getParallelism());
 		assertEquivalentScores(serial, parallel, TOL);
 		assertEquivalentScores(parallel, parallelScorer.score(points, 3), 0d);
@@ -201,24 +204,24 @@ public class PointSetScorerTest {
 				CategoricalSamplingDimension.forWeights(0.65, 0.35),
 				ContinuousSamplingDimension.INSTANCE,
 				CategoricalSamplingDimension.forWeights(0.1, 0.2, 0.3, 0.4));
-		PointSetScoringConfig automatic = PointSetScoringConfig.builder().maxOrder(4).build();
-		PointSetScoringConfig explicit = PointSetScoringConfig.builder().projections(
+		ProjectionDiscrepancyConfig automatic = ProjectionDiscrepancyConfig.builder().maxOrder(4).build();
+		ProjectionDiscrepancyConfig explicit = ProjectionDiscrepancyConfig.builder().projections(
 				new PointSetProjection(0),
 				new PointSetProjection(1, 3),
 				new PointSetProjection(0, 2, 4),
 				new PointSetProjection(0, 1, 3, 5),
 				new PointSetProjection(1, 2, 4, 5)).build();
-		PointSetScorer reference = new ReferenceExactPointSetScorer();
-		for (PointSetScoringConfig config : List.of(automatic, explicit)) {
-			PointSetScore expected = reference.score(points, config);
-			assertEquivalentScores(expected, new ExactPointSetScorer().score(points, config), TOL);
-			assertEquivalentScores(expected, new ExactPointSetScorer(4).score(points, config), TOL);
+		ProjectionDiscrepancyScorer reference = new ReferenceProjectionDiscrepancyScorer();
+		for (ProjectionDiscrepancyConfig config : List.of(automatic, explicit)) {
+			ProjectionDiscrepancyScore expected = reference.score(points, config);
+			assertEquivalentScores(expected, new ExactProjectionDiscrepancyScorer().score(points, config), TOL);
+			assertEquivalentScores(expected, new ExactProjectionDiscrepancyScorer(4).score(points, config), TOL);
 		}
 	}
 
 	@Test(expected=IllegalArgumentException.class)
 	public void testNonPositiveExactScorerParallelismRejected() {
-		new ExactPointSetScorer(0);
+		new ExactProjectionDiscrepancyScorer(0);
 	}
 
 	@Test(expected=IllegalArgumentException.class)
@@ -239,14 +242,14 @@ public class PointSetScorerTest {
 		PointSet points = new ArrayPointSet(new double[][] {
 				{ 0.1, 0.2, 0.3 }, { 0.4, 0.8, 0.6 }, { 0.9, 0.5, 0.7 }
 		});
-		PointSetScoringConfig config = PointSetScoringConfig.builder()
+		ProjectionDiscrepancyConfig config = ProjectionDiscrepancyConfig.builder()
 				.projections(new PointSetProjection(0), new PointSetProjection(0, 2))
 				.orderWeight(1, 2d).orderWeight(2, 1d).build();
-		PointSetScore score = scorer.score(points, config);
-		assertEquals(2, score.getProjectionScores().size());
+		ProjectionDiscrepancyScore score = scorer.score(points, config);
+		assertEquals(2, score.getProjectionResults().size());
 		assertEquals((2d*score.getOrderMeanScore(1)+score.getOrderMeanScore(2))/3d,
 				score.getNormalizedScore(), TOL);
-		assertEquals(String.format(Locale.US, "PointSetScore[normalizedScore=%.5f, orderMeans={1=%.5f, 2=%.5f}]",
+		assertEquals(String.format(Locale.US, "ProjectionDiscrepancyScore[normalizedScore=%.5f, orderMeans={1=%.5f, 2=%.5f}]",
 				score.getNormalizedScore(), score.getOrderMeanScore(1), score.getOrderMeanScore(2)), score.toString());
 	}
 
@@ -294,8 +297,8 @@ public class PointSetScorerTest {
 
 	@Test
 	public void testMaxOrderIsCappedByDimensions() {
-		PointSetScore score = scorer.score(new ArrayPointSet(new double[][] { { 0.25 }, { 0.75 } }));
-		assertEquals(1, score.getProjectionScores().size());
+		ProjectionDiscrepancyScore score = scorer.score(new ArrayPointSet(new double[][] { { 0.25 }, { 0.75 } }));
+		assertEquals(1, score.getProjectionResults().size());
 		assertEquals(1, score.getOrderMeanScores().size());
 		assertEquals(0.25, score.getNormalizedScore(), TOL);
 	}
@@ -332,7 +335,7 @@ public class PointSetScorerTest {
 	@Test
 	public void testQuantizedBalancedStatesHaveZeroScore() {
 		PointSet points = new ArrayPointSet(new double[][] { { 0.1 }, { 0.4 }, { 0.6 }, { 0.9 } });
-		ProjectionScore score = new QuantizedPointSetScorer(2)
+		ProjectionResult score = new QuantizedProjectionDiscrepancyScorer(2)
 				.scoreProjection(points, new PointSetProjection(0));
 		assertEquals(0d, score.getRawScore(), TOL);
 		assertEquals((0.5-0.375)/points.size(), score.getExpectedRandomScore(), TOL);
@@ -349,7 +352,7 @@ public class PointSetScorerTest {
 		PointSet points = decorate(new ArrayPointSet(values), ContinuousSamplingDimension.INSTANCE,
 				CategoricalSamplingDimension.forWeights(1d, 2d, 1d), ContinuousSamplingDimension.INSTANCE);
 		PointSetProjection projection = new PointSetProjection(0, 1, 2);
-		ProjectionScore score = new QuantizedPointSetScorer(4).scoreProjection(points, projection);
+		ProjectionResult score = new QuantizedProjectionDiscrepancyScorer(4).scoreProjection(points, projection);
 		assertEquals(bruteDiscretizedRawScore(points, projection, 4), score.getRawScore(), TOL);
 	}
 
@@ -359,9 +362,9 @@ public class PointSetScorerTest {
 		int realizations = 250;
 		Random random = new Random(72194L);
 		CategoricalSamplingDimension categorical = CategoricalSamplingDimension.forWeights(0.2, 0.3, 0.5);
-		PointSetScoringConfig config = PointSetScoringConfig.builder()
+		ProjectionDiscrepancyConfig config = ProjectionDiscrepancyConfig.builder()
 				.projections(new PointSetProjection(0, 1, 2)).build();
-		PointSetScorer scorer = new QuantizedPointSetScorer(8);
+		ProjectionDiscrepancyScorer scorer = new QuantizedProjectionDiscrepancyScorer(8);
 		double sum = 0d;
 		for (int r=0; r<realizations; r++) {
 			double[][] values = new double[samples][3];
@@ -409,10 +412,10 @@ public class PointSetScorerTest {
 	}
 
 	private static double bruteDiscretizedRawScore(PointSet points, PointSetProjection projection, int bins) {
-		List<DiscretizedDiscrepancyKernel> kernels = new ArrayList<>();
+		List<DiscretizedKernel> kernels = new ArrayList<>();
 		double grandMean = 1d;
 		for (int i=0; i<projection.order(); i++) {
-			DiscretizedDiscrepancyKernel kernel =
+			DiscretizedKernel kernel =
 					points.getDimension(projection.dimension(i)).getDiscretizedKernel(bins);
 			kernels.add(kernel);
 			grandMean *= kernel.targetGrandMean();
@@ -432,7 +435,7 @@ public class PointSetScorerTest {
 				double product = 1d;
 				for (int i=0; i<projection.order(); i++) {
 					int dimension = projection.dimension(i);
-					DiscretizedDiscrepancyKernel kernel = kernels.get(i);
+					DiscretizedKernel kernel = kernels.get(i);
 					product *= kernel.value(kernel.state(points.get(p1, dimension)),
 							kernel.state(points.get(p2, dimension)));
 				}
@@ -449,24 +452,24 @@ public class PointSetScorerTest {
 		return ret;
 	}
 
-	private static int countOrder(PointSetScore score, int order) {
+	private static int countOrder(ProjectionDiscrepancyScore score, int order) {
 		int count = 0;
-		for (ProjectionScore projection : score.getProjectionScores())
+		for (ProjectionResult projection : score.getProjectionResults())
 			if (projection.getProjection().order() == order)
 				count++;
 		return count;
 
 	}
 
-	private static void assertEquivalentScores(PointSetScore expected, PointSetScore actual, double tolerance) {
+	private static void assertEquivalentScores(ProjectionDiscrepancyScore expected, ProjectionDiscrepancyScore actual, double tolerance) {
 		assertEquals(expected.getNormalizedScore(), actual.getNormalizedScore(), tolerance);
 		assertEquals(expected.getOrderMeanScores().keySet(), actual.getOrderMeanScores().keySet());
 		for (int order : expected.getOrderMeanScores().keySet())
 			assertEquals(expected.getOrderMeanScore(order), actual.getOrderMeanScore(order), tolerance);
-		assertEquals(expected.getProjectionScores().size(), actual.getProjectionScores().size());
-		for (int i=0; i<expected.getProjectionScores().size(); i++) {
-			ProjectionScore expectedProjection = expected.getProjectionScores().get(i);
-			ProjectionScore actualProjection = actual.getProjectionScores().get(i);
+		assertEquals(expected.getProjectionResults().size(), actual.getProjectionResults().size());
+		for (int i=0; i<expected.getProjectionResults().size(); i++) {
+			ProjectionResult expectedProjection = expected.getProjectionResults().get(i);
+			ProjectionResult actualProjection = actual.getProjectionResults().get(i);
 			assertEquals(expectedProjection.getProjection(), actualProjection.getProjection());
 			assertEquals(expectedProjection.getRawScore(), actualProjection.getRawScore(), tolerance);
 			assertEquals(expectedProjection.getExpectedRandomScore(), actualProjection.getExpectedRandomScore(), 0d);

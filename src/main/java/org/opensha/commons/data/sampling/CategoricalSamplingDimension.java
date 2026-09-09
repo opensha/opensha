@@ -3,7 +3,7 @@ package org.opensha.commons.data.sampling;
 import java.util.Arrays;
 
 import org.opensha.commons.data.sampling.scoring.DiscrepancyKernel;
-import org.opensha.commons.data.sampling.scoring.DiscretizedDiscrepancyKernel;
+import org.opensha.commons.data.sampling.SamplingDimension.DiscretizedKernel;
 
 /**
  * A categorical interpretation of the unit interval. Categories occupy contiguous intervals in index order and are
@@ -43,7 +43,7 @@ public final class CategoricalSamplingDimension implements SamplingDimension {
 			return 1d;
 		}
 	};
-	private final DiscretizedDiscrepancyKernel discretizedKernel = new DiscretizedDiscrepancyKernel() {
+	private final DiscretizedKernel discretizedKernel = new DiscretizedKernel() {
 		@Override
 		public int stateCount() {
 			return categoryCount();
@@ -234,7 +234,7 @@ public final class CategoricalSamplingDimension implements SamplingDimension {
 	}
 
 	@Override
-	public DiscretizedDiscrepancyKernel getDiscretizedKernel(int preferredBins) {
+	public DiscretizedKernel getDiscretizedKernel(int preferredBins) {
 		if (preferredBins < 1)
 			throw new IllegalArgumentException("Preferred bin count must be positive, have " + preferredBins);
 		return discretizedKernel;

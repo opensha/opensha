@@ -26,7 +26,7 @@ public final class CenteredDiscrepancy {
 	 * @return squared centered discrepancy
 	 */
 	public static double score(PointSet pointSet) {
-		PointSetScoringUtils.validatePointSet(pointSet);
+		ProjectionDiscrepancyUtils.validatePointSet(pointSet);
 		int[] dimensions = new int[pointSet.dimensions()];
 		for (int d=0; d<dimensions.length; d++)
 			dimensions[d] = d;
@@ -41,8 +41,8 @@ public final class CenteredDiscrepancy {
 	 * @return squared centered discrepancy of the projected points
 	 */
 	public static double score(PointSet pointSet, PointSetProjection projection) {
-		PointSetScoringUtils.validatePointSet(pointSet);
-		PointSetScoringUtils.validateProjection(projection, pointSet.dimensions());
+		ProjectionDiscrepancyUtils.validatePointSet(pointSet);
+		ProjectionDiscrepancyUtils.validateProjection(projection, pointSet.dimensions());
 		return scoreValidated(pointSet, projection);
 	}
 
