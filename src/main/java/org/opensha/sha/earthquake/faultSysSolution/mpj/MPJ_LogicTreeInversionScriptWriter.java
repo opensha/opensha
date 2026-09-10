@@ -430,9 +430,11 @@ public class MPJ_LogicTreeInversionScriptWriter {
 		if (origNodes > 1 && nodes < 2)
 			nodes = 2;
 		int perInversionMins = inversion.resolvePerInversionMinutes();
-		int hazardMins = capWeek(Integer.max(60*10, 45*nodeRounds));
+		Integer defaultJobMins = hpc.jobTimeMinutes();
+		int inversionMins = defaultJobMins == null ? inversion.resolveInversionJobMinutes(nodeRounds) : defaultJobMins;
+		int hazardMins = defaultJobMins == null ? capWeek(Integer.max(60*10, 45*nodeRounds)) : defaultJobMins;
 		return new NodeCalcConfig(nodes, nodeRounds, numCalcs, perInversionMins,
-				inversion.resolveInversionJobMinutes(nodeRounds), hazardMins);
+				inversionMins, hazardMins);
 	}
 
 	private InversionConfigurationFactory instantiateFactory(

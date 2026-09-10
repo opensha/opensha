@@ -208,7 +208,9 @@ public class MPJ_BranchAveragedHazardScriptWriter {
 			this.solutionFileName = builder.solutionFileName;
 			this.linkFromDirectoryName = builder.linkFromDirectoryName;
 			this.backgroundOptions = List.copyOf(builder.backgroundOptions);
-			this.wallTimeMinutes = builder.wallTimeMinutes;
+			this.wallTimeMinutes = builder.wallTimeMinutes == null
+					? (builder.hpc.jobTimeMinutes() == null ? 600 : builder.hpc.jobTimeMinutes())
+					: builder.wallTimeMinutes;
 			this.noMFDs = builder.noMFDs;
 			this.supersamplingMode = builder.supersamplingMode == null
 					? (builder.hazard.supersample() ? SupersamplingMode.QUICK : SupersamplingMode.NONE)
@@ -307,7 +309,7 @@ public class MPJ_BranchAveragedHazardScriptWriter {
 			private String solutionFileName = "results_branch_averaged.zip";
 			private String linkFromDirectoryName;
 			private final List<IncludeBackgroundOption> backgroundOptions = new ArrayList<>();
-			private int wallTimeMinutes = 600;
+			private Integer wallTimeMinutes;
 			private boolean noMFDs;
 			private SupersamplingMode supersamplingMode;
 			private PointSourceDistanceCorrections distanceCorrection;
@@ -439,7 +441,8 @@ public class MPJ_BranchAveragedHazardScriptWriter {
 				Preconditions.checkArgument(solutionFileName != null && !solutionFileName.isBlank(),
 						"solutionFileName is required");
 				Preconditions.checkArgument(!backgroundOptions.isEmpty(), "at least one background option is required");
-				Preconditions.checkArgument(wallTimeMinutes > 0, "wallTimeMinutes must be > 0");
+				Preconditions.checkArgument(wallTimeMinutes == null || wallTimeMinutes > 0,
+						"wallTimeMinutes must be > 0");
 				if (maxDispatch != null)
 					Preconditions.checkArgument(maxDispatch > 0, "maxDispatch must be > 0");
 				if (pointFiniteNumRandSurfaces != null)

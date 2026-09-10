@@ -81,7 +81,9 @@ public class NSHM27_InversionScriptWriter {
 //					"--sampling-method", SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE.name(),
 					"--samples", samples+"",
 					"--unique-seed",
-//					"--name-add", "3",
+					"--name-add", "3",
+					
+					"--job-time-hours", "48",
 					
 					"--hazard-grid-spacing", "0.2",
 			};
