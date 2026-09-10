@@ -19,6 +19,7 @@ import org.opensha.commons.data.sampling.generator.SobolPointSetGenerator;
 import org.opensha.commons.data.sampling.optimization.PointSetHillClimber;
 import org.opensha.commons.data.sampling.optimization.PointSetObjective;
 import org.opensha.commons.data.sampling.optimization.PointSetObjective.SwapSession;
+import org.opensha.commons.data.sampling.scoring.CenteredDiscrepancy;
 import org.opensha.commons.data.sampling.scoring.ProjectionDiscrepancyScorer;
 import org.opensha.commons.util.RandomSeedUtils;
 
@@ -28,7 +29,8 @@ import com.google.common.base.Preconditions;
 public enum SamplingMethod implements ShortNamed {
 	MONTE_CARLO("Monte Carlo", "MCS", "mcs"),
 	LATIN_HYPERCUBE("Latin Hypercube", "LHS", "lhs"),
-	PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE("Pairwise-Optimized Latin Hypercube", "Pairwise-LHS", "lhs_pairwise"),
+	PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE("Pairwise-Optimized Latin Hypercube", "PO-LHS", "lhs_pairwise"),
+	CENTERED_DISCREPANCY_OPTIMIZED_LATIN_HYPERCUBE("Centered-Discrepancy-Optimized Latin Hypercube", "CDO-LHS", "lhs_centered_discrepancy"),
 	SOBOL("Sobol", "Sobol", "sobol"),
 	OWEN_SCRAMBLED_SOBOL("Owen-Scrambled Sobol", "Scrambled-Sobol", "sobol_scrambled", true),
 	EXTERNAL("External Point Set", "External", "external");
@@ -59,7 +61,7 @@ public enum SamplingMethod implements ShortNamed {
 	public PointSetGenerator createGenerator(RandomGenerator rand) {
 		return switch (this) {
 		case MONTE_CARLO -> new MonteCarloPointSetGenerator(rand);
-		case LATIN_HYPERCUBE, PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE ->
+		case LATIN_HYPERCUBE, PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE, CENTERED_DISCREPANCY_OPTIMIZED_LATIN_HYPERCUBE ->
 			new LatinHypercubePointSetGenerator(rand);
 		// sobol is deterministic; 1 here means skip the first point which is all-zeros
 		case SOBOL -> new SobolPointSetGenerator(1L);
@@ -108,16 +110,15 @@ public enum SamplingMethod implements ShortNamed {
 	}
 
 	private PointSet optimizeIfRequested(PointSet pointSet, RandomGenerator random) {
-		if (!isPairwiseOptimized() || pointSet.size() < 2)
+		if (!isOptimized() || pointSet.size() < 2)
 			return pointSet;
 		PermutedPointSet permuted = PermutedPointSet.independentDimensions(pointSet);
 		if (permuted.swapGroupCount() < 2)
 			return pointSet;
 		long iterations = pairwiseIterations(pointSet.size());
-		ProjectionDiscrepancyScorer scorer = ProjectionDiscrepancyScorer.quantized(PAIRWISE_CONTINUOUS_BINS);
-		PointSetObjective objective = scorer.objective();
+		PointSetObjective objective = getObjective();
 		SwapSession session = objective.prepare(permuted);
-		System.out.println("Pairwise-optimizing sample of size "+pointSet.size()+" with "+iterations+" iterations");
+		System.out.println("Optimizing sample of size "+pointSet.size()+" with "+iterations+" iterations");
 		System.out.println("\tInitial objective:\t"+(float)session.getCurrentValue());
 		PointSetHillClimber.optimize(session, iterations, random);
 		System.out.println("\tDONE; final objective:\t"+(float)session.getCurrentValue());
@@ -141,8 +142,17 @@ public enum SamplingMethod implements ShortNamed {
 	private record RandomStreams(RandomGenerator generation, RandomGenerator dimensionAssignment,
 			RandomGenerator optimization) {}
 
-	public boolean isPairwiseOptimized() {
-		return this == PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE;
+	public PointSetObjective getObjective() {
+		return switch (this) {
+		case PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE -> ProjectionDiscrepancyScorer.quantized(PAIRWISE_CONTINUOUS_BINS).objective();
+		case CENTERED_DISCREPANCY_OPTIMIZED_LATIN_HYPERCUBE -> CenteredDiscrepancy.objective();
+
+		default -> null;
+		};
+	}
+
+	public boolean isOptimized() {
+		return this == PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE || this == CENTERED_DISCREPANCY_OPTIMIZED_LATIN_HYPERCUBE;
 	}
 
 	public boolean isMC() {

@@ -50,13 +50,16 @@ public class CenteredDiscrepancyTest {
 		assertEquals(CenteredDiscrepancy.score(first), CenteredDiscrepancy.score(rearranged), TOL);
 	}
 
-	@Test(expected=IllegalArgumentException.class)
-	public void testCategoricalDimensionRejected() {
+	@Test
+	public void testCategoricalDimensionTreatedAsContinuous() {
 		PointSet points = new DimensionedPointSet(new ArrayPointSet(new double[][] {
-			{0.1d, 0.2d}, {0.7d, 0.8d}
+				{0.1d, 0.2d}, {0.7d, 0.8d}
 		}), java.util.List.of(ContinuousSamplingDimension.INSTANCE,
 				CategoricalSamplingDimension.forWeights(0.5d, 0.5d)));
-		CenteredDiscrepancy.score(points);
+		PointSet undecorated = new ArrayPointSet(new double[][] {
+				{0.1d, 0.2d}, {0.7d, 0.8d}
+		});
+		assertEquals(CenteredDiscrepancy.score(undecorated), CenteredDiscrepancy.score(points), TOL);
 	}
 
 	@Test

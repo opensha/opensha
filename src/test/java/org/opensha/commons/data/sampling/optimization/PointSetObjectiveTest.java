@@ -88,6 +88,47 @@ public class PointSetObjectiveTest {
 	}
 
 	@Test
+	public void testCenteredDiscrepancyIncrementalSwapDeltas() {
+		Random random = new Random(762348L);
+		double[][] values = new double[36][4];
+		for (int point=0; point<values.length; point++)
+			for (int dimension=0; dimension<values[point].length; dimension++)
+				values[point][dimension] = random.nextDouble();
+		PermutedPointSet points = new PermutedPointSet(new ArrayPointSet(values),
+				new DimensionSwapGroup(0), new DimensionSwapGroup(1, 2), new DimensionSwapGroup(3));
+		PointSetProjection projection = new PointSetProjection(0, 1, 2);
+		PointSetObjective objective = CenteredDiscrepancy.objective(projection);
+		PointSetObjective.SwapSession session = objective.prepare(points);
+		assertEquals(objective.evaluate(points), session.getCurrentValue(), TOL);
+
+		for (int iteration=0; iteration<500; iteration++) {
+			int groupIndex = random.nextInt(points.swapGroupCount());
+			int point1 = random.nextInt(points.size());
+			int point2 = random.nextInt(points.size()-1);
+			if (point2 >= point1)
+				point2++;
+			double before = session.getCurrentValue();
+			double expectedCandidate = centeredCandidateScore(points, projection, groupIndex, point1, point2);
+			double delta = session.evaluateSwap(groupIndex, point1, point2);
+			assertEquals(expectedCandidate-before, delta, TOL);
+			assertEquals(before, objective.evaluate(points), TOL);
+
+			if (iteration % 4 == 0) {
+				session.discardSwap();
+				assertEquals(before, session.getCurrentValue(), 0d);
+			} else {
+				session.applySwap();
+				assertEquals(expectedCandidate, session.getCurrentValue(), TOL);
+				assertEquals(objective.evaluate(points), session.getCurrentValue(), TOL);
+			}
+		}
+		assertEquals(objective.evaluate(points), session.recalculate(), TOL);
+
+		PointSetHillClimber.optimize(session, 10_000L, random);
+		assertEquals(objective.evaluate(points), session.getCurrentValue(), 1e-10);
+	}
+
+	@Test
 	public void testRandomSwapDeltasAgainstReferenceScorer() {
 		int bins = 9;
 		PermutedPointSet points = buildPointSet(48, 42873L);
@@ -211,6 +252,21 @@ public class PointSetObjectiveTest {
 		// Dimension 4 is deliberately fixed; dimensions 1 and 2 move together.
 		return new PermutedPointSet(decorated, new DimensionSwapGroup(0),
 				new DimensionSwapGroup(1, 2), new DimensionSwapGroup(3));
+	}
+
+	private static double centeredCandidateScore(PermutedPointSet points, PointSetProjection projection,
+			int groupIndex, int point1, int point2) {
+		double[][] candidate = new double[points.size()][points.dimensions()];
+		for (int point=0; point<candidate.length; point++)
+			candidate[point] = points.getPoint(point);
+		DimensionSwapGroup group = points.getSwapGroup(groupIndex);
+		for (int i=0; i<group.size(); i++) {
+			int dimension = group.dimension(i);
+			double value = candidate[point1][dimension];
+			candidate[point1][dimension] = candidate[point2][dimension];
+			candidate[point2][dimension] = value;
+		}
+		return CenteredDiscrepancy.score(new ArrayPointSet(candidate), projection);
 	}
 
 	private static void assertScoresEqual(ProjectionDiscrepancyScore expected, ProjectionDiscrepancyScore actual) {
