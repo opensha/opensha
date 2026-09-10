@@ -16,9 +16,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.imageio.ImageIO;
+import javax.swing.JPanel;
 
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.ChartRenderingInfo;
+import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.axis.NumberTickUnit;
 import org.jfree.chart.axis.TickUnit;
@@ -32,7 +34,10 @@ import org.jfree.chart.plot.CombinedRangeXYPlot;
 import org.jfree.chart.plot.Plot;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.title.PaintScaleLegend;
+import org.jfree.chart.title.Title;
+import org.jfree.chart.ui.RectangleEdge;
 import org.jfree.chart.ui.Size2D;
+import org.jfree.chart.ui.VerticalAlignment;
 import org.jfree.data.Range;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
@@ -585,6 +590,195 @@ public class PlotUtils {
 //						new DefaultFontMapper());
 				Rectangle2D r2d = new Rectangle2D.Double(0, 0, width, height);
 				legend.draw(g2d, r2d);
+				g2d.dispose();
+				cb.addTemplate(tp, 0, 0);
+			}
+			catch (DocumentException de) {
+				de.printStackTrace();
+			}
+			// step 5
+			metadataDocument.close();
+		}
+	}
+	
+	public static void stitchPlotRows(File outputDir, String prefix, List<? extends GraphPanel> gps, boolean includeInteriorLabels,
+			int width, boolean isLatLon, boolean writePNG, boolean writePDF) throws IOException {
+		stitchPlotRows(outputDir, prefix, gps, includeInteriorLabels, width, -1, isLatLon, writePNG, 1d, writePDF, 1d);
+	}
+	
+	public static void stitchPlotRows(File outputDir, String prefix, List<? extends GraphPanel> gps, boolean includeInteriorLabels,
+			double widthInches, double heightInches, int dpi, boolean isLatLon, boolean writePNG, boolean writePDF) throws IOException {
+		int width = (int)Math.round(widthInches*DEFAULT_PRINT_DPI);
+		int height = (int)Math.round(heightInches*DEFAULT_PRINT_DPI);
+		// write the PNG at the specified DPI
+		double pngScale = dpi == 72 ? 1d : (double)dpi/(double)DEFAULT_PRINT_DPI;
+		// PDF will be written with the exact specified dimensions
+		double pdfScale = 1d;
+//		writePlots(outputDir, prefix, gp, width, height, isLatLon, writePNG, pngScale, writePDF, pdfScale, writeTXT);
+		stitchPlotRows(outputDir, prefix, gps, includeInteriorLabels, width, height, isLatLon, writePNG, pngScale, writePDF, pdfScale);
+	}
+	
+	private static void stitchPlotRows(File outputDir, String prefix, List<? extends GraphPanel> gps, boolean includeInteriorLabels,
+			int width, int height, boolean isLatLon, boolean writePNG, double pngScale, boolean writePDF, double pdfScale) throws IOException {
+		Preconditions.checkState(gps.size() > 1);
+		for (int i=0; !includeInteriorLabels && i<gps.size(); i++) {
+			XYPlot plot = gps.get(i).getPlot();
+			JFreeChart chart = plot.getChart();
+			List<Title> subtitles = new ArrayList<>(chart.getSubtitles());
+			System.out.println("Have "+subtitles.size()+" subtitles");
+			if (i > 0) {
+				// not first
+				
+				// clear title
+				chart.setTitle("");
+				
+				// remove any subtitles above
+				for (Title subtitle : subtitles) {
+					if (subtitle.getPosition() == RectangleEdge.TOP) {
+						System.out.println("Removing subtitle with TOP position from row "+i+": "+subtitle);
+						chart.removeSubtitle(subtitle);
+					}
+				}
+			}
+			if (i < gps.size()-1) {
+				// not last
+				
+				// remove any subtitles below
+				for (Title subtitle : subtitles) {
+					if (subtitle.getPosition() == RectangleEdge.BOTTOM) {
+						System.out.println("Removing subtitle with BOTTOM position from row "+i+": "+subtitle);
+						chart.removeSubtitle(subtitle);
+					}
+				}
+			}
+			
+			List<XYPlot> myPlots = isCombinedPlot(plot) ? getSubPlots(plot) : List.of(plot);
+			for (XYPlot myPlot : myPlots) {
+				// for each plot (possibly a subplot)
+				if (i > 0) {
+					// not first
+				}
+				if (i < gps.size()-1) {
+					// not last
+					
+					// hide x axis
+					ValueAxis axis = myPlot.getDomainAxis();
+					axis.setVisible(false);
+				}
+			}
+		}
+		
+		File file = new File(outputDir, prefix);
+		
+		Preconditions.checkArgument(width > 0, "width must be supplied");
+		List<Integer> heights = new ArrayList<>();
+		if (height <= 0) {
+			height = 0;
+			for (GraphPanel gp : gps) {
+				fixAspectRatio(gp, width, isLatLon);
+				int myHeight = gp.getChartPanel().getHeight();
+				heights.add(myHeight);
+				height += myHeight;
+			}
+		} else {
+			// need to figure out the height of each subplot
+			int initialHeightEach = height/gps.size();
+			List<Integer> extraEach = new ArrayList<>();
+			int sumExtra = 0;
+			for (GraphPanel gp : gps) {
+				ChartRenderingInfo chartInfo = new ChartRenderingInfo();
+				// this forces it to actually render
+				gp.getChartPanel().getChart().createBufferedImage(width, initialHeightEach, chartInfo);
+				Rectangle2D plotArea = chartInfo.getPlotInfo().getDataArea();
+				double myHeight = plotArea.getHeight();
+				int extra = (int)(initialHeightEach-myHeight);
+				extraEach.add(extra);
+				sumExtra += extra;
+			}
+			Preconditions.checkState(height > sumExtra,
+					"No height left after titles/labels for height=%s and sumExtra=%s", height, sumExtra);
+			int heightEach = (height - sumExtra)/gps.size();
+			for (int extra : extraEach)
+				heights.add(extra + heightEach);
+		}
+		
+		if (writePNG) {
+			int W = (int)Math.round(width * pngScale);
+			int H = (int)Math.round(height * pngScale);
+
+			BufferedImage hi = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB);
+			Graphics2D g2 = hi.createGraphics();
+			try {
+				// quality hints
+				g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+				g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+				g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+				g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+
+				// scale everything uniformly
+				g2.scale(pngScale, pngScale);
+
+				int y = 0;
+				for (int i = 0; i < gps.size(); i++) {
+				    int rowHeight = heights.get(i);
+				    gps.get(i).getChartPanel().getChart().draw(
+				        g2, new Rectangle2D.Double(0, y, width, rowHeight));
+				    y += rowHeight;
+				}
+			} finally {
+				g2.dispose();
+			}
+//			ImageIO.write(hi, "png", new File(fileName));
+			// for some reason writing this way (rather than ImageIO) plays more nicely with viewers that have the file open,
+			// e.g., eog on Linux will fail to show the updated file (switching to a different image in the same dir)
+			// when using ImageIO
+			OutputStream out = new BufferedOutputStream(new FileOutputStream(file.getAbsolutePath()+".png"));
+			try {
+				EncoderUtil.writeBufferedImage(hi, ImageFormat.PNG, out);
+			} finally {
+				out.close();
+			}
+		}
+		if (writePDF) {
+			float pdfW = (float)(width*pdfScale);
+			float pdfH = (float)(height*pdfScale);
+			
+			// step 1
+			Document metadataDocument = new Document(new com.itextpdf.text.Rectangle(
+					pdfW, pdfH));
+			metadataDocument.addAuthor("OpenSHA");
+			metadataDocument.addCreationDate();
+//			HeaderFooter footer = new HeaderFooter(new Phrase("Powered by OpenSHA"), true);
+//			metadataDocument.setFooter(footer);
+			try {
+				// step 2
+				PdfWriter writer;
+
+				writer = PdfWriter.getInstance(metadataDocument,
+						new BufferedOutputStream(new FileOutputStream(file.getAbsolutePath()+".pdf")));
+				// step 3
+				metadataDocument.open();
+				// step 4
+				PdfContentByte cb = writer.getDirectContent();
+				PdfTemplate tp = cb.createTemplate(pdfW, pdfH);
+//				tp.creategraphics
+//				new 
+//				FontMapper fontMapper = new DefaultFontMapper();
+				FontMapper fontMapper = new PDF_UTF8_FontMapper();
+				Graphics2D g2d = new PdfGraphics2D(tp, pdfW, pdfH, fontMapper);
+				g2d.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_NORMALIZE);
+				g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+				
+				if (pdfScale != 1d)
+					g2d.scale(pdfScale, pdfScale);
+				
+				int y = 0;
+				for (int i = 0; i < gps.size(); i++) {
+				    int rowHeight = heights.get(i);
+				    gps.get(i).getChartPanel().getChart().draw(
+				        g2d, new Rectangle2D.Double(0, y, width, rowHeight));
+				    y += rowHeight;
+				}
 				g2d.dispose();
 				cb.addTemplate(tp, 0, 0);
 			}
