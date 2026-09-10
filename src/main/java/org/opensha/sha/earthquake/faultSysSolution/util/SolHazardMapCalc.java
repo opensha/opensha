@@ -688,9 +688,17 @@ public class SolHazardMapCalc {
 		
 		Preconditions.checkState(curvesList != null, "Must call calcHazardCurves first");
 		
+		return buildMap(curvesList.get(p), region, curveLevel, isProbAtIML);
+	}
+	
+	public static GriddedGeoDataSet buildMap(DiscretizedFunc[] curves, GriddedRegion gridReg, ReturnPeriods returnPeriod) {
+		return buildMap(curves, gridReg, returnPeriod.oneYearProb, false);
+	}
+	
+	public static GriddedGeoDataSet buildMap(DiscretizedFunc[] curves, GriddedRegion region,
+		double curveLevel, boolean isProbAtIML) {
 		GriddedGeoDataSet xyz = new GriddedGeoDataSet(region, false);
 		
-		DiscretizedFunc[] curves = curvesList.get(p);
 		Preconditions.checkState(curves.length == region.getNodeCount());
 		
 		for (int i=0; i<curves.length; i++) {
