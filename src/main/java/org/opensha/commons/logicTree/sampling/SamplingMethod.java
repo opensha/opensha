@@ -125,9 +125,10 @@ public enum SamplingMethod implements ShortNamed {
 		return permuted;
 	}
 
-	public static long pairwiseIterations(int numPoints) {
+	public long pairwiseIterations(int numPoints) {
+		long multiplier = this == CENTERED_DISCREPANCY_OPTIMIZED_LATIN_HYPERCUBE ? 10l : 1000L;
 		Preconditions.checkArgument(numPoints > 0, "NumPoints must be positive");
-		return Math.min(10_000_000L, Math.max(100_000L, Math.multiplyExact((long)numPoints, 1000L)));
+		return Math.min(10_000_000L, Math.max(100_000L, Math.multiplyExact((long)numPoints, multiplier)));
 	}
 
 	private static RandomStreams randomStreams(RandomGenerator random) {
