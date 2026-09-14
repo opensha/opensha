@@ -240,7 +240,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.TOTAL_TREE_CONUS_STABLE_CRUST_2023, getName(), getShortName(), false, null) {
+			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.TOTAL_TREE_CONUS_STABLE_CRUST_2023_R2_CPA, getName(), getShortName(), false, null) {
 
 				@Override
 				protected ImmutableList<Field> initFieldsUsed() {
