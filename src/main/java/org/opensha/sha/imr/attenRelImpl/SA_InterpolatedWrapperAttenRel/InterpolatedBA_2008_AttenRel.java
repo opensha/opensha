@@ -1,5 +1,8 @@
 package org.opensha.sha.imr.attenRelImpl.SA_InterpolatedWrapperAttenRel;
 
+import java.net.MalformedURLException;
+import java.net.URL;
+
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
 import org.opensha.sha.imr.attenRelImpl.BA_2008_AttenRel;
 
@@ -44,6 +47,15 @@ public class InterpolatedBA_2008_AttenRel
    */
   public String getShortName() {
     return SHORT_NAME;
+  }
+
+  /**
+   * This provides a URL where more info on this model can be obtained
+   * @throws MalformedURLException if returned URL is not a valid URL.
+   * @return the URL to the AttenuationRelationship document on the Web.
+   */
+  public URL getInfoURL() throws MalformedURLException{
+    return new URL("https://doi.org/10.1193/1.2830434");
   }
 
 
