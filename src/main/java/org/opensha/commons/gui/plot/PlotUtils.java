@@ -625,7 +625,7 @@ public class PlotUtils {
 			XYPlot plot = gps.get(i).getPlot();
 			JFreeChart chart = plot.getChart();
 			List<Title> subtitles = new ArrayList<>(chart.getSubtitles());
-			System.out.println("Have "+subtitles.size()+" subtitles");
+//			System.out.println("Have "+subtitles.size()+" subtitles");
 			if (i > 0) {
 				// not first
 				
@@ -635,7 +635,7 @@ public class PlotUtils {
 				// remove any subtitles above
 				for (Title subtitle : subtitles) {
 					if (subtitle.getPosition() == RectangleEdge.TOP) {
-						System.out.println("Removing subtitle with TOP position from row "+i+": "+subtitle);
+//						System.out.println("Removing subtitle with TOP position from row "+i+": "+subtitle);
 						chart.removeSubtitle(subtitle);
 					}
 				}
@@ -646,7 +646,7 @@ public class PlotUtils {
 				// remove any subtitles below
 				for (Title subtitle : subtitles) {
 					if (subtitle.getPosition() == RectangleEdge.BOTTOM) {
-						System.out.println("Removing subtitle with BOTTOM position from row "+i+": "+subtitle);
+//						System.out.println("Removing subtitle with BOTTOM position from row "+i+": "+subtitle);
 						chart.removeSubtitle(subtitle);
 					}
 				}
@@ -702,6 +702,12 @@ public class PlotUtils {
 				heights.add(extra + heightEach);
 		}
 		
+		// clear individual background colors so they don't overlap
+		for (GraphPanel gp : gps) {
+			JFreeChart chart = gp.getChartPanel().getChart();
+			chart.setBackgroundPaint(null); // Whole chart, including margins
+		}
+		
 		if (writePNG) {
 			int W = (int)Math.round(width * pngScale);
 			int H = (int)Math.round(height * pngScale);
@@ -709,6 +715,10 @@ public class PlotUtils {
 			BufferedImage hi = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB);
 			Graphics2D g2 = hi.createGraphics();
 			try {
+				// fill with white background
+			    g2.setColor(gps.get(0).getPlotPrefs().getBackgroundColor());
+			    g2.fillRect(0, 0, W, H);
+			    
 				// quality hints
 				g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 				g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
