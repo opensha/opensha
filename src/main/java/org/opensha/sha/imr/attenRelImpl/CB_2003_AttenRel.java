@@ -1135,7 +1135,7 @@ public class CB_2003_AttenRel extends AttenuationRelationship {
 	 * @return the URL to the AttenuationRelationship document on the Web.
 	 */
 	public URL getInfoURL() throws MalformedURLException{
-		return new URL("http://www.opensha.org/glossary-attenuationRelation-CAMPBELL_BOZORG_2003");
+		return new URL("https://doi.org/10.1785/0120020029");
 	}
 
 }
