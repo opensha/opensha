@@ -234,8 +234,34 @@ public enum AttenRelRef implements AttenRelSupplier {
 		
 	},
 
-	USGS_NSHM23_STABLE(null, "USGS NSHM23 Stable Crustal",
-			"NSHM23-Stable", PRODUCTION) {
+	USGS_NSHM23_STABLE_R1(null, "USGS NSHM23-R1 Stable Crustal",
+			"NSHM23-Stable-R1", PRODUCTION) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.TOTAL_TREE_CONUS_STABLE_CRUST_2023_R1_CPA, getName(), getShortName(), false, null) {
+
+				@Override
+				protected ImmutableList<Field> initFieldsUsed() {
+					// dirty hack to fix the fields used in nshmp-haz, but not reported as such by this GMM
+					// TODO: remove this when NSHMP-haz fixes their bug
+//					System.out.println("Hack for NSHM23-Stable fields. Declared: "+super.initFieldsUsed());
+					return ImmutableList.of(
+							Field.MW,
+							Field.RRUP,
+							Field.VS30,
+							Field.RJB,
+							Field.ZSED);
+				}
+				
+			};
+		}
+		
+	},
+
+	USGS_NSHM23_STABLE_R2(null, "USGS NSHM23-R2 Stable Crustal",
+			"NSHM23-Stable-R2", PRODUCTION) {
 		
 		@Override
 		public AttenuationRelationship instance(
