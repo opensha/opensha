@@ -65,7 +65,7 @@ class InitialTests {
 //		};
 //		filter = new GroundMotionLogicTreeFilter.StringMatching(NshmpGroundMotions.EPI_LO, NshmpUsgsPrviBackbone2025.SIGMA_PRVI_ID);
 		
-		NshmpGmm[] gmms = { NshmpGmm.TOTAL_TREE_CONUS_STABLE_CRUST_2023 };
+		NshmpGmm[] gmms = { NshmpGmm.TOTAL_TREE_CONUS_STABLE_CRUST_2023_R2_CPA };
 		
 //		NshmpGroundMotionModel gmm = NshmpGmm.ASK_14.instance(NshmpImt.PGA);
 //		NshmpGroundMotionModel gmm = NshmpGmm.ASK_14_BASE.instance(NshmpImt.PGA);

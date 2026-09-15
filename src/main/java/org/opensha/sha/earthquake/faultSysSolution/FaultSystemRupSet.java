@@ -5,7 +5,6 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.stream.IntStream;
 import java.util.zip.ZipFile;
-import java.util.zip.ZipOutputStream;
 
 import javax.annotation.Nullable;
 
@@ -53,7 +52,6 @@ import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
-import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
 import org.opensha.sha.util.TectonicRegionType;

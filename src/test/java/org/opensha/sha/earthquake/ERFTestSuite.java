@@ -9,6 +9,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.ProductionERFsInstantiationTes
 	ERFLoopTest.class,
 //	CyberShakeUCERF2ReproducabilityTest.class,
 	AbstractNthRupERFTest.class,
+	DistCachedERFWrapperTest.class,
 //	ProductionERFsInstantiationTest.class // TODO restore?
 })
 
