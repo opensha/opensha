@@ -79,6 +79,10 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultM
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.timeDependence.DOLE_SubsectionMapper.AbstractDOLE_Data;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.timeDependence.DOLE_SubsectionMapper.PaleoDOLE_Data;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.timeDependence.DOLE_SubsectionMapper.PaleoMappingAlgorithm;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.AnalysisRegions;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.LocalRegions;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.NSHM23_BaseRegion;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.StitchedRegions;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.timeDependence.DOLE_SubsectionMapper.HistoricalRupture;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.timeDependence.DOLE_SubsectionMapper.MappingType;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -91,6 +95,7 @@ import com.google.common.collect.Maps;
 import com.google.common.io.Files;
 
 import scratch.UCERF3.analysis.FaultSysSolutionERF_Calc;
+import scratch.UCERF3.erf.FSSRupsInRegionCache;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.utils.ProbModelsPlottingUtils;
 
@@ -1170,6 +1175,29 @@ public class TimeDependentReportPageGen {
 		File resourcesDir = new File(outputDir, "resources");
 		if(!resourcesDir.exists()) resourcesDir.mkdir();
 		
+		Map<NSHM23_BaseRegion, ArrayList<EvenlyDiscretizedFunc>> regionMPD_Map_Cum = new HashMap<NSHM23_BaseRegion, ArrayList<EvenlyDiscretizedFunc>>();
+		regionMPD_Map_Cum.put(AnalysisRegions.CONUS_U3_RELM, new ArrayList<EvenlyDiscretizedFunc>());
+		regionMPD_Map_Cum.put(AnalysisRegions.CONUS_IMW, new ArrayList<EvenlyDiscretizedFunc>());
+		regionMPD_Map_Cum.put(AnalysisRegions.CONUS_PNW, new ArrayList<EvenlyDiscretizedFunc>());
+		regionMPD_Map_Cum.put(LocalRegions.CONUS_SF_BAY, new ArrayList<EvenlyDiscretizedFunc>());
+		regionMPD_Map_Cum.put(LocalRegions.CONUS_LA_BASIN, new ArrayList<EvenlyDiscretizedFunc>());
+		regionMPD_Map_Cum.put(LocalRegions.CONUS_NEW_MADRID, new ArrayList<EvenlyDiscretizedFunc>());
+		regionMPD_Map_Cum.put(LocalRegions.CONUS_PUGET, new ArrayList<EvenlyDiscretizedFunc>());
+		regionMPD_Map_Cum.put(LocalRegions.CONUS_WASATCH, new ArrayList<EvenlyDiscretizedFunc>());
+		regionMPD_Map_Cum.put(StitchedRegions.CONUS_WEST, new ArrayList<EvenlyDiscretizedFunc>());
+
+		NSHM23_BaseRegion[] californaRegionsArray = {
+				AnalysisRegions.CONUS_U3_RELM,
+				LocalRegions.CONUS_SF_BAY,
+				LocalRegions.CONUS_LA_BASIN,
+		};
+//		Map<Integer, EvenlyDiscretizedFunc> parCumPartMPD_Map = FaultSysSolERF_Calc.calcParentSectSupraSeisPartCumMagProbDists(
+//				erf, 5.0, 50, 0.1);
+//		Map<Integer, EvenlyDiscretizedFunc> parIncrPartMPD_Map = FaultSysSolERF_Calc.calcParentSectSupraSeisPartIncrMagProbDists(
+//				erf, 5.05, 50, 0.1);
+
+
+		
 		FSS_ProbabilityModel probModel = erf.getProbabilityModel();
 		boolean isPoisson = false;
 		
@@ -1443,6 +1471,15 @@ public class TimeDependentReportPageGen {
 		Map<Integer, EvenlyDiscretizedFunc> parIncrPartMPD_Map = FaultSysSolERF_Calc.calcParentSectSupraSeisPartIncrMagProbDists(
 				erf, 5.05, 50, 0.1);
 		
+		// region TD MPDs
+		for(NSHM23_BaseRegion reg :regionMPD_Map_Cum.keySet()) {
+			EvenlyDiscretizedFunc mpd = FaultSysSolERF_Calc.calcCumMagProbDistInRegion(erf, reg.load(),
+					5.0, 50, 0.1, false, null);
+			mpd.setName(reg.name()+"_Cum_TD_MPD");
+			regionMPD_Map_Cum.get(reg).add(mpd);
+		}
+		
+		
 		// temporarily set the forecast as Poisson, to get long-term rates, & no background 
 		erf.setProbabilityModelChoice(FSS_ProbabilityModels.POISSON);
 		erf.getTimeSpan().setDuration(duration); // THIS IS NEEDED
@@ -1460,6 +1497,15 @@ public class TimeDependentReportPageGen {
 		makeParentMPD_Plots(parCumPartMPD_Map,parIncrPartMPD_Map,
 				parTI_CumPartMPD_Map, parTI_IncrPartMPD_Map, 
 				parentNameID_Map, parentMPD_Dir);
+		
+		// region TI MPDs
+		for(NSHM23_BaseRegion reg :regionMPD_Map_Cum.keySet()) {
+			EvenlyDiscretizedFunc mpd = FaultSysSolERF_Calc.calcCumMagProbDistInRegion(erf, reg.load(),
+					5.0, 50, 0.1, false, null);
+			mpd.setName(reg.name()+"_Cum_TI_MPD");
+			regionMPD_Map_Cum.get(reg).add(mpd);
+		}
+
 		
 			
 		// These are for UCERF3 section indexing
@@ -1644,6 +1690,15 @@ public class TimeDependentReportPageGen {
 			u3_parCumPartMPD_Map = FaultSysSolERF_Calc.calcParentSectSupraSeisPartCumMagProbDists(
 					ucerf3_erf, 5.0, 50, 0.1);
 			
+			// region TD MPDs
+			for(NSHM23_BaseRegion reg :californaRegionsArray) {  // just the CA regions
+				EvenlyDiscretizedFunc mpd = FaultSysSolERF_Calc.calcCumMagProbDistInRegion(ucerf3_erf, reg.load(),
+						5.0, 50, 0.1, false, null);
+				mpd.setName(reg.name()+"_U3_Cum_TD_MPD");
+				regionMPD_Map_Cum.get(reg).add(mpd);
+			}
+
+			
 			// temporarily set the forecast as Poisson, to get long-term rates, & no background 
 
 			FSS_ProbabilityModel probModelU3 = ucerf3_erf.getProbabilityModel();
@@ -1656,6 +1711,15 @@ public class TimeDependentReportPageGen {
 					ucerf3_erf, 5.05, 50, 0.1); 
 			u3_parTI_CumPartMPD_Map = FaultSysSolERF_Calc.calcParentSectSupraSeisPartCumMagProbDists(
 					ucerf3_erf, 5.0, 50, 0.1); 
+			
+			// region TD MPDs
+			for(NSHM23_BaseRegion reg :californaRegionsArray) {  // just the CA regions
+				EvenlyDiscretizedFunc mpd = FaultSysSolERF_Calc.calcCumMagProbDistInRegion(ucerf3_erf, reg.load(),
+						5.0, 50, 0.1, false, null);
+				mpd.setName(reg.name()+"_U3_Cum_TI_MPD");
+				regionMPD_Map_Cum.get(reg).add(mpd);
+			}
+
 			// reset ERF to original state
 			ucerf3_erf.setCustomProbabilityModel(probModelU3);
 			ucerf3_erf.updateForecast();
@@ -1676,20 +1740,24 @@ public class TimeDependentReportPageGen {
 		
 		// Get prob ratios with respect to reference dir
 		// Get 5th column:
-		double[] td_Mgt6pt7_prob_reference = readSectProbFromFile(new File(comparisonDir,"/sectionData.csv"),5);
-		if(td_Mgt6pt7_prob_reference.length != td_Mgt6pt7_prob.length)
-			throw new RuntimeException("problem with comparison array length: "+td_Mgt6pt7_prob_reference.length+" vs "+td_Mgt6pt7_prob.length);
-		double[] Mgt6pt7_prob_ratioToReference = new double[td_Mgt6pt7_prob.length];
-		for(int s=0;s<td_Mgt6pt7_prob.length;s++) {
-			Mgt6pt7_prob_ratioToReference[s] = td_Mgt6pt7_prob[s]/td_Mgt6pt7_prob_reference[s];
-		}
-		// Get 5th column:
-		double[] td_Mgt7pt7_prob_reference = readSectProbFromFile(new File(comparisonDir,"/sectionData.csv"),8);
-		if(td_Mgt7pt7_prob_reference.length != td_Mgt7pt7_prob.length)
-			throw new RuntimeException("problem with comparison array length");
-		double[] Mgt7pt7_prob_ratioToReference = new double[td_Mgt7pt7_prob.length];
-		for(int s=0;s<td_Mgt7pt7_prob.length;s++) {
-			Mgt7pt7_prob_ratioToReference[s] = td_Mgt7pt7_prob[s]/td_Mgt7pt7_prob_reference[s];
+		double[] Mgt6pt7_prob_ratioToReference = null;
+		double[] Mgt7pt7_prob_ratioToReference = null;
+		if(includeReference) {
+			double[] td_Mgt6pt7_prob_reference = readSectProbFromFile(new File(comparisonDir,"/sectionData.csv"),5);
+			if(td_Mgt6pt7_prob_reference.length != td_Mgt6pt7_prob.length)
+				throw new RuntimeException("problem with comparison array length: "+td_Mgt6pt7_prob_reference.length+" vs "+td_Mgt6pt7_prob.length);
+			Mgt6pt7_prob_ratioToReference = new double[td_Mgt6pt7_prob.length];
+			for(int s=0;s<td_Mgt6pt7_prob.length;s++) {
+				Mgt6pt7_prob_ratioToReference[s] = td_Mgt6pt7_prob[s]/td_Mgt6pt7_prob_reference[s];
+			}
+			// Get 8th column:
+			double[] td_Mgt7pt7_prob_reference = readSectProbFromFile(new File(comparisonDir,"/sectionData.csv"),8);
+			if(td_Mgt7pt7_prob_reference.length != td_Mgt7pt7_prob.length)
+				throw new RuntimeException("problem with comparison array length");
+			Mgt7pt7_prob_ratioToReference = new double[td_Mgt7pt7_prob.length];
+			for(int s=0;s<td_Mgt7pt7_prob.length;s++) {
+				Mgt7pt7_prob_ratioToReference[s] = td_Mgt7pt7_prob[s]/td_Mgt7pt7_prob_reference[s];
+			}			
 		}
 
 
@@ -1748,12 +1816,25 @@ public class TimeDependentReportPageGen {
 				throw new RuntimeException("problem with comparison array length: "+par_Mgt7pt7_prob_ref.length+" vs "+parCumPartMPD_Map.size());			
 		}
 		
-		// make parent section csv data file
+		// make parent section csv data file (& scatter plot data)
 		double[] magThreshVals = {5.0,6.7,7.7};
 		Map<Integer, double[]> sectRateListForParentMap = FaultSysSolERF_Calc.getTotSectSupraSeisRateListForParentSectMap(erf);
 		Map<Integer, double[]> aveNTS_AndFractForParentDataMap = FaultSysSolERF_Calc.getAveNormTimeSinceAndFractForParentSect(erf);
 		Map<Integer, double[]> sectRateListForParentMapU3 = null;
 		Map<Integer, double[]> aveNTS_AndFractForParentDataMapU3 = null;
+		DefaultXY_DataSet u3_ParentSupraRateComparisonData = new DefaultXY_DataSet();
+		u3_ParentSupraRateComparisonData.setName("ParentSectAveSupraRateCompToU3_Scatter");
+		DefaultXY_DataSet u3_ParentNTS_ComparisonData = new DefaultXY_DataSet();
+		u3_ParentNTS_ComparisonData.setName("ParentNormTimeSinceCompToU3_Scatter");
+		DefaultXY_DataSet u3_ParentTS_ComparisonData = new DefaultXY_DataSet();
+		u3_ParentTS_ComparisonData.setName("ParentTimeSinceCompToU3_Scatter");
+		Map<Double, DefaultXY_DataSet> u3_ParentGainComparisonDataForMagMap = new HashMap<Double, DefaultXY_DataSet>();
+		for(double mag:magThreshVals) {
+			DefaultXY_DataSet xyData = new DefaultXY_DataSet();
+			String magString = Double.toString(mag).replace(".","pt");
+			xyData.setName("ParentSectProbGainCompToU3_ScatterMge"+magString);
+			u3_ParentGainComparisonDataForMagMap.put(mag, xyData);
+		}
 		// header line
 		String csv_parentDataSring = "parID,parName,meanRI,RI_fractile,aveNormTimeSince,fractWithDOLE,minMag";
 		for(double mag:magThreshVals) {
@@ -1829,10 +1910,15 @@ public class TimeDependentReportPageGen {
 						double gainU3 = probU3/u3_parTI_CumPartMPD_Map.get(u3_id).getY(mag);
 						double ratioToU3 = parCumPartMPD_Map.get(id).getY(mag)/probU3;
 						csv_parentDataSring += ","+probU3+","+gainU3+","+ratioToU3;
+						double newGain = parCumPartMPD_Map.get(id).getY(mag)/parTI_CumPartMPD_Map.get(id).getY(mag);
+						u3_ParentGainComparisonDataForMagMap.get(mag).set(gainU3,newGain);
 					}
+					u3_ParentSupraRateComparisonData.set(1.0/meanRI_U3, 1.0/meanRI);
+					u3_ParentNTS_ComparisonData.set(ntsU3, nts);
+					u3_ParentTS_ComparisonData.set(ntsU3*meanRI_U3, nts*meanRI);
 				}
 				else { // fill in NaNs
-					for(int i=0;i<14;i++)
+					for(int i=0;i<17;i++)
 						csv_parentDataSring += ","+Double.NaN;
 				}
 			}
@@ -1887,14 +1973,18 @@ public class TimeDependentReportPageGen {
 		mapMaker.plot(resourcesDir, probGainPrefix6pt7, " ");
 		mapMaker.plotSectScalars(log_Mgt6pt7_prob, logProbCPT, "log10 M≥6.7 Prob.");
 		mapMaker.plot(resourcesDir, log_probPrefix6pt7, " ");
-		mapMaker.plotSectScalars(Mgt6pt7_prob_ratioToReference, probGainCPT, "M≥6.7 Prob. Ratio to Reference");
-		mapMaker.plot(resourcesDir, probReferenceRatioPrefix6pt7, " ");
+		if(includeReference) {
+			mapMaker.plotSectScalars(Mgt6pt7_prob_ratioToReference, probGainCPT, "M≥6.7 Prob. Ratio to Reference");
+			mapMaker.plot(resourcesDir, probReferenceRatioPrefix6pt7, " ");			
+		}
 		mapMaker.plotSectScalars(probGain_Mgt7pt7, probGainCPT, "M≥7.7 Prob. Gain");
 		mapMaker.plot(resourcesDir, probGainPrefix7pt7, " ");
 		mapMaker.plotSectScalars(log_Mgt7pt7_prob, logProbCPT, "log10 M≥7.7 Prob.");
 		mapMaker.plot(resourcesDir, log_probPrefix7pt7, " ");
-		mapMaker.plotSectScalars(Mgt7pt7_prob_ratioToReference, probGainCPT, "M≥7.7 Prob. Ratio to Reference");
-		mapMaker.plot(resourcesDir, probReferenceRatioPrefix7pt7, " ");
+		if(includeReference) {
+			mapMaker.plotSectScalars(Mgt7pt7_prob_ratioToReference, probGainCPT, "M≥7.7 Prob. Ratio to Reference");
+			mapMaker.plot(resourcesDir, probReferenceRatioPrefix7pt7, " ");
+		}
 		if(ucerf3_erf !=null) {
 //			org.opensha.commons.data.region.CaliforniaRegions.RELM_TESTING
 			Region region = new CaliforniaRegions.RELM_TESTING();
@@ -2125,6 +2215,13 @@ public class TimeDependentReportPageGen {
 			lines.addAll(table.build()); lines.add("");
 			lines.add(topLink); lines.add("");
 		}
+		
+		// Make region MPD plots
+		File regionMPDs_Dir = new File(resourcesDir, "regionMPDs_Dir");
+		if(!regionMPDs_Dir.exists())
+			regionMPDs_Dir.mkdir();
+		makeRegionCumMPD_Plots(regionMPD_Map_Cum, regionMPDs_Dir);
+
 
 		if(ucerf3_erf !=null) {
 			lines.add("## Ratio of M&ge;6.7 Probability to that of UCERF3");
@@ -2195,6 +2292,38 @@ public class TimeDependentReportPageGen {
 			table.finalizeLine().initNewLine();
 			lines.addAll(table.build()); lines.add("");
 			lines.add(topLink); lines.add("");
+			
+			// Make parent section scatter plots
+			for(double mag:u3_ParentGainComparisonDataForMagMap.keySet()) {
+				makeU3_ParSectComparisonScatterPlots(u3_ParentGainComparisonDataForMagMap.get(mag),
+						resourcesDir, new Range(0,5), false, 
+						"M≥"+mag+" Parent Sect Gain Comparison", "U3 Parent Sect Gain", "Parent Sect Gain");
+			}
+			makeU3_ParSectComparisonScatterPlots(u3_ParentSupraRateComparisonData,
+					resourcesDir, new Range(1e-6,0.1), true,
+					"Parent Supra Rate (1/RI) Comparison", "U3 Parent Supra Rate", "Parent Supra Rate");
+			makeU3_ParSectComparisonScatterPlots(u3_ParentNTS_ComparisonData,
+					resourcesDir, null, true,
+					"Parent Norm Time Since (NTS) Comparison", "U3 Parent NTS", "Parent NTS");
+			makeU3_ParSectComparisonScatterPlots(u3_ParentTS_ComparisonData,
+					resourcesDir, null, true,
+					"Parent Time Since (yrs) Comparison", "U3 Time Since", "Time Since");
+
+			lines.add("## UCERF3 Parent Section Data Comparisons");  
+			table = MarkdownUtils.tableBuilder();
+			table.initNewLine();
+			table.addColumn("![Column1]("+relPath+"/"+"ParentSectAveSupraRateCompToU3_Scatter"+".png)");
+			table.addColumn("![Column1]("+relPath+"/"+"ParentSectProbGainCompToU3_ScatterMge5pt0"+".png)");
+			table.initNewLine();
+			table.addColumn("![Column1]("+relPath+"/"+"ParentSectProbGainCompToU3_ScatterMge6pt7"+".png)");
+			table.addColumn("![Column1]("+relPath+"/"+"ParentSectProbGainCompToU3_ScatterMge7pt7"+".png)");
+			table.finalizeLine().initNewLine();
+			table.addColumn("![Column1]("+relPath+"/"+"ParentNormTimeSinceCompToU3_Scatter"+".png)");
+			table.addColumn("![Column1]("+relPath+"/"+"ParentTimeSinceCompToU3_Scatter"+".png)");
+			table.finalizeLine().initNewLine();
+			lines.addAll(table.build()); lines.add("");
+			lines.add(topLink); lines.add("");
+
 		}
 		
 		lines.add("## Parent Section Magnitude Probability Distributions");  
@@ -2247,6 +2376,133 @@ public class TimeDependentReportPageGen {
 		
 		// write markdown
 		MarkdownUtils.writeReadmeAndHTML(lines, outputDir);
+	}
+	
+	public static void OLDmakeU3_ParSectGainComparisonScatterPlots(
+			Map<Double, DefaultXY_DataSet> u3_GainComparisonDataForMagMap,
+			DefaultXY_DataSet u3_SupraRateComparisonData,
+			File resourcesDir) {
+
+		u3_GainComparisonDataForMagMap.put(0.0, u3_SupraRateComparisonData);
+		
+		for(double mag:u3_GainComparisonDataForMagMap.keySet()) {
+			File fileNamePrefix = new File(resourcesDir, u3_GainComparisonDataForMagMap.get(mag).getName());
+			ArrayList<XY_DataSet> funcs = new ArrayList<XY_DataSet>();
+			funcs.add(u3_GainComparisonDataForMagMap.get(mag));
+			ArrayList<PlotCurveCharacterstics> plotChars = new ArrayList<PlotCurveCharacterstics>();
+			plotChars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 0.5f, Color.RED));
+			plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1, Color.gray));
+
+			Range xAxisRange = new Range(0,5);
+			Range yAxisRange = xAxisRange;
+			DefaultXY_DataSet compLine = new DefaultXY_DataSet();
+			compLine.set(xAxisRange.getLowerBound(),xAxisRange.getLowerBound());
+			compLine.set(xAxisRange.getUpperBound(),xAxisRange.getUpperBound());
+			boolean logX = false;
+			boolean logY = false;
+			double widthInches = 7.0; // inches
+			double heightInches = 6.0; // inches
+			boolean integerYaxisTickLabeIncrements = false;
+
+			PlotSpec spec=null;
+			if(mag != 0.0) {
+				funcs.add(compLine);
+				spec = new PlotSpec(funcs, plotChars, "M≥"+mag+" Parent Sect Gain Comparison", "U3 Parent Sect Gain", "Parent Sect Gain");
+			}
+			else {
+				xAxisRange = new Range(1e-6,0.1);
+				yAxisRange = xAxisRange;
+				compLine = new DefaultXY_DataSet();
+				compLine.set(xAxisRange.getLowerBound(),xAxisRange.getLowerBound());
+				compLine.set(xAxisRange.getUpperBound(),xAxisRange.getUpperBound());
+				funcs.add(compLine);
+				logX = true;
+				logY = true;
+				spec = new PlotSpec(funcs, plotChars, "Parent Supra Rate (1/RI) Comparison", "U3 Parent Supra Rate", "Parent Supra Rate");
+			}
+			
+			HeadlessGraphPanel gp = new HeadlessGraphPanel();
+			gp.setUserBounds(xAxisRange, yAxisRange);
+			gp.setTickLabelFontSize(16);
+			gp.setAxisLabelFontSize(22);
+			gp.setPlotLabelFontSize(16);
+			gp.setBackgroundColor(Color.WHITE);
+			gp.drawGraphPanel(spec, logX, logY); // spec can be a list
+			int width = (int)(widthInches*72.);
+			int height = (int)(heightInches*72.);
+			gp.getChartPanel().setSize(width, height); 
+
+			if(integerYaxisTickLabeIncrements)
+				gp.getChartPanel().getChart().getXYPlot().getRangeAxis().setStandardTickUnits(NumberAxis.createIntegerTickUnits());
+				
+//				XYTextAnnotation annotation = new XYTextAnnotation("here",xAxisRange.getCentralValue(),yAxisRange.getCentralValue());
+//				gp.getChartPanel().getChart().getXYPlot().addAnnotation(annotation);	
+	//
+			try {
+				gp.saveAsPNG(fileNamePrefix+".png");
+				gp.saveAsPDF(fileNamePrefix+".pdf");
+				gp.saveAsTXT(fileNamePrefix+".txt");
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	
+	public static void makeU3_ParSectComparisonScatterPlots(DefaultXY_DataSet xyData,
+			File resourcesDir, Range axisRange, boolean logPlot, 
+			String title, String xLabel, String yLabel) {
+		
+			File fileNamePrefix = new File(resourcesDir, xyData.getName());
+			ArrayList<XY_DataSet> funcs = new ArrayList<XY_DataSet>();
+			funcs.add(xyData);
+			ArrayList<PlotCurveCharacterstics> plotChars = new ArrayList<PlotCurveCharacterstics>();
+			plotChars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 0.5f, Color.RED));
+			plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1, Color.gray));
+
+			if(axisRange==null) {
+				double min = Math.min(xyData.getMinX(), xyData.getMinY());
+				double max = Math.max(xyData.getMaxX(), xyData.getMaxY());
+				axisRange = new Range(min,max);
+			}
+
+			DefaultXY_DataSet compLine = new DefaultXY_DataSet();
+			compLine.set(axisRange.getLowerBound(),axisRange.getLowerBound());
+			compLine.set(axisRange.getUpperBound(),axisRange.getUpperBound());
+			double widthInches = 7.0; // inches
+			double heightInches = 6.0; // inches
+			boolean integerYaxisTickLabeIncrements = false;
+
+			compLine = new DefaultXY_DataSet();
+			compLine.set(axisRange.getLowerBound(),axisRange.getLowerBound());
+			compLine.set(axisRange.getUpperBound(),axisRange.getUpperBound());
+			funcs.add(compLine);
+			PlotSpec spec=null;
+			spec = new PlotSpec(funcs, plotChars, title, xLabel, yLabel);			
+			HeadlessGraphPanel gp = new HeadlessGraphPanel();
+			gp.setUserBounds(axisRange, axisRange);
+			gp.setTickLabelFontSize(16);
+			gp.setAxisLabelFontSize(22);
+			gp.setPlotLabelFontSize(16);
+			gp.setBackgroundColor(Color.WHITE);
+			gp.drawGraphPanel(spec, logPlot, logPlot); // spec can be a list
+			int width = (int)(widthInches*72.);
+			int height = (int)(heightInches*72.);
+			gp.getChartPanel().setSize(width, height); 
+
+			if(integerYaxisTickLabeIncrements)
+				gp.getChartPanel().getChart().getXYPlot().getRangeAxis().setStandardTickUnits(NumberAxis.createIntegerTickUnits());
+				
+//				XYTextAnnotation annotation = new XYTextAnnotation("here",xAxisRange.getCentralValue(),yAxisRange.getCentralValue());
+//				gp.getChartPanel().getChart().getXYPlot().addAnnotation(annotation);	
+	//
+			try {
+				gp.saveAsPNG(fileNamePrefix+".png");
+				gp.saveAsPDF(fileNamePrefix+".pdf");
+				gp.saveAsTXT(fileNamePrefix+".txt");
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 	}
 
 	
@@ -2516,6 +2772,62 @@ public class TimeDependentReportPageGen {
 					e.printStackTrace();
 				}
 		}
+	}
+	
+	private static void makeRegionCumMPD_Plots(Map<NSHM23_BaseRegion, ArrayList<EvenlyDiscretizedFunc>> regionMPD_Map_Cum, File dir) {
+		
+		ArrayList<PlotCurveCharacterstics> plotChars = new ArrayList<PlotCurveCharacterstics>();
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.RED));
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.BLUE));
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.ORANGE));
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.GREEN));
+
+		for(NSHM23_BaseRegion reg :regionMPD_Map_Cum.keySet()) {
+			ArrayList<EvenlyDiscretizedFunc> funcs = regionMPD_Map_Cum.get(reg);
+			ArrayList<XY_DataSet> funcsToPlot = new ArrayList<XY_DataSet>();
+			String[] legendLabel = {"TD","TI","U3 TD","U3 TI"};
+			for(int i=0;i<funcs.size();i++) {
+				XY_DataSet f = funcs.get(i).deepClone();
+				f.setName(legendLabel[i]);
+				funcsToPlot.add(f);
+			}
+			
+			String plotName = reg.name()+" Cum MPDs";
+			String xAxisLabel = "Magnitude";
+			String yAxisLabel =  "Cumulative Participation Prob";
+			Range xAxisRange = new Range(5,10);
+			Range yAxisRange = new Range(1e-4,1.0);
+			boolean logX = false;
+			boolean logY = true;
+			double widthInches = 7; // inches
+			double heightInches = 6; // inches
+			File fileNamePrefix = new File(dir,reg.name()+"_CumMPDs");
+
+			PlotSpec spec = new PlotSpec(funcsToPlot, plotChars, plotName, xAxisLabel, yAxisLabel);
+			spec.setLegendInset(true);
+
+			HeadlessGraphPanel gp = new HeadlessGraphPanel();
+			gp.setUserBounds(xAxisRange, yAxisRange);
+			gp.setTickLabelFontSize(16);
+			gp.setAxisLabelFontSize(22);
+			gp.setPlotLabelFontSize(16);
+			gp.setBackgroundColor(Color.WHITE);
+			gp.drawGraphPanel(spec, logX, logY); // spec can be a list
+			int width = (int)(widthInches*72.);
+			int height = (int)(heightInches*72.);
+			gp.getChartPanel().setSize(width, height); 
+
+			try {
+				gp.saveAsPNG(fileNamePrefix+".png");
+				gp.saveAsPDF(fileNamePrefix+".pdf");
+				gp.saveAsTXT(fileNamePrefix+".txt");
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+
+
+		}
+
 	}
 	
 	

@@ -7,7 +7,10 @@ import java.util.List;
 import java.util.Map;
 
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.geo.Region;
 import org.opensha.sha.earthquake.ProbEqkRupture;
+import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.calc.ERF_Calculator;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.erf.td.FSS_ProbabilityModel;
@@ -15,12 +18,13 @@ import org.opensha.sha.earthquake.faultSysSolution.erf.td.TimeDepFaultSystemSolu
 import org.opensha.sha.earthquake.faultSysSolution.erf.td.TimeDepUtils;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-import scratch.UCERF3.erf.FaultSystemSolutionERF;
+import org.opensha.sha.earthquake.faultSysSolution.erf.FSSRupsInRegionCache;
 
 /**
  * Much of the content here come from scratch.UCERF3.analysis.FaultSysSolutionERF_Calc.
@@ -179,6 +183,99 @@ public class FaultSysSolERF_Calc {
 		}
 		return results;
 	}
+	
+	public static EvenlyDiscretizedFunc calcProbsFromSummedMFD(EvenlyDiscretizedFunc cmlMFD, double duration) {
+		int numMag = cmlMFD.size();
+		EvenlyDiscretizedFunc result = new EvenlyDiscretizedFunc(cmlMFD.getMinX(), numMag, cmlMFD.getDelta());
+		
+		// convert from rates to poisson probabilities
+		for (int i=0; i<numMag; i++) {
+			double rate = cmlMFD.getY(i);
+			double prob = 1-Math.exp(-rate*duration);
+			result.set(i, prob);
+		}
+		return result;
+	}
+	
+	private static void populateProbList(double mag, double prob, List<List<Double>> probsList,
+			EvenlyDiscretizedFunc xVals) {
+		// we want to find the smallest mag in the function where rupMag >= mag
+		if (mag < xVals.getMinX())
+			return;
+		int magIndex = xVals.getClosestXIndex(mag);
+		// closest could be above, check for that and correct
+		if (mag < xVals.getX(magIndex))
+			magIndex--;
+		Preconditions.checkState(magIndex >= 0);
+		for (int m=0; m<=magIndex && m<xVals.size(); m++)
+			probsList.get(m).add(prob);
+	}
+
+
+	
+	/**
+	 * This calculates a cumulative magnitude vs probability distribution for the given ERF and region.
+	 * Each point in the returned function represents the probability in the forecast (using the forecast duration)
+	 * of a rupture at or above the given magnitude with any portion inside the region.
+	 * 
+	 * @param erf
+	 * @param region
+	 * @param minMag
+	 * @param numMag
+	 * @param deltaMag
+	 * @param calcFromMFD if true probabilities will be calculated by first computing participation MFD for the region,
+	 * otherwise probabilities will be summed for each source as totProb = 1 - (1 - prob1)*(1 - prob2)*...*(1 - probN)
+	 * @param cache optional but recommended - this cache will greatly speed up calculations and can be reused for
+	 * different calls to this method with different durations, probability models, or regions.
+	 * @return
+	 */
+	public static EvenlyDiscretizedFunc calcCumMagProbDistInRegion(BaseFaultSystemSolutionERF erf, Region region,
+			double minMag, int numMag, double deltaMag, boolean calcFromMFD, FSSRupsInRegionCache cache) {
+		Preconditions.checkState(numMag > 0);
+		erf.updateForecast();
+		double duration = erf.getTimeSpan().getDuration();
+		
+		if (calcFromMFD) {
+			// just use the MFD itself
+			// we want the cumulative distribution, so shift minMag up by half a mag bin
+			// and then get cumulative dist with offset
+			SummedMagFreqDist incrMFD = ERF_Calculator.getParticipationMagFreqDistInRegion(
+					erf, region, minMag+0.5*deltaMag, numMag, deltaMag, true, cache);
+			EvenlyDiscretizedFunc mfd = incrMFD.getCumRateDistWithOffset();
+			Preconditions.checkState(minMag == mfd.getMinX());
+			EvenlyDiscretizedFunc result = calcProbsFromSummedMFD(mfd, duration);
+			Preconditions.checkState(minMag == result.getMinX());
+			return result;
+		} else {
+			// calc from each source itself
+			if (cache == null)
+				cache = new FSSRupsInRegionCache();
+			
+			EvenlyDiscretizedFunc result = new EvenlyDiscretizedFunc(minMag, numMag, deltaMag);
+			
+			// this tracks the rupture probabilities for each mag bin
+			List<List<Double>> probsList = Lists.newArrayList();
+			for (int m=0; m<numMag; m++)
+				probsList.add(new ArrayList<Double>());
+			
+			for (int sourceID=0; sourceID<erf.getNumFaultSystemSources(); sourceID++) {
+				ProbEqkSource source = erf.getSource(sourceID);
+				if (!cache.isRupInRegion(erf, source, source.getRupture(0), sourceID, 0, region))
+					// source is just for a single rupture, if the first rup isn't in the region none are
+					continue;
+				for (ProbEqkRupture rup : source) {
+					double prob = rup.getProbability();
+					double mag = rup.getMag();
+					populateProbList(mag, prob, probsList, result);
+				}
+			}
+			
+			// now sum the probabilities as:
+			calcSummedProbs(probsList, result);
+			return result;
+		}
+	}
+
 	
 	/**
 	 * This returns a Map with a list of section rates for each parent section
