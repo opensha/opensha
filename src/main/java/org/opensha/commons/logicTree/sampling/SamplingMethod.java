@@ -31,8 +31,8 @@ public enum SamplingMethod implements ShortNamed {
 	LATIN_HYPERCUBE("Latin Hypercube", "LHS", "lhs"),
 	PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE("Pairwise-Optimized Latin Hypercube", "PO-LHS", "lhs_pairwise"),
 	CENTERED_DISCREPANCY_OPTIMIZED_LATIN_HYPERCUBE("Centered-Discrepancy-Optimized Latin Hypercube", "CDO-LHS", "lhs_centered_discrepancy"),
-	SOBOL("Sobol", "Sobol", "sobol"),
-	OWEN_SCRAMBLED_SOBOL("Owen-Scrambled Sobol", "Scrambled-Sobol", "sobol_scrambled", true),
+	SOBOL("Sobol'", "Sobol'", "sobol"),
+	OWEN_SCRAMBLED_SOBOL("Owen-Scrambled Sobol'", "Scrambled-Sobol'", "sobol_scrambled", true),
 	EXTERNAL("External Point Set", "External", "external");
 
 	public static final int PAIRWISE_CONTINUOUS_BINS = 100;
