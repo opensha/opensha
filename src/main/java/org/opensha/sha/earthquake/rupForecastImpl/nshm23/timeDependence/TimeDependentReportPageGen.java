@@ -2221,6 +2221,16 @@ public class TimeDependentReportPageGen {
 		if(!regionMPDs_Dir.exists())
 			regionMPDs_Dir.mkdir();
 		makeRegionCumMPD_Plots(regionMPD_Map_Cum, regionMPDs_Dir);
+		lines.add("## Regional Magnitude Probability Distributions (MPDs)");
+		if(ucerf3_erf !=null)
+			lines.add("Including compareson with UCERF3 for relevant regions."); lines.add("");
+		table = MarkdownUtils.tableBuilder();
+		table.initNewLine();
+		table.addColumn("![Column1]("+relPath+"/regionMPDs_Dir/"+"CONUS_LA_BASIN_CumMPDs"+".png)");
+		table.addColumn("![Column2]("+relPath+"/regionMPDs_Dir/"+"CONUS_SF_BAY_CumMPDs"+".png)");
+		table.finalizeLine();
+		lines.addAll(table.build()); lines.add("");
+		lines.add(topLink); lines.add("");
 
 
 		if(ucerf3_erf !=null) {
@@ -2301,7 +2311,7 @@ public class TimeDependentReportPageGen {
 			}
 			makeU3_ParSectComparisonScatterPlots(u3_ParentSupraRateComparisonData,
 					resourcesDir, new Range(1e-6,0.1), true,
-					"Parent Supra Rate (1/RI) Comparison", "U3 Parent Supra Rate", "Parent Supra Rate");
+					"Parent Ave Supra Rate (1/RI) Comparison", "U3 Parent Ave Supra Rate", "Parent Ave Supra Rate");
 			makeU3_ParSectComparisonScatterPlots(u3_ParentNTS_ComparisonData,
 					resourcesDir, null, true,
 					"Parent Norm Time Since (NTS) Comparison", "U3 Parent NTS", "Parent NTS");
@@ -2313,17 +2323,16 @@ public class TimeDependentReportPageGen {
 			table = MarkdownUtils.tableBuilder();
 			table.initNewLine();
 			table.addColumn("![Column1]("+relPath+"/"+"ParentSectAveSupraRateCompToU3_Scatter"+".png)");
-			table.addColumn("![Column1]("+relPath+"/"+"ParentSectProbGainCompToU3_ScatterMge5pt0"+".png)");
+			table.addColumn("![Column2]("+relPath+"/"+"ParentSectProbGainCompToU3_ScatterMge5pt0"+".png)");
 			table.initNewLine();
 			table.addColumn("![Column1]("+relPath+"/"+"ParentSectProbGainCompToU3_ScatterMge6pt7"+".png)");
-			table.addColumn("![Column1]("+relPath+"/"+"ParentSectProbGainCompToU3_ScatterMge7pt7"+".png)");
+			table.addColumn("![Column2]("+relPath+"/"+"ParentSectProbGainCompToU3_ScatterMge7pt7"+".png)");
 			table.finalizeLine().initNewLine();
 			table.addColumn("![Column1]("+relPath+"/"+"ParentNormTimeSinceCompToU3_Scatter"+".png)");
-			table.addColumn("![Column1]("+relPath+"/"+"ParentTimeSinceCompToU3_Scatter"+".png)");
+			table.addColumn("![Column2]("+relPath+"/"+"ParentTimeSinceCompToU3_Scatter"+".png)");
 			table.finalizeLine().initNewLine();
 			lines.addAll(table.build()); lines.add("");
 			lines.add(topLink); lines.add("");
-
 		}
 		
 		lines.add("## Parent Section Magnitude Probability Distributions");  
@@ -2792,7 +2801,7 @@ public class TimeDependentReportPageGen {
 				funcsToPlot.add(f);
 			}
 			
-			String plotName = reg.name()+" Cum MPDs";
+			String plotName = reg.name().replace("CONUS_", "");
 			String xAxisLabel = "Magnitude";
 			String yAxisLabel =  "Cumulative Participation Prob";
 			Range xAxisRange = new Range(5,10);
