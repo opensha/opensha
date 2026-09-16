@@ -492,7 +492,8 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	public void setGridSourceProvider(GridSourceProvider gridSourceProvider) {
 		if (gridSourceProvider == null)
 			removeAvailableModuleInstances(GridSourceProvider.class);
-		addModule(gridSourceProvider);
+		else
+			addModule(gridSourceProvider);
 	}
 	
 	/*
