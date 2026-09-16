@@ -10,6 +10,7 @@ import org.opensha.commons.hpc.JavaShellScriptWriter;
 import org.opensha.commons.hpc.mpj.FastMPJShellScriptWriter;
 import org.opensha.commons.hpc.mpj.NoMPJSingleNodeShellScriptWriter;
 import org.opensha.commons.hpc.pbs.BatchScriptWriter;
+import org.opensha.commons.hpc.pbs.FronteraScriptWriter;
 import org.opensha.commons.hpc.pbs.HovenweepScriptWriter;
 import org.opensha.commons.hpc.pbs.USC_CARC_ScriptWriter;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
@@ -299,8 +300,8 @@ public final class HPCConfig {
 
 	public enum HPCSite {
 
-		USC_CARC_FMPJ("scec", 36, 20, 50, 1,
-				true, USC_CARC_ScriptWriter.JAVA_BIN, USC_CARC_ScriptWriter.FMPJ_HOME) {
+		USC_CARC_FMPJ("scec", 36 /*nodes*/, 20 /*cores*/, 50 /*mem in GB*/, 1 /*inversions per bundle*/,
+				true /*exhaustive*/, USC_CARC_ScriptWriter.JAVA_BIN, USC_CARC_ScriptWriter.FMPJ_HOME) {
 			@Override
 			BatchScriptWriter buildBatchWriter() {
 				return new USC_CARC_ScriptWriter();
@@ -314,8 +315,16 @@ public final class HPCConfig {
 			}
 		},
 
-		HOVENWEEP_FMPJ(null, 25, 16, 60, 1,
-				false, HovenweepScriptWriter.JAVA_BIN, HovenweepScriptWriter.FMPJ_HOME) {
+		FRONTERA_FMPJ(null /*queue*/, 10 /*nodes*/, 56 /*cores*/, 150 /*mem in GB*/, 3 /*inversions per bundle*/,
+				true /*exhaustive*/, FronteraScriptWriter.JAVA_BIN, FronteraScriptWriter.FMPJ_HOME) {
+			@Override
+			BatchScriptWriter buildBatchWriter() {
+				return new FronteraScriptWriter();
+			}
+		},
+
+		HOVENWEEP_FMPJ(null /*queue*/, 25 /*nodes*/, 16 /*cores*/, 60 /*mem in GB*/, 1 /*inversions per bundle*/,
+				false /*exhaustive*/, HovenweepScriptWriter.JAVA_BIN, HovenweepScriptWriter.FMPJ_HOME) {
 			@Override
 			BatchScriptWriter buildBatchWriter() {
 				return new HovenweepScriptWriter();

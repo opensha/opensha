@@ -77,7 +77,8 @@ public class MPJ_BranchAveragedHazardScriptWriter {
 		StringBuilder args = new StringBuilder();
 		HazardScriptUtil.appendArg(args, "--input-file", inputFilePath);
 		HazardScriptUtil.appendArg(args, "--output-dir", resultsPath);
-		HazardScriptUtil.appendArg(args, "--output-file", resultsPath+"_hazard_"+backgroundOption.name()+".zip");
+		HazardScriptUtil.appendOutputFiles(args, request.hazard(),
+				resultsPath+"_hazard_"+backgroundOption.name()+".zip");
 		args.append(regionArg);
 		HazardScriptUtil.appendArg(args, "--gridded-seis", backgroundOption.name());
 		if (request.noMFDs())

@@ -58,34 +58,44 @@ public class NSHM27_InversionScriptWriter {
 			
 //			int samples = 5000;
 //			int samples = 10000;
-			int samples = 20000;
+//			int samples = 20000;
+//			int samples = 50000;
 			// 1 << N = 2^N
 //			int samples = 1 << 9; // 512
 //			int samples = 1 << 10; // 1024
 //			int samples = 1 << 11; // 2048
-//			int samples = 1 << 12; // 4096
+			int samples = 1 << 12; // 4096
 //			int samples = 1 << 13; // 8192
 			args = new String[] {
 					"--region", NSHM27_SeismicityRegions.AMSAM.name(),
 //					"--region", NSHM27_SeismicityRegions.GNMI.name(),
 					
-					"--hpc-site", HPCConfig.HPCSite.USC_CARC_FMPJ.name(),
-					"--nodes", "36",
-					
 					"--local-dir", "/home/kevin/OpenSHA/fss_inversions",
-					"--remote-dir", "/project2/scec_608/kmilner/fss_inversions",
 					
-					"--sampling-method", SamplingMethod.MONTE_CARLO.name(),
+					"--hpc-site", HPCConfig.HPCSite.USC_CARC_FMPJ.name(),
+					"--remote-dir", "/project2/scec_608/kmilner/fss_inversions",
+					"--nodes", "36",
+//					"--job-time-hours", "48",
+					"--job-time-hours", "10",
+					
+//					"--hpc-site", HPCConfig.HPCSite.FRONTERA_FMPJ.name(),
+//					"--remote-dir", "/scratch2/00950/kevinm/fss_inversions",
+//					"--nodes", "40",
+////					"--job-time-hours", "20", // for 20k
+//					"--job-time-hours", "10", // for 8192
+////					"--job-time-hours", "48",
+////					"--hazard-time-same-as-inversion",
+					
+//					"--sampling-method", SamplingMethod.MONTE_CARLO.name(),
 //					"--sampling-method", SamplingMethod.OWEN_SCRAMBLED_SOBOL.name(),
 //					"--sampling-method", SamplingMethod.LATIN_HYPERCUBE.name(),
-//					"--sampling-method", SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE.name(),
+					"--sampling-method", SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE.name(),
 					"--samples", samples+"",
 					"--unique-seed",
-					"--name-add", "3",
-					
-					"--job-time-hours", "48",
+					"--name-add", "7",
 					
 					"--hazard-grid-spacing", "0.2",
+					"--write-hazard-curves",
 			};
 		}
 		
@@ -131,7 +141,7 @@ public class NSHM27_InversionScriptWriter {
 		InversionConfig inversion = InversionConfig.builder()
 				.factoryClass(NSHM27_InvConfigFactory.class)
 //				.estimateWallTimeMinutes(200000d, 2000, 200000d)
-				.wallTimeMinutesPerRound(10)
+				.wallTimeMinutesPerRound(5)
 				.parallelBranchAverage(true)
 				.build();
 

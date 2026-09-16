@@ -8,6 +8,8 @@ import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.imr.AttenRelRef;
 
+import com.google.common.base.Preconditions;
+
 final class HazardScriptUtil {
 
 	private HazardScriptUtil() {}
@@ -19,6 +21,8 @@ final class HazardScriptUtil {
 		if (analysisTreePath != null)
 			appendArg(args, "--analysis-logic-tree", analysisTreePath);
 		appendArg(args, "--output-dir", resultsPath);
+		if (hazard.writeCurves())
+			appendArg(args, "--curves-output-file", resultsPath+"_hazard_curves.zip");
 		appendArg(args, "--gridded-seis", hazard.backgroundOption().name());
 		HazardRegion region = resolveHazardRegion(localDir, hazard, logicTree);
 		args.append(region.arg);
@@ -82,6 +86,16 @@ final class HazardScriptUtil {
 
 	static void appendFlag(StringBuilder args, String name) {
 		args.append(" ").append(name);
+	}
+
+	static void appendOutputFiles(StringBuilder args, HazardConfig hazard, String outputFile) {
+		appendArg(args, "--output-file", outputFile);
+		if (hazard.writeCurves()) {
+			Preconditions.checkArgument(outputFile.endsWith(".zip"),
+					"Hazard output file must end in .zip: %s", outputFile);
+			appendArg(args, "--curves-output-file",
+					outputFile.substring(0, outputFile.length()-4)+"_curves.zip");
+		}
 	}
 
 	static int capWeek(int mins) {

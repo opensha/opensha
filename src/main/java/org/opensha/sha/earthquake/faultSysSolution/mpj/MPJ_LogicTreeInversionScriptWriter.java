@@ -74,7 +74,7 @@ public class MPJ_LogicTreeInversionScriptWriter {
 			originalTree.write(new File(localDir, "logic_tree_original.json"));
 
 		InversionConfigurationFactory factory = instantiateFactory(request.inversion().factoryClass());
-		NodeCalcConfig calcConfig = resolveNodeCalcConfig(request.hpc(), request.inversion(), logicTree.size());
+		NodeCalcConfig calcConfig = resolveNodeCalcConfig(request.hpc(), request.inversion(), hazard, logicTree.size());
 		String resultsPath = dirPath+"/results";
 		
 		System.out.println("Directory name: "+dirName);
@@ -360,14 +360,16 @@ public class MPJ_LogicTreeInversionScriptWriter {
 				} else {
 					appendArg(args, "--input-file", resultsPath+"_avg_gridded.zip");
 				}
-				appendArg(args, "--output-file", resultsPath+"_hazard_avg_gridded.zip");
+				HazardScriptUtil.appendOutputFiles(args, request.hazard(),
+						resultsPath+"_hazard_avg_gridded.zip");
 				appendArg(args, "--output-dir", resultsPath);
 				appendArg(args, "--gridded-seis", "INCLUDE");
 				jobFile = new File(localDir, "batch_hazard_avg_gridded.slurm");
 			} else if (i == 1) {
 				appendArg(args, "--input-file", resultsPath);
 				appendArg(args, "--logic-tree", fullLTPath);
-				appendArg(args, "--output-file", resultsPath+"_hazard_full_gridded.zip");
+				HazardScriptUtil.appendOutputFiles(args, request.hazard(),
+						resultsPath+"_hazard_full_gridded.zip");
 				appendArg(args, "--output-dir", resultsPath+"_full_gridded");
 				appendArg(args, "--combine-with-dir", resultsPath);
 				appendArg(args, "--gridded-seis", "INCLUDE");
@@ -375,7 +377,8 @@ public class MPJ_LogicTreeInversionScriptWriter {
 			} else if (i == 2) {
 				appendArg(args, "--input-file", resultsPath);
 				appendArg(args, "--logic-tree", randLTPath);
-				appendArg(args, "--output-file", resultsPath+"_hazard_full_gridded_sampled.zip");
+				HazardScriptUtil.appendOutputFiles(args, request.hazard(),
+						resultsPath+"_hazard_full_gridded_sampled.zip");
 				appendArg(args, "--output-dir", resultsPath+"_full_gridded");
 				appendArg(args, "--combine-with-dir", resultsPath);
 				appendArg(args, "--gridded-seis", "INCLUDE");
@@ -383,14 +386,16 @@ public class MPJ_LogicTreeInversionScriptWriter {
 			} else if (i == 3) {
 				appendArg(args, "--input-file", resultsPath);
 				appendArg(args, "--logic-tree", onlyLTPath);
-				appendArg(args, "--output-file", resultsPath+"_hazard_full_gridded_only.zip");
+				HazardScriptUtil.appendOutputFiles(args, request.hazard(),
+						resultsPath+"_hazard_full_gridded_only.zip");
 				appendArg(args, "--output-dir", resultsPath+"_full_gridded");
 				appendArg(args, "--combine-with-dir", resultsPath);
 				appendArg(args, "--gridded-seis", "ONLY");
 				jobFile = new File(localDir, "batch_hazard_full_gridded_only.slurm");
 			} else {
 				appendArg(args, "--input-file", resultsPath+"_gridded_branches.zip");
-				appendArg(args, "--output-file", resultsPath+"_hazard_gridded_only.zip");
+				HazardScriptUtil.appendOutputFiles(args, request.hazard(),
+						resultsPath+"_hazard_gridded_only.zip");
 				appendArg(args, "--output-dir", resultsPath+"_gridded_only");
 				appendArg(args, "--gridded-seis", "ONLY");
 				jobFile = new File(localDir, "batch_hazard_gridded_only.slurm");
@@ -420,7 +425,8 @@ public class MPJ_LogicTreeInversionScriptWriter {
 		HazardScriptUtil.appendSharedArgs(args, hazard);
 	}
 
-	private NodeCalcConfig resolveNodeCalcConfig(HPCConfig hpc, InversionConfig inversion, int logicTreeSize) {
+	private NodeCalcConfig resolveNodeCalcConfig(HPCConfig hpc, InversionConfig inversion, HazardConfig hazard,
+			int logicTreeSize) {
 		int origNodes = hpc.nodes();
 		int nodes = Integer.min(origNodes, logicTreeSize);
 		int numCalcs = logicTreeSize*inversion.runsPerBranch();
@@ -432,7 +438,18 @@ public class MPJ_LogicTreeInversionScriptWriter {
 		int perInversionMins = inversion.resolvePerInversionMinutes();
 		Integer defaultJobMins = hpc.jobTimeMinutes();
 		int inversionMins = defaultJobMins == null ? inversion.resolveInversionJobMinutes(nodeRounds) : defaultJobMins;
-		int hazardMins = defaultJobMins == null ? capWeek(Integer.max(60*10, 45*nodeRounds)) : defaultJobMins;
+		int hazardMins;
+		if (hazard != null && hazard.useInversionJobTime()) {
+			hazardMins = capWeek(inversionMins);
+		} else if (hazard != null && hazard.minutesPerBranch() != null) {
+			int hazardNodes = Integer.min(40, nodes);
+			int hazardNodeRounds = (int)Math.ceil((double)logicTreeSize/(double)hazardNodes);
+			double minutesPerBranch = hazard.minutesPerBranch();
+			hazardMins = capWeek((int)Math.ceil(hazardNodeRounds*minutesPerBranch
+					+ Math.max(60d, minutesPerBranch)));
+		} else {
+			hazardMins = defaultJobMins == null ? capWeek(Integer.max(60*10, 45*nodeRounds)) : defaultJobMins;
+		}
 		return new NodeCalcConfig(nodes, nodeRounds, numCalcs, perInversionMins,
 				inversionMins, hazardMins);
 	}
