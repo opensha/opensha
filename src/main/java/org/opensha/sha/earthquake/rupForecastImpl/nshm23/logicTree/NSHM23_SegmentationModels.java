@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.JumpProbabilityConstraint;
@@ -44,7 +45,7 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
-public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, RupsThroughCreepingSectBranchNode {
+public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, RupsThroughCreepingSectBranchNode, LogicTreeNode.FixedWeightNode {
 	/**
 	 * No segmentation:
 	 * 	* No distance-dependence
@@ -381,7 +382,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	}
 
 	@Override
-	public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+	public double getNodeWeight() {
 		return weight;
 	}
 
@@ -440,7 +441,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 		
 		if (this == CLASSIC && branch.hasValue(SectionSupraSeisBValues.class)) {
 			// see if we're on the b=0 branch
-			if (branch.hasValue(SupraSeisBValues.B_0p0) || branch.requireValue(SectionSupraSeisBValues.class).getB() == 0d) {
+			if (branch.hasValue(SupraSeisBValues.B_0p0) || branch.requireValue(SectionSupraSeisBValues.class).getB(rupSet, branch) == 0d) {
 				// we're on the "classic" branch and b=0: exclude all ruptures that don't rupture a full section,
 				// except on special faults
 				boolean excludeNamed, excludeProxies;

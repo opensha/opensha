@@ -35,7 +35,7 @@ import com.google.common.collect.Table;
 @Affects(MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME)
 @Affects(MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM23_SeisSmoothingAlgorithms implements LogicTreeNode {
+public enum NSHM23_SeisSmoothingAlgorithms implements LogicTreeNode.FixedWeightNode {
 	
 	ADAPTIVE("Adaptive Kernel", "Adaptive", 0.6d),
 	FIXED("Fixed Kernel", "Fixed", 0.4d),
@@ -181,7 +181,7 @@ public enum NSHM23_SeisSmoothingAlgorithms implements LogicTreeNode {
 	}
 
 	@Override
-	public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+	public double getNodeWeight() {
 		return weight;
 	}
 

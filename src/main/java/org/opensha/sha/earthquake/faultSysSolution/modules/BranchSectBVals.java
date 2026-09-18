@@ -157,7 +157,55 @@ public class BranchSectBVals implements ArchivableModule {
 			
 			return ret;
 		}
-	}
+
+			@Override
+			public void process(BranchSectBVals other) {
+				if (sectBVals == null) {
+					sectBVals = new ArrayList<>();
+					weights = new ArrayList<>();
+					if (other.parentBVals != null) {
+						parentBVals = new ArrayList<>();
+						parentIDs = Arrays.copyOf(other.parentIDs, other.parentIDs.length);
+					}
+					if (other.sectTargetBVals != null) {
+						sectTargetBVals = new ArrayList<>();
+						if (other.parentTargetBVals != null)
+							parentTargetBVals = new ArrayList<>();
+					}
+				} else {
+					Preconditions.checkState(other.sectBVals[0].length == sectBVals.get(0).length);
+					Preconditions.checkState((parentBVals == null) == (other.parentBVals == null));
+					if (parentBVals != null) {
+						Preconditions.checkNotNull(other.parentIDs);
+						Preconditions.checkState(parentIDs.length == other.parentIDs.length);
+						for (int i=0; i<parentIDs.length; i++)
+							Preconditions.checkState(parentIDs[i] == other.parentIDs[i]);
+					}
+					if ((sectTargetBVals == null) != (other.sectTargetBVals == null)) {
+						sectTargetBVals = null;
+						parentTargetBVals = null;
+					} else if ((parentTargetBVals == null) != (other.parentTargetBVals == null)) {
+						parentTargetBVals = null;
+					}
+				}
+				
+				for (int b=0; b<other.weights.length; b++) {
+					weights.add(other.weights[b]);
+					sectBVals.add(other.sectBVals[b]);
+					if (parentBVals != null)
+						parentBVals.add(other.parentBVals[b]);
+					if (sectTargetBVals != null)
+						sectTargetBVals.add(other.sectTargetBVals[b]);
+					if (parentTargetBVals != null)
+						parentTargetBVals.add(other.parentTargetBVals[b]);
+				}
+			}
+
+			@Override
+			public Class<? extends BranchSectBVals> getBuiltType() {
+				return BranchSectBVals.class;
+			}
+		}
 
 	@Override
 	public String getName() {

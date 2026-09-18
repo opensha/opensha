@@ -31,6 +31,7 @@ import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.plot.DatasetRenderingOrder;
 import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.Range;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.NamedComparator;
 import org.opensha.commons.data.Site;
@@ -91,6 +92,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.GeneralInfoPlot;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings.CurveXValManager;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
 import org.opensha.sha.earthquake.param.AseismicityAreaReductionParam;
 import org.opensha.sha.earthquake.param.FaultGridSpacingParam;
@@ -508,19 +510,7 @@ public class SolSiteHazardCalc {
 		}
 		Preconditions.checkState(periods.length > 0, "No periods specified?");
 		
-		DiscretizedFunc[] periodXVals = new DiscretizedFunc[periods.length];
-		IMT_Info imtInfo = new IMT_Info();
-		for (int p=0; p<periods.length; p++) {
-			if (periods[p] == -1d) {
-				periodXVals[p] = imtInfo.getDefaultHazardCurve(PGV_Param.NAME);
-			} else if (periods[p] == 0d) {
-				periodXVals[p] = imtInfo.getDefaultHazardCurve(PGA_Param.NAME);
-			} else {
-				Preconditions.checkState(periods[p] > 0d, "Unexpected period: %s", periods[p]);
-				periodXVals[p] = imtInfo.getDefaultHazardCurve(SA_Param.NAME);
-			}
-		}
-
+		CurveXValManager xVals = FaultSysHazardCalcSettings.getXValManager(cmd);
 		
 		int numCurves = sites.size() * periods.length;
 		int threads = Integer.min(FaultSysTools.getNumThreads(cmd), numCurves);
@@ -554,7 +544,7 @@ public class SolSiteHazardCalc {
 							exceedCalc, periods));
 		}
 		
-		List<DiscretizedFunc[]> curves = calcHazardCurves(calcThreads, sites, erf, periods, periodXVals);
+		List<DiscretizedFunc[]> curves = calcHazardCurves(calcThreads, sites, erf, periods, xVals);
 		
 		// write curves
 		for (int p=0; p<periods.length; p++) {
@@ -586,7 +576,7 @@ public class SolSiteHazardCalc {
 				compCalcThreads.add(new HazardCalcThread(calcThreads.get(i).calc, calcThreads.get(i).gmms,
 						exceedCalc, periods));
 			
-			compCurves = calcHazardCurves(compCalcThreads, sites, compERF, periods, periodXVals);
+			compCurves = calcHazardCurves(compCalcThreads, sites, compERF, periods, xVals);
 			
 			// write comparison curves
 			for (int p=0; p<periods.length; p++) {
@@ -615,7 +605,7 @@ public class SolSiteHazardCalc {
 			if (rpStr.contains(",")) {
 				String[] split = rpStr.split(",");
 				rpYears = new double[split.length];
-				for (int p=0; p<periods.length; p++)
+				for (int p=0; p<split.length; p++)
 					rpYears[p] = Double.parseDouble(split[p]);
 			} else {
 				rpYears = new double[] { Double.parseDouble(rpStr) };
@@ -774,11 +764,25 @@ public class SolSiteHazardCalc {
 			if (cmd.hasOption("disagg-max-mag"))
 				maxMag = Double.parseDouble("disagg-max-mag");
 			magRange = disaggRange(minMag, maxMag, 0.5, false);
+			System.out.println("Mag range for m=["+(float)minMag+", "+(float)maxMag+"]: func min="
+					+(float)magRange.getMinX()+", max="+(float)magRange.getMaxX()
+					+", delta="+(float)magRange.getDelta()+", size="+magRange.size());
 			
-			double disaggMaxDist = cmd.hasOption("disagg-max-dist") ?
-					Double.parseDouble(cmd.getOptionValue("disagg-max-dist")) : Math.max(largestMaxDist, 200d);
+			double disaggMaxDist;
+			if (cmd.hasOption("")) {
+				disaggMaxDist = Double.parseDouble(cmd.getOptionValue("disagg-max-dist"));
+			} else {
+				// don't go above 500 (or below 200) unless explicitly told to (plots get weird)
+				disaggMaxDist = Math.max(Math.min(largestMaxDist, 500d), 200d);
+			}
 			double minDist, distDelta;
-			if (disaggMaxDist > 150d) {
+			if (disaggMaxDist > 550d) {
+				minDist = 20d;
+				distDelta = 40d;
+			} else if (disaggMaxDist > 350d) {
+				minDist = 10d;
+				distDelta = 20d;
+			} else if (disaggMaxDist > 150d) {
 				minDist = 10d;
 				distDelta = 20d;
 			} else {
@@ -786,8 +790,9 @@ public class SolSiteHazardCalc {
 				distDelta = 10d;
 			}
 			EvenlyDiscretizedFunc distRange = disaggRange(minDist, disaggMaxDist, distDelta, true);
-//			System.out.println("Mag range:\n"+magRange);
-//			System.out.println("Dist range:\n"+distRange);
+			System.out.println("Dist range for maxDist="+(float)disaggMaxDist+": func min="
+					+(float)distRange.getMinX()+", max="+(float)distRange.getMaxX()
+					+", delta="+(float)distRange.getDelta()+", size="+distRange.size());
 			
 			List<DisaggCalcThread> disaggThreads = new ArrayList<>(threads);
 			HazardCurveCalculator curveCalc = new HazardCurveCalculator(sourceFilters);
@@ -1587,8 +1592,8 @@ public class SolSiteHazardCalc {
 	}
 	
 	private static List<DiscretizedFunc[]> calcHazardCurves(List<HazardCalcThread> calcThreads, List<Site> sites,
-			FaultSystemSolutionERF erf, double[] periods, DiscretizedFunc[] periodXVals) {
-		SiteHazardTaskDistributor hazardTasks = new SiteHazardTaskDistributor(sites, periods, periodXVals);
+			FaultSystemSolutionERF erf, double[] periods, CurveXValManager xVals) {
+		SiteHazardTaskDistributor hazardTasks = new SiteHazardTaskDistributor(sites, periods, xVals);
 		
 		int numCurves = sites.size() * periods.length;
 		System.out.println("Calculating "+numCurves+" hazard curves ("+sites.size()+" sites and "+periods.length
@@ -1770,16 +1775,16 @@ public class SolSiteHazardCalc {
 	
 	private static class SiteHazardTaskDistributor extends AbstractSiteHazardTaskDistributor<HazardCalcTask, DiscretizedFunc> {
 
-		private DiscretizedFunc[] periodXVals;
+		private CurveXValManager xVals;
 		
-		public SiteHazardTaskDistributor(List<Site> sites, double[] periods, DiscretizedFunc[] periodXVals) {
+		public SiteHazardTaskDistributor(List<Site> sites, double[] periods, CurveXValManager xVals) {
 			super(sites, periods);
-			this.periodXVals = periodXVals;
+			this.xVals = xVals;
 		}
 
 		@Override
 		protected HazardCalcTask buildTask(int siteIndex, Site site, int periodIndex, double period) {
-			return new HazardCalcTask(site, period, periodXVals[periodIndex]);
+			return new HazardCalcTask(site, period, xVals);
 		}
 	}
 	
@@ -1810,11 +1815,11 @@ public class SolSiteHazardCalc {
 	
 	private static class HazardCalcTask extends AbstractHazardCalcTask<DiscretizedFunc> {
 		
-		final DiscretizedFunc xValues;
+		final CurveXValManager xVals;
 
-		public HazardCalcTask(Site site, double period, DiscretizedFunc xValues) {
+		public HazardCalcTask(Site site, double period, CurveXValManager xVals) {
 			super(site, period);
-			this.xValues = xValues;
+			this.xVals = xVals;
 		}
 	}
 	
@@ -1861,16 +1866,9 @@ public class SolSiteHazardCalc {
 			HazardCalcTask task = tasks.getNextTask(null);
 			
 			while (task != null) {
-				DiscretizedFunc xValCurve = task.xValues;
-				double[] linearXVals = new double[xValCurve.size()];
-				double[] logXVals = new double[xValCurve.size()];
-				for (int i=0; i<xValCurve.size(); i++) {
-					double x = xValCurve.getX(i);
-					linearXVals[i] = x;
-					logXVals[i] = Math.log(x);
-				}
+				CurveXValManager xVals = task.xVals;
 				
-				LightFixedXFunc logCurve = new LightFixedXFunc(logXVals, new double[logXVals.length]);
+				LightFixedXFunc logCurve = xVals.initLogCurve(task.period);
 				
 				FaultSysHazardCalcSettings.setIMforPeriod(gmms, task.period);
 				
@@ -1880,7 +1878,7 @@ public class SolSiteHazardCalc {
 				
 				calc.getHazardCurve(logCurve, site, gmms, erf, exceedCalc);
 				
-				LightFixedXFunc linearCurve = new LightFixedXFunc(linearXVals, logCurve.getYVals());
+				LightFixedXFunc linearCurve = xVals.remapToLinear(logCurve, task.period);
 				task.setResult(linearCurve);
 				
 				System.out.println("done calculating curve "+track.getInrementProgress()
@@ -2872,7 +2870,7 @@ public class SolSiteHazardCalc {
 	}
 	
 	private static void plotSiteScatters(GeographicMapMaker mapMaker, List<Site> sites, boolean writeGeoJSON) {
-		Color siteColor = modAlpha(Colors.tab_green.darker(), 180);
+		Color siteColor = ColorUtils.transparent(Colors.tab_green.darker(), 180);
 		List<Location> siteLocs = new ArrayList<>(sites.size());
 		List<FeatureProperties> siteProps = writeGeoJSON ? new ArrayList<>(sites.size()) : null;
 		for (Site site : sites) {
@@ -2899,8 +2897,4 @@ public class SolSiteHazardCalc {
 		mapMaker.setScatterSymbol(PlotSymbol.FILLED_INV_TRIANGLE, size, PlotSymbol.INV_TRIANGLE, Color.BLACK);
 	}
 	
-	private static Color modAlpha(Color c, int alpha) {
-		return new Color(c.getRed(), c.getGreen(), c.getBlue(), alpha);
-	}
-
 }

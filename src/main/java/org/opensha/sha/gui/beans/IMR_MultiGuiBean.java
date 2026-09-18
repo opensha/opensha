@@ -22,6 +22,7 @@ import javax.swing.plaf.basic.BasicComboBoxRenderer;
 import org.opensha.commons.gui.LabeledBoxPanel;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.util.ListUtils;
 import org.opensha.commons.util.NtoNMap;
 import org.opensha.commons.util.ServerPrefUtils;
@@ -95,8 +96,7 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 		Preconditions.checkArgument(!imrs.isEmpty(), "IMR list cannot be empty!");
 		
 		Color defaultBackground = UIManager.getColor ( "Panel.background" );
-		double avgColor = (defaultBackground.getRed() + defaultBackground.getGreen() + defaultBackground.getBlue())/3d;
-		if (avgColor > 127d) {
+		if (ColorUtils.isLight(defaultBackground)) {
 			// light theme
 			backgroundColor = Color.WHITE;
 		} else {

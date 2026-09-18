@@ -43,14 +43,12 @@ public class LogicTreeBranchPlot extends AbstractRupSetPlot {
 			table.addLine("Level", "Choice", "Comparison Choice");
 		
 		List<String> levelNames = new ArrayList<>();
-		Map<String, LogicTreeNode> choices = new HashMap<>();
 		Map<String, LogicTreeNode> compChoices = compBranch == null ? null : new HashMap<>();
 		
 		for (int i=0; i<branch.size(); i++) {
 			LogicTreeLevel<?> level = branch.getLevel(i);
 			String name = level.getName();
 			levelNames.add(name);
-			choices.put(name, branch.getValue(i));
 		}
 		
 		if (compBranch != null) {
@@ -63,17 +61,22 @@ public class LogicTreeBranchPlot extends AbstractRupSetPlot {
 			}
 		}
 		
-		for (String name : levelNames) {
+		for (int l=0; l<levelNames.size(); l++) {
+			String name = levelNames.get(l);
 			table.initNewLine().addColumn("**"+name+"**");
-			LogicTreeNode choice = choices.get(name);
+			LogicTreeNode choice = branch.getValue(l);
 			if (choice == null)
 				table.addColumn(na);
+			else if (choice instanceof LogicTreeNode.ValuedLogicTreeNode<?>)
+				table.addColumn(choice.getName()+" ("+((LogicTreeNode.ValuedLogicTreeNode<?>)choice).getValue()+")");
 			else
 				table.addColumn(choice.getName());
 			if (compBranch != null) {
 				LogicTreeNode compChoice = compChoices.get(name);
 				if (compChoice == null)
 					table.addColumn(na);
+				else if (compChoice instanceof LogicTreeNode.ValuedLogicTreeNode<?>)
+					table.addColumn(compChoice.getName()+" ("+((LogicTreeNode.ValuedLogicTreeNode<?>)compChoice).getValue()+")");
 				else
 					table.addColumn(compChoice.getName());
 			}

@@ -541,7 +541,7 @@ public class HazusJobWriter {
 		List<String> script = mpj.buildScript(MPJHazardCurveDriver.class.getName(), cliArgs);
 		USC_HPCC_ScriptWriter writer = new USC_HPCC_ScriptWriter();
 
-		script = writer.buildScript(script, mins, nodes, ppn, queue);
+		script = writer.buildScript(script, mins, nodes, ppn, -1, queue);
 
 		JavaShellScriptWriter assembleWriter = new JavaShellScriptWriter(javaBin, 2048, classpath);
 		String metadataFile = dag.writeMetadataFile(jobDir.getAbsolutePath());

@@ -17,6 +17,9 @@ public class UnmodifiableDiscrFunc extends AbstractDiscretizedFunc {
 		this.func = func.deepClone();
 		setName(func.getName());
 		setInfo(func.getInfo());
+		setTolerance(func.getTolerance());
+		setXAxisName(func.getXAxisName());
+		setYAxisName(func.getYAxisName());
 	}
 
 	@Override
@@ -93,6 +96,11 @@ public class UnmodifiableDiscrFunc extends AbstractDiscretizedFunc {
 	public void set(int index, double Y) throws IndexOutOfBoundsException {
 		setFail();
 	}
+
+	@Override
+	public void scale(double val) {
+		setFail();
+	}
 	
 	private void setFail() {
 		throw new UnsupportedOperationException("cannot modify an "+ClassUtils.getClassNameWithoutPackage(getClass()));
@@ -109,14 +117,13 @@ public class UnmodifiableDiscrFunc extends AbstractDiscretizedFunc {
 	}
 
 	@Override
-	protected int getXIndexBefore(double x) {
-		if (func instanceof AbstractDiscretizedFunc)
-			return ((AbstractDiscretizedFunc)func).getXIndexBefore(x);
-		for (int i=0; i<size(); i++) {
-			if (getX(i) >= x)
-				return i-1;
-		}
-		return size();
+	public int getXIndexBefore(double x) {
+		return func.getXIndexBefore(x);
+	}
+
+	@Override
+	public int getClosestXIndex(double x) {
+		return func.getClosestXIndex(x);
 	}
 
 }

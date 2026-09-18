@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertainBoundedDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
@@ -28,6 +29,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultRea
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionBuilder;
+import org.opensha.sha.earthquake.nshmp.seismicity.SeismicityRateModel;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.PRVI25_GridSourceBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
@@ -238,8 +240,7 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel, RupSetSubsect
 //		if (region != null)
 //			return PRVI25_RegionalSeismicity.getRemapped(region, seisRegion, declustering, smooth, refMFD, mMax);
 //		else
-		List<UncertainBoundedIncrMagFreqDist> mfds = new ArrayList<>();
-		List<Double> weights = new ArrayList<>();
+		WeightedList<UncertainBoundedIncrMagFreqDist> mfds = new WeightedList<>();
 		for (PRVI25_SeismicityRateEpoch epoch : PRVI25_SeismicityRateEpoch.values()) {
 			double weight = epoch.getNodeWeight(branch);
 			if (weight == 0d)
@@ -250,10 +251,9 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel, RupSetSubsect
 						PRVI25_DeclusteringAlgorithms.AVERAGE, PRVI25_SeisSmoothingAlgorithms.AVERAGE, refMFD, mMax);
 			else
 				mfd = PRVI25_CrustalSeismicityRate.loadRateModel(epoch).getBounded(refMFD, mMax);
-			mfds.add(mfd);
-			weights.add(weight);
+			mfds.add(mfd, weight);
 		}
-		return PRVI25_SeismicityRateEpoch.averageUncert(mfds, weights);
+		return SeismicityRateModel.averageUncert(mfds);
 	}
 
 	@Override

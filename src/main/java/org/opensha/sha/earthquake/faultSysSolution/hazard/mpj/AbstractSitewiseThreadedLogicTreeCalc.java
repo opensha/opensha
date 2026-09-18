@@ -34,6 +34,7 @@ import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings.CurveXValManager;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
@@ -66,9 +67,7 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 	private boolean cacheGridSources = true;
 	private boolean doGmmInputCache = false;
 	private SourceFilterManager sourceFilters;
-	
-	private DiscretizedFunc[] xVals;
-	private DiscretizedFunc[] logXVals;
+	private CurveXValManager xVals;
 	
 	private LogicTreeBranch<?> prevBranch;
 	private int prevBranchIndex = -1;
@@ -79,13 +78,16 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 
 	public AbstractSitewiseThreadedLogicTreeCalc(ExecutorService exec, int numSites, SolutionLogicTree solTree,
 			AttenRelSupplier gmmRef, double[] periods,
-			IncludeBackgroundOption gridSeisOp, GriddedSeismicitySettings griddedSettings, SourceFilterManager sourceFilters) {
-		this(exec, numSites, solTree, FaultSysHazardCalcSettings.wrapInTRTMap(gmmRef), periods, gridSeisOp, griddedSettings, sourceFilters);
+			IncludeBackgroundOption gridSeisOp, GriddedSeismicitySettings griddedSettings,
+			SourceFilterManager sourceFilters, CurveXValManager xVals) {
+		this(exec, numSites, solTree, FaultSysHazardCalcSettings.wrapInTRTMap(gmmRef), periods, gridSeisOp,
+				griddedSettings, sourceFilters, xVals);
 	}
 
 	public AbstractSitewiseThreadedLogicTreeCalc(ExecutorService exec, int numSites, SolutionLogicTree solTree,
 			Map<TectonicRegionType, AttenRelSupplier> gmmRefs, double[] periods,
-			IncludeBackgroundOption gridSeisOp, GriddedSeismicitySettings griddedSettings, SourceFilterManager sourceFilters) {
+			IncludeBackgroundOption gridSeisOp, GriddedSeismicitySettings griddedSettings,
+			SourceFilterManager sourceFilters, CurveXValManager xVals) {
 		this.exec = exec;
 		this.numSites = numSites;
 		this.solTree = solTree;
@@ -100,21 +102,6 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 				hasGMMLevels = true;
 				break;
 			}
-		}
-		
-		xVals = new DiscretizedFunc[periods.length];
-		logXVals = new DiscretizedFunc[periods.length];
-		IMT_Info imtInfo = new IMT_Info();
-		for (int p=0; p<periods.length; p++) {
-			if (periods[p] == -1d)
-				xVals[p] = imtInfo.getDefaultHazardCurve(PGV_Param.NAME);
-			else if (periods[p] == 0d)
-				xVals[p] = imtInfo.getDefaultHazardCurve(PGA_Param.NAME);
-			else
-				xVals[p] = imtInfo.getDefaultHazardCurve(SA_Param.NAME);
-			logXVals[p] = new ArbitrarilyDiscretizedFunc();
-			for (Point2D pt : xVals[p])
-				logXVals[p].set(Math.log(pt.getX()), 0d);
 		}
 		
 		debug("hasGMMLevels="+hasGMMLevels);
@@ -137,12 +124,8 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 	
 	public abstract void debug(String message);
 	
-	public DiscretizedFunc[] getXVals() {
+	public CurveXValManager getXValManager() {
 		return xVals;
-	}
-
-	public DiscretizedFunc[] getLogXVals() {
-		return logXVals;
 	}
 
 	public DiscretizedFunc[][] calcForBranch(int branchIndex) throws IOException {
@@ -360,7 +343,7 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 			for (int p=0; p<periods.length; p++) {
 				FaultSysHazardCalcSettings.setIMforPeriod(gmms, periods[p]);
 				
-				DiscretizedFunc logHazCurve = logXVals[p].deepClone();
+				DiscretizedFunc logHazCurve = xVals.initLogCurve(periods[p]);
 				
 				calc.getHazardCurve(logHazCurve, site, gmms, erf);
 				
@@ -373,10 +356,7 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 				}
 				Preconditions.checkState(Double.isFinite(sumY), "Non-finite hazard curve");
 				
-				curves[p] = xVals[p].deepClone();
-				Preconditions.checkState(curves[p].size() == logHazCurve.size());
-				for (int i=0; i<logHazCurve.size(); i++)
-					curves[p].set(i, logHazCurve.getY(i));
+				curves[p] = xVals.remapToLinear(logHazCurve, periods[p]);
 			}
 			
 			if (erf instanceof DistCachedERFWrapper)

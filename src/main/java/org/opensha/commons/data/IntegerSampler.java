@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.random.RandomGenerator;
 
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.util.ExceptionUtils;
@@ -45,7 +46,7 @@ public interface IntegerSampler {
 	 * @param r random number generator
 	 * @return a randomly sampled integer
 	 */
-	public default int getRandomInt(Random r) {
+	public default int getRandomInt(RandomGenerator r) {
 		return getRandomInt(r.nextDouble());
 	}
 	
@@ -92,7 +93,7 @@ public interface IntegerSampler {
 		}
 
 		@Override
-		public int getRandomInt(Random r) {
+		public int getRandomInt(RandomGenerator r) {
 			return start + r.nextInt(num);
 		}
 
@@ -127,7 +128,7 @@ public interface IntegerSampler {
 		}
 
 		@Override
-		public int getRandomInt(Random r) {
+		public int getRandomInt(RandomGenerator r) {
 			return ints[r.nextInt(ints.length)];
 		}
 
@@ -191,7 +192,7 @@ public interface IntegerSampler {
 		}
 
 		@Override
-		public int getRandomInt(Random r) {
+		public int getRandomInt(RandomGenerator r) {
 			checkInitSampler();
 			return sampler.getRandomInt(r);
 		}

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
@@ -786,7 +787,7 @@ public class NSHM23_WasatchSegmentationData {
 	}
 	
 	private static Color alpha(Color c, int alpha) {
-		return new Color(c.getRed(), c.getGreen(), c.getBlue(), alpha);
+		return ColorUtils.transparent(c, alpha);
 	}
 	
 	private static HashSet<Jump> removeDuplicates(HashSet<Jump> jumps) {

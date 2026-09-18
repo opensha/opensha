@@ -3,12 +3,14 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
+import org.opensha.sha.util.TectonicRegionType;
 
 @DoesNotAffect(FaultSystemRupSet.SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
@@ -20,7 +22,7 @@ import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode
 @Affects(MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME)
 @Affects(MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM23_MaxMagOffFault implements MaxMagOffFaultBranchNode {
+public enum NSHM23_MaxMagOffFault implements MaxMagOffFaultBranchNode, LogicTreeNode.FixedWeightNode {
 	MAG_7p3(7.3, 0.1d),
 	MAG_7p6(7.6, 0.8d),
 	MAG_7p9(7.9, 0.1d); // TODO: currently using U3 values, weights
@@ -44,7 +46,7 @@ public enum NSHM23_MaxMagOffFault implements MaxMagOffFaultBranchNode {
 	}
 
 	@Override
-	public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+	public double getNodeWeight() {
 		return weight;
 	}
 
@@ -56,6 +58,11 @@ public enum NSHM23_MaxMagOffFault implements MaxMagOffFaultBranchNode {
 	@Override
 	public double getMaxMagOffFault() {
 		return mMax;
+	}
+	
+	@Override
+	public TectonicRegionType getTectonicRegime() {
+		return TectonicRegionType.ACTIVE_SHALLOW;
 	}
 
 }

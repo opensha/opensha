@@ -63,7 +63,7 @@ public enum PRVI25_CrustalBValues implements SectionSupraSeisBValues.Constant {
 	}
 
 	@Override
-	public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+	public double getNodeWeight() {
 		return weight;
 	}
 

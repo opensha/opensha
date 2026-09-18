@@ -5,6 +5,7 @@ import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +24,7 @@ import org.opensha.commons.util.modules.helpers.JSON_TypeAdapterBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.ConnectivityCluster;
+import org.opensha.sha.earthquake.faultSysSolution.util.MergedSolutionCreator.MergedRupSetMappings;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.GsonBuilder;
@@ -30,7 +32,8 @@ import com.google.gson.reflect.TypeToken;
 
 public class ConnectivityClusters implements SubModule<FaultSystemRupSet>,
 JSON_TypeAdapterBackedModule<List<ConnectivityCluster>>, Iterable<ConnectivityCluster>,
-BranchAverageableModule<ConnectivityClusters>, AverageableModule.ConstantAverageable<ConnectivityClusters> {
+BranchAverageableModule<ConnectivityClusters>, AverageableModule.ConstantAverageable<ConnectivityClusters>,
+MergeableRuptureModule<ConnectivityClusters>{
 	
 	private FaultSystemRupSet rupSet;
 	private List<ConnectivityCluster> clusters;
@@ -384,6 +387,29 @@ BranchAverageableModule<ConnectivityClusters>, AverageableModule.ConstantAverage
 				return false;
 		}
 		return true;
+	}
+
+	@Override
+	public ConnectivityClusters getForMergedRuptureSet(FaultSystemRupSet mergedRupSet, MergedRupSetMappings mappings,
+			List<ConnectivityClusters> originalModules) {
+		Preconditions.checkState(originalModules.size() == mappings.getNumInputRupSets());
+		
+		List<ConnectivityCluster> clusters = new ArrayList<>();
+		
+		for (int i=0; i<originalModules.size(); i++) {
+			ConnectivityClusters subClusters = originalModules.get(i);
+			if (subClusters == null)
+				return null;
+			for (ConnectivityCluster cluster : subClusters.clusters) {
+				HashSet<Integer> newSectIDs = new HashSet<>(cluster.getNumSections());
+				for (int sectID : cluster.getSectIDs())
+					newSectIDs.add(mappings.getNewSectIndex(i, sectID));
+				clusters.add(new ConnectivityCluster(cluster.getNumSections(), cluster.getNumRuptures(),
+						newSectIDs, cluster.getParentSectIDs()));
+			}
+		}
+		
+		return new ConnectivityClusters(mergedRupSet, clusters);
 	}
 
 }

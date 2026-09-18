@@ -29,6 +29,7 @@ import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.ui.RectangleAnchor;
 import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.Range;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
@@ -2151,7 +2152,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		return riRateStr(1d/func.getInterpolatedY(mag));
 	}
 	
-	private static String riRateStr(double ri) {
+	private synchronized static String riRateStr(double ri) {
 		if (ri > 1d)
 			return riDF.format(ri);
 		return (float)ri+"";
@@ -2288,6 +2289,10 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		}
 		return new Range(minNonZero, max);
 	}
+	
+	public static boolean isLatX(String faultName, MinMaxAveTracker latTrack, MinMaxAveTracker lonTrack) {
+		return latTrack.getLength() > 0.6*lonTrack.getLength() || faultName.contains("San Andreas");
+	}
 
 	static List<String> getAlongStrikeLines(ReportMetadata meta, String faultName,
 			List<FaultSection> faultSects, File outputDir, String topLink) throws IOException {
@@ -2304,7 +2309,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		}
 		
 		// strongly prefer latitude here
-		boolean latX = latRange.getLength() > 0.6*lonRange.getLength() || faultName.contains("San Andreas");
+		boolean latX = isLatX(faultName, latRange, lonRange);
 		String xLabel;
 		Range xRange;
 		if (latX) {
@@ -2838,7 +2843,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				constrColor = Color.BLACK;
 				constraints = paleoConstraints; 
 			}
-			Color whiskerColor = new Color(constrColor.getRed(), constrColor.getGreen(), constrColor.getBlue(), 127);
+			Color whiskerColor = ColorUtils.transparent(constrColor, 127);
 			
 			if (constraints != null) {
 				DefaultXY_DataSet dataXY = new DefaultXY_DataSet();

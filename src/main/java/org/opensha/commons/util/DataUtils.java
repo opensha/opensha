@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Random;
 
 import org.apache.commons.math3.stat.StatUtils;
+import org.apache.commons.rng.UniformRandomProvider;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 
 import com.google.common.base.Function;
@@ -1073,6 +1074,62 @@ public class DataUtils {
 				ret[i] = values[i];
 		}
 		return ret;
+	}
+	
+	/**
+	 * Fisher–Yates shuffle of the given array in place using the given random
+	 * @param array
+	 * @param rand
+	 */
+	public static void shuffle(double[] array, Random rand) {
+		for (int i = array.length - 1; i > 0; i--) {
+			int j = rand.nextInt(i + 1);
+			double tmp = array[i];
+			array[i] = array[j];
+			array[j] = tmp;
+		}
+	}
+
+	/**
+	 * Fisher–Yates shuffle of the given array in place using the given random
+	 * @param array
+	 * @param rand
+	 */
+	public static void shuffle(int[] array, Random rand) {
+		for (int i = array.length - 1; i > 0; i--) {
+			int j = rand.nextInt(i + 1);
+			int tmp = array[i];
+			array[i] = array[j];
+			array[j] = tmp;
+		}
+	}
+
+	/**
+	 * Fisher–Yates shuffle of the given array in place using the given random
+	 * @param array
+	 * @param rand
+	 */
+	public static void shuffle(double[] array, UniformRandomProvider rand) {
+		for (int i = array.length - 1; i > 0; i--) {
+			int j = rand.nextInt(i + 1);
+			double tmp = array[i];
+			array[i] = array[j];
+			array[j] = tmp;
+		}
+	}
+
+	/**
+	 * Fisher–Yates shuffle of the given array in place using the given random
+	 * @param array
+	 * @param rand
+	 */
+	public static void shuffle(int[] array, UniformRandomProvider rand) {
+		for (int i = array.length - 1; i > 0; i--) {
+			int j = rand.nextInt(i + 1);
+			int tmp = array[i];
+			array[i] = array[j];
+			array[j] = tmp;
+		}
 	}
 
 }

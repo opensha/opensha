@@ -5,6 +5,8 @@ import java.util.Arrays;
 
 import org.apache.commons.math3.stat.StatUtils;
 
+import com.google.common.base.Preconditions;
+
 /**
  * This is a lightweight array based DescretizedFunc instance that doesn't allow
  * changing the set of X values. It uses less memory than other DiscretizedFunc instances.
@@ -23,6 +25,22 @@ public class LightFixedXFunc extends AbstractDiscretizedFunc {
 			Point2D pt = func.get(i);
 			xVals[i] = pt.getX();
 			yVals[i] = pt.getY();
+		}
+	}
+
+	/**
+	 * Initializes a new data set with the supplied x and y data interspered as x1, y1, x2, y2, ..., xN, yN
+	 */
+	public LightFixedXFunc(double... xyValues) {
+		Preconditions.checkArgument(xyValues.length % 2 == 0, "Passed in array must have even length");
+		int size = xyValues.length/2;
+		xVals = new double[size];
+		yVals = new double[size];
+
+		int index = 0;
+		for (int i=0; i<size; i++) {
+			xVals[i] = xyValues[index++];
+			yVals[i] = xyValues[index++];
 		}
 	}
 	
@@ -48,6 +66,35 @@ public class LightFixedXFunc extends AbstractDiscretizedFunc {
 		if (ind < 0)
 			return -ind-2;
 		return ind-1;
+	}
+
+	@Override
+	public int getClosestXIndex(double x) {
+		int n = size();
+		if (n == 0)
+			return -1;
+
+		if (x <= getMinX())
+			return 0;
+
+		if (x >= getMaxX())
+			return n - 1;
+
+		int ind = Arrays.binarySearch(xVals, x);
+		if (ind >= 0)
+			// exact match
+			return ind;
+
+		int ip = -ind - 1; // insertion point: first index with x_i > x
+		// valid because we already excluded x<=min and x>=max, so 0 < ip < n
+		int lo = ip - 1;
+		int hi = ip;
+
+		double xLo = getX(lo);
+		double xHi = getX(hi);
+
+		// tie-break: choose lower index if exactly midway
+		return (x - xLo) <= (xHi - x) ? lo : hi;
 	}
 
 	@Override

@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -315,6 +316,43 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		@Override
 		public synchronized GridSourceProvider loadGridProvForBranch(LogicTreeBranch<?> branch) throws IOException {
 			return slt.loadGridProvForBranch(branch);
+		}
+	}
+	
+	public static class GridRemovalSolutionLogicTree extends AbstractExternalFetcher {
+		
+		private SolutionLogicTree slt;
+		private Double gridMinMag;
+
+		public GridRemovalSolutionLogicTree(SolutionLogicTree slt, Double gridMinMag) {
+			super(slt.getProcessor(), slt.getLogicTree());
+			this.slt = slt;
+			this.gridMinMag = gridMinMag;
+			this.setArchiveInput(slt.getArchiveInput());
+			if (gridMinMag == null || gridMinMag > 10)
+				setSerializeGridded(false);
+		}
+
+		@Override
+		protected FaultSystemSolution loadExternalForBranch(LogicTreeBranch<?> branch) throws IOException {
+			return slt.forBranch(branch, false);
+		}
+
+		@Override
+		public synchronized double[] loadRatesForBranch(LogicTreeBranch<?> branch) throws IOException {
+			return slt.loadRatesForBranch(branch);
+		}
+
+		@Override
+		public synchronized RuptureProperties loadPropsForBranch(LogicTreeBranch<?> branch) throws IOException {
+			return slt.loadPropsForBranch(branch);
+		}
+
+		@Override
+		public synchronized GridSourceProvider loadGridProvForBranch(LogicTreeBranch<?> branch) throws IOException {
+			if (gridMinMag == null)
+				return null;
+			return slt.loadGridProvForBranch(branch).getAboveMinMag(gridMinMag.floatValue());
 		}
 	}
 	
@@ -1000,7 +1038,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		// will use rup-sect indicies file as mappings for a few levels
 		List<? extends LogicTreeLevel<?>> rupSectLevels = getLevelsAffectingFile(
 				FaultSystemRupSet.RUP_SECTS_FILE_NAME, true);
-		if (rupSet.hasModule(RupSetTectonicRegimes.class)) {
+		if (rupSet.hasAvailableModule(RupSetTectonicRegimes.class)) {
 			String trtsFile = getRecordBranchFileName(branch, prefix, RupSetTectonicRegimes.DATA_FILE_NAME, rupSectLevels, mappings);
 			if (!writtenFiles.contains(trtsFile)) {
 				if (!directCopy(input, output, rsPrefix+RupSetTectonicRegimes.DATA_FILE_NAME, trtsFile, inputIsSolArchive)) {
@@ -1019,7 +1057,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			writtenFiles.add(ratesFile);
 		}
 		
-		if (sol.hasModule(RupMFDsModule.class)) {
+		if (sol.hasAvailableModule(RupMFDsModule.class)) {
 			String mfdsFile = getRecordBranchFileName(branch, prefix, RupMFDsModule.FILE_NAME, true, mappings);
 			if (!writtenFiles.contains(mfdsFile)) {
 				if (!directCopy(input, output, solPrefix+RupMFDsModule.FILE_NAME, mfdsFile, inputIsSolArchive)) {
@@ -1032,47 +1070,51 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		if (constantGridProv != null) {
 			mappings.putAll(writeGridProvToArchive(constantGridProv, output, prefix, null, writtenFiles));
-		} else if (serializeGridded && sol.hasModule(GridSourceProvider.class)) {
-			GridSourceProvider prov = sol.getModule(GridSourceProvider.class);
-			// TODO direct
-			mappings.putAll(writeGridProvToArchive(prov, output, prefix, branch, writtenFiles));
+		} else if (serializeGridded && sol.hasAvailableModule(GridSourceProvider.class)) {
+			if (sol.hasAvailableModule(GridSourceList.class)) {
+				// shortcut that allows direct-copy without ever loading it
+				mappings.putAll(writeGridListToArchive(()->sol.requireModule(GridSourceList.class),
+						output, prefix, branch, writtenFiles, input, inputIsSolArchive));
+			} else {
+				// need to load it
+				GridSourceProvider prov = sol.getModule(GridSourceProvider.class);
+				mappings.putAll(writeGridProvToArchive(prov, output, prefix, branch, writtenFiles, input, inputIsSolArchive));
+			}
 		}
 		
-		InversionMisfitStats misfitStats = sol.getModule(InversionMisfitStats.class);
-		if (misfitStats == null && sol.hasModule(InversionMisfits.class))
-			misfitStats = sol.requireModule(InversionMisfits.class).getMisfitStats();
-		
-		if (misfitStats != null) {
+		if (sol.hasAvailableModule(InversionMisfitStats.class) || sol.hasModule(InversionMisfits.class)) {
 			String statsFile = getRecordBranchFileName(branch, prefix,
 					InversionMisfitStats.MISFIT_STATS_FILE_NAME, true, mappings);
 			if (!writtenFiles.contains(statsFile)) {
 				if (!directCopy(input, output, solPrefix+InversionMisfitStats.MISFIT_STATS_FILE_NAME, statsFile, inputIsSolArchive)) {
+					InversionMisfitStats misfitStats = sol.getModule(InversionMisfitStats.class);
+					if (misfitStats == null && sol.hasModule(InversionMisfits.class))
+						misfitStats = sol.requireModule(InversionMisfits.class).getMisfitStats();
 					CSV_BackedModule.writeToArchive(misfitStats.getCSV(), output, entryPrefix, statsFile);
 				}
 				writtenFiles.add(statsFile);
 			}
 		}
 		
-		AnnealingProgress progress = sol.getModule(AnnealingProgress.class);
 		
-		if (progress != null) {
+		if (sol.hasAvailableModule(AnnealingProgress.class)) {
 			String progressFile = getRecordBranchFileName(branch, prefix,
 					AnnealingProgress.PROGRESS_FILE_NAME, true, mappings);
 			if (!writtenFiles.contains(progressFile)) {
 				if (!directCopy(input, output, solPrefix+AnnealingProgress.PROGRESS_FILE_NAME, progressFile, inputIsSolArchive)) {
+					AnnealingProgress progress = sol.getModule(AnnealingProgress.class);
 					CSV_BackedModule.writeToArchive(progress.getCSV(), output, entryPrefix, progressFile);
 				}
 				writtenFiles.add(progressFile);
 			}
 		}
 		
-		InversionMisfitProgress misfitProgress = sol.getModule(InversionMisfitProgress.class);
-		
-		if (misfitProgress != null) {
+		if (sol.hasAvailableModule(InversionMisfitProgress.class)) {
 			String progressFile = getRecordBranchFileName(branch, prefix,
 					InversionMisfitProgress.MISFIT_PROGRESS_FILE_NAME, true, mappings);
 			if (!writtenFiles.contains(progressFile)) {
 				if (!directCopy(input, output, solPrefix+InversionMisfitProgress.MISFIT_PROGRESS_FILE_NAME, progressFile, inputIsSolArchive)) {
+					InversionMisfitProgress misfitProgress = sol.getModule(InversionMisfitProgress.class);
 					CSV_BackedModule.writeToArchive(misfitProgress.getCSV(), output, entryPrefix, progressFile);
 				}
 				writtenFiles.add(progressFile);
@@ -1083,11 +1125,11 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		String plausibilityFile = getBranchFileName(branch, prefix,
 				PlausibilityConfiguration.JSON_FILE_NAME, rupSectLevels);
 		if (!writtenFiles.contains(plausibilityFile)) {
-			PlausibilityConfiguration plausibility = rupSet.getModule(PlausibilityConfiguration.class);
 			
-			if (plausibility != null) {
+			if (rupSet.hasAvailableModule(PlausibilityConfiguration.class)) {
 				if (!writtenFiles.contains(plausibilityFile)) {
 					if (!directCopy(input, output, rsPrefix+PlausibilityConfiguration.JSON_FILE_NAME, plausibilityFile, inputIsSolArchive)) {
+						PlausibilityConfiguration plausibility = rupSet.getModule(PlausibilityConfiguration.class);
 						plausibility.writeToArchive(output, entryPrefix, plausibilityFile);
 					}
 					writtenFiles.add(plausibilityFile);
@@ -1185,43 +1227,64 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		} else if (prov instanceof GridSourceList) {
 			GridSourceList gridSources = (GridSourceList)prov;
 			
-			if (gridSources.getGriddedRegion() != null) {
-				String gridRegFile = getRecordBranchFileName(branch, prefix,
-						GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, false, mappings);
-				if (gridRegFile != null && !writtenFiles.contains(gridRegFile)) {
-					if (!directCopy(input, output, solPrefix+GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, gridRegFile, inputIsSolArchive)) {
-						FileBackedModule.initEntry(output, null, gridRegFile);
-						Feature regFeature = gridSources.getGriddedRegion().toFeature();
-						OutputStreamWriter writer = new OutputStreamWriter(output.getOutputStream());
-						Feature.write(regFeature, writer);
-						writer.flush();
-						output.closeEntry();
-					}
-					writtenFiles.add(gridRegFile);
-				}
-			}
-
-			String locsFile = getRecordBranchFileName(branch, prefix,
-					GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME, false, mappings);
-			if (locsFile != null && !writtenFiles.contains(locsFile)) {
-				if (!directCopy(input, output, solPrefix+GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME, locsFile, inputIsSolArchive)) {
-					CSV_BackedModule.writeToArchive(gridSources.buildGridLocsCSV(), output, null, locsFile);
-				}
-				writtenFiles.add(locsFile);
-			}
-			String sourcesFile = getRecordBranchFileName(branch, prefix,
-					GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME, true, mappings);
-			if (sourcesFile != null && !writtenFiles.contains(sourcesFile)) {
-				if (!directCopy(input, output, solPrefix+GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME, sourcesFile, inputIsSolArchive)) {
-					gridSources.writeGridSourcesCSV(output, sourcesFile);
-				}
-				writtenFiles.add(sourcesFile);
-			}
+			mappings.putAll(writeGridListToArchive(() -> gridSources, output, prefix, branch, writtenFiles, input, inputIsSolArchive));
 		} else {
 			throw new UnsupportedOperationException("Don't yet support writing grid source provider of type: "+prov.getClass().getName());
 		}
 		
 		
+		return mappings;
+	}
+	
+	protected Map<String, String> writeGridListToArchive(Supplier<GridSourceList> gridListSupplier, ArchiveOutput output, String prefix,
+			LogicTreeBranch<?> branch, HashSet<String> writtenFiles, ArchiveInput input, boolean inputIsSolArchive) throws IOException {
+		String solPrefix = FaultSystemSolution.NESTING_PREFIX;
+		Map<String, String> mappings = new LinkedHashMap<>();
+		
+		String gridRegFile = getRecordBranchFileName(branch, prefix,
+				GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, false, mappings);
+		
+		if (gridRegFile != null && !writtenFiles.contains(gridRegFile)) {
+			if (input != null) {
+				if (directCopy(input, output, solPrefix+GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, gridRegFile, inputIsSolArchive))
+					writtenFiles.add(gridRegFile);
+				// else assume this doens't have that file and don't read in
+			} else {
+				// need to load it
+				GridSourceList gridList = gridListSupplier.get();
+				if (gridList.getGriddedRegion() != null) {
+					FileBackedModule.initEntry(output, null, gridRegFile);
+					Feature regFeature = gridList.getGriddedRegion().toFeature();
+					OutputStreamWriter writer = new OutputStreamWriter(output.getOutputStream());
+					Feature.write(regFeature, writer);
+					writer.flush();
+					output.closeEntry();
+					writtenFiles.add(gridRegFile);
+				}
+			}
+		}
+		
+		String locsFile = getRecordBranchFileName(branch, prefix,
+				GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME, false, mappings);
+		if (locsFile != null && !writtenFiles.contains(locsFile)) {
+			if (!directCopy(input, output, solPrefix+GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME, locsFile, inputIsSolArchive)) {
+				// need to load it
+				GridSourceList gridList = gridListSupplier.get();
+				CSV_BackedModule.writeToArchive(gridList.buildGridLocsCSV(), output, null, locsFile);
+			}
+			writtenFiles.add(locsFile);
+		}
+		
+		String sourcesFile = getRecordBranchFileName(branch, prefix,
+				GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME, true, mappings);
+		if (sourcesFile != null && !writtenFiles.contains(sourcesFile)) {
+			if (!directCopy(input, output, solPrefix+GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME, sourcesFile, inputIsSolArchive)) {
+				// need to load it
+				GridSourceList gridList = gridListSupplier.get();
+				gridList.writeGridSourcesCSV(output, sourcesFile);
+			}
+			writtenFiles.add(sourcesFile);
+		}
 		return mappings;
 	}
 	
@@ -1236,8 +1299,11 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 				"directCopy name mismatch, probably a typo? origFileName='%s'; outputFileName='%s'",
 				origFileName, outputFileName);
 		String inputName = useOrigFileName ? origFileName : outputFileName;
-		if (!input.hasEntry(inputName))
+		if (!input.hasEntry(inputName)) {
+//			System.out.println("DIRECTCOPY DEBUG: don't have '"+inputName
+//					+"' with origName='"+origFileName+"'to copy to '"+outputFileName+"'");
 			return false;
+		}
 		output.transferFrom(input, inputName, outputFileName);
 		return true;
 	}
@@ -1947,34 +2013,52 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	 */
 	public static void reprocess(SolutionLogicTree slt, File outputFile,
 			UnaryOperator<FaultSystemSolution> reprocessor, boolean updateBuildInfo, boolean processModules) throws IOException {
+		reprocess(slt, outputFile, reprocessor, updateBuildInfo, processModules, slt.serializeGridded);
+	}
+	
+	/**
+	 * Removes extraneous data not needed for hazard, such as plausibility configuration and misfit stats
+	 * 
+	 * @param slt
+	 * @param outputFile
+	 * @param updateBuildInfo if true, OpenSHA build information attached to the SLT will be replaced with current infor
+	 * @param processModules if true, the {@link SolutionProcessor} will be called before the reprocess step
+	 * @param directCopyGridded if true, will attempt to directly-copy grid source providers without loading
+	 * @throws IOException 
+	 */
+	public static void reprocess(SolutionLogicTree slt, File outputFile,
+			UnaryOperator<FaultSystemSolution> reprocessor, boolean updateBuildInfo, boolean processModules,
+			boolean directCopyGridded) throws IOException {
 		LogicTree<?> tree = slt.getLogicTree();
 		
 		ArchiveInput directCopyInput = slt.getArchiveInput();
 		if (directCopyInput instanceof ArchiveInput.FileBacked && !(directCopyInput instanceof ArchiveInput.ApacheZipFileInput))
 			// switch to apache for efficient copying without de/re-compression
 			directCopyInput = new ArchiveInput.ApacheZipFileInput(((ArchiveInput.FileBacked)directCopyInput).getInputFile());
-		boolean directCopyGridded = false;
 		boolean hasBranchSpecificGridded;
-		if (slt.constantGridProv == null && slt.forBranch(tree.getBranch(0), false).hasModule(GridSourceProvider.class)) {
+		if (slt.serializeGridded && slt.constantGridProv == null && slt.forBranch(tree.getBranch(0), false).hasModule(GridSourceProvider.class)) {
 			hasBranchSpecificGridded = true;
-			try {
-				ArchiveInput input = slt.getArchiveInput();
-				if (input instanceof ArchiveInput.FileBacked && !(input instanceof ArchiveInput.ApacheZipFileInput))
-					// switch to apache for efficient copying without de/re-compression
-					input = new ArchiveInput.ApacheZipFileInput(((ArchiveInput.FileBacked)input).getInputFile());
-				System.out.println("Will directly copy gridded seismicity data");
-				directCopyInput = input;
-				directCopyGridded = true;
-			} catch (Exception e) {
-				System.out.println("Will load and write gridded seismicity data (if applicable): "+e.getMessage());
-			}			
+			if (directCopyGridded) {
+				try {
+					ArchiveInput input = slt.getArchiveInput();
+					if (input instanceof ArchiveInput.FileBacked && !(input instanceof ArchiveInput.ApacheZipFileInput))
+						// switch to apache for efficient copying without de/re-compression
+						input = new ArchiveInput.ApacheZipFileInput(((ArchiveInput.FileBacked)input).getInputFile());
+					System.out.println("Will directly copy gridded seismicity data");
+					directCopyInput = input;
+				} catch (Exception e) {
+					System.out.println("Will load and write gridded seismicity data (if applicable): "+e.getMessage());
+					directCopyGridded = false;
+				}
+			}
 		} else {
 			hasBranchSpecificGridded = false;
+			directCopyGridded = false;
 		}
 		FileBuilder builder = new FileBuilder(slt.getProcessor(), ArchiveOutput.getDefaultOutput(outputFile, directCopyInput));
-		if (slt.constantGridProv != null)
+		if (slt.constantGridProv != null) {
 			builder.setConstantGridProv(slt.constantGridProv);
-		if (hasBranchSpecificGridded) {
+		} else if (hasBranchSpecificGridded) {
 			if (directCopyInput == null)
 				builder.setSerializeGridded(true);
 			else
@@ -1999,8 +2083,15 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		for (int i=0; i<tree.size(); i++) {
 			LogicTreeBranch<?> branch = tree.getBranch(i);
 			FaultSystemSolution sol = slt.forBranch(branch, processModules);
-			if (directCopyGridded)
-				sol.removeAvailableModuleInstances(GridSourceList.class);
+			if (directCopyGridded) {
+				sol.removeAvailableModuleInstances(GridSourceProvider.class);
+			} else if (builder.serializeGridded) {
+				GridSourceProvider gridSources = slt.loadGridProvForBranch(branch);
+				if (gridSources == null)
+					sol.removeAvailableModuleInstances(GridSourceProvider.class);
+				else
+					sol.setGridSourceProvider(gridSources);
+			}
 			
 			FaultSystemSolution outputSol;
 			if (reprocessor != null)

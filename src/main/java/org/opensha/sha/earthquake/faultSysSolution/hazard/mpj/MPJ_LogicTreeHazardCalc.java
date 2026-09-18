@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -51,6 +52,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings.CurveXValManager;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
@@ -63,18 +65,21 @@ import org.opensha.sha.imr.logicTree.ScalarIMRsLogicTreeNode;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
+import com.google.common.io.Files;
 import com.google.common.primitives.Doubles;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import edu.usc.kmilner.mpj.taskDispatch.AsyncPostBatchHook;
 import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
+import mpi.MPI;
 
 public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 
 	private File outputDir;
 
 	private SolutionLogicTree solTree;
+	private LogicTree<?> analysisTree;
 	
 	static final double GRID_SPACING_DEFAULT = 0.1d;
 	private double gridSpacing = GRID_SPACING_DEFAULT;
@@ -82,6 +87,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private boolean pointSourceOptimizations;
 	
 	private SourceFilterManager sourceFilter;
+	
+	private CurveXValManager xValManager;
 	
 	private SourceFilterManager siteSkipSourceFilter;
 	private Map<TectonicRegionType, AttenRelSupplier> gmmRefs;
@@ -125,6 +132,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 
 	private boolean noMFDs;
 	private boolean noProxyRups;
+	
+	public static final String ORIG_LOGIC_TREE_FILE_NAME = "solution_logic_tree.json";
 
 	public MPJ_LogicTreeHazardCalc(CommandLine cmd) throws IOException {
 		super(cmd);
@@ -154,6 +163,20 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				solTree = SolutionLogicTree.load(inputFile);
 			}
 		}
+		if (cmd.hasOption("analysis-logic-tree")) {
+			File logicTreeFile = new File(cmd.getOptionValue("analysis-logic-tree"));
+			Preconditions.checkArgument(logicTreeFile.exists(), "Logic tree file doesn't exist: %s",
+					logicTreeFile.getAbsolutePath());
+			analysisTree = LogicTree.read(logicTreeFile);
+			Preconditions.checkState(analysisTree.size() == solTree.getLogicTree().size());
+
+			for (int i=0; i<analysisTree.size(); i++) {
+				Preconditions.checkState(analysisTree.getBranch(i).buildFileName()
+							.equals(solTree.getLogicTree().getBranch(i).buildFileName()),
+						"Analysis tree branch %s does not match solution tree branch %s at index %s",
+						analysisTree.getBranch(i).buildFileName(), solTree.getLogicTree().getBranch(i).buildFileName(), i);
+			}
+		}
 		
 		if (rank == 0)
 			debug("Loaded "+solTree.getLogicTree().size()+" tree nodes/solutions");
@@ -174,6 +197,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		pointSourceOptimizations = FaultSysHazardCalcSettings.arePointSourceOptimizationsEnabled(cmd);
 		
 		sourceFilter = FaultSysHazardCalcSettings.getSourceFilters(cmd);
+		xValManager = FaultSysHazardCalcSettings.getXValManager(cmd);
 		
 		siteSkipSourceFilter = FaultSysHazardCalcSettings.getSiteSkipSourceFilters(sourceFilter, cmd);
 		
@@ -296,19 +320,28 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				outputFile = new File(cmd.getOptionValue("output-file"));
 			else
 				outputFile = new File(outputDir.getParentFile(), outputDir.getName()+"_hazard.zip");
+			File curvesOutputFile = cmd.hasOption("curves-output-file")
+					? new File(cmd.getOptionValue("curves-output-file")) : null;
+			if (curvesOutputFile != null)
+				Preconditions.checkArgument(!outputFile.getCanonicalFile().equals(curvesOutputFile.getCanonicalFile()),
+						"Hazard map and curve output files must be different: %s", outputFile.getAbsolutePath());
 			
-			postBatchHook = new AsyncHazardWriter(outputFile);
+			postBatchHook = new AsyncHazardWriter(outputFile, curvesOutputFile);
 		}
 		
 		nodesAverageDir = new File(outputDir, "node_hazard_averages");
 		if (rank == 0) {
 			if (nodesAverageDir.exists()) {
 				// delete anything preexisting
-				for (File file : nodesAverageDir.listFiles())
-					Preconditions.checkState(FileUtils.deleteRecursive(file));
-			} else {
-				Preconditions.checkState(nodesAverageDir.mkdir() || nodesAverageDir.exists());
+				File delDir = new File(outputDir, nodesAverageDir.getName()+"_delete_"+(new Random().nextInt()));
+				Files.move(nodesAverageDir, delDir);
+				Preconditions.checkState(FileUtils.deleteRecursive(delDir));
+				try {
+					Thread.sleep(1000);
+				} catch (Exception e) {}
+				Preconditions.checkState(!nodesAverageDir.exists());
 			}
+			Preconditions.checkState(nodesAverageDir.mkdir() || nodesAverageDir.exists());
 		}
 		myAverageDir = new File(nodesAverageDir, "rank_"+rank);
 	}
@@ -318,12 +351,15 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private class AsyncHazardWriter extends AsyncPostBatchHook {
 		
 		private ArchiveOutput zout;
+		private ArchiveOutput curvesZout;
 		
 		private double[] rankWeights;
 		
-		public AsyncHazardWriter(File destFile) throws IOException {
+		public AsyncHazardWriter(File destFile, File curvesDestFile) throws IOException {
 			super(1);
 			zout = new ArchiveOutput.ParallelZipFileOutput(destFile, 4, false);
+			if (curvesDestFile != null)
+				curvesZout = new ArchiveOutput.ParallelZipFileOutput(curvesDestFile, 4, false);
 			
 			rankWeights = new double[size];
 		}
@@ -362,6 +398,11 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						
 						File rankDir = new File(nodesAverageDir, "rank_"+rank);
 						debug("Async: Merging in p="+(float)periods[p]+" mean curves from "+rank+": "+rankDir.getAbsolutePath());
+						if (!rankDir.exists()) {
+							try {
+								Thread.sleep(1000);
+							} catch (InterruptedException e) {}
+						}
 						Preconditions.checkState(rankDir.exists(), "Dir doesn't exist: %s", rankDir.getAbsolutePath());
 						
 						LogicTreeCurveAverager rankCurves = LogicTreeCurveAverager.readRawCacheDir(rankDir, periods[p], loadExec);
@@ -394,29 +435,18 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				// write mean curves and maps
 				debug("Async: writing mean curves and maps");
 				writeMeanCurvesAndMaps(zout, runningMeanCurves, gridRegion, periods, rps);
+				if (curvesZout != null) {
+					debug("Async: writing mean curves to curve archive");
+					writeMeanCurves(curvesZout, runningMeanCurves, gridRegion, periods);
+				}
 				
-				// write region to zip file
-				
-				// write grid region
-				Feature feature = gridRegion.toFeature();
-				
-				zout.putNextEntry(GRID_REGION_ENTRY_NAME);
-				BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(zout.getOutputStream()));
-				Feature.write(feature, writer);
-				writer.flush();
-				zout.closeEntry();
-				
-				// write logic tree
-				LogicTree<?> tree = solTree.getLogicTree();
-				zout.putNextEntry(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME);
-				writer = new BufferedWriter(new OutputStreamWriter(zout.getOutputStream()));
-				Gson gson = new GsonBuilder().setPrettyPrinting()
-						.registerTypeAdapter(LogicTree.class, new LogicTree.Adapter<>()).create();
-				gson.toJson(tree, LogicTree.class, writer);
-				writer.flush();
-				zout.closeEntry();
-				
+				writeArchiveMetadata(zout);
+				if (curvesZout != null)
+					writeArchiveMetadata(curvesZout);
+
 				zout.close();
+				if (curvesZout != null)
+					curvesZout.close();
 				
 				try {
 					deleteFuture.get();
@@ -440,6 +470,10 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					Preconditions.checkState(hazardOutDir.exists());
 					zout.putNextEntry(runDir.getName()+"/");
 					zout.closeEntry();
+					if (curvesZout != null) {
+						curvesZout.putNextEntry(runDir.getName()+"/");
+						curvesZout.closeEntry();
+					}
 					for (ReturnPeriods rp : rps) {
 						for (double period : periods) {
 							String prefix = mapPrefix(period, rp);
@@ -449,7 +483,23 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 							
 							String mapEntry = runDir.getName()+"/"+mapFile.getName();
 							debug("Async: zipping "+mapEntry);
-							zout.transferFrom(new BufferedInputStream(new FileInputStream(mapFile)), mapEntry);
+							try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(mapFile))) {
+								zout.transferFrom(in, mapEntry);
+							}
+						}
+					}
+					if (curvesZout != null) {
+						for (double period : periods) {
+							String curvesName = SolHazardMapCalc.getCSV_FileName("curves", period);
+							File curvesFile = new File(hazardOutDir, curvesName+".gz");
+							if (!curvesFile.exists())
+								curvesFile = new File(hazardOutDir, curvesName);
+							Preconditions.checkState(curvesFile.exists());
+							String curvesEntry = runDir.getName()+"/"+curvesFile.getName();
+							debug("Async: zipping "+curvesEntry);
+							try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(curvesFile))) {
+								curvesZout.transferFrom(in, curvesEntry);
+							}
 						}
 					}
 					
@@ -461,6 +511,31 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			}
 			debug("Async: DONE processing batch of size "+batch.length+" from "+processIndex+": "+getCountsString());
 		}
+
+		private void writeArchiveMetadata(ArchiveOutput output) throws IOException {
+			Feature feature = gridRegion.toFeature();
+			output.putNextEntry(GRID_REGION_ENTRY_NAME);
+			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(output.getOutputStream()));
+			Feature.write(feature, writer);
+			writer.flush();
+			output.closeEntry();
+
+			Gson gson = new GsonBuilder().setPrettyPrinting()
+					.registerTypeAdapter(LogicTree.class, new LogicTree.Adapter<>()).create();
+			output.putNextEntry(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME);
+			writer = new BufferedWriter(new OutputStreamWriter(output.getOutputStream()));
+			gson.toJson(analysisTree == null ? solTree.getLogicTree() : analysisTree, LogicTree.class, writer);
+			writer.flush();
+			output.closeEntry();
+
+			if (analysisTree != null) {
+				output.putNextEntry(ORIG_LOGIC_TREE_FILE_NAME);
+				writer = new BufferedWriter(new OutputStreamWriter(output.getOutputStream()));
+				gson.toJson(solTree.getLogicTree(), LogicTree.class, writer);
+				writer.flush();
+				output.closeEntry();
+			}
+		}
 		
 	}
 	
@@ -468,7 +543,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		if (runningMeanCurves == null) {
 			HashSet<LogicTreeNode> variableNodes = new HashSet<>();
 			HashMap<LogicTreeNode, LogicTreeLevel<?>> nodeLevels = new HashMap<>();
-			LogicTreeCurveAverager.populateVariableNodes(solTree.getLogicTree(), variableNodes, nodeLevels);
+			LogicTreeCurveAverager.populateVariableNodes(analysisTree == null ? solTree.getLogicTree() : analysisTree, variableNodes, nodeLevels);
 			runningMeanCurves = new LogicTreeCurveAverager[periods.length];
 			for (int p=0; p<periods.length; p++)
 				runningMeanCurves[p] = new LogicTreeCurveAverager(gridRegion.getNodeList(), variableNodes, nodeLevels);
@@ -484,6 +559,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	
 	public static void writeMeanCurvesAndMaps(ArchiveOutput output, LogicTreeCurveAverager[] meanCurves,
 			GriddedRegion gridRegion, double[] periods, ReturnPeriods[] rps) throws IOException {
+		writeMeanCurves(output, meanCurves, gridRegion, periods);
 		
 		boolean firstLT = true;
 		for (int p=0; p<periods.length; p++) {
@@ -493,12 +569,6 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				DiscretizedFunc[] curves = normCurves.get(key);
 				String prefix;
 				if (key.equals(LogicTreeCurveAverager.MEAN_PREFIX)) {
-					// write out mean curves (but don't write out other ones)
-					CSVFile<String> csv = SolHazardMapCalc.buildCurvesCSV(curves, gridRegion.getNodeList());
-					String fileName = "mean_"+SolHazardMapCalc.getCSV_FileName("curves", periods[p]);
-					output.putNextEntry(fileName);
-					csv.writeToStream(output.getOutputStream());
-					output.closeEntry();
 					prefix = key;
 				} else {
 					prefix = LEVEL_CHOICE_MAPS_ENTRY_PREFIX;
@@ -539,6 +609,18 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		}
 	}
 
+	public static void writeMeanCurves(ArchiveOutput output, LogicTreeCurveAverager[] meanCurves,
+			GriddedRegion gridRegion, double[] periods) throws IOException {
+		for (int p=0; p<periods.length; p++) {
+			DiscretizedFunc[] curves = meanCurves[p].getNormalizedCurves().get(LogicTreeCurveAverager.MEAN_PREFIX);
+			CSVFile<String> csv = SolHazardMapCalc.buildCurvesCSV(curves, gridRegion.getNodeList());
+			String fileName = "mean_"+SolHazardMapCalc.getCSV_FileName("curves", periods[p]);
+			output.putNextEntry(fileName);
+			csv.writeToStream(output.getOutputStream());
+			output.closeEntry();
+		}
+	}
+
 	@Override
 	protected void doFinalAssembly() throws Exception {
 		// write out mean curves
@@ -558,7 +640,14 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			}
 		}
 		
+		// wait for everyone to write them out
+		if (!SINGLE_NODE_NO_MPJ)
+			MPI.COMM_WORLD.Barrier();
+		
 		if (rank == 0) {
+			try {
+				Thread.sleep(5000);
+			} catch (InterruptedException e) {}
 			debug("waiting for any post batch hook operations to finish");
 			((AsyncPostBatchHook)postBatchHook).shutdown();
 			debug("post batch hook done");
@@ -799,10 +888,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 								FaultSysHazardCalcSettings.getGMM_Suppliers(branch, gmmRefs, true), gridRegion,
 								IncludeBackgroundOption.ONLY, applyAftershockFilter, periods);
 						
-						externalGriddedCurveCalc.setSourceFilter(sourceFilter);
-						externalGriddedCurveCalc.setPointSourceOptimizations(pointSourceOptimizations);
-						externalGriddedCurveCalc.setSiteSkipSourceFilter(siteSkipSourceFilter);
-						externalGriddedCurveCalc.setGriddedSeismicitySettings(griddedSettings);
+						configureHazardCalc(externalGriddedCurveCalc);
 						
 						externalGriddedCurveCalc.calcHazardCurves(getNumThreads());
 					}
@@ -821,11 +907,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						externalSolCurveCalc = new SolHazardMapCalc(externalSol,
 								FaultSysHazardCalcSettings.getGMM_Suppliers(branch, gmmRefs, true), gridRegion,
 								IncludeBackgroundOption.EXCLUDE, applyAftershockFilter, periods);
-						
-						externalSolCurveCalc.setSourceFilter(sourceFilter);
-						externalSolCurveCalc.setPointSourceOptimizations(pointSourceOptimizations);
-						externalSolCurveCalc.setSiteSkipSourceFilter(siteSkipSourceFilter);
 						externalSolCurveCalc.setCacheGridSources(false);
+						configureHazardCalc(externalSolCurveCalc);
 						
 						externalSolCurveCalc.calcHazardCurves(getNumThreads());
 					}
@@ -908,13 +991,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					combineWithCurves = combineWithOnlyCurves;
 					calc = new SolHazardMapCalc(sol, gmpeSuppliers, gridRegion, IncludeBackgroundOption.EXCLUDE, applyAftershockFilter, periods);
 				}
-				calc.setSourceFilter(sourceFilter);
-				calc.setPointSourceOptimizations(pointSourceOptimizations);
-				calc.setSiteSkipSourceFilter(siteSkipSourceFilter);
-				calc.setGriddedSeismicitySettings(griddedSettings);
-				calc.setAseisReducesArea(aseisReducesArea);
-				calc.setNoMFDs(noMFDs);
-				calc.setUseProxyRups(!noProxyRups);
+				configureHazardCalc(calc);
 				
 				calc.calcHazardCurves(getNumThreads(), combineWithCurves);
 				calc.writeCurvesCSVs(hazardOutDir, curvesPrefix, true);
@@ -937,10 +1014,11 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 //			}
 			
 			double branchWeight = solTree.getLogicTree().getBranchWeight(branch);
+			LogicTreeBranch<?> analysisBranch = analysisTree == null ? branch : analysisTree.getBranch(index);
 			for (int p=0; p<periods.length; p++) {
 				DiscretizedFunc[] curves = calc.getCurves(periods[p]);
 				
-				runningMeanCurves[p].processBranchCurves(branch, branchWeight, curves);
+				runningMeanCurves[p].processBranchCurves(analysisBranch, branchWeight, curves);
 			}
 			
 			for (ReturnPeriods rp : rps) {
@@ -953,6 +1031,17 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				}
 			}
 		}
+	}
+	
+	private void configureHazardCalc(SolHazardMapCalc calc) {
+		calc.setSourceFilter(sourceFilter);
+		calc.setXValManager(xValManager);
+		calc.setPointSourceOptimizations(pointSourceOptimizations);
+		calc.setSiteSkipSourceFilter(siteSkipSourceFilter);
+		calc.setAseisReducesArea(aseisReducesArea);
+		calc.setNoMFDs(noMFDs);
+		calc.setUseProxyRups(!noProxyRups);
+		calc.setGriddedSeismicitySettings(griddedSettings);
 	}
 	
 	private File getGriddedOnlyHazardDir(LogicTreeBranch<?> branch, File sourceDir, File combineFromRunDir) {
@@ -991,8 +1080,12 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		ops.addRequiredOption("if", "input-file", true, "Path to input file (solution logic tree zip)");
 		ops.addOption("lt", "logic-tree", true, "Path to logic tree JSON file, required if a results directory is "
 				+ "supplied with --input-file");
+		ops.addOption(null, "analysis-logic-tree", true, "Path to separate logic tree used for analysis that should be used "
+				+ "for writing the hazard results.");
 		ops.addRequiredOption("od", "output-dir", true, "Path to output directory");
 		ops.addOption("of", "output-file", true, "Path to output zip file. Default will be based on the output directory");
+		ops.addOption(null, "curves-output-file", true, "Optional path to an output zip file containing the "
+				+"hazard curve CSV files for every branch");
 		ops.addOption("sp", "grid-spacing", true, "Grid spacing in decimal degrees. Default: "+(float)GRID_SPACING_DEFAULT);
 		ops.addOption("gs", "gridded-seis", true, "Gridded seismicity option. One of "
 				+FaultSysTools.enumOptions(IncludeBackgroundOption.class)+". Default: "+GRID_SEIS_DEFAULT.name());
@@ -1041,4 +1134,3 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	}
 
 }
-

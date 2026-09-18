@@ -1,0 +1,185 @@
+package org.opensha.sha.earthquake.rupForecastImpl.nshm27.util;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Options;
+import org.opensha.commons.data.Site;
+import org.opensha.commons.geo.GriddedRegion;
+import org.opensha.commons.logicTree.LogicTree;
+import org.opensha.commons.logicTree.sampling.SamplingMethod;
+import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.sha.earthquake.faultSysSolution.mpj.HPCConfig;
+import org.opensha.sha.earthquake.faultSysSolution.mpj.HazardConfig;
+import org.opensha.sha.earthquake.faultSysSolution.mpj.InversionConfig;
+import org.opensha.sha.earthquake.faultSysSolution.mpj.LogicTreeConfig;
+import org.opensha.sha.earthquake.faultSysSolution.mpj.MPJ_LogicTreeInversionScriptWriter;
+import org.opensha.sha.earthquake.faultSysSolution.mpj.PostProcessConfig;
+import org.opensha.sha.earthquake.faultSysSolution.mpj.RunConfig;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm27.NSHM27_InvConfigFactory;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_LogicTree;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.NSHM27_RegionLoader.NSHM27_MapRegions;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
+import org.opensha.sha.imr.AttenRelRef;
+
+public class NSHM27_InversionScriptWriter {
+	
+	private static SamplingMethod SAMPLING_METHOD_DEFAULT = SamplingMethod.MONTE_CARLO;
+	private static double GRID_SPACING_DEFAULT = 0.1;
+	
+	private static Options buildOptions() {
+		Options ops = new Options();
+		
+		ops.addOption(FaultSysTools.helpOption());
+		HPCConfig.addOptions(ops);
+		HazardConfig.addOptions(ops);
+		
+		ops.addRequiredOption(null, "region", true, "NSHM27 region, one of: "+FaultSysTools.enumOptions(NSHM27_SeismicityRegions.class));
+		
+		ops.addOption(null, "sampling-method", true, "Sampling method, one of: "
+				+FaultSysTools.enumOptions(SamplingMethod.class)+"; Default: "+SAMPLING_METHOD_DEFAULT.name());
+		ops.addRequiredOption(null, "samples", true, "Number of logic tree samples.");
+		ops.addOption(null, "unique-seed", false, "Flag to use a unique seed from this calculation rather than the "
+				+ "deterministic seed based on the region and sample count/method.");
+		ops.addOption(null, "name-add", true, "Add arbitrary additional directory name strings");
+		ops.addOption(null, "date", true, "Date override");
+		
+		return ops;
+	}
+
+	public static void main(String[] args) throws IOException {
+		if (args.length == 0) {
+			// for Kevin's convenience within eclipse
+			System.err.println("No command line arguments, using hardcoded defaults; use --help to see available options instead.");
+			
+//			int samples = 5000;
+//			int samples = 10000;
+			int samples = 20000;
+//			int samples = 50000;
+			// 1 << N = 2^N
+//			int samples = 1 << 9; // 512
+//			int samples = 1 << 10; // 1024
+//			int samples = 1 << 11; // 2048
+//			int samples = 1 << 12; // 4096
+//			int samples = 1 << 13; // 8192
+//			int samples = 1 << 14; // 16384
+			args = new String[] {
+					"--region", NSHM27_SeismicityRegions.AMSAM.name(),
+//					"--region", NSHM27_SeismicityRegions.GNMI.name(),
+					
+					"--local-dir", "/home/kevin/OpenSHA/fss_inversions",
+					
+//					"--hpc-site", HPCConfig.HPCSite.USC_CARC_FMPJ.name(),
+//					"--remote-dir", "/project2/scec_608/kmilner/fss_inversions",
+//					"--nodes", "36",
+////					"--job-time-hours", "48",
+//					"--job-time-hours", "10",
+					
+					"--hpc-site", HPCConfig.HPCSite.FRONTERA_FMPJ.name(),
+					"--remote-dir", "/scratch2/00950/kevinm/fss_inversions",
+					"--nodes", "40",
+					"--job-time-hours", "20", // for 20k
+//					"--job-time-hours", "10", // for 8192
+//					"--job-time-hours", "48",
+//					"--hazard-time-same-as-inversion",
+					
+//					"--date", "2026_09_10",
+					
+					"--sampling-method", SamplingMethod.MONTE_CARLO.name(),
+//					"--sampling-method", SamplingMethod.OWEN_SCRAMBLED_SOBOL.name(),
+//					"--sampling-method", SamplingMethod.LATIN_HYPERCUBE.name(),
+//					"--sampling-method", SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE.name(),
+					"--samples", samples+"",
+					"--unique-seed",
+					"--name-add", "20",
+					
+					"--hazard-grid-spacing", "0.2",
+					"--write-hazard-curves",
+			};
+		}
+		
+		CommandLine cmd = FaultSysTools.parseOptions(buildOptions(), args, NSHM27_InversionScriptWriter.class);
+		
+		NSHM27_SeismicityRegions seisReg = NSHM27_SeismicityRegions.valueOf(cmd.getOptionValue("region"));
+		int numBranchSamples = Integer.parseInt(cmd.getOptionValue("samples"));
+		boolean deterministicSeed = !cmd.hasOption("unique-seed");
+		SamplingMethod samplingMethod = cmd.hasOption("sampling-method") ?
+				SamplingMethod.valueOf(cmd.getOptionValue("sampling-method")) : SAMPLING_METHOD_DEFAULT;
+		double gridSpacing = cmd.hasOption("hazard-grid-spacing") ?
+				Double.parseDouble(cmd.getOptionValue("hazard-grid-spacing")) : GRID_SPACING_DEFAULT;
+
+		LogicTree<LogicTreeNode> logicTree = NSHM27_LogicTree.buildMultiRegimeTree(
+				seisReg, numBranchSamples, deterministicSeed, samplingMethod);
+		LogicTree<LogicTreeNode> analysisTree = LogicTree.applyBinning(LogicTree.unrollTRTs(logicTree));
+
+		GriddedRegion hazardRegion = new GriddedRegion(
+				NSHM27_MapRegions.valueOf(seisReg.name()).load(), gridSpacing, GriddedRegion.ANCHOR_0_0);
+		List<Site> hazardSites = NSHM27_RegionLoader.loadHazardSites(seisReg);
+		
+		List<String> nameAdds = new ArrayList<>();
+		if (cmd.hasOption("name-add"))
+			for (String nameAdd : cmd.getOptionValues("name-add"))
+				nameAdds.add(nameAdd);
+
+		RunConfig run = RunConfig.builder()
+				.baseName("nshm27")
+				.addNameToken(seisReg.name())
+				.addNameToken(numBranchSamples+"samples")
+				.addNameToken(samplingMethod.getFilePrefix())
+				.addNameToken(deterministicSeed ? null : "unique_seed")
+				.addNameTokens(nameAdds)
+				.datePrefix(cmd.hasOption("date") ? cmd.getOptionValue("date") : null)
+				.build();
+
+		HPCConfig hpc = HPCConfig.builder(cmd)
+				.build();
+
+		LogicTreeConfig logicTreeConfig = LogicTreeConfig.builder()
+				.forSuppliedLogicTree(logicTree, analysisTree)
+				.build();
+
+		InversionConfig inversion = InversionConfig.builder()
+				.factoryClass(NSHM27_InvConfigFactory.class)
+//				.estimateWallTimeMinutes(200000d, 2000, 200000d)
+				.wallTimeMinutesPerRound(5)
+				.parallelBranchAverage(true)
+				.build();
+
+		System.err.println("WARNING: still using PRVI25 GMMs until NSHM27-specific models are available");
+		HazardConfig hazard = HazardConfig.builder()
+				// set our defaults before cmd
+				.backgroundOption(IncludeBackgroundOption.INCLUDE)
+				.region(hazardRegion)
+				.sigmaTruncation(3d)
+				.gmpe(AttenRelRef.USGS_PRVI_ACTIVE)
+				.gmpe(AttenRelRef.USGS_PRVI_SLAB)
+				.gmpe(AttenRelRef.USGS_PRVI_INTERFACE)
+				.sites(hazardSites)
+				// now allow cmd overrides
+				.forCMD(cmd)
+				.build();
+
+		PostProcessConfig postProcess = PostProcessConfig.builder()
+				.writeTrueMean(true)
+				.writeNodeBranchAverages(true)
+				.nodeBAAsyncThreads(2)
+				.nodeBASkipSectBySect(false)
+				.build();
+
+		MPJ_LogicTreeInversionScriptWriter.Request request = MPJ_LogicTreeInversionScriptWriter.Request.builder()
+				.run(run)
+				.hpc(hpc)
+				.logicTree(logicTreeConfig)
+				.inversion(inversion)
+				.hazard(hazard)
+				.postProcess(postProcess)
+				.build();
+
+		new MPJ_LogicTreeInversionScriptWriter().writeScripts(request);
+	}
+}

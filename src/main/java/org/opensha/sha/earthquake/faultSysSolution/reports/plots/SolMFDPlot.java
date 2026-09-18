@@ -8,7 +8,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import org.apache.commons.math3.stat.StatUtils;
 import org.jfree.data.Range;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
@@ -34,7 +36,6 @@ import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
-import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
@@ -52,6 +53,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 
 public class SolMFDPlot extends AbstractRupSetPlot {
@@ -241,7 +243,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 					
 					incrFuncs.add(bounded);
 					incrChars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f,
-							new Color(color.getRed(), color.getGreen(), color.getBlue(), 60)));
+							ColorUtils.transparent(color, 60)));
 					
 					EvenlyDiscretizedFunc upperCumulative = bounded.getUpper().getCumRateDistWithOffset();
 					EvenlyDiscretizedFunc lowerCumulative = bounded.getLower().getCumRateDistWithOffset();
@@ -255,7 +257,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 					cmlBounded.setName(bounded.getName());
 					cmlFuncs.add(cmlBounded);
 					cmlChars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f,
-							new Color(color.getRed(), color.getGreen(), color.getBlue(), 60)));
+							ColorUtils.transparent(color, 60)));
 				}
 			}
 			
@@ -282,7 +284,8 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 					} else {
 						for (int r=0; r<roi.getRegions().size(); r++) {
 							Region testReg = roi.getRegions().get(r);
-							if (plot.region.equalsRegion(testReg)) {
+							TectonicRegionType testTRT = roi.getTRTs() == null ? null : roi.getTRTs().get(r);
+							if (plot.region.equalsRegion(testReg) && Objects.equal(plot.trt, testTRT)) {
 								regionalIndex = r;
 								break;
 							}
@@ -811,33 +814,54 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 		if (sectDists != null) {
 			// we have distributions of MFDs
 			double[] sectFracts = null;
-			if (region != null)
+			boolean any = true;
+			if (region != null) {
 				sectFracts = sol.getRupSet().getFractSectsInsideRegion(region, false);
-			IncrementalMagFreqDist[] incrPercentiles = sectDists.calcIncrementalFractiles(sectFracts, standardFractiles);
-			
-			Color transColor = new Color(color.getRed(), color.getGreen(), color.getBlue(), transAlpha);
-			PlotCurveCharacterstics minMaxChar = new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, transColor);
-			
-			for (IncrementalMagFreqDist bounds : processIncrFractiles(incrPercentiles)) {
-				incrFuncs.add(bounds);
-				incrChars.add(minMaxChar);
+				any = StatUtils.sum(sectFracts) > 0d;
 			}
-			
-			EvenlyDiscretizedFunc[] cmlPercentiles = sectDists.calcCumulativeFractiles(sectFracts, standardFractiles);
-			for (UncertainArbDiscFunc cmlBounds : processCmlFractiles(cmlPercentiles, cmlFunc.getMinX())) {
-				cmlFuncs.add(cmlBounds);
-				cmlChars.add(minMaxChar);
+			if (trt != null) {
+				List<? extends FaultSection> sects = sol.getRupSet().getFaultSectionDataList();
+				if (sectFracts == null) {
+					sectFracts = new double[sects.size()];
+					for (int s=0; s<sectFracts.length; s++)
+						sectFracts[s] = 1;
+				}
+				any = false;
+				for (int i=0; i<sectFracts.length; i++) {
+					if (sects.get(i).getTectonicRegionType() != trt) {
+						sectFracts[i] = 0;
+					} else {
+						any |= sectFracts[i] > 0;
+					}
+				}
 			}
-			
-			// now add the original MFD again on top, but without a name
-			IncrementalMagFreqDist mfd2 = mfd.deepClone();
-			mfd2.setName(null);
-			incrFuncs.add(mfd2);
-			incrChars.add(pChar);
-			EvenlyDiscretizedFunc mfd2c = cmlFunc.deepClone();
-			mfd2c.setName(null);
-			cmlFuncs.add(mfd2c);
-			cmlChars.add(pChar);
+			if (any) {
+				IncrementalMagFreqDist[] incrPercentiles = sectDists.calcIncrementalFractiles(sectFracts, standardFractiles);
+				
+				Color transColor = ColorUtils.transparent(color, transAlpha);
+				PlotCurveCharacterstics minMaxChar = new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, transColor);
+				
+				for (IncrementalMagFreqDist bounds : processIncrFractiles(incrPercentiles)) {
+					incrFuncs.add(bounds);
+					incrChars.add(minMaxChar);
+				}
+				
+				EvenlyDiscretizedFunc[] cmlPercentiles = sectDists.calcCumulativeFractiles(sectFracts, standardFractiles);
+				for (UncertainArbDiscFunc cmlBounds : processCmlFractiles(cmlPercentiles, cmlFunc.getMinX())) {
+					cmlFuncs.add(cmlBounds);
+					cmlChars.add(minMaxChar);
+				}
+				
+				// now add the original MFD again on top, but without a name
+				IncrementalMagFreqDist mfd2 = mfd.deepClone();
+				mfd2.setName(null);
+				incrFuncs.add(mfd2);
+				incrChars.add(pChar);
+				EvenlyDiscretizedFunc mfd2c = cmlFunc.deepClone();
+				mfd2c.setName(null);
+				cmlFuncs.add(mfd2c);
+				cmlChars.add(pChar);
+			}
 		}
 		
 		if (regMFDModule != null && regType == MFDType.SUPRA_ONLY)
@@ -886,7 +910,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 			cmlPercentiles = regMFDModule.calcTotalCumulativeFractiles(regType, standardFractiles);
 		}
 		
-		Color transColor = new Color(refColor.getRed(), refColor.getGreen(), refColor.getBlue(), transAlpha);
+		Color transColor = ColorUtils.transparent(refColor, transAlpha);
 		PlotCurveCharacterstics minMaxChar = new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, transColor);
 		
 		for (IncrementalMagFreqDist bounds : processIncrFractiles(incrPercentiles)) {

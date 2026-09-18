@@ -15,6 +15,7 @@ import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.commons.geo.json.Geometry;
 import org.opensha.commons.util.FaultUtils;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Range;
@@ -181,6 +182,8 @@ public class DownDipSubsectionBuilder {
 		props.set(GeoJSONFaultSection.DIP_DIR, dipDir);
 		props.set(GeoJSONFaultSection.UPPER_DEPTH, roughSurf.getAveRupTopDepth());
 		props.set(GeoJSONFaultSection.LOW_DEPTH, roughSurf.getAveRupBottomDepth());
+		
+		props.set(GeoJSONFaultSection.TECTONIC_REGION, TectonicRegionType.SUBDUCTION_INTERFACE.name());
 		
 		Feature subsectFeature = new Feature(sectID, geom, props);
 		

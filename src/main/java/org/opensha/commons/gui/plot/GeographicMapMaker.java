@@ -41,9 +41,10 @@ import org.opensha.commons.geo.json.Geometry.LineString;
 import org.opensha.commons.geo.json.Geometry.Polygon;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.util.ComparablePairing;
-import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -223,7 +224,7 @@ public class GeographicMapMaker {
 	/*
 	 * Inset region outlies
 	 */
-	protected List<Region> insetRegions;
+	protected List<? extends Region> insetRegions;
 	protected List<PlotCurveCharacterstics> insetRegionOutlineChars;
 	protected List<Color> insetRegionFillColors;
 	protected double insetRegionFillOpacity;
@@ -477,7 +478,7 @@ public class GeographicMapMaker {
 		this.highlightTraceChar = null;
 	}
 	
-	public void plotInsetRegions(List<Region> regions, PlotCurveCharacterstics outlineChar,
+	public void plotInsetRegions(List<? extends Region> regions, PlotCurveCharacterstics outlineChar,
 			Color fillColor, double fillOpacity) {
 		List<PlotCurveCharacterstics> chars = null;
 		if (outlineChar != null) {
@@ -494,7 +495,7 @@ public class GeographicMapMaker {
 		plotInsetRegions(regions, chars, colors, fillOpacity);
 	}
 	
-	public void plotInsetRegions(List<Region> regions, List<PlotCurveCharacterstics> outlineChars,
+	public void plotInsetRegions(List<? extends Region> regions, List<PlotCurveCharacterstics> outlineChars,
 			List<Color> fillColors, double fillOpacity) {
 		if (regions == null || regions.isEmpty()) {
 			clearInsetRegions();
@@ -1187,8 +1188,7 @@ public class GeographicMapMaker {
 					PlotCurveCharacterstics insetRegionFillChar = null;
 					if (insetRegionFillColor != null) {
 						if (insetRegionFillOpacity != 1d)
-							insetRegionFillColor = new Color(insetRegionFillColor.getRed(), insetRegionFillColor.getGreen(),
-									insetRegionFillColor.getBlue(), (int)(255d*insetRegionFillOpacity + 0.5d));
+							insetRegionFillColor = ColorUtils.transparent(insetRegionFillColor, insetRegionFillOpacity);
 						insetRegionFillChar = new PlotCurveCharacterstics(PlotLineType.POLYGON_SOLID, 1f, insetRegionFillColor);
 					}
 					
@@ -1639,7 +1639,7 @@ public class GeographicMapMaker {
 							} else {
 								double opacity = (double)color.getAlpha()/255d;
 								props.set(FeatureProperties.FILL_OPACITY_PROP, opacity);
-								props.set(FeatureProperties.FILL_COLOR_PROP, new Color(color.getRed(), color.getGreen(), color.getBlue()));
+								props.set(FeatureProperties.FILL_COLOR_PROP, ColorUtils.transparent(color, 255));
 							}
 						} else if (sectPolyChar.getLineType() != null) {
 							props.set(FeatureProperties.FILL_OPACITY_PROP, 0d);
@@ -1650,7 +1650,7 @@ public class GeographicMapMaker {
 							} else {
 								double opacity = (double)color.getAlpha()/255d;
 								props.set(FeatureProperties.STROKE_OPACITY_PROP, opacity);
-								props.set(FeatureProperties.STROKE_COLOR_PROP, new Color(color.getRed(), color.getGreen(), color.getBlue()));
+								props.set(FeatureProperties.STROKE_COLOR_PROP, ColorUtils.transparent(color, 255));
 							}
 						}
 						features.add(feature);

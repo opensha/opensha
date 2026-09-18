@@ -4,12 +4,20 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 import org.dom4j.Document;
 import org.dom4j.Element;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.metadata.XMLSaveable;
 import org.opensha.commons.util.XMLUtils;
+
+import com.google.common.base.Preconditions;
+import com.google.gson.TypeAdapter;
+import com.google.gson.annotations.JsonAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.JsonWriter;
 
 /**
  * This represents a list of site data value lists. It is most useful for applications such
@@ -18,28 +26,37 @@ import org.opensha.commons.util.XMLUtils;
  * @author Kevin Milner
  *
  */
-public class SiteDataValueListList implements XMLSaveable {
+@JsonAdapter(SiteDataValueListList.Adapter.class)
+public class SiteDataValueListList implements XMLSaveable, Iterable<SiteDataValueList<?>> {
 	
 	public static final String XML_METADATA_NAME = "SiteDataValuesList";
 	
-	private ArrayList<SiteDataValueList<?>> lists;
+	private List<SiteDataValueList<?>> lists;
 	
 	private int size = -1;
 	
 	private boolean hasLocations = true;
 	
-	public SiteDataValueListList(ArrayList<SiteDataValueList<?>> lists) {
-		this.lists = lists;
+	public SiteDataValueListList() {
+		this(new ArrayList<>());
+	}
+	
+	public SiteDataValueListList(List<SiteDataValueList<?>> lists) {
+		this.lists = new ArrayList<>();
 		
 		// get the overall size, and ensure they're all the same
-		for (SiteDataValueList<?> list : lists) {
-			if (size < 0)
-				size = list.size();
-			if (size != list.size())
-				throw new RuntimeException("The size of each list must be same!");
-			if (!list.hasLocations())
-				hasLocations = false;
-		}
+		for (SiteDataValueList<?> list : lists)
+			add(list);
+	}
+	
+	public void add(SiteDataValueList<?> list) {
+		if (size < 0)
+			size = list.size();
+		if (size != list.size())
+			throw new RuntimeException("The size of each list must be same!");
+		if (!list.hasLocations())
+			hasLocations = false;
+		lists.add(list);
 	}
 	
 	public int size() {
@@ -50,7 +67,7 @@ public class SiteDataValueListList implements XMLSaveable {
 		return lists.size();
 	}
 	
-	public ArrayList<SiteDataValue<?>> getDataList(int index) {
+	public List<SiteDataValue<?>> getDataList(int index) {
 		ArrayList<SiteDataValue<?>> datas = new ArrayList<SiteDataValue<?>>();
 		
 		for (SiteDataValueList<?> list : lists) {
@@ -121,6 +138,75 @@ public class SiteDataValueListList implements XMLSaveable {
 		return new SiteDataValueListList(ordered);
 	}
 	
+	public static class Adapter extends TypeAdapter<SiteDataValueListList> {
+		
+		private static final SiteDataValueList.Adapter listAdapter = new SiteDataValueList.Adapter();
+
+		@Override
+		public void write(JsonWriter out, SiteDataValueListList value) throws IOException {
+			if (value == null) {
+				out.nullValue();
+				return;
+			}
+			out.beginObject();
+			
+			out.name("type").value(SiteDataValueListList.class.getName());
+			out.name("size").value(value.size());
+			out.name("lists").beginArray();
+			for (SiteDataValueList<?> list : value.lists)
+				listAdapter.write(out, list);
+			out.endArray();
+			
+			out.endObject();
+		}
+
+		@Override
+		public SiteDataValueListList read(JsonReader in) throws IOException {
+			if (in.peek() == JsonToken.NULL) {
+				in.nextNull();
+				return null;
+			}
+			in.beginObject();
+			SiteDataValueListList ret = innerRead(in);
+			in.endObject();
+			return ret;
+		}
+		
+		public SiteDataValueListList innerRead(JsonReader in) throws IOException {
+			Integer size = null;
+			ArrayList<SiteDataValueList<?>> lists = null;
+			
+			while (in.hasNext()) {
+				String name = in.nextName();
+				switch (name) {
+				case "type":
+					in.nextString();
+					break;
+				case "size":
+					size = in.nextInt();
+					break;
+				case "lists":
+					lists = new ArrayList<>();
+					in.beginArray();
+					while (in.hasNext())
+						lists.add(listAdapter.read(in));
+					in.endArray();
+					break;
+				default:
+					in.skipValue();
+					break;
+				}
+			}
+			
+			Preconditions.checkNotNull(lists, "Missing 'lists'");
+			SiteDataValueListList ret = new SiteDataValueListList(lists);
+			if (size != null)
+				Preconditions.checkState(size == ret.size(), "Expected size %s, found %s", size, ret.size());
+			return ret;
+		}
+		
+	}
+	
 	public static void main(String args[]) throws IOException {
 		ArrayList<Double> vals = new ArrayList<Double>();
 		vals.add(0.5);
@@ -152,6 +238,11 @@ public class SiteDataValueListList implements XMLSaveable {
 		Element listsEl = root.element(SiteDataValueListList.XML_METADATA_NAME);
 		
 		valsLists = SiteDataValueListList.fromXMLMetadata(listsEl);
+	}
+
+	@Override
+	public Iterator<SiteDataValueList<?>> iterator() {
+		return lists.iterator();
 	}
 
 }

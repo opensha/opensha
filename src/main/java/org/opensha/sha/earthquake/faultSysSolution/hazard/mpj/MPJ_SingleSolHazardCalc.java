@@ -1,9 +1,11 @@
 package org.opensha.sha.earthquake.faultSysSolution.hazard.mpj;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -39,6 +41,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings.CurveXValManager;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
@@ -85,6 +88,8 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 	
 	private SourceFilterManager sourceFilter;
 	
+	private CurveXValManager xValManager;
+	
 	private SourceFilterManager siteSkipSourceFilter;
 	
 	private GriddedRegion gridRegion;
@@ -98,6 +103,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 	private File nodesCurveDir;
 	
 	private File outputFile;
+	private File curvesOutputFile;
 	
 	private GridSourceProvider externalGridProv;
 	private SolHazardMapCalc externalGriddedCurveCalc;
@@ -160,6 +166,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 			gridSpacing = Double.parseDouble(cmd.getOptionValue("grid-spacing"));
 		
 		sourceFilter = FaultSysHazardCalcSettings.getSourceFilters(cmd);
+		xValManager = FaultSysHazardCalcSettings.getXValManager(cmd);
 		siteSkipSourceFilter = FaultSysHazardCalcSettings.getSiteSkipSourceFilters(sourceFilter, cmd);
 		
 		gmmRefs = FaultSysHazardCalcSettings.getGMMs(cmd);
@@ -267,6 +274,11 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 				outputFile = new File(cmd.getOptionValue("output-file"));
 			else
 				outputFile = new File(outputDir.getParentFile(), "results_hazard.zip");
+			if (cmd.hasOption("curves-output-file")) {
+				curvesOutputFile = new File(cmd.getOptionValue("curves-output-file"));
+				Preconditions.checkArgument(!outputFile.getCanonicalFile().equals(curvesOutputFile.getCanonicalFile()),
+						"Hazard map and curve output files must be different: %s", outputFile.getAbsolutePath());
+			}
 			
 			File simDir = getSolDir(singleSol.getModule(LogicTreeBranch.class));
 			MPJ_LogicTreeHazardCalc.waitOnDir(simDir, 5, 1000);
@@ -398,6 +410,8 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 			File hazardSubDir = new File(runDir, hazardSubDirName);
 			Preconditions.checkState(hazardSubDir.exists() || hazardSubDir.mkdir());
 			calc.writeCurvesCSVs(hazardSubDir, "curves", true);
+			if (curvesOutputFile != null)
+				writeCurvesArchive(runDir, hazardSubDir);
 			
 			// build the zip
 			File workingFile = new File(outputFile.getAbsolutePath()+".tmp");
@@ -459,6 +473,43 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 			zout.close();
 			Files.move(workingFile, outputFile);
 		}
+	}
+
+	private void writeCurvesArchive(File runDir, File hazardSubDir) throws IOException {
+		File workingFile = new File(curvesOutputFile.getAbsolutePath()+".tmp");
+		try (ZipOutputStream zout = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(workingFile)))) {
+			zout.putNextEntry(new ZipEntry(MPJ_LogicTreeHazardCalc.GRID_REGION_ENTRY_NAME));
+			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(zout));
+			Feature.write(gridRegion.toFeature(), writer);
+			writer.flush();
+			zout.closeEntry();
+
+			if (tree != null) {
+				zout.putNextEntry(new ZipEntry(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME));
+				Gson gson = new GsonBuilder().setPrettyPrinting()
+						.registerTypeAdapter(LogicTree.class, new LogicTree.Adapter<>()).create();
+				gson.toJson(tree, LogicTree.class, writer);
+				writer.flush();
+				zout.closeEntry();
+				zout.putNextEntry(new ZipEntry(runDir.getName()+"/"));
+				zout.closeEntry();
+			}
+
+			for (double period : periods) {
+				String curvesName = SolHazardMapCalc.getCSV_FileName("curves", period);
+				File curvesFile = new File(hazardSubDir, curvesName+".gz");
+				if (!curvesFile.exists())
+					curvesFile = new File(hazardSubDir, curvesName);
+				Preconditions.checkState(curvesFile.exists(), "Missing curves file: %s", curvesFile.getAbsolutePath());
+				String entryName = tree == null ? curvesFile.getName() : runDir.getName()+"/"+curvesFile.getName();
+				zout.putNextEntry(new ZipEntry(entryName));
+				try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(curvesFile))) {
+					in.transferTo(zout);
+				}
+				zout.closeEntry();
+			}
+		}
+		Files.move(workingFile, curvesOutputFile);
 	}
 
 	@Override
@@ -572,10 +623,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 					externalGriddedCurveCalc = new SolHazardMapCalc(extSol, gmmRefs, gridRegion,
 							IncludeBackgroundOption.ONLY, applyAftershockFilter, periods);
 					
-					externalGriddedCurveCalc.setSourceFilter(sourceFilter);
-					externalGriddedCurveCalc.setPointSourceOptimizations(pointSourceOptimizations);
-					externalGriddedCurveCalc.setSiteSkipSourceFilter(siteSkipSourceFilter);
-					externalGriddedCurveCalc.setGriddedSeismicitySettings(griddedSettings);
+					configureHazardCalc(externalGriddedCurveCalc);
 					
 					externalGriddedCurveCalc.calcHazardCurves(getNumThreads());
 				}
@@ -645,13 +693,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 				combineWithCurves = combineWithOnlyCurves;
 				calc = new SolHazardMapCalc(singleSol, gmpeSuppliers, gridRegion, IncludeBackgroundOption.EXCLUDE, applyAftershockFilter, periods);
 			}
-			calc.setSourceFilter(sourceFilter);
-			calc.setPointSourceOptimizations(pointSourceOptimizations);
-			calc.setSiteSkipSourceFilter(siteSkipSourceFilter);
-			calc.setAseisReducesArea(aseisReducesArea);
-			calc.setNoMFDs(noMFDs);
-			calc.setUseProxyRups(!noProxyRups);
-			calc.setGriddedSeismicitySettings(griddedSettings);
+			configureHazardCalc(calc);
 			
 			if (erf != null)
 				calc.setERF(erf);
@@ -666,6 +708,17 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 		this.erf = calc.getERF();
 	}
 	
+	private void configureHazardCalc(SolHazardMapCalc calc) {
+		calc.setSourceFilter(sourceFilter);
+		calc.setXValManager(xValManager);
+		calc.setPointSourceOptimizations(pointSourceOptimizations);
+		calc.setSiteSkipSourceFilter(siteSkipSourceFilter);
+		calc.setAseisReducesArea(aseisReducesArea);
+		calc.setNoMFDs(noMFDs);
+		calc.setUseProxyRups(!noProxyRups);
+		calc.setGriddedSeismicitySettings(griddedSettings);
+	}
+	
 	public static Options createOptions() {
 		Options ops = MPJTaskCalculator.createOptions();
 		
@@ -676,6 +729,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 				+ "supplied with --input-file");
 		ops.addRequiredOption("od", "output-dir", true, "Path to output directory");
 		ops.addOption("of", "output-file", true, "Path to output zip file. Default will be based on the output directory");
+		ops.addOption(null, "curves-output-file", true, "Optional path to an output zip file containing hazard curves");
 		ops.addOption("sp", "grid-spacing", true, "Grid spacing in decimal degrees. Default: "+(float)MPJ_LogicTreeHazardCalc.GRID_SPACING_DEFAULT);
 		ops.addOption("gs", "gridded-seis", true, "Gridded seismicity option. One of "
 				+FaultSysTools.enumOptions(IncludeBackgroundOption.class)+". Default: "+MPJ_LogicTreeHazardCalc.GRID_SEIS_DEFAULT.name());
@@ -721,4 +775,3 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 	}
 
 }
-

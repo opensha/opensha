@@ -8,6 +8,7 @@ import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.logicTree.LogicTreeNode.FixedWeightNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
@@ -16,7 +17,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Un
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
-public enum NSHM23_PaleoUncertainties implements LogicTreeNode {
+public enum NSHM23_PaleoUncertainties implements FixedWeightNode {
 	EVEN_FIT("Even-Fit Paleo Data", "EvenFit", 1d, 1d),
 	OVER_FIT("Over-Fit Paleo Data (5x)", "OverFit", 1d/5d, 1d),
 	UNDER_FIT("Under-Fit Paleo Data (10x)", "UnderFit", 10d, 1d),
@@ -65,7 +66,7 @@ public enum NSHM23_PaleoUncertainties implements LogicTreeNode {
 	}
 
 	@Override
-	public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+	public double getNodeWeight() {
 		return weight;
 	}
 

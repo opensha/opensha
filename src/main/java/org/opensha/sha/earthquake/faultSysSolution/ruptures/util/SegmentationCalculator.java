@@ -28,6 +28,7 @@ import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.Range;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -1285,7 +1286,7 @@ public class SegmentationCalculator {
 						double rate = combiner.combine(fromVal, toVal);
 						fract = jumpRate/rate;
 						Color c = rateCPT.getColor((float)Math.log10(rate));
-						c = new Color(c.getRed(), c.getGreen(), c.getBlue(), 200);
+						c = ColorUtils.transparent(c, 200);
 						
 						XY_DataSet scatter = new DefaultXY_DataSet();
 						scatter.set(scalarVal, fract);
@@ -1768,7 +1769,7 @@ public class SegmentationCalculator {
 //							System.out.println("\tfract = "+jumpRate+" / "+rate+" = "+fract);
 //						}
 						Color c = rateCPT.getColor((float)Math.log10(rate));
-						c = new Color(c.getRed(), c.getGreen(), c.getBlue(), 200);
+						c = ColorUtils.transparent(c, 200);
 						
 						XY_DataSet scatter = new DefaultXY_DataSet();
 						scatter.set(scalarVal, fract);
@@ -2003,7 +2004,7 @@ public class SegmentationCalculator {
 //						System.out.println("\tfract = "+jumpRate+" / "+rate+" = "+fract);
 //					}
 					Color c = rateCPT.getColor((float)Math.log10(rate));
-					c = new Color(c.getRed(), c.getGreen(), c.getBlue(), 200);
+					c = ColorUtils.transparent(c, 200);
 					
 					XY_DataSet scatter = new DefaultXY_DataSet();
 					scatter.set(scalarVal, fract);

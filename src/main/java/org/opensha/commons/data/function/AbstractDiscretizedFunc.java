@@ -87,15 +87,6 @@ Named,java.io.Serializable{
 		return getXIndex(x) >= 0;
 	}
 	
-	/**
-	 * Returns the x index that is before the given X value. If a point exists at this
-	 * x value, the index before that point should be returned. Return value is undefined
-	 * if x < minX or x > maxX, error checking should be done externally.
-	 * @param x
-	 * @return
-	 */
-	abstract int getXIndexBefore(double x);
-	
 	@Override
 	public double getInterpolatedY(double x) {
 		return getInterpolatedY(x, false, false);

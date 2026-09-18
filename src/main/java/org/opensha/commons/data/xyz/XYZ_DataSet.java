@@ -223,9 +223,9 @@ public interface XYZ_DataSet extends java.io.Serializable, Cloneable {
 	public List<Double> getValueList();
 	
 	/**
-	 * Returns a shallow copy of this <code>XYZ_DataSet</code>. Internal points are not cloned.
+	 * Returns a deep copy of this <code>XYZ_DataSet</code>
 	 * 
-	 * @return shallow copy of this <code>XYZ_DataSet</code>
+	 * @return deep copy of this <code>XYZ_DataSet</code>
 	 */
 	public XYZ_DataSet copy();
 	

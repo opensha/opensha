@@ -43,6 +43,7 @@ import org.opensha.sha.earthquake.faultSysSolution.RuptureSets;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionConfigurationFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionSolver;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.ExclusionaryInversionConfigurationFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.GridSourceProviderFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionSolver;
@@ -91,6 +92,11 @@ import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
 import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
+import org.opensha.sha.earthquake.nshmp.seismicity.CrustalGridSourceBuilder;
+import org.opensha.sha.earthquake.nshmp.seismicity.CrustalGridSourceBuilder.NearFaultCarveOutModel;
+import org.opensha.sha.earthquake.nshmp.seismicity.CrustalGridSourceBuilder.NucleationPDF_3D;
+import org.opensha.sha.earthquake.nshmp.seismicity.CrustalGridSourceBuilder.RuptureBuilder;
+import org.opensha.sha.earthquake.nshmp.seismicity.CrustalGridSourceBuilder.RuptureRateBalancingModel;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder.ParkfieldSelectionCriteria;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.data.NSHM23_PaleoDataLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_AbstractGridSourceProvider;
@@ -98,6 +104,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_Combined
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_FaultCubeAssociations;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_GridFocalMechs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SingleRegionGridSourceProvider;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SingleRegionGridSourceProvider.NSHM23_WUS_FiniteRuptureConverter;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeclusteringAlgorithms;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
@@ -153,7 +160,8 @@ import scratch.UCERF3.griddedSeismicity.GridReader;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 
-public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory, GridSourceProviderFactory {
+public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory, GridSourceProviderFactory,
+ExclusionaryInversionConfigurationFactory {
 
 	protected transient RuptureSets.Cache rupSetCache = new RuptureSets.Cache();
 	protected transient Map<RupSetFaultModel, SectionDistanceAzimuthCalculator> distAzCache = new HashMap<>();
@@ -616,7 +624,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 						RandomBValSampler sampler = rupSet.requireModule(BranchSamplingManager.class).getSampler(bValNode);
 						builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet, sampler.getBValues());
 					} else {
-						builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet, branch.requireValue(SectionSupraSeisBValues.class));
+						builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet, branch.requireValue(SectionSupraSeisBValues.class), branch);
 					}
 					return builder.subSeisMoRateReduction(moRateRed).buildSlipRatesOnly();
 				}
@@ -847,11 +855,11 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			bVal = NSHM23_ConstraintBuilder.momentWeightedAverage(rupSet, sectSpecificBValues);
 		} else {
 			SectionSupraSeisBValues bValues = branch.requireValue(SectionSupraSeisBValues.class);
-			sectSpecificBValues = bValues.getSectBValues(rupSet);
-			if (Double.isFinite(bValues.getB()))
-				bVal = bValues.getB();
-			else
-				bVal = SectionSupraSeisBValues.momentWeightedAverage(rupSet, sectSpecificBValues);
+			sectSpecificBValues = bValues.getSectBValues(rupSet, branch);
+			double b = bValues.getB(rupSet, branch);
+			if (!Double.isFinite(b))
+				b = SectionSupraSeisBValues.momentWeightedAverage(rupSet, sectSpecificBValues);
+			bVal = b;
 		}
 		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal, sectSpecificBValues);
 		
@@ -875,7 +883,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		// apply any segmentation adjustments
 		if (hasJumps(rupSet)) {
 			// this handles creeping section, binary segmentation, and max dist models
-			BinaryRuptureProbabilityCalc rupExclusionModel = getExclusionModel(
+			BinaryRuptureProbabilityCalc rupExclusionModel = buildExclusionModel(
 					rupSet, branch, rupSet.requireModule(ClusterRuptures.class));
 			
 			if (rupExclusionModel != null)
@@ -1234,6 +1242,82 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		return ret;
 	}
+
+	public static GridSourceList buildUpdatedGridSourceProv(FaultSystemSolution sol, LogicTreeBranch<?> branch) throws IOException {
+		doPreGridBuildHook(sol, branch);
+		FaultSystemRupSet rupSet = sol.getRupSet();
+		SeismicityRegionsListModule seisRegionsModule = rupSet.getModule(SeismicityRegionsListModule.class);
+		SeismicityRegions region;
+		if (seisRegionsModule == null) {
+			Preconditions.checkState(branch.hasValue(NSHM23_FaultModels.class));
+			region = SeismicityRegions.CONUS_WEST;
+		} else {
+			Preconditions.checkState(seisRegionsModule.seisRegions.size() == 1);
+			region = seisRegionsModule.seisRegions.get(0);
+		}
+		FaultCubeAssociations cubeAssociations = rupSet.requireModule(FaultCubeAssociations.class);
+		GriddedRegion gridReg = cubeAssociations.getRegion();
+		
+		double maxMagOff = branch.requireValue(MaxMagOffFaultBranchNode.class).getMaxMagOffFault();
+		
+		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(
+				Math.max(maxMagOff, sol.getRupSet().getMaxMag()));
+		
+		NSHM23_RegionalSeismicity seisBranch = branch.requireValue(NSHM23_RegionalSeismicity.class);
+		NSHM23_DeclusteringAlgorithms declusteringAlg = branch.requireValue(NSHM23_DeclusteringAlgorithms.class);
+		NSHM23_SeisSmoothingAlgorithms seisSmooth = branch.requireValue(NSHM23_SeisSmoothingAlgorithms.class);
+		
+		// total G-R up to Mmax
+		IncrementalMagFreqDist totalGR = seisBranch.build(region, refMFD, maxMagOff);
+
+		// focal mechanisms
+		double[] fractStrikeSlip = NSHM23_GridFocalMechs.getFractStrikeSlip(region, gridReg);
+		double[] fractReverse = NSHM23_GridFocalMechs.getFractReverse(region, gridReg);
+		double[] fractNormal = NSHM23_GridFocalMechs.getFractNormal(region, gridReg);
+
+		// spatial seismicity PDF
+		double[] pdf = seisSmooth.load(region, declusteringAlg);
+		
+		double[] fractStable = new double[pdf.length];
+		EnumMap<TectonicRegionType, Region> trtRegions = getTRT_Regions();
+		for (int i=0; i<fractStable.length; i++) {
+			TectonicRegionType trt = null;
+			Location loc = gridReg.getLocation(i);
+			for (TectonicRegionType testTRT : trtRegions.keySet()) {
+				if (trtRegions.get(testTRT).contains(loc)) {
+					trt = testTRT;
+					break;
+				}
+			}
+			if (trt == null || trt == TectonicRegionType.ACTIVE_SHALLOW) {
+				fractStable[i] = 0d;
+			} else {
+				Preconditions.checkState(trt == TectonicRegionType.STABLE_SHALLOW);
+				// TODO: partial weighting for stable in WUS
+				fractStable[i] = 1d;
+			}
+		}
+
+		// seismicity depth distribution
+
+		// we used UCERF3
+		SeisDepthDistribution seisDepthDistribution = new SeisDepthDistribution();
+		double delta=2;
+		HistogramFunction binnedDepthDistFunc = new HistogramFunction(1d, 12,delta);
+		for(int i=0;i<binnedDepthDistFunc.size();i++) {
+			double prob = seisDepthDistribution.getProbBetweenDepths(binnedDepthDistFunc.getX(i)-delta/2d,binnedDepthDistFunc.getX(i)+delta/2d);
+			binnedDepthDistFunc.set(i,prob);
+		}
+		//				EvenlyDiscretizedFunc depthNuclDistFunc = NSHM23_SeisDepthDistributions.load(region);
+		
+		NucleationPDF_3D nuclPDF = new CrustalGridSourceBuilder.DepthDistAnd2D_PDF_NucleationPDF(
+				cubeAssociations.getCubedGriddedRegion(), binnedDepthDistFunc, pdf);
+		RuptureRateBalancingModel rateBalancing = new CrustalGridSourceBuilder.UniformRateBalancingModel();
+		NearFaultCarveOutModel carveOut = new CrustalGridSourceBuilder.NearFaultCarveOutAboveSupraMmin();
+		RuptureBuilder builder = new CrustalGridSourceBuilder.SingleRupPerMechRuptureBuilder(
+				new NSHM23_WUS_FiniteRuptureConverter(), gridReg, fractStrikeSlip, fractNormal, fractReverse, fractStable, 2.55);
+		return CrustalGridSourceBuilder.build(sol, totalGR, cubeAssociations, nuclPDF, rateBalancing, carveOut, builder);
+	}
 	
 	private static EnumMap<TectonicRegionType, Region> trtRegions = null;
 	
@@ -1503,8 +1587,14 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		return builder.build();
 	}
+
+	@Override
+	public BinaryRuptureProbabilityCalc getExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+			ClusterRuptures cRups) {
+		return buildExclusionModel(rupSet, branch, cRups);
+	}
 	
-	public static BinaryRuptureProbabilityCalc getExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+	public static BinaryRuptureProbabilityCalc buildExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
 			ClusterRuptures cRups) {
 		// segmentation model
 		List<BinaryRuptureProbabilityCalc> exclusionModels = new ArrayList<>();
@@ -1541,13 +1631,12 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			if (isSolveClustersIndividually()) {
 				// solve clusters individually, can handle mixed clusters and single-fault analytical
 				System.out.println("Returning classic model solver");
-				ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
-				return new ClassicModelInversionSolver(rupSet, branch, getExclusionModel(rupSet, branch, cRups));
+				return new ClassicModelInversionSolver(rupSet, branch);
 			} else if (!hasPaleoData(rupSet) && !hasParkfield(rupSet)) {
 				// see if we can solve the whole thing analytically (can do if all multifault rups are excluded)
 				// but only if we don't have paleo/parkfield constraints
 				ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
-				BinaryRuptureProbabilityCalc exclusionModel = getExclusionModel(rupSet, branch, cRups);
+				BinaryRuptureProbabilityCalc exclusionModel = buildExclusionModel(rupSet, branch, cRups);
 				boolean hasIncludedJump = false;
 				for (ClusterRupture cRup : cRups) {
 					int numJumps = cRup.getTotalNumJumps();
@@ -1565,20 +1654,10 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			// have to do a full system inversion
 			return new InversionSolver.Default();
 		} else if (isSolveClustersIndividually()) {
-			return new ExclusionAwareClusterSpecificInversionSolver();
+			return new ClusterSpecificInversionSolver();
 		} else {
 			return new InversionSolver.Default();
 		}
-	}
-	
-	public static class ExclusionAwareClusterSpecificInversionSolver extends ClusterSpecificInversionSolver {
-
-		@Override
-		protected BinaryRuptureProbabilityCalc getRuptureExclusionModel(FaultSystemRupSet rupSet,
-				LogicTreeBranch<?> branch) {
-			return getExclusionModel(rupSet, branch, rupSet.requireModule(ClusterRuptures.class));
-		}
-		
 	}
 
 	private static ExclusionIntegerSampler getExcludeSampler(ClusterRuptures cRups,

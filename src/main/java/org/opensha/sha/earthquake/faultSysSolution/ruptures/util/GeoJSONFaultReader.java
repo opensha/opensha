@@ -84,7 +84,7 @@ public class GeoJSONFaultReader {
 				// duplicate name!
 				nameCount++;
 				String state = sect.getProperty("PrimState", "");
-				Preconditions.checkState(!state.isBlank(), "State cannot be blank in the case of duplicate fault names");
+				Preconditions.checkState(!state.isBlank(), "State cannot be blank in the case of duplicate fault names ("+sectName+")");
 				String newSectName = sectName+" ("+state+")";
 				System.err.println("WARNING: duplicate fault section name detected, changing '"+sectName+"' to '"+newSectName+"'");
 				sect.setSectionName(newSectName);
