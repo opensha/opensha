@@ -1188,8 +1188,7 @@ public class GeographicMapMaker {
 					PlotCurveCharacterstics insetRegionFillChar = null;
 					if (insetRegionFillColor != null) {
 						if (insetRegionFillOpacity != 1d)
-							insetRegionFillColor = new Color(insetRegionFillColor.getRed(), insetRegionFillColor.getGreen(),
-									insetRegionFillColor.getBlue(), (int)(255d*insetRegionFillOpacity + 0.5d));
+							insetRegionFillColor = ColorUtils.transparent(insetRegionFillColor, insetRegionFillOpacity);
 						insetRegionFillChar = new PlotCurveCharacterstics(PlotLineType.POLYGON_SOLID, 1f, insetRegionFillColor);
 					}
 					

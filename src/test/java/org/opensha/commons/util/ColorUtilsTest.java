@@ -1,7 +1,9 @@
 package org.opensha.commons.util;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import java.awt.Color;
 
@@ -19,6 +21,53 @@ public class ColorUtilsTest {
 	@Test(expected=IllegalArgumentException.class)
 	public void testTransparentRejectsInvalidAlpha() {
 		ColorUtils.transparent(Color.BLACK, 256);
+	}
+
+	@Test
+	public void testTransparentOpacity() {
+		assertEquals(new Color(12, 34, 56, 0), ColorUtils.transparent(new Color(12, 34, 56), 0d));
+		assertEquals(new Color(12, 34, 56, 128), ColorUtils.transparent(new Color(12, 34, 56), 0.5d));
+		assertEquals(new Color(12, 34, 56, 255), ColorUtils.transparent(new Color(12, 34, 56), 1d));
+	}
+
+	@Test(expected=IllegalArgumentException.class)
+	public void testTransparentRejectsInvalidOpacity() {
+		ColorUtils.transparent(Color.BLACK, Double.NaN);
+	}
+
+	@Test
+	public void testBlend() {
+		Color first = new Color(10, 20, 30, 40);
+		Color second = new Color(110, 220, 130, 240);
+		assertEquals(first, ColorUtils.blend(first, second, 0d));
+		assertEquals(second, ColorUtils.blend(first, second, 1d));
+		assertEquals(new Color(35, 70, 55, 90), ColorUtils.blend(first, second, 0.25d));
+	}
+
+	@Test(expected=IllegalArgumentException.class)
+	public void testBlendRejectsInvalidFraction() {
+		ColorUtils.blend(Color.BLACK, Color.WHITE, -0.1d);
+	}
+
+	@Test
+	public void testLightAndDark() {
+		assertTrue(ColorUtils.isLight(Color.WHITE));
+		assertFalse(ColorUtils.isDark(Color.WHITE));
+		assertFalse(ColorUtils.isLight(new Color(127, 127, 127)));
+		assertTrue(ColorUtils.isDark(new Color(127, 127, 127)));
+		assertTrue(ColorUtils.isLight(new Color(128, 128, 128)));
+	}
+
+	@Test
+	public void testCompositeOver() {
+		assertEquals(new Color(128, 0, 127),
+				ColorUtils.compositeOver(new Color(255, 0, 0, 128), Color.BLUE));
+		Color background = new Color(12, 34, 56, 78);
+		assertEquals(background, ColorUtils.compositeOver(new Color(0, 0, 0, 0), background));
+		Color foreground = new Color(98, 76, 54);
+		assertEquals(foreground, ColorUtils.compositeOver(foreground, background));
+		assertEquals(new Color(0, 0, 0, 0),
+				ColorUtils.compositeOver(new Color(1, 2, 3, 0), new Color(4, 5, 6, 0)));
 	}
 
 	@Test

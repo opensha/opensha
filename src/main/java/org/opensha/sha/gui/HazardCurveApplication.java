@@ -68,6 +68,7 @@ import org.opensha.commons.param.editor.impl.ParameterListEditor;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.util.ApplicationVersion;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.ListUtils;
@@ -358,8 +359,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	
 	public static Color getBottomBarColor() {
 		Color defaultBackground = UIManager.getColor ( "Panel.background" );
-		double avgColor = (defaultBackground.getRed() + defaultBackground.getGreen() + defaultBackground.getBlue())/3d;
-		if (avgColor > 127d) {
+		if (ColorUtils.isLight(defaultBackground)) {
 			// light theme
 			return new Color(220,220,220);
 		} else {

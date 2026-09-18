@@ -113,7 +113,7 @@ public class XYShadedUncertainLineRenderer extends AbstractXYItemRenderer {
 			g2.setPaint(paint);
 		} else {
 			Color lineColor = (Color)paint;
-			Color fillColor = ColorUtils.transparent(lineColor, (int)(255d*fillTrans));
+			Color fillColor = ColorUtils.transparent(lineColor, fillTrans);
 			g2.setPaint(fillColor);
 		}
 		g2.fillPolygon(p);

@@ -10,6 +10,7 @@ import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
+import org.opensha.commons.util.ColorUtils;
 
 public class ArbitrarilyDiscretizedFuncTableModel extends AbstractTableModel {
 	
@@ -41,8 +42,7 @@ public class ArbitrarilyDiscretizedFuncTableModel extends AbstractTableModel {
 //		this.fireTableDataChanged();
 		
 		Color defaultBackground = UIManager.getColor ( "Panel.background" );
-		double avgColor = (defaultBackground.getRed() + defaultBackground.getGreen() + defaultBackground.getBlue())/3d;
-		if (avgColor > 127d) {
+		if (ColorUtils.isLight(defaultBackground)) {
 			// light theme
 			enabledBackgroundColor = Color.WHITE;
 			disabledBackgroundColor = new Color(210, 210, 210);

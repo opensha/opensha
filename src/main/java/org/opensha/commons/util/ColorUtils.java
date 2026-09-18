@@ -21,6 +21,73 @@ public final class ColorUtils {
 	}
 
 	/**
+	 * Returns a copy of {@code color} with the supplied fractional opacity.
+	 *
+	 * @param color source color
+	 * @param opacity opacity in the range {@code [0, 1]}
+	 * @return a color with the same RGB components and the supplied opacity
+	 */
+	public static Color transparent(Color color, double opacity) {
+		if (!(opacity >= 0d && opacity <= 1d))
+			throw new IllegalArgumentException("Opacity must be in the range [0, 1]: "+opacity);
+		return transparent(color, (int)(255d*opacity + 0.5d));
+	}
+
+	/**
+	 * Linearly blends two colors, including their alpha components.
+	 *
+	 * @param first first color
+	 * @param second second color
+	 * @param secondFraction fraction of {@code second}, in the range {@code [0, 1]}
+	 * @return the blended color
+	 */
+	public static Color blend(Color first, Color second, double secondFraction) {
+		if (!(secondFraction >= 0d && secondFraction <= 1d))
+			throw new IllegalArgumentException("Blend fraction must be in the range [0, 1]: "+secondFraction);
+		double firstFraction = 1d - secondFraction;
+		return new Color(
+				(int)(first.getRed()*firstFraction + second.getRed()*secondFraction + 0.5d),
+				(int)(first.getGreen()*firstFraction + second.getGreen()*secondFraction + 0.5d),
+				(int)(first.getBlue()*firstFraction + second.getBlue()*secondFraction + 0.5d),
+				(int)(first.getAlpha()*firstFraction + second.getAlpha()*secondFraction + 0.5d));
+	}
+
+	/**
+	 * Returns {@code true} if the average RGB component is greater than 127.
+	 */
+	public static boolean isLight(Color color) {
+		return color.getRed() + color.getGreen() + color.getBlue() > 3*127;
+	}
+
+	/**
+	 * Returns {@code true} if the average RGB component is at most 127.
+	 */
+	public static boolean isDark(Color color) {
+		return !isLight(color);
+	}
+
+	/**
+	 * Composites {@code foreground} over {@code background} using source-over alpha compositing.
+	 *
+	 * @param foreground foreground color
+	 * @param background background color
+	 * @return the composited color
+	 */
+	public static Color compositeOver(Color foreground, Color background) {
+		double foregroundAlpha = foreground.getAlpha()/255d;
+		double backgroundAlpha = background.getAlpha()/255d;
+		double resultAlpha = foregroundAlpha + backgroundAlpha*(1d - foregroundAlpha);
+		if (resultAlpha == 0d)
+			return new Color(0, 0, 0, 0);
+		double backgroundScale = backgroundAlpha*(1d - foregroundAlpha);
+		return new Color(
+				(int)((foreground.getRed()*foregroundAlpha + background.getRed()*backgroundScale)/resultAlpha + 0.5d),
+				(int)((foreground.getGreen()*foregroundAlpha + background.getGreen()*backgroundScale)/resultAlpha + 0.5d),
+				(int)((foreground.getBlue()*foregroundAlpha + background.getBlue()*backgroundScale)/resultAlpha + 0.5d),
+				(int)(255d*resultAlpha + 0.5d));
+	}
+
+	/**
 	 * Returns the light Tableau color paired with the supplied base Tableau color.
 	 * The supplied color must be one of the {@code Colors.tab_*} constant instances.
 	 *
