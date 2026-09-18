@@ -469,7 +469,7 @@ public class SiteLogicTreeHazardPageGen {
 						}
 					}
 					table.finalizeLine();
-					table.initNewLine().addColumn("__COV__");
+					table.initNewLine().addColumn("__CV__");
 					for (int r=0; r<rps.length; r++) {
 						table.addColumn((float)(branchDists[r].stdDev/rpMeans.get(r))+"");
 						if (compBranchDists != null) {
@@ -1283,7 +1283,7 @@ public class SiteLogicTreeHazardPageGen {
 		header.add(firstCol);
 		header.add("Mean"+units);
 		header.add("Std. Dev."+units);
-		header.add("COV");
+		header.add("CV");
 		for (String f : fractileHeaders)
 			header.add(f+units);
 		return header;

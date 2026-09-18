@@ -523,8 +523,8 @@ public class LogicTreeHazardCompare {
 	private CPT iqrDiffCPT;
 	private CPT sdCPT;
 	private CPT sdDiffCPT;
-	private CPT covCPT;
-	private CPT covDiffCPT;
+	private CPT cvCPT;
+	private CPT cvDiffCPT;
 	private CPT diffCPT;
 	private CPT pDiffCPT;
 	private CPT tightPDiffCPT;
@@ -570,10 +570,10 @@ public class LogicTreeHazardCompare {
 		iqrCPT.setNanColor(Color.LIGHT_GRAY);
 		iqrDiffCPT = GMT_CPT_Files.DIVERGING_BAM_UNIFORM.instance().reverse().rescale(-0.05d, 0.05d);
 		iqrDiffCPT.setNanColor(Color.LIGHT_GRAY);
-		covCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0, 1d);
-		covCPT.setNanColor(Color.LIGHT_GRAY);
-		covDiffCPT = GMT_CPT_Files.DIVERGING_BAM_UNIFORM.instance().reverse().rescale(-0.3d, 0.3d);
-		covDiffCPT.setNanColor(Color.LIGHT_GRAY);
+		cvCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0, 1d);
+		cvCPT.setNanColor(Color.LIGHT_GRAY);
+		cvDiffCPT = GMT_CPT_Files.DIVERGING_BAM_UNIFORM.instance().reverse().rescale(-0.3d, 0.3d);
+		cvDiffCPT.setNanColor(Color.LIGHT_GRAY);
 		sdCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0, 0.2d);
 		sdCPT.setNanColor(Color.LIGHT_GRAY);
 		sdDiffCPT = GMT_CPT_Files.DIVERGING_BAM_UNIFORM.instance().reverse().rescale(-0.05d, 0.05d);
@@ -1536,22 +1536,22 @@ public class LogicTreeHazardCompare {
 		return ret;
 	}
 	
-	private void calcSD_COV(GriddedGeoDataSet[] maps, List<Double> weights,
-			GriddedGeoDataSet meanMap, GriddedGeoDataSet sd, GriddedGeoDataSet cov) {
-		calcSD_COV(maps, weights, meanMap, sd, cov, exec);
+	private void calcSD_CV(GriddedGeoDataSet[] maps, List<Double> weights,
+			GriddedGeoDataSet meanMap, GriddedGeoDataSet sd, GriddedGeoDataSet cv) {
+		calcSD_CV(maps, weights, meanMap, sd, cv, exec);
 	}
 	
-	static void calcSD_COV(GriddedGeoDataSet[] maps, List<Double> weights,
-			GriddedGeoDataSet meanMap, GriddedGeoDataSet sd, GriddedGeoDataSet cov, ExecutorService exec) {
+	static void calcSD_CV(GriddedGeoDataSet[] maps, List<Double> weights,
+			GriddedGeoDataSet meanMap, GriddedGeoDataSet sd, GriddedGeoDataSet cv, ExecutorService exec) {
 		double[] weightsArray = MathArrays.normalizeArray(Doubles.toArray(weights), weights.size());
 
 		Stopwatch watch = Stopwatch.createStarted();
 		if (maps.length < 500 || sd.size() < 100) {
 			// serial
 			for (int i=0; i<sd.size(); i++) {
-				double[] vals = calcSD_COV(maps, weightsArray, meanMap, i);
+				double[] vals = calcSD_CV(maps, weightsArray, meanMap, i);
 				sd.set(i, vals[0]);
-				cov.set(i, vals[1]);
+				cv.set(i, vals[1]);
 			}
 		} else {
 			// parallel
@@ -1562,9 +1562,9 @@ public class LogicTreeHazardCompare {
 					
 					@Override
 					public void run() {
-						double[] vals = calcSD_COV(maps, weightsArray, meanMap, gridIndex);
+						double[] vals = calcSD_CV(maps, weightsArray, meanMap, gridIndex);
 						sd.set(gridIndex, vals[0]);
-						cov.set(gridIndex, vals[1]);
+						cv.set(gridIndex, vals[1]);
 					}
 				}));
 			}
@@ -1576,18 +1576,18 @@ public class LogicTreeHazardCompare {
 			}
 		}
 		watch.stop();
-		printTime(watch, "calc SDs/COVs for "+maps.length+" maps", 10d);
+		printTime(watch, "calc SDs/CVs for "+maps.length+" maps", 10d);
 	}
 	
-	private static double[] calcSD_COV(GriddedGeoDataSet[] maps, double[] weights, GriddedGeoDataSet meanMap, int gridIndex) {
+	private static double[] calcSD_CV(GriddedGeoDataSet[] maps, double[] weights, GriddedGeoDataSet meanMap, int gridIndex) {
 		double mean = meanMap.get(gridIndex);
-		double sd, cov;
+		double sd, cv;
 		if (maps.length == 1) {
 			sd = 0d;
-			cov = 0d;
+			cv = 0d;
 		} else if (mean == 0d) {
 			sd = 0d;
-			cov = Double.NaN;
+			cv = Double.NaN;
 		} else {
 			// false here means to use the population formula, which does better for small N and is appropriate because
 			// our logic trees are the full population
@@ -1596,10 +1596,9 @@ public class LogicTreeHazardCompare {
 			for (int j=0; j<cellVals.length; j++)
 				cellVals[j] = maps[j].get(gridIndex);
 			sd = Math.sqrt(var.evaluate(cellVals, weights));
-			cov = sd/mean;
-//			System.out.println("COV = "+(float)stdDev+" / "+(float)mean+" = "+(float)val);
+			cv = sd/mean;
 		}
-		return new double[] {sd, cov};
+		return new double[] {sd, cv};
 	}
 	
 //	private GriddedGeoDataSet calcPercentile(GriddedGeoDataSet[] maps, GriddedGeoDataSet comp) {
@@ -1752,8 +1751,8 @@ public class LogicTreeHazardCompare {
 				// plot CPT files for grabbing externally
 				PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt",
 						GeographicMapMaker.buildCPTLegend(logCPT, label, prefs), cptWidth, true, true);
-				PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt_cov",
-						GeographicMapMaker.buildCPTLegend(covCPT, "COV, "+unitlessLabel, prefs), cptWidth, true, true);
+				PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt_cv",
+						GeographicMapMaker.buildCPTLegend(cvCPT, "CV, "+unitlessLabel, prefs), cptWidth, true, true);
 				PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt_pDiff",
 						GeographicMapMaker.buildCPTLegend(pDiffCPT, "% Change, "+unitlessLabel, prefs), cptWidth, true, true);
 				PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt_diff",
@@ -1774,7 +1773,7 @@ public class LogicTreeHazardCompare {
 				
 				System.out.println("Calculating norm CDFs");
 				LightFixedXFunc[] mapNCDFs = buildNormCDFs(maps, weights);
-				System.out.println("Calculating mean, median, bounds, COV");
+				System.out.println("Calculating mean, median, bounds, CV");
 				// see if we've precomputed mean
 				GriddedGeoDataSet mean = ignorePrecomputed ? null :
 					loadPrecomputedMeanMap(LogicTreeCurveAverager.MEAN_PREFIX, rp, period);
@@ -1791,13 +1790,13 @@ public class LogicTreeHazardCompare {
 				GriddedGeoDataSet spread = buildSpread(log10(min), log10(max));
 				GriddedGeoDataSet iqr = calcIQR(mapNCDFs, region);
 				GriddedGeoDataSet sd = new GriddedGeoDataSet(region);
-				GriddedGeoDataSet cov = new GriddedGeoDataSet(region);
-				calcSD_COV(maps, weights, mean, sd, cov);
+				GriddedGeoDataSet cv = new GriddedGeoDataSet(region);
+				calcSD_CV(maps, weights, mean, sd, cv);
 				GriddedGeoDataSet meanPercentile = calcPercentileWithinDist(mapNCDFs, mean);
 				
 				File hazardCSV = new File(resourcesDir, prefix+".csv");
 				System.out.println("Writing CSV: "+hazardCSV.getAbsolutePath());
-				writeHazardCSV(hazardCSV, mean, median, min, max, cov, meanPercentile, null, null);
+				writeHazardCSV(hazardCSV, mean, median, min, max, cv, meanPercentile, null, null);
 				
 //				table.addLine(meanMinMaxSpreadMaps(mean, min, max, spread, name, label, prefix, resourcesDir));
 				
@@ -1809,7 +1808,7 @@ public class LogicTreeHazardCompare {
 				GriddedGeoDataSet cspread = null;
 				GriddedGeoDataSet ciqr = null;
 				GriddedGeoDataSet csd = null;
-				GriddedGeoDataSet ccov = null;
+				GriddedGeoDataSet ccv = null;
 				GriddedGeoDataSet cMeanPercentile = null;
 				GriddedGeoDataSet cMedianPercentile = null;
 				
@@ -1823,7 +1822,7 @@ public class LogicTreeHazardCompare {
 
 					System.out.println("Calculating comparison norm CDFs");
 					cmapNCDFs = buildNormCDFs(cmaps, comp.weights);
-					System.out.println("Calculating comparison mean, median, bounds, COV");
+					System.out.println("Calculating comparison mean, median, bounds, CV");
 					if (!ignorePrecomputed)
 						cmean = comp.loadPrecomputedMeanMap(LogicTreeCurveAverager.MEAN_PREFIX, rp, period);
 					if (cmean == null)
@@ -1834,8 +1833,8 @@ public class LogicTreeHazardCompare {
 					cspread = comp.buildSpread(log10(cmin), log10(cmax));
 					ciqr = calcIQR(cmapNCDFs, region);
 					csd = new GriddedGeoDataSet(region);
-					ccov = new GriddedGeoDataSet(region);
-					calcSD_COV(cmaps, comp.weights, cmean, csd, ccov);
+					ccv = new GriddedGeoDataSet(region);
+					calcSD_CV(cmaps, comp.weights, cmean, csd, ccv);
 //					table.addLine(meanMinMaxSpreadMaps(cmean, cmin, cmax, cspread, compName, label, prefix+"_comp", resourcesDir));
 					
 					if (multi) {
@@ -1845,7 +1844,7 @@ public class LogicTreeHazardCompare {
 					
 					File compHazardCSV = new File(resourcesDir, prefix+"_comp.csv");
 					System.out.println("Writing CSV: "+compHazardCSV.getAbsolutePath());
-					writeHazardCSV(compHazardCSV, cmean, cmedian, cmin, cmax, ccov, null, cMeanPercentile, cMedianPercentile);
+					writeHazardCSV(compHazardCSV, cmean, cmedian, cmin, cmax, ccv, null, cMeanPercentile, cMedianPercentile);
 					
 					lines.add("Download Mean Hazard CSVs: ["+hazardCSV.getName()+"]("+resourcesDir.getName()+"/"+hazardCSV.getName()
 						+")  ["+compHazardCSV.getName()+"]("+resourcesDir.getName()+"/"+compHazardCSV.getName()+")");
@@ -2108,7 +2107,7 @@ public class LogicTreeHazardCompare {
 				lines.addAll(table.build());
 				lines.add("");
 				
-				lines.add("### Bounds, spread, and COV, "+unitlessLabel);
+				lines.add("### Bounds, spread, and CV, "+unitlessLabel);
 				lines.add(topLink); lines.add("");
 				
 				String minMaxStr = "The maps below show the range of values across all logic tree branches, the ratio of "
@@ -2132,8 +2131,8 @@ public class LogicTreeHazardCompare {
 							iqrCPT, TITLES ? name : " ", "IQR, "+label);
 					File sdMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_sd", sd,
 							sdCPT, TITLES ? name : " ", "SD, "+label);
-					File covMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_cov", cov,
-							covCPT, TITLES ? name : " ", "COV, "+unitlessLabel);
+					File cvMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_cv", cv,
+							cvCPT, TITLES ? name : " ", "CV, "+unitlessLabel);
 					
 					table.initNewLine();
 					table.addColumn("![Min Map]("+resourcesDir.getName()+"/"+minMapFile.getName()+")");
@@ -2146,12 +2145,12 @@ public class LogicTreeHazardCompare {
 					table.addColumn("![IQR Map]("+resourcesDir.getName()+"/"+iqrMapFile.getName()+")");
 					table.finalizeLine();
 					table.addLine(mapStats(spread), mapStats(iqr));
-					table.addLine(MarkdownUtils.boldCentered("SD"), MarkdownUtils.boldCentered("COV"));
+					table.addLine(MarkdownUtils.boldCentered("SD"), MarkdownUtils.boldCentered("CV"));
 					table.initNewLine();
 					table.addColumn("![SD Map]("+resourcesDir.getName()+"/"+sdMapFile.getName()+")");
-					table.addColumn("![COV Map]("+resourcesDir.getName()+"/"+covMapFile.getName()+")");
+					table.addColumn("![CV Map]("+resourcesDir.getName()+"/"+cvMapFile.getName()+")");
 					table.finalizeLine();
-					table.addLine(mapStats(sd), mapStats(cov));
+					table.addLine(mapStats(sd), mapStats(cv));
 					
 					lines.add("");
 					lines.add(minMaxStr);
@@ -2173,8 +2172,8 @@ public class LogicTreeHazardCompare {
 							iqrCPT, iqrDiffCPT, pDiffCPT, comp.gridReg);
 					addMapCompDiffLines(sd, name, csd, compName, prefix+"_sd", resourcesDir, table,
 							"SD", label+", SD", unitlessLabel+", SD", sdCPT, sdDiffCPT, pDiffCPT, comp.gridReg);
-					addMapCompDiffLines(cov, name, ccov, compName, prefix+"_cov", resourcesDir, table,
-							"COV", unitlessLabel+", COV", unitlessLabel+", COV", covCPT, covDiffCPT, pDiffCPT, comp.gridReg);
+					addMapCompDiffLines(cv, name, ccv, compName, prefix+"_cv", resourcesDir, table,
+							"CV", unitlessLabel+", CV", unitlessLabel+", CV", cvCPT, cvDiffCPT, pDiffCPT, comp.gridReg);
 					
 					lines.add("");
 					lines.add(minMaxStr+" Each of those quantities is plotted separately for the primary and comparison "
@@ -2206,8 +2205,8 @@ public class LogicTreeHazardCompare {
 					}
 					GriddedGeoDataSet firstHalfMean = buildMean(halfMaps, halfWeights);
 					GriddedGeoDataSet firstHalfSD = new GriddedGeoDataSet(region);
-					GriddedGeoDataSet firstHalfCOV = new GriddedGeoDataSet(region);
-					calcSD_COV(halfMaps.toArray(new GriddedGeoDataSet[halfSize]), halfWeights, firstHalfMean, firstHalfSD, firstHalfCOV);
+					GriddedGeoDataSet firstHalfCV = new GriddedGeoDataSet(region);
+					calcSD_CV(halfMaps.toArray(new GriddedGeoDataSet[halfSize]), halfWeights, firstHalfMean, firstHalfSD, firstHalfCV);
 					halfMaps.clear();
 					halfWeights.clear();
 					for (int i=halfSize; i<branches.size(); i++) {
@@ -2217,8 +2216,8 @@ public class LogicTreeHazardCompare {
 					}
 					GriddedGeoDataSet secondHalfMean = buildMean(halfMaps, halfWeights);
 					GriddedGeoDataSet secondHalfSD = new GriddedGeoDataSet(region);
-					GriddedGeoDataSet secondHalfCOV = new GriddedGeoDataSet(region);
-					calcSD_COV(halfMaps.toArray(new GriddedGeoDataSet[halfSize]), halfWeights, secondHalfMean, secondHalfSD, secondHalfCOV);
+					GriddedGeoDataSet secondHalfCV = new GriddedGeoDataSet(region);
+					calcSD_CV(halfMaps.toArray(new GriddedGeoDataSet[halfSize]), halfWeights, secondHalfMean, secondHalfSD, secondHalfCV);
 
 					GriddedGeoDataSet firstHalfPDiff = buildPDiff(mapMean, firstHalfMean);
 					GriddedGeoDataSet secondHalfPDiff = buildPDiff(mapMean, secondHalfMean);
@@ -2263,12 +2262,12 @@ public class LogicTreeHazardCompare {
 					table.finalizeLine();
 					table.addLine(mapStats(firstHalfDiff, true), mapStats(secondHalfDiff, true));
 					
-					GriddedGeoDataSet theCOV = cov;
+					GriddedGeoDataSet theCV = cv;
 					if (meanIsFromCurves) {
-						// need to recalculate COV using map mean
-						theCOV = new GriddedGeoDataSet(region);
-						for (int i=0; i<theCOV.size(); i++)
-							theCOV.set(i, sd.get(i)/mapMean.get(i));
+						// need to recalculate CV using map mean
+						theCV = new GriddedGeoDataSet(region);
+						for (int i=0; i<theCV.size(); i++)
+							theCV.set(i, sd.get(i)/mapMean.get(i));
 					}
 					
 					GriddedGeoDataSet sdPdiff1 = buildPDiff(sd, firstHalfSD);
@@ -2284,18 +2283,18 @@ public class LogicTreeHazardCompare {
 					table.finalizeLine();
 					table.addLine(mapStats(sdPdiff1, true), mapStats(sdPdiff2, true));
 					
-					GriddedGeoDataSet covPdiff1 = buildPDiff(theCOV, firstHalfCOV);
-					GriddedGeoDataSet covPdiff2 = buildPDiff(theCOV, secondHalfCOV);
-					table.addLine("__COV__", "");
+					GriddedGeoDataSet cvPdiff1 = buildPDiff(theCV, firstHalfCV);
+					GriddedGeoDataSet cvPdiff2 = buildPDiff(theCV, secondHalfCV);
+					table.addLine("__CV__", "");
 					table.initNewLine();
-					plot = submitMapFuture(mapper, exec, futures, resourcesDir, half1Prefix+"_cov_pdiff", covPdiff1, tightPDiffCPT,
-							TITLES ? name : " ", "1st Half COV / Full COV, % Change, "+unitlessLabel, true);
+					plot = submitMapFuture(mapper, exec, futures, resourcesDir, half1Prefix+"_cv_pdiff", cvPdiff1, tightPDiffCPT,
+							TITLES ? name : " ", "1st Half CV / Full CV, % Change, "+unitlessLabel, true);
 					table.addColumn("![First half % Diff]("+resourcesDir.getName()+"/"+plot.getName()+")");
-					plot = submitMapFuture(mapper, exec, futures, resourcesDir, half2Prefix+"_cov_pdiff", covPdiff2, tightPDiffCPT,
-							TITLES ? name : " ", "2nd Half COV / Full COV, % Change, "+unitlessLabel, true);
+					plot = submitMapFuture(mapper, exec, futures, resourcesDir, half2Prefix+"_cv_pdiff", cvPdiff2, tightPDiffCPT,
+							TITLES ? name : " ", "2nd Half CV / Full CV, % Change, "+unitlessLabel, true);
 					table.addColumn("![Second half Diff]("+resourcesDir.getName()+"/"+plot.getName()+")");
 					table.finalizeLine();
-					table.addLine(mapStats(covPdiff1, true), mapStats(covPdiff2, true));
+					table.addLine(mapStats(cvPdiff1, true), mapStats(cvPdiff2, true));
 					
 					lines.addAll(table.build());
 					lines.add("");
@@ -2313,7 +2312,7 @@ public class LogicTreeHazardCompare {
 				cmin = null;
 				cmax = null;
 				cspread = null;
-				ccov = null;
+				ccv = null;
 				System.gc();
 				
 				lines.add("### "+unitlessLabel+" Logic Tree Comparisons");
@@ -2451,21 +2450,16 @@ public class LogicTreeHazardCompare {
 					varResults = new ArrayList<>(numLevels);
 					for (int l=0; l<numLevels; l++)
 						varResults.add(null);
-					GriddedGeoDataSet covOfMapMean;
 					GriddedGeoDataSet varOfMapMean;
 					if (meanIsFromCurves) {
-						// need to calculate the raw mean of the maps because that's how we're going to calculate level COVs
+						// variance decomposition uses the raw mean of the maps
 						if (mapMean == null)
 							mapMean = buildMean(maps);
-						covOfMapMean = new GriddedGeoDataSet(region);
-						for (int i=0; i<mapMean.size(); i++)
-							covOfMapMean.set(i, sd.get(i)/mapMean.get(i));
 					} else {
 						Preconditions.checkNotNull(mapMean);
-						covOfMapMean = cov;
 					}
 					varOfMapMean = new GriddedGeoDataSet(region);
-					for (int i=0; i<cov.size(); i++) {
+					for (int i=0; i<sd.size(); i++) {
 						double var = sd.get(i)*sd.get(i);
 						varOfMapMean.set(i, var);
 					}
@@ -2514,38 +2508,8 @@ public class LogicTreeHazardCompare {
 							continue;
 						VarianceContributionResult varResult = varDecomposer.calcMapVarianceContributionForLevel(
 								l, level, choiceMaps, choiceWeights);
-						if (varResult != null) {
-//							// orig here is the full original, used for ratios
-//							// ref here is the reference value we're comparing to, used for differences
-//							AvgMaxCalc refCOVs = new AvgMaxCalc();
-//							AvgMaxCalc withoutCOVs = new AvgMaxCalc();
-//							AvgMaxCalc deltaCOVs = new AvgMaxCalc();
-//							AvgMaxCalc fDiffCOVs = new AvgMaxCalc();
-//							AvgMaxCalc fractVars = new AvgMaxCalc();
-//							for (int i=0; i<covExcluding.size(); i++) {
-//								double refCOV = refCOVMap.get(i);
-//								double origCOV = covOfMapMean.get(i);
-//								double withoutCOV = covExcluding.get(i);
-//								double refVar = refVarMap.get(i);
-//								double origVar = varOfMapMean.get(i);
-//								double withoutVar = sdExcluding.get(i)*sdExcluding.get(i);
-//								double varDiff = refVar - withoutVar;
-//								double deltaCOV = refCOV - withoutCOV;
-//								refCOVs.addValue(refCOV);
-//								withoutCOVs.addValue(withoutCOV);
-//								deltaCOVs.addValue(deltaCOV);
-//								fDiffCOVs.addValue(deltaCOV/origCOV);
-//								fractVars.addValue(varDiff/origVar);
-//							}
-//							
-//							System.out.println("\tOrigCOV="+(float)origCOVs.getAverage());
-//							System.out.println("\tRefCOV="+(float)refCOVs.getAverage());
-//							System.out.println("\tWithoutCOV="+(float)withoutCOVs.getAverage());
-//							System.out.println("\tdeltaCOV="+deltaCOVs.getAverage()+" ("+pDF.format(fDiffCOVs.getAverage())+")");
-//							System.out.println("\tdeltaVar="+fractVars.getAverage()+" ("+pDF.format(fractVars.getAverage())+")");
-							
+						if (varResult != null)
 							varResults.set(l, varResult);
-						}
 					}
 					if (LogicTreeCurveAverager.shouldSkipLevel(level, choiceMaps.size())) {
 						System.out.println("Skipping randomly sampled level ("+level.getName()
@@ -3142,12 +3106,12 @@ public class LogicTreeHazardCompare {
 	}
 	
 	private void writeHazardCSV(File outputFile, GriddedGeoDataSet mean, GriddedGeoDataSet median,
-			GriddedGeoDataSet min, GriddedGeoDataSet max, GriddedGeoDataSet cov, GriddedGeoDataSet meanPercentile,
+			GriddedGeoDataSet min, GriddedGeoDataSet max, GriddedGeoDataSet cv, GriddedGeoDataSet meanPercentile,
 			GriddedGeoDataSet meanPercentileInComparison, GriddedGeoDataSet medianPercentileInComparison) throws IOException {
 		CSVFile<String> csv = new CSVFile<>(true);
 		
 		List<String> header = new ArrayList<>();
-		header.addAll(List.of("Location Index", "Latitutde", "Longitude", "Weighted Mean", "Weighted Median", "Min", "Max", "COV"));
+		header.addAll(List.of("Location Index", "Latitutde", "Longitude", "Weighted Mean", "Weighted Median", "Min", "Max", "CV"));
 		if (meanPercentile != null) {
 			if (meanPercentileInComparison == null)
 				header.add("Mean Map Percentile");
@@ -3172,7 +3136,7 @@ public class LogicTreeHazardCompare {
 			line.add(median.get(i)+"");
 			line.add(min.get(i)+"");
 			line.add(max.get(i)+"");
-			line.add(cov.get(i)+"");
+			line.add(cv.get(i)+"");
 			if (meanPercentile != null)
 				line.add((float)meanPercentile.get(i)+"");
 			if (meanPercentileInComparison != null)
