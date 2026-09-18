@@ -131,7 +131,7 @@ public class LogicTreeHazardCompare {
 //	private static final Location DEBUG_LOC = new Location(46, -105);
 	private static final Location DEBUG_LOC = null;
 	
-	private static final boolean RESHUFFLE_STABILITY_BRANCHES = true;
+	private static final boolean RESHUFFLE_STABILITY_BRANCHES = false;
 	
 	public static void main(String[] args) throws IOException {
 		System.setProperty("java.awt.headless", "true");
@@ -2227,7 +2227,7 @@ public class LogicTreeHazardCompare {
 					lines.add("### "+unitlessLabel+" Random Subset Stability");
 					lines.add(topLink); lines.add("");
 					
-					lines.add("This section shows how hazard changes between the first and second halfs of the "
+					lines.add("This section shows how hazard changes between the first and second halvs of the "
 							+ "randomly-sampled logic tree compared to the full tree. If differences are minimal, then "
 							+ "the total sample count of "+branches.size()+" may be sufficient.");
 					lines.add("");
