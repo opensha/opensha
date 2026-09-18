@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 import org.jfree.chart.plot.DatasetRenderingOrder;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.calc.FractileCurveCalculator;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.AbstractXY_DataSet;
@@ -503,7 +504,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 			confFunc.setName("95% Conf");
 			funcs.add(confFunc);
 			chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f,
-					new Color(probColor.getRed(), probColor.getGreen(), probColor.getBlue(), 90)));
+					ColorUtils.transparent(probColor, 90)));
 			if (supraProbFunc != null) {
 				supraProbFunc.setName("Supra");
 				funcs.add(supraProbFunc);

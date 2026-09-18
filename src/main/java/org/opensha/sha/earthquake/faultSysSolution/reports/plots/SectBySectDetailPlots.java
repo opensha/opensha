@@ -29,6 +29,7 @@ import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.ui.RectangleAnchor;
 import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.Range;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
@@ -2842,7 +2843,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				constrColor = Color.BLACK;
 				constraints = paleoConstraints; 
 			}
-			Color whiskerColor = new Color(constrColor.getRed(), constrColor.getGreen(), constrColor.getBlue(), 127);
+			Color whiskerColor = ColorUtils.transparent(constrColor, 127);
 			
 			if (constraints != null) {
 				DefaultXY_DataSet dataXY = new DefaultXY_DataSet();

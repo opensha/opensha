@@ -23,6 +23,7 @@ import org.jfree.chart.axis.TickUnit;
 import org.jfree.chart.axis.TickUnits;
 import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.Range;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
@@ -486,7 +487,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 	
 	public static Color darkerTrans(Color c) {
 		c = c.darker();
-		return new Color(c.getRed(), c.getGreen(), c.getBlue(), 200);
+		return ColorUtils.transparent(c, 200);
 	}
 	
 	public static void plotConnectivityLines(FaultSystemRupSet rupSet, File outputDir, String prefix, String title,

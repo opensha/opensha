@@ -41,9 +41,10 @@ import org.opensha.commons.geo.json.Geometry.LineString;
 import org.opensha.commons.geo.json.Geometry.Polygon;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.util.ComparablePairing;
-import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -1639,7 +1640,7 @@ public class GeographicMapMaker {
 							} else {
 								double opacity = (double)color.getAlpha()/255d;
 								props.set(FeatureProperties.FILL_OPACITY_PROP, opacity);
-								props.set(FeatureProperties.FILL_COLOR_PROP, new Color(color.getRed(), color.getGreen(), color.getBlue()));
+								props.set(FeatureProperties.FILL_COLOR_PROP, ColorUtils.transparent(color, 255));
 							}
 						} else if (sectPolyChar.getLineType() != null) {
 							props.set(FeatureProperties.FILL_OPACITY_PROP, 0d);
@@ -1650,7 +1651,7 @@ public class GeographicMapMaker {
 							} else {
 								double opacity = (double)color.getAlpha()/255d;
 								props.set(FeatureProperties.STROKE_OPACITY_PROP, opacity);
-								props.set(FeatureProperties.STROKE_COLOR_PROP, new Color(color.getRed(), color.getGreen(), color.getBlue()));
+								props.set(FeatureProperties.STROKE_COLOR_PROP, ColorUtils.transparent(color, 255));
 							}
 						}
 						features.add(feature);

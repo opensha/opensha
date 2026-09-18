@@ -31,6 +31,7 @@ import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.plot.DatasetRenderingOrder;
 import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.Range;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.NamedComparator;
 import org.opensha.commons.data.Site;
@@ -2869,7 +2870,7 @@ public class SolSiteHazardCalc {
 	}
 	
 	private static void plotSiteScatters(GeographicMapMaker mapMaker, List<Site> sites, boolean writeGeoJSON) {
-		Color siteColor = modAlpha(Colors.tab_green.darker(), 180);
+		Color siteColor = ColorUtils.transparent(Colors.tab_green.darker(), 180);
 		List<Location> siteLocs = new ArrayList<>(sites.size());
 		List<FeatureProperties> siteProps = writeGeoJSON ? new ArrayList<>(sites.size()) : null;
 		for (Site site : sites) {
@@ -2896,8 +2897,4 @@ public class SolSiteHazardCalc {
 		mapMaker.setScatterSymbol(PlotSymbol.FILLED_INV_TRIANGLE, size, PlotSymbol.INV_TRIANGLE, Color.BLACK);
 	}
 	
-	private static Color modAlpha(Color c, int alpha) {
-		return new Color(c.getRed(), c.getGreen(), c.getBlue(), alpha);
-	}
-
 }

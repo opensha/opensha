@@ -14,6 +14,7 @@ import java.util.concurrent.Future;
 
 import org.jfree.chart.plot.DatasetRenderingOrder;
 import org.jfree.data.Range;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.XY_DataSet;
@@ -320,7 +321,7 @@ public class RuptureScalingPlot extends AbstractRupSetPlot {
 			alpha = 160;
 		else
 			alpha = 255;
-		return new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(), alpha);
+		return ColorUtils.transparent(baseColor, alpha);
 	}
 	
 	private static Range cleanRange(double min, double max, boolean log) {
