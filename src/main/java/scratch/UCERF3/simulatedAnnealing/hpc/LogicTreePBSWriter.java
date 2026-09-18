@@ -21,10 +21,7 @@ import org.opensha.commons.hpc.JavaShellScriptWriter;
 import org.opensha.commons.hpc.mpj.FastMPJShellScriptWriter;
 import org.opensha.commons.hpc.mpj.MPJExpressShellScriptWriter;
 import org.opensha.commons.hpc.pbs.BatchScriptWriter;
-import org.opensha.commons.hpc.pbs.EpicenterScriptWriter;
-import org.opensha.commons.hpc.pbs.RangerScriptWriter;
 import org.opensha.commons.hpc.pbs.StampedeScriptWriter;
-import org.opensha.commons.hpc.pbs.USC_HPCC_ScriptWriter;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModel;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ThreadedSimulatedAnnealing;
@@ -86,74 +83,74 @@ public class LogicTreePBSWriter {
 	}
 
 	public enum RunSites {
-		EPICENTER("/home/epicenter/kmilner/inversions", EpicenterScriptWriter.JAVA_BIN,
-//				"/home/scec-02/kmilner/ucerf3/inversions/fm_store") {
-				null, null, false) {
-			@Override
-			public BatchScriptWriter forBranch(U3LogicTreeBranch branch) {
-				InversionModels im = branch.getValue(InversionModels.class);
-				Preconditions.checkState(im != InversionModels.GR_CONSTRAINED,
-						"are you kidding me? we can't run GR on epicenter!");
-				return new EpicenterScriptWriter();
-			}
-
-			@Override
-			public int getMaxHeapSizeMB(U3LogicTreeBranch branch) {
-				return 7000;
-			}
-
-			@Override
-			public int getPPN(U3LogicTreeBranch branch) {
-				return 8;
-			}
-		},
-		HPCC("/home/scec-02/kmilner/ucerf3/inversions", USC_HPCC_ScriptWriter.JAVA_BIN,
-//				"/home/scec-02/kmilner/ucerf3/inversions/fm_store") {
-//				null, USC_HPCC_ScriptWriter.FMPJ_HOME, true) {
-				null, USC_HPCC_ScriptWriter.MPJ_HOME, false) {
-			@Override
-			public BatchScriptWriter forBranch(U3LogicTreeBranch branch) {
-//				if (branch != null && branch.getValue(InversionModels.class) == InversionModels.GR_CONSTRAINED)
-//					return new USC_HPCC_ScriptWriter("dodecacore");
-//				return new USC_HPCC_ScriptWriter("quadcore"); // TODO
-				return new USC_HPCC_ScriptWriter();
-			}
-
-			@Override
-			public int getMaxHeapSizeMB(U3LogicTreeBranch branch) {
-//				if (branch != null &&
-//						branch.getValue(InversionModels.class) == InversionModels.GR_CONSTRAINED)
-//					return 40000;
-//				return 8000;
-				return 60000; // new scec nodes
-			}
-
-			@Override
-			public int getPPN(U3LogicTreeBranch branch) {
-//				if (branch != null &&
-//						branch.getValue(InversionModels.class) == InversionModels.GR_CONSTRAINED)
-//					return 24;
+//		EPICENTER("/home/epicenter/kmilner/inversions", EpicenterScriptWriter.JAVA_BIN,
+////				"/home/scec-02/kmilner/ucerf3/inversions/fm_store") {
+//				null, null, false) {
+//			@Override
+//			public BatchScriptWriter forBranch(U3LogicTreeBranch branch) {
+//				InversionModels im = branch.getValue(InversionModels.class);
+//				Preconditions.checkState(im != InversionModels.GR_CONSTRAINED,
+//						"are you kidding me? we can't run GR on epicenter!");
+//				return new EpicenterScriptWriter();
+//			}
+//
+//			@Override
+//			public int getMaxHeapSizeMB(U3LogicTreeBranch branch) {
+//				return 7000;
+//			}
+//
+//			@Override
+//			public int getPPN(U3LogicTreeBranch branch) {
 //				return 8;
-				return 20;
-			}
-		},
-		RANGER("/work/00950/kevinm/ucerf3/inversion", RangerScriptWriter.JAVA_BIN,
-				null, RangerScriptWriter.FMPJ_HOME, true) {
-			@Override
-			public BatchScriptWriter forBranch(U3LogicTreeBranch branch) {
-				return new RangerScriptWriter();
-			}
-
-			@Override
-			public int getMaxHeapSizeMB(U3LogicTreeBranch branch) {
-				return 20000;
-			}
-
-			@Override
-			public int getPPN(U3LogicTreeBranch branch) {
-				return 16;
-			}
-		},
+//			}
+//		},
+//		HPCC("/home/scec-02/kmilner/ucerf3/inversions", USC_HPCC_ScriptWriter.JAVA_BIN,
+////				"/home/scec-02/kmilner/ucerf3/inversions/fm_store") {
+////				null, USC_HPCC_ScriptWriter.FMPJ_HOME, true) {
+//				null, USC_HPCC_ScriptWriter.MPJ_HOME, false) {
+//			@Override
+//			public BatchScriptWriter forBranch(U3LogicTreeBranch branch) {
+////				if (branch != null && branch.getValue(InversionModels.class) == InversionModels.GR_CONSTRAINED)
+////					return new USC_HPCC_ScriptWriter("dodecacore");
+////				return new USC_HPCC_ScriptWriter("quadcore"); // TODO
+//				return new USC_HPCC_ScriptWriter();
+//			}
+//
+//			@Override
+//			public int getMaxHeapSizeMB(U3LogicTreeBranch branch) {
+////				if (branch != null &&
+////						branch.getValue(InversionModels.class) == InversionModels.GR_CONSTRAINED)
+////					return 40000;
+////				return 8000;
+//				return 60000; // new scec nodes
+//			}
+//
+//			@Override
+//			public int getPPN(U3LogicTreeBranch branch) {
+////				if (branch != null &&
+////						branch.getValue(InversionModels.class) == InversionModels.GR_CONSTRAINED)
+////					return 24;
+////				return 8;
+//				return 20;
+//			}
+//		},
+//		RANGER("/work/00950/kevinm/ucerf3/inversion", RangerScriptWriter.JAVA_BIN,
+//				null, RangerScriptWriter.FMPJ_HOME, true) {
+//			@Override
+//			public BatchScriptWriter forBranch(U3LogicTreeBranch branch) {
+//				return new RangerScriptWriter();
+//			}
+//
+//			@Override
+//			public int getMaxHeapSizeMB(U3LogicTreeBranch branch) {
+//				return 20000;
+//			}
+//
+//			@Override
+//			public int getPPN(U3LogicTreeBranch branch) {
+//				return 16;
+//			}
+//		},
 		STAMPEDE("/work/00950/kevinm/ucerf3/inversion", StampedeScriptWriter.JAVA_BIN,
 				null, StampedeScriptWriter.FMPJ_HOME, true) {
 			@Override
@@ -719,7 +716,7 @@ public class LogicTreePBSWriter {
 
 		//		RunSites site = RunSites.RANGER;
 		//		RunSites site = RunSites.EPICENTER;
-		RunSites site = RunSites.HPCC;
+		RunSites site = RunSites.STAMPEDE;
 		int batchSize = 16;
 		int jobsPerNode = 4;
 		String threads = "5";
@@ -1392,7 +1389,7 @@ public class LogicTreePBSWriter {
 							argsList.add(classArgs);
 
 							batch.writeScript(pbs, javaWriter.buildScript(className, classArgs),
-									jobMins, 1, ppn, queue);
+									jobMins, 1, ppn, -1, queue);
 
 							nodeHours += (double)mins / 60d;
 
@@ -1483,7 +1480,7 @@ public class LogicTreePBSWriter {
 			int nodes = (int)Math.ceil(nodesNeeded);
 			
 			File batchFile = new File(writeDir, "batch"+iStr+".pbs");
-			batch.writeScript(batchFile, script, jobMins, nodes, ppn, queue);
+			batch.writeScript(batchFile, script, jobMins, nodes, ppn, -1, queue);
 			System.out.println("Writing "+batchFile.getName()+" ("+nodes+" nodes)");
 		}
 	}
@@ -1560,7 +1557,7 @@ public class LogicTreePBSWriter {
 			while (iStr.length() < numLen)
 				iStr = "0"+iStr;
 			File batchFile = new File(writeDir, "batch"+iStr+".pbs");
-			batch.writeScript(batchFile, script, jobMins, nodes, ppn, null);
+			batch.writeScript(batchFile, script, jobMins, nodes, ppn, -1, null);
 			System.out.println("Writing "+batchFile.getName()+" ("+nodes+" nodes)");
 		}
 	}

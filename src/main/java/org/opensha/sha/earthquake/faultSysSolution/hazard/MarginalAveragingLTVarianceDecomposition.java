@@ -21,10 +21,11 @@ import com.google.common.base.Preconditions;
 public class MarginalAveragingLTVarianceDecomposition extends AbstractLTVarianceDecomposition {
 	
 	private GriddedGeoDataSet varAveragingOverSampling;
-	private boolean anyNegativeLTCOVs;
+	private boolean anyNegativeLTCVs;
 
-	public MarginalAveragingLTVarianceDecomposition(LogicTree<?> tree, List<LogicTreeLevel<?>> uniqueSamplingLevels, ExecutorService exec) {
-		super(tree, uniqueSamplingLevels, exec);
+	public MarginalAveragingLTVarianceDecomposition(List<? extends LogicTreeLevel<?>> levels, List<? extends LogicTreeBranch<?>> branches,
+			List<LogicTreeLevel<?>> uniqueSamplingLevels, ExecutorService exec) {
+		super(levels, branches, uniqueSamplingLevels, exec);
 		// TODO make sure not downsampled
 	}
 
@@ -39,13 +40,13 @@ public class MarginalAveragingLTVarianceDecomposition extends AbstractLTVariance
 			List<Double> weightsWithoutSampling = new ArrayList<>();
 			GriddedRegion region = meanMap.getRegion();
 			GriddedGeoDataSet sdAveragingOverSampling = new GriddedGeoDataSet(region);
-			GriddedGeoDataSet covAveragingOverSampling = new GriddedGeoDataSet(region);
+			GriddedGeoDataSet cvAveragingOverSampling = new GriddedGeoDataSet(region);
 			GriddedGeoDataSet[] mapsAveragingOverSampling = doAverageAcrossLevels(
-					-1, null, weightsWithoutSampling, covAveragingOverSampling, sdAveragingOverSampling);
+					-1, null, weightsWithoutSampling, cvAveragingOverSampling, sdAveragingOverSampling);
 			Preconditions.checkNotNull(mapsAveragingOverSampling);
 			
-			LogicTreeHazardCompare.calcSD_COV(mapsAveragingOverSampling, weightsWithoutSampling, meanMap,
-					sdAveragingOverSampling, covAveragingOverSampling, exec);
+			LogicTreeHazardCompare.calcSD_CV(mapsAveragingOverSampling, weightsWithoutSampling, meanMap,
+					sdAveragingOverSampling, cvAveragingOverSampling, exec);
 			varAveragingOverSampling = new GriddedGeoDataSet(region);
 			for (int i=0; i<region.getNodeCount(); i++)
 				varAveragingOverSampling.set(i, sdAveragingOverSampling.get(i)*sdAveragingOverSampling.get(i));
@@ -57,10 +58,10 @@ public class MarginalAveragingLTVarianceDecomposition extends AbstractLTVariance
 			Map<LogicTreeNode, List<GriddedGeoDataSet>> choiceMaps, Map<LogicTreeNode, List<Double>> choiceMapWeights) {
 		List<Double> weightsExcludingLevel = new ArrayList<>();
 		GriddedRegion region = meanMap.getRegion();
-		GriddedGeoDataSet covExcluding = new GriddedGeoDataSet(region);
+		GriddedGeoDataSet cvExcluding = new GriddedGeoDataSet(region);
 		GriddedGeoDataSet sdExcluding = new GriddedGeoDataSet(region);
 		
-		if (doAverageAcrossLevels(levelIndex, level, weightsExcludingLevel, covExcluding, sdExcluding) == null)
+		if (doAverageAcrossLevels(levelIndex, level, weightsExcludingLevel, cvExcluding, sdExcluding) == null)
 			return null;
 		
 		GriddedGeoDataSet refVariance;
@@ -77,9 +78,9 @@ public class MarginalAveragingLTVarianceDecomposition extends AbstractLTVariance
 		double sumVarContrib = 0d;
 		double maxVarContrib = 0d;
 		double maxFractVarContrib = 0d;
-		double sumCOVContrib = 0d;
-		double maxCOVContrib = 0d;
-		double maxFractCOVContrib = 0d;
+		double sumCVContrib = 0d;
+		double maxCVContrib = 0d;
+		double maxFractCVContrib = 0d;
 		int numFinite = 0;
 		for (int i=0; i<sdExcluding.size(); i++) {
 			double sd = sdExcluding.get(i);
@@ -89,30 +90,30 @@ public class MarginalAveragingLTVarianceDecomposition extends AbstractLTVariance
 				double varWithout = sd*sd;
 				double varContrib = refVar - varWithout;
 				
-				double refCOV = Math.sqrt(refVar)/meanMap.get(i);
-				double fullCOV = Math.sqrt(fullVar)/meanMap.get(i);
-				double covWithout = covExcluding.get(i);
-				double covContrib = refCOV - covWithout;
+				double refCV = Math.sqrt(refVar)/meanMap.get(i);
+				double fullCV = Math.sqrt(fullVar)/meanMap.get(i);
+				double cvWithout = cvExcluding.get(i);
+				double cvContrib = refCV - cvWithout;
 				
 				sumVarContrib += varContrib;
 				maxVarContrib = Math.max(maxVarContrib, varContrib);
 				maxFractVarContrib = Math.max(maxFractVarContrib, varContrib/fullVar);
-				sumCOVContrib += covContrib;
-				maxCOVContrib = Math.max(maxCOVContrib, covContrib);
-				maxFractCOVContrib = Math.max(maxFractCOVContrib, covContrib/fullCOV);
+				sumCVContrib += cvContrib;
+				maxCVContrib = Math.max(maxCVContrib, cvContrib);
+				maxFractCVContrib = Math.max(maxFractCVContrib, cvContrib/fullCV);
 				numFinite++;
 			}
 		}
-		anyNegativeLTCOVs |= sumVarContrib < 0 || sumCOVContrib < 0;
+		anyNegativeLTCVs |= sumVarContrib < 0 || sumCVContrib < 0;
 		if (numFinite > 0)
 			return new VarianceContributionResult(
 					sumVarContrib/(double)numFinite, maxVarContrib, maxFractVarContrib,
-					sumCOVContrib/(double)numFinite, maxCOVContrib, maxFractCOVContrib);
+					sumCVContrib/(double)numFinite, maxCVContrib, maxFractCVContrib);
 		return null;
 	}
 	
 	private GriddedGeoDataSet[] doAverageAcrossLevels(int levelIndex, LogicTreeLevel<?> level, List<Double> weightsExcludingLevel,
-			GriddedGeoDataSet covExcluding, GriddedGeoDataSet sdExcluding) {
+			GriddedGeoDataSet cvExcluding, GriddedGeoDataSet sdExcluding) {
 		Preconditions.checkState(weightsExcludingLevel.isEmpty());
 		Map<LogicTreeBranch<?>, List<Integer>> otherBranchIndexes = new HashMap<>();
 		List<LogicTreeBranch<?>> uniqueOtherBranches = new ArrayList<>();
@@ -128,10 +129,10 @@ public class MarginalAveragingLTVarianceDecomposition extends AbstractLTVariance
 			clearIndexes.add(levelIndex);
 		// now see if there are any random sampling branches where there are unique samples for every branch in the
 		// tree (as opposed to N samples at that lavel). In that case, we need to clear them as well.
-		int numLevels = tree.getLevels().size();
+		int numLevels = levels.size();
 		for (int l=0; l<numLevels; l++) {
 			if (l != levelIndex) {
-				LogicTreeLevel<?> testLevel = tree.getLevels().get(l);
+				LogicTreeLevel<?> testLevel = levels.get(l);
 				if (uniqueSamplingLevels.contains(testLevel)) {
 					System.out.println("\tWill also clear out sampling values from level '"+testLevel.getName()+"'");
 					clearIndexes.add(l);
@@ -141,9 +142,9 @@ public class MarginalAveragingLTVarianceDecomposition extends AbstractLTVariance
 		if (clearIndexes.isEmpty())
 			return null;
 		
-		for (int b=0; b<tree.size(); b++) {
+		for (int b=0; b<branches.size(); b++) {
 			// copy it so we can clear the value
-			LogicTreeBranch<?> branch = tree.getBranch(b).copy();
+			LogicTreeBranch<?> branch = branches.get(b).copy();
 			for (int l : clearIndexes)
 				branch.clearValue(l);
 			
@@ -157,8 +158,8 @@ public class MarginalAveragingLTVarianceDecomposition extends AbstractLTVariance
 			indexes.add(b);
 		}
 		
-		System.out.println("\treduced from "+tree.size()+" to "+uniqueOtherBranches.size()+" branches");
-		if (tree.size() == uniqueOtherBranches.size() || uniqueOtherBranches.size() == 1)
+		System.out.println("\treduced from "+branches.size()+" to "+uniqueOtherBranches.size()+" branches");
+		if (branches.size() == uniqueOtherBranches.size() || uniqueOtherBranches.size() == 1)
 			return null;
 		
 		GriddedGeoDataSet[] mapsExcludingLevel = new GriddedGeoDataSet[uniqueOtherBranches.size()];
@@ -169,7 +170,7 @@ public class MarginalAveragingLTVarianceDecomposition extends AbstractLTVariance
 			double weightSum = 0d;
 			GriddedGeoDataSet map = new GriddedGeoDataSet(allMaps[0].getRegion());
 			for (int index : indexes) {
-				double subWeight = tree.getBranchWeight(index);
+				double subWeight = allWeights.get(index);
 				weightSum += subWeight;
 				GriddedGeoDataSet subMap = allMaps[index];
 				for (int i=0; i<map.size(); i++)
@@ -181,20 +182,20 @@ public class MarginalAveragingLTVarianceDecomposition extends AbstractLTVariance
 		}
 		
 		System.out.println("\tCalculating variance excluding");
-		LogicTreeHazardCompare.calcSD_COV(mapsExcludingLevel, weightsExcludingLevel, meanMap, sdExcluding, covExcluding, exec);
+		LogicTreeHazardCompare.calcSD_CV(mapsExcludingLevel, weightsExcludingLevel, meanMap, sdExcluding, cvExcluding, exec);
 		return mapsExcludingLevel;
 	}
 
 	@Override
 	public String getHeading() {
-		return "Logic Tree Variance and COV Contributions";
+		return "Logic Tree Variance and CV Contributions";
 	}
 
 	@Override
 	public List<String> buildLines(List<VarianceContributionResult> results) {
 		List<String> lines = new ArrayList<>();
 		lines.add("This table summarizes how each logic tree branching level contributes to the overall "
-				+ "variance and coefficient of variation (COV) in the model.");
+				+ "variance and coefficient of variation (CV) in the model.");
 		lines.add("");
 		lines.add("For each level, its contribution is estimated by collapsing the logic tree across "
 				+ "that level; i.e., by averaging values across all branches that differ only in thier "
@@ -204,9 +205,9 @@ public class MarginalAveragingLTVarianceDecomposition extends AbstractLTVariance
 			lines.add("This logic tree contains multiple random sampling levels and variance cannot "
 					+ "be decomposed between them. They are bundled into a single line of the table.");
 		}
-		if (anyNegativeLTCOVs) {
+		if (anyNegativeLTCVs) {
 			lines.add("");
-			lines.add("In some cases, the variance (and therefore COV) may slightly increase after removing "
+			lines.add("In some cases, the variance (and therefore CV) may slightly increase after removing "
 					+ "a level. This is due to the behavior of weighted averaging and is interpreted as "
 					+ "statistical noise, indicating that the level does not significantly contribute to model "
 					+ "variability.");
@@ -217,30 +218,30 @@ public class MarginalAveragingLTVarianceDecomposition extends AbstractLTVariance
 
 		double fullVarSum = 0d;
 		double fullVarMax = 0d;
-		double fullCOVsum = 0d;
-		double fullCOVmax = 0d;
+		double fullCVsum = 0d;
+		double fullCVmax = 0d;
 		int numValid = 0;
 		for (int i=0; i<fullVariance.size(); i++) {
 			double var = fullVariance.get(i);
 			double mean = meanMap.get(i);
 			if (Double.isFinite(var) && Double.isFinite(mean)) {
-				double cov = Math.sqrt(var)/mean;
+				double cv = Math.sqrt(var)/mean;
 				fullVarSum += var;
 				fullVarMax = Math.max(fullVarMax, var);
-				fullCOVsum += cov;
-				fullCOVmax = Math.max(fullCOVmax, cov);
+				fullCVsum += cv;
+				fullCVmax = Math.max(fullCVmax, cv);
 				numValid++;
 			}
 		}
 		double fullVar = fullVarSum/(double)numValid;
-		double fullCOV = fullCOVsum/(double)numValid;
+		double fullCV = fullCVsum/(double)numValid;
 		
 		TableBuilder table = MarkdownUtils.tableBuilder();
-		table.addLine("Branch Level", "Average Variance Contribution", "Average COV Contribution",
-				"Maximum Variance Contribution", "Maximum COV Contribution");
-		table.addLine("Full model", "100%", LogicTreeHazardCompare.threeDigits.format(fullCOV),
-				"100%", LogicTreeHazardCompare.threeDigits.format(fullCOVmax));
-		int numLevels = tree.getLevels().size();
+		table.addLine("Branch Level", "Average Variance Contribution", "Average CV Contribution",
+				"Maximum Variance Contribution", "Maximum CV Contribution");
+		table.addLine("Full model", "100%", LogicTreeHazardCompare.threeDigits.format(fullCV),
+				"100%", LogicTreeHazardCompare.threeDigits.format(fullCVmax));
+		int numLevels = levels.size();
 		Preconditions.checkState(results.size() == numLevels);
 		int numWithResults = 0;
 		for (int l=0; l<numLevels; l++) {
@@ -249,7 +250,7 @@ public class MarginalAveragingLTVarianceDecomposition extends AbstractLTVariance
 				continue;
 			numWithResults++;
 			
-			LogicTreeLevel<?> level = tree.getLevels().get(l);
+			LogicTreeLevel<?> level = levels.get(l);
 			
 			String levelName = level.getName();
 			if (uniqueSamplingLevels.size() > 1 && uniqueSamplingLevels.get(0) == level) {
@@ -263,13 +264,13 @@ public class MarginalAveragingLTVarianceDecomposition extends AbstractLTVariance
 			}
 			
 			double fractVar = varResult.meanVarianceContribution / fullVar;
-			double fractCOV = varResult.meanCOVContribution / fullCOV;
+			double fractCV = varResult.meanCVContribution / fullCV;
 			
 			table.addLine(levelName,
 					LogicTreeHazardCompare.pDF.format(fractVar),
-					LogicTreeHazardCompare.threeDigits.format(varResult.meanCOVContribution)+" ("+LogicTreeHazardCompare.pDF.format(fractCOV)+")",
+					LogicTreeHazardCompare.threeDigits.format(varResult.meanCVContribution)+" ("+LogicTreeHazardCompare.pDF.format(fractCV)+")",
 					LogicTreeHazardCompare.pDF.format(varResult.maxFractionalVarianceContribution),
-					LogicTreeHazardCompare.threeDigits.format(varResult.maxCOVContribution)+" ("+LogicTreeHazardCompare.pDF.format(varResult.maxFractionalCOVContribution)+")");
+					LogicTreeHazardCompare.threeDigits.format(varResult.maxCVContribution)+" ("+LogicTreeHazardCompare.pDF.format(varResult.maxFractionalCVContribution)+")");
 		}
 		if (numWithResults < 2)
 			return null;

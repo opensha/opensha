@@ -2,6 +2,7 @@ package org.opensha.sha.earthquake.faultSysSolution.hazard.mpj;
 
 import java.awt.geom.Point2D;
 import java.io.BufferedOutputStream;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
@@ -38,9 +39,11 @@ import org.opensha.commons.util.ExecutorUtils;
 import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
+import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings.CurveXValManager;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.imr.AttenRelRef;
@@ -50,6 +53,8 @@ import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
 import mpi.MPI;
@@ -73,11 +78,13 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 	
 	private SourceFilterManager sourceFilters;
 	
+	private CurveXValManager xVals;
+	
 	private SolutionLogicTree solTree;
 	private LogicTree<?> tree;
+	private LogicTree<?> analysisTree;
 	
 	private AbstractSitewiseThreadedLogicTreeCalc calc;
-	private DiscretizedFunc[] xVals;
 	
 	private File outputDir;
 	
@@ -121,9 +128,23 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 			}
 		}
 		tree = solTree.getLogicTree();
+		if (cmd.hasOption("analysis-logic-tree")) {
+			File logicTreeFile = new File(cmd.getOptionValue("analysis-logic-tree"));
+			Preconditions.checkArgument(logicTreeFile.exists(), "Logic tree file doesn't exist: %s",
+					logicTreeFile.getAbsolutePath());
+			analysisTree = LogicTree.read(logicTreeFile);
+			Preconditions.checkState(analysisTree.size() == tree.size());
+
+			for (int i=0; i<analysisTree.size(); i++) {
+				Preconditions.checkState(analysisTree.getBranch(i).buildFileName()
+							.equals(solTree.getLogicTree().getBranch(i).buildFileName()),
+						"Analysis tree branch %s does not match solution tree branch %s at index %s",
+						analysisTree.getBranch(i).buildFileName(), solTree.getLogicTree().getBranch(i).buildFileName(), i);
+			}
+		}
 		
 		if (rank == 0)
-			debug("Loaded "+solTree.getLogicTree().size()+" tree nodes/solutions");
+			debug("Loaded "+tree.size()+" tree nodes/solutions");
 		
 		outputDir = new File(cmd.getOptionValue("output-dir"));
 		
@@ -136,6 +157,8 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 			debug("Gridded settings: "+griddedSettings);
 		
 		sourceFilters = FaultSysHazardCalcSettings.getSourceFilters(cmd);
+		
+		xVals = FaultSysHazardCalcSettings.getXValManager(cmd);
 		
 		gmms = FaultSysHazardCalcSettings.getGMMs(cmd);
 		if (rank == 0) {
@@ -196,7 +219,8 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		int threads = getNumThreads();
 		exec = ExecutorUtils.newBlockingThreadPool(threads);
 		
-		calc = new AbstractSitewiseThreadedLogicTreeCalc(exec, sites.size(), solTree, gmms, periods, gridSeisOp, griddedSettings, sourceFilters) {
+		calc = new AbstractSitewiseThreadedLogicTreeCalc(exec, sites.size(), solTree, gmms, periods, gridSeisOp,
+				griddedSettings, sourceFilters, xVals) {
 			
 			@Override
 			public Site siteForIndex(int siteIndex, Map<TectonicRegionType, ScalarIMR> gmms) {
@@ -208,7 +232,6 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 				MPJ_SiteLogicTreeHazardCurveCalc.this.debug(message);
 			}
 		};
-		xVals = calc.getXVals();
 		
 		calc.setDoGmmInputCache(cmd.hasOption("cache-gmm-inputs"));
 	}
@@ -340,7 +363,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 			
 			DiscretizedFunc[][] curves = calc.calcForBranch(branchIndex);
 			
-			LogicTreeBranch<?> branch = tree.getBranch(branchIndex);
+			LogicTreeBranch<?> branch = analysisTree == null ? tree.getBranch(branchIndex) : analysisTree.getBranch(branchIndex);
 			List<String> csvHeader = null;
 			List<List<List<String>>> sitesPeriodCSVLines = new ArrayList<>(sites.size());
 			for (int siteIndex=0; siteIndex<sites.size(); siteIndex++) {
@@ -360,7 +383,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 				sitesPeriodCSVLines.add(sitePeriodCSVLines);
 				synchronized (csvs) {
 					for (int p=0; p<periods.length; p++) {
-						List<String> line = new ArrayList<>(commonPrefix.size()+xVals[p].size());
+						List<String> line = new ArrayList<>(commonPrefix.size()+xVals.initLinearCurve(periods[p]).size());
 						line.addAll(commonPrefix);
 						for (Point2D pt : curves[siteIndex][p])
 							line.add(pt.getY()+"");
@@ -428,8 +451,8 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 	private List<CSVFile<String>> getInitSiteCSVs(int siteIndex) {
 		List<CSVFile<String>> csvs = siteCSVs.get(siteIndex);
 		if (csvs == null) {
-			csvs = new ArrayList<>();
-			LogicTreeBranch<?> branch = tree.getBranch(0);
+			csvs = new ArrayList<>();			
+			LogicTreeBranch<?> branch = analysisTree == null ? tree.getBranch(0) : analysisTree.getBranch(0);
 			for (int p=0; p<periods.length; p++) {
 				CSVFile<String> csv = new CSVFile<>(true);
 				List<String> header = new ArrayList<>();
@@ -438,7 +461,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 				header.add("Branch Weight");
 				for (int l=0; l<branch.size(); l++)
 					header.add(branch.getLevel(l).getShortName());
-				for (Point2D pt : xVals[p])
+				for (Point2D pt : xVals.initLinearCurve(periods[p]))
 					header.add((float)pt.getX()+"");
 				csv.addLine(header);
 				csvs.add(csv);
@@ -482,9 +505,28 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 			inputSitesCSV.writeToStream(zout);
 			zout.closeEntry();
 			
-			zout.putNextEntry(new ZipEntry(tree.getFileName()));
-			tree.writeToStream(new BufferedOutputStream(zout));
-			zout.closeEntry();
+			Gson gson = new GsonBuilder().setPrettyPrinting()
+					.registerTypeAdapter(LogicTree.class, new LogicTree.Adapter<>()).create();
+			BufferedWriter writer;
+			if (analysisTree != null) {
+				zout.putNextEntry(new ZipEntry(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME));
+				writer = new BufferedWriter(new OutputStreamWriter(zout));
+				gson.toJson(analysisTree, LogicTree.class, writer);
+				writer.flush();
+				zout.closeEntry();
+				
+				zout.putNextEntry(new ZipEntry(MPJ_LogicTreeHazardCalc.ORIG_LOGIC_TREE_FILE_NAME));
+				writer = new BufferedWriter(new OutputStreamWriter(zout));
+				gson.toJson(solTree.getLogicTree(), LogicTree.class, writer);
+				writer.flush();
+				zout.closeEntry();
+			} else {
+				zout.putNextEntry(new ZipEntry(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME));
+				writer = new BufferedWriter(new OutputStreamWriter(zout));
+				gson.toJson(solTree.getLogicTree(), LogicTree.class, writer);
+				writer.flush();
+				zout.closeEntry();
+			}
 			
 			OutputStreamWriter zipWriter = new OutputStreamWriter(new BufferedOutputStream(zout));
 			
@@ -600,6 +642,8 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		ops.addRequiredOption("if", "input-file", true, "Path to input file (solution logic tree zip)");
 		ops.addOption("lt", "logic-tree", true, "Path to logic tree JSON file, required if a results directory is "
 				+ "supplied with --input-file");
+		ops.addOption(null, "analysis-logic-tree", true, "Path to separate logic tree used for analysis that should be used "
+				+ "for writing the hazard results.");
 		ops.addRequiredOption("sf", "sites-file", true, "Path to sites CSV file");
 		ops.addRequiredOption("od", "output-dir", true, "Path to output directory");
 		ops.addOption("of", "output-file", true, "Path to output zip file. Default will be based on the output directory");

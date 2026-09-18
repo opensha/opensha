@@ -17,6 +17,9 @@ public class UnmodifiableDiscrFunc extends AbstractDiscretizedFunc {
 		this.func = func.deepClone();
 		setName(func.getName());
 		setInfo(func.getInfo());
+		setTolerance(func.getTolerance());
+		setXAxisName(func.getXAxisName());
+		setYAxisName(func.getYAxisName());
 	}
 
 	@Override
@@ -91,6 +94,11 @@ public class UnmodifiableDiscrFunc extends AbstractDiscretizedFunc {
 
 	@Override
 	public void set(int index, double Y) throws IndexOutOfBoundsException {
+		setFail();
+	}
+
+	@Override
+	public void scale(double val) {
 		setFail();
 	}
 	

@@ -33,6 +33,7 @@ import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.ExceptionUtils;
@@ -192,6 +193,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		private boolean useCreepReducedSlipStdDevs = USE_CREEP_REDUCED_SLIP_STD_DEVS_DEFAULT;
 		private int maxNumZeroSlipSectsPerRup = MAX_NUM_ZERO_SLIP_SECTS_PER_RUP;
 		
+		private double subSeisBOverride = Double.NaN;
+		
 		private double slipStdDevFloor = 0d;
 		
 		// if non-null, subset of ruptures that we're allowed to use
@@ -206,11 +209,11 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		
 		private List<Region> constrainedRegions;
 
-		public Builder(FaultSystemRupSet rupSet, SectionSupraSeisBValues bValues) {
+		public Builder(FaultSystemRupSet rupSet, SectionSupraSeisBValues bValues, LogicTreeBranch<? extends LogicTreeNode> branch) {
 			this.rupSet = rupSet;
-			this.sectSpecificBValues = bValues.getSectBValues(rupSet);
+			this.sectSpecificBValues = bValues.getSectBValues(rupSet, branch);
 			if (sectSpecificBValues == null)
-				this.supraSeisBValue = bValues.getB();
+				this.supraSeisBValue = bValues.getB(rupSet, branch);
 			else
 				this.supraSeisBValue = Double.NaN;
 		}
@@ -234,6 +237,18 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		 */
 		public Builder subSeisMoRateReduction(SubSeisMoRateReduction subSeisMoRateReduction) {
 			this.subSeisMoRateReduction = subSeisMoRateReduction;
+			return this;
+		}
+		
+		/**
+		 * Overrides the b-value used in sub-seismogenic target MFD construction (default depends on
+		 * {@link SubSeisMoRateReduction} choice).
+		 * 
+		 * @param subSeisBOverride
+		 * @return
+		 */
+		public Builder subSeisBOverride(double subSeisBOverride) {
+			this.subSeisBOverride = subSeisBOverride;
 			return this;
 		}
 		
@@ -696,9 +711,9 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				
 				fractSuprasTrack = new MinMaxAveTracker();
 				
-				sectSubSeisMFDs = new ArrayList<>();
+				sectSubSeisMFDs = new ArrayList<>(numSects);
 				
-				sectSupraSeisMFDs = new ArrayList<>();
+				sectSupraSeisMFDs = new ArrayList<>(numSects);
 				
 				sectRupInBinCounts = new int[numSects][refMFD.size()];
 				sectMinMagIndexes = new int[numSects];
@@ -719,8 +734,11 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 						supraSeisBValue = sectSpecificBValues[s];
 					Preconditions.checkState(Double.isFinite(supraSeisBValue), "Bad b=%s for section %s. %s",
 							supraSeisBValue, s, sect.getSectionName());
+					
+					double subSeisBOverride = Builder.this.subSeisBOverride;
 
 					double creepReducedSlipRate = sect.getReducedAveSlipRate()*1e-3; // mm/yr -> m/yr
+					double creepReducedSlipRateNoScale = creepReducedSlipRate;
 					double creepReducedSlipRateStdDev;
 					if (useCreepReducedSlipStdDevs)
 						creepReducedSlipRateStdDev = sect.getReducedSlipRateStdDev()*1e-3; // mm/yr -> m/yr
@@ -732,12 +750,16 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 					
 					if (slipAddStdScalar != 0d)
 						// for calculating mfds +/- std dev
-						creepReducedSlipRate += slipAddStdScalar*creepReducedSlipRateStdDev;
+						creepReducedSlipRate = Math.max(0d, creepReducedSlipRate + slipAddStdScalar*creepReducedSlipRateStdDev);
 
 					double area = rupSet.getAreaForSection(s); // m^2
 
 					// convert it to a moment rate
 					double targetMoRate = FaultMomentCalc.getMoment(area, creepReducedSlipRate);
+					
+					Preconditions.checkState(targetMoRate >= 0,
+							"Bad targetMoRate=%s for area=%s and creepReducedSlipRate=%s",
+							targetMoRate, area, creepReducedSlipRate);
 
 					// supra-seismogenic minimum magnitude
 					double sectMinMag = rupSet.getMinMagForSection(s);
@@ -885,6 +907,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 						supraSeisMFD = new IncrementalMagFreqDist(MIN_MAG, NUM_MAG, DELTA_MAG);
 
 						double subB = subSeisMoRateReduction == SubSeisMoRateReduction.SUB_SEIS_B_1 ? 1d : supraSeisBValue;
+						if (Double.isFinite(subSeisBOverride))
+							subB = subSeisBOverride;
 
 						GutenbergRichterMagFreqDist grToMin = new GutenbergRichterMagFreqDist(
 								refMFD.getMinX(), minMagIndex, refMFD.getDelta(), targetMoRate, subB);
@@ -901,22 +925,43 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 
 						double supraSlipRate = inputSlipRates.getSlipRate(s); // m/yr
 						double supraSlipStdDev = inputSlipRates.getSlipRateStdDev(s); // m/yr
+						
+						if (supraSlipRate == 0d) {
+							supraMoRate = 0d;
+							subMoRate = targetMoRate;
+							fractSupra = 0d;
+							supraSeisMFD = new IncrementalMagFreqDist(MIN_MAG, NUM_MAG, DELTA_MAG);
+						} else {
+							// compare before applying slipAddStdScalar
+							fractSupra = supraSlipRate/creepReducedSlipRateNoScale;
 
-						fractSupra = supraSlipRate/creepReducedSlipRate;
-						Preconditions.checkState(fractSupra > 0d && fractSupra <= 1d);
+							Preconditions.checkState((float)fractSupra > 0f && (float)fractSupra <= 1f,
+									"Bad fractSupra = %s / %s = %s; sect[%s] origSlip=%s, origSd=%s, coupling=%s, "
+									+ "inputSD=%s, slipAddStdScalar=%s",
+									supraSlipRate, creepReducedSlipRateNoScale, fractSupra, s, sect.getOrigAveSlipRate(),
+									sect.getOrigSlipRateStdDev(), sect.getCouplingCoeff(), supraSlipStdDev, slipAddStdScalar);
+							
+							if (slipAddStdScalar != 0d)
+								// for calculating mfds +/- std dev
+								supraSlipRate = Math.max(0d, supraSlipRate + slipAddStdScalar*supraSlipStdDev);
 
-						supraMoRate = targetMoRate*fractSupra;
-						subMoRate = targetMoRate-supraMoRate;
+							supraMoRate = targetMoRate*fractSupra;
+							subMoRate = targetMoRate-supraMoRate;
 
-						// use supra-seis MFD shape from above
-						supraGR_shape.scaleToTotalMomentRate(supraMoRate);
+							// use supra-seis MFD shape from above
+							supraGR_shape.scaleToTotalMomentRate(supraMoRate);
 
-						supraSeisMFD = new IncrementalMagFreqDist(MIN_MAG, NUM_MAG, DELTA_MAG);
-						for (int i=0; i<supraGR_shape.size(); i++)
-							supraSeisMFD.set(i+minMagIndex, supraGR_shape.getY(i));
+							supraSeisMFD = new IncrementalMagFreqDist(MIN_MAG, NUM_MAG, DELTA_MAG);
+							for (int i=0; i<supraGR_shape.size(); i++)
+								supraSeisMFD.set(i+minMagIndex, supraGR_shape.getY(i));
+						}
+						
+						double subB = supraSeisBValue;
+						if (Double.isFinite(subSeisBOverride))
+							subB = subSeisBOverride;
 
 						GutenbergRichterMagFreqDist subGR = new GutenbergRichterMagFreqDist(
-								refMFD.getX(0), minMagIndex, DELTA_MAG, subMoRate, supraSeisBValue);
+								refMFD.getX(0), minMagIndex, DELTA_MAG, subMoRate, subB);
 						subSeisMFD = new IncrementalMagFreqDist(MIN_MAG, NUM_MAG, DELTA_MAG);
 						for (int i=0; i<subGR.size(); i++)
 							subSeisMFD.set(i, subGR.getY(i));
@@ -957,8 +1002,11 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 						// now correct the sub-seis portion to have the sub-seis b-value
 
 						// first create a full MFD with the sub b-value. this will only be used in a relative sense
+						double subB = 1d;
+						if (Double.isFinite(subSeisBOverride))
+							subB = subSeisBOverride;
 						GutenbergRichterMagFreqDist fullSubB = new GutenbergRichterMagFreqDist(
-								MIN_MAG, maxMagIndex+1, DELTA_MAG, targetMoRate, 1d); // b=1
+								MIN_MAG, maxMagIndex+1, DELTA_MAG, targetMoRate, subB); // b=1
 
 						double targetFirstSupra = fullSupraB.getY(minMagIndex);
 						double subFirstSupra = fullSubB.getY(minMagIndex);
@@ -992,6 +1040,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 						slipRateStdDevs[s] = creepReducedSlipRateStdDev*fractSupra;
 					} else if (subSeisMoRateReduction == SubSeisMoRateReduction.SUPRA_B_TO_M6p5) {
 						int sixFiveIndex = refMFD.getClosestXIndex(6.501); // want it to round up
+						Preconditions.checkState(!Double.isFinite(subSeisBOverride), "sub-seis b override not supported");
 						if (minMagIndex <= sixFiveIndex) {
 							// no reduction
 							supraMoRate = targetMoRate;
@@ -1052,6 +1101,15 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 						subSeisMFD = new IncrementalMagFreqDist(MIN_MAG, NUM_MAG, DELTA_MAG);
 						for (int i=0; i<minMagIndex; i++)
 							subSeisMFD.set(i, sectFullMFD.getY(i));
+						
+						if (Double.isFinite(subSeisBOverride)) {
+							// re-scale it a a G-R with the given b-value
+							GutenbergRichterMagFreqDist subGR = new GutenbergRichterMagFreqDist(
+									MIN_MAG, maxMagIndex+1, DELTA_MAG);
+							subGR.setAllButTotCumRate(MIN_MAG,
+									refMFD.getX(minMagIndex-1), subSeisMFD.getTotalMomentRate(), subSeisBOverride);
+							subSeisMFD = subGR;
+						}
 
 						subMoRate = subSeisMFD.getTotalMomentRate();
 						supraMoRate = targetMoRate - subMoRate;
@@ -1075,7 +1133,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 
 					Preconditions.checkState((float)targetMoRateTest == (float)targetMoRate,
 							"Partitioned moment rate doesn't equal input for sect %s. %s: %s != %s",
-							s, sect.getSectionName(), (float)targetMoRate, (float)targetMoRateTest);
+							s, sect.getSectionName(), (float)targetMoRateTest, (float)targetMoRate);
 
 					targetMoRates[s] = targetMoRate;
 					targetSupraMoRates[s] = supraMoRate;
@@ -1597,8 +1655,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 
 	@Override
 	public AveragingAccumulator<InversionTargetMFDs> averagingAccumulator() {
-//		return new Averager();
-		return null;
+		return new SupraBAverager();
 	}
 	
 	public static class SupraBAverager extends InversionTargetMFDs.Averager {

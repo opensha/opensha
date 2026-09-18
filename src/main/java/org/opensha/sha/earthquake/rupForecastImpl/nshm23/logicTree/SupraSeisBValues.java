@@ -69,7 +69,7 @@ public enum SupraSeisBValues implements LogicTreeNode, SectionSupraSeisBValues.C
 	}
 
 	@Override
-	public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+	public double getNodeWeight() {
 		return weight;
 	}
 

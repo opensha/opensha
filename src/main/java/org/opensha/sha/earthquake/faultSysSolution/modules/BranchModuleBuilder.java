@@ -7,6 +7,10 @@ public interface BranchModuleBuilder<T, M extends OpenSHA_Module> {
 	
 	public void process(T source, LogicTreeBranch<?> branch, double weight);
 	
+	public void process(M other);
+	
 	public M build();
+	
+	public Class<? extends M> getBuiltType();
 
 }

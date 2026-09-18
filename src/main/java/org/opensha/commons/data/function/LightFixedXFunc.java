@@ -5,6 +5,8 @@ import java.util.Arrays;
 
 import org.apache.commons.math3.stat.StatUtils;
 
+import com.google.common.base.Preconditions;
+
 /**
  * This is a lightweight array based DescretizedFunc instance that doesn't allow
  * changing the set of X values. It uses less memory than other DiscretizedFunc instances.
@@ -23,6 +25,22 @@ public class LightFixedXFunc extends AbstractDiscretizedFunc {
 			Point2D pt = func.get(i);
 			xVals[i] = pt.getX();
 			yVals[i] = pt.getY();
+		}
+	}
+
+	/**
+	 * Initializes a new data set with the supplied x and y data interspered as x1, y1, x2, y2, ..., xN, yN
+	 */
+	public LightFixedXFunc(double... xyValues) {
+		Preconditions.checkArgument(xyValues.length % 2 == 0, "Passed in array must have even length");
+		int size = xyValues.length/2;
+		xVals = new double[size];
+		yVals = new double[size];
+
+		int index = 0;
+		for (int i=0; i<size; i++) {
+			xVals[i] = xyValues[index++];
+			yVals[i] = xyValues[index++];
 		}
 	}
 	

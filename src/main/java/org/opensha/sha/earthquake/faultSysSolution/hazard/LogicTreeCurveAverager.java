@@ -23,7 +23,7 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
-import org.opensha.commons.logicTree.LogicTreeLevel.RandomlySampledLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.RandomlyGeneratedLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
@@ -97,7 +97,7 @@ public class LogicTreeCurveAverager {
 	public static boolean shouldSkipLevel(LogicTreeLevel<?> level, int nodeCount) {
 		if (nodeCount <= 1)
 			return false;
-		return level instanceof RandomlySampledLevel<?> && nodeCount > 6 || nodeCount > 30;
+		return level instanceof RandomlyGeneratedLevel<?> && nodeCount > 6 || nodeCount > 30;
 	}
 	
 	public synchronized void processBranchCurves(LogicTreeBranch<?> branch, double weight, DiscretizedFunc[] curves) {

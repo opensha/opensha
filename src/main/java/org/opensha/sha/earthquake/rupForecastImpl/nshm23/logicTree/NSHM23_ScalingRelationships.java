@@ -5,6 +5,7 @@ import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
@@ -23,7 +24,7 @@ import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
-public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
+public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship, LogicTreeNode.FixedWeightNode {
 	
 	LOGA_C4p3("LogA+4.3, From Moment", "LogA+4.3", "LogA_C4p3") {
 		@Override
@@ -34,7 +35,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 		}
 
 		@Override
-		public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+		public double getNodeWeight() {
 			return ORIGINAL_DRAFT_RELS ? 0d : 1d;
 		}
 	},
@@ -47,7 +48,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 		}
 
 		@Override
-		public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+		public double getNodeWeight() {
 			return 1d;
 		}
 	},
@@ -60,7 +61,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 		}
 
 		@Override
-		public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+		public double getNodeWeight() {
 			return 1d;
 		}
 	},
@@ -81,7 +82,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 		}
 
 		@Override
-		public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+		public double getNodeWeight() {
 			return 1d;
 		}
 	},
@@ -102,7 +103,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 		}
 
 		@Override
-		public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+		public double getNodeWeight() {
 			return 1d;
 		}
 	},
@@ -119,7 +120,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 		}
 
 		@Override
-		public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+		public double getNodeWeight() {
 			return ORIGINAL_DRAFT_RELS ? 1d : 0d;
 		}
 	},
@@ -140,7 +141,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 		}
 
 		@Override
-		public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+		public double getNodeWeight() {
 			return 1d;
 		}
 	},
@@ -174,7 +175,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 		}
 
 		@Override
-		public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+		public double getNodeWeight() {
 			return 0d;
 		}
 	};

@@ -87,6 +87,10 @@ public class CSVReader implements Closeable, Iterable<CSVReader.Row> {
             this.line = CSVFile.loadLine(row, -1, expectedSize);
         }
 
+        Row(List<String> line) {
+            this.line = line;
+        }
+
         /**
          * Get the data of the specified column
          *

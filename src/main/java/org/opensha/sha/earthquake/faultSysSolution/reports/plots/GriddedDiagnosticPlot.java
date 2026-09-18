@@ -14,6 +14,7 @@ import java.util.Set;
 
 import org.jfree.chart.ui.RectangleAnchor;
 import org.jfree.data.Range;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -506,7 +507,7 @@ public class GriddedDiagnosticPlot extends AbstractSolutionPlot {
 							average.setName("Comparison "+label);
 					}
 					chars.add(new PlotCurveCharacterstics(PlotLineType.SHORT_DASHED, 2f,
-							new Color(color.getRed(), color.getGreen(), color.getBlue(), 180)));
+							ColorUtils.transparent(color, 180)));
 				} else {
 					if (b == 0 && (label != null || compTracks != null)) {
 						if (label == null)

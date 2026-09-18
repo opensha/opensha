@@ -1,9 +1,11 @@
 package org.opensha.commons.logicTree;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 import org.opensha.commons.data.ShortNamed;
 
+import com.google.common.base.Preconditions;
 import com.google.gson.TypeAdapter;
 import com.google.gson.annotations.JsonAdapter;
 
@@ -25,7 +27,24 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 	 */
 	public String getFilePrefix();
 	
-	public static class FileBackedNode implements LogicTreeNode {
+	public static interface FixedWeightNode extends LogicTreeNode {
+		
+		/**
+		 * This returns the relative weight assigned to this branch node, which doesn't depend on any other choices
+		 * in the logic tree.
+		 * 
+		 * @return the relative weight assigned to this branch choice
+		 */
+		public double getNodeWeight();
+		
+		@Override
+		public default double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+			return getNodeWeight();
+		}
+		
+	}
+	
+	public static class FileBackedNode implements FixedWeightNode {
 		
 		private String name;
 		private String shortName;
@@ -50,7 +69,7 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 		}
 
 		@Override
-		public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+		public double getNodeWeight() {
 			return weight;
 		}
 
@@ -121,13 +140,144 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 	}
 	
 	/**
-	 * Randomly sampled logic tree node. Must have a default constructor for deserialization, and be fully initializable
-	 * via that constructor and the {@link RandomlySampledNode#init(String, String, String, double, long)} method.
+	 * Interface for LogicTreeNode backed by a single parameterized value. For serialization, the value class itself should
+	 * support either standard Gson serialization or have a {@link JsonAdapter} annotation and must have a no-arg
+	 * constructor (can be private).
+	 * @param <E>
 	 */
-	public static interface RandomlySampledNode extends LogicTreeNode {
+	public static interface ValuedLogicTreeNode<E> extends FixedWeightNode {
 		
-		public long getSeed();
+		public E getValue();
 		
+		public Class<? extends E> getValueType();
+		
+		public void init(E value, Class<? extends E> valueClass, double weight,
+				String name, String shortName, String filePrefix);
+	}
+	
+	public static class SimpleValuedNode<E> implements ValuedLogicTreeNode<E> {
+		
+		private E value;
+		private Class<? extends E> valueClass;
+		private double weight;
+		private String name;
+		private String shortName;
+		private String filePrefix;
+		
+		@SuppressWarnings("unused") // for deserialization
+		protected SimpleValuedNode() {};
+
+		public SimpleValuedNode(E value, Class<? extends E> valueClass, double weight,
+				String name, String shortName, String filePrefix) {
+			init(value, valueClass, weight, name, shortName, filePrefix);
+		}
+
+		public void init(E value, Class<? extends E> valueClass, double weight,
+				String name, String shortName, String filePrefix) {
+			Preconditions.checkState(!(value instanceof SimpleValuedNode<?>), "recursive values? %s %s", value, value.getClass());
+			this.value = value;
+			this.valueClass = valueClass;
+			this.weight = weight;
+			this.name = name;
+			this.shortName = shortName;
+			this.filePrefix = filePrefix;
+		}
+
+		@Override
+		public double getNodeWeight() {
+			return weight;
+		}
+
+		@Override
+		public String getFilePrefix() {
+			return filePrefix;
+		}
+
+		@Override
+		public String getShortName() {
+			return shortName;
+		}
+
+		@Override
+		public String getName() {
+			return name;
+		}
+
+		@Override
+		public E getValue() {
+			return value;
+		}
+
+		@Override
+		public Class<? extends E> getValueType() {
+			return valueClass;
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(filePrefix, name, shortName, value, weight);
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			SimpleValuedNode other = (SimpleValuedNode) obj;
+			return Objects.equals(filePrefix, other.filePrefix) && Objects.equals(name, other.name)
+					&& Objects.equals(shortName, other.shortName) && Objects.equals(value, other.value)
+					&& Double.doubleToLongBits(weight) == Double.doubleToLongBits(other.weight);
+		}
+
+		@Override
+		public String toString() {
+			return "SimpleValuedNode [value=" + value + ", shortName=" + shortName + "]";
+		}
+		
+	}
+	
+	/**
+	 * Randomly-generated logic tree node that is built on the fly from its own random seed. Must have a default
+	 * constructor for deserialization, and be fully initializable via that constructor and the
+	 * {@link RandomlyGeneratedNode#init(String, String, String, double, long)} method.
+	 */
+	public static abstract class RandomlyGeneratedNode implements ValuedLogicTreeNode<Long> {
+		
+		private String name;
+		private String shortName;
+		private String prefix;
+		private double weight;
+		private long seed;
+		
+		protected RandomlyGeneratedNode() {}
+
+		public RandomlyGeneratedNode(String name, String shortName, String prefix, double weight, long seed) {
+			init(name, shortName, prefix, weight, seed);
+		}
+		
+		public long getSeed() {
+			return seed;
+		}
+		
+		@Override
+		public Long getValue() {
+			return seed;
+		}
+
+		@Override
+		public Class<? extends Long> getValueType() {
+			return Long.class;
+		}
+
+		@Override
+		public void init(Long value, Class<? extends Long> valueClass, double weight, String name, String shortName,
+				String filePrefix) {
+			init(name, shortName, filePrefix, weight, value);
+		}
+
 		/**
 		 * Initializes this node with the given properties and seed
 		 * 
@@ -137,7 +287,57 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 		 * @param weight
 		 * @param seed
 		 */
-		public void init(String name, String shortName, String prefix, double weight, long seed);
+		public void init(String name, String shortName, String prefix, double weight, long seed) {
+			this.name = name;
+			this.shortName = shortName;
+			this.prefix = prefix;
+			this.weight = weight;
+			this.seed = seed;
+		}
+
+		@Override
+		public String getShortName() {
+			return shortName;
+		}
+
+		@Override
+		public String getName() {
+			return name;
+		}
+
+		@Override
+		public double getNodeWeight() {
+			return weight;
+		}
+
+		@Override
+		public String getFilePrefix() {
+			return prefix;
+		}
+		
+		@Override
+		public String toString() {
+			return shortName;
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(name, prefix, seed, shortName, weight);
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			RandomlyGeneratedNode other = (RandomlyGeneratedNode) obj;
+			return Objects.equals(name, other.name) && Objects.equals(prefix, other.prefix) && seed == other.seed
+					&& Objects.equals(shortName, other.shortName)
+					&& Double.doubleToLongBits(weight) == Double.doubleToLongBits(other.weight);
+		}
 		
 	}
 

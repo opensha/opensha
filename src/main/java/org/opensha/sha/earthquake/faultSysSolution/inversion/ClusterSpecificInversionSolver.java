@@ -11,6 +11,7 @@ import org.apache.commons.cli.CommandLine;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ConnectivityClusters;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InitialSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitProgress;
@@ -26,10 +27,6 @@ import com.google.common.base.Preconditions;
 
 public class ClusterSpecificInversionSolver extends InversionSolver.Default {
 	
-	protected BinaryRuptureProbabilityCalc getRuptureExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-		return null;
-	}
-	
 	protected boolean shouldInvert(ConnectivityCluster cluster) {
 		return true;
 	}
@@ -41,7 +38,11 @@ public class ClusterSpecificInversionSolver extends InversionSolver.Default {
 		
 		// we might have an exclusion model that limits us to only certain ruptures, which can affect the clusters that
 		// we build
-		BinaryRuptureProbabilityCalc rupExclusionModel = getRuptureExclusionModel(rupSet, branch);
+		
+		BinaryRuptureProbabilityCalc rupExclusionModel = null;
+		if (factory instanceof ExclusionaryInversionConfigurationFactory)
+			 rupExclusionModel = ((ExclusionaryInversionConfigurationFactory)factory)
+					 .getExclusionModel(rupSet, branch, rupSet.requireModule(ClusterRuptures.class));
 		
 		List<ConnectivityCluster> clusters;
 		if (rupExclusionModel != null) {

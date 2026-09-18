@@ -59,6 +59,19 @@ public class BranchAveragingOrder implements SubModule<ModuleContainer<?>>, CSV_
 			
 			return ret;
 		}
+
+		@Override
+		public void process(BranchAveragingOrder other) {
+			for (int i=0; i<other.weights.length; i++) {
+				weights.add(other.weights[i]);
+				branchFileNames.add(other.branchFileNames[i]);
+			}
+		}
+
+		@Override
+		public Class<? extends BranchAveragingOrder> getBuiltType() {
+			return BranchAveragingOrder.class;
+		}
 	}
 
 	@Override

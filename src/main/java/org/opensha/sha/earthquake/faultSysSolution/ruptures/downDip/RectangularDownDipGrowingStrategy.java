@@ -13,6 +13,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.util.FaultUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
@@ -33,24 +34,26 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 	private boolean requireFullWidthAfterJumps;
 
 	private Range<Double> minSeismogenicDepthRange;
+	private double maxPartialSeismogenicAspectRatio;
 	
 	private ConcurrentMap<FaultSubsectionCluster, NeighborOverlaps> cachedNeighborsDD;
 	
 	public static final float NEIGHBOR_THRESHOLD_DEFAULT = 0.4f;
 	public static final boolean REQUIRE_FULL_WIDTH_AFTER_JUMPS_DEFAULT = false;
 	public RectangularDownDipGrowingStrategy() {
-		this(null);
+		this(null, Double.POSITIVE_INFINITY);
 	}
 	
-	public RectangularDownDipGrowingStrategy(Range<Double> minSeismogenicDepthRange) {
-		this(NEIGHBOR_THRESHOLD_DEFAULT, REQUIRE_FULL_WIDTH_AFTER_JUMPS_DEFAULT, minSeismogenicDepthRange);
+	public RectangularDownDipGrowingStrategy(Range<Double> minSeismogenicDepthRange, double maxPartialSeismogenicAspectRatio) {
+		this(NEIGHBOR_THRESHOLD_DEFAULT, REQUIRE_FULL_WIDTH_AFTER_JUMPS_DEFAULT, minSeismogenicDepthRange, maxPartialSeismogenicAspectRatio);
 	}
 
 	public RectangularDownDipGrowingStrategy(float neighborThreshold, boolean requireFullWidthAfterJumps,
-			Range<Double> minSeismogenicDepthRange) {
+			Range<Double> minSeismogenicDepthRange, double maxPartialSeismogenicAspectRatio) {
 		this.neighborThreshold = neighborThreshold;
 		this.requireFullWidthAfterJumps = requireFullWidthAfterJumps;
 		this.minSeismogenicDepthRange = minSeismogenicDepthRange;
+		this.maxPartialSeismogenicAspectRatio = maxPartialSeismogenicAspectRatio;
 		this.cachedNeighborsDD = new ConcurrentHashMap<>();
 	}
 
@@ -159,6 +162,22 @@ public class RectangularDownDipGrowingStrategy implements RuptureGrowingStrategy
 									while (true) {
 										current2 = expandRupture(fullCluster, current2, neighborsDD, directions2);
 										if (current2 != null) {
+											if (Double.isFinite(maxPartialSeismogenicAspectRatio)) {
+												// calculate aspect ratio
+												double length = FaultSystemRupSet.calculateLength(current2.subSects) * 1e-3; // m -> km
+												double upper = current2.organized.get(0)
+														.stream().mapToDouble(S->S.getOrigAveUpperDepth()).average().getAsDouble();
+												double lower = current2.organized.get(current2.organized.size()-1)
+														.stream().mapToDouble(S->S.getAveLowerDepth()).average().getAsDouble();
+												double dip = current2.subSects.stream().mapToDouble(S->S.getAveDip()).average().getAsDouble();
+												double ddw = (lower-upper)/Math.sin(Math.toRadians(dip));
+												double ratio = length / ddw;
+												if (ratio > maxPartialSeismogenicAspectRatio) {
+													if (debug) System.out.println("\t\tStopping expansion in "+directions2+" with "+numAdded+" added after aspectRatio = "
+															+(float)length+" / "+(float)ddw+" = "+(float)ratio+" > "+maxPartialSeismogenicAspectRatio);
+													break;
+												}
+											}
 											if (!uniques.contains(current2.unique)) {
 												variations.add(current2);
 												uniques.add(current2.unique);

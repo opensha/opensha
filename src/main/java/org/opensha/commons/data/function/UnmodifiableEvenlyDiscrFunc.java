@@ -5,50 +5,30 @@ import java.awt.geom.Point2D;
 import org.opensha.commons.util.ClassUtils;
 
 /**
- * Unmodifiable view of an {@link EvenlyDiscretizedFunc}. All set methods will throw an {@link UnsupportedOperationException}.
+ * Unmodifiable snapshot of an {@link EvenlyDiscretizedFunc}. All methods that modify the function's domain or values
+ * will throw an {@link UnsupportedOperationException}.
  */
 public class UnmodifiableEvenlyDiscrFunc extends EvenlyDiscretizedFunc {
-	
-	private boolean initialized = false;
-	
+
+	private static final long serialVersionUID = 1L;
+
+	private boolean initialized;
+
 	public UnmodifiableEvenlyDiscrFunc(EvenlyDiscretizedFunc func) {
-		super(func.getMinX(), func.getMaxX(), func.size(), func.points);
-		
-		this.info = func.info;
-		this.name = func.name;
-		this.xAxisName = func.xAxisName;
-		this.yAxisName = func.yAxisName;
-		this.tolerance = func.tolerance;
-		this.initialized = true;
+		super(func.getMinX(), func.getMaxX(), func.size());
+		for (int i=0; i<func.size(); i++)
+			points[i] = func.getY(i);
+		setName(func.getName());
+		setInfo(func.getInfo());
+		setTolerance(func.getTolerance());
+		setXAxisName(func.getXAxisName());
+		setYAxisName(func.getYAxisName());
+		initialized = true;
 	}
 
 	@Override
-	public void set(double min, int num, double delta) {
-		if (!initialized)
-			super.set(min, num, delta);
-		else
-			setFail();
-	}
-
-	@Override
-	public void set(double min, double max, int num) {
-		if (!initialized)
-			super.set(min, max, num);
-		else
-			setFail();
-	}
-
-	@Override
-	protected void set(double min, double max, int num, double[] points) {
-		if (!initialized)
-			super.set(min, max, num, points);
-		else
-			setFail();
-	}
-
-	@Override
-	public void clear() {
-		setFail();
+	public EvenlyDiscretizedFunc deepClone() {
+		return super.deepClone();
 	}
 
 	@Override
@@ -67,15 +47,52 @@ public class UnmodifiableEvenlyDiscrFunc extends EvenlyDiscretizedFunc {
 	}
 
 	@Override
-	public EvenlyDiscretizedFunc deepClone() {
-		return new UnmodifiableEvenlyDiscrFunc(this);
+	public void add(double x, double y) {
+		setFail();
+	}
+
+	@Override
+	public void add(int index, double y) {
+		setFail();
+	}
+
+	@Override
+	public void set(double min, int num, double delta) {
+		if (!initialized)
+			// allow during initial construction
+			super.set(min, num, delta);
+		else
+			setFail();
+	}
+
+	@Override
+	public void set(double min, double max, int num) {
+		if (!initialized)
+			// allow during initial construction
+			super.set(min, max, num);
+		else
+			setFail();
+	}
+
+	@Override
+	protected void set(double min, double max, int num, double[] points) {
+		if (!initialized)
+			// allow during initial construction
+			super.set(min, max, num, points);
+		else
+			setFail();
+	}
+
+	@Override
+	public void clear() {
+		setFail();
 	}
 
 	@Override
 	public void scale(double val) {
 		setFail();
 	}
-	
+
 	private void setFail() {
 		throw new UnsupportedOperationException("cannot modify an "+ClassUtils.getClassNameWithoutPackage(getClass()));
 	}

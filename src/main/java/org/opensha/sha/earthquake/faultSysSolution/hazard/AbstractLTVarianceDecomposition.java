@@ -6,6 +6,7 @@ import java.util.concurrent.ExecutorService;
 
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.logicTree.LogicTree;
+import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 
@@ -13,7 +14,8 @@ import com.google.common.base.Preconditions;
 
 public abstract class AbstractLTVarianceDecomposition {
 	
-	protected LogicTree<?> tree;
+	protected List<? extends LogicTreeLevel<?>> levels;
+	protected List<? extends LogicTreeBranch<?>> branches;
 	protected List<LogicTreeLevel<?>> uniqueSamplingLevels;
 	
 	protected GriddedGeoDataSet meanMap;
@@ -21,16 +23,23 @@ public abstract class AbstractLTVarianceDecomposition {
 	protected GriddedGeoDataSet[] allMaps;
 	protected List<Double> allWeights;
 	protected ExecutorService exec;
+	
+	public AbstractLTVarianceDecomposition(LogicTree<?> tree,
+			List<LogicTreeLevel<?>> uniqueSamplingLevels, ExecutorService exec) {
+		this(tree.getLevels(), tree.getBranches(), uniqueSamplingLevels, exec);
+	}
 
-	public AbstractLTVarianceDecomposition(LogicTree<?> tree, List<LogicTreeLevel<?>> uniqueSamplingLevels, ExecutorService exec) {
-		this.tree = tree;
+	public AbstractLTVarianceDecomposition(List<? extends LogicTreeLevel<?>> levels, List<? extends LogicTreeBranch<?>> branches,
+			List<LogicTreeLevel<?>> uniqueSamplingLevels, ExecutorService exec) {
+		this.levels = levels;
+		this.branches = branches;
 		this.uniqueSamplingLevels = uniqueSamplingLevels;
 		this.exec = exec;
 	}
 	
 	public void initForMaps(GriddedGeoDataSet meanMap, GriddedGeoDataSet fullVariance,
 			GriddedGeoDataSet[] allMaps, List<Double> allWeights) {
-		Preconditions.checkState(allMaps.length == tree.size());
+		Preconditions.checkState(allMaps.length == branches.size());
 		Preconditions.checkState(allMaps.length == allWeights.size());
 		this.meanMap = meanMap;
 		this.fullVariance = fullVariance;
@@ -49,19 +58,19 @@ public abstract class AbstractLTVarianceDecomposition {
 		public final double meanVarianceContribution;
 		public final double maxVarianceContribution;
 		public final double maxFractionalVarianceContribution;
-		public final double meanCOVContribution;
-		public final double maxCOVContribution;
-		public final double maxFractionalCOVContribution;
+		public final double meanCVContribution;
+		public final double maxCVContribution;
+		public final double maxFractionalCVContribution;
 		public VarianceContributionResult(
 				double meanVarianceContribution, double maxVarianceContribution, double maxFractionalVarianceContribution,
-				double meanCOVContribution, double maxCOVContribution, double maxFractionalCOVContribution) {
+				double meanCVContribution, double maxCVContribution, double maxFractionalCVContribution) {
 			super();
 			this.meanVarianceContribution = meanVarianceContribution;
 			this.maxVarianceContribution = maxVarianceContribution;
 			this.maxFractionalVarianceContribution = maxFractionalVarianceContribution;
-			this.meanCOVContribution = meanCOVContribution;
-			this.maxCOVContribution = maxCOVContribution;
-			this.maxFractionalCOVContribution = maxFractionalCOVContribution;
+			this.meanCVContribution = meanCVContribution;
+			this.maxCVContribution = maxCVContribution;
+			this.maxFractionalCVContribution = maxFractionalCVContribution;
 		}
 	}
 

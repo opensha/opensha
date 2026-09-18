@@ -1,6 +1,8 @@
 package org.opensha.sha.magdist;
 
 
+import java.util.function.Function;
+
 import org.opensha.commons.exceptions.InvalidRangeException;
 
 
@@ -220,67 +222,105 @@ extends IncrementalMagFreqDist {
 	 * @param totCumRate    : total cumulative rate
 	 */
 	public void setAllButBvalue(double magLower, double magUpper, double totMoRate, double totCumRate) {
-		
-		// first try =1
-		GutenbergRichterMagFreqDist gr = new GutenbergRichterMagFreqDist(getMinX(), size(), getDelta(),
-				magLower, magUpper, totMoRate, 1.0);
-		
-		double bMax = 3.0;
-		double bIncrement = 0.01;
-		double lastB= 1.0;
-		double currRate = gr.getTotalIncrRate();
-		double lastDiff = Math.abs(totCumRate-currRate);
-		double finalB = Double.NaN;
-		
-		if(currRate > totCumRate) { // need lower b-value
-//			System.out.println("looking for lower b-value");
-			for (double b = 1.0-bIncrement; b>-bMax; b-=bIncrement) {
-				gr = new GutenbergRichterMagFreqDist(getMinX(), size(), getDelta(), magLower, magUpper, totMoRate, b);
-				currRate = gr.getTotalIncrRate();
-				double currDiff = Math.abs(totCumRate-currRate);
-//				System.out.println(b+"\t"+(currRate-totCumRate)+"\t"+(float)(currRate/totCumRate));
-				if(currRate<=totCumRate) {// we're done
-					if(currDiff <lastDiff)
-						finalB=b;
-					else
-						finalB=lastB;
-					break;
-				}
-				lastDiff = currDiff;
-				lastB=b;
-			}
-			if(Double.isNaN(finalB))
-				finalB=-bMax;
-		}
-		else { // need higher b-value
-//			System.out.println("looking for higher b-value");
-			for (double b = 1.0+bIncrement; b<bMax; b+=bIncrement) {
-				gr = new GutenbergRichterMagFreqDist(getMinX(), size(), getDelta(), magLower, magUpper, totMoRate, b);
-				currRate = gr.getTotalIncrRate();
-				double currDiff = Math.abs(totCumRate-currRate);
-//				System.out.println(b+"\t"+(currRate-totCumRate)+"\t"+(float)(currRate/totCumRate));
-				if(currRate>=totCumRate) {// we're done
-					if(currDiff <lastDiff)
-						finalB=b;
-					else
-						finalB=lastB;
-					break;
-				}
-				lastDiff = currDiff;
-				lastB=b;
-			}
-			if(Double.isNaN(finalB))
-				finalB=bMax;
-		}
-		if(Math.abs(finalB)<bIncrement/2.0)
-			finalB=0;
+		Function<GutenbergRichterMagFreqDist, Double> calcFunc = (gr) -> gr.getTotalIncrRate();
+		// start with b=1, coarse
+		double finalB = calcB(magLower, magUpper, totMoRate, totCumRate, calcFunc, 1, 0.1);
+		// hone in on a better final answer
+		finalB = calcB(magLower, magUpper, totMoRate, totCumRate, calcFunc, finalB, 0.01);
+		finalB = calcB(magLower, magUpper, totMoRate, totCumRate, calcFunc, finalB, 0.001);
+		finalB = calcB(magLower, magUpper, totMoRate, totCumRate, calcFunc, finalB, 0.0001);
 		
 		this.magLower = magLower;
 		this.magUpper = magUpper;
 		this.bValue = finalB;
 		calculateRelativeRates();
 		scaleToTotalMomentRate(totMoRate);
+	}
+	
+	/**
+	 * Set All but b-value for the given total moment rate, and the incremental rate in the bin a magLower.
+	 * The search is confined to b-values between -3 and 3, values outside this range are set as the bounding value.
+	 * The final totCumRate may differ slightly from that specified due to this b-value imprecision.  
+	 * @param magLower      : lowest magnitude that has non zero rate
+	 * @param magUpper      : highest magnitude that has non zero rate
+	 * @param totMoRate     : total moment rate
+	 * @param incrRateAtMagLower    : incremental rate at magLower
+	 */
+	public void setAllButBvalueForIncrRate(double magLower, double magUpper, double totMoRate, double incrRateAtMagLower) {
+		int mMinIndex = getClosestXIndex(magLower);
+		Function<GutenbergRichterMagFreqDist, Double> calcFunc = (gr) -> gr.getIncrRate(mMinIndex);
+		// start with b=1, coarse
+		double finalB = calcB(magLower, magUpper, totMoRate, incrRateAtMagLower, calcFunc, 1, 0.1);
+		// hone in on a better final answer
+		finalB = calcB(magLower, magUpper, totMoRate, incrRateAtMagLower, calcFunc, finalB, 0.01);
+		finalB = calcB(magLower, magUpper, totMoRate, incrRateAtMagLower, calcFunc, finalB, 0.001);
+		finalB = calcB(magLower, magUpper, totMoRate, incrRateAtMagLower, calcFunc, finalB, 0.0001);
 		
+		this.magLower = magLower;
+		this.magUpper = magUpper;
+		this.bValue = finalB;
+		calculateRelativeRates();
+		scaleToTotalMomentRate(totMoRate);
+	}
+	
+	private static final double MAX_B_SEARCH = 3d;
+	
+	private double calcB(double magLower, double magUpper, double totMoRate, double targetValue,
+			Function<GutenbergRichterMagFreqDist, Double> calcFunc, double bInitial, double bIncrement) {
+		GutenbergRichterMagFreqDist gr = new GutenbergRichterMagFreqDist(getMinX(), size(), getDelta(),
+				magLower, magUpper, totMoRate, bInitial);
+		
+		double lastB = bInitial;
+		double currValue = calcFunc.apply(gr);
+		double lastDiff = Math.abs(targetValue-currValue);
+		double finalB = Double.NaN;
+		
+		if(currValue > targetValue) { // need lower b-value
+//			System.out.println("looking for lower b-value");
+			for (double b = bInitial-bIncrement; b>-MAX_B_SEARCH; b-=bIncrement) {
+				gr.setAllButTotCumRate(magLower, magUpper, totMoRate, b);
+				currValue = calcFunc.apply(gr);
+				double currDiff = Math.abs(targetValue-currValue);
+//				System.out.println((float)b+"\tcurr="+(float)currValue+"\tdiff="+(float)(currValue-targetValue)
+//						+"\tratio="+(float)(currValue/targetValue));
+				if(currValue <= targetValue) {// we're done
+					if(currDiff <lastDiff)
+						finalB = b;
+					else
+						finalB = lastB;
+					break;
+				}
+				lastDiff = currDiff;
+				lastB = b;
+			}
+			if(Double.isNaN(finalB))
+				finalB = -MAX_B_SEARCH;
+		}
+		else { // need higher b-value
+//			System.out.println("looking for higher b-value");
+			for (double b = bInitial+bIncrement; b<MAX_B_SEARCH; b+=bIncrement) {
+				gr.setAllButTotCumRate(magLower, magUpper, totMoRate, b);
+				currValue = calcFunc.apply(gr);
+				double currDiff = Math.abs(targetValue-currValue);
+//				System.out.println((float)b+"\tcurr="+(float)currValue+"\tdiff="+(float)(currValue-targetValue)
+//						+"\tratio="+(float)(currValue/targetValue));
+				if(currValue>=targetValue) {// we're done
+					if(currDiff <lastDiff)
+						finalB=b;
+					else
+						finalB=lastB;
+					break;
+				}
+				lastDiff = currDiff;
+				lastB=b;
+			}
+			if(Double.isNaN(finalB))
+				finalB = MAX_B_SEARCH;
+		}
+		if (Math.abs(finalB) < bIncrement/2.0)
+			// within tolerance of 0, return 0
+			finalB = 0;
+		return finalB;
 	}
 
 	/**

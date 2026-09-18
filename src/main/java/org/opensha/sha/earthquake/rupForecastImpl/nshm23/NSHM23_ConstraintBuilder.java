@@ -104,6 +104,7 @@ public class NSHM23_ConstraintBuilder {
 	static int MAX_NUM_ZERO_SLIP_SECTS_PER_RUP = 1;
 	
 	private SubSeisMoRateReduction subSeisMoRateReduction = SupraSeisBValInversionTargetMFDs.SUB_SEIS_MO_RATE_REDUCTION_DEFAULT;
+	private double subSeisBOverride = Double.NaN;
 	
 	private static final double DEFAULT_REL_STD_DEV = 0.1;
 	
@@ -144,10 +145,6 @@ public class NSHM23_ConstraintBuilder {
 		if (sumMoment == 0d)
 			return StatUtils.mean(sectSpecificBValues);
 		return sumProduct/sumMoment;
-	}
-	
-	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, SectionSupraSeisBValues bValues) {
-		this(rupSet, bValues.getB(), bValues.getSectBValues(rupSet));
 	}
 	
 	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, double supraSeisB, double[] sectSpecificBValues) {
@@ -253,6 +250,12 @@ public class NSHM23_ConstraintBuilder {
 	
 	public NSHM23_ConstraintBuilder subSeisMoRateReduction(SubSeisMoRateReduction subSeisMoRateReduction) {
 		this.subSeisMoRateReduction = subSeisMoRateReduction;
+		targetCache = null;
+		return this;
+	}
+	
+	public NSHM23_ConstraintBuilder subSeisBOverride(double subSeisBOverride) {
+		this.subSeisBOverride = subSeisBOverride;
 		targetCache = null;
 		return this;
 	}
@@ -367,6 +370,7 @@ public class NSHM23_ConstraintBuilder {
 		builder.magDepDefaultRelStdDev(magDepRelStdDev);
 		builder.addSectCountUncertainties(addSectCountUncertaintiesToMFD);
 		builder.subSeisMoRateReduction(subSeisMoRateReduction);
+		builder.subSeisBOverride(subSeisBOverride);
 		builder.maxNumZeroSlipSectsPerRup(MAX_NUM_ZERO_SLIP_SECTS_PER_RUP);
 		if (proxyFaultMagCorner > 0d) {
 			double[] magCorners = new double[rupSet.getNumSections()];

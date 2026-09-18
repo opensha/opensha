@@ -156,7 +156,7 @@ public abstract class AbstractRupSetPlot implements Named {
 		return getProbStr(prob, false);
 	}
 	
-	protected static String getProbStr(double prob, boolean includePercent) {
+	protected synchronized static String getProbStr(double prob, boolean includePercent) {
 		String ret;
 		if (prob < 0.01 && prob > 0)
 			ret = expProbDF.format(prob);
