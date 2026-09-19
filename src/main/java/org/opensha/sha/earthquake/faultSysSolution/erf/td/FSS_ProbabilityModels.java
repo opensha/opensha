@@ -47,7 +47,7 @@ public enum FSS_ProbabilityModels {
 			return new UCERF3_ProbabilityModel(
 					sol, longTermPartRateForSectArray,
 					// initialize with NSHM26 middle aperiodicity and allow only the NSHM26 aperiodicity branches
-					AperiodicityModels.NSHM27_MIDDLE, AperiodicityModels.NSHM26_MODELS,
+					AperiodicityModels.NSHM27_MIDDLE, AperiodicityModels.NSHM27_MODELS,
 					// initialize with BPT but allow any of the renewal model distributions
 					RenewalModels.BPT, EnumSet.allOf(RenewalModels.class),
 					// allow all for now until we create our own

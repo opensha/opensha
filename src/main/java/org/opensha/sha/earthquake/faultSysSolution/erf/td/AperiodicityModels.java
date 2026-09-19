@@ -107,7 +107,7 @@ public enum AperiodicityModels {
 
 	
 	public static EnumSet<AperiodicityModels> UCERF3_MODELS = EnumSet.of(UCERF3_LOW, UCERF3_MIDDLE, UCERF3_HIGH);
-	public static EnumSet<AperiodicityModels> NSHM26_MODELS = EnumSet.of(NSHM27_LOW,NSHM27_MIDDLE,NSHM27_HIGH);
+	public static EnumSet<AperiodicityModels> NSHM27_MODELS = EnumSet.of(NSHM27_LOW, NSHM27_MIDDLE, NSHM27_HIGH);
 	public static EnumSet<AperiodicityModels> SINGLE_VALUED_MODELS = EnumSet.of(SINGLE_VALUED);
 	
 	private String name;
