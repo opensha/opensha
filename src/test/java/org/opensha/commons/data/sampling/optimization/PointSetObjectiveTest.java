@@ -188,6 +188,31 @@ public class PointSetObjectiveTest {
 	}
 
 	@Test
+	public void testQuantizedStateInvariantSwapCanBeDiscardedOrApplied() {
+		PointSet source = new DimensionedPointSet(new ArrayPointSet(new double[][] {
+				{ 0.1, 0.1 }, { 0.2, 0.8 }, { 0.8, 0.2 }
+		}), List.of(CategoricalSamplingDimension.forWeights(0.5, 0.5),
+				ContinuousSamplingDimension.INSTANCE));
+		PermutedPointSet points = PermutedPointSet.independentDimensions(source);
+		ProjectionDiscrepancyScorer scorer = ProjectionDiscrepancyScorer.quantized(8);
+		QuantizedProjectionSwapSession incremental = new QuantizedProjectionSwapSession(points, 8);
+		double initial = incremental.getCurrentValue();
+
+		// The first two raw coordinates differ but occupy the same categorical state.
+		assertEquals(0d, incremental.evaluateSwap(0, 0, 1), 0d);
+		incremental.discardSwap();
+		assertEquals(0.1d, points.get(0, 0), 0d);
+		assertEquals(initial, incremental.getCurrentValue(), 0d);
+
+		assertEquals(0d, incremental.evaluateSwap(0, 0, 1), 0d);
+		incremental.applySwap();
+		assertEquals(0.2d, points.get(0, 0), 0d);
+		assertEquals(0.1d, points.get(1, 0), 0d);
+		assertEquals(initial, incremental.getCurrentValue(), 0d);
+		assertEquals(scorer.score(points).getNormalizedScore(), incremental.getCurrentValue(), TOL);
+	}
+
+	@Test
 	public void testTransactionAndExternalModificationChecks() {
 		PermutedPointSet points = buildPointSet(12, 1234L);
 		QuantizedProjectionSwapSession incremental = new QuantizedProjectionSwapSession(points, 5);

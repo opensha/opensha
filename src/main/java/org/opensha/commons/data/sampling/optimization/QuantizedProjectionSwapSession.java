@@ -43,6 +43,7 @@ final class QuantizedProjectionSwapSession implements SwapSession {
 	private int pendingPoint1;
 	private int pendingPoint2;
 	private double pendingNormalizedDelta;
+	private boolean pendingStateInvariant;
 
 	static PointSetObjective objective(int continuousBins, ProjectionDiscrepancyConfig config) {
 		return new Objective(continuousBins, config);
@@ -126,15 +127,31 @@ final class QuantizedProjectionSwapSession implements SwapSession {
 		if (point1 == point2)
 			throw new IllegalArgumentException("Swap points must be distinct");
 
+		pending = true;
+		pendingGroup = groupIndex;
+		pendingPoint1 = point1;
+		pendingPoint2 = point2;
+
+		DimensionSwapGroup group = pointSet.getSwapGroup(groupIndex);
+		pendingStateInvariant = true;
+		for (int i=0; i<group.size(); i++) {
+			int[] dimensionStates = states[group.dimension(i)];
+			if (dimensionStates[point1] != dimensionStates[point2]) {
+				pendingStateInvariant = false;
+				break;
+			}
+		}
+		if (pendingStateInvariant) {
+			// The raw coordinates may differ, but this objective only sees their quantized states.
+			pendingNormalizedDelta = 0d;
+			return 0d;
+		}
+
 		double delta = 0d;
 		for (QuantizedPairCriterion criterion : criteriaByGroup.get(groupIndex)) {
 			double rawDelta = criterion.calculateSwapDelta(point1, point2);
 			delta += aggregateCoefficient(2, criterion.expectedRandomScore())*rawDelta;
 		}
-		pending = true;
-		pendingGroup = groupIndex;
-		pendingPoint1 = point1;
-		pendingPoint2 = point2;
 		pendingNormalizedDelta = delta;
 		return delta;
 	}
@@ -143,28 +160,33 @@ final class QuantizedProjectionSwapSession implements SwapSession {
 	public void applySwap() {
 		checkSynchronized();
 		checkPending();
-		for (QuantizedPairCriterion criterion : criteriaByGroup.get(pendingGroup))
-			criterion.applySwap();
-		DimensionSwapGroup group = pointSet.getSwapGroup(pendingGroup);
-		for (int i=0; i<group.size(); i++) {
-			int[] dimensionStates = states[group.dimension(i)];
-			int state = dimensionStates[pendingPoint1];
-			dimensionStates[pendingPoint1] = dimensionStates[pendingPoint2];
-			dimensionStates[pendingPoint2] = state;
+		if (!pendingStateInvariant) {
+			for (QuantizedPairCriterion criterion : criteriaByGroup.get(pendingGroup))
+				criterion.applySwap();
+			DimensionSwapGroup group = pointSet.getSwapGroup(pendingGroup);
+			for (int i=0; i<group.size(); i++) {
+				int[] dimensionStates = states[group.dimension(i)];
+				int state = dimensionStates[pendingPoint1];
+				dimensionStates[pendingPoint1] = dimensionStates[pendingPoint2];
+				dimensionStates[pendingPoint2] = state;
+			}
 		}
 		pointSet.swap(pendingGroup, pendingPoint1, pendingPoint2);
 		expectedModificationCount = pointSet.modificationCount();
 		currentNormalizedScore += pendingNormalizedDelta;
 		pending = false;
+		pendingStateInvariant = false;
 	}
 
 	@Override
 	public void discardSwap() {
 		checkSynchronized();
 		checkPending();
-		for (QuantizedPairCriterion criterion : criteriaByGroup.get(pendingGroup))
-			criterion.discardSwap();
+		if (!pendingStateInvariant)
+			for (QuantizedPairCriterion criterion : criteriaByGroup.get(pendingGroup))
+				criterion.discardSwap();
 		pending = false;
+		pendingStateInvariant = false;
 	}
 
 	@Override
