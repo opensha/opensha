@@ -1,5 +1,6 @@
 package org.opensha.commons.param.editor.impl;
 
+import java.awt.Color;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 import java.awt.event.KeyEvent;
@@ -11,11 +12,13 @@ import javax.swing.JTextField;
 import org.opensha.commons.exceptions.ConstraintException;
 import org.opensha.commons.exceptions.WarningException;
 import org.opensha.commons.param.Parameter;
+import org.opensha.commons.param.constraint.impl.LongConstraint;
 import org.opensha.commons.param.editor.AbstractParameterEditor;
 
 public class LongParameterEditor extends AbstractParameterEditor<Long> implements FocusListener, KeyListener {
 	
 	private JTextField widget;
+	private Color editableForeground;
 	
 	private boolean keyTypeProcessing;
 	private boolean focusLostProcessing;
@@ -137,6 +140,7 @@ public class LongParameterEditor extends AbstractParameterEditor<Long> implement
 	@Override
 	protected JComponent buildWidget() {
 		widget = new JTextField();
+		editableForeground = widget.getForeground();
 		widget.setPreferredSize(LABEL_DIM);
 		widget.setMinimumSize(LABEL_DIM);
 		widget.setBorder(ETCHED);
@@ -156,6 +160,11 @@ public class LongParameterEditor extends AbstractParameterEditor<Long> implement
 			widget.setText("");
 		else
 			widget.setText(val+"");
+		LongConstraint constraint = getParameter().getConstraint() instanceof LongConstraint
+				? (LongConstraint)getParameter().getConstraint() : null;
+		boolean fixed = constraint != null && constraint.getMin().equals(constraint.getMax());
+		widget.setEditable(!fixed);
+		widget.setForeground(fixed ? Color.BLUE : editableForeground);
 		return widget;
 	}
 

@@ -124,15 +124,11 @@ import org.opensha.sha.util.TectonicRegionType;
     double duration = (Double.valueOf(st.nextToken())).doubleValue();
     if(D) System.out.println("duration="+duration);
 
-    this.timeSpan = new TimeSpan(TimeSpan.SECONDS,TimeSpan.DAYS);
-    timeSpan.setStartTime(year,month,day,hour,minute,second);
+    this.timeSpan = new TimeSpan(TimeSpan.MILLISECONDS,TimeSpan.DAYS);
+    timeSpan.setStartTime(year,month,day,hour,minute,second,0);
     timeSpan.setDuration(duration);
-    timeSpan.setStartTimeConstraint(TimeSpan.START_YEAR, year,year);
-    timeSpan.setStartTimeConstraint(TimeSpan.START_MONTH, month,month);
-    timeSpan.setStartTimeConstraint(TimeSpan.START_DAY, day,day);
-    timeSpan.setStartTimeConstraint(TimeSpan.START_HOUR, hour,hour);
-    timeSpan.setStartTimeConstraint(TimeSpan.START_MINUTE, minute,minute);
-    timeSpan.setStartTimeConstraint(TimeSpan.START_SECOND, second,second);
+    long startTimeMillis = timeSpan.getStartTimeInMillis();
+    timeSpan.setStartTimeMillisConstraint(startTimeMillis, startTimeMillis);
     timeSpan.setDurationConstraint(duration,duration);
 
     if (D) System.out.println("Start-Time Calendar toString: \n"+(timeSpan.getStartTimeCalendar()).toString());

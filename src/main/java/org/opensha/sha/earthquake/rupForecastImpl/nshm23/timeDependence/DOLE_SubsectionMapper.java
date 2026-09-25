@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
@@ -30,7 +31,6 @@ import org.opensha.commons.util.FaultUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ConnectivityClusters;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.ConnectivityCluster;
-import org.opensha.sha.earthquake.faultSysSolution.erf.td.TimeDepUtils;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader;
@@ -144,7 +144,7 @@ public class DOLE_SubsectionMapper {
 					"%s property is missing or malformatted: %s for %s", YEAR_PROP_NAME, feature.properties.get(YEAR_PROP_NAME),
 					feature.properties.getString("FaultName"));
 //			epochMillis = new GregorianCalendar(year, 0, 1).getTimeInMillis(); // this had problems with time zones
-			epochMillis = TimeDepUtils.utcStartOfYear(year).getTimeInMillis();
+			epochMillis = TimeSpan.startOfYearInMillis(year);
 			int nshm_hazID = feature.properties.getInt("NSHMhazID",-1); // test to see if we need to override
 			if(nshm_hazID>=0)
 				faultID = nshm_hazID;

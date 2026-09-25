@@ -1,8 +1,5 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.timeDependence;
 
-import static org.opensha.sha.earthquake.faultSysSolution.erf.td.TimeDepUtils.MILLISEC_PER_YEAR;
-import static org.opensha.sha.earthquake.faultSysSolution.erf.td.TimeDepUtils.MILLISEC_TO_YEARS;
-
 import java.awt.Color;
 import java.io.File;
 import java.io.FileWriter;
@@ -26,6 +23,7 @@ import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.ui.RectangleAnchor;
 import org.jfree.data.Range;
 import org.opensha.commons.data.WeightedList;
+import org.opensha.commons.data.TimeSpan.DurationUnits;
 import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -687,7 +685,7 @@ public class TimeDependentReportPageGen {
 			if(epoch == Double.MIN_VALUE)
 				sectYears[s] = Double.NaN;
 			else
-				sectYears[s] = (double)epoch/MILLISEC_PER_YEAR+1970.0;
+				sectYears[s] = DurationUnits.YEARS.fromMillis(epoch)+1970.0;
 		}
 		
 		// build DOLE map
@@ -1571,7 +1569,7 @@ public class TimeDependentReportPageGen {
 				ucerf3_recurInt[s] = 1.0/ucerf3_erf.getSolution().calcTotParticRateForSect(s);
 				long doleMillis = ucerf3_erf.getSolution().getRupSet().getFaultSectionData(s).getDateOfLastEvent();	
 				if(doleMillis != Long.MIN_VALUE) {
-					ucerf3_timeSinceYrs[s] = (double)(presentTimeMillis-doleMillis)*MILLISEC_TO_YEARS;
+					ucerf3_timeSinceYrs[s] = DurationUnits.YEARS.fromMillis(presentTimeMillis-doleMillis);
 					ucerf3_normTimeSince[s] = ucerf3_timeSinceYrs[s]/ucerf3_recurInt[s];					
 				}
 				else {

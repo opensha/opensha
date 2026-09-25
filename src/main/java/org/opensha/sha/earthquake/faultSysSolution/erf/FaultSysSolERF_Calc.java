@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import org.opensha.commons.data.TimeSpan.DurationUnits;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.geo.Region;
 import org.opensha.sha.earthquake.ProbEqkRupture;
@@ -15,7 +16,6 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.erf.td.FSS_ProbabilityModel;
 import org.opensha.sha.earthquake.faultSysSolution.erf.td.TimeDepFaultSystemSolutionERF;
-import org.opensha.sha.earthquake.faultSysSolution.erf.td.TimeDepUtils;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
@@ -341,7 +341,7 @@ public class FaultSysSolERF_Calc {
 					if(doleMillis>startTimeMillis)
 						throw new RuntimeException("doleMillis is greater than startTimeMillis");
 					num+=1;
-					double yrsSince = (double)(startTimeMillis-doleMillis)*TimeDepUtils.MILLISEC_TO_YEARS;
+				double yrsSince = DurationUnits.YEARS.fromMillis(startTimeMillis-doleMillis);
 					ave += yrsSince*probModel.getSectLongTermPartRate(s);
 				}
 			}

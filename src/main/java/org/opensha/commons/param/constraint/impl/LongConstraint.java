@@ -27,6 +27,14 @@ public class LongConstraint extends AbstractParameterConstraint<Long> {
 		this.max = max;
 	}
 
+	public Long getMin() {
+		return min;
+	}
+
+	public Long getMax() {
+		return max;
+	}
+
 	@Override
 	public boolean isAllowed(Long l) {
 		if (nullAllowed && l == null)

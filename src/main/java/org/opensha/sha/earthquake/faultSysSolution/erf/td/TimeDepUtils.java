@@ -1,56 +1,12 @@
 package org.opensha.sha.earthquake.faultSysSolution.erf.td;
 
-import java.util.Calendar;
-import java.util.GregorianCalendar;
 import java.util.List;
-import java.util.TimeZone;
-import java.time.Instant;
-import java.time.ZoneId;
 
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 public class TimeDepUtils {
-	
-	/*
-	 * Constants
-	 */
-	
-	public final static double MILLISEC_PER_YEAR = 1000*60*60*24*365.25;
-	public final static long MILLISEC_PER_DAY = 1000*60*60*24;
-	
-	// use these to convert milliseconds to days or years (faster to multiply than divide)
-	public final static double MILLISEC_TO_YEARS = 1d/MILLISEC_PER_YEAR;
-	public final static double MILLISEC_TO_DAYS = 1d/(double)MILLISEC_PER_DAY;
-	
-	/*
-	 * Helper methods
-	 */
-
-	/**
-	 * Using this avoids any problems associated with being in different time zones 
-	 * (previously, time-since-last calculations could vary by hours depending on where 
-	 * you were running the code from)
-	 * @param year
-	 * @return
-	 */
-	public static GregorianCalendar utcStartOfYear(int year) {
-		TimeZone utc = TimeZone.getTimeZone("UTC");
-	
-		GregorianCalendar cal = new GregorianCalendar(utc);
-		cal.clear(); // clears all fields to avoid locale/time leftovers
-	
-		cal.set(Calendar.YEAR, year);
-		cal.set(Calendar.MONTH, Calendar.JANUARY);
-		cal.set(Calendar.DAY_OF_MONTH, 1);
-		cal.set(Calendar.HOUR_OF_DAY, 0);
-		cal.set(Calendar.MINUTE, 0);
-		cal.set(Calendar.SECOND, 0);
-		cal.set(Calendar.MILLISECOND, 0);
-	
-		return cal;
-	}
 	
 	/**
 	 * This computes the poisson probability of one or more events for the given annual rate
@@ -138,41 +94,31 @@ public class TimeDepUtils {
 		return aveCondRecurIntervalForFltSysRups;
 	}
 	
-	
-	public static double[] testJamieAveCondRecurIntervalForFltSysRups(FaultSystemSolution fltSysSolution) {
-		FaultSystemRupSet fltSysRupSet = fltSysSolution.getRupSet();
-		int numSections = fltSysRupSet.getNumSections();
-		double[] aveCondRecurIntervalForFltSysRupsAlt = new double[fltSysRupSet.getNumRuptures()];
-		IncrementalMagFreqDist[] sectMFD_Array = new IncrementalMagFreqDist[numSections];
-		for(int s=0;s<numSections;s++)
-			sectMFD_Array[s] = fltSysSolution.calcParticipationMFD_forSect(s, 5.05, 9.95, 50);
-		double[] sectAreas = fltSysRupSet.getAreaForAllSections();
-		for (int r=0;r<aveCondRecurIntervalForFltSysRupsAlt.length; r++) {
-			aveCondRecurIntervalForFltSysRupsAlt[r] = 0;
-			List<Integer> rupSections = fltSysRupSet.getSectionsIndicesForRup(r);
-			double ave=0, totArea=0;
-			for (int sectID : rupSections) {
-				double area = sectAreas[sectID];
-				totArea += area;
-				double magBin = sectMFD_Array[sectID].getClosestXtoY(fltSysRupSet.getMagForRup(r));
-				double cumRateAboveMag = sectMFD_Array[sectID].getCumRate(magBin);
-				ave += area/cumRateAboveMag;  
-			}
-			aveCondRecurIntervalForFltSysRupsAlt[r] = ave/totArea;
-		}
-		return aveCondRecurIntervalForFltSysRupsAlt;
-	}
-	
-	/**
-	 * This was suggested by Kevin, but not yet used.  It's a time-zone neutral
-	 * approach.
-	 * @param epochMillis
-	 * @return
-	 */
-	public static int getYearFromEpochMillis(long epochMillis) {
-		Instant instant = Instant.ofEpochMilli(epochMillis);
-		return instant.atZone(ZoneId.of("UTC")).getYear();
-	}
 
-
+	// Ned, this does not belong here. leaving it here commented out for now, but if you want it, move it somewhere in
+	// dev (or if generally useful, give a better name).
+//	public static double[] testJamieAveCondRecurIntervalForFltSysRups(FaultSystemSolution fltSysSolution) {
+//		FaultSystemRupSet fltSysRupSet = fltSysSolution.getRupSet();
+//		int numSections = fltSysRupSet.getNumSections();
+//		double[] aveCondRecurIntervalForFltSysRupsAlt = new double[fltSysRupSet.getNumRuptures()];
+//		IncrementalMagFreqDist[] sectMFD_Array = new IncrementalMagFreqDist[numSections];
+//		for(int s=0;s<numSections;s++)
+//			sectMFD_Array[s] = fltSysSolution.calcParticipationMFD_forSect(s, 5.05, 9.95, 50);
+//		double[] sectAreas = fltSysRupSet.getAreaForAllSections();
+//		for (int r=0;r<aveCondRecurIntervalForFltSysRupsAlt.length; r++) {
+//			aveCondRecurIntervalForFltSysRupsAlt[r] = 0;
+//			List<Integer> rupSections = fltSysRupSet.getSectionsIndicesForRup(r);
+//			double ave=0, totArea=0;
+//			for (int sectID : rupSections) {
+//				double area = sectAreas[sectID];
+//				totArea += area;
+//				double magBin = sectMFD_Array[sectID].getClosestXtoY(fltSysRupSet.getMagForRup(r));
+//				double cumRateAboveMag = sectMFD_Array[sectID].getCumRate(magBin);
+//				ave += area/cumRateAboveMag;  
+//			}
+//			aveCondRecurIntervalForFltSysRupsAlt[r] = ave/totArea;
+//		}
+//		return aveCondRecurIntervalForFltSysRupsAlt;
+//	}
+	
 }

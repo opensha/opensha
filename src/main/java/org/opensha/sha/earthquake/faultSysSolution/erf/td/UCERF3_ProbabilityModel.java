@@ -2,6 +2,8 @@ package org.opensha.sha.earthquake.faultSysSolution.erf.td;
 
 import static org.opensha.sha.earthquake.faultSysSolution.erf.td.TimeDepUtils.*;
 
+import org.opensha.commons.data.TimeSpan.DurationUnits;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.util.EnumSet;
@@ -155,7 +157,7 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 			if (dateOfLast != Long.MIN_VALUE && dateOfLast <= presentTimeMillis) {
 				noSectionsHadDateOfLast = false;
 				if (aveNormTimeSinceLast) {
-					tmpSumDOLE += area*((double)(presentTimeMillis-dateOfLast)*MILLISEC_TO_YEARS)*sectlongTermPartRates[s];
+					tmpSumDOLE += area*DurationUnits.YEARS.fromMillis(presentTimeMillis-dateOfLast)*sectlongTermPartRates[s];
 //// DEBUG
 //if(fltSysRupIndex==441381) {
 //	double nts = ((double)(presentTimeMillis-dateOfLast)*MILLISEC_TO_YEARS)*sectlongTermPartRates[s];
@@ -179,7 +181,7 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 				aveTimeSinceLastWhereKnownYears = aveNormTimeSinceLastEventWhereKnown*aveCondRecurInterval;
 			} else {
 				long aveDOLE = Math.round(tmpSumDOLE/totRupAreaWithDateOfLast);  // epoch millis
-				aveTimeSinceLastWhereKnownYears = (double)(presentTimeMillis-aveDOLE) * MILLISEC_TO_YEARS;
+				aveTimeSinceLastWhereKnownYears = DurationUnits.YEARS.fromMillis(presentTimeMillis-aveDOLE);
 				// fix slightly negative values
 				if(aveTimeSinceLastWhereKnownYears<0 && aveTimeSinceLastWhereKnownYears>-0.001)
 					aveTimeSinceLastWhereKnownYears=0;
@@ -686,7 +688,7 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 				double areakm = sectAreas[i];  //  what units?
 				String name = fltSysRupSet.getFaultSectionData(i).getName().replace(",", "");
 				if(sectDOLE[i] != Long.MIN_VALUE) {
-					double yrOfLast = (double)sectDOLE[i]/MILLISEC_PER_YEAR+1970.0;
+					double yrOfLast = DurationUnits.YEARS.fromMillis(sectDOLE[i])+1970.0;
 					fileWriter.write(i+","+rate+","+areakm+","+yrOfLast+","+sectDOLE[i]+","+name+"\n");					
 				}
 				else {

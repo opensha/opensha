@@ -2,6 +2,7 @@ package org.opensha.sha.earthquake.faultSysSolution.erf.td;
 
 import java.util.EnumSet;
 
+import org.opensha.commons.data.TimeSpan.DurationUnits;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.event.ParameterChangeEvent;
@@ -112,7 +113,7 @@ public class WG02_ProbabilityModel extends AbstractProbDistProbabilityModel impl
 		for(int s=0; s<numSections;s++) {
 			long timeOfLastMillis = sectDOLE[s];
 			if(timeOfLastMillis != Long.MIN_VALUE && timeOfLastMillis <= forecastStartTimeMillis) {
-				double timeSinceLastYears = (double)(forecastStartTimeMillis-timeOfLastMillis) * TimeDepUtils.MILLISEC_TO_YEARS;
+				double timeSinceLastYears = DurationUnits.YEARS.fromMillis(forecastStartTimeMillis-timeOfLastMillis);
 				double refTimeSinceLast = timeSinceLastYears*sectlongTermPartRates[s];
 				double refDuration = durationYears*sectlongTermPartRates[s];
 				EqkProbDistCalc probCalc;
