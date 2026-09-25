@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayDeque;
@@ -139,7 +140,7 @@ public class LogicTreeHazardCurveArchiveBuilder {
 		System.out.println("\tHazard configuration: "+hazardSubDirName);
 		System.out.println("\tBranch directories: "+hazardDirs.size());
 		File mapArchive = findMapArchive(runDir, hazardSubDirName);
-		validateHazardDirectories(hazardDirs, mapArchive);
+		HazardCurveMetadata curveMetadata = validateHazardDirectories(hazardDirs, mapArchive);
 
 		File stagingFile = new File(outputFile.getAbsolutePath()+".building");
 		Files.deleteIfExists(stagingFile.toPath());
@@ -166,6 +167,8 @@ public class LogicTreeHazardCurveArchiveBuilder {
 					curveCount++;
 				}
 			}
+			Preconditions.checkState(entries.add(HazardCurveMetadata.FILE_NAME));
+			curveMetadata.write(output);
 
 			if (mapArchive != null) {
 				System.out.println("\tCopying metadata and mean curves from "+mapArchive.getName());
@@ -190,9 +193,10 @@ public class LogicTreeHazardCurveArchiveBuilder {
 		System.out.println("\tWrote "+curveCount+" branch curve files");
 	}
 
-	private static void validateHazardDirectories(List<File> hazardDirs, File mapArchive) throws IOException {
+	private static HazardCurveMetadata validateHazardDirectories(List<File> hazardDirs, File mapArchive) throws IOException {
 		Set<String> expectedCurveFiles = null;
 		Set<String> branchNames = new HashSet<>();
+		HazardCurveMetadata curveMetadata = null;
 		for (File hazardDir : hazardDirs) {
 			String branchName = hazardDir.getParentFile().getName();
 			Preconditions.checkState(branchNames.add(branchName), "Duplicate branch directory name: %s", branchName);
@@ -205,14 +209,26 @@ public class LogicTreeHazardCurveArchiveBuilder {
 				Preconditions.checkState(expectedCurveFiles.equals(myCurveFiles),
 						"Curve file set differs for branch %s; expected %s, found %s",
 						branchName, expectedCurveFiles, myCurveFiles);
+			File metadataFile = new File(hazardDir, HazardCurveMetadata.FILE_NAME);
+			HazardCurveMetadata branchMetadata = metadataFile.exists() ? HazardCurveMetadata.read(metadataFile)
+					: HazardCurveMetadata.timeIndependent(1d);
+			if (curveMetadata == null)
+				curveMetadata = branchMetadata;
+			else
+				curveMetadata = curveMetadata.merge(branchMetadata);
 		}
+		Preconditions.checkNotNull(curveMetadata, "No hazard directories supplied");
 
 		if (mapArchive == null) {
 			System.out.println("\tWARNING: no map archive is available to verify the complete branch set");
-			return;
+			return curveMetadata;
 		}
 		Set<String> mapBranches = new HashSet<>();
 		try (ZipFile zip = new ZipFile(mapArchive)) {
+			ZipEntry metadataEntry = zip.getEntry(HazardCurveMetadata.FILE_NAME);
+			HazardCurveMetadata mapMetadata = metadataEntry == null ? HazardCurveMetadata.timeIndependent(1d)
+					: HazardCurveMetadata.read(new InputStreamReader(zip.getInputStream(metadataEntry)));
+			curveMetadata = curveMetadata.merge(mapMetadata);
 			Enumeration<? extends ZipEntry> entries = zip.entries();
 			while (entries.hasMoreElements()) {
 				ZipEntry entry = entries.nextElement();
@@ -227,6 +243,7 @@ public class LogicTreeHazardCurveArchiveBuilder {
 				"Curve branch set does not match %s: curve-only=%s, map-only=%s",
 				mapArchive.getName(), difference(branchNames, mapBranches), difference(mapBranches, branchNames));
 		System.out.println("\tVerified "+branchNames.size()+" branches against "+mapArchive.getName());
+		return curveMetadata;
 	}
 
 	private static Set<String> difference(Set<String> first, Set<String> second) {
@@ -265,7 +282,8 @@ public class LogicTreeHazardCurveArchiveBuilder {
 				String name = entry.getName();
 				boolean metadata = name.equals(MPJ_LogicTreeHazardCalc.GRID_REGION_ENTRY_NAME)
 						|| name.equals(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME)
-						|| name.equals(MPJ_LogicTreeHazardCalc.ORIG_LOGIC_TREE_FILE_NAME);
+						|| name.equals(MPJ_LogicTreeHazardCalc.ORIG_LOGIC_TREE_FILE_NAME)
+						|| name.equals(HazardCurveMetadata.FILE_NAME);
 				boolean meanCurves = !name.contains("/") && name.startsWith("mean_curves_")
 						&& (name.endsWith(".csv") || name.endsWith(".csv.gz"));
 				if ((metadata || meanCurves) && writtenEntries.add(name)) {

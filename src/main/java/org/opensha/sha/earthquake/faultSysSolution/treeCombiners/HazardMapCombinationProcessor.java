@@ -37,11 +37,13 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.io.archive.ArchiveInput;
 import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.LogicTreeCurveAverager;
+import org.opensha.sha.earthquake.faultSysSolution.hazard.HazardCurveMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.LogicTreeHazardCompare;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_LogicTreeHazardCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
-import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
+import org.opensha.sha.calc.ReturnPeriod;
+import org.opensha.sha.calc.HazardCurveUtils;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 
 import com.google.common.base.Preconditions;
@@ -58,7 +60,8 @@ public class HazardMapCombinationProcessor implements LogicTreeCombinationProces
 	private final GriddedRegion gridReg;
 
 	private double[] periods;
-	private final ReturnPeriods[] rps;
+	private final ReturnPeriod[] rps;
+	private HazardCurveMetadata curveMetadata = HazardCurveMetadata.timeIndependent(1d);
 	
 	private boolean preloadInnerCurves = true;
 
@@ -112,7 +115,7 @@ public class HazardMapCombinationProcessor implements LogicTreeCombinationProces
 
 	public HazardMapCombinationProcessor(MapCurveLoader outerHazardMapLoader, IncludeBackgroundOption outerBGOp,
 			MapCurveLoader innerHazardMapLoader, IncludeBackgroundOption innerBGOp, File outputHazardFile,
-			GriddedRegion gridReg, double[] periods, ReturnPeriods[] rps) {
+			GriddedRegion gridReg, double[] periods, ReturnPeriod[] rps) {
 		super();
 		this.outerHazardMapLoader = outerHazardMapLoader;
 		this.outerBGOp = outerBGOp;
@@ -122,6 +125,12 @@ public class HazardMapCombinationProcessor implements LogicTreeCombinationProces
 		this.gridReg = gridReg;
 		this.periods = periods;
 		this.rps = rps;
+	}
+
+	/** Sets the common time span for both input curve sets. Must be called before processing starts. */
+	public void setCurveMetadata(HazardCurveMetadata curveMetadata) {
+		Preconditions.checkState(treeCombination == null, "Processor already initialized");
+		this.curveMetadata = Preconditions.checkNotNull(curveMetadata);
 	}
 
 	@Override
@@ -366,7 +375,8 @@ public class HazardMapCombinationProcessor implements LogicTreeCombinationProces
 			List<Future<CurveCombineResult>> futures = new ArrayList<>();
 			
 			for (int i=0; i<outerCurves[p].length; i++)
-				futures.add(exec.submit(new CurveCombineCallable(i, xVals, outerCurves[p][i], innerCurves[p][i], rps)));
+				futures.add(exec.submit(new CurveCombineCallable(i, xVals, outerCurves[p][i], innerCurves[p][i], rps,
+						curveMetadata.getDurationYears())));
 			
 			DiscretizedFunc[] combCurves = new DiscretizedFunc[innerCurves[p].length];
 			GriddedGeoDataSet[] xyzs = new GriddedGeoDataSet[rps.length];
@@ -528,7 +538,8 @@ public class HazardMapCombinationProcessor implements LogicTreeCombinationProces
 		
 		blockingZipIOWatch.start();
 		// write mean curves and maps
-		MPJ_LogicTreeHazardCalc.writeMeanCurvesAndMaps(hazardOutZip, meanCurves, gridReg, periods, rps);
+		MPJ_LogicTreeHazardCalc.writeMeanCurvesAndMaps(hazardOutZip, meanCurves, gridReg, periods, rps, curveMetadata);
+		curveMetadata.write(hazardOutZip);
 		
 		// write gridded region
 		hazardOutZip.putNextEntry(MPJ_LogicTreeHazardCalc.GRID_REGION_ENTRY_NAME);
@@ -757,15 +768,22 @@ public class HazardMapCombinationProcessor implements LogicTreeCombinationProces
 		private double[] xVals;
 		private DiscretizedFunc outerCurve;
 		private DiscretizedFunc innerCurve;
-		private ReturnPeriods[] rps;
+		private ReturnPeriod[] rps;
+		private double curveDurationYears;
 
 		public CurveCombineCallable(int gridIndex, double[] xVals, DiscretizedFunc outerCurve, DiscretizedFunc innerCurve,
-				ReturnPeriods[] rps) {
+				ReturnPeriod[] rps) {
+			this(gridIndex, xVals, outerCurve, innerCurve, rps, 1d);
+		}
+
+		public CurveCombineCallable(int gridIndex, double[] xVals, DiscretizedFunc outerCurve, DiscretizedFunc innerCurve,
+				ReturnPeriod[] rps, double curveDurationYears) {
 			this.gridIndex = gridIndex;
 			this.xVals = xVals;
 			this.outerCurve = outerCurve;
 			this.innerCurve = innerCurve;
 			this.rps = rps;
+			this.curveDurationYears = curveDurationYears;
 		}
 
 		@Override
@@ -793,18 +811,9 @@ public class HazardMapCombinationProcessor implements LogicTreeCombinationProces
 			if (rps != null) {
 				mapVals = new double[rps.length];
 				for (int r=0; r<rps.length; r++) {
-					double curveLevel = rps[r].oneYearProb;
+					double curveLevel = rps[r].getProbability(curveDurationYears);
 					
-					double val;
-					// curveLevel is a probability, return the IML at that probability
-					if (curveLevel > combCurve.getMaxY())
-						val = 0d;
-					else if (curveLevel < combCurve.getMinY())
-						// saturated
-						val = combCurve.getMaxX();
-					else
-						val = combCurve.getFirstInterpolatedX_inLogXLogYDomain(curveLevel);
-					mapVals[r] = val;
+					mapVals[r] = HazardCurveUtils.getIML(combCurve, curveLevel);
 				}
 			} else {
 				mapVals = new double[0];

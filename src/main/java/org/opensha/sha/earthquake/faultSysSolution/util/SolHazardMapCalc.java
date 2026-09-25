@@ -39,6 +39,7 @@ import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.Range;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.Site;
+import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -65,10 +66,11 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.MarkdownUtils;
-import org.opensha.commons.util.ReturnPeriodUtils;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.calc.HazardCurveCalculator;
+import org.opensha.sha.calc.HazardCurveUtils;
 import org.opensha.sha.calc.PointSourceOptimizedExceedProbCalc;
+import org.opensha.sha.calc.ReturnPeriod;
 import org.opensha.sha.calc.RuptureExceedProbCalculator;
 import org.opensha.sha.calc.sourceFilters.FixedDistanceCutoffFilter;
 import org.opensha.sha.calc.sourceFilters.SourceFilter;
@@ -82,6 +84,7 @@ import org.opensha.sha.earthquake.DistCachedERFWrapper;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
+import org.opensha.sha.earthquake.faultSysSolution.hazard.HazardCurveMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ProxyFaultSectionInstances;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
@@ -175,26 +178,12 @@ public class SolHazardMapCalc {
 	private boolean noMFDs = !BaseFaultSystemSolutionERF.USE_RUP_MFDS_DEAFULT;
 	private boolean useProxyRuptures = BaseFaultSystemSolutionERF.USE_PROXY_RUPS_DEAFULT;
 	
-	public static ReturnPeriods[] MAP_RPS = { ReturnPeriods.TWO_IN_50, ReturnPeriods.TEN_IN_50 };
-	
-	public enum ReturnPeriods {
-		TWO_IN_50(0.02, 50d, "2% in 50 year"),
-		TEN_IN_50(0.1, 50d, "10% in 50 year"),
-		FORTY_IN_50(0.4, 50d, "40% in 50 year");
-		
-		public final double refProb;
-		public final double refDuration;
-		public final String label;
-		public final double oneYearProb;
-		public final double returnPeriod;
+	public static final ReturnPeriod[] MAP_RPS = ReturnPeriod.defaults();
 
-		private ReturnPeriods(double refProb, double refDuration, String label) {
-			this.refProb = refProb;
-			this.refDuration = refDuration;
-			this.label = label;
-			this.oneYearProb = ReturnPeriodUtils.calcExceedanceProb(refProb, refDuration, 1d);
-			this.returnPeriod = ReturnPeriodUtils.calcReturnPeriod(refProb, refDuration);
-		}
+	private HazardCurveMetadata curveMetadata = legacyCurveMetadata();
+
+	private static HazardCurveMetadata legacyCurveMetadata() {
+		return HazardCurveMetadata.timeIndependent(1d);
 	}
 
 	public SolHazardMapCalc(FaultSystemSolution sol, Supplier<ScalarIMR> gmpeRef, GriddedRegion region,
@@ -333,6 +322,11 @@ public class SolHazardMapCalc {
 	
 	public void setERF(BaseFaultSystemSolutionERF fssERF) {
 		this.fssERF = fssERF;
+		this.curveMetadata = new HazardCurveMetadata(fssERF.getTimeSpan());
+	}
+
+	public HazardCurveMetadata getCurveMetadata() {
+		return curveMetadata;
 	}
 	
 	public BaseFaultSystemSolutionERF getERF() {
@@ -370,6 +364,7 @@ public class SolHazardMapCalc {
 			fssERF.getTimeSpan().setDuration(1d);
 			
 			fssERF.updateForecast();
+			curveMetadata = new HazardCurveMetadata(fssERF.getTimeSpan());
 		}
 	}
 	
@@ -456,6 +451,9 @@ public class SolHazardMapCalc {
 		ConcurrentLinkedDeque<Integer> deque = new ConcurrentLinkedDeque<>(calcIndexes);
 		
 		checkInitERF();
+		curveMetadata = new HazardCurveMetadata(fssERF.getTimeSpan());
+		if (combineWith != null)
+			curveMetadata = curveMetadata.merge(combineWith.curveMetadata);
 		
 		System.out.println("Calculating hazard maps with "+numThreads+" threads and "+calcIndexes.size()+" sites...");
 		List<CalcThread> threads = new ArrayList<>();
@@ -698,8 +696,8 @@ public class SolHazardMapCalc {
 		return curvesList.get(periodIndex(period));
 	}
 	
-	public GriddedGeoDataSet buildMap(double period, ReturnPeriods returnPeriod) {
-		return buildMap(period, returnPeriod.oneYearProb, false);
+	public GriddedGeoDataSet buildMap(double period, ReturnPeriod returnPeriod) {
+		return buildMap(period, returnPeriod.getProbability(curveMetadata.getTimeSpan()), false);
 	}
 	
 	public GriddedGeoDataSet buildMap(double period, double curveLevel, boolean isProbAtIML) {
@@ -710,8 +708,9 @@ public class SolHazardMapCalc {
 		return buildMap(curvesList.get(p), region, curveLevel, isProbAtIML);
 	}
 	
-	public static GriddedGeoDataSet buildMap(DiscretizedFunc[] curves, GriddedRegion gridReg, ReturnPeriods returnPeriod) {
-		return buildMap(curves, gridReg, returnPeriod.oneYearProb, false);
+	public static GriddedGeoDataSet buildMap(DiscretizedFunc[] curves, GriddedRegion gridReg, ReturnPeriod returnPeriod,
+			TimeSpan curveTimeSpan) {
+		return buildMap(curves, gridReg, returnPeriod.getProbability(curveTimeSpan), false);
 	}
 	
 	public static GriddedGeoDataSet buildMap(DiscretizedFunc[] curves, GriddedRegion region,
@@ -724,19 +723,10 @@ public class SolHazardMapCalc {
 			DiscretizedFunc curve = curves[i];
 			Preconditions.checkNotNull(curve, "Curve not calculated at index %s", i);
 			double val;
-			if (isProbAtIML) {
-				// curveLevel is an IML, return the probability of exceeding
-				val = curve.getInterpolatedY_inLogXLogYDomain(curveLevel);
-			} else {
-				// curveLevel is a probability, return the IML at that probability
-				if (curveLevel > curve.getMaxY())
-					val = 0d;
-				else if (curveLevel < curve.getMinY())
-					// saturated
-					val = curve.getMaxX();
-				else
-					val = curve.getFirstInterpolatedX_inLogXLogYDomain(curveLevel);
-			}
+			if (isProbAtIML)
+				val = HazardCurveUtils.getExceedanceProbability(curve, curveLevel);
+			else
+				val = HazardCurveUtils.getIML(curve, curveLevel);
 			
 			xyz.set(i, val);
 		}
@@ -1193,6 +1183,15 @@ public class SolHazardMapCalc {
 	}
 	
 	public void writeCurvesCSVs(File outputDir, String prefix, boolean gzip, boolean allowNull) throws IOException {
+		if (!allowNull) {
+			File metadataFile = new File(outputDir, HazardCurveMetadata.FILE_NAME);
+			if (metadataFile.exists()) {
+				HazardCurveMetadata existing = HazardCurveMetadata.read(metadataFile);
+				curveMetadata.merge(existing).write(metadataFile);
+			} else {
+				curveMetadata.write(metadataFile);
+			}
+		}
 		for (double period : periods) {
 			String fileName = getCSV_FileName(prefix, period);
 			if (gzip)
@@ -1332,6 +1331,8 @@ public class SolHazardMapCalc {
 	
 	public static SolHazardMapCalc loadCurves(FaultSystemSolution sol, GriddedRegion region, double[] periods,
 			File dir, String prefix) throws IOException {
+		File metadataFile = new File(dir, HazardCurveMetadata.FILE_NAME);
+		HazardCurveMetadata metadata = metadataFile.exists() ? HazardCurveMetadata.read(metadataFile) : legacyCurveMetadata();
 		List<DiscretizedFunc[]> curvesList = new ArrayList<>();
 		for (double period : periods) {
 			File curvesFile = new File(dir, getCSV_FileName(prefix, period));
@@ -1345,16 +1346,22 @@ public class SolHazardMapCalc {
 			curvesList.add(curves);
 		}
 		
-		return forCurves(sol, region, periods, curvesList);
+		return forCurves(sol, region, periods, curvesList, metadata);
 	}
 	
 	public static SolHazardMapCalc forCurves(FaultSystemSolution sol, GriddedRegion region, double[] periods,
 			List<DiscretizedFunc[]> curvesList) throws IOException {
+		return forCurves(sol, region, periods, curvesList, legacyCurveMetadata());
+	}
+
+	public static SolHazardMapCalc forCurves(FaultSystemSolution sol, GriddedRegion region, double[] periods,
+			List<DiscretizedFunc[]> curvesList, HazardCurveMetadata metadata) throws IOException {
 		Preconditions.checkState(periods.length == curvesList.size());
 		for (DiscretizedFunc[] curves : curvesList)
 			Preconditions.checkState(region.getNodeCount() == curves.length);
 		SolHazardMapCalc calc = new SolHazardMapCalc(sol, null, region, periods);
 		calc.curvesList = curvesList;
+		calc.curveMetadata = Preconditions.checkNotNull(metadata);
 		return calc;
 	}
 	

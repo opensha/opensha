@@ -35,6 +35,7 @@ import org.opensha.commons.util.modules.ModuleArchive;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.hazard.HazardCurveMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
@@ -44,7 +45,7 @@ import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettin
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings.CurveXValManager;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
-import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
+import org.opensha.sha.calc.ReturnPeriod;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.imr.AttenRelSupplier;
@@ -76,7 +77,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 	
 	private double[] periods = MPJ_LogicTreeHazardCalc.PERIODS_DEFAULT;
 	
-	private ReturnPeriods[] rps = SolHazardMapCalc.MAP_RPS;
+	private ReturnPeriod[] rps = SolHazardMapCalc.MAP_RPS;
 	
 	private IncludeBackgroundOption gridSeisOp = MPJ_LogicTreeHazardCalc.GRID_SEIS_DEFAULT;
 	
@@ -404,7 +405,10 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 					Preconditions.checkNotNull(curves[i], "Missing curves for p=%s and index=%s", (Double)periods[p], i);
 			}
 			
-			calc = SolHazardMapCalc.forCurves(singleSol, gridRegion, periods, curvesList);
+			HazardCurveMetadata curveMetadata = calc == null ? HazardCurveMetadata.timeIndependent(1d)
+					: calc.getCurveMetadata();
+			calc = SolHazardMapCalc.forCurves(singleSol, gridRegion, periods, curvesList, curveMetadata);
+			rps = ReturnPeriod.defaultsForCurveDuration(curveMetadata.getTimeSpan());
 			File runDir = getSolDir(singleSol.getModule(LogicTreeBranch.class));
 			
 			File hazardSubDir = new File(runDir, hazardSubDirName);
@@ -427,6 +431,10 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 			Feature.write(feature, writer);
 			out.flush();
 			zout.closeEntry();
+
+			zout.putNextEntry(new ZipEntry(HazardCurveMetadata.FILE_NAME));
+			calc.getCurveMetadata().write(writer);
+			zout.closeEntry();
 			
 			// write logic tree
 			if (tree != null) {
@@ -446,7 +454,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 				zout.closeEntry();
 				zout.flush();
 			}
-			for (ReturnPeriods rp : rps) {
+			for (ReturnPeriod rp : rps) {
 				for (double period : periods) {
 					GriddedGeoDataSet map = calc.buildMap(period, rp);
 
@@ -482,6 +490,10 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(zout));
 			Feature.write(gridRegion.toFeature(), writer);
 			writer.flush();
+			zout.closeEntry();
+
+			zout.putNextEntry(new ZipEntry(HazardCurveMetadata.FILE_NAME));
+			calc.getCurveMetadata().write(writer);
 			zout.closeEntry();
 
 			if (tree != null) {
@@ -661,7 +673,9 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 					}
 					combCurvesList.add(combCurves);
 				}
-				calc = SolHazardMapCalc.forCurves(singleSol, gridRegion, periods, combCurvesList);
+				HazardCurveMetadata combMetadata = combineWithExcludeCurves.getCurveMetadata()
+						.merge(combineWithOnlyCurves.getCurveMetadata());
+				calc = SolHazardMapCalc.forCurves(singleSol, gridRegion, periods, combCurvesList, combMetadata);
 				externalDone = true;
 				return;
 			} else if (calc == null && gridSeisOp == IncludeBackgroundOption.ONLY && combineWithOnlyCurves != null) {

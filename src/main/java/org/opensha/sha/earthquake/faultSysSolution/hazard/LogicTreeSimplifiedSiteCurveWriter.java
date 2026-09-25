@@ -76,6 +76,8 @@ public class LogicTreeSimplifiedSiteCurveWriter {
 		boolean nshmpIMLs = cmd.hasOption("nshmp-imls");
 		
 		ArchiveInput input = ArchiveInput.getDefaultInput(inputFile);
+		HazardCurveMetadata curveMetadata = input.hasEntry(HazardCurveMetadata.FILE_NAME)
+				? HazardCurveMetadata.read(input) : HazardCurveMetadata.timeIndependent(1d);
 		
 		BufferedInputStream ltIS = new BufferedInputStream(input.getInputStream("logic_tree.json"));
 		LogicTree<?> tree = LogicTree.read(new InputStreamReader(ltIS));
@@ -129,6 +131,7 @@ public class LogicTreeSimplifiedSiteCurveWriter {
 		CSVFile<String> logicTreeCSV = LogicTreeSimplifiedMapCurveWriter.buildLogicTreeCSV(tree, branchWeights);
 		
 		for (ArchiveOutput output : outputs) {
+			curveMetadata.write(output);
 			output.putNextEntry("sites.csv");
 			sitesOutputCSV.writeToStream(output.getOutputStream());
 			output.closeEntry();

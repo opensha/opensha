@@ -39,7 +39,7 @@ import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_LogicTreeHazar
 import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_SiteLogicTreeHazardCurveCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
-import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
+import org.opensha.sha.calc.ReturnPeriod;
 import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_Config;
 
 import com.google.common.base.Preconditions;
@@ -190,8 +190,14 @@ public class LogicTreeSimplifiedMapCurveWriter {
 			resultsDirInput = new ArchiveInput.ZipFileInput(resultsDirZip);
 		else 
 			resultsDirInput = new ArchiveInput.DirectoryInput(resultsDir.toPath());
+		HazardCurveMetadata curveMetadata = resultsDirInput.hasEntry(HazardCurveMetadata.FILE_NAME)
+				? HazardCurveMetadata.read(resultsDirInput) : HazardCurveMetadata.timeIndependent(1d);
+		for (ArchiveOutput output : outputs)
+			if (output != null)
+				curveMetadata.write(output);
 		System.out.println("Detecting calculation periods from "+resultsDirInput.getName());
-		double[] periods = LogicTreeHazardCompare.detectHazardPeriods(new ReturnPeriods[] {ReturnPeriods.TWO_IN_50}, resultsDirInput);
+		ReturnPeriod[] returnPeriods = ReturnPeriod.defaultsForCurveDuration(curveMetadata.getTimeSpan());
+		double[] periods = LogicTreeHazardCompare.detectHazardPeriods(new ReturnPeriod[] {returnPeriods[0]}, resultsDirInput);
 		resultsDirInput.close();
 		
 		int maxSitesInMemory = MAX_SITES_IN_MEMORY_DEFAULT;

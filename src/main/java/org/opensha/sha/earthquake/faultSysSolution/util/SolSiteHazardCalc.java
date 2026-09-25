@@ -64,9 +64,10 @@ import org.opensha.commons.util.ExecutorUtils;
 import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
-import org.opensha.commons.util.ReturnPeriodUtils;
+import org.opensha.sha.calc.ReturnPeriodUtils;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.calc.HazardCurveCalculator;
+import org.opensha.sha.calc.HazardCurveUtils;
 import org.opensha.sha.calc.PointSourceOptimizedExceedProbCalc;
 import org.opensha.sha.calc.RuptureExceedProbCalculator;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculator;
@@ -86,6 +87,7 @@ import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.hazard.HazardCurveMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
@@ -93,7 +95,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.GeneralInfoPlot;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings.CurveXValManager;
-import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
+import org.opensha.sha.calc.ReturnPeriod;
 import org.opensha.sha.earthquake.param.AseismicityAreaReductionParam;
 import org.opensha.sha.earthquake.param.FaultGridSpacingParam;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
@@ -545,6 +547,8 @@ public class SolSiteHazardCalc {
 		}
 		
 		List<DiscretizedFunc[]> curves = calcHazardCurves(calcThreads, sites, erf, periods, xVals);
+		if (outputDir != null)
+			new HazardCurveMetadata(erf.getTimeSpan()).write(new File(outputDir, HazardCurveMetadata.FILE_NAME));
 		
 		// write curves
 		for (int p=0; p<periods.length; p++) {
@@ -612,12 +616,14 @@ public class SolSiteHazardCalc {
 			}
 			rps = new CustomReturnPeriod[rpYears.length];
 			for (int r=0; r<rps.length; r++)
-				rps[r] = new CustomReturnPeriod(rpYears[r], erf.getTimeSpan().getDuration());
+				rps[r] = new CustomReturnPeriod(rpYears[r],
+						erf.getTimeSpan().getDuration(org.opensha.commons.data.TimeSpan.DurationUnits.YEARS));
 		} else {
-			rps = new CustomReturnPeriod[] {
-					new CustomReturnPeriod(ReturnPeriods.TWO_IN_50, erf.getTimeSpan().getDuration()),
-					new CustomReturnPeriod(ReturnPeriods.TEN_IN_50, erf.getTimeSpan().getDuration())
-			};
+			ReturnPeriod[] defaults = ReturnPeriod.defaultsForCurveDuration(erf.getTimeSpan());
+			rps = new CustomReturnPeriod[defaults.length];
+			for (int r=0; r<rps.length; r++)
+				rps[r] = new CustomReturnPeriod(defaults[r],
+						erf.getTimeSpan().getDuration(org.opensha.commons.data.TimeSpan.DurationUnits.YEARS));
 		}
 		
 		boolean doSpectra = cmd.hasOption("spectra");
@@ -687,7 +693,7 @@ public class SolSiteHazardCalc {
 			for (int r=0; r<rps.length; r++)
 				disaggProbs[r] = rps[r].prob;
 			numDisagg += disaggProbs.length;
-			firstDisaggName = rps[0].label;
+			firstDisaggName = rps[0].getLabel();
 		}
 		if (cmd.hasOption("disagg-prob")) {
 			String dStr = cmd.getOptionValue("disagg-prob");
@@ -927,7 +933,7 @@ public class SolSiteHazardCalc {
 			if (compSol != null)
 				table.addColumn("");
 			for (int r=0; r<rps.length; r++)
-				table.addColumn(rps[r].label);
+				table.addColumn(rps[r].getLabel());
 			table.finalizeLine();
 			
 			table.initNewLine();
@@ -1057,7 +1063,7 @@ public class SolSiteHazardCalc {
 				
 				table.initNewLine();
 				for (CustomReturnPeriod rp : rps)
-					table.addColumn(rp.label);
+					table.addColumn(rp.getLabel());
 				table.finalizeLine();
 				
 				table.initNewLine();
@@ -1065,7 +1071,7 @@ public class SolSiteHazardCalc {
 					String spectraPrefix = "spectra_"+prefix+"_"+rps[r].prefix;
 					plotFutures.add(plotSpectra(resourcesDir, spectraPrefix, rps[r], site.getName(), siteSpectra.get(r).get(s),
 							name, compSiteSpectra == null ? null : compSiteSpectra.get(r).get(s), compName, exec, writePDFs));
-					table.addColumn("!["+rps[r].label+" Spectra]("+resourcesDir.getName()+"/"+spectraPrefix+".png)");
+					table.addColumn("!["+rps[r].getLabel()+" Spectra]("+resourcesDir.getName()+"/"+spectraPrefix+".png)");
 				}
 				table.finalizeLine();
 				
@@ -1109,7 +1115,7 @@ public class SolSiteHazardCalc {
 				if (compSol != null) {
 					// add line with the return period and % change
 					table.initNewLine();
-					table.addColumn("__"+rp.label+"__");
+					table.addColumn("__"+rp.getLabel()+"__");
 					for (int p=0; p<periods.length; p++) {
 						double val = curveVal(curves.get(s)[p], rp);
 						double compVal = curveVal(compCurves.get(s)[p], rp);
@@ -1125,7 +1131,7 @@ public class SolSiteHazardCalc {
 					if (compSol != null)
 						table.addColumn("_"+(isComp ? compName : name)+"_");
 					else
-						table.addColumn("__"+rp.label+"__");
+						table.addColumn("__"+rp.getLabel()+"__");
 					for (int p=0; p<periods.length; p++) {
 						DiscretizedFunc curve = isComp ? compCurves.get(s)[p] : curves.get(s)[p];
 						double val = curveVal(curve, rp);
@@ -2002,13 +2008,9 @@ public class SolSiteHazardCalc {
 		public final String label;
 		public final String prefix;
 		
-		public CustomReturnPeriod(ReturnPeriods rp, double duration) {
-			if (duration == 1d) {
-				prob = rp.oneYearProb;
-			} else {
-				prob = ReturnPeriodUtils.calcExceedanceProb(rp.oneYearProb, 1d, duration);
-			}
-			label = rp.label;
+		public CustomReturnPeriod(ReturnPeriod rp, double duration) {
+			prob = rp.getProbability(duration);
+			label = rp.getLabel();
 			prefix = rp.name();
 		}
 		
@@ -2017,18 +2019,14 @@ public class SolSiteHazardCalc {
 			label = oDF.format(returnPeriod)+" years";
 			prefix = oDF.format(returnPeriod)+"yr";
 		}
+
+		public String getLabel() {
+			return label;
+		}
 	}
 	
 	public static double curveVal(DiscretizedFunc curve, CustomReturnPeriod rp) {
-		double curveLevel = rp.prob;
-		// curveLevel is a probability, return the IML at that probability
-		if (curveLevel > curve.getMaxY())
-			return 0d;
-		else if (curveLevel < curve.getMinY())
-			// saturated
-			return curve.getMaxX();
-		else
-			return curve.getFirstInterpolatedX_inLogXLogYDomain(curveLevel);
+		return HazardCurveUtils.getIML(curve, rp.prob);
 	}
 	
 	private static Range calcXRange(List<DiscretizedFunc> funcs, Range yRange) {
@@ -2177,7 +2175,7 @@ public class SolSiteHazardCalc {
 	}
 	
 	public static List<XYAnnotation> addRPAnnotations(List<? super DiscretizedFunc> funcs,
-			List<PlotCurveCharacterstics> chars, Range xRange, Range yRange, ReturnPeriods[] rps, boolean first) {
+			List<PlotCurveCharacterstics> chars, Range xRange, Range yRange, ReturnPeriod[] rps, boolean first) {
 		CustomReturnPeriod[] crps = new CustomReturnPeriod[rps.length];
 		for (int i=0; i<rps.length; i++)
 			crps[i] = new CustomReturnPeriod(rps[i], 1d);
@@ -2208,7 +2206,7 @@ public class SolSiteHazardCalc {
 			double annX = Math.pow(10, logXRange.getLowerBound() + 0.99*logXRange.getLength());
 			double annY = Math.pow(10, Math.log10(rp.prob) + 0.01*logYRange.getLength());
 			
-			XYTextAnnotation ann = new XYTextAnnotation(rp.label, annX, annY);
+			XYTextAnnotation ann = new XYTextAnnotation(rp.getLabel(), annX, annY);
 			ann.setTextAnchor(TextAnchor.BASELINE_RIGHT);
 			ann.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 20));
 			anns.add(ann);
@@ -2249,7 +2247,7 @@ public class SolSiteHazardCalc {
 		Range yRange = new Range(minY, maxY);
 		
 		String xAxisLabel = "Period (s)";
-		String yAxisLabel = "SA (g), "+rp.label;
+		String yAxisLabel = "SA (g), "+rp.getLabel();
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, siteName, xAxisLabel, yAxisLabel);
 		spec.setLegendInset(compCurve != null);
@@ -2514,7 +2512,7 @@ public class SolSiteHazardCalc {
 		if (result.isFromProb) {
 			for (CustomReturnPeriod rp : rps)
 				if ((float)rp.prob == (float)result.prob)
-					return rp.label+", "+(float)result.iml+" "+periodUnits(period);
+					return rp.getLabel()+", "+(float)result.iml+" "+periodUnits(period);
 		}
 		return "P="+(float)result.prob+", "+(float)result.iml+" "+periodUnits(period);
 	}

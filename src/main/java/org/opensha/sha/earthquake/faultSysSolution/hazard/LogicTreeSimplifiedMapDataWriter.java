@@ -27,7 +27,7 @@ import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_LogicTreeHazar
 import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_SiteLogicTreeHazardCurveCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
-import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
+import org.opensha.sha.calc.ReturnPeriod;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
@@ -60,7 +60,9 @@ public class LogicTreeSimplifiedMapDataWriter {
 		
 		LogicTree<?> tree = LogicTree.read(new InputStreamReader(new BufferedInputStream(input.getInputStream("logic_tree.json"))));
 		
-		ReturnPeriods[] rps = SolHazardMapCalc.MAP_RPS;
+		HazardCurveMetadata curveMetadata = input.hasEntry(HazardCurveMetadata.FILE_NAME)
+				? HazardCurveMetadata.read(input) : HazardCurveMetadata.timeIndependent(1d);
+		ReturnPeriod[] rps = ReturnPeriod.defaultsForCurveDuration(curveMetadata.getTimeSpan());
 		
 		int treeSize = tree.size();
 		
@@ -91,6 +93,7 @@ public class LogicTreeSimplifiedMapDataWriter {
 		output.closeEntry();
 		
 		tree.writeToArchive(output, "");
+		curveMetadata.write(output);
 		
 		output.putNextEntry("logic_tree.csv");
 		logicTreeCSV.writeToStream(output.getOutputStream());
@@ -98,7 +101,7 @@ public class LogicTreeSimplifiedMapDataWriter {
 		
 		logicTreeCSV = null;
 		
-		double[] periods = LogicTreeHazardCompare.detectHazardPeriods(new ReturnPeriods[] {ReturnPeriods.TWO_IN_50}, input);
+		double[] periods = LogicTreeHazardCompare.detectHazardPeriods(new ReturnPeriod[] {rps[0]}, input);
 		input.close(); // loader below uses file directly
 		
 		LogicTreeHazardCompare loader = new LogicTreeHazardCompare(null, tree, inputFile, rps, periods, gridReg.getSpacing(), false, false);
@@ -120,7 +123,7 @@ public class LogicTreeSimplifiedMapDataWriter {
 				perUnits = "g";
 			}
 			
-			for (ReturnPeriods rp : rps) {
+			for (ReturnPeriod rp : rps) {
 				System.out.println("Doing "+perLabel+", "+rp);
 				String csvName = MPJ_SiteLogicTreeHazardCurveCalc.getSitePeriodPrefix("map", periods[p])+"_"+rp.name()+".csv";
 				

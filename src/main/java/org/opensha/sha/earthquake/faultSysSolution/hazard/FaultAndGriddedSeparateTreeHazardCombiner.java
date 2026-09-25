@@ -43,11 +43,13 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_LogicTreeHazardCalc;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
-import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
+import org.opensha.sha.calc.ReturnPeriod;
+import org.opensha.sha.calc.HazardCurveUtils;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 
 import com.google.common.base.Preconditions;
@@ -99,7 +101,7 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 		}
 		double gridSpacing = gridReg.getSpacing();
 		double[] periods = MPJ_LogicTreeHazardCalc.PERIODS_DEFAULT;
-		ReturnPeriods[] rps = SolHazardMapCalc.MAP_RPS;
+		ReturnPeriod[] rps;
 		
 		if (cnt < args.length) {
 			List<Double> periodsList = new ArrayList<>();
@@ -119,6 +121,13 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 		
 		String faultHazardDirName = "hazard_"+(float)gridSpacing+"deg_grid_seis_"+IncludeBackgroundOption.EXCLUDE.name();
 		String gridHazardDirName = "hazard_"+(float)gridSpacing+"deg_grid_seis_"+IncludeBackgroundOption.ONLY.name();
+		File firstFaultHazardDir = new File(faultTree.getBranch(0).getBranchDirectory(faultHazardDir, true),
+				faultHazardDirName);
+		File firstGridHazardDir = new File(gridTree.getBranch(0).getBranchDirectory(griddedHazardDir, true),
+				gridHazardDirName);
+		HazardCurveMetadata curveMetadata = loadCurveMetadata(firstFaultHazardDir)
+				.merge(loadCurveMetadata(firstGridHazardDir));
+		rps = ReturnPeriod.defaultsForCurveDuration(curveMetadata.getTimeSpan());
 		
 		// pre-load gridded seismicity hazard curves
 		List<DiscretizedFunc[][]> gridSeisCurves = new ArrayList<>();
@@ -128,7 +137,7 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 			File branchHazardDir = new File(branchResultsDir, gridHazardDirName);
 			Preconditions.checkState(branchHazardDir.exists(), "%s doesn't exist", branchHazardDir.getAbsolutePath());
 			
-			gridSeisCurves.add(loadCurves(branchHazardDir, periods, gridReg));
+			gridSeisCurves.add(loadCurves(branchHazardDir, periods, gridReg, curveMetadata));
 		}
 		
 		DiscretizedFunc[][] meanGridSeisCurves = null;
@@ -202,13 +211,14 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 			System.out.println("Processing fault branch "+f+": "+faultBranch);
 			
 			if (nextFaultLoadFuture == null)
-				nextFaultLoadFuture = curveLoadFuture(faultHazardDir, faultHazardDirName, faultBranch, periods);
+				nextFaultLoadFuture = curveLoadFuture(faultHazardDir, faultHazardDirName, faultBranch, periods, curveMetadata);
 			
 			DiscretizedFunc[][] faultCurves = nextFaultLoadFuture.join();
 			
 			if (f < faultTree.size()-1)
 				// start the next one asynchronously
-				nextFaultLoadFuture = curveLoadFuture(faultHazardDir, faultHazardDirName, faultTree.getBranch(f+1), periods);
+				nextFaultLoadFuture = curveLoadFuture(faultHazardDir, faultHazardDirName, faultTree.getBranch(f+1), periods,
+						curveMetadata);
 			
 			double faultWeight = faultTree.getBranchWeight(faultBranch);
 			
@@ -250,7 +260,8 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 					List<Future<GridLocResult>> futures = new ArrayList<>();
 					
 					for (int i=0; i<faultCurves[p].length; i++)
-						futures.add(exec.submit(new ProcessCallable(i, xVals, faultCurves[p][i], gridCurves[p][i], rps)));
+						futures.add(exec.submit(new ProcessCallable(i, xVals, faultCurves[p][i], gridCurves[p][i], rps,
+								curveMetadata.getDurationYears())));
 					
 					DiscretizedFunc[] combCurves = new DiscretizedFunc[gridCurves[p].length];
 					GriddedGeoDataSet[] xyzs = new GriddedGeoDataSet[rps.length];
@@ -403,7 +414,10 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 		System.out.println("Wrote "+writeCounter.getWritten()+" maps in total");
 		
 		// write mean curves and maps
-		MPJ_LogicTreeHazardCalc.writeMeanCurvesAndMaps(hazardOutZip, meanCurves, gridReg, periods, rps);
+		ArchiveOutput hazardArchiveOutput = new ArchiveOutput.ZipFileOutput(hazardOutZip);
+		MPJ_LogicTreeHazardCalc.writeMeanCurvesAndMaps(hazardArchiveOutput, meanCurves, gridReg, periods, rps,
+				curveMetadata);
+		curveMetadata.write(hazardArchiveOutput);
 		
 		hazardOutZip.putNextEntry(new ZipEntry(MPJ_LogicTreeHazardCalc.GRID_REGION_ENTRY_NAME));
 		Feature gridFeature = gridReg.toFeature();
@@ -479,7 +493,7 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 	}
 	
 	private static CompletableFuture<DiscretizedFunc[][]> curveLoadFuture(File faultHazardDir, String faultHazardDirName,
-			LogicTreeBranch<?> faultBranch, double[] periods) {
+			LogicTreeBranch<?> faultBranch, double[] periods, HazardCurveMetadata expectedMetadata) {
 		File branchResultsDir = faultBranch.getBranchDirectory(faultHazardDir, true);
 		File branchHazardDir = new File(branchResultsDir, faultHazardDirName);
 		Preconditions.checkState(branchHazardDir.exists(), "%s doesn't exist", branchHazardDir.getAbsolutePath());
@@ -489,7 +503,7 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 			@Override
 			public DiscretizedFunc[][] get() {
 				try {
-					return loadCurves(branchHazardDir, periods, null);
+					return loadCurves(branchHazardDir, periods, null, expectedMetadata);
 				} catch (IOException e) {
 					throw ExceptionUtils.asRuntimeException(e);
 				}
@@ -497,7 +511,9 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 		});
 	}
 	
-	private static DiscretizedFunc[][] loadCurves(File hazardDir, double[] periods, GriddedRegion region) throws IOException {
+	private static DiscretizedFunc[][] loadCurves(File hazardDir, double[] periods, GriddedRegion region,
+			HazardCurveMetadata expectedMetadata) throws IOException {
+		expectedMetadata.merge(loadCurveMetadata(hazardDir));
 		DiscretizedFunc[][] curves = new DiscretizedFunc[periods.length][];
 		for (int p=0; p<periods.length; p++) {
 			String fileName = SolHazardMapCalc.getCSV_FileName("curves", periods[p]);
@@ -509,6 +525,12 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 			curves[p] = SolHazardMapCalc.loadCurvesCSV(csv, region);
 		}
 		return curves;
+	}
+
+	private static HazardCurveMetadata loadCurveMetadata(File hazardDir) throws IOException {
+		File metadataFile = new File(hazardDir, HazardCurveMetadata.FILE_NAME);
+		return metadataFile.exists() ? HazardCurveMetadata.read(metadataFile)
+				: HazardCurveMetadata.timeIndependent(1d);
 	}
 	
 	private static class GridLocResult {
@@ -530,15 +552,17 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 		private double[] xVals;
 		private DiscretizedFunc faultCurve;
 		private DiscretizedFunc gridCurve;
-		private ReturnPeriods[] rps;
+		private ReturnPeriod[] rps;
+		private double curveDurationYears;
 
 		public ProcessCallable(int gridIndex, double[] xVals, DiscretizedFunc faultCurve, DiscretizedFunc gridCurve,
-				ReturnPeriods[] rps) {
+				ReturnPeriod[] rps, double curveDurationYears) {
 			this.gridIndex = gridIndex;
 			this.xVals = xVals;
 			this.faultCurve = faultCurve;
 			this.gridCurve = gridCurve;
 			this.rps = rps;
+			this.curveDurationYears = curveDurationYears;
 		}
 
 		@Override
@@ -565,18 +589,9 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 			double[] mapVals = new double[rps.length];
 			
 			for (int r=0; r<rps.length; r++) {
-				double curveLevel = rps[r].oneYearProb;
+				double curveLevel = rps[r].getProbability(curveDurationYears);
 				
-				double val;
-				// curveLevel is a probability, return the IML at that probability
-				if (curveLevel > combCurve.getMaxY())
-					val = 0d;
-				else if (curveLevel < combCurve.getMinY())
-					// saturated
-					val = combCurve.getMaxX();
-				else
-					val = combCurve.getFirstInterpolatedX_inLogXLogYDomain(curveLevel);
-				mapVals[r] = val;
+				mapVals[r] = HazardCurveUtils.getIML(combCurve, curveLevel);
 			}
 			
 			return new GridLocResult(gridIndex, combCurve, mapVals);

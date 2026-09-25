@@ -12,6 +12,7 @@ import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.xyz.ArbDiscrGeoDataSet;
 import org.opensha.commons.data.xyz.GeoDataSet;
 import org.opensha.commons.geo.Location;
+import org.opensha.sha.calc.HazardCurveUtils;
 import org.opensha.commons.util.FileNameComparator;
 
 public class HazardDataSetLoader {
@@ -106,27 +107,8 @@ public class HazardDataSetLoader {
 	}
 
 	public static double getCurveVal(DiscretizedFunc func, boolean isProbAt_IML, double level) {
-		// TODO should this be logXlogY or just logY?
-		if (isProbAt_IML) {
-			//final iml value returned after interpolation in log space
-			return func.getInterpolatedY_inLogXLogYDomain(level);
-		// for  IML_AT_PROB
-		} else { //interpolating the iml value in log space entered by the user to get the final iml for the
-			//corresponding prob.
-			double out;
-			try {
-				out = func.getFirstInterpolatedX_inLogXLogYDomain(level);
-				return out;
-			} catch (RuntimeException e) {
-//				System.err.println("WARNING: Probability value doesn't exist, setting IMT to NaN");
-				//return 0d;
-				if (level < func.getY(func.size()-1)) {
-					System.err.println("WARNING: Curve saturated at p="+(float)level+". Returning max IML");
-					return func.getMaxX();
-				}
-				return Double.NaN;
-			}
-		}
+		return isProbAt_IML ? HazardCurveUtils.getExceedanceProbability(func, level)
+				: HazardCurveUtils.getIML(func, level);
 	}
 
 	/**

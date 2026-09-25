@@ -39,6 +39,7 @@ import org.opensha.commons.util.ExecutorUtils;
 import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
+import org.opensha.sha.earthquake.faultSysSolution.hazard.HazardCurveMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings;
@@ -527,6 +528,10 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 				writer.flush();
 				zout.closeEntry();
 			}
+
+			zout.putNextEntry(new ZipEntry(HazardCurveMetadata.FILE_NAME));
+			HazardCurveMetadata.timeIndependent(1d).write(writer);
+			zout.closeEntry();
 			
 			OutputStreamWriter zipWriter = new OutputStreamWriter(new BufferedOutputStream(zout));
 			

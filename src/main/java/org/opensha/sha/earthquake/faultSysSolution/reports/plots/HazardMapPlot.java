@@ -33,12 +33,13 @@ import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.hazard.HazardCurveMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractSolutionPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen;
 import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
-import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
+import org.opensha.sha.calc.ReturnPeriod;
 import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenRelRef;
 
@@ -158,6 +159,16 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 		CPT logRatioCPT = GMT_CPT_Files.GMT_POLAR.instance().rescale(-1d, 1d);
 		CPT pDiffCPT = GMT_CPT_Files.GMT_POLAR.instance().rescale(-100d, 100d);
 		logRatioCPT.setNanColor(Color.GRAY);
+		HazardCurveMetadata curveMetadata = calc.getCurveMetadata();
+		HazardCurveMetadata returnPeriodMetadata = curveMetadata;
+		if (compCalc != null) {
+			HazardCurveMetadata compMetadata = compCalc.getCurveMetadata();
+			Preconditions.checkState(curveMetadata.isComparable(compMetadata),
+					"Primary and comparison hazard curves have incompatible time-dependent durations");
+			if (!curveMetadata.hasTimeDependentCurves() && compMetadata.hasTimeDependentCurves())
+				returnPeriodMetadata = compMetadata;
+		}
+		ReturnPeriod[] returnPeriods = ReturnPeriod.defaultsForCurveDuration(returnPeriodMetadata.getTimeSpan());
 		
 		for (int p=0; p<periods.length; p++) {
 			String perLabel, perUnits;
@@ -181,8 +192,8 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 				subHeading += "#";
 			}
 			
-			for (ReturnPeriods rp : SolHazardMapCalc.MAP_RPS) {
-				lines.add(subHeading+" "+perLabel+", "+rp.label+" Hazard Maps");
+			for (ReturnPeriod rp : returnPeriods) {
+				lines.add(subHeading+" "+perLabel+", "+rp.getLabel()+" Hazard Maps");
 				lines.add(topLink); lines.add("");
 				
 				String prefix = "hazard_map_"+perPrefix+"_"+rp.name().toLowerCase();
@@ -191,7 +202,7 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 				GriddedGeoDataSet logXYZ = xyz.copy();
 				logXYZ.log10();
 				
-				String zLabel = "Log10 "+perLabel+" ("+perUnits+"), "+rp.label;
+				String zLabel = "Log10 "+perLabel+" ("+perUnits+"), "+rp.getLabel();
 				File map = calc.plotMap(resourcesDir, prefix, logXYZ, logCPT, " ", zLabel);
 				
 				if (compCalc == null) {

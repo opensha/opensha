@@ -22,6 +22,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -109,7 +110,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.MapPlot;
-import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
+import org.opensha.sha.calc.ReturnPeriod;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
@@ -260,7 +261,24 @@ public class LogicTreeHazardCompare {
 			}
 		}
 		
-		ReturnPeriods[] rps = SolHazardMapCalc.MAP_RPS;
+		HazardCurveMetadata curveMetadata;
+		try (ArchiveInput hazardInput = ArchiveInput.getDefaultInput(hazardFile)) {
+			curveMetadata = hazardInput.hasEntry(HazardCurveMetadata.FILE_NAME)
+					? HazardCurveMetadata.read(hazardInput) : HazardCurveMetadata.timeIndependent(1d);
+		}
+		HazardCurveMetadata compCurveMetadata = null;
+		if (compHazardFile != null) {
+			try (ArchiveInput compHazardInput = ArchiveInput.getDefaultInput(compHazardFile)) {
+				compCurveMetadata = compHazardInput.hasEntry(HazardCurveMetadata.FILE_NAME)
+						? HazardCurveMetadata.read(compHazardInput) : HazardCurveMetadata.timeIndependent(1d);
+				Preconditions.checkState(curveMetadata.isComparable(compCurveMetadata),
+						"Primary and comparison hazard archives have incompatible time-dependent durations");
+			}
+		}
+		HazardCurveMetadata returnPeriodMetadata = compCurveMetadata != null
+				&& !curveMetadata.hasTimeDependentCurves() && compCurveMetadata.hasTimeDependentCurves()
+						? compCurveMetadata : curveMetadata;
+		ReturnPeriod[] rps = ReturnPeriod.defaultsForCurveDuration(returnPeriodMetadata.getTimeSpan());
 		double[] periods;
 		if (cmd.hasOption("periods")) {
 			String perStr = cmd.getOptionValue("periods");
@@ -396,7 +414,7 @@ public class LogicTreeHazardCompare {
 		System.exit(exit);
 	}
 	
-	public static double[] detectHazardPeriods(ReturnPeriods[] rps, ArchiveInput... archives) throws IOException {
+	public static double[] detectHazardPeriods(ReturnPeriod[] rps, ArchiveInput... archives) throws IOException {
 		Preconditions.checkState(archives.length > 0);
 		List<Double> periods = null;
 		for (ArchiveInput archive : archives) {
@@ -504,11 +522,12 @@ public class LogicTreeHazardCompare {
 		return tree.getBranch(0);
 	}
 	
-	private ReturnPeriods[] rps;
+	private ReturnPeriod[] rps;
 	private double[] periods;
 	private boolean forceSparseLTVar = false;
 	
 	private ZipFile zip;
+	private HazardCurveMetadata curveMetadata;
 	private List<? extends LogicTreeLevel<? extends LogicTreeNode>> levels;
 	private List<LogicTreeBranch<?>> branches;
 	private LogicTreeBranch<?> branch0;
@@ -548,12 +567,12 @@ public class LogicTreeHazardCompare {
 	private boolean ignorePrecomputed = false;
 
 	public LogicTreeHazardCompare(SolutionLogicTree solLogicTree, File mapsZipFile,
-			ReturnPeriods[] rps, double[] periods, double spacing, boolean remapTRTs, boolean remapBinnable) throws IOException {
+			ReturnPeriod[] rps, double[] periods, double spacing, boolean remapTRTs, boolean remapBinnable) throws IOException {
 		this(solLogicTree, solLogicTree.getLogicTree(), mapsZipFile, rps, periods, spacing, remapTRTs, remapBinnable);
 	}
 
 	public LogicTreeHazardCompare(SolutionLogicTree solLogicTree, LogicTree<?> tree, File mapsZipFile,
-			ReturnPeriods[] rps, double[] periods, double spacing, boolean remapTRTs, boolean remapBinnable) throws IOException {
+			ReturnPeriod[] rps, double[] periods, double spacing, boolean remapTRTs, boolean remapBinnable) throws IOException {
 		this.solLogicTree = solLogicTree;
 		this.rps = rps;
 		this.periods = periods;
@@ -592,6 +611,15 @@ public class LogicTreeHazardCompare {
 		percentileCPT.setBelowMinColor(Color.LIGHT_GRAY);
 		
 		zip = new ZipFile(mapsZipFile);
+		ZipEntry curveMetadataEntry = zip.getEntry(HazardCurveMetadata.FILE_NAME);
+		if (curveMetadataEntry == null) {
+			curveMetadata = HazardCurveMetadata.timeIndependent(1d);
+		} else {
+			try (InputStreamReader reader = new InputStreamReader(zip.getInputStream(curveMetadataEntry),
+					StandardCharsets.UTF_8)) {
+				curveMetadata = HazardCurveMetadata.read(reader);
+			}
+		}
 		
 		// see if the zip file has a region attached
 		ZipEntry regEntry = zip.getEntry(MPJ_LogicTreeHazardCalc.GRID_REGION_ENTRY_NAME);
@@ -747,7 +775,7 @@ public class LogicTreeHazardCompare {
 		this.gridReg = gridReg;
 	}
 	
-	public synchronized GriddedGeoDataSet[] loadMaps(ReturnPeriods rp, double period) throws IOException {
+	public synchronized GriddedGeoDataSet[] loadMaps(ReturnPeriod rp, double period) throws IOException {
 		System.out.println("Loading maps for rp="+rp+", period="+period);
 		GriddedGeoDataSet[] rpPerMaps = new GriddedGeoDataSet[branches.size()];
 		int printMod = 10;
@@ -1003,7 +1031,7 @@ public class LogicTreeHazardCompare {
 		return checkRemap(xyz);
 	}
 	
-	GriddedGeoDataSet loadPrecomputedMeanMap(String key, ReturnPeriods rp, double period) throws IOException {
+	GriddedGeoDataSet loadPrecomputedMeanMap(String key, ReturnPeriod rp, double period) throws IOException {
 		String entryName = key+"_"+MPJ_LogicTreeHazardCalc.mapPrefix(period, rp)+".txt";
 		ZipEntry entry = zip.getEntry(entryName);
 		if (entry == null)
@@ -1712,6 +1740,11 @@ public class LogicTreeHazardCompare {
 		
 		lines.add("# "+name+" Hazard Maps");
 		lines.add("");
+		String primaryMetadataName = comp == null ? name : "Primary ("+name+")";
+		String comparisonMetadataName = comp == null ? null
+				: compName == null ? "Comparison" : "Comparison ("+compName+")";
+		lines.addAll(HazardCurveMetadata.buildTimeSpanSummary(primaryMetadataName, curveMetadata,
+				comparisonMetadataName, comp == null ? null : comp.curveMetadata));
 		int tocIndex = lines.size();
 		String topLink = "_[(top)](#table-of-contents)_";
 		
@@ -1743,9 +1776,9 @@ public class LogicTreeHazardCompare {
 			String perUnits = "(g)";
 			perLabel = unitlessPerLabel+" "+perUnits;
 			
-			for (ReturnPeriods rp : rps) {
-				String label = perLabel+", "+rp.label;
-				String unitlessLabel = unitlessPerLabel+", "+rp.label;
+			for (ReturnPeriod rp : rps) {
+				String label = perLabel+", "+rp.getLabel();
+				String unitlessLabel = unitlessPerLabel+", "+rp.getLabel();
 				String prefix = perPrefix+"_"+rp.name();
 				
 				// plot CPT files for grabbing externally

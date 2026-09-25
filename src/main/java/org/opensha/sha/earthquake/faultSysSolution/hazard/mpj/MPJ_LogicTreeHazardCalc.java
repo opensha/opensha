@@ -45,7 +45,9 @@ import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ModuleArchive;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
+import org.opensha.sha.calc.HazardCurveUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.hazard.HazardCurveMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.LogicTreeCurveAverager;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
@@ -55,7 +57,7 @@ import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettin
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings.CurveXValManager;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
-import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
+import org.opensha.sha.calc.ReturnPeriod;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.imr.AttenRelSupplier;
@@ -97,7 +99,21 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	public static final double[] PERIODS_DEFAULT = { 0d, 1d };
 	private double[] periods = PERIODS_DEFAULT;
 	
-	private ReturnPeriods[] rps = SolHazardMapCalc.MAP_RPS;
+	private ReturnPeriod[] rps = SolHazardMapCalc.MAP_RPS;
+	private HazardCurveMetadata curveMetadata;
+
+	private synchronized void registerCurveMetadata(HazardCurveMetadata metadata) {
+		if (curveMetadata == null) {
+			curveMetadata = metadata;
+			rps = ReturnPeriod.defaultsForCurveDuration(metadata.getTimeSpan());
+		} else {
+			curveMetadata = curveMetadata.merge(metadata);
+		}
+	}
+
+	private synchronized HazardCurveMetadata getCurveMetadata() {
+		return curveMetadata == null ? HazardCurveMetadata.timeIndependent(1d) : curveMetadata;
+	}
 	
 	static final IncludeBackgroundOption GRID_SEIS_DEFAULT = IncludeBackgroundOption.EXCLUDE;
 	private IncludeBackgroundOption gridSeisOp = GRID_SEIS_DEFAULT;
@@ -434,7 +450,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				
 				// write mean curves and maps
 				debug("Async: writing mean curves and maps");
-				writeMeanCurvesAndMaps(zout, runningMeanCurves, gridRegion, periods, rps);
+				writeMeanCurvesAndMaps(zout, runningMeanCurves, gridRegion, periods, rps, getCurveMetadata());
 				if (curvesZout != null) {
 					debug("Async: writing mean curves to curve archive");
 					writeMeanCurves(curvesZout, runningMeanCurves, gridRegion, periods);
@@ -474,7 +490,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						curvesZout.putNextEntry(runDir.getName()+"/");
 						curvesZout.closeEntry();
 					}
-					for (ReturnPeriods rp : rps) {
+					for (ReturnPeriod rp : rps) {
 						for (double period : periods) {
 							String prefix = mapPrefix(period, rp);
 							
@@ -513,6 +529,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		}
 
 		private void writeArchiveMetadata(ArchiveOutput output) throws IOException {
+			getCurveMetadata().write(output);
+
 			Feature feature = gridRegion.toFeature();
 			output.putNextEntry(GRID_REGION_ENTRY_NAME);
 			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(output.getOutputStream()));
@@ -553,12 +571,19 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	public static final String LEVEL_CHOICE_MAPS_ENTRY_PREFIX = "level_choice_maps/";
 	
 	public static void writeMeanCurvesAndMaps(ZipOutputStream zout, LogicTreeCurveAverager[] meanCurves,
-			GriddedRegion gridRegion, double[] periods, ReturnPeriods[] rps) throws IOException {
-		writeMeanCurvesAndMaps(new ArchiveOutput.ZipFileOutput(zout), meanCurves, gridRegion, periods, rps);
+			GriddedRegion gridRegion, double[] periods, ReturnPeriod[] rps) throws IOException {
+		writeMeanCurvesAndMaps(new ArchiveOutput.ZipFileOutput(zout), meanCurves, gridRegion, periods, rps,
+				HazardCurveMetadata.timeIndependent(1d));
 	}
 	
 	public static void writeMeanCurvesAndMaps(ArchiveOutput output, LogicTreeCurveAverager[] meanCurves,
-			GriddedRegion gridRegion, double[] periods, ReturnPeriods[] rps) throws IOException {
+			GriddedRegion gridRegion, double[] periods, ReturnPeriod[] rps) throws IOException {
+		writeMeanCurvesAndMaps(output, meanCurves, gridRegion, periods, rps,
+				HazardCurveMetadata.timeIndependent(1d));
+	}
+
+	public static void writeMeanCurvesAndMaps(ArchiveOutput output, LogicTreeCurveAverager[] meanCurves,
+			GriddedRegion gridRegion, double[] periods, ReturnPeriod[] rps, HazardCurveMetadata metadata) throws IOException {
 		writeMeanCurves(output, meanCurves, gridRegion, periods);
 		
 		boolean firstLT = true;
@@ -581,25 +606,14 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				}
 				
 				// calculate and write maps
-				for (ReturnPeriods rp : rps) {
+				for (ReturnPeriod rp : rps) {
 					String mapFileName = prefix+"_"+MPJ_LogicTreeHazardCalc.mapPrefix(periods[p], rp)+".txt";
 					
-					double curveLevel = rp.oneYearProb;
+					double curveLevel = rp.getProbability(metadata.getTimeSpan());
 					
 					GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridRegion, false);
-					for (int i=0; i<xyz.size(); i++) {
-						DiscretizedFunc curve = curves[i];
-						double val;
-						// curveLevel is a probability, return the IML at that probability
-						if (curveLevel > curve.getMaxY())
-							val = 0d;
-						else if (curveLevel < curve.getMinY())
-							// saturated
-							val = curve.getMaxX();
-						else
-							val = curve.getFirstInterpolatedX_inLogXLogYDomain(curveLevel);
-						xyz.set(i, val);
-					}
+					for (int i=0; i<xyz.size(); i++)
+						xyz.set(i, HazardCurveUtils.getIML(curves[i], curveLevel));
 					
 					output.putNextEntry(mapFileName);
 					ArbDiscrGeoDataSet.writeXYZStream(xyz, output.getOutputStream());
@@ -685,7 +699,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		return branch.getBranchDirectory(outputDir, mkdir);
 	}
 	
-	public static String mapPrefix(double period, ReturnPeriods rp) {
+	public static String mapPrefix(double period, ReturnPeriod rp) {
 		String ret = "map_";
 		if (period == 0d)
 			ret += "pga";
@@ -953,7 +967,9 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						}
 						combCurvesList.add(combCurves);
 					}
-					calc = SolHazardMapCalc.forCurves(sol, gridRegion, periods, combCurvesList);
+					HazardCurveMetadata combMetadata = combineWithExcludeCurves.getCurveMetadata()
+							.merge(combineWithOnlyCurves.getCurveMetadata());
+					calc = SolHazardMapCalc.forCurves(sol, gridRegion, periods, combCurvesList, combMetadata);
 					calc.writeCurvesCSVs(hazardOutDir, curvesPrefix, true);
 				} else if (calc == null && gridSeisOp == IncludeBackgroundOption.ONLY && combineWithOnlyCurves != null) {
 					calc = combineWithOnlyCurves;
@@ -996,6 +1012,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				calc.calcHazardCurves(getNumThreads(), combineWithCurves);
 				calc.writeCurvesCSVs(hazardOutDir, curvesPrefix, true);
 			}
+			registerCurveMetadata(calc.getCurveMetadata());
 			
 			checkInitRunningMean();
 			
@@ -1021,7 +1038,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				runningMeanCurves[p].processBranchCurves(analysisBranch, branchWeight, curves);
 			}
 			
-			for (ReturnPeriods rp : rps) {
+			for (ReturnPeriod rp : rps) {
 				for (double period : periods) {
 					GriddedGeoDataSet map = calc.buildMap(period, rp);
 					
