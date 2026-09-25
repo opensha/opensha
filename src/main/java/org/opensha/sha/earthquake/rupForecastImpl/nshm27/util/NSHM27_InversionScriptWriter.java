@@ -66,8 +66,9 @@ public class NSHM27_InversionScriptWriter {
 //			int samples = 1 << 10; // 1024
 //			int samples = 1 << 11; // 2048
 //			int samples = 1 << 12; // 4096
-			int samples = 1 << 13; // 8192
+//			int samples = 1 << 13; // 8192
 //			int samples = 1 << 14; // 16384
+			int samples = 1 << 15; // 32768
 			args = new String[] {
 					"--region", NSHM27_SeismicityRegions.AMSAM.name(),
 //					"--region", NSHM27_SeismicityRegions.GNMI.name(),
@@ -77,26 +78,29 @@ public class NSHM27_InversionScriptWriter {
 //					"--hpc-site", HPCConfig.HPCSite.USC_CARC_FMPJ.name(),
 //					"--remote-dir", "/project2/scec_608/kmilner/fss_inversions",
 //					"--nodes", "36",
-////					"--job-time-hours", "48",
-//					"--job-time-hours", "10",
+//					"--job-time-hours", "48",
+////					"--job-time-hours", "10",
 					
 					"--hpc-site", HPCConfig.HPCSite.FRONTERA_FMPJ.name(),
 					"--remote-dir", "/scratch2/00950/kevinm/fss_inversions",
 					"--nodes", "30",
 //					"--job-time-hours", "16", // for 20k
-					"--job-time-hours", "8", // for 8192
+					"--job-time-hours", "30", // for 30k
+//					"--job-time-hours", "8", // for 8192
+//					"--job-time-hours", "4", // for 4096
 //					"--job-time-hours", "48",
 //					"--hazard-time-same-as-inversion",
 					
-//					"--date", "2026_09_10",
+//					"--date", "2026_09_22",
 					
 //					"--sampling-method", SamplingMethod.MONTE_CARLO.name(),
-					"--sampling-method", SamplingMethod.OWEN_SCRAMBLED_SOBOL.name(),
+//					"--sampling-method", SamplingMethod.OWEN_SCRAMBLED_SOBOL.name(),
 //					"--sampling-method", SamplingMethod.LATIN_HYPERCUBE.name(),
+					"--sampling-method", SamplingMethod.SOBOL.name(),
 //					"--sampling-method", SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE.name(),
 					"--samples", samples+"",
-					"--unique-seed",
-					"--name-add", "15",
+//					"--unique-seed",
+//					"--name-add", "2",
 //					"--name-add", "reserve",
 					
 					"--hazard-grid-spacing", "0.2",

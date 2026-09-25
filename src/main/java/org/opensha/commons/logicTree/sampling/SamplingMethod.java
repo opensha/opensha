@@ -127,8 +127,9 @@ public enum SamplingMethod implements ShortNamed {
 
 	public long pairwiseIterations(int numPoints) {
 //		long multiplier = this == CENTERED_DISCREPANCY_OPTIMIZED_LATIN_HYPERCUBE ? 10l : 1000L;
-		long multiplier = this == CENTERED_DISCREPANCY_OPTIMIZED_LATIN_HYPERCUBE ? 100l : 5000L;
+//		long multiplier = this == CENTERED_DISCREPANCY_OPTIMIZED_LATIN_HYPERCUBE ? 100l : 5000L;
 //		long multiplier = this == CENTERED_DISCREPANCY_OPTIMIZED_LATIN_HYPERCUBE ? 1000l : 10000L;
+		long multiplier = 5000L;
 		Preconditions.checkArgument(numPoints > 0, "NumPoints must be positive");
 		return Math.min(100_000_000L, Math.max(100_000L, Math.multiplyExact((long)numPoints, multiplier)));
 	}
@@ -163,7 +164,7 @@ public enum SamplingMethod implements ShortNamed {
 	}
 
 	public boolean isLHS() {
-		return this == LATIN_HYPERCUBE || this == PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE;
+		return this == LATIN_HYPERCUBE || this == PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE || this == CENTERED_DISCREPANCY_OPTIMIZED_LATIN_HYPERCUBE;
 	}
 
 	public boolean usesRandomSeed() {
