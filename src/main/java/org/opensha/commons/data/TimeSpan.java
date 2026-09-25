@@ -317,6 +317,46 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 		return copy;
 	}
 
+	/**
+	 * Value equality preserving the declared start-time precision and duration units. Parameter constraints, discrete
+	 * duration choices, and change listeners are not part of the logical value.
+	 */
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!(obj instanceof TimeSpan))
+			return false;
+		TimeSpan other = (TimeSpan)obj;
+		if (startTimePrecision != other.startTimePrecision || durationUnits != other.durationUnits
+				|| Double.doubleToLongBits(getDuration()) != Double.doubleToLongBits(other.getDuration()))
+			return false;
+		switch (startTimePrecision) {
+		case NONE:
+			return true;
+		case YEARS:
+			return getStartTimeYear() == other.getStartTimeYear();
+		case MILLISECONDS:
+			return getStartTimeInMillis() == other.getStartTimeInMillis();
+		default:
+			throw new IllegalStateException("Unhandled start-time precision: "+startTimePrecision);
+		}
+	}
+
+	@Override
+	public int hashCode() {
+		int result = 31 * startTimePrecision.hashCode() + durationUnits.hashCode();
+		long durationBits = Double.doubleToLongBits(getDuration());
+		result = 31 * result + (int)(durationBits ^ (durationBits >>> 32));
+		if (startTimePrecision == StartTimePrecision.YEARS)
+			result = 31 * result + getStartTimeYear();
+		else if (startTimePrecision == StartTimePrecision.MILLISECONDS) {
+			long startMillis = getStartTimeInMillis();
+			result = 31 * result + (int)(startMillis ^ (startMillis >>> 32));
+		}
+		return result;
+	}
+
 	public void setStartTime(int year) {
 		if (startTimePrecision != StartTimePrecision.YEARS)
 			throw precisionException("setStartTime(int)");
