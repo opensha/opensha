@@ -16,6 +16,7 @@ import org.apache.commons.math3.distribution.GammaDistribution;
 import org.apache.commons.math3.random.RandomDataGenerator;
 import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.TimeSpan;
+import org.opensha.commons.data.TimeSpan.StartTimePrecision;
 import org.opensha.commons.data.function.AbstractDiscretizedFunc;
 import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc_3D;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
@@ -2449,7 +2450,7 @@ public class ProbabilityModelsCalc {
 			info_fr.write("\t"+param.getName()+" = "+param.getValue()+"\n");
 		}
 		TimeSpan tsp = erf.getTimeSpan();
-		if (!tsp.getStartTimePrecision().equals(TimeSpan.NONE))
+		if (tsp.getStartTimePrecision() != StartTimePrecision.NONE)
 			info_fr.write("\nERF StartTime: "+tsp.getStartTimeYear()+"\n");
 		info_fr.write("\nERF TimeSpan Duration: "+erf.getTimeSpan().getDuration()+" years\n");
 

@@ -7,6 +7,7 @@ import java.util.Iterator;
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.Ellsworth_B_WG02_MagAreaRel;
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.HanksBakun2002_MagAreaRel;
 import org.opensha.commons.data.TimeSpan;
+import org.opensha.commons.data.TimeSpan.StartTimePrecision;
 import org.opensha.commons.param.AbstractParameter;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
@@ -266,7 +267,7 @@ public class UCERF2_TimeIndependentEpistemicList extends AbstractEpistemicListER
 		ucerf2.setParameter(UCERF2.FLOATER_TYPE_PARAM_NAME, this.floaterTypeParam.getValue());
 		TimeSpan u2TimeSpan = ucerf2.getTimeSpan();
 		u2TimeSpan.setDuration(this.timeSpan.getDuration());
-		if (u2TimeSpan.getStartTimePrecision().equals(TimeSpan.YEARS) && timeSpan.getStartTimePrecision().equals(TimeSpan.YEARS)) {
+		if (u2TimeSpan.getStartTimePrecision() == StartTimePrecision.YEARS && timeSpan.getStartTimePrecision() == StartTimePrecision.YEARS) {
 			// Time Dependent ERF
 			System.out.println("Setting Start Time for branch "+index);
 			u2TimeSpan.setStartTime(this.timeSpan.getStartTimeYear());

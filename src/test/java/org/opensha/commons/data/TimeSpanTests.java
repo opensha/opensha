@@ -86,15 +86,15 @@ public class TimeSpanTests
 		span.setStartTime(2026, 2, 3, 4, 5, 6, 789);
 		span.setDuration(12.5);
 
-		assertEquals(StartTimePrecision.MILLISECONDS, span.getStartTimePrecisionEnum());
-		assertEquals(DurationUnits.DAYS, span.getDurationUnitsEnum());
+		assertEquals(StartTimePrecision.MILLISECONDS, span.getStartTimePrecision());
+		assertEquals(DurationUnits.DAYS, span.getDurationUnits());
 
 		TimeSpan copy = span.copy();
 		assertNotSame(span, copy);
-		assertEquals(span.getStartTimePrecisionEnum(), copy.getStartTimePrecisionEnum());
+		assertEquals(span.getStartTimePrecision(), copy.getStartTimePrecision());
 		assertEquals(span.getStartTimeInMillis(), copy.getStartTimeInMillis());
 		assertEquals(span.getDuration(), copy.getDuration(), 0d);
-		assertEquals(span.getDurationUnitsEnum(), copy.getDurationUnitsEnum());
+		assertEquals(span.getDurationUnits(), copy.getDurationUnits());
 
 		copy.setDuration(1d);
 		assertEquals(12.5, span.getDuration(), 0d);
@@ -112,10 +112,10 @@ public class TimeSpanTests
 		assertTrue(json.contains("\"startTimeMillis\""));
 
 		TimeSpan loaded = gson.fromJson(json, TimeSpan.class);
-		assertEquals(span.getStartTimePrecisionEnum(), loaded.getStartTimePrecisionEnum());
+		assertEquals(span.getStartTimePrecision(), loaded.getStartTimePrecision());
 		assertEquals(span.getStartTimeInMillis(), loaded.getStartTimeInMillis());
 		assertEquals(span.getDuration(), loaded.getDuration(), 0d);
-		assertEquals(span.getDurationUnitsEnum(), loaded.getDurationUnitsEnum());
+		assertEquals(span.getDurationUnits(), loaded.getDurationUnits());
 	}
 
 	@Test
@@ -130,7 +130,7 @@ public class TimeSpanTests
 		assertFalse(json.contains("startTimeMillis"));
 
 		TimeSpan loaded = gson.fromJson(json, TimeSpan.class);
-		assertEquals(StartTimePrecision.YEARS, loaded.getStartTimePrecisionEnum());
+		assertEquals(StartTimePrecision.YEARS, loaded.getStartTimePrecision());
 		assertEquals(2026, loaded.getStartTimeYear());
 		assertEquals(50d, loaded.getDuration(), 0d);
 	}
@@ -145,9 +145,9 @@ public class TimeSpanTests
 		assertFalse(json.contains("startTimeMillis"));
 
 		TimeSpan loaded = gson.fromJson(json, TimeSpan.class);
-		assertEquals(StartTimePrecision.NONE, loaded.getStartTimePrecisionEnum());
+		assertEquals(StartTimePrecision.NONE, loaded.getStartTimePrecision());
 		assertEquals(30d, loaded.getDuration(), 0d);
-		assertEquals(DurationUnits.DAYS, loaded.getDurationUnitsEnum());
+		assertEquals(DurationUnits.DAYS, loaded.getDurationUnits());
 	}
 
 	@Test
@@ -159,7 +159,7 @@ public class TimeSpanTests
 		Element root = DocumentHelper.createElement("root");
 		span.toXMLMetadata(root);
 		TimeSpan loaded = TimeSpan.fromXMLMetadata(root.element(TimeSpan.XML_METADATA_NAME));
-		assertEquals(StartTimePrecision.MILLISECONDS, loaded.getStartTimePrecisionEnum());
+		assertEquals(StartTimePrecision.MILLISECONDS, loaded.getStartTimePrecision());
 		assertEquals(span.getStartTimeInMillis(), loaded.getStartTimeInMillis());
 		assertEquals(span.getDuration(), loaded.getDuration(), 0d);
 	}
@@ -189,7 +189,7 @@ public class TimeSpanTests
 		starts.addAttribute("StartSecond", "6");
 
 		TimeSpan loaded = TimeSpan.fromXMLMetadata(xml);
-		assertEquals(StartTimePrecision.MILLISECONDS, loaded.getStartTimePrecisionEnum());
+		assertEquals(StartTimePrecision.MILLISECONDS, loaded.getStartTimePrecision());
 		assertEquals(2026, loaded.getStartTimeYear());
 		assertEquals(2, loaded.getStartTimeMonth());
 		assertEquals(3, loaded.getStartTimeDay());

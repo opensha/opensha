@@ -16,6 +16,7 @@ import javax.swing.event.ChangeListener;
 import org.dom4j.Element;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.TimeSpan;
+import org.opensha.commons.data.TimeSpan.StartTimePrecision;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.metadata.MetadataLoader;
 import org.opensha.commons.metadata.XMLSaveable;
@@ -79,7 +80,7 @@ public abstract class AbstractERF implements
 	 */
 	public void setTimeSpan(TimeSpan time) {
 		// set the start time
-		if (!time.getStartTimePrecision().equalsIgnoreCase(TimeSpan.NONE))
+		if (time.getStartTimePrecision() != StartTimePrecision.NONE)
 			this.timeSpan.setStartTime(time.getStartTimeCalendar());
 		//set the duration as well
 		this.timeSpan.setDuration(time.getDuration(), time.getDurationUnits());

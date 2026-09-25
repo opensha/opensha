@@ -78,7 +78,8 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 			this.legacyName = legacyName;
 		}
 
-		public String getLegacyName() {
+		@Override
+		public String toString() {
 			return legacyName;
 		}
 
@@ -108,7 +109,8 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 			this.millisPerUnit = millisPerUnit;
 		}
 
-		public String getLegacyName() {
+		@Override
+		public String toString() {
 			return legacyName;
 		}
 
@@ -168,8 +170,8 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 		startTimeMillisParam = new LongParameter(START_TIME_MILLIS, Long.MIN_VALUE, Long.MAX_VALUE,
 				startOfYearInMillis(START_YEAR_DEFAULT));
 
-		durationParam = new DoubleParameter(DURATION, durationConstraint, durationUnits.getLegacyName(), DURATION_DEFAULT);
-		discreteDurationParam = new DoubleDiscreteParameter(DURATION, durationUnits.getLegacyName(), DURATION_DEFAULT);
+		durationParam = new DoubleParameter(DURATION, durationConstraint, durationUnits.legacyName, DURATION_DEFAULT);
+		discreteDurationParam = new DoubleDiscreteParameter(DURATION, durationUnits.legacyName, DURATION_DEFAULT);
 
 		startYearParam.addParameterChangeListener(this);
 		startTimeMillisParam.addParameterChangeListener(this);
@@ -206,19 +208,11 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 		startTimeMillisParam.setConstraint(new LongConstraint(min, max));
 	}
 
-	public String getStartTimePrecision() {
-		return startTimePrecision.getLegacyName();
-	}
-
-	public StartTimePrecision getStartTimePrecisionEnum() {
+	public StartTimePrecision getStartTimePrecision() {
 		return startTimePrecision;
 	}
 
-	public String getDurationUnits() {
-		return durationUnits.getLegacyName();
-	}
-
-	public DurationUnits getDurationUnitsEnum() {
+	public DurationUnits getDurationUnits() {
 		return durationUnits;
 	}
 
@@ -496,14 +490,14 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 
 	public Element toXMLMetadata(Element root) {
 		Element xml = root.addElement(XML_METADATA_NAME);
-		xml.addAttribute("startTimePrecision", getStartTimePrecision());
+		xml.addAttribute("startTimePrecision", getStartTimePrecision().toString());
 		Element startTimes = xml.addElement(XML_START_TIMES);
 		if (startTimePrecision == StartTimePrecision.YEARS)
 			startTimes.addAttribute(START_YEAR.replace(" ", ""), Integer.toString(getStartTimeYear()));
 		else if (startTimePrecision == StartTimePrecision.MILLISECONDS)
 			startTimes.addAttribute(XML_START_TIME_MILLIS, Long.toString(getStartTimeInMillis()));
 		xml.addAttribute("duration", Double.toString(getDuration()));
-		xml.addAttribute("durationUnits", getDurationUnits());
+		xml.addAttribute("durationUnits", getDurationUnits().toString());
 		return root;
 	}
 

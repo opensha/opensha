@@ -55,7 +55,7 @@ public class TestSTEP_EqkRupForecast
 		// arbitrarily identified as the first 100 characters.
 		assertEquals("Time doesn't match:",result.substring(0,100),forecast.getTimeSpan().getStartTimeCalendar().toString().substring(0,100));
 		assertTrue("Duration in Forecast:" + forecast.getTimeSpan().getDuration(),1.0==forecast.getTimeSpan().getDuration());
-		assertEquals("TimeSpan in Forecast:","Days",forecast.getTimeSpan().getDurationUnits());
+		assertEquals("TimeSpan in Forecast:","Days",forecast.getTimeSpan().getDurationUnits().toString());
 		assertEquals("Number of Sources:",398,forecast.getNumSources());
 
 		ProbEqkRupture rup;
