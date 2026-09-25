@@ -1708,7 +1708,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			modRupAreas[rupIndex] = rupAreas[origID];
 			if (modRupLengths != null)
 				modRupLengths[rupIndex] = rupLengths[origID];
-			modSectionForRups.add(getSectionsIndicesForRup(rupIndex));
+			modSectionForRups.add(getSectionsIndicesForRup(origID));
 		}
 		
 		FaultSystemRupSet modRupSet = new FaultSystemRupSet(getFaultSectionDataList(), modSectionForRups,
