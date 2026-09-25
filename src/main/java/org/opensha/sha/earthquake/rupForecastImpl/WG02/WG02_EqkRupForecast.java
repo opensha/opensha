@@ -99,7 +99,7 @@ public class WG02_EqkRupForecast extends AbstractERF{
     inputFileLines =null ;
 
     if (D) System.out.println("year="+year+"; duration="+duration+"; numIterations="+numIterations);
-    timeSpan.setDuractionConstraint(duration,duration);
+    timeSpan.setDurationConstraint(duration,duration);
     timeSpan.setDuration(duration);
     timeSpan.setStartTimeConstraint(TimeSpan.START_YEAR,year,year);
     timeSpan.setStartTime(year);

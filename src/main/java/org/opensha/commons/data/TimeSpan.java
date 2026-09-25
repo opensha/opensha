@@ -6,6 +6,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.EventObject;
 import java.util.GregorianCalendar;
+import java.util.List;
 import java.util.TimeZone;
 
 import org.dom4j.Attribute;
@@ -190,7 +191,7 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 
 	// this vector will hold all the listeners of this time span object
 	// whenver any change is made in this timespan object, all the listeners are notified
-	private transient ArrayList changeListeners;
+	private transient List<TimeSpanChangeListener> changeListeners;
 
 
 	/**
@@ -229,7 +230,7 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 		durationUnitsConstraint.addString( SECONDS );
 		durationUnitsConstraint.addString( MILLISECONDS );
 		durationUnitsConstraint.setNonEditable();
-		durationUnitsParam = new StringParameter(this.DURATION_UNITS,durationUnitsConstraint,DURATION_UNITS_DEFAULT);
+		durationUnitsParam = new StringParameter(DURATION_UNITS, durationUnitsConstraint,DURATION_UNITS_DEFAULT);
 
 		// Duration Parameters (continuous versus discrete; only one used at any one time)
 		durationParam = new DoubleParameter(DURATION,durationConstraint,DURATION_UNITS_DEFAULT,DURATION_DEFAULT);
@@ -579,7 +580,7 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 	 * @param min - new minimum
 	 * @param max - new maximum
 	 */
-	public void setDuractionConstraint(double min, double max) {
+	public void setDurationConstraint(double min, double max) {
 
 		// make sure new values are within the originals
 		if(durationConstraint.isAllowed(min) && durationConstraint.isAllowed(min)) {
@@ -598,7 +599,7 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 	 * (0 and Double.MAX_VALUE, respectively).
 	 * @param doubles - a vector of doubles
 	 */
-	public void setDurationConstraint(ArrayList<Double> doubles) {
+	public void setDurationConstraint(List<Double> doubles) {
 
 		// make sure new values are all positive (within the originals)
 		for (double d : doubles){
@@ -1091,7 +1092,7 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 	 * listener must implement the TimeSpanChangeListener interface
 	 */
 	public void addParameterChangeListener(TimeSpanChangeListener listener) {
-		if ( changeListeners == null ) changeListeners = new ArrayList();
+		if ( changeListeners == null ) changeListeners = new ArrayList<>();
 		if ( !changeListeners.contains( listener ) ) changeListeners.add( listener );
 	}
 

@@ -110,7 +110,7 @@ public class UCERF3_GriddedSeisOnlyERF_ETAS extends AbstractNthRupERF {
 	 */
 	protected void initTimeSpan() {
 			timeSpan = new TimeSpan(TimeSpan.MILLISECONDS, TimeSpan.YEARS);
-			timeSpan.setDuractionConstraint(DURATION_MIN, DURATION_MAX);
+			timeSpan.setDurationConstraint(DURATION_MIN, DURATION_MAX);
 			timeSpan.setDuration(DURATION_DEFAULT);
 			timeSpan.setStartTimeConstraint(TimeSpan.START_YEAR, START_TIME_MIN, START_TIME_MAX);
 			timeSpan.setStartTime(START_TIME_DEFAULT, 1, 1, 0, 0, 0, 0);

@@ -104,7 +104,7 @@ public class STEP_AlaskanPipeForecast extends AbstractERF
     timeSpan.setStartTimeConstraint(TimeSpan.START_HOUR, hour,hour);
     timeSpan.setStartTimeConstraint(TimeSpan.START_MINUTE, minute,minute);
     timeSpan.setStartTimeConstraint(TimeSpan.START_SECOND, second,second);
-    timeSpan.setDuractionConstraint(duration,duration);
+    timeSpan.setDurationConstraint(duration,duration);
 
     if (D) System.out.println("Start-Time Calendar toString: \n"+(timeSpan.getStartTimeCalendar()).toString());
 

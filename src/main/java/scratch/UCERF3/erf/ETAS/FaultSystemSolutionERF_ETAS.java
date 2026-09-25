@@ -43,7 +43,7 @@ public class FaultSystemSolutionERF_ETAS extends FaultSystemSolutionERF {
 	protected void initTimeSpan() {
 		if(tdTimeSpanCache == null) {
 			tdTimeSpanCache = new TimeSpan(TimeSpan.MILLISECONDS, TimeSpan.YEARS);
-			tdTimeSpanCache.setDuractionConstraint(DURATION_MIN, DURATION_MAX);
+			tdTimeSpanCache.setDurationConstraint(DURATION_MIN, DURATION_MAX);
 			tdTimeSpanCache.setDuration(DURATION_DEFAULT);
 			tdTimeSpanCache.setStartTimeConstraint(TimeSpan.START_YEAR, START_TIME_MIN, START_TIME_MAX);
 			tdTimeSpanCache.setStartTime(START_TIME_DEFAULT, 1, 1, 0, 0, 0, 0);

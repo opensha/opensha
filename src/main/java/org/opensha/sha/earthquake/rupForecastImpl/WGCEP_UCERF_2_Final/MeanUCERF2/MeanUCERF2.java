@@ -938,7 +938,7 @@ public class MeanUCERF2 extends AbstractERF {
 			// create the time-dep timespan object with start time and duration in years
 			timeSpan = new TimeSpan(TimeSpan.YEARS, TimeSpan.YEARS);
 			// set duration
-			timeSpan.setDuractionConstraint(DURATION_MIN, DURATION_MAX);
+			timeSpan.setDurationConstraint(DURATION_MIN, DURATION_MAX);
 			timeSpan.setDuration(DURATION_DEFAULT);
 			// set the start year 
 			timeSpan.setStartTimeConstraint(TimeSpan.START_YEAR, START_TIME_MIN, START_TIME_MAX);
