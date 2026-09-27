@@ -37,6 +37,7 @@ import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.HazardCurveMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
+import org.opensha.sha.earthquake.faultSysSolution.erf.FaultSysSolutionERFConfig;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
@@ -83,9 +84,9 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 	
 	private GriddedSeismicitySettings griddedSettings;
 	
-	private boolean applyAftershockFilter = MPJ_LogicTreeHazardCalc.AFTERSHOCK_FILTER_DEFAULT;
-	
 	private boolean aseisReducesArea = MPJ_LogicTreeHazardCalc.ASEIS_REDUCES_AREA_DEFAULT;
+	private FaultSysSolutionERFConfig erfConfig;
+	private HazardCurveMetadata expectedCurveMetadata;
 	
 	private SourceFilterManager sourceFilter;
 	
@@ -152,6 +153,8 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 		}
 		
 		outputDir = new File(cmd.getOptionValue("output-dir"));
+		erfConfig = FaultSysSolutionERFConfig.fromCommandLine(cmd);
+		expectedCurveMetadata = new HazardCurveMetadata(erfConfig.buildTimeSpan());
 		
 		if (cmd.hasOption("gridded-seis"))
 			gridSeisOp = IncludeBackgroundOption.valueOf(cmd.getOptionValue("gridded-seis"));
@@ -220,8 +223,6 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 			gridRegion = detectRegion(singleSol);
 		}
 
-		if (cmd.hasOption("aftershock-filter"))
-			applyAftershockFilter = true;
 		if (cmd.hasOption("aseis-reduces-area") || cmd.hasOption("no-aseis-reduces-area")) {
 			Preconditions.checkState(!cmd.hasOption("aseis-reduces-area") || !cmd.hasOption("no-aseis-reduces-area"),
 					"Can't both enable and disable aseismicity area reductions!");
@@ -229,8 +230,6 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 		}
 		
 		String hazardPrefix = "hazard_"+(float)gridSpacing+"deg";
-		if (applyAftershockFilter)
-			hazardPrefix += "_aftershock_filter";
 		hazardPrefix += "_grid_seis_";
 		hazardSubDirName = hazardPrefix+gridSeisOp.name();
 		
@@ -405,7 +404,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 					Preconditions.checkNotNull(curves[i], "Missing curves for p=%s and index=%s", (Double)periods[p], i);
 			}
 			
-			HazardCurveMetadata curveMetadata = calc == null ? HazardCurveMetadata.timeIndependent(1d)
+			HazardCurveMetadata curveMetadata = calc == null ? new HazardCurveMetadata(erfConfig.buildTimeSpan())
 					: calc.getCurveMetadata();
 			calc = SolHazardMapCalc.forCurves(singleSol, gridRegion, periods, curvesList, curveMetadata);
 			rps = ReturnPeriod.defaultsForCurveDuration(curveMetadata.getTimeSpan());
@@ -603,7 +602,8 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 					if (existsAndHazCurves(combineWithSubDir, curvesPrefix)) {
 						debug("Seeing if we can reuse existing curves excluding gridded seismicity from "+combineWithSubDir.getAbsolutePath());
 						try {
-							combineWithExcludeCurves = SolHazardMapCalc.loadCurves(singleSol, gridRegion, periods, combineWithSubDir, curvesPrefix);
+							combineWithExcludeCurves = SolHazardMapCalc.loadCurves(singleSol, gridRegion, periods,
+									combineWithSubDir, curvesPrefix, expectedCurveMetadata);
 						} catch (Exception e) {
 							debug("Can't reuse: "+e.getMessage());
 						}
@@ -616,7 +616,8 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 				if (existsAndHazCurves(combineWithSubDir, curvesPrefix) && combineWithOnlyCurves == null) {
 					debug("Seeing if we can reuse existing curves with only gridded seismicity from "+combineWithSubDir.getAbsolutePath());
 					try {
-						combineWithOnlyCurves = SolHazardMapCalc.loadCurves(singleSol, gridRegion, periods, combineWithSubDir, curvesPrefix);
+						combineWithOnlyCurves = SolHazardMapCalc.loadCurves(singleSol, gridRegion, periods,
+								combineWithSubDir, curvesPrefix, expectedCurveMetadata);
 					} catch (Exception e) {
 						debug("Can't reuse: "+e.getMessage());
 					}
@@ -633,7 +634,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 					extSol.setGridSourceProvider(externalGridProv);
 					
 					externalGriddedCurveCalc = new SolHazardMapCalc(extSol, gmmRefs, gridRegion,
-							IncludeBackgroundOption.ONLY, applyAftershockFilter, periods);
+							IncludeBackgroundOption.ONLY, periods);
 					
 					configureHazardCalc(externalGriddedCurveCalc);
 					
@@ -695,17 +696,17 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 				debug(gmpeParamsStr);
 			}
 			if (combineWithExcludeCurves == null && combineWithOnlyCurves == null) {
-				calc = new SolHazardMapCalc(singleSol, gmpeSuppliers, gridRegion, gridSeisOp, applyAftershockFilter, periods);
+				calc = new SolHazardMapCalc(singleSol, gmpeSuppliers, gridRegion, gridSeisOp, periods);
 			} else if (combineWithExcludeCurves != null) {
 				// calculate with only gridded seismicity, we'll add in the curves excluding it
 				debug("Reusing fault-based hazard for "+batch.length+" sites, will only compute gridded hazard");
 				combineWithCurves = combineWithExcludeCurves;
-				calc = new SolHazardMapCalc(singleSol, gmpeSuppliers, gridRegion, IncludeBackgroundOption.ONLY, applyAftershockFilter, periods);
+				calc = new SolHazardMapCalc(singleSol, gmpeSuppliers, gridRegion, IncludeBackgroundOption.ONLY, periods);
 			} else if (combineWithOnlyCurves != null) {
 				// calculate without gridded seismicity, we'll add in the curves with it
 				debug("Reusing fault-based hazard for "+batch.length+" sites, will only compute gridded hazard");
 				combineWithCurves = combineWithOnlyCurves;
-				calc = new SolHazardMapCalc(singleSol, gmpeSuppliers, gridRegion, IncludeBackgroundOption.EXCLUDE, applyAftershockFilter, periods);
+				calc = new SolHazardMapCalc(singleSol, gmpeSuppliers, gridRegion, IncludeBackgroundOption.EXCLUDE, periods);
 			}
 			configureHazardCalc(calc);
 			
@@ -731,12 +732,14 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 		calc.setNoMFDs(noMFDs);
 		calc.setUseProxyRups(!noProxyRups);
 		calc.setGriddedSeismicitySettings(griddedSettings);
+		calc.setERFConfig(erfConfig);
 	}
 	
 	public static Options createOptions() {
 		Options ops = MPJTaskCalculator.createOptions();
 		
 		FaultSysHazardCalcSettings.addCommonOptions(ops, true);
+		FaultSysSolutionERFConfig.addOptions(ops);
 		
 		ops.addRequiredOption("if", "input-file", true, "Path to input file (solution logic tree zip)");
 		ops.addOption("lt", "logic-tree", true, "Path to logic tree JSON file, required if a results directory is "
@@ -751,7 +754,6 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 				+ "Can be a gridded region or an outline. If not supplied, then one will be detected from the model. If "
 				+ "a zip file is supplied, then it is assumed that the file is a prior hazard calculation zip file and the "
 				+ "region will be reused from that prior calculation.");
-		ops.addOption("af", "aftershock-filter", false, "If supplied, the aftershock filter will be applied in the ERF");
 		ops.addOption(null, "aseis-reduces-area", false, "If supplied, aseismicity area reductions are enabled");
 		ops.addOption(null, "no-aseis-reduces-area", false, "If supplied, aseismicity area reductions are disabled");
 		ops.addOption("egp", "external-grid-prov", true, "Path to external grid source provider to use for hazard "

@@ -136,7 +136,8 @@ public class TimeDepFaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 	 * @return true if the currently selected probability model is Poisson
 	 */
 	public boolean isPoisson() {
-		return probModel instanceof FSS_ProbabilityModel.Poisson;
+		return probModel == null ? probModelParam.getEnumValue() == FSS_ProbabilityModels.POISSON
+				: probModel instanceof FSS_ProbabilityModel.Poisson;
 	}
 	
 	@Override

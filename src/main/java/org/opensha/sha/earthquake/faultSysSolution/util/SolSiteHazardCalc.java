@@ -89,6 +89,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.HazardCurveMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
+import org.opensha.sha.earthquake.faultSysSolution.erf.FaultSysSolutionERFConfig;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
@@ -125,7 +126,6 @@ import com.google.common.base.Stopwatch;
 import com.google.common.primitives.Doubles;
 
 import net.mahdilamb.colormap.Colors;
-import scratch.UCERF3.erf.FaultSystemSolutionERF;
 
 public class SolSiteHazardCalc {
 	
@@ -212,8 +212,7 @@ public class SolSiteHazardCalc {
 				+ "if gridded sources are present in the input fault system solution. You can override this behavior "
 				+ "with this argument, and options are: "+FaultSysTools.enumOptions(IncludeBackgroundOption.class));
 		
-		ops.addOption(null, "duration", true, "Sets the duration for curve calculations; default is 1 year (annual "
-				+ "probabilities of exceedance).");
+		FaultSysSolutionERFConfig.addOptions(ops);
 		
 		ops.addOption(null, "disagg-prob", true, "Enables disaggregation at the specified probability of exceedance "
 				+ "level(s); multiple levels can be comma separated.");
@@ -522,7 +521,8 @@ public class SolSiteHazardCalc {
 		else if (!THREAD_LOCAL_ERFS)
 			SurfaceCachingPolicy.force(CacheTypes.THREAD_LOCAL);
 		
-		double duration = cmd.hasOption("duration") ? Double.parseDouble(cmd.getOptionValue("duration")) : 1d;
+		FaultSysSolutionERFConfig erfConfig = FaultSysSolutionERFConfig.fromCommandLine(cmd);
+		double duration = erfConfig.durationYears();
 		
 		System.out.println("Building ERF for "+name);
 		GriddedSeismicitySettings griddedSettings = GriddedSeismicitySettings.DEFAULT;
@@ -530,7 +530,7 @@ public class SolSiteHazardCalc {
 			griddedSettings = FaultSysHazardCalcSettings.getGridSeisSettings(cmd);
 			System.out.println("Gridded seismicity settings: "+griddedSettings);
 		}
-		FaultSystemSolutionERF erf = buildERF(sol, mainGridOp, griddedSettings, duration);
+		BaseFaultSystemSolutionERF erf = buildERF(sol, mainGridOp, griddedSettings, erfConfig);
 		
 		RuptureExceedProbCalculator exceedCalc;
 		if (FaultSysHazardCalcSettings.arePointSourceOptimizationsEnabled(cmd))
@@ -568,11 +568,11 @@ public class SolSiteHazardCalc {
 			writeCurvesCSV(csvFile, extractPeriodCurves(curves, p), sites);
 		}
 		
-		FaultSystemSolutionERF compERF = null;
+		BaseFaultSystemSolutionERF compERF = null;
 		List<DiscretizedFunc[]> compCurves = null;
 		if (compSol != null) {
 			System.out.println("Building ERF for "+compName);
-			compERF = buildERF(compSol, compGridOp, griddedSettings, duration);
+			compERF = buildERF(compSol, compGridOp, griddedSettings, erfConfig);
 			
 			// can't re-use threads, but can copy over previous curve calc and gmm
 			ArrayList<HazardCalcThread> compCalcThreads = new ArrayList<>(threads);		
@@ -1582,23 +1582,21 @@ public class SolSiteHazardCalc {
 		}
 	}
 	
-	private static FaultSystemSolutionERF buildERF(FaultSystemSolution sol, IncludeBackgroundOption gridOp,
-			GriddedSeismicitySettings gridSettings, double duration) {
-		FaultSystemSolutionERF erf = new FaultSystemSolutionERF(sol);
+	private static BaseFaultSystemSolutionERF buildERF(FaultSystemSolution sol, IncludeBackgroundOption gridOp,
+			GriddedSeismicitySettings gridSettings, FaultSysSolutionERFConfig erfConfig) {
+		BaseFaultSystemSolutionERF erf = erfConfig.buildERF(sol);
 		
 		erf.setParameter(IncludeBackgroundParam.NAME, gridOp);
 		erf.setGriddedSeismicitySettings(gridSettings);
 		
 		erf.setCacheGridSources(true);
 		
-		erf.getTimeSpan().setDuration(duration);
-		
 		erf.updateForecast();
 		return erf;
 	}
 	
 	private static List<DiscretizedFunc[]> calcHazardCurves(List<HazardCalcThread> calcThreads, List<Site> sites,
-			FaultSystemSolutionERF erf, double[] periods, CurveXValManager xVals) {
+			BaseFaultSystemSolutionERF erf, double[] periods, CurveXValManager xVals) {
 		SiteHazardTaskDistributor hazardTasks = new SiteHazardTaskDistributor(sites, periods, xVals);
 		
 		int numCurves = sites.size() * periods.length;
@@ -1650,7 +1648,7 @@ public class SolSiteHazardCalc {
 	 * If we don't have thread local ERFs, but do have more than one site and thread, then we should clear the surface
 	 * distance cache when threads are destroyed because it is storing entries per thread.
 	 */
-	private static void checkClearERFCache(int threads, int sites, FaultSystemSolutionERF erf) {
+	private static void checkClearERFCache(int threads, int sites, BaseFaultSystemSolutionERF erf) {
 		if (sites > 1 && threads > 1 && !THREAD_LOCAL_ERFS && erf.getNumFaultSystemSources() > 0) {
 			// clear caches
 			
@@ -2449,7 +2447,7 @@ public class SolSiteHazardCalc {
 	}
 	
 	private static List<DisaggResult[][]> calcDisagg(List<DisaggCalcThread> calcThreads, List<Site> sites,
-			FaultSystemSolutionERF erf, double[] periods, List<DiscretizedFunc[]> siteCurves) {
+			BaseFaultSystemSolutionERF erf, double[] periods, List<DiscretizedFunc[]> siteCurves) {
 		SiteDisaggCalcTaskDistributor disaggTasks = new SiteDisaggCalcTaskDistributor(sites, periods, siteCurves);
 		
 		System.out.println("Disaggregating for "+sites.size()+" sites and "+periods.length
@@ -2655,7 +2653,7 @@ public class SolSiteHazardCalc {
 	
 	private static Future<?> plotDisaggMap(File resourcesDir, String prefix,
 			GeographicMapMaker mapMaker, Site site, double maxDist, DisaggResult result,
-			FaultSystemSolutionERF erf, IncludeBackgroundOption gridSeisOp, ExecutorService exec, boolean writePDFs)
+			BaseFaultSystemSolutionERF erf, IncludeBackgroundOption gridSeisOp, ExecutorService exec, boolean writePDFs)
 					throws IOException {
 		Preconditions.checkState(maxDist > 0d, "Bad maxDist=%s", maxDist);
 		return exec.submit(new Runnable() {

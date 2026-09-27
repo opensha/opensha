@@ -78,6 +78,11 @@ final class HazardScriptUtil {
 			appendFlag(args, "--disable-point-optimizations");
 		if (hazard.useNSHMP_IMLs())
 			appendFlag(args, "--nshmp-imls");
+		appendArg(args, "--duration", hazard.erfConfig().durationYears());
+		if (hazard.erfConfig().probabilityModel() != null)
+			appendArg(args, "--prob-model", hazard.erfConfig().probabilityModel().name());
+		if (hazard.erfConfig().startYear() != null)
+			appendArg(args, "--start-year", hazard.erfConfig().startYear());
 	}
 
 	static void appendArg(StringBuilder args, String name, Object value) {

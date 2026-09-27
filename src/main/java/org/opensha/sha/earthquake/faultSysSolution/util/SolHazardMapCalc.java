@@ -84,6 +84,7 @@ import org.opensha.sha.earthquake.DistCachedERFWrapper;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
+import org.opensha.sha.earthquake.faultSysSolution.erf.FaultSysSolutionERFConfig;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.HazardCurveMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ProxyFaultSectionInstances;
@@ -92,13 +93,10 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.HazardMapPlot;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings.CurveXValManager;
-import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.AseismicityAreaReductionParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
-import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
-import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.earthquake.param.UseProxySectionsParam;
 import org.opensha.sha.earthquake.param.UseRupMFDsParam;
 import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
@@ -115,8 +113,6 @@ import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
-
-import scratch.UCERF3.erf.FaultSystemSolutionERF;
 
 public class SolHazardMapCalc {
 	
@@ -173,7 +169,7 @@ public class SolHazardMapCalc {
 	private IncludeBackgroundOption backSeisOption;
 	private GriddedSeismicitySettings backSeisSettings = BaseFaultSystemSolutionERF.GRID_SETTINGS_DEFAULT;
 	private Boolean cacheGridSources = null; // if left null, will be determined by rupture type
-	private boolean applyAftershockFilter;
+	private FaultSysSolutionERFConfig erfConfig = FaultSysSolutionERFConfig.timeIndependent(1d);
 	private boolean aseisReducesArea = BaseFaultSystemSolutionERF.ASEIS_REDUCES_AREA_DEAFULT;
 	private boolean noMFDs = !BaseFaultSystemSolutionERF.USE_RUP_MFDS_DEAFULT;
 	private boolean useProxyRuptures = BaseFaultSystemSolutionERF.USE_PROXY_RUPS_DEAFULT;
@@ -198,21 +194,10 @@ public class SolHazardMapCalc {
 
 	public SolHazardMapCalc(FaultSystemSolution sol, Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeRefMap, GriddedRegion region,
 			IncludeBackgroundOption backSeisOption, double... periods) {
-		this(sol, gmpeRefMap, region, backSeisOption, false, periods);
-	}
-
-	public SolHazardMapCalc(FaultSystemSolution sol, Supplier<ScalarIMR> gmpeRef, GriddedRegion region,
-			IncludeBackgroundOption backSeisOption, boolean applyAftershockFilter, double... periods) {
-		this(sol, FaultSysHazardCalcSettings.wrapInTRTMap(gmpeRef), region, backSeisOption, applyAftershockFilter, periods);
-	}
-	
-	public SolHazardMapCalc(FaultSystemSolution sol, Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeRefMap, GriddedRegion region,
-			IncludeBackgroundOption backSeisOption, boolean applyAftershockFilter, double... periods) {
 		this.sol = sol;
 		this.gmpeRefMap = gmpeRefMap;
 		this.region = region;
 		this.backSeisOption = backSeisOption;
-		this.applyAftershockFilter = applyAftershockFilter;
 		Preconditions.checkState(periods.length > 0);
 		this.periods = periods;
 		for (double period : periods)
@@ -300,9 +285,10 @@ public class SolHazardMapCalc {
 		this.cacheGridSources = cacheGridSources;
 	}
 
-	public void setApplyAftershockFilter(boolean applyAftershockFilter) {
+	public void setERFConfig(FaultSysSolutionERFConfig erfConfig) {
 		Preconditions.checkState(fssERF == null, "ERF already initialized");
-		this.applyAftershockFilter = applyAftershockFilter;
+		this.erfConfig = Preconditions.checkNotNull(erfConfig);
+		this.curveMetadata = new HazardCurveMetadata(erfConfig.buildTimeSpan());
 	}
 
 	public void setAseisReducesArea(boolean aseisReducesArea) {
@@ -337,12 +323,11 @@ public class SolHazardMapCalc {
 	private synchronized void checkInitERF() {
 		if (fssERF == null) {
 			System.out.println("Building ERF");
-			fssERF = new FaultSystemSolutionERF(sol);
+			fssERF = erfConfig.buildERF(sol);
 			if (sol.hasAvailableModule(RupMFDsModule.class))
 				fssERF.setParameter(UseRupMFDsParam.NAME, !noMFDs);
 			if (sol.hasAvailableModule(ProxyFaultSectionInstances.class))
 				fssERF.setParameter(UseProxySectionsParam.NAME, useProxyRuptures);
-			fssERF.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
 			fssERF.setParameter(IncludeBackgroundParam.NAME, backSeisOption);
 			if (backSeisOption != IncludeBackgroundOption.EXCLUDE) {
 				fssERF.setGriddedSeismicitySettings(backSeisSettings);
@@ -359,9 +344,7 @@ public class SolHazardMapCalc {
 				fssERF.setCacheGridSources(cacheGridSources);
 			}
 			
-			fssERF.setParameter(ApplyGardnerKnopoffAftershockFilterParam.NAME, applyAftershockFilter);
 			fssERF.setParameter(AseismicityAreaReductionParam.NAME, aseisReducesArea);
-			fssERF.getTimeSpan().setDuration(1d);
 			
 			fssERF.updateForecast();
 			curveMetadata = new HazardCurveMetadata(fssERF.getTimeSpan());
@@ -1348,6 +1331,14 @@ public class SolHazardMapCalc {
 		
 		return forCurves(sol, region, periods, curvesList, metadata);
 	}
+
+	public static SolHazardMapCalc loadCurves(FaultSystemSolution sol, GriddedRegion region, double[] periods,
+			File dir, String prefix, HazardCurveMetadata expectedMetadata) throws IOException {
+		SolHazardMapCalc calc = loadCurves(sol, region, periods, dir, prefix);
+		Preconditions.checkState(calc.getCurveMetadata().equals(expectedMetadata),
+				"Existing curve metadata in %s is incompatible with the requested ERF configuration", dir);
+		return calc;
+	}
 	
 	public static SolHazardMapCalc forCurves(FaultSystemSolution sol, GriddedRegion region, double[] periods,
 			List<DiscretizedFunc[]> curvesList) throws IOException {
@@ -1428,6 +1419,7 @@ public class SolHazardMapCalc {
 		ops.addOption(FaultSysTools.threadsOption());
 		
 		FaultSysHazardCalcSettings.addCommonOptions(ops, true);
+		FaultSysSolutionERFConfig.addOptions(ops);
 		
 		ops.addRequiredOption("if", "input-file", true, "Input solution file");
 		
@@ -1453,6 +1445,8 @@ public class SolHazardMapCalc {
 	
 	public static void main(String[] args) throws IOException {
 		CommandLine cmd = FaultSysTools.parseOptions(createOptions(), args, SolHazardMapCalc.class);
+		FaultSysSolutionERFConfig erfConfig = FaultSysSolutionERFConfig.fromCommandLine(cmd);
+		HazardCurveMetadata expectedCurveMetadata = new HazardCurveMetadata(erfConfig.buildTimeSpan());
 		
 		File inputFile = new File(cmd.getOptionValue("input-file"));
 		FaultSystemSolution sol = FaultSystemSolution.load(inputFile);
@@ -1520,7 +1514,7 @@ public class SolHazardMapCalc {
 		if (!recalc) {
 			// see if we already have curves
 			try {
-				calc = loadCurves(sol, gridReg, periods, outputDir, "curves");
+				calc = loadCurves(sol, gridReg, periods, outputDir, "curves", expectedCurveMetadata);
 				System.out.println("Loaded existing curves!");
 			} catch (Exception e) {
 //				e.printStackTrace();
@@ -1538,6 +1532,7 @@ public class SolHazardMapCalc {
 			// need to calculate
 //			calc = new SolHazardMapCalc(sol, gmpe, gridReg, periods);
 			calc = new SolHazardMapCalc(sol, gmmRefs, gridReg, gridSeisOp, periods);
+			calc.setERFConfig(erfConfig);
 			calc.setSourceFilter(sourceFilters);
 			calc.setSiteSkipSourceFilter(siteSkipSourceFilter);
 			
@@ -1554,13 +1549,14 @@ public class SolHazardMapCalc {
 			if (!recalc) {
 				// see if we already have curves
 				try {
-					compCalc = loadCurves(compSol, gridReg, periods, outputDir, "comp_curves");
+					compCalc = loadCurves(compSol, gridReg, periods, outputDir, "comp_curves", expectedCurveMetadata);
 					System.out.println("Loaded existing curves!");
 				} catch (Exception e) {}
 			}
 			if (compCalc == null) {
 				// need to calculate
 				compCalc = new SolHazardMapCalc(compSol, gmmRefs, gridReg, gridSeisOp, periods);
+				compCalc.setERFConfig(erfConfig);
 				compCalc.setSourceFilter(sourceFilters);
 				compCalc.setSiteSkipSourceFilter(siteSkipSourceFilter);
 				
