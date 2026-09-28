@@ -37,7 +37,7 @@ import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.HazardCurveMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
-import org.opensha.sha.earthquake.faultSysSolution.erf.FaultSysSolutionERFConfig;
+import org.opensha.sha.earthquake.faultSysSolution.erf.FSS_ERF_Config;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
@@ -84,8 +84,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 	
 	private GriddedSeismicitySettings griddedSettings;
 	
-	private boolean aseisReducesArea = MPJ_LogicTreeHazardCalc.ASEIS_REDUCES_AREA_DEFAULT;
-	private FaultSysSolutionERFConfig erfConfig;
+	private FSS_ERF_Config erfConfig;
 	private HazardCurveMetadata expectedCurveMetadata;
 	
 	private SourceFilterManager sourceFilter;
@@ -110,9 +109,6 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 	private GridSourceProvider externalGridProv;
 	private SolHazardMapCalc externalGriddedCurveCalc;
 	
-	private boolean noMFDs;
-	private boolean noProxyRups;
-
 	public MPJ_SingleSolHazardCalc(CommandLine cmd) throws IOException {
 		super(cmd);
 		
@@ -153,7 +149,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 		}
 		
 		outputDir = new File(cmd.getOptionValue("output-dir"));
-		erfConfig = FaultSysSolutionERFConfig.fromCommandLine(cmd);
+		erfConfig = FaultSysHazardCalcSettings.getERFConfig(cmd);
 		expectedCurveMetadata = new HazardCurveMetadata(erfConfig.buildTimeSpan());
 		
 		if (cmd.hasOption("gridded-seis"))
@@ -223,12 +219,6 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 			gridRegion = detectRegion(singleSol);
 		}
 
-		if (cmd.hasOption("aseis-reduces-area") || cmd.hasOption("no-aseis-reduces-area")) {
-			Preconditions.checkState(!cmd.hasOption("aseis-reduces-area") || !cmd.hasOption("no-aseis-reduces-area"),
-					"Can't both enable and disable aseismicity area reductions!");
-			aseisReducesArea = cmd.hasOption("aseis-reduces-area");
-		}
-		
 		String hazardPrefix = "hazard_"+(float)gridSpacing+"deg";
 		hazardPrefix += "_grid_seis_";
 		hazardSubDirName = hazardPrefix+gridSeisOp.name();
@@ -263,9 +253,6 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 			if (!combineWithOtherDir.exists())
 				combineWithOtherDir = null;
 		}
-		
-		noMFDs = cmd.hasOption("no-mfds");
-		noProxyRups = cmd.hasOption("no-proxy-ruptures");
 		
 		if (rank == 0) {
 			MPJ_LogicTreeHazardCalc.waitOnDir(outputDir, 5, 1000);
@@ -728,9 +715,6 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 		calc.setXValManager(xValManager);
 		calc.setPointSourceOptimizations(pointSourceOptimizations);
 		calc.setSiteSkipSourceFilter(siteSkipSourceFilter);
-		calc.setAseisReducesArea(aseisReducesArea);
-		calc.setNoMFDs(noMFDs);
-		calc.setUseProxyRups(!noProxyRups);
 		calc.setGriddedSeismicitySettings(griddedSettings);
 		calc.setERFConfig(erfConfig);
 	}
@@ -739,7 +723,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 		Options ops = MPJTaskCalculator.createOptions();
 		
 		FaultSysHazardCalcSettings.addCommonOptions(ops, true);
-		FaultSysSolutionERFConfig.addOptions(ops);
+		FaultSysHazardCalcSettings.addERFOptions(ops);
 		
 		ops.addRequiredOption("if", "input-file", true, "Path to input file (solution logic tree zip)");
 		ops.addOption("lt", "logic-tree", true, "Path to logic tree JSON file, required if a results directory is "
@@ -754,17 +738,11 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 				+ "Can be a gridded region or an outline. If not supplied, then one will be detected from the model. If "
 				+ "a zip file is supplied, then it is assumed that the file is a prior hazard calculation zip file and the "
 				+ "region will be reused from that prior calculation.");
-		ops.addOption(null, "aseis-reduces-area", false, "If supplied, aseismicity area reductions are enabled");
-		ops.addOption(null, "no-aseis-reduces-area", false, "If supplied, aseismicity area reductions are disabled");
 		ops.addOption("egp", "external-grid-prov", true, "Path to external grid source provider to use for hazard "
 				+ "calculations. Can be either a fault system solution, or a zip file containing just a grid source "
 				+ "provider.");
 		ops.addOption("cwd", "combine-with-dir", true, "Path to a different directory to serach for pre-computed curves "
 				+ "to draw from.");
-		ops.addOption(null, "no-mfds", false, "Flag to disable rupture MFDs, i.e., use a single magnitude for all "
-				+ "ruptures in the case of a branch-averaged solution");
-		ops.addOption(null, "no-proxy-ruptures", false, "Flag to disable proxy ruptures MFDs, i.e., use a single proxy "
-				+ "fault instead of distributed proxies that fill the source zone");
 		ops.addOption("qgc", "quick-grid-calc", false, "No longer used; can disable updated implementation with --disable-point-optimizations.");
 		
 		return ops;

@@ -17,7 +17,6 @@ import java.util.concurrent.Future;
 import java.util.function.Supplier;
 
 import org.opensha.commons.data.Site;
-import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
@@ -32,26 +31,22 @@ import org.opensha.sha.earthquake.DistCachedERFWrapper;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
+import org.opensha.sha.earthquake.faultSysSolution.erf.FSS_ERF_Config;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings.CurveXValManager;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
-import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_GMM_Wrapper;
 import org.opensha.sha.imr.logicTree.ScalarIMRsLogicTreeNode;
 import org.opensha.sha.imr.logicTree.ScalarIMR_ParamsLogicTreeNode;
-import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
-import org.opensha.sha.imr.param.IntensityMeasureParams.PGV_Param;
-import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
-
-import scratch.UCERF3.erf.FaultSystemSolutionERF;
 
 public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 	
@@ -68,10 +63,11 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 	private boolean doGmmInputCache = false;
 	private SourceFilterManager sourceFilters;
 	private CurveXValManager xVals;
+	private FSS_ERF_Config erfConfig;
 	
 	private LogicTreeBranch<?> prevBranch;
 	private int prevBranchIndex = -1;
-	private FaultSystemSolutionERF prevERF;
+	private BaseFaultSystemSolutionERF prevERF;
 	private int[] prevSiteIndexes;
 	private int gmmCacheBranchIndex = -1;
 	private NSHMP_GMM_Wrapper[] gmmSiteCaches;
@@ -85,9 +81,25 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 	}
 
 	public AbstractSitewiseThreadedLogicTreeCalc(ExecutorService exec, int numSites, SolutionLogicTree solTree,
+			AttenRelSupplier gmmRef, double[] periods,
+			IncludeBackgroundOption gridSeisOp, GriddedSeismicitySettings griddedSettings,
+			SourceFilterManager sourceFilters, CurveXValManager xVals, FSS_ERF_Config erfConfig) {
+		this(exec, numSites, solTree, FaultSysHazardCalcSettings.wrapInTRTMap(gmmRef), periods, gridSeisOp,
+				griddedSettings, sourceFilters, xVals, erfConfig);
+	}
+
+	public AbstractSitewiseThreadedLogicTreeCalc(ExecutorService exec, int numSites, SolutionLogicTree solTree,
 			Map<TectonicRegionType, AttenRelSupplier> gmmRefs, double[] periods,
 			IncludeBackgroundOption gridSeisOp, GriddedSeismicitySettings griddedSettings,
 			SourceFilterManager sourceFilters, CurveXValManager xVals) {
+		this(exec, numSites, solTree, gmmRefs, periods, gridSeisOp, griddedSettings, sourceFilters, xVals,
+				FSS_ERF_Config.timeIndependent(1d));
+	}
+
+	public AbstractSitewiseThreadedLogicTreeCalc(ExecutorService exec, int numSites, SolutionLogicTree solTree,
+			Map<TectonicRegionType, AttenRelSupplier> gmmRefs, double[] periods,
+			IncludeBackgroundOption gridSeisOp, GriddedSeismicitySettings griddedSettings,
+			SourceFilterManager sourceFilters, CurveXValManager xVals, FSS_ERF_Config erfConfig) {
 		this.exec = exec;
 		this.numSites = numSites;
 		this.solTree = solTree;
@@ -96,6 +108,7 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 		this.gridSeisOp = gridSeisOp;
 		this.griddedSettings = griddedSettings;
 		this.sourceFilters = sourceFilters;
+		this.erfConfig = Preconditions.checkNotNull(erfConfig);
 		this.tree = solTree.getLogicTree();
 		for (LogicTreeLevel<?> level : tree.getLevels()) {
 			if (isGMMLevel(level) && level.getNodes().size() > 1) {
@@ -138,7 +151,7 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 	public DiscretizedFunc[][] calcForBranch(int branchIndex, int[] siteIndexes) throws IOException {
 		LogicTreeBranch<?> branch = tree.getBranch(branchIndex);
 		
-		FaultSystemSolutionERF erf = null;
+		BaseFaultSystemSolutionERF erf = null;
 		if (hasGMMLevels && prevBranch != null) {
 			// see if we can reuse the erf
 //			debug("Seeing if we can reuse ERF from "+prevBranchIndex+" for "+branchIndex);
@@ -172,12 +185,11 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 //			for (double rate : sol.getRateForAllRups())
 //				sumRate += rate;
 //			System.out.println("Sum rate: "+sumRate);
-			erf = new FaultSystemSolutionERF(sol);
+			erf = erfConfig.buildERF(sol);
 			if (gridSeisOp == IncludeBackgroundOption.INCLUDE || gridSeisOp == IncludeBackgroundOption.ONLY)
 				Preconditions.checkNotNull(sol.getGridSourceProvider(),
 						"Grid source provider is null, but gridded seis option is %s", gridSeisOp);
 			erf.setParameter(IncludeBackgroundParam.NAME, gridSeisOp);
-			erf.getTimeSpan().setDuration(1d);
 			erf.setGriddedSeismicitySettings(griddedSettings);
 			erf.setCacheGridSources(cacheGridSources);
 			erf.updateForecast();
@@ -260,11 +272,11 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 	
 	private class SitePrecacheCall implements Callable<NSHMP_GMM_Wrapper> {
 		
-		private FaultSystemSolutionERF fssERF;
+		private BaseFaultSystemSolutionERF fssERF;
 		private int siteIndex;
 		private Deque<DistCachedERFWrapper> erfDeque;
 		
-		private SitePrecacheCall(FaultSystemSolutionERF fssERF, int siteIndex, Deque<DistCachedERFWrapper> erfDeque) {
+		private SitePrecacheCall(BaseFaultSystemSolutionERF fssERF, int siteIndex, Deque<DistCachedERFWrapper> erfDeque) {
 			super();
 			this.fssERF = fssERF;
 			this.siteIndex = siteIndex;
@@ -301,14 +313,14 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 	
 	private class SiteCalcCall implements Callable<DiscretizedFunc[]> {
 		
-		private FaultSystemSolutionERF fssERF;
+		private BaseFaultSystemSolutionERF fssERF;
 		private int siteIndex;
 		private Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmmSuppliers;
 		private Deque<DistCachedERFWrapper> erfDeque;
 		
 		private NSHMP_GMM_Wrapper cacheSupplier;
 
-		private SiteCalcCall(FaultSystemSolutionERF fssERF, int siteIndex,
+		private SiteCalcCall(BaseFaultSystemSolutionERF fssERF, int siteIndex,
 				Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmmSuppliers,
 				Deque<DistCachedERFWrapper> erfDeque) {
 			this.fssERF = fssERF;
@@ -367,7 +379,7 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 		
 	}
 	
-	private synchronized DistCachedERFWrapper checkOutERF(FaultSystemSolutionERF fssERF, Deque<DistCachedERFWrapper> deque) {
+	private synchronized DistCachedERFWrapper checkOutERF(BaseFaultSystemSolutionERF fssERF, Deque<DistCachedERFWrapper> deque) {
 		if (!deque.isEmpty()) {
 			return deque.pop();
 		}

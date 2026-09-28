@@ -13,7 +13,7 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
-import org.opensha.sha.earthquake.faultSysSolution.erf.FaultSysSolutionERFConfig;
+import org.opensha.sha.earthquake.faultSysSolution.erf.FSS_ERF_Config;
 import org.opensha.sha.earthquake.faultSysSolution.erf.td.FSS_ProbabilityModels;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.imr.AttenRelRef;
@@ -37,7 +37,7 @@ public final class HazardConfig {
 	private final double[] periods;
 	private final boolean useInversionJobTime;
 	private final Double minutesPerBranch;
-	private final FaultSysSolutionERFConfig erfConfig;
+	private final FSS_ERF_Config erfConfig;
 
 	private HazardConfig(Builder builder) {
 		this.backgroundOption = builder.backgroundOption;
@@ -55,14 +55,7 @@ public final class HazardConfig {
 		this.periods = builder.periods == null ? null : builder.periods.clone();
 		this.useInversionJobTime = builder.useInversionJobTime;
 		this.minutesPerBranch = builder.minutesPerBranch;
-		if (builder.probabilityModel == null)
-			this.erfConfig = FaultSysSolutionERFConfig.timeIndependent(builder.durationYears);
-		else if (builder.probabilityModel == FSS_ProbabilityModels.POISSON)
-			this.erfConfig = FaultSysSolutionERFConfig.forProbabilityModel(builder.probabilityModel,
-					builder.durationYears);
-		else
-			this.erfConfig = FaultSysSolutionERFConfig.timeDependent(builder.probabilityModel,
-					Preconditions.checkNotNull(builder.startYear), builder.durationYears);
+		this.erfConfig = builder.erfConfigBuilder.build();
 	}
 
 	public static Builder builder() {
@@ -129,7 +122,7 @@ public final class HazardConfig {
 		return minutesPerBranch;
 	}
 
-	public FaultSysSolutionERFConfig erfConfig() {
+	public FSS_ERF_Config erfConfig() {
 		return erfConfig;
 	}
 	
@@ -159,6 +152,12 @@ public final class HazardConfig {
 				+FaultSysTools.enumOptions(FSS_ProbabilityModels.class));
 		ops.addOption(null, "hazard-start-year", true,
 				"Hazard forecast start year; required for a non-Poisson probability model.");
+		ops.addOption(null, "hazard-aseis-reduces-area", false,
+				"Enable aseismicity area reductions in hazard calculations (default).");
+		ops.addOption(null, "hazard-no-aseis-reduces-area", false,
+				"Disable aseismicity area reductions in hazard calculations.");
+		ops.addOption(null, "hazard-no-mfds", false, "Disable rupture MFDs in hazard calculations.");
+		ops.addOption(null, "hazard-no-proxy-ruptures", false, "Disable proxy ruptures in hazard calculations.");
 	}
 
 	public static final class Builder {
@@ -177,9 +176,7 @@ public final class HazardConfig {
 		private double[] periods;
 		private boolean useInversionJobTime;
 		private Double minutesPerBranch;
-		private double durationYears = 1d;
-		private FSS_ProbabilityModels probabilityModel;
-		private Integer startYear;
+		private FSS_ERF_Config.Builder erfConfigBuilder = FSS_ERF_Config.builder();
 		
 		public Builder forCMD(CommandLine cmd) {
 			Preconditions.checkArgument(!(cmd.hasOption("hazard-time-same-as-inversion")
@@ -241,6 +238,15 @@ public final class HazardConfig {
 						cmd.getOptionValue("hazard-prob-model").trim().toUpperCase()));
 			if (cmd.hasOption("hazard-start-year"))
 				startYear(Integer.parseInt(cmd.getOptionValue("hazard-start-year")));
+			Preconditions.checkArgument(!(cmd.hasOption("hazard-aseis-reduces-area")
+					&& cmd.hasOption("hazard-no-aseis-reduces-area")),
+					"cannot both enable and disable aseismicity area reductions");
+			if (cmd.hasOption("hazard-aseis-reduces-area") || cmd.hasOption("hazard-no-aseis-reduces-area"))
+				aseisReducesArea(cmd.hasOption("hazard-aseis-reduces-area"));
+			if (cmd.hasOption("hazard-no-mfds"))
+				useRupMFDs(false);
+			if (cmd.hasOption("hazard-no-proxy-ruptures"))
+				useProxyRuptures(false);
 			return this;
 		}
 
@@ -338,17 +344,37 @@ public final class HazardConfig {
 		}
 
 		public Builder durationYears(double durationYears) {
-			this.durationYears = durationYears;
+			erfConfigBuilder.durationYears(durationYears);
 			return this;
 		}
 
 		public Builder probabilityModel(FSS_ProbabilityModels probabilityModel) {
-			this.probabilityModel = probabilityModel;
+			erfConfigBuilder.probabilityModel(probabilityModel);
 			return this;
 		}
 
 		public Builder startYear(Integer startYear) {
-			this.startYear = startYear;
+			erfConfigBuilder.startYear(startYear);
+			return this;
+		}
+
+		public Builder aseisReducesArea(boolean aseisReducesArea) {
+			erfConfigBuilder.aseisReducesArea(aseisReducesArea);
+			return this;
+		}
+
+		public Builder useRupMFDs(boolean useRupMFDs) {
+			erfConfigBuilder.useRupMFDs(useRupMFDs);
+			return this;
+		}
+
+		public Builder useProxyRuptures(boolean useProxyRuptures) {
+			erfConfigBuilder.useProxyRuptures(useProxyRuptures);
+			return this;
+		}
+
+		public Builder erfConfig(FSS_ERF_Config erfConfig) {
+			erfConfigBuilder = Preconditions.checkNotNull(erfConfig).toBuilder();
 			return this;
 		}
 
@@ -356,14 +382,6 @@ public final class HazardConfig {
 			Preconditions.checkArgument(minutesPerBranch == null
 					|| (Double.isFinite(minutesPerBranch) && minutesPerBranch > 0d),
 					"minutesPerBranch must be finite and > 0");
-			Preconditions.checkArgument(Double.isFinite(durationYears) && durationYears > 0d,
-					"durationYears must be finite and > 0");
-			if (probabilityModel == null || probabilityModel == FSS_ProbabilityModels.POISSON)
-				Preconditions.checkArgument(startYear == null,
-						"startYear can only be supplied for a non-Poisson probability model");
-			else
-				Preconditions.checkNotNull(startYear,
-						"startYear is required for non-Poisson probability model %s", probabilityModel.name());
 			return new HazardConfig(this);
 		}
 	}

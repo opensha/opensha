@@ -13,11 +13,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -39,6 +35,7 @@ import org.opensha.commons.util.ExecutorUtils;
 import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
+import org.opensha.sha.earthquake.faultSysSolution.erf.FSS_ERF_Config;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.HazardCurveMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
@@ -47,7 +44,6 @@ import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings.CurveXValManager;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
-import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.util.TectonicRegionType;
@@ -100,6 +96,8 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 	
 	private boolean recalc;
 	private HashSet<Integer> doneIndexes;
+	private FSS_ERF_Config erfConfig;
+	private HazardCurveMetadata expectedCurveMetadata;
 
 	public MPJ_SiteLogicTreeHazardCurveCalc(CommandLine cmd) throws IOException {
 		super(cmd);
@@ -148,6 +146,8 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 			debug("Loaded "+tree.size()+" tree nodes/solutions");
 		
 		outputDir = new File(cmd.getOptionValue("output-dir"));
+		erfConfig = FaultSysHazardCalcSettings.getERFConfig(cmd);
+		expectedCurveMetadata = new HazardCurveMetadata(erfConfig.buildTimeSpan());
 		
 		if (cmd.hasOption("gridded-seis"))
 			gridSeisOp = IncludeBackgroundOption.valueOf(cmd.getOptionValue("gridded-seis"));
@@ -203,6 +203,18 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		
 		branchOutputDir = new File(outputDir, "branch_results");
 		
+		boolean checkpointMetadataMatches = true;
+		if (branchOutputDir.exists()) {
+			File metadataFile = new File(branchOutputDir, HazardCurveMetadata.FILE_NAME);
+			HazardCurveMetadata checkpointMetadata = metadataFile.exists()
+					? HazardCurveMetadata.read(metadataFile) : HazardCurveMetadata.timeIndependent(1d);
+			checkpointMetadataMatches = expectedCurveMetadata.equals(checkpointMetadata);
+		}
+		if (!checkpointMetadataMatches) {
+			debug("Existing site hazard checkpoints have incompatible curve metadata; recalculating");
+			recalc = true;
+		}
+
 		if (rank == 0) {
 			Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 			
@@ -215,13 +227,17 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 			else
 				outputFile = new File(outputDir.getParentFile(), outputDir.getName()+".zip");
 		}
+		MPI.COMM_WORLD.Barrier();
+		if (rank == 0)
+			expectedCurveMetadata.write(new File(branchOutputDir, HazardCurveMetadata.FILE_NAME));
+		MPI.COMM_WORLD.Barrier();
 		
 		// blocking queue
 		int threads = getNumThreads();
 		exec = ExecutorUtils.newBlockingThreadPool(threads);
 		
 		calc = new AbstractSitewiseThreadedLogicTreeCalc(exec, sites.size(), solTree, gmms, periods, gridSeisOp,
-				griddedSettings, sourceFilters, xVals) {
+				griddedSettings, sourceFilters, xVals, erfConfig) {
 			
 			@Override
 			public Site siteForIndex(int siteIndex, Map<TectonicRegionType, ScalarIMR> gmms) {
@@ -530,7 +546,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 			}
 
 			zout.putNextEntry(new ZipEntry(HazardCurveMetadata.FILE_NAME));
-			HazardCurveMetadata.timeIndependent(1d).write(writer);
+			expectedCurveMetadata.write(writer);
 			zout.closeEntry();
 			
 			OutputStreamWriter zipWriter = new OutputStreamWriter(new BufferedOutputStream(zout));
@@ -643,6 +659,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		Options ops = MPJTaskCalculator.createOptions();
 		
 		FaultSysHazardCalcSettings.addCommonOptions(ops, false);
+		FaultSysHazardCalcSettings.addERFOptions(ops);
 		
 		ops.addRequiredOption("if", "input-file", true, "Path to input file (solution logic tree zip)");
 		ops.addOption("lt", "logic-tree", true, "Path to logic tree JSON file, required if a results directory is "

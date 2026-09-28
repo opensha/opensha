@@ -24,6 +24,8 @@ import org.opensha.sha.calc.sourceFilters.SourceFilters;
 import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter;
 import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
+import org.opensha.sha.earthquake.faultSysSolution.erf.FSS_ERF_Config;
+import org.opensha.sha.earthquake.faultSysSolution.erf.td.FSS_ProbabilityModels;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
 import org.opensha.sha.earthquake.util.GriddedFiniteRuptureSettings;
@@ -532,6 +534,43 @@ public class FaultSysHazardCalcSettings {
 			ops.addOption("smd", "skip-max-distance", true, "Skip sites with no source-site distances below this value, in km. "
 					+ "Default is "+(int)(FaultSysHazardCalcSettings.SITE_SKIP_FRACT*100d)+"% of the TectonicRegionType-specific default maximum distance.");
 		ops.addOption(null, "nshmp-imls", false, "Flag to use NSHMP period-dependent IMLs instead OpenSHA defaults.");
+	}
+
+	private static final String DURATION_OPTION = "duration";
+	private static final String PROB_MODEL_OPTION = "prob-model";
+	private static final String START_YEAR_OPTION = "start-year";
+
+	public static void addERFOptions(Options options) {
+		options.addOption(null, DURATION_OPTION, true, "Forecast duration in years. Default: 1");
+		options.addOption(null, PROB_MODEL_OPTION, true, "Fault-system probability model. One of: "
+				+FaultSysTools.enumOptions(FSS_ProbabilityModels.class));
+		options.addOption(null, START_YEAR_OPTION, true,
+				"Forecast start year; required for a non-Poisson probability model");
+		options.addOption(null, "aseis-reduces-area", false, "Enable aseismicity area reductions (default)");
+		options.addOption(null, "no-aseis-reduces-area", false, "Disable aseismicity area reductions");
+		options.addOption(null, "no-mfds", false,
+				"Disable rupture MFDs, i.e., use a single magnitude for each fault-system rupture");
+		options.addOption(null, "no-proxy-ruptures", false, "Disable proxy ruptures");
+	}
+
+	public static FSS_ERF_Config getERFConfig(CommandLine commandLine) {
+		double duration = commandLine.hasOption(DURATION_OPTION)
+				? Double.parseDouble(commandLine.getOptionValue(DURATION_OPTION)) : 1d;
+		FSS_ProbabilityModels model = commandLine.hasOption(PROB_MODEL_OPTION)
+				? FSS_ProbabilityModels.valueOf(
+						commandLine.getOptionValue(PROB_MODEL_OPTION).trim().toUpperCase()) : null;
+		Integer startYear = commandLine.hasOption(START_YEAR_OPTION)
+				? Integer.valueOf(commandLine.getOptionValue(START_YEAR_OPTION)) : null;
+		Preconditions.checkArgument(!(commandLine.hasOption("aseis-reduces-area")
+				&& commandLine.hasOption("no-aseis-reduces-area")),
+				"Cannot both enable and disable aseismicity area reductions");
+		FSS_ERF_Config.Builder builder = FSS_ERF_Config.builder().durationYears(duration)
+				.probabilityModel(model).startYear(startYear)
+				.useRupMFDs(!commandLine.hasOption("no-mfds"))
+				.useProxyRuptures(!commandLine.hasOption("no-proxy-ruptures"));
+		if (commandLine.hasOption("aseis-reduces-area") || commandLine.hasOption("no-aseis-reduces-area"))
+			builder.aseisReducesArea(commandLine.hasOption("aseis-reduces-area"));
+		return builder.build();
 	}
 
 	static final double SITE_SKIP_FRACT = 0.8;

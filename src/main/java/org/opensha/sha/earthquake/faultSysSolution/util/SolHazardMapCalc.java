@@ -26,7 +26,6 @@ import java.util.function.Supplier;
 import java.util.zip.GZIPOutputStream;
 
 import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.jfree.chart.ChartRenderingInfo;
 import org.jfree.chart.annotations.XYTextAnnotation;
@@ -40,7 +39,6 @@ import org.jfree.data.Range;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.TimeSpan;
-import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
@@ -84,28 +82,20 @@ import org.opensha.sha.earthquake.DistCachedERFWrapper;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
-import org.opensha.sha.earthquake.faultSysSolution.erf.FaultSysSolutionERFConfig;
+import org.opensha.sha.earthquake.faultSysSolution.erf.FSS_ERF_Config;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.HazardCurveMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
-import org.opensha.sha.earthquake.faultSysSolution.modules.ProxyFaultSectionInstances;
-import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.HazardMapPlot;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings.CurveXValManager;
-import org.opensha.sha.earthquake.param.AseismicityAreaReductionParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
-import org.opensha.sha.earthquake.param.UseProxySectionsParam;
-import org.opensha.sha.earthquake.param.UseRupMFDsParam;
 import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
-import org.opensha.sha.earthquake.util.GriddedFiniteRuptureSettings;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrections;
-import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.util.SiteTranslator;
@@ -169,10 +159,7 @@ public class SolHazardMapCalc {
 	private IncludeBackgroundOption backSeisOption;
 	private GriddedSeismicitySettings backSeisSettings = BaseFaultSystemSolutionERF.GRID_SETTINGS_DEFAULT;
 	private Boolean cacheGridSources = null; // if left null, will be determined by rupture type
-	private FaultSysSolutionERFConfig erfConfig = FaultSysSolutionERFConfig.timeIndependent(1d);
-	private boolean aseisReducesArea = BaseFaultSystemSolutionERF.ASEIS_REDUCES_AREA_DEAFULT;
-	private boolean noMFDs = !BaseFaultSystemSolutionERF.USE_RUP_MFDS_DEAFULT;
-	private boolean useProxyRuptures = BaseFaultSystemSolutionERF.USE_PROXY_RUPS_DEAFULT;
+	private FSS_ERF_Config erfConfig = FSS_ERF_Config.timeIndependent(1d);
 	
 	public static final ReturnPeriod[] MAP_RPS = ReturnPeriod.defaults();
 
@@ -285,27 +272,12 @@ public class SolHazardMapCalc {
 		this.cacheGridSources = cacheGridSources;
 	}
 
-	public void setERFConfig(FaultSysSolutionERFConfig erfConfig) {
+	public void setERFConfig(FSS_ERF_Config erfConfig) {
 		Preconditions.checkState(fssERF == null, "ERF already initialized");
 		this.erfConfig = Preconditions.checkNotNull(erfConfig);
 		this.curveMetadata = new HazardCurveMetadata(erfConfig.buildTimeSpan());
 	}
 
-	public void setAseisReducesArea(boolean aseisReducesArea) {
-		Preconditions.checkState(fssERF == null, "ERF already initialized");
-		this.aseisReducesArea = aseisReducesArea;
-	}
-
-	public void setNoMFDs(boolean noMFDs) {
-		Preconditions.checkState(fssERF == null, "ERF already initialized");
-		this.noMFDs = noMFDs;
-	}
-
-	public void setUseProxyRups(boolean useProxyRuptures) {
-		Preconditions.checkState(fssERF == null, "ERF already initialized");
-		this.useProxyRuptures = useProxyRuptures;
-	}
-	
 	public void setERF(BaseFaultSystemSolutionERF fssERF) {
 		this.fssERF = fssERF;
 		this.curveMetadata = new HazardCurveMetadata(fssERF.getTimeSpan());
@@ -324,10 +296,6 @@ public class SolHazardMapCalc {
 		if (fssERF == null) {
 			System.out.println("Building ERF");
 			fssERF = erfConfig.buildERF(sol);
-			if (sol.hasAvailableModule(RupMFDsModule.class))
-				fssERF.setParameter(UseRupMFDsParam.NAME, !noMFDs);
-			if (sol.hasAvailableModule(ProxyFaultSectionInstances.class))
-				fssERF.setParameter(UseProxySectionsParam.NAME, useProxyRuptures);
 			fssERF.setParameter(IncludeBackgroundParam.NAME, backSeisOption);
 			if (backSeisOption != IncludeBackgroundOption.EXCLUDE) {
 				fssERF.setGriddedSeismicitySettings(backSeisSettings);
@@ -343,8 +311,6 @@ public class SolHazardMapCalc {
 				}
 				fssERF.setCacheGridSources(cacheGridSources);
 			}
-			
-			fssERF.setParameter(AseismicityAreaReductionParam.NAME, aseisReducesArea);
 			
 			fssERF.updateForecast();
 			curveMetadata = new HazardCurveMetadata(fssERF.getTimeSpan());
@@ -1419,7 +1385,7 @@ public class SolHazardMapCalc {
 		ops.addOption(FaultSysTools.threadsOption());
 		
 		FaultSysHazardCalcSettings.addCommonOptions(ops, true);
-		FaultSysSolutionERFConfig.addOptions(ops);
+		FaultSysHazardCalcSettings.addERFOptions(ops);
 		
 		ops.addRequiredOption("if", "input-file", true, "Input solution file");
 		
@@ -1445,7 +1411,7 @@ public class SolHazardMapCalc {
 	
 	public static void main(String[] args) throws IOException {
 		CommandLine cmd = FaultSysTools.parseOptions(createOptions(), args, SolHazardMapCalc.class);
-		FaultSysSolutionERFConfig erfConfig = FaultSysSolutionERFConfig.fromCommandLine(cmd);
+		FSS_ERF_Config erfConfig = FaultSysHazardCalcSettings.getERFConfig(cmd);
 		HazardCurveMetadata expectedCurveMetadata = new HazardCurveMetadata(erfConfig.buildTimeSpan());
 		
 		File inputFile = new File(cmd.getOptionValue("input-file"));

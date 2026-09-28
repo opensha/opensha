@@ -7,6 +7,8 @@ import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -31,6 +33,7 @@ import org.opensha.commons.logicTree.treeCombiner.AbstractLogicTreeCombiner.Logi
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.io.archive.ArchiveOutput;
+import org.opensha.sha.earthquake.faultSysSolution.hazard.HazardCurveMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.SiteLogicTreeHazardPageGen;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_SiteLogicTreeHazardCurveCalc;
 import org.opensha.sha.earthquake.faultSysSolution.treeCombiners.HazardMapCombinationProcessor.CurveCombineCallable;
@@ -59,6 +62,7 @@ public class SiteHazardCurveCombinationProcessor implements LogicTreeCombination
 	private Stopwatch combineWatch = Stopwatch.createUnstarted();
 	private Stopwatch curveWriteWatch = Stopwatch.createUnstarted();
 	private LogicTree<?> combTree;
+	private HazardCurveMetadata curveMetadata;
 
 	public SiteHazardCurveCombinationProcessor(File outerHazardCurvesFile, File innerHazardCurvesFile,
 			File hazardCurvesOutputFile) {
@@ -80,6 +84,7 @@ public class SiteHazardCurveCombinationProcessor implements LogicTreeCombination
 		this.exec = exec;
 		Preconditions.checkState(treeCombination.averageAcrossLevels.isEmpty(), "Averaging not yet supported");
 		ZipFile innerZip = new ZipFile(innerHazardCurvesFile);
+		HazardCurveMetadata innerCurveMetadata = readCurveMetadata(innerZip);
 		CSVFile<String> innerSitesCSV = CSVFile.readStream(innerZip.getInputStream(
 				innerZip.getEntry(MPJ_SiteLogicTreeHazardCurveCalc.SITES_CSV_FILE_NAME)), true);
 		
@@ -87,6 +92,8 @@ public class SiteHazardCurveCombinationProcessor implements LogicTreeCombination
 		System.out.println("Loaded "+sites.size()+" hazard curve sites");
 		
 		ZipFile outerZip = new ZipFile(outerHazardCurvesFile);
+		HazardCurveMetadata outerCurveMetadata = readCurveMetadata(outerZip);
+		curveMetadata = outerCurveMetadata.merge(innerCurveMetadata);
 		sitesCSV = CSVFile.readStream(outerZip.getInputStream(
 				outerZip.getEntry(MPJ_SiteLogicTreeHazardCurveCalc.SITES_CSV_FILE_NAME)), true);
 		
@@ -287,6 +294,7 @@ public class SiteHazardCurveCombinationProcessor implements LogicTreeCombination
 		output.closeEntry();
 		
 		combTree.writeToArchive(output, null);
+		curveMetadata.write(output);
 		
 		for (int s=0; s<sites.size(); s++) {
 			for (int p=0; p<sitePeriods.size(); p++) {
@@ -304,6 +312,15 @@ public class SiteHazardCurveCombinationProcessor implements LogicTreeCombination
 		}
 		output.close();
 //		blockingZipIOWatch.stop(); // TODO?
+	}
+
+	private static HazardCurveMetadata readCurveMetadata(ZipFile zip) throws IOException {
+		ZipEntry entry = zip.getEntry(HazardCurveMetadata.FILE_NAME);
+		if (entry == null)
+			return HazardCurveMetadata.timeIndependent(1d);
+		try (InputStreamReader reader = new InputStreamReader(zip.getInputStream(entry), StandardCharsets.UTF_8)) {
+			return HazardCurveMetadata.read(reader);
+		}
 	}
 
 	@Override

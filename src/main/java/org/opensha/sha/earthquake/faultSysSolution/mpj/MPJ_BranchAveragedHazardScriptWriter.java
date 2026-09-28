@@ -81,8 +81,6 @@ public class MPJ_BranchAveragedHazardScriptWriter {
 				resultsPath+"_hazard_"+backgroundOption.name()+".zip");
 		args.append(regionArg);
 		HazardScriptUtil.appendArg(args, "--gridded-seis", backgroundOption.name());
-		if (request.noMFDs())
-			HazardScriptUtil.appendFlag(args, "--no-mfds");
 		if (backgroundOption != IncludeBackgroundOption.EXCLUDE)
 			appendGriddedSourceArgs(args, request);
 		HazardScriptUtil.appendSharedArgs(args, request.hazard(), false);
@@ -190,7 +188,6 @@ public class MPJ_BranchAveragedHazardScriptWriter {
 		private final String linkFromDirectoryName;
 		private final List<IncludeBackgroundOption> backgroundOptions;
 		private final int wallTimeMinutes;
-		private final boolean noMFDs;
 		private final SupersamplingMode supersamplingMode;
 		private final PointSourceDistanceCorrections distanceCorrection;
 		private final BackgroundRupType pointSourceType;
@@ -212,7 +209,6 @@ public class MPJ_BranchAveragedHazardScriptWriter {
 			this.wallTimeMinutes = builder.wallTimeMinutes == null
 					? (builder.hpc.jobTimeMinutes() == null ? 600 : builder.hpc.jobTimeMinutes())
 					: builder.wallTimeMinutes;
-			this.noMFDs = builder.noMFDs;
 			this.supersamplingMode = builder.supersamplingMode == null
 					? (builder.hazard.supersample() ? SupersamplingMode.QUICK : SupersamplingMode.NONE)
 					: builder.supersamplingMode;
@@ -257,10 +253,6 @@ public class MPJ_BranchAveragedHazardScriptWriter {
 
 		public int wallTimeMinutes() {
 			return wallTimeMinutes;
-		}
-
-		public boolean noMFDs() {
-			return noMFDs;
 		}
 
 		public SupersamplingMode supersamplingMode() {
@@ -311,7 +303,6 @@ public class MPJ_BranchAveragedHazardScriptWriter {
 			private String linkFromDirectoryName;
 			private final List<IncludeBackgroundOption> backgroundOptions = new ArrayList<>();
 			private Integer wallTimeMinutes;
-			private boolean noMFDs;
 			private SupersamplingMode supersamplingMode;
 			private PointSourceDistanceCorrections distanceCorrection;
 			private BackgroundRupType pointSourceType;
@@ -368,11 +359,6 @@ public class MPJ_BranchAveragedHazardScriptWriter {
 
 			public Builder wallTimeMinutes(int wallTimeMinutes) {
 				this.wallTimeMinutes = wallTimeMinutes;
-				return this;
-			}
-
-			public Builder noMFDs(boolean noMFDs) {
-				this.noMFDs = noMFDs;
 				return this;
 			}
 

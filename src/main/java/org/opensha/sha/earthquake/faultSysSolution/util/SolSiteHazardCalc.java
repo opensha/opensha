@@ -89,7 +89,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.HazardCurveMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
-import org.opensha.sha.earthquake.faultSysSolution.erf.FaultSysSolutionERFConfig;
+import org.opensha.sha.earthquake.faultSysSolution.erf.FSS_ERF_Config;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
@@ -212,7 +212,7 @@ public class SolSiteHazardCalc {
 				+ "if gridded sources are present in the input fault system solution. You can override this behavior "
 				+ "with this argument, and options are: "+FaultSysTools.enumOptions(IncludeBackgroundOption.class));
 		
-		FaultSysSolutionERFConfig.addOptions(ops);
+		FaultSysHazardCalcSettings.addERFOptions(ops);
 		
 		ops.addOption(null, "disagg-prob", true, "Enables disaggregation at the specified probability of exceedance "
 				+ "level(s); multiple levels can be comma separated.");
@@ -521,7 +521,7 @@ public class SolSiteHazardCalc {
 		else if (!THREAD_LOCAL_ERFS)
 			SurfaceCachingPolicy.force(CacheTypes.THREAD_LOCAL);
 		
-		FaultSysSolutionERFConfig erfConfig = FaultSysSolutionERFConfig.fromCommandLine(cmd);
+		FSS_ERF_Config erfConfig = FaultSysHazardCalcSettings.getERFConfig(cmd);
 		double duration = erfConfig.durationYears();
 		
 		System.out.println("Building ERF for "+name);
@@ -1583,7 +1583,7 @@ public class SolSiteHazardCalc {
 	}
 	
 	private static BaseFaultSystemSolutionERF buildERF(FaultSystemSolution sol, IncludeBackgroundOption gridOp,
-			GriddedSeismicitySettings gridSettings, FaultSysSolutionERFConfig erfConfig) {
+			GriddedSeismicitySettings gridSettings, FSS_ERF_Config erfConfig) {
 		BaseFaultSystemSolutionERF erf = erfConfig.buildERF(sol);
 		
 		erf.setParameter(IncludeBackgroundParam.NAME, gridOp);

@@ -83,6 +83,12 @@ final class HazardScriptUtil {
 			appendArg(args, "--prob-model", hazard.erfConfig().probabilityModel().name());
 		if (hazard.erfConfig().startYear() != null)
 			appendArg(args, "--start-year", hazard.erfConfig().startYear());
+		if (!hazard.erfConfig().aseisReducesArea())
+			appendFlag(args, "--no-aseis-reduces-area");
+		if (!hazard.erfConfig().useRupMFDs())
+			appendFlag(args, "--no-mfds");
+		if (!hazard.erfConfig().useProxyRuptures())
+			appendFlag(args, "--no-proxy-ruptures");
 	}
 
 	static void appendArg(StringBuilder args, String name, Object value) {
