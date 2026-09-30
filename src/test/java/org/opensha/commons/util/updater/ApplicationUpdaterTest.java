@@ -12,7 +12,9 @@ import java.util.List;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.opensha.commons.util.ApplicationVersion;
 import org.opensha.commons.util.OpenSHAConfig;
 import org.opensha.commons.util.http.GitHubAsset;
@@ -29,6 +31,9 @@ import org.opensha.commons.util.http.GitHubRelease;
  * @author Akash Bhatthal
  */
 public class ApplicationUpdaterTest {
+
+	@Rule
+	public TemporaryFolder tempFolder = new TemporaryFolder();
 
 	private GitHubClient client;
 	private UpdatePrompt prompt;
@@ -54,7 +59,7 @@ public class ApplicationUpdaterTest {
 		// Isolate the global-disable config so a developer's real
 		// ~/.opensha/config.json can never make these tests non-deterministic.
 		// Pointing at a non-existent file means defaults (prompts enabled).
-		Path configDir = Files.createTempDirectory("opensha-updater-test");
+		Path configDir = tempFolder.newFolder("opensha-updater-test").toPath();
 		OpenSHAConfig.setConfigFileForTesting(configDir.resolve("config.json"));
 	}
 
@@ -205,11 +210,10 @@ public class ApplicationUpdaterTest {
 	@Test
 	public final void testSha256Hex() throws IOException {
 		// SHA-256 of the ASCII bytes "abc" is a known constant.
-		Path tmp = Files.createTempFile("updater-sha-test-", ".bin");
+		Path tmp = tempFolder.newFile("updater-sha-test.bin").toPath();
 		Files.writeString(tmp, "abc");
 		assertEquals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
 				ApplicationUpdater.sha256Hex(tmp));
-		Files.deleteIfExists(tmp);
 	}
 
 	// ---- decision flow ----
@@ -316,7 +320,7 @@ public class ApplicationUpdaterTest {
 		when(client.getLatestRelease()).thenReturn(rel);
 		when(prompt.prompt(anyString(), any(), anyString())).thenReturn(UpdatePrompt.Choice.UPDATE_NOW);
 
-		Path staged = Files.createTempFile("updater-staged-", ".jar");
+		Path staged = tempFolder.newFile("updater-staged.jar").toPath();
 		Files.writeString(staged, "fake jar bytes");
 
 		List<Path> installed = new ArrayList<>();
@@ -397,7 +401,7 @@ public class ApplicationUpdaterTest {
 
 	@Test
 	public final void testFindOldJarsSelectsOnlyOlderVersionedSiblings() throws IOException {
-		Path dir = Files.createTempDirectory("updater-oldjars-");
+		Path dir = tempFolder.newFolder("updater-oldjars").toPath();
 		Files.createFile(dir.resolve("HazardCurveGUI-26.1.0.jar"));
 		Files.createFile(dir.resolve("HazardCurveGUI-26.1.1.jar"));
 		Files.createFile(dir.resolve("HazardCurveGUI-26.1.2.jar")); // running
@@ -419,7 +423,7 @@ public class ApplicationUpdaterTest {
 
 	@Test
 	public final void testFindInstalledJarFindsMatchingSibling() throws IOException {
-		Path dir = Files.createTempDirectory("updater-installed-");
+		Path dir = tempFolder.newFolder("updater-installed").toPath();
 		Files.createFile(dir.resolve("HazardCurveGUI-26.1.2.jar")); // the latest, already installed
 		Files.createFile(dir.resolve("HazardCurveGUI-26.1.1.jar")); // older
 		Files.createFile(dir.resolve("OtherGUI-26.1.2.jar"));      // different prefix
@@ -432,7 +436,7 @@ public class ApplicationUpdaterTest {
 
 	@Test
 	public final void testFindInstalledJarReturnsNullWhenNotPresent() throws IOException {
-		Path dir = Files.createTempDirectory("updater-installed-none-");
+		Path dir = tempFolder.newFolder("updater-installed-none").toPath();
 		Files.createFile(dir.resolve("HazardCurveGUI-26.1.1.jar")); // only older present
 		assertNull(ApplicationUpdater.findInstalledJar("HazardCurveGUI",
 				new ApplicationVersion(26, 1, 2), dir));
@@ -444,7 +448,7 @@ public class ApplicationUpdaterTest {
 
 	@Test
 	public final void testCleanupOldVersionsDeletesOnConfirm() throws IOException {
-		Path dir = Files.createTempDirectory("updater-cleanup-confirm-");
+		Path dir = tempFolder.newFolder("updater-cleanup-confirm").toPath();
 		Path running = dir.resolve("HazardCurveGUI-26.1.2.jar");
 		Files.createFile(running);
 		Path old0 = dir.resolve("HazardCurveGUI-26.1.0.jar");
@@ -463,7 +467,7 @@ public class ApplicationUpdaterTest {
 
 	@Test
 	public final void testCleanupOldVersionsKeepsOnDecline() throws IOException {
-		Path dir = Files.createTempDirectory("updater-cleanup-decline-");
+		Path dir = tempFolder.newFolder("updater-cleanup-decline").toPath();
 		Path running = dir.resolve("HazardCurveGUI-26.1.2.jar");
 		Files.createFile(running);
 		Path old = dir.resolve("HazardCurveGUI-26.1.1.jar");
@@ -479,7 +483,7 @@ public class ApplicationUpdaterTest {
 
 	@Test
 	public final void testCleanupOldVersionsDoesNotPromptAgainAfterAsked() throws IOException {
-		Path dir = Files.createTempDirectory("updater-cleanup-gated-");
+		Path dir = tempFolder.newFolder("updater-cleanup-gated").toPath();
 		Path running = dir.resolve("HazardCurveGUI-26.1.2.jar");
 		Files.createFile(running);
 		Path old = dir.resolve("HazardCurveGUI-26.1.1.jar");
