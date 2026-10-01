@@ -1,10 +1,10 @@
 package org.opensha.sha.earthquake.faultSysSolution.erf.td;
 
-import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.data.TimeSpan.DurationUnits;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.ParameterizedModel;
 import org.opensha.commons.param.impl.IntegerParameter;
+import org.opensha.commons.util.TimeUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultSection;
 
@@ -119,7 +119,7 @@ public interface HistoricalOpenInterval extends ParameterizedModel {
 
 		public SingleYear(int year, boolean adjustable) {
 			this.year = year;
-			this.startTimeMillis = TimeSpan.startOfYearInMillis(year);
+			this.startTimeMillis = TimeUtils.yearToEpochMillis(year);
 			
 			if (adjustable) {
 				params = new ParameterList();
@@ -130,7 +130,7 @@ public interface HistoricalOpenInterval extends ParameterizedModel {
 						"Start Year", min, max, Integer.valueOf(year));
 				yearParam.addParameterChangeListener(l -> {
 					this.year = yearParam.getValue();
-					this.startTimeMillis = TimeSpan.startOfYearInMillis(year);
+					this.startTimeMillis = TimeUtils.yearToEpochMillis(year);
 				});
 				params.addParameter(yearParam);
 			}

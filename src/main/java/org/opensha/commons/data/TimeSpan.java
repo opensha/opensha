@@ -2,6 +2,8 @@ package org.opensha.commons.data;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -24,6 +26,7 @@ import org.opensha.commons.param.impl.DoubleDiscreteParameter;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.IntegerParameter;
 import org.opensha.commons.param.impl.LongParameter;
+import org.opensha.commons.util.TimeUtils;
 
 import com.google.gson.TypeAdapter;
 import com.google.gson.annotations.JsonAdapter;
@@ -168,7 +171,7 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 
 		startYearParam = new IntegerParameter(START_YEAR, startYearConstraint, START_YEAR_DEFAULT);
 		startTimeMillisParam = new LongParameter(START_TIME_MILLIS, Long.MIN_VALUE, Long.MAX_VALUE,
-				startOfYearInMillis(START_YEAR_DEFAULT));
+				TimeUtils.yearToEpochMillis(START_YEAR_DEFAULT));
 
 		durationParam = new DoubleParameter(DURATION, durationConstraint, durationUnits.legacyName, DURATION_DEFAULT);
 		discreteDurationParam = new DoubleDiscreteParameter(DURATION, durationUnits.legacyName, DURATION_DEFAULT);
@@ -191,8 +194,8 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 		if (startTimePrecision == StartTimePrecision.YEARS) {
 			startYearParam.setConstraint(new IntegerConstraint(min, max));
 		} else if (startTimePrecision == StartTimePrecision.MILLISECONDS) {
-			long minMillis = startOfYearInMillis(min);
-			long maxMillis = utcCalendar(max, 12, 31, 23, 59, 59, 999).getTimeInMillis();
+			long minMillis = TimeUtils.yearToEpochMillis(min);
+			long maxMillis = utcMillis(max, 12, 31, 23, 59, 59, 999);
 			startTimeMillisParam.setConstraint(new LongConstraint(minMillis, maxMillis));
 		} else {
 			throw new IllegalStateException("A time-independent TimeSpan has no start-time constraint");
@@ -220,7 +223,7 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 		if (startTimePrecision == StartTimePrecision.YEARS)
 			return startYearParam.getValue();
 		if (startTimePrecision == StartTimePrecision.MILLISECONDS)
-			return getStartTimeCalendar().get(Calendar.YEAR);
+			return TimeUtils.epochMillisToYear(getStartTimeInMillis());
 		throw precisionException("getStartTimeYear()");
 	}
 
@@ -367,7 +370,7 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 	public void setStartTime(int year, int month, int day, int hour, int minute, int second, int millisecond) {
 		if (startTimePrecision != StartTimePrecision.MILLISECONDS)
 			throw precisionException("setStartTime(year, month, day, hour, minute, second, millisecond)");
-		setStartTimeInMillis(utcCalendar(year, month, day, hour, minute, second, millisecond).getTimeInMillis());
+		setStartTimeInMillis(utcMillis(year, month, day, hour, minute, second, millisecond));
 	}
 
 	public void setStartTime(GregorianCalendar calendar) {
@@ -389,26 +392,17 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 		if (startTimePrecision == StartTimePrecision.MILLISECONDS)
 			return startTimeMillisParam.getValue();
 		if (startTimePrecision == StartTimePrecision.YEARS)
-			return startOfYearInMillis(startYearParam.getValue());
+			return TimeUtils.yearToEpochMillis(startYearParam.getValue());
 		throw precisionException("getStartTimeInMillis()");
 	}
 
-	/** Returns midnight UTC on January 1 of the supplied calendar year. */
-	public static long startOfYearInMillis(int year) {
-		return utcCalendar(year, 1, 1, 0, 0, 0, 0).getTimeInMillis();
-	}
-
 	public GregorianCalendar getStartTimeCalendar() {
-		GregorianCalendar calendar = new GregorianCalendar(UTC);
-		calendar.setTimeInMillis(getStartTimeInMillis());
-		return calendar;
+		return utcCalendar(getStartTimeInMillis());
 	}
 
 	public GregorianCalendar getEndTimeCalendar() {
 		long endTimeMillis = getStartTimeInMillis() + (long)getDuration(DurationUnits.MILLISECONDS);
-		GregorianCalendar calendar = new GregorianCalendar(UTC);
-		calendar.setTime(new Date(endTimeMillis));
-		return calendar;
+		return utcCalendar(endTimeMillis);
 	}
 
 	public ParameterList getAdjustableParams() {
@@ -441,15 +435,15 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 		return new IllegalStateException(method+" is unavailable for start-time precision "+startTimePrecision);
 	}
 
-	private static GregorianCalendar utcCalendar(int year, int month, int day, int hour, int minute, int second,
-			int millisecond) {
+	private static long utcMillis(int year, int month, int day, int hour, int minute, int second, int millisecond) {
+		return LocalDateTime.of(year, month, day, hour, minute, second, millisecond * 1_000_000)
+				.toInstant(ZoneOffset.UTC).toEpochMilli();
+	}
+
+	private static GregorianCalendar utcCalendar(long epochMillis) {
 		GregorianCalendar calendar = new GregorianCalendar(UTC);
-		calendar.clear();
-		calendar.setLenient(false);
-		calendar.set(Calendar.ERA, GregorianCalendar.AD);
-		calendar.set(year, month - 1, day, hour, minute, second);
-		calendar.set(Calendar.MILLISECOND, millisecond);
-		calendar.getTimeInMillis();
+		calendar.setGregorianChange(new Date(Long.MIN_VALUE));
+		calendar.setTimeInMillis(epochMillis);
 		return calendar;
 	}
 

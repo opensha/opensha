@@ -2,6 +2,9 @@ package org.opensha.commons.data;
 
 import static org.junit.Assert.*;
 
+import java.util.Calendar;
+import java.util.GregorianCalendar;
+
 import org.dom4j.DocumentHelper;
 import org.dom4j.Element;
 import org.junit.After;
@@ -11,6 +14,7 @@ import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.data.TimeSpan.DurationUnits;
 import org.opensha.commons.data.TimeSpan.StartTimePrecision;
 import org.opensha.commons.param.impl.LongParameter;
+import org.opensha.commons.util.TimeUtils;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -64,6 +68,25 @@ public class TimeSpanTests
 		tSpan.setStartTime(1984);
 		assertEquals("Start Time Doesn't Match",1984,tSpan.getStartTimeYear());
 
+	}
+
+	@Test
+	public void testBCEStartOfYearMillis() {
+		TimeSpan span = new TimeSpan(StartTimePrecision.MILLISECONDS, DurationUnits.YEARS);
+		span.setStartTimeInMillis(TimeUtils.yearToEpochMillis(-1450));
+		assertEquals(-1450, span.getStartTimeYear());
+		assertCalendarYear(span.getStartTimeCalendar(), GregorianCalendar.BC, 1451);
+	}
+
+	private static void assertCalendarYear(GregorianCalendar calendar, int expectedEra, int expectedYear) {
+		assertEquals(expectedEra, calendar.get(Calendar.ERA));
+		assertEquals(expectedYear, calendar.get(Calendar.YEAR));
+		assertEquals(Calendar.JANUARY, calendar.get(Calendar.MONTH));
+		assertEquals(1, calendar.get(Calendar.DAY_OF_MONTH));
+		assertEquals(0, calendar.get(Calendar.HOUR_OF_DAY));
+		assertEquals(0, calendar.get(Calendar.MINUTE));
+		assertEquals(0, calendar.get(Calendar.SECOND));
+		assertEquals(0, calendar.get(Calendar.MILLISECOND));
 	}
 
 	public void testConstraintCheck()

@@ -8,7 +8,6 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -16,7 +15,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.opensha.commons.data.CSVFile;
-import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
@@ -28,6 +26,7 @@ import org.opensha.commons.geo.json.Geometry.LineString;
 import org.opensha.commons.geo.json.Geometry.MultiLineString;
 import org.opensha.commons.geo.json.Geometry.Point;
 import org.opensha.commons.util.FaultUtils;
+import org.opensha.commons.util.TimeUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ConnectivityClusters;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.ConnectivityCluster;
@@ -143,8 +142,7 @@ public class DOLE_SubsectionMapper {
 			Preconditions.checkState(year > Integer.MIN_VALUE,
 					"%s property is missing or malformatted: %s for %s", YEAR_PROP_NAME, feature.properties.get(YEAR_PROP_NAME),
 					feature.properties.getString("FaultName"));
-//			epochMillis = new GregorianCalendar(year, 0, 1).getTimeInMillis(); // this had problems with time zones
-			epochMillis = TimeSpan.startOfYearInMillis(year);
+			epochMillis = TimeUtils.yearToEpochMillis(year);
 			int nshm_hazID = feature.properties.getInt("NSHMhazID",-1); // test to see if we need to override
 			if(nshm_hazID>=0)
 				faultID = nshm_hazID;
@@ -294,18 +292,31 @@ public class DOLE_SubsectionMapper {
 		// group subsects by parent
 		Map<Integer, List<FaultSection>> subsectListForParentID_Map = subSects.stream().collect(
 				Collectors.groupingBy(S -> S.getParentSectionId()));
-		
-		// group Hist Rups data by parent
-		Map<Integer, List<HistoricalRupture>> histRupListForParentID_Map = histRups.stream().collect(
-				Collectors.groupingBy(D -> D.faultID));
-		
-		// group DOLE data by parent
-		Map<Integer, List<PaleoDOLE_Data>> paleoDataListForParentID_Map = paleoData.stream().collect(
-				Collectors.groupingBy(D -> D.faultID));
-		
+
 		HashSet<Integer> allDOLE_ParentIDs = new HashSet<>();
-		allDOLE_ParentIDs.addAll(histRupListForParentID_Map.keySet());
-		allDOLE_ParentIDs.addAll(paleoDataListForParentID_Map.keySet()); // this will filter duplicates
+		List<AbstractDOLE_Data> allDOLE_DataList = new ArrayList<>();
+		
+		Map<Integer, List<HistoricalRupture>> histRupListForParentID_Map;
+		if (histRups != null) {
+			// group Hist Rups data by parent
+			histRupListForParentID_Map = histRups.stream().collect(
+					Collectors.groupingBy(D -> D.faultID));
+			allDOLE_ParentIDs.addAll(histRupListForParentID_Map.keySet());
+			allDOLE_DataList.addAll(histRups);
+		} else {
+			histRupListForParentID_Map = Map.of(); 
+		}
+		
+		Map<Integer, List<PaleoDOLE_Data>> paleoDataListForParentID_Map;
+		if (paleoData != null) {
+			// group DOLE data by parent
+			paleoDataListForParentID_Map = paleoData.stream().collect(
+					Collectors.groupingBy(D -> D.faultID));
+			allDOLE_ParentIDs.addAll(paleoDataListForParentID_Map.keySet()); // this will filter duplicates
+			allDOLE_DataList.addAll(paleoData);
+		} else {
+			paleoDataListForParentID_Map = Map.of();
+		}
 				
 //		// this prints out 2 parents that have both paleo and hist data
 //		System.out.println(histRupListForParentID_Map.size()+"\t"+paleoDataListForParentID_Map.size()+"\t"+allDOLE_ParentIDs.size());
@@ -320,9 +331,8 @@ public class DOLE_SubsectionMapper {
 //		}
 //		System.exit(-1);
 
-		List<AbstractDOLE_Data> allDOLE_DataList = new ArrayList<>();
-		allDOLE_DataList.addAll(paleoData);
-		allDOLE_DataList.addAll(histRups);
+		
+		
 		Map<Integer, String> doleParentNamesMap = new HashMap<>();
 		for (AbstractDOLE_Data data : allDOLE_DataList)
 			if (!doleParentNamesMap.containsKey(data.faultID))
