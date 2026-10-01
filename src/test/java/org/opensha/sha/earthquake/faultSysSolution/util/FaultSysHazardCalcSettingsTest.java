@@ -11,7 +11,10 @@ import org.apache.commons.cli.Options;
 import org.junit.Test;
 import org.opensha.commons.data.TimeSpan.StartTimePrecision;
 import org.opensha.sha.earthquake.faultSysSolution.erf.FSS_ERF_Config;
+import org.opensha.sha.earthquake.faultSysSolution.erf.td.AperiodicityModels;
 import org.opensha.sha.earthquake.faultSysSolution.erf.td.FSS_ProbabilityModels;
+import org.opensha.sha.earthquake.faultSysSolution.erf.td.HistoricalOpenIntervals;
+import org.opensha.sha.earthquake.faultSysSolution.erf.td.RenewalModels;
 
 public class FaultSysHazardCalcSettingsTest {
 
@@ -47,6 +50,27 @@ public class FaultSysHazardCalcSettingsTest {
 		assertFalse(config.useRupMFDs());
 		assertFalse(config.useProxyRuptures());
 		assertInvalid("--aseis-reduces-area", "--no-aseis-reduces-area");
+	}
+
+	@Test
+	public void testProbabilityModelOverrides() throws Exception {
+		FSS_ERF_Config config = parse("--prob-model", "ucerf3_method", "--start-year", "2026",
+				"--renewal-model", "weibull", "--aperiodicity-value", "0.55",
+				"--hist-open-interval-year", "1900");
+		assertEquals(RenewalModels.WEIBULL, config.renewalModel());
+		assertEquals(AperiodicityModels.SINGLE_VALUED, config.aperiodicityModel());
+		assertEquals(Double.valueOf(0.55), config.aperiodicityValue());
+		assertEquals(HistoricalOpenIntervals.SINGLE_YEAR, config.historicalOpenInterval());
+		assertEquals(Integer.valueOf(1900), config.historicalOpenIntervalYear());
+	}
+
+	@Test
+	public void testInvalidProbabilityModelOverrides() throws Exception {
+		assertInvalid("--aperiodicity-value", "0.5");
+		assertInvalid("--prob-model", "UCERF3_METHOD", "--start-year", "2026",
+				"--aperiodicity-model", "UCERF3_LOW", "--aperiodicity-value", "0.5");
+		assertInvalid("--prob-model", "UCERF3_METHOD", "--start-year", "2026",
+				"--hist-open-interval", "NONE", "--hist-open-interval-year", "1900");
 	}
 
 	private static FSS_ERF_Config parse(String... args) throws Exception {

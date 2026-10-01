@@ -14,7 +14,10 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.erf.FSS_ERF_Config;
+import org.opensha.sha.earthquake.faultSysSolution.erf.td.AperiodicityModels;
 import org.opensha.sha.earthquake.faultSysSolution.erf.td.FSS_ProbabilityModels;
+import org.opensha.sha.earthquake.faultSysSolution.erf.td.HistoricalOpenIntervals;
+import org.opensha.sha.earthquake.faultSysSolution.erf.td.RenewalModels;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.imr.AttenRelRef;
 
@@ -152,6 +155,16 @@ public final class HazardConfig {
 				+FaultSysTools.enumOptions(FSS_ProbabilityModels.class));
 		ops.addOption(null, "hazard-start-year", true,
 				"Hazard forecast start year; required for a non-Poisson probability model.");
+		ops.addOption(null, "hazard-renewal-model", true, "Hazard renewal model distribution, one of: "
+				+FaultSysTools.enumOptions(RenewalModels.class));
+		ops.addOption(null, "hazard-aperiodicity-model", true, "Hazard aperiodicity model, one of: "
+				+FaultSysTools.enumOptions(AperiodicityModels.class));
+		ops.addOption(null, "hazard-aperiodicity-value", true,
+				"Hazard aperiodicity value; implies --hazard-aperiodicity-model SINGLE_VALUED.");
+		ops.addOption(null, "hazard-hist-open-interval", true, "Hazard historical open interval model, one of: "
+				+FaultSysTools.enumOptions(HistoricalOpenIntervals.class));
+		ops.addOption(null, "hazard-hist-open-interval-year", true,
+				"Hazard historical open interval start year; implies --hazard-hist-open-interval SINGLE_YEAR.");
 		ops.addOption(null, "hazard-aseis-reduces-area", false,
 				"Enable aseismicity area reductions in hazard calculations (default).");
 		ops.addOption(null, "hazard-no-aseis-reduces-area", false,
@@ -238,6 +251,20 @@ public final class HazardConfig {
 						cmd.getOptionValue("hazard-prob-model").trim().toUpperCase()));
 			if (cmd.hasOption("hazard-start-year"))
 				startYear(Integer.parseInt(cmd.getOptionValue("hazard-start-year")));
+			if (cmd.hasOption("hazard-renewal-model"))
+				renewalModel(RenewalModels.valueOf(
+						cmd.getOptionValue("hazard-renewal-model").trim().toUpperCase()));
+			if (cmd.hasOption("hazard-aperiodicity-model"))
+				aperiodicityModel(AperiodicityModels.valueOf(
+						cmd.getOptionValue("hazard-aperiodicity-model").trim().toUpperCase()));
+			if (cmd.hasOption("hazard-aperiodicity-value"))
+				aperiodicityValue(Double.parseDouble(cmd.getOptionValue("hazard-aperiodicity-value")));
+			if (cmd.hasOption("hazard-hist-open-interval"))
+				historicalOpenInterval(HistoricalOpenIntervals.valueOf(
+						cmd.getOptionValue("hazard-hist-open-interval").trim().toUpperCase()));
+			if (cmd.hasOption("hazard-hist-open-interval-year"))
+				historicalOpenIntervalYear(Integer.parseInt(
+						cmd.getOptionValue("hazard-hist-open-interval-year")));
 			Preconditions.checkArgument(!(cmd.hasOption("hazard-aseis-reduces-area")
 					&& cmd.hasOption("hazard-no-aseis-reduces-area")),
 					"cannot both enable and disable aseismicity area reductions");
@@ -355,6 +382,31 @@ public final class HazardConfig {
 
 		public Builder startYear(Integer startYear) {
 			erfConfigBuilder.startYear(startYear);
+			return this;
+		}
+
+		public Builder renewalModel(RenewalModels renewalModel) {
+			erfConfigBuilder.renewalModel(renewalModel);
+			return this;
+		}
+
+		public Builder aperiodicityModel(AperiodicityModels aperiodicityModel) {
+			erfConfigBuilder.aperiodicityModel(aperiodicityModel);
+			return this;
+		}
+
+		public Builder aperiodicityValue(Double aperiodicityValue) {
+			erfConfigBuilder.aperiodicityValue(aperiodicityValue);
+			return this;
+		}
+
+		public Builder historicalOpenInterval(HistoricalOpenIntervals historicalOpenInterval) {
+			erfConfigBuilder.historicalOpenInterval(historicalOpenInterval);
+			return this;
+		}
+
+		public Builder historicalOpenIntervalYear(Integer historicalOpenIntervalYear) {
+			erfConfigBuilder.historicalOpenIntervalYear(historicalOpenIntervalYear);
 			return this;
 		}
 

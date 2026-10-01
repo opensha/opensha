@@ -145,6 +145,22 @@ public interface HistoricalOpenInterval extends ParameterizedModel {
 		public long getSectionOpenIntervalStartTime(int sectionIndex) {
 			return startTimeMillis;
 		}
+
+		public int getYear() {
+			return year;
+		}
+
+		public void setYear(int year) {
+			if (params != null) {
+				IntegerParameter yearParam = (IntegerParameter)params.getParameter("Start Year");
+				yearParam.setValue(year);
+				if (yearParam.isEditorBuilt())
+					yearParam.getEditor().refreshParamEditor();
+			} else {
+				this.year = year;
+				this.startTimeMillis = TimeUtils.yearToEpochMillis(year);
+			}
+		}
 		
 		@Override
 		public ParameterList getAdjustableParameters() {

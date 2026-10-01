@@ -83,6 +83,16 @@ final class HazardScriptUtil {
 			appendArg(args, "--prob-model", hazard.erfConfig().probabilityModel().name());
 		if (hazard.erfConfig().startYear() != null)
 			appendArg(args, "--start-year", hazard.erfConfig().startYear());
+		if (hazard.erfConfig().renewalModel() != null)
+			appendArg(args, "--renewal-model", hazard.erfConfig().renewalModel().name());
+		if (hazard.erfConfig().aperiodicityModel() != null)
+			appendArg(args, "--aperiodicity-model", hazard.erfConfig().aperiodicityModel().name());
+		if (hazard.erfConfig().aperiodicityValue() != null)
+			appendArg(args, "--aperiodicity-value", hazard.erfConfig().aperiodicityValue());
+		if (hazard.erfConfig().historicalOpenInterval() != null)
+			appendArg(args, "--hist-open-interval", hazard.erfConfig().historicalOpenInterval().name());
+		if (hazard.erfConfig().historicalOpenIntervalYear() != null)
+			appendArg(args, "--hist-open-interval-year", hazard.erfConfig().historicalOpenIntervalYear());
 		if (!hazard.erfConfig().aseisReducesArea())
 			appendFlag(args, "--no-aseis-reduces-area");
 		if (!hazard.erfConfig().useRupMFDs())

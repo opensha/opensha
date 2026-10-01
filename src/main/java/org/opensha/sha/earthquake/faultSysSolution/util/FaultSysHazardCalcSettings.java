@@ -25,7 +25,10 @@ import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter;
 import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
 import org.opensha.sha.earthquake.faultSysSolution.erf.FSS_ERF_Config;
+import org.opensha.sha.earthquake.faultSysSolution.erf.td.AperiodicityModels;
 import org.opensha.sha.earthquake.faultSysSolution.erf.td.FSS_ProbabilityModels;
+import org.opensha.sha.earthquake.faultSysSolution.erf.td.HistoricalOpenIntervals;
+import org.opensha.sha.earthquake.faultSysSolution.erf.td.RenewalModels;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
 import org.opensha.sha.earthquake.util.GriddedFiniteRuptureSettings;
@@ -539,6 +542,11 @@ public class FaultSysHazardCalcSettings {
 	private static final String DURATION_OPTION = "duration";
 	private static final String PROB_MODEL_OPTION = "prob-model";
 	private static final String START_YEAR_OPTION = "start-year";
+	private static final String RENEWAL_MODEL_OPTION = "renewal-model";
+	private static final String APERIODICITY_MODEL_OPTION = "aperiodicity-model";
+	private static final String APERIODICITY_VALUE_OPTION = "aperiodicity-value";
+	private static final String HIST_OPEN_INTERVAL_OPTION = "hist-open-interval";
+	private static final String HIST_OPEN_INTERVAL_YEAR_OPTION = "hist-open-interval-year";
 
 	public static void addERFOptions(Options options) {
 		options.addOption(null, DURATION_OPTION, true, "Forecast duration in years. Default: 1");
@@ -546,6 +554,16 @@ public class FaultSysHazardCalcSettings {
 				+FaultSysTools.enumOptions(FSS_ProbabilityModels.class));
 		options.addOption(null, START_YEAR_OPTION, true,
 				"Forecast start year; required for a non-Poisson probability model");
+		options.addOption(null, RENEWAL_MODEL_OPTION, true, "Renewal model distribution. One of: "
+				+FaultSysTools.enumOptions(RenewalModels.class));
+		options.addOption(null, APERIODICITY_MODEL_OPTION, true, "Aperiodicity model. One of: "
+				+FaultSysTools.enumOptions(AperiodicityModels.class));
+		options.addOption(null, APERIODICITY_VALUE_OPTION, true,
+				"Aperiodicity value; implies --aperiodicity-model SINGLE_VALUED");
+		options.addOption(null, HIST_OPEN_INTERVAL_OPTION, true, "Historical open interval model. One of: "
+				+FaultSysTools.enumOptions(HistoricalOpenIntervals.class));
+		options.addOption(null, HIST_OPEN_INTERVAL_YEAR_OPTION, true,
+				"Historical open interval start year; implies --hist-open-interval SINGLE_YEAR");
 		options.addOption(null, "aseis-reduces-area", false, "Enable aseismicity area reductions (default)");
 		options.addOption(null, "no-aseis-reduces-area", false, "Disable aseismicity area reductions");
 		options.addOption(null, "no-mfds", false,
@@ -570,6 +588,20 @@ public class FaultSysHazardCalcSettings {
 				.useProxyRuptures(!commandLine.hasOption("no-proxy-ruptures"));
 		if (commandLine.hasOption("aseis-reduces-area") || commandLine.hasOption("no-aseis-reduces-area"))
 			builder.aseisReducesArea(commandLine.hasOption("aseis-reduces-area"));
+		if (commandLine.hasOption(RENEWAL_MODEL_OPTION))
+			builder.renewalModel(RenewalModels.valueOf(
+					commandLine.getOptionValue(RENEWAL_MODEL_OPTION).trim().toUpperCase()));
+		if (commandLine.hasOption(APERIODICITY_MODEL_OPTION))
+			builder.aperiodicityModel(AperiodicityModels.valueOf(
+					commandLine.getOptionValue(APERIODICITY_MODEL_OPTION).trim().toUpperCase()));
+		if (commandLine.hasOption(APERIODICITY_VALUE_OPTION))
+			builder.aperiodicityValue(Double.parseDouble(commandLine.getOptionValue(APERIODICITY_VALUE_OPTION)));
+		if (commandLine.hasOption(HIST_OPEN_INTERVAL_OPTION))
+			builder.historicalOpenInterval(HistoricalOpenIntervals.valueOf(
+					commandLine.getOptionValue(HIST_OPEN_INTERVAL_OPTION).trim().toUpperCase()));
+		if (commandLine.hasOption(HIST_OPEN_INTERVAL_YEAR_OPTION))
+			builder.historicalOpenIntervalYear(Integer.parseInt(
+					commandLine.getOptionValue(HIST_OPEN_INTERVAL_YEAR_OPTION)));
 		return builder.build();
 	}
 
