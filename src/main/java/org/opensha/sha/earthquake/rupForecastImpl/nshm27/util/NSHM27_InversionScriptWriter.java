@@ -2,6 +2,7 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm27.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -155,7 +156,11 @@ public class NSHM27_InversionScriptWriter {
 				.parallelBranchAverage(true)
 				.build();
 
-		System.err.println("WARNING: still using PRVI25 GMMs until NSHM27-specific models are available");
+		System.err.println("WARNING: still using PRVI25 GMMs; remember to change to temporary global models before gamma model");
+		try {
+			Thread.sleep(Duration.ofSeconds(10));
+		} catch (InterruptedException e) {
+		}
 		HazardConfig hazard = HazardConfig.builder()
 				// set our defaults before cmd
 				.backgroundOption(IncludeBackgroundOption.INCLUDE)
@@ -164,6 +169,10 @@ public class NSHM27_InversionScriptWriter {
 				.gmpe(AttenRelRef.USGS_PRVI_ACTIVE)
 				.gmpe(AttenRelRef.USGS_PRVI_SLAB)
 				.gmpe(AttenRelRef.USGS_PRVI_INTERFACE)
+				// TODO: switch to these before Gamma runs
+//				.gmpe(AttenRelRef.USGS_NSHM23_ACTIVE)
+//				.gmpe(AttenRelRef.USGS_NSHM27_TEMP_INTERFACE)
+//				.gmpe(AttenRelRef.USGS_NSHM27_TEMP_SLAB)
 				.sites(hazardSites)
 				// now allow cmd overrides
 				.forCMD(cmd)
