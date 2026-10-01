@@ -349,6 +349,11 @@ public class LogicTreeHazardCompare {
 				mapper.setPDiffRange(Double.parseDouble(cmd.getOptionValue("pdiff-range")));
 			if (cmd.hasOption("diff-range"))
 				mapper.setDiffRange(Double.parseDouble(cmd.getOptionValue("diff-range")));
+			if (cmd.hasOption("auto-range")) {
+				Preconditions.checkArgument(!cmd.hasOption("pdiff-range") && !cmd.hasOption("diff-range"),
+						"--auto-range cannot be combined with --pdiff-range or --diff-range");
+				mapper.autoRange = true;
+			}
 			mapper.forceSparseLTVar = cmd.hasOption("force-sparse-lt-var");
 			
 			if (cmd.hasOption("plot-region")) {
@@ -463,6 +468,8 @@ public class LogicTreeHazardCompare {
 		ops.addOption(null, "cpt-range", true, "Custom CPT range for hazard maps, in log10 units. Specify as min,max");
 		ops.addOption(null, "pdiff-range", true, "Maximum % difference to plot");
 		ops.addOption(null, "diff-range", true, "Maximum difference to plot");
+		ops.addOption(null, "auto-range", false, "Automatically scale each difference and % difference plot "
+				+ "from the negative to positive maximum absolute value in its data");
 		ops.addOption(null, "periods", true, "Custom spectral periods, comma separated");
 		ops.addOption(null, "force-sparse-lt-var", false, "Flag to force using the sparse logic tree variance algorithm");
 		ops.addOption(null, "force-file-backed-lt", false, "Flag to force loading the logic tree exactly as registered "
@@ -565,6 +572,7 @@ public class LogicTreeHazardCompare {
 	private boolean skipLogicTree = false;
 	private boolean forceFullLT = false;
 	private boolean ignorePrecomputed = false;
+	private boolean autoRange = false;
 
 	public LogicTreeHazardCompare(SolutionLogicTree solLogicTree, File mapsZipFile,
 			ReturnPeriod[] rps, double[] periods, double spacing, boolean remapTRTs, boolean remapBinnable) throws IOException {
@@ -765,6 +773,46 @@ public class LogicTreeHazardCompare {
 	
 	public void setDiffRange(double maxDiff) {
 		diffCPT = diffCPT.rescale(-maxDiff, maxDiff);
+	}
+
+	private CPT autoRangeCPT(GriddedGeoDataSet xyz, CPT cpt) {
+		if (!autoRange || (cpt != pDiffCPT && cpt != tightPDiffCPT && cpt != diffCPT))
+			return cpt;
+		double maxAbs = maxAbs(xyz);
+		return maxAbs > 0d ? cpt.rescale(-maxAbs, maxAbs) : cpt;
+	}
+
+	private CPT autoRangeCPT(List<GriddedGeoDataSet> xyzs, CPT cpt) {
+		if (!autoRange || (cpt != pDiffCPT && cpt != tightPDiffCPT && cpt != diffCPT))
+			return cpt;
+		double maxAbs = 0d;
+		for (GriddedGeoDataSet xyz : xyzs)
+			maxAbs = Math.max(maxAbs, maxAbs(xyz));
+		return maxAbs > 0d ? cpt.rescale(-maxAbs, maxAbs) : cpt;
+	}
+
+	private static double maxAbs(GriddedGeoDataSet xyz) {
+		double maxAbs = 0d;
+		for (int i=0; i<xyz.size(); i++) {
+			double value = xyz.get(i);
+			if (Double.isFinite(value))
+				maxAbs = Math.max(maxAbs, Math.abs(value));
+		}
+		return maxAbs;
+	}
+
+	private static double maxAbsDifference(GriddedGeoDataSet ref, GriddedGeoDataSet comparison,
+			boolean percentDifference) {
+		double maxAbs = 0d;
+		for (int i=0; i<ref.size(); i++) {
+			double refValue = ref.get(i);
+			double value = comparison.get(i) - refValue;
+			if (percentDifference)
+				value = 100d*value/refValue;
+			if (Double.isFinite(value))
+				maxAbs = Math.max(maxAbs, Math.abs(value));
+		}
+		return maxAbs;
 	}
 	
 	public SolHazardMapCalc getMapper() {
@@ -1786,10 +1834,12 @@ public class LogicTreeHazardCompare {
 						GeographicMapMaker.buildCPTLegend(logCPT, label, prefs), cptWidth, true, true);
 				PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt_cv",
 						GeographicMapMaker.buildCPTLegend(cvCPT, "CV, "+unitlessLabel, prefs), cptWidth, true, true);
-				PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt_pDiff",
-						GeographicMapMaker.buildCPTLegend(pDiffCPT, "% Change, "+unitlessLabel, prefs), cptWidth, true, true);
-				PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt_diff",
-						GeographicMapMaker.buildCPTLegend(diffCPT, "Difference, "+label, prefs), cptWidth, true, true);
+				if (!autoRange) {
+					PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt_pDiff",
+							GeographicMapMaker.buildCPTLegend(pDiffCPT, "% Change, "+unitlessLabel, prefs), cptWidth, true, true);
+					PlotUtils.writeScaleLegendOnly(resourcesDir, prefix+"_cpt_diff",
+							GeographicMapMaker.buildCPTLegend(diffCPT, "Difference, "+label, prefs), cptWidth, true, true);
+				}
 				
 				System.out.println(label);
 				
@@ -2613,12 +2663,46 @@ public class LogicTreeHazardCompare {
 				
 				mapNCDFs = null;
 				System.gc();
+
+				CPT logicTreePDiffCPT = pDiffCPT;
+				CPT logicTreeDiffCPT = diffCPT;
+				if (autoRange) {
+					double maxPDiff = 0d;
+					double maxDiff = 0d;
+					for (int l=0; l<choiceMeansList.size(); l++) {
+						HashMap<LogicTreeNode, GriddedGeoDataSet> choiceMeans = choiceMeansList.get(l);
+						if (choiceMeans == null)
+							continue;
+						for (GriddedGeoDataSet choiceMean : choiceMeans.values()) {
+							maxPDiff = Math.max(maxPDiff, maxAbsDifference(mean, choiceMean, true));
+							maxDiff = Math.max(maxDiff, maxAbsDifference(mean, choiceMean, false));
+						}
+						if (fullLT) {
+							for (GriddedGeoDataSet choiceMean : choiceMeans.values())
+								for (GriddedGeoDataSet otherChoiceMean : choiceMeans.values())
+									maxPDiff = Math.max(maxPDiff,
+											maxAbsDifference(otherChoiceMean, choiceMean, true));
+						}
+						HashMap<LogicTreeNode, GriddedGeoDataSet> choiceMeanWithouts = choiceMeanWithoutsList.get(l);
+						if (choiceMeanWithouts != null) {
+							for (GriddedGeoDataSet choiceMeanWithout : choiceMeanWithouts.values()) {
+								maxPDiff = Math.max(maxPDiff, maxAbsDifference(mean, choiceMeanWithout, true));
+								maxDiff = Math.max(maxDiff, maxAbsDifference(mean, choiceMeanWithout, false));
+							}
+						}
+					}
+					if (maxPDiff > 0d)
+						logicTreePDiffCPT = pDiffCPT.rescale(-maxPDiff, maxPDiff);
+					if (maxDiff > 0d)
+						logicTreeDiffCPT = diffCPT.rescale(-maxDiff, maxDiff);
+				}
 				
-				if (period == periods[0] && rp == rps[0]) {
-					PlotUtils.writeScaleLegendOnly(resourcesDir, "cpt_branch_pDiff",
-							GeographicMapMaker.buildCPTLegend(pDiffCPT, "Branch Choice / Mean, % Change", prefs), cptWidth, true, true);
-					PlotUtils.writeScaleLegendOnly(resourcesDir, "cpt_branch_diff",
-							GeographicMapMaker.buildCPTLegend(diffCPT, "Branch Choice - Mean "+perUnits, prefs), cptWidth, true, true);
+				if (autoRange || period == periods[0] && rp == rps[0]) {
+					String branchCPTPrefix = autoRange ? prefix+"_cpt_branch" : "cpt_branch";
+					PlotUtils.writeScaleLegendOnly(resourcesDir, branchCPTPrefix+"_pDiff",
+							GeographicMapMaker.buildCPTLegend(logicTreePDiffCPT, "Branch Choice / Mean, % Change", prefs), cptWidth, true, true);
+					PlotUtils.writeScaleLegendOnly(resourcesDir, branchCPTPrefix+"_diff",
+							GeographicMapMaker.buildCPTLegend(logicTreeDiffCPT, "Branch Choice - Mean "+perUnits, prefs), cptWidth, true, true);
 				}
 				
 				CSVFile<String> choiceMeanSummaryCSV = new CSVFile<>(false);
@@ -2753,7 +2837,7 @@ public class LogicTreeHazardCompare {
 										GriddedGeoDataSet oChoiceMap = choiceMeans.get(oChoice);
 										GriddedGeoDataSet pDiff = buildPDiff(oChoiceMap, choiceMap);
 										File map = submitMapFuture(mapper, exec, futures, resourcesDir, levelPrefix+"_"+choice.getFilePrefix()+"_vs_"+oChoice.getFilePrefix(),
-												pDiff, pDiffCPT, TITLES ? choice.getShortName()+" vs "+oChoice.getShortName() : " ",
+												pDiff, logicTreePDiffCPT, TITLES ? choice.getShortName()+" vs "+oChoice.getShortName() : " ",
 												choice.getShortName()+" / "+oChoice.getShortName()+", % Change, "+unitlessLabel, true);
 										mapVsChoiceTable.addColumn("![Difference Map]("+resourcesDir.getName()+"/"+map.getName()+")");
 									}
@@ -2774,7 +2858,7 @@ public class LogicTreeHazardCompare {
 							GriddedGeoDataSet pDiff = buildPDiff(mean, choiceMap);
 							choicePDiffs.add(pDiff);
 							MapPlot pDiffMap = mapper.buildMapPlot(resourcesDir, levelPrefix+"_"+choice.getFilePrefix()+"_pDiff",
-									pDiff, pDiffCPT, TITLES ? choice.getShortName()+" Comparison" : " ",
+									pDiff, logicTreePDiffCPT, TITLES ? choice.getShortName()+" Comparison" : " ",
 									choice.getShortName()+" / Mean, % Change, "+unitlessLabel, true);
 							branchPDiffPlots.add(pDiffMap);
 							File map = new File(resourcesDir, pDiffMap.prefix+".png");
@@ -2786,7 +2870,7 @@ public class LogicTreeHazardCompare {
 							for (int i=0; i<diff.size(); i++)
 								diff.set(i, choiceMap.get(i) - mean.get(i));
 							MapPlot diffMap = mapper.buildMapPlot(resourcesDir, levelPrefix+"_"+choice.getFilePrefix()+"_diff",
-									diff, diffCPT, TITLES ? choice.getShortName()+" Comparison" : " ",
+									diff, logicTreeDiffCPT, TITLES ? choice.getShortName()+" Comparison" : " ",
 									choice.getShortName()+" - Mean, "+label, false);
 							branchDiffPlots.add(diffMap);
 							map = new File(resourcesDir, diffMap.prefix+".png");
@@ -2840,18 +2924,19 @@ public class LogicTreeHazardCompare {
 //						int subtitleFont = 40;
 						int subtitleFont = 46;
 						File pDiffMulti = submitMultiMapFuture(mapper, exec, futures, resourcesDir, levelPrefix+"_choice_pDiffs",
-								choicePDiffs, pDiffCPT, null, titleFont, choiceShortNames, subtitleFont, null, true, height);
+								choicePDiffs, logicTreePDiffCPT, null, titleFont, choiceShortNames, subtitleFont, null, true, height);
 						File diffMulti = submitMultiMapFuture(mapper, exec, futures, resourcesDir, levelPrefix+"_choice_diffs",
-								choiceDiffs, diffCPT, null, titleFont, choiceShortNames, subtitleFont, null, true, height);
+								choiceDiffs, logicTreeDiffCPT, null, titleFont, choiceShortNames, subtitleFont, null, true, height);
 						File choicesCSV = new File(resourcesDir, levelPrefix+".csv");
 						writeChoiceHazardCSV(choicesCSV, mean, choices, choiceMeans);
 						lines.add("![Combined "+level.getShortName()+" % difference plot]("+resourcesDir.getName()+"/"+pDiffMulti.getName()+")");
 						lines.add("");
-						lines.add("![% Diff CPT]("+resourcesDir.getName()+"/cpt_branch_pDiff.png)");
+						String branchCPTPrefix = autoRange ? prefix+"_cpt_branch" : "cpt_branch";
+						lines.add("![% Diff CPT]("+resourcesDir.getName()+"/"+branchCPTPrefix+"_pDiff.png)");
 						lines.add("");
 						lines.add("![Combined "+level.getShortName()+" difference plot]("+resourcesDir.getName()+"/"+diffMulti.getName()+")");
 						lines.add("");
-						lines.add("![Diff CPT]("+resourcesDir.getName()+"/cpt_branch_diff.png)");
+						lines.add("![Diff CPT]("+resourcesDir.getName()+"/"+branchCPTPrefix+"_diff.png)");
 						lines.add("");
 						lines.add("Download Choice Hazard CSV: ["+choicesCSV.getName()+"]("+resourcesDir.getName()+"/"+choicesCSV.getName()+")");
 						lines.add("");
@@ -2906,7 +2991,7 @@ public class LogicTreeHazardCompare {
 									GriddedGeoDataSet pDiff = buildPDiff(mean, choiceWithout);
 									ratioPlots.add(submitMapFuture(mapper, exec, futures, resourcesDir,
 											levelPrefix+"_"+choice.getFilePrefix()+"_mean_pDiff_without",
-											pDiff, pDiffCPT, TITLES ? choice.getShortName()+" Removal Comparison" : " ",
+											pDiff, logicTreePDiffCPT, TITLES ? choice.getShortName()+" Removal Comparison" : " ",
 											choice.getShortName()+", Mean Without / With, % Change, "+unitlessLabel, true));
 									
 									GriddedGeoDataSet diff = new GriddedGeoDataSet(region, false);
@@ -2914,7 +2999,7 @@ public class LogicTreeHazardCompare {
 										diff.set(i, choiceWithout.get(i) - mean.get(i));
 									diffPlots.add(submitMapFuture(mapper, exec, futures, resourcesDir,
 											levelPrefix+"_"+choice.getFilePrefix()+"_mean_diff_without",
-											diff, diffCPT, TITLES ? choice.getShortName()+" Removal Comparison" : " ",
+											diff, logicTreeDiffCPT, TITLES ? choice.getShortName()+" Removal Comparison" : " ",
 											choice.getShortName()+", Mean Without - With, "+label, false));
 								}
 								table.finalizeLine();
@@ -3090,23 +3175,24 @@ public class LogicTreeHazardCompare {
 		MarkdownUtils.writeReadmeAndHTML(lines, outputDir);
 	}
 	
-	private static File submitMapFuture(SolHazardMapCalc mapper, ExecutorService exec, List<Future<?>> futures,
+	private File submitMapFuture(SolHazardMapCalc mapper, ExecutorService exec, List<Future<?>> futures,
 			File outputDir, String prefix, GriddedGeoDataSet xyz, CPT cpt,
 			String title, String zLabel) {
 		return submitMapFuture(mapper, exec, futures, outputDir, prefix, xyz, cpt, title, zLabel, false);
 	}
 	
-	private static File submitMapFuture(SolHazardMapCalc mapper, ExecutorService exec, List<Future<?>> futures,
+	private File submitMapFuture(SolHazardMapCalc mapper, ExecutorService exec, List<Future<?>> futures,
 			File outputDir, String prefix, GriddedGeoDataSet xyz, CPT cpt,
 			String title, String zLabel, boolean diffStats) {
 		File ret = new File(outputDir, prefix+".png");
+		CPT plotCPT = autoRangeCPT(xyz, cpt);
 		
 		futures.add(exec.submit(new Runnable() {
 			
 			@Override
 			public void run() {
 				try {
-					mapper.plotMap(outputDir, prefix, xyz, cpt, title, zLabel, diffStats);
+					mapper.plotMap(outputDir, prefix, xyz, plotCPT, title, zLabel, diffStats);
 				} catch (IOException e) {
 					throw ExceptionUtils.asRuntimeException(e);
 				}
@@ -3116,18 +3202,19 @@ public class LogicTreeHazardCompare {
 		return ret;
 	}
 	
-	private static File submitMultiMapFuture(SolHazardMapCalc mapper, ExecutorService exec, List<Future<?>> futures,
+	private File submitMultiMapFuture(SolHazardMapCalc mapper, ExecutorService exec, List<Future<?>> futures,
 			File outputDir, String prefix, List<GriddedGeoDataSet> xyzs, CPT cpt,
 			String title, int titleFontSize, List<String> subtitles, int subtitleFontSize,
 			String zLabel, boolean horizontal, int dimension) {
 		File ret = new File(outputDir, prefix+".png");
+		CPT plotCPT = autoRangeCPT(xyzs, cpt);
 		
 		futures.add(exec.submit(new Runnable() {
 			
 			@Override
 			public void run() {
 				try {
-					mapper.plotMultiMap(outputDir, prefix, xyzs, cpt, title, titleFontSize, subtitles, subtitleFontSize,
+					mapper.plotMultiMap(outputDir, prefix, xyzs, plotCPT, title, titleFontSize, subtitles, subtitleFontSize,
 							zLabel, horizontal, dimension, (int)(dimension*0.666 + 0.5), false, false);
 				} catch (IOException e) {
 					throw ExceptionUtils.asRuntimeException(e);
@@ -3331,7 +3418,8 @@ public class LogicTreeHazardCompare {
 		if (minEqualMax) {
 			table.addColumn("_(N/A)_");
 		} else {
-			map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_"+diffPrefix+"_range", diffFromRange, cpt.reverse(), TITLES ? name+" vs "+compName : " ",
+			CPT rangeCPT = autoRangeCPT(diffFromRange, cpt).reverse();
+			map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_"+diffPrefix+"_range", diffFromRange, rangeCPT, TITLES ? name+" vs "+compName : " ",
 					"Comparison "+op+" Extremes, "+diffLabel+", "+label, !difference);
 			table.addColumn("![Range Difference Map]("+resourcesDir.getName()+"/"+map.getName()+")");
 		}
