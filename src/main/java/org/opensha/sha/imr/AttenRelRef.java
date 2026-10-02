@@ -285,6 +285,28 @@ public enum AttenRelRef implements AttenRelSupplier {
 		}
 		
 	},
+
+	USGS_NSHM23_INTERFACE(null, "USGS NSHM23 Interface",
+			"NSHM23-Interface", PRODUCTION) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.TOTAL_TREE_CONUS_INTERFACE_2023, getName(), getShortName(), false, null);
+		}
+		
+	},
+
+	USGS_NSHM23_INTRASLAB(null, "USGS NSHM23 Intraslab",
+			"NSHM23-Slab", PRODUCTION) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.TOTAL_TREE_CONUS_INTRASLAB_2023, getName(), getShortName(), false, null);
+		}
+		
+	},
 	
 	USGS_PRVI_ACTIVE(null, "USGS PRVI25 Active Crustal",
 			"PRVI25-Active", PRODUCTION) {

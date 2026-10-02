@@ -9,6 +9,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationUtils;
+import org.opensha.commons.geo.LocationVector;
 import org.opensha.refFaultParamDb.gui.infotools.GUI_Utils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -16,6 +19,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
@@ -95,14 +99,12 @@ public class FaultSectionDataWriter {
 		buff.append(header2);
 		for(int i=0; i<subSectionPrefDataList.size(); i++) {
 			FaultSection sectData = subSectionPrefDataList.get(i);
-			FaultTrace faultTrace = sectData.getFaultTrace(); 
+			FaultTrace faultTrace = getUpperEdge(sectData, applyReductions); 
 			String str =  sectData.getSectionId()+"\n"+sectData.getSectionName()+"\n"+
 					getValue(sectData.getParentSectionId())+"\n"+
 					getValue(sectData.getParentSectionName())+"\n";
-			if (applyReductions)
-				str += getValue(sectData.getReducedAveUpperDepth())+"\n";
-			else
-				str += getValue(sectData.getOrigAveUpperDepth())+"\n";
+			double upperDepth = applyReductions ? sectData.getReducedAveUpperDepth() : sectData.getOrigAveUpperDepth();
+			str += getValue(upperDepth)+"\n";
 			str += 	getValue(sectData.getAveLowerDepth())+"\n"+
 					getValue(sectData.getAveDip()) +"\n"+
 					getValue(sectData.getDipDirection())+"\n";
@@ -117,11 +119,44 @@ public class FaultSectionDataWriter {
 					getValue(faultTrace.getTraceLength())+"\n"+
 					faultTrace.getNumLocations()+"\n";
 			// write all the point on the fault section trace
-			for(int j=0; j<faultTrace.getNumLocations(); ++j)
+			for(int j=0; j<faultTrace.getNumLocations(); ++j) {
 				str+=(float)faultTrace.get(j).getLatitude()+"\t"+(float)faultTrace.get(j).getLongitude()+"\n";
+			}
 			buff.append(str);
 		}
 		return buff;
+	}
+	
+	private static FaultTrace getUpperEdge(FaultSection sect, boolean aseisReducesArea) {
+		FaultTrace trace = sect.getFaultTrace();
+
+		double upperDepth = aseisReducesArea
+				? sect.getReducedAveUpperDepth()
+				: sect.getOrigAveUpperDepth();
+
+		double dipRad = Math.toRadians(sect.getAveDip());
+		double dipDir = sect.getDipDirection(); // LocationVector wants degrees
+
+		FaultTrace upperEdge = new FaultTrace(trace.getName());
+
+		for (Location loc : trace) {
+			double deltaDepth = upperDepth - loc.getDepth();
+
+			if (deltaDepth == 0d || sect.getAveDip() == 90d) {
+				upperEdge.add(loc);
+			} else {
+				Preconditions.checkState(deltaDepth >= 0d,
+						"Trace point depth %s is below target upper depth %s",
+						loc.getDepth(), upperDepth);
+
+				double horzDist = deltaDepth / Math.tan(dipRad);
+
+				upperEdge.add(LocationUtils.location(loc,
+						new LocationVector(dipDir, horzDist, deltaDepth)));
+			}
+		}
+
+		return upperEdge;
 	}
 
 	private final static  String getValue(double val) {
