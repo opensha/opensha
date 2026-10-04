@@ -33,6 +33,7 @@ import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
 import org.opensha.sha.earthquake.faultSysSolution.erf.FSS_ERF_Config;
+import org.opensha.sha.earthquake.faultSysSolution.erf.FSS_ERF_ConfigLogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysHazardCalcSettings.CurveXValManager;
@@ -185,7 +186,8 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 //			for (double rate : sol.getRateForAllRups())
 //				sumRate += rate;
 //			System.out.println("Sum rate: "+sumRate);
-			erf = erfConfig.buildERF(sol);
+			FSS_ERF_Config branchERFConfig = FSS_ERF_ConfigLogicTreeNode.forBranch(erfConfig, branch);
+			erf = branchERFConfig.buildERF(sol);
 			if (gridSeisOp == IncludeBackgroundOption.INCLUDE || gridSeisOp == IncludeBackgroundOption.ONLY)
 				Preconditions.checkNotNull(sol.getGridSourceProvider(),
 						"Grid source provider is null, but gridded seis option is %s", gridSeisOp);

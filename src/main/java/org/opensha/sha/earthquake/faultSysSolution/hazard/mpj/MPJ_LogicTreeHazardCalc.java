@@ -48,6 +48,7 @@ import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
 import org.opensha.sha.calc.HazardCurveUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.erf.FSS_ERF_Config;
+import org.opensha.sha.earthquake.faultSysSolution.erf.FSS_ERF_ConfigLogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.HazardCurveMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.LogicTreeCurveAverager;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
@@ -115,6 +116,24 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private synchronized HazardCurveMetadata getCurveMetadata() {
 		return curveMetadata == null ? new HazardCurveMetadata(erfConfig.buildTimeSpan()) : curveMetadata;
 	}
+
+	static HazardCurveMetadata buildCurveMetadata(FSS_ERF_Config baseConfig, LogicTree<?> tree) {
+		Preconditions.checkNotNull(tree, "Logic tree cannot be null");
+		Preconditions.checkArgument(tree.size() > 0, "Logic tree cannot be empty");
+		HazardCurveMetadata metadata = new HazardCurveMetadata(
+				FSS_ERF_ConfigLogicTreeNode.forBranch(baseConfig, tree.getBranch(0)).buildTimeSpan());
+		for (int i=1; i<tree.size(); i++) {
+			HazardCurveMetadata branchMetadata = new HazardCurveMetadata(
+					FSS_ERF_ConfigLogicTreeNode.forBranch(baseConfig, tree.getBranch(i)).buildTimeSpan());
+			try {
+				metadata = metadata.merge(branchMetadata);
+			} catch (IllegalArgumentException e) {
+				throw new IllegalArgumentException("Incompatible ERF time span for logic-tree branch "+i+": "
+						+tree.getBranch(i), e);
+			}
+		}
+		return metadata;
+	}
 	
 	static final IncludeBackgroundOption GRID_SEIS_DEFAULT = IncludeBackgroundOption.EXCLUDE;
 	private IncludeBackgroundOption gridSeisOp = GRID_SEIS_DEFAULT;
@@ -122,7 +141,6 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private GriddedSeismicitySettings griddedSettings;
 	
 	private FSS_ERF_Config erfConfig;
-	private HazardCurveMetadata expectedCurveMetadata;
 	
 	private GriddedRegion gridRegion;
 
@@ -143,6 +161,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	
 	private FaultSystemSolution externalSol;
 	private SolHazardMapCalc externalSolCurveCalc;
+	private List<FSS_ERF_ConfigLogicTreeNode> externalCacheERFNodes;
 
 	public static final String ORIG_LOGIC_TREE_FILE_NAME = "solution_logic_tree.json";
 
@@ -194,7 +213,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		
 		outputDir = new File(cmd.getOptionValue("output-dir"));
 		erfConfig = FaultSysHazardCalcSettings.getERFConfig(cmd);
-		expectedCurveMetadata = new HazardCurveMetadata(erfConfig.buildTimeSpan());
+		curveMetadata = buildCurveMetadata(erfConfig, solTree.getLogicTree());
+		rps = ReturnPeriod.defaultsForCurveDuration(curveMetadata.getTimeSpan());
 		
 		if (cmd.hasOption("gridded-seis"))
 			gridSeisOp = IncludeBackgroundOption.valueOf(cmd.getOptionValue("gridded-seis"));
@@ -722,6 +742,20 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		for (int index : batch) {
 			System.gc();
 			LogicTreeBranch<?> branch = solTree.getLogicTree().getBranch(index);
+			FSS_ERF_Config branchERFConfig = FSS_ERF_ConfigLogicTreeNode.forBranch(erfConfig, branch);
+			HazardCurveMetadata branchCurveMetadata = new HazardCurveMetadata(branchERFConfig.buildTimeSpan());
+			List<FSS_ERF_ConfigLogicTreeNode> branchERFNodes = new ArrayList<>();
+			for (LogicTreeNode node : branch)
+				if (node instanceof FSS_ERF_ConfigLogicTreeNode)
+					branchERFNodes.add((FSS_ERF_ConfigLogicTreeNode)node);
+			if (externalCacheERFNodes == null) {
+				externalCacheERFNodes = branchERFNodes;
+			} else if (!externalCacheERFNodes.equals(branchERFNodes)) {
+				// externally supplied fault/grid sources are cached across branches, so invalidate them when the ERF changes
+				externalGriddedCurveCalc = null;
+				externalSolCurveCalc = null;
+				externalCacheERFNodes = branchERFNodes;
+			}
 			
 			debug("Loading index "+index+": "+branch);
 			
@@ -744,7 +778,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				// see if it's already done
 				try {
 					calc = SolHazardMapCalc.loadCurves(sol, gridRegion, periods, hazardOutDir, curvesPrefix,
-							expectedCurveMetadata);
+							branchCurveMetadata);
 				} catch (Exception e) {
 					debug("Hazard subdir ('"+hazardSubDirName+"') exsists, but couldn't be reused: "+e.getMessage());
 				}
@@ -791,7 +825,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 											+combineWithSubDir.getAbsolutePath());
 								try {
 									combineWithExcludeCurves = SolHazardMapCalc.loadCurves(sol, gridRegion, periods,
-											combineWithSubDir, curvesPrefix, expectedCurveMetadata);
+											combineWithSubDir, curvesPrefix, branchCurveMetadata);
 								} catch (Exception e) {
 									if (verbose)
 										debug("Can't reuse: "+e.getMessage());
@@ -805,6 +839,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 									LogicTreeLevel<?> level = branch.getLevel(i);
 									LogicTreeNode node = branch.getValue(i);
 									if (level.affects(FaultSystemSolution.RATES_FILE_NAME, true)
+											|| node instanceof FSS_ERF_ConfigLogicTreeNode
 											|| node instanceof ScalarIMRsLogicTreeNode || node instanceof ScalarIMR_ParamsLogicTreeNode) {
 										faultLevels.add(level);
 										faultNodes.add(branch.getValue(i));
@@ -821,7 +856,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 												debug("Seeing if we can reuse existing curves excluding gridded seismicity from "
 														+subHazardDir.getAbsolutePath());
 											combineWithExcludeCurves = SolHazardMapCalc.loadCurves(sol, gridRegion, periods,
-													subHazardDir, curvesPrefix, expectedCurveMetadata);
+													subHazardDir, curvesPrefix, branchCurveMetadata);
 										} catch (Exception e) {
 											if (verbose)
 												debug("Can't reuse: "+e.getMessage());
@@ -847,7 +882,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 							debug("Seeing if we can reuse existing curves with only gridded seismicity from "+combineWithSubDir.getAbsolutePath());
 							try {
 								combineWithOnlyCurves = SolHazardMapCalc.loadCurves(sol, gridRegion, periods,
-										combineWithSubDir, curvesPrefix, expectedCurveMetadata);
+										combineWithSubDir, curvesPrefix, branchCurveMetadata);
 							} catch (Exception e) {
 								debug("Can't reuse: "+e.getMessage());
 							}
@@ -863,7 +898,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 									try {
 										debug("Seeing if we can reuse existing curves with only gridded seismicity from "+subHazardDir.getAbsolutePath());
 										combineWithOnlyCurves = SolHazardMapCalc.loadCurves(sol, gridRegion, periods,
-												subHazardDir, curvesPrefix, expectedCurveMetadata);
+												subHazardDir, curvesPrefix, branchCurveMetadata);
 									} catch (Exception e) {
 										debug("Can't reuse: "+e.getMessage());
 									}
@@ -891,7 +926,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 								FaultSysHazardCalcSettings.getGMM_Suppliers(branch, gmmRefs, true), gridRegion,
 								IncludeBackgroundOption.ONLY, periods);
 						
-						configureHazardCalc(externalGriddedCurveCalc);
+						configureHazardCalc(externalGriddedCurveCalc, branchERFConfig);
 						
 						externalGriddedCurveCalc.calcHazardCurves(getNumThreads());
 					}
@@ -911,7 +946,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 								FaultSysHazardCalcSettings.getGMM_Suppliers(branch, gmmRefs, true), gridRegion,
 								IncludeBackgroundOption.EXCLUDE, periods);
 						externalSolCurveCalc.setCacheGridSources(false);
-						configureHazardCalc(externalSolCurveCalc);
+						configureHazardCalc(externalSolCurveCalc, branchERFConfig);
 						
 						externalSolCurveCalc.calcHazardCurves(getNumThreads());
 					}
@@ -996,7 +1031,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					combineWithCurves = combineWithOnlyCurves;
 					calc = new SolHazardMapCalc(sol, gmpeSuppliers, gridRegion, IncludeBackgroundOption.EXCLUDE, periods);
 				}
-				configureHazardCalc(calc);
+				configureHazardCalc(calc, branchERFConfig);
 				
 				calc.calcHazardCurves(getNumThreads(), combineWithCurves);
 				calc.writeCurvesCSVs(hazardOutDir, curvesPrefix, true);
@@ -1039,7 +1074,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		}
 	}
 	
-	private void configureHazardCalc(SolHazardMapCalc calc) {
+	private void configureHazardCalc(SolHazardMapCalc calc, FSS_ERF_Config erfConfig) {
 		calc.setSourceFilter(sourceFilter);
 		calc.setXValManager(xValManager);
 		calc.setPointSourceOptimizations(pointSourceOptimizations);
@@ -1056,6 +1091,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			LogicTreeLevel<?> level = branch.getLevel(i);
 			LogicTreeNode node = branch.getValue(i);
 			if (GridSourceProvider.affectedByLevel(level)
+					|| node instanceof FSS_ERF_ConfigLogicTreeNode
 					|| node instanceof ScalarIMRsLogicTreeNode || node instanceof ScalarIMR_ParamsLogicTreeNode) {
 				gridLevels.add(level);
 				gridNodes.add(branch.getValue(i));

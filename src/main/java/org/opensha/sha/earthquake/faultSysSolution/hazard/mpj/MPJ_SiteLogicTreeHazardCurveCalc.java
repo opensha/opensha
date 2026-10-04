@@ -36,6 +36,7 @@ import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
 import org.opensha.sha.earthquake.faultSysSolution.erf.FSS_ERF_Config;
+import org.opensha.sha.earthquake.faultSysSolution.erf.FSS_ERF_ConfigLogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.HazardCurveMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
@@ -147,7 +148,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		
 		outputDir = new File(cmd.getOptionValue("output-dir"));
 		erfConfig = FaultSysHazardCalcSettings.getERFConfig(cmd);
-		expectedCurveMetadata = new HazardCurveMetadata(erfConfig.buildTimeSpan());
+		expectedCurveMetadata = MPJ_LogicTreeHazardCalc.buildCurveMetadata(erfConfig, tree);
 		
 		if (cmd.hasOption("gridded-seis"))
 			gridSeisOp = IncludeBackgroundOption.valueOf(cmd.getOptionValue("gridded-seis"));
@@ -315,12 +316,20 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 	@Override
 	protected void calculateBatch(int[] batch) throws Exception {
 		for (int branchIndex : batch) {
+			HazardCurveMetadata branchCurveMetadata = new HazardCurveMetadata(
+					FSS_ERF_ConfigLogicTreeNode.forBranch(erfConfig, tree.getBranch(branchIndex)).buildTimeSpan());
 			if (!recalc) {
 				// see if it's already done
 				File branchCSV = getBranchCSV(branchIndex);
 				
 				if (branchCSV.exists()) {
 					try {
+						File branchMetadataFile = getBranchMetadataFile(branchIndex);
+						Preconditions.checkState(branchMetadataFile.exists(),
+								"Branch metadata file not found: %s", branchMetadataFile.getAbsolutePath());
+						HazardCurveMetadata previousMetadata = HazardCurveMetadata.read(branchMetadataFile);
+						Preconditions.checkState(branchCurveMetadata.equals(previousMetadata),
+								"Branch curve metadata has changed");
 						debug("reading previously written branch CSV: "+branchCSV.getAbsolutePath());
 						CSVFile<String> csv = CSVFile.readFile(branchCSV, true);
 						int expectedRows = 1 + sites.size()*periods.length;
@@ -433,6 +442,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 				}
 			}
 			branchCSV.writeToFile(branchCSVFile);
+			branchCurveMetadata.write(getBranchMetadataFile(branchIndex));
 		}
 	}
 	
@@ -452,6 +462,11 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 	private File getBranchCSV(int branchIndex) {
 		File branchDir = getBranchDir(branchIndex);
 		return new File(branchDir, "branch_"+branchIndex+".csv");
+	}
+
+	private File getBranchMetadataFile(int branchIndex) {
+		File branchDir = getBranchDir(branchIndex);
+		return new File(branchDir, "branch_"+branchIndex+"_"+HazardCurveMetadata.FILE_NAME);
 	}
 	
 	private File getBranchDir(int branchIndex) {

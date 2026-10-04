@@ -38,6 +38,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.HazardCurveMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
 import org.opensha.sha.earthquake.faultSysSolution.erf.FSS_ERF_Config;
+import org.opensha.sha.earthquake.faultSysSolution.erf.FSS_ERF_ConfigLogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
@@ -150,6 +151,9 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 		
 		outputDir = new File(cmd.getOptionValue("output-dir"));
 		erfConfig = FaultSysHazardCalcSettings.getERFConfig(cmd);
+		LogicTreeBranch<?> erfBranch = singleSol.getModule(LogicTreeBranch.class);
+		if (erfBranch != null)
+			erfConfig = FSS_ERF_ConfigLogicTreeNode.forBranch(erfConfig, erfBranch);
 		expectedCurveMetadata = new HazardCurveMetadata(erfConfig.buildTimeSpan());
 		
 		if (cmd.hasOption("gridded-seis"))
