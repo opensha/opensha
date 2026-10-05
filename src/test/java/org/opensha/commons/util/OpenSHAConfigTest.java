@@ -8,7 +8,9 @@ import java.nio.file.Path;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 /**
  * Unit tests for {@link OpenSHAConfig}: lazy defaults, parsing, atomic save
@@ -21,12 +23,15 @@ import org.junit.Test;
  */
 public class OpenSHAConfigTest {
 
+	@Rule
+	public TemporaryFolder tempFolder = new TemporaryFolder();
+
 	private Path tmpDir;
 	private Path configFile;
 
 	@Before
 	public void setUp() throws IOException {
-		tmpDir = Files.createTempDirectory("opensha-config-test");
+		tmpDir = tempFolder.getRoot().toPath();
 		configFile = tmpDir.resolve("config.json");
 		OpenSHAConfig.setConfigFileForTesting(configFile);
 	}
