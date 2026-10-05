@@ -118,6 +118,44 @@ public final class ColorUtils {
 			return Colors.tab_lightaqua;
 		throw new IllegalArgumentException("Not a base Colors.tab_* constant: "+color);
 	}
+	
+	public static final Color[] TAB_10 = {
+		Colors.tab_blue,
+		Colors.tab_orange,
+		Colors.tab_green,
+		Colors.tab_red,
+		Colors.tab_purple,
+		Colors.tab_brown,
+		Colors.tab_pink,
+		Colors.tab_grey,
+		Colors.tab_olive,
+		Colors.tab_aqua
+	};
+	
+	public static final Color[] TAB_10_NO_GREY = {
+		Colors.tab_blue,
+		Colors.tab_orange,
+		Colors.tab_green,
+		Colors.tab_red,
+		Colors.tab_purple,
+		Colors.tab_brown,
+		Colors.tab_pink,
+		Colors.tab_olive,
+		Colors.tab_aqua
+	};
+
+	public static final Color[] TAB_10_LIGHT;
+	public static final Color[] TAB_10_LIGHT_NO_GREY;
+	static {
+		Color[] light = new Color[TAB_10.length];
+		for (int i=0; i<light.length; i++)
+			light[i] = getTabLight(TAB_10[i]);
+		TAB_10_LIGHT = light;
+		light = new Color[TAB_10_NO_GREY.length];
+		for (int i=0; i<light.length; i++)
+			light[i] = getTabLight(TAB_10_NO_GREY[i]);
+		TAB_10_LIGHT_NO_GREY = light;
+	}
 
 	/**
 	 * Lightens a color by repeatedly moving each RGB component halfway toward 255.

@@ -292,7 +292,21 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.TOTAL_TREE_CONUS_INTERFACE_2023, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.TOTAL_TREE_CONUS_INTERFACE_2023, getName(), getShortName(), false, null) {
+
+				@Override
+				protected ImmutableList<Field> initFieldsUsed() {
+					// dirty hack to fix the fields used in nshmp-haz, but not reported as such by this GMM
+					// TODO: remove this when NSHMP-haz fixes their bug
+//					System.out.println("Hack for NSHM23-Interface fields. Declared: "+super.initFieldsUsed());
+					return ImmutableList.of(
+							Field.MW,
+							Field.RRUP,
+							Field.VS30,
+							Field.ZTOR);
+				}
+				
+			};
 		}
 		
 	},
