@@ -213,7 +213,7 @@ public class FaultSysHazardCalcSettings {
 		} else {
 			ret.putAll(FaultSysHazardCalcSettings.getDefaultGMMs());
 			if (cmd.hasOption("trt-gmpe")) {
-				for (String val : cmd.getOptionValues("gmmRefs")) {
+				for (String val : cmd.getOptionValues("trt-gmpe")) {
 					Preconditions.checkState(val.contains(":"), "Expected <trt>:<gmm>, can't parse argument: %s", val);
 					int index = val.indexOf(":");
 					String trtName = val.substring(0, index);

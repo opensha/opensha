@@ -5,6 +5,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
+import java.util.Map;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Options;
@@ -15,6 +17,9 @@ import org.opensha.sha.earthquake.faultSysSolution.erf.td.AperiodicityModels;
 import org.opensha.sha.earthquake.faultSysSolution.erf.td.FSS_ProbabilityModels;
 import org.opensha.sha.earthquake.faultSysSolution.erf.td.HistoricalOpenIntervals;
 import org.opensha.sha.earthquake.faultSysSolution.erf.td.RenewalModels;
+import org.opensha.sha.imr.AttenRelRef;
+import org.opensha.sha.imr.AttenRelSupplier;
+import org.opensha.sha.util.TectonicRegionType;
 
 public class FaultSysHazardCalcSettingsTest {
 
@@ -71,6 +76,19 @@ public class FaultSysHazardCalcSettingsTest {
 				"--aperiodicity-model", "UCERF3_LOW", "--aperiodicity-value", "0.5");
 		assertInvalid("--prob-model", "UCERF3_METHOD", "--start-year", "2026",
 				"--hist-open-interval", "NONE", "--hist-open-interval-year", "1900");
+	}
+
+	@Test
+	public void testTRTSpecificGMMs() throws Exception {
+		Options options = new Options();
+		FaultSysHazardCalcSettings.addCommonOptions(options, false);
+		CommandLine commandLine = new DefaultParser().parse(options, new String[] {
+				"--trt-gmpe", "ACTIVE_SHALLOW:"+AttenRelRef.USGS_NSHM23_ACTIVE.name(),
+				"--trt-gmpe", "STABLE_SHALLOW:"+AttenRelRef.USGS_NSHM23_STABLE_R2.name()
+		});
+		Map<TectonicRegionType, AttenRelSupplier> gmms = FaultSysHazardCalcSettings.getGMMs(commandLine);
+		assertEquals(AttenRelRef.USGS_NSHM23_ACTIVE, gmms.get(TectonicRegionType.ACTIVE_SHALLOW));
+		assertEquals(AttenRelRef.USGS_NSHM23_STABLE_R2, gmms.get(TectonicRegionType.STABLE_SHALLOW));
 	}
 
 	private static FSS_ERF_Config parse(String... args) throws Exception {
