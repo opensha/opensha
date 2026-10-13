@@ -457,9 +457,33 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 	
 	public static class NSHM23_WUS_FiniteRuptureConverter implements FiniteRuptureConverter {
 		
-		private static WC1994_MagLengthRelationship WC94 = new WC1994_MagLengthRelationship();
+		private static final WC1994_MagLengthRelationship WC94 = new WC1994_MagLengthRelationship();
+		public static final double NSHM23_SLAB_DIP = 90d;
+		public static final double NSHM23_SLAB_WIDTH = 8d;
+
+		public static double getSlabLength(double magnitude) {
+			// NSHM_SUB_GEOMAT_LENGTH
+			return Math.pow(10d, (magnitude - 4.94) / 1.39);
+		}
+
+		public static NSHM23GridRupDimensions getSlabDimensions(double magnitude, double upperDepth) {
+			double length = getSlabLength(magnitude);
+			double lowerDepth = upperDepth + NSHM23_SLAB_WIDTH;
+			return new NSHM23GridRupDimensions(upperDepth, lowerDepth, length, NSHM23_SLAB_WIDTH, NSHM23_SLAB_DIP);
+		}
+
+		public static GriddedRuptureProperties getSlabRuptureProperties(double magnitude, double upperDepth,
+				GriddedRupturePropertiesCache cache) {
+			NSHM23GridRupDimensions dims = getSlabDimensions(magnitude, upperDepth);
+			GriddedRuptureProperties props = new GriddedRuptureProperties(magnitude,
+					0d, dims.dip(), Double.NaN, null, dims.upperDepth(), dims.lowerDepth(), dims.length(),
+					Double.NaN, Double.NaN, TectonicRegionType.SUBDUCTION_SLAB);
+			return cache == null ? props : cache.getCached(props);
+		}
 		
 		public static NSHM23GridRupDimensions getDimensions(TectonicRegionType trt, double magnitude, double dip) {
+			Preconditions.checkArgument(trt != TectonicRegionType.SUBDUCTION_SLAB,
+					"Slab dimensions require a rupture-specific upper depth; use getSlabDimensions()");
 			double dipRad = Math.toRadians(dip);
 			
 			double length;
