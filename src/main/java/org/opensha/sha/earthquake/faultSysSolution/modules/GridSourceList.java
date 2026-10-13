@@ -868,17 +868,17 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		@Override
 		public String toString() {
 		   return "GriddedRuptureProperties[" +
-		           "magnitude=" + (float) magnitude + "; " +
+		           "mag=" + (float) magnitude + "; " +
 		           "rake=" + (float) rake + "; " +
 		           "dip=" + (float) dip + "; " +
 		           "strike=" + (float) strike + "; " +
-		           "strikeRange=" + strikeRange + "; " +
-		           "upperDepth=" + (float) upperDepth + "; " +
-		           "lowerDepth=" + (float) lowerDepth + "; " +
-		           "length=" + (float) length + "; " +
-		           "hypocentralDepth=" + (float) hypocentralDepth + "; " +
-		           "hypocentralDAS=" + (float) hypocentralDAS + "; " +
-		           "tectonicRegionType=" + (tectonicRegionType != null ? tectonicRegionType.name() : "null") +
+		           "range=" + strikeRange + "; " +
+		           "zTOR=" + (float) upperDepth + "; " +
+		           "zBOT=" + (float) lowerDepth + "; " +
+		           "len=" + (float) length + "; " +
+		           "hypoDepth=" + (float) hypocentralDepth + "; " +
+		           "hypoDAS=" + (float) hypocentralDAS + "; " +
+		           "trt=" + (tectonicRegionType != null ? tectonicRegionType.name() : "null") +
 		           "]";
 		}
 		
@@ -918,7 +918,9 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		private TectonicRegionType tectonicRegionType;
 		
 		public GriddedRupturePropertiesBuilder() {
-			
+			this(Double.NaN, Double.NaN, Double.NaN, Double.NaN, null,
+					Double.NaN, Double.NaN, Double.NaN,
+					Double.NaN, Double.NaN, null);
 		}
 		
 		public GriddedRupturePropertiesBuilder(GriddedRuptureProperties other) {
