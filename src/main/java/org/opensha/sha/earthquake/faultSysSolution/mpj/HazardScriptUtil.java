@@ -99,6 +99,7 @@ final class HazardScriptUtil {
 			appendFlag(args, "--no-mfds");
 		if (!hazard.erfConfig().useProxyRuptures())
 			appendFlag(args, "--no-proxy-ruptures");
+		MPJScriptUtil.appendSystemProperties(args, hazard.systemProperties());
 	}
 
 	static void appendArg(StringBuilder args, String name, Object value) {

@@ -38,6 +38,7 @@ public class NSHM27_InversionScriptWriter {
 		ops.addOption(FaultSysTools.helpOption());
 		HPCConfig.addOptions(ops);
 		HazardConfig.addOptions(ops);
+		InversionConfig.addOptions(ops);
 		
 		ops.addRequiredOption(null, "region", true, "NSHM27 region, one of: "+FaultSysTools.enumOptions(NSHM27_SeismicityRegions.class));
 		
@@ -148,6 +149,7 @@ public class NSHM27_InversionScriptWriter {
 //				.estimateWallTimeMinutes(200000d, 2000, 200000d)
 				.wallTimeMinutesPerRound(5)
 				.parallelBranchAverage(true)
+				.forCMD(cmd)
 				.build();
 
 		System.err.println("WARNING: still using PRVI25 GMMs until NSHM27-specific models are available");

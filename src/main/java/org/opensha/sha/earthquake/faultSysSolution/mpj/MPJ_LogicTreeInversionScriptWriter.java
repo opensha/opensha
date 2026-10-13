@@ -141,6 +141,7 @@ public class MPJ_LogicTreeInversionScriptWriter {
 			appendArg(args, "--runs-per-branch", request.inversion().runsPerBranch());
 		if (request.inversion().parallelBranchAverage())
 			appendFlag(args, "--parallel-ba");
+		MPJScriptUtil.appendSystemProperties(args, request.inversion().systemProperties());
 		for (String extraArg : request.inversion().extraArgs())
 			args.append(" ").append(extraArg);
 		args.append(" ").append(MPJTaskCalculator.argumentBuilder()

@@ -1,7 +1,13 @@
 package org.opensha.sha.earthquake.faultSysSolution.mpj;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Options;
 
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionConfigurationFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfigurationFactory;
@@ -20,6 +26,7 @@ public final class InversionConfig {
 	private final Integer estimatedRounds;
 	private final Double estimatedItersPerSec;
 	private final List<String> extraArgs;
+	private final Map<String, String> systemProperties;
 
 	private InversionConfig(Builder builder) {
 		this.factoryClass = builder.factoryClass;
@@ -32,6 +39,7 @@ public final class InversionConfig {
 		this.estimatedRounds = builder.estimatedRounds;
 		this.estimatedItersPerSec = builder.estimatedItersPerSec;
 		this.extraArgs = List.copyOf(builder.extraArgs);
+		this.systemProperties = Collections.unmodifiableMap(new LinkedHashMap<>(builder.systemProperties));
 	}
 
 	public static Builder builder() {
@@ -56,6 +64,15 @@ public final class InversionConfig {
 
 	public List<String> extraArgs() {
 		return extraArgs;
+	}
+
+	public Map<String, String> systemProperties() {
+		return systemProperties;
+	}
+
+	public static void addOptions(Options ops) {
+		ops.addOption(null, "inversion-system-property", true,
+				"Java system property to set on every inversion worker, supplied as key=value. Can be repeated.");
 	}
 
 	int resolvePerInversionMinutes() {
@@ -93,6 +110,14 @@ public final class InversionConfig {
 		private Integer estimatedRounds;
 		private Double estimatedItersPerSec;
 		private final List<String> extraArgs = new ArrayList<>();
+		private final Map<String, String> systemProperties = new LinkedHashMap<>();
+
+		public Builder forCMD(CommandLine cmd) {
+			if (cmd.hasOption("inversion-system-property"))
+				for (String assignment : cmd.getOptionValues("inversion-system-property"))
+					MPJScriptUtil.putSystemProperty(systemProperties, assignment);
+			return this;
+		}
 
 		public Builder factoryClass(Class<? extends InversionConfigurationFactory> factoryClass) {
 			this.factoryClass = factoryClass;
@@ -150,6 +175,18 @@ public final class InversionConfig {
 		public Builder addExtraArgs(List<String> extraArgs) {
 			if (extraArgs != null)
 				this.extraArgs.addAll(extraArgs);
+			return this;
+		}
+
+		public Builder systemProperty(String key, String value) {
+			MPJScriptUtil.putSystemProperty(systemProperties, key, value);
+			return this;
+		}
+
+		public Builder systemProperties(Map<String, String> systemProperties) {
+			if (systemProperties != null)
+				for (Map.Entry<String, String> entry : systemProperties.entrySet())
+					systemProperty(entry.getKey(), entry.getValue());
 			return this;
 		}
 

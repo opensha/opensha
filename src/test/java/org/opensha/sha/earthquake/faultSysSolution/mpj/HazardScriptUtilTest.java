@@ -2,6 +2,7 @@ package org.opensha.sha.earthquake.faultSysSolution.mpj;
 
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
@@ -61,5 +62,25 @@ public class HazardScriptUtilTest {
 		assertTrue(args.contains(" --aperiodicity-value 0.55"));
 		assertTrue(args.contains(" --hist-open-interval SINGLE_YEAR"));
 		assertTrue(args.contains(" --hist-open-interval-year 1900"));
+	}
+
+	@Test
+	public void testSystemProperties() throws Exception {
+		Options options = new Options();
+		HazardConfig.addOptions(options);
+		CommandLine commandLine = new DefaultParser().parse(options, new String[] {
+				"--hazard-system-property", "nshmp.gmm.projZHyp=true",
+				"--hazard-system-property", "test.property=value with spaces"
+		});
+		HazardConfig config = HazardConfig.builder()
+				.systemProperty("builder.property", "first")
+				.forCMD(commandLine)
+				.build();
+		assertEquals("true", config.systemProperties().get("nshmp.gmm.projZHyp"));
+		assertEquals("value with spaces", config.systemProperties().get("test.property"));
+		String args = HazardScriptUtil.buildSharedArgs(config);
+		assertTrue(args.contains(" -Dbuilder.property=first"));
+		assertTrue(args.contains(" -Dnshmp.gmm.projZHyp=true"));
+		assertTrue(args.contains(" '-Dtest.property=value with spaces'"));
 	}
 }

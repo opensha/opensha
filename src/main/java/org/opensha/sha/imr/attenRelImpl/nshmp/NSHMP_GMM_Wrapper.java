@@ -1101,6 +1101,8 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 		if (setPropEffectParams)
 			setPropagationEffectParams();
 	}
+	
+	private static final boolean USE_DIP_PROJECTED_ZHYP = Boolean.parseBoolean(System.getProperty("nshmp.gmm.projZHyp", "false"));
 
 	@Override
 	public void setEqkRupture(EqkRupture eqkRupture) {
@@ -1137,6 +1139,9 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 				double zHyp;
 				if (eqkRupture.getHypocenterLocation() != null) {
 					zHyp = eqkRupture.getHypocenterLocation().getDepth();
+				} else if (USE_DIP_PROJECTED_ZHYP) {
+					// use the legacy projected ZHyp, which is not as accurate
+					zHyp = surf.getAveRupTopDepth() + surf.getAveWidth() * Math.sin(Math.toRadians(surf.getAveDip()));
 				} else {
 					zHyp = 0.5*(surf.getAveRupTopDepth() + surf.getAveRupBottomDepth());
 				}

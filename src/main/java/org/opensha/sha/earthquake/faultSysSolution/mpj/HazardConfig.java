@@ -4,7 +4,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
@@ -41,6 +44,7 @@ public final class HazardConfig {
 	private final boolean useInversionJobTime;
 	private final Double minutesPerBranch;
 	private final FSS_ERF_Config erfConfig;
+	private final Map<String, String> systemProperties;
 
 	private HazardConfig(Builder builder) {
 		this.backgroundOption = builder.backgroundOption;
@@ -59,6 +63,7 @@ public final class HazardConfig {
 		this.useInversionJobTime = builder.useInversionJobTime;
 		this.minutesPerBranch = builder.minutesPerBranch;
 		this.erfConfig = builder.erfConfigBuilder.build();
+		this.systemProperties = Collections.unmodifiableMap(new LinkedHashMap<>(builder.systemProperties));
 	}
 
 	public static Builder builder() {
@@ -128,6 +133,10 @@ public final class HazardConfig {
 	public FSS_ERF_Config erfConfig() {
 		return erfConfig;
 	}
+
+	public Map<String, String> systemProperties() {
+		return systemProperties;
+	}
 	
 	public static void addOptions(Options ops) {
 		ops.addOption(null, "hazard-gridded-seis", true, "Hazard gridded seismicity option, one of: "
@@ -171,6 +180,8 @@ public final class HazardConfig {
 				"Disable aseismicity area reductions in hazard calculations.");
 		ops.addOption(null, "hazard-no-mfds", false, "Disable rupture MFDs in hazard calculations.");
 		ops.addOption(null, "hazard-no-proxy-ruptures", false, "Disable proxy ruptures in hazard calculations.");
+		ops.addOption(null, "hazard-system-property", true,
+				"Java system property to set on every hazard worker, supplied as key=value. Can be repeated.");
 	}
 
 	public static final class Builder {
@@ -190,6 +201,7 @@ public final class HazardConfig {
 		private boolean useInversionJobTime;
 		private Double minutesPerBranch;
 		private FSS_ERF_Config.Builder erfConfigBuilder = FSS_ERF_Config.builder();
+		private final Map<String, String> systemProperties = new LinkedHashMap<>();
 		
 		public Builder forCMD(CommandLine cmd) {
 			Preconditions.checkArgument(!(cmd.hasOption("hazard-time-same-as-inversion")
@@ -274,6 +286,9 @@ public final class HazardConfig {
 				useRupMFDs(false);
 			if (cmd.hasOption("hazard-no-proxy-ruptures"))
 				useProxyRuptures(false);
+			if (cmd.hasOption("hazard-system-property"))
+				for (String assignment : cmd.getOptionValues("hazard-system-property"))
+					MPJScriptUtil.putSystemProperty(systemProperties, assignment);
 			return this;
 		}
 
@@ -427,6 +442,18 @@ public final class HazardConfig {
 
 		public Builder erfConfig(FSS_ERF_Config erfConfig) {
 			erfConfigBuilder = Preconditions.checkNotNull(erfConfig).toBuilder();
+			return this;
+		}
+
+		public Builder systemProperty(String key, String value) {
+			MPJScriptUtil.putSystemProperty(systemProperties, key, value);
+			return this;
+		}
+
+		public Builder systemProperties(Map<String, String> systemProperties) {
+			if (systemProperties != null)
+				for (Map.Entry<String, String> entry : systemProperties.entrySet())
+					systemProperty(entry.getKey(), entry.getValue());
 			return this;
 		}
 
