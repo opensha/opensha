@@ -11,6 +11,7 @@ import java.util.List;
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 import org.dom4j.Element;
 
+import com.google.common.base.Objects;
 import com.google.common.primitives.Doubles;
 import com.google.gson.annotations.JsonAdapter;
 
@@ -108,9 +109,19 @@ public class DefaultXY_DataSet extends AbstractXY_DataSet {
 		if (!(obj instanceof DefaultXY_DataSet))
 			return false;
 		DefaultXY_DataSet function = (DefaultXY_DataSet)obj;
-		if( !getName().equals(function.getName() )  ) return false;
-
-		if( !getInfo().equals(function.getInfo() )  ) return false;
+		if (!Objects.equal(getName(), function.getName()))
+			return false;
+		if (!Objects.equal(getName(), function.getName()))
+			return false;
+		int size = this.size();
+		if (size != function.size())
+			return false;
+		for (int i=0; i<size; i++) {
+			if ((float)getX(i) != (float)function.getX(i))
+				return false;
+			if ((float)getY(i) != (float)function.getY(i))
+				return false;
+		}
 		return true;
 	}
 
