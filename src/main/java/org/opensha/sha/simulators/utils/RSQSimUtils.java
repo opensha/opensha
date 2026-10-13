@@ -304,6 +304,8 @@ public class RSQSimUtils {
 		List<List<Integer>> sectionForRups = Lists.newArrayList();
 		
 		double minFractForInclusion = mapper.getMinFractForInclusion();
+		double maxJumpDist = 200d;
+		SectionDistanceAzimuthCalculator distCalc = new SectionDistanceAzimuthCalculator(subSects);
 
 		System.out.print("Building ruptures...");
 		for (int i=0; i<events.size(); i++) {
@@ -314,9 +316,11 @@ public class RSQSimUtils {
 			
 			List<List<SubSectionMapping>> mappings = mapper.getFilteredSubSectionMappings(e);
 			
-			if (minFractForInclusion > 0 && mappings.isEmpty())
-				// fallback to any that touch if empty
-				mappings = mapper.getAllSubSectionMappings(e);
+			if (minFractForInclusion > 0 && mappings.isEmpty()) {
+				// fallback to the connected component with the largest total moment; using every
+				// touched subsection can join unrelated remote slips
+				mappings = largestMomentConnectedComponent(mapper.getAllSubSectionMappings(e), distCalc, maxJumpDist);
+			}
 
 			List<Double> rakes = Lists.newArrayList();
 			List<Integer> rupSectIndexes = Lists.newArrayList();
@@ -362,8 +366,7 @@ public class RSQSimUtils {
 				.rupLengths(rupLengths)
 				.build();
 		
-		SectionDistanceAzimuthCalculator distCalc = new SectionDistanceAzimuthCalculator(subSects);
-		RuptureConnectionSearch search = new RuptureConnectionSearch(rupSet, distCalc, 200d, false);
+		RuptureConnectionSearch search = new RuptureConnectionSearch(rupSet, distCalc, maxJumpDist, false);
 		rupSet.addModule(ClusterRuptures.instance(rupSet, search));
 		
 		HashSet<Jump> jumps = new HashSet<>();
@@ -480,6 +483,94 @@ public class RSQSimUtils {
 		sol.setInfoString(info);
 		
 		return sol;
+	}
+
+	private static List<List<SubSectionMapping>> largestMomentConnectedComponent(
+			List<List<SubSectionMapping>> mappings, SectionDistanceAzimuthCalculator distCalc, double maxJumpDist) {
+		Preconditions.checkState(!mappings.isEmpty(), "No subsection mappings available for fallback");
+
+		List<List<FaultSection>> mappedSects = new ArrayList<>(mappings.size());
+		double[] bundleMoments = new double[mappings.size()];
+		double[] bundleSlippedAreas = new double[mappings.size()];
+		for (int b=0; b<mappings.size(); b++) {
+			List<SubSectionMapping> bundle = mappings.get(b);
+			List<FaultSection> bundleSects = new ArrayList<>(bundle.size());
+			for (SubSectionMapping mapping : bundle) {
+				bundleSects.add(mapping.getSubSect());
+				bundleMoments[b] += mapping.getMomentOnSect();
+				bundleSlippedAreas[b] += mapping.getAreaSlipped();
+			}
+			mappedSects.add(bundleSects);
+		}
+		boolean[] retained = largestWeightConnectedComponent(mappedSects, bundleMoments, bundleSlippedAreas,
+				distCalc, maxJumpDist);
+
+		List<List<SubSectionMapping>> ret = new ArrayList<>();
+		for (int b=0; b<mappings.size(); b++)
+			if (retained[b])
+				ret.add(mappings.get(b));
+		return ret;
+	}
+
+	static boolean[] largestWeightConnectedComponent(List<? extends List<? extends FaultSection>> bundles,
+			double[] primaryWeights, double[] secondaryWeights, SectionDistanceAzimuthCalculator distCalc,
+			double maxJumpDist) {
+		Preconditions.checkArgument(primaryWeights.length == bundles.size());
+		Preconditions.checkArgument(secondaryWeights.length == bundles.size());
+		boolean[] visited = new boolean[bundles.size()];
+		boolean[] largest = null;
+		double largestPrimaryWeight = Double.NEGATIVE_INFINITY;
+		double largestSecondaryWeight = Double.NEGATIVE_INFINITY;
+		for (int seed=0; seed<bundles.size(); seed++) {
+			if (visited[seed])
+				continue;
+			boolean[] component = connectedComponent(bundles, seed, distCalc, maxJumpDist);
+			double primaryWeight = 0d;
+			double secondaryWeight = 0d;
+			for (int i=0; i<component.length; i++) {
+				if (component[i]) {
+					visited[i] = true;
+					primaryWeight += primaryWeights[i];
+					secondaryWeight += secondaryWeights[i];
+				}
+			}
+			if (primaryWeight > largestPrimaryWeight
+					|| (primaryWeight == largestPrimaryWeight && secondaryWeight > largestSecondaryWeight)) {
+				largest = component;
+				largestPrimaryWeight = primaryWeight;
+				largestSecondaryWeight = secondaryWeight;
+			}
+		}
+		Preconditions.checkNotNull(largest);
+		return largest;
+	}
+
+	static boolean[] connectedComponent(List<? extends List<? extends FaultSection>> bundles, int seedIndex,
+			SectionDistanceAzimuthCalculator distCalc, double maxJumpDist) {
+		Preconditions.checkArgument(seedIndex >= 0 && seedIndex < bundles.size());
+		boolean[] retained = new boolean[bundles.size()];
+		retained[seedIndex] = true;
+		List<Integer> frontier = new ArrayList<>();
+		frontier.add(seedIndex);
+		for (int f=0; f<frontier.size(); f++) {
+			List<? extends FaultSection> fromBundle = bundles.get(frontier.get(f));
+			for (int i=0; i<bundles.size(); i++) {
+				if (!retained[i] && bundlesWithinDistance(fromBundle, bundles.get(i), distCalc, maxJumpDist)) {
+					retained[i] = true;
+					frontier.add(i);
+				}
+			}
+		}
+		return retained;
+	}
+
+	private static boolean bundlesWithinDistance(List<? extends FaultSection> bundle1,
+			List<? extends FaultSection> bundle2, SectionDistanceAzimuthCalculator distCalc, double maxJumpDist) {
+		for (FaultSection sect1 : bundle1)
+			for (FaultSection sect2 : bundle2)
+				if ((float)distCalc.getDistance(sect1, sect2) <= (float)maxJumpDist)
+					return true;
+		return false;
 	}
 	
 	private static double[] buildRatesArray(List<? extends SimulatorEvent> events) {
