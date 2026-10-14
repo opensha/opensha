@@ -1094,7 +1094,7 @@ public class SegmentationCalculator {
 			SegmentationCalculator compCalc, boolean log) throws IOException {
 		File[] ret = new File[minMags.length];
 		
-		Range range = log ? new Range(1e-4, 1e0) : new Range(0, 1);
+		Range range = log ? new Range(1e-3, 1e0) : new Range(0, 1);
 		
 		for (int m=0; m<minMags.length; m++) {
 			XY_DataSet scatter = new DefaultXY_DataSet();
@@ -1143,12 +1143,11 @@ public class SegmentationCalculator {
 			gp.setLegendFontSize(legendFontSize);
 			gp.setBackgroundColor(Color.WHITE);
 			
-			int width = 1000;
-			int height = 700;
+			int width = 800;
 			gp.drawGraphPanel(spec, log, log, range, range);
 
 			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
-			PlotUtils.writePlots(outputDir, prefix, gp, width, height, true, WRITE_PDFS, false);
+			PlotUtils.writePlots(outputDir, myPrefix, gp, width, false, true, WRITE_PDFS, false);
 			
 			ret[m] = new File(outputDir, myPrefix+".png");
 		}
