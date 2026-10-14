@@ -128,6 +128,24 @@ public class DefaultXY_DataSet extends AbstractXY_DataSet {
 	}
 
 	@Override
+	public int hashCode() {
+		int result = 17;
+		result = 31 * result + (getName() == null ? 0 : getName().hashCode());
+		result = 31 * result + (getInfo() == null ? 0 : getInfo().hashCode());
+		for (int i=0; i<size(); i++) {
+			result = 31 * result + floatHashCode(getX(i));
+			result = 31 * result + floatHashCode(getY(i));
+		}
+		return result;
+	}
+
+	private static int floatHashCode(double value) {
+		float floatValue = (float)value;
+		// equals() considers positive and negative zero equal
+		return floatValue == 0f ? 0 : Float.floatToIntBits(floatValue);
+	}
+
+	@Override
 	public Point2D get(int index) {
 		return points.get(index);
 	}

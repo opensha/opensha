@@ -5,7 +5,8 @@ import org.junit.runners.Suite;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
-        JFreeLogarithmicAxisTest.class
+	JFreeLogarithmicAxisTest.class,
+	DiscretizedFunctionXYDataSetEqualityTest.class
 })
 public class JFreeChartSuite {
     public static void main(String args[]) {
