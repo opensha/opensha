@@ -149,17 +149,23 @@ public enum NSHM27_SeisRateModelBranch implements NSHM27_SeisRateModel, LogicTre
 
 	public synchronized static SeismicityRateModel loadMixtureRateModel(NSHM27_SeismicityRegions region,
 			TectonicRegionType trt, EpochWeighting weighting) {
+		return loadMixtureRateModel(region, trt, weighting, TYPE);
+	}
+
+	public synchronized static SeismicityRateModel loadMixtureRateModel(NSHM27_SeismicityRegions region,
+			TectonicRegionType trt, EpochWeighting weighting, RateType type) {
 		if (mixtureRateModelsCache == null)
 			mixtureRateModelsCache = new HashMap<>();
 		String key = region.name()+"/"+trt.name()+"/"+weighting.name();
-		SeismicityRateModel model = mixtureRateModelsCache.get(key);
+		SeismicityRateModel model = type == TYPE ? mixtureRateModelsCache.get(key) : null;
 		if (model == null) {
 			try {
-				model = new SeismicityRateModel(loadMixtureCSV(region, trt, weighting), TYPE, BOUND_TYPE);
+				model = new SeismicityRateModel(loadMixtureCSV(region, trt, weighting), type, BOUND_TYPE);
 			} catch (IOException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
-			mixtureRateModelsCache.put(key, model);
+			if (type == TYPE)
+				mixtureRateModelsCache.put(key, model);
 		}
 		return model;
 	}
