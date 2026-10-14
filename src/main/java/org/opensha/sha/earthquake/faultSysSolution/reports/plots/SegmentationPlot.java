@@ -156,6 +156,8 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 		Map<RateCombiner, File[]> compPassthroughRates = null;
 		Map<RateCombiner, File[]> compPassthroughRatios = null;
 		Map<RateCombiner, File[]> compPassthroughDiffs = null;
+		Map<RateCombiner, File[]> compPassthroughScatters = null;
+		Map<RateCombiner, File[]> compPassthroughLogScatters = null;
 		Map<Scalars, File[]> compScalarPassthroughs = null;
 		Map<Scalars, File[]> compScalarLogPassthroughs = null;
 		if (compSegCalc != null) {
@@ -163,6 +165,8 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 			compPassthroughRates = new HashMap<>();
 			compPassthroughDiffs = new HashMap<>();
 			compPassthroughRatios = new HashMap<>();
+			compPassthroughScatters = new HashMap<>();
+			compPassthroughLogScatters = new HashMap<>();
 			for (RateCombiner combiner : combiners) {
 				compPassthroughRates.put(combiner, compSegCalc.plotConnectionFracts(resourcesDir,
 						"comp_conn_passthrough_"+combiner.name(), "Connection Passthrough Rates, Relative to "+combiner, combiner));
@@ -170,6 +174,10 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 						"conn_passthrough_diff_"+combiner.name(), "Connection Passthrough Differences", combiner, compSegCalc));
 				compPassthroughRatios.put(combiner, inputSegCalc.plotConnectionLogRatios(resourcesDir,
 						"conn_passthrough_ratio_"+combiner.name(), "Connection Passthrough Ratios", combiner, compSegCalc));
+				compPassthroughScatters.put(combiner, inputSegCalc.plotConnectionScatter(resourcesDir,
+						"conn_passthrough_scatter_"+combiner.name(), combiner, compSegCalc, false));
+				compPassthroughLogScatters.put(combiner, inputSegCalc.plotConnectionScatter(resourcesDir,
+						"conn_passthrough_log_scatter_"+combiner.name(), combiner, compSegCalc, true));
 			}
 			compScalarPassthroughs = new HashMap<>();
 			compScalarLogPassthroughs = new HashMap<>();
@@ -294,6 +302,12 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 					table.addColumn("![Rates]("+relPathToResources+"/"+compPassthroughRatios.get(combiner)[m].getName()+")");
 					table.addColumn("![Rates]("+relPathToResources+"/"+compPassthroughDiffs.get(combiner)[m].getName()+")");
 					table.finalizeLine();
+					
+					table.initNewLine();
+					table.addColumn("![Scatter]("+relPathToResources+"/"+compPassthroughScatters.get(combiner)[m].getName()+")");
+					table.addColumn("![Log scatter]("+relPathToResources+"/"+compPassthroughLogScatters.get(combiner)[m].getName()+")");
+					table.finalizeLine();
+					
 				}
 				if (segModel != null) {
 					
