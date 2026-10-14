@@ -106,12 +106,14 @@ public class DefaultXY_DataSet extends AbstractXY_DataSet {
 
 	@Override
 	public boolean equals(Object obj) {
+		if (obj == this)
+			return true;
 		if (!(obj instanceof DefaultXY_DataSet))
 			return false;
 		DefaultXY_DataSet function = (DefaultXY_DataSet)obj;
 		if (!Objects.equal(getName(), function.getName()))
 			return false;
-		if (!Objects.equal(getName(), function.getName()))
+		if (!Objects.equal(getInfo(), function.getInfo()))
 			return false;
 		int size = this.size();
 		if (size != function.size())
