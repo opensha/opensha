@@ -20,8 +20,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 
 import javax.imageio.ImageIO;
@@ -161,6 +161,41 @@ public class GraphPanel extends JSplitPane {
 	public static final double LOG_Y_MIN_VAL = 1e-16;
 
 	private XYPlot plot;
+
+	/**
+	 * An {@link XYPlot} with constant-time, identity-based dataset index lookup.
+	 * JFreeChart's implementation uses identity semantics but scans every dataset.
+	 */
+	private static class DatasetIndexedXYPlot extends XYPlot {
+
+		private static final long serialVersionUID = 1L;
+
+		private final IdentityHashMap<XYDataset, Integer> datasetIndexes = new IdentityHashMap<>();
+
+		DatasetIndexedXYPlot(ValueAxis domainAxis, ValueAxis rangeAxis) {
+			super(null, domainAxis, rangeAxis, null);
+		}
+
+		@Override
+		public void setDataset(int index, XYDataset dataset) {
+			// This override is called from the XYPlot constructor before our fields are
+			// initialized, in which case there is not yet anything to cache.
+			if (datasetIndexes != null) {
+				XYDataset previous = getDataset(index);
+				if (previous != null)
+					datasetIndexes.remove(previous);
+				if (dataset != null)
+					datasetIndexes.put(dataset, index);
+			}
+			super.setDataset(index, dataset);
+		}
+
+		@Override
+		public int indexOf(XYDataset dataset) {
+			Integer index = datasetIndexes == null ? null : datasetIndexes.get(dataset);
+			return index == null ? super.indexOf(dataset) : index;
+		}
+	}
 
 	// Create the x-axis and y-axis - either normal or log
 	// xaxis1 and yAxis1 replica of the x-Axis and y-Axis object, in case error
@@ -543,49 +578,14 @@ public class GraphPanel extends JSplitPane {
 		}
 
 		plot = null;
-		// XYPlot (and combined versions) use a really slow brute force dataset index
-		// lookup
-		// we're assigning dataset idexes manually below, cache them and return those
-		// cached values
-		HashMap<XYDataset, Integer> datasetIndexMap = new HashMap<>();
 		// build the plot
 		if (specs.size() == 1) {
-			plot = new XYPlot(null, xAxis, yAxis, null) {
-
-				@Override
-				public int indexOf(XYDataset dataset) {
-					Integer ret = datasetIndexMap.get(dataset);
-					if (ret != null)
-						return ret;
-					return super.indexOf(dataset);
-				}
-
-			};
+			plot = new DatasetIndexedXYPlot(xAxis, yAxis);
 		} else if (combinedYAxis) {
-			plot = new CombinedRangeXYPlot(yAxis) {
-
-				@Override
-				public int indexOf(XYDataset dataset) {
-					Integer ret = datasetIndexMap.get(dataset);
-					if (ret != null)
-						return ret;
-					return super.indexOf(dataset);
-				}
-
-			};
+			plot = new CombinedRangeXYPlot(yAxis);
 			((CombinedRangeXYPlot) plot).setGap(plotPrefs.getSubplotGap());
 		} else {
-			plot = new CombinedDomainXYPlot(xAxis) {
-
-				@Override
-				public int indexOf(XYDataset dataset) {
-					Integer ret = datasetIndexMap.get(dataset);
-					if (ret != null)
-						return ret;
-					return super.indexOf(dataset);
-				}
-
-			};
+			plot = new CombinedDomainXYPlot(xAxis);
 			((CombinedDomainXYPlot) plot).setGap(plotPrefs.getSubplotGap());
 		}
 
@@ -623,7 +623,7 @@ public class GraphPanel extends JSplitPane {
 					myYAxis = subYAxis.get(p);
 				}
 
-				subPlot = new XYPlot(null, myXAxis, myYAxis, null);
+				subPlot = new DatasetIndexedXYPlot(myXAxis, myYAxis);
 				setupPlot(subPlot, tickFontSize);
 			} else {
 				subPlot = plot;
@@ -648,7 +648,6 @@ public class GraphPanel extends JSplitPane {
 				renderer.setPaintScale(scale);
 				subPlot.setRenderer(datasetIndex, renderer);
 				subPlot.setDataset(datasetIndex, dataset);
-				datasetIndexMap.put(dataset, datasetIndex);
 				datasetIndex++;
 
 				if (xyzSpec.isCPTVisible()) {
@@ -788,7 +787,6 @@ public class GraphPanel extends JSplitPane {
 
 					// adding the dataset to the plot
 					subPlot.setDataset(datasetIndex, dataset);
-					datasetIndexMap.put(dataset, datasetIndex);
 
 					// based on plotting characteristics for each curve sending configuring plot
 					// object

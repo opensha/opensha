@@ -106,38 +106,6 @@ public class XY_DataSetList extends ArrayList<XY_DataSet> implements Serializabl
 
 
 
-    /* **************************/
-    /** @todo  Function Helpers */
-    /* **************************/
-
-    /**
-     * Returns true if all the DisctetizedFunctions in this list are equal.
-     * Equality is determined if the two lists are the same size,
-     * then calls containsAll()
-     */
-    public boolean equals(Object list){
-    	if (list instanceof XY_DataSetList) {
-    		XY_DataSetList listObj = (XY_DataSetList) list;
-    		// Not same size, can't be equal
-            if( this.size() != listObj.size() ) return false;
-
-            // next check boolean flags
-            // if( allowedDifferentAxisNames != list.allowedDifferentAxisNames ) return false;
-            // if( allowedIdenticalFunctions != list.allowedIdenticalFunctions ) return false;
-
-            // All functions must be present
-            if ( !containsAll(listObj) ) return false;
-
-            // Passed all tests - return true
-            return true;
-    	}
-
-        return false;
-
-    }
-
-
-
     /**
      * Returns a copy of this list, therefore any changes to the copy
      * cannot affect this original list. A deep clone is different from a

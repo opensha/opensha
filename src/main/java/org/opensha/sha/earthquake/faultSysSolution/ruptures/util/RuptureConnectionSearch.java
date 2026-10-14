@@ -731,15 +731,31 @@ public class RuptureConnectionSearch implements SubModule<FaultSystemRupSet> {
 				}
 				// see if this is the shortest jump to this cluster or if there is a better alternative
 				// from our current rupture
+				FaultSubsectionCluster currentEnd = currentStrand.clusters[currentStrand.clusters.length-1];
+				boolean deferToCurrentEnd = false;
+				shorterJumpSearch:
 				for (FaultSubsectionCluster cluster : rupture.clusters) {
 					for (Jump oJump : jumpsFromMap.get(cluster)) {
 						if (oJump.toCluster == jump.toCluster && oJump.distance < jump.distance) {
+							if (oJump.fromCluster == currentEnd && currentEnd != lastCluster) {
+								// jumpsFromList is a snapshot from lastCluster, but an earlier jump in that
+								// list extended this strand. Defer so the next pass processes all jumps
+								// from the new end rather than skipping its other branches.
+								deferToCurrentEnd = true;
+								break shorterJumpSearch;
+							}
 							if (debug)
 								System.out.println("Was going to take "+jump
 										+", but will instead take shorter "+oJump);
 							jump = oJump;
 						}
 					}
+				}
+				if (deferToCurrentEnd) {
+					if (debug)
+						System.out.println("Deferring jump to "+jump.toCluster
+								+" until processing new strand end "+currentEnd);
+					continue;
 				}
 				if (debug)
 					System.out.println("Evaluating jump "+jump+" with toCluster="+jump.toCluster);

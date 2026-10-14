@@ -1,6 +1,10 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.util;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -10,6 +14,7 @@ import java.util.Set;
 
 import org.junit.Test;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -50,6 +55,34 @@ public class RuptureConnectionSearchTest {
 		}
 	}
 
+	@Test
+	public void testShorterJumpFromNewEndDoesNotStrandOtherBranch() {
+		CountingCluster a = cluster(0);
+		CountingCluster b = cluster(1);
+		CountingCluster c = cluster(2);
+		CountingCluster d = cluster(3);
+		CountingCluster e = cluster(4);
+
+		// A->B is taken first. The stale A jump list then encounters A->C, but B->C
+		// is shorter. B->C must be deferred until B's complete jump list is processed,
+		// otherwise B->E is stranded when the main strand advances to C.
+		List<Jump> jumps = Arrays.asList(
+				jump(a, b, 0.05d),
+				jump(a, c, 0.1d),
+				jump(b, c, 0.01d),
+				jump(c, d, 0.2d),
+				jump(b, e, 5.9d));
+		SectionDistanceAzimuthCalculator distCalc = mock(SectionDistanceAzimuthCalculator.class);
+		when(distCalc.getDistance(any(FaultSection.class), any(FaultSection.class))).thenReturn(1d);
+		RuptureConnectionSearch search = new RuptureConnectionSearch(null, distCalc, 100d, false);
+
+		ClusterRupture rupture = search.buildClusterRupture(
+				Arrays.asList(a, b, c, d, e), jumps, false, a);
+
+		assertSame(a, rupture.clusters[0]);
+		assertEquals(5, rupture.getTotalNumClusters());
+	}
+
 	private static CountingCluster cluster(int id) {
 		FaultSectionPrefData section = new FaultSectionPrefData();
 		section.setSectionId(id);
@@ -60,9 +93,13 @@ public class RuptureConnectionSearchTest {
 	}
 
 	private static void connect(FaultSubsectionCluster from, FaultSubsectionCluster to, double distance) {
-		Jump jump = new Jump(from.startSect, from, to.startSect, to, distance);
+		Jump jump = jump(from, to, distance);
 		from.addConnection(jump);
 		to.addConnection(jump.reverse());
+	}
+
+	private static Jump jump(FaultSubsectionCluster from, FaultSubsectionCluster to, double distance) {
+		return new Jump(from.startSect, from, to.startSect, to, distance);
 	}
 
 	private static String pair(FaultSection section1, FaultSection section2) {
