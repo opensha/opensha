@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
@@ -17,7 +16,6 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
-import org.opensha.sha.earthquake.nshmp.seismicity.SeismicityRateModel;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.NSHM27_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.NSHM27_RegionLoader.NSHM27_MapRegions;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
@@ -67,16 +65,8 @@ public interface NSHM27_FaultModel extends RupSetFaultModel, RupSetSubsectioning
 		for (TectonicRegionType trt : trts) {
 			trtRegions.add(cloneForTRT(seisReg.load(), trt));
 			double mMax = NSHM27_SeisRateModelBranch.getPlotMmax(trt);
-			WeightedList<UncertainBoundedIncrMagFreqDist> weightedMFDs = new WeightedList<>();
-			for (NSHM27_SeisClassificationMethod classification : NSHM27_SeisClassificationMethod.values()) {
-				double weight = classification.getNodeWeight();
-				if (weight == 0)
-					continue;
-				UncertainBoundedIncrMagFreqDist obsMFD = NSHM27_SeisRateModelBranch.loadRateModel(
-						seisReg, classification, trt).getBounded(refMFD, mMax);
-				weightedMFDs.add(obsMFD, weight);
-			}
-			UncertainBoundedIncrMagFreqDist obsMFD = SeismicityRateModel.averageUncert(weightedMFDs);
+			UncertainBoundedIncrMagFreqDist obsMFD = NSHM27_SeisRateModelBranch.loadMixtureRateModel(
+					seisReg, trt).getBounded(refMFD, mMax);
 			fullObsMFD.addIncrementalMagFreqDist(obsMFD);
 			trtMFDs.add(obsMFD);
 			regionTRTs.add(trt);
