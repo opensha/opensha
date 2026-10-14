@@ -20,8 +20,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 
 import javax.imageio.ImageIO;
@@ -543,11 +543,10 @@ public class GraphPanel extends JSplitPane {
 		}
 
 		plot = null;
-		// XYPlot (and combined versions) use a really slow brute force dataset index
-		// lookup
-		// we're assigning dataset idexes manually below, cache them and return those
-		// cached values
-		HashMap<XYDataset, Integer> datasetIndexMap = new HashMap<>();
+		// XYPlot (and combined versions) use a slow brute-force dataset index lookup.
+		// We assign indexes manually below, so cache them by identity to match
+		// XYPlot.indexOf(...) semantics and avoid potentially expensive dataset equality.
+		IdentityHashMap<XYDataset, Integer> datasetIndexMap = new IdentityHashMap<>();
 		// build the plot
 		if (specs.size() == 1) {
 			plot = new XYPlot(null, xAxis, yAxis, null) {
