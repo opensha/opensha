@@ -20,7 +20,9 @@ import org.opensha.sha.earthquake.nshmp.seismicity.SeismicityRateFileLoader.Rate
 import org.opensha.sha.earthquake.nshmp.seismicity.SeismicityRateFileLoader.RateType;
 import org.opensha.sha.earthquake.nshmp.seismicity.SeismicityRateModel;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisRateModelEpochCatalog.EpochWeighting;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.NSHM27_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.NSHM27_SeismicityDataFiles;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -176,13 +178,13 @@ public enum NSHM27_SeisRateModelBranch implements NSHM27_SeisRateModel, LogicTre
 
 	/** Placeholder convention until final epoch branch files are supplied. */
 	private static String getEpochRateModelCSVName(TectonicRegionType trt, NSHM27_SeisRateModelEpoch epoch) {
-		return NSHM27_SeisRateModelEpochCatalog.regimeFileLabel(trt).toUpperCase()
+		return NSHM27_RegionLoader.getNameForTRT(trt).toUpperCase()
 				+"_EPOCH_"+(epoch.getEpochIndex()+1)+".csv";
 	}
 
 	/** Placeholder convention until final mixture branch files are supplied. */
 	private static String getMixtureRateModelCSVName(TectonicRegionType trt, EpochWeighting weighting) {
-		return NSHM27_SeisRateModelEpochCatalog.regimeFileLabel(trt).toUpperCase()
+		return NSHM27_RegionLoader.getNameForTRT(trt).toUpperCase()
 				+"_MIXTURE_"+weighting.name()+".csv";
 	}
 
@@ -194,7 +196,7 @@ public enum NSHM27_SeisRateModelBranch implements NSHM27_SeisRateModel, LogicTre
 
 	private static CSVFile<String> loadMixtureCSV(NSHM27_SeismicityRegions region,
 			TectonicRegionType trt, EpochWeighting weighting) throws IOException {
-		String resourceName = getRateModelPath(region, NSHM27_SeisRateModelEpochCatalog.DEFAULT_DATASET_ID)
+		String resourceName = getRateModelPath(region, NSHM27_SeismicityDataFiles.RATE_DATASET)
 				+getMixtureRateModelCSVName(trt, weighting);
 		return loadResourceCSV(resourceName, "mixture rate-model");
 	}

@@ -27,6 +27,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxRuptureLengthBranchNode;
+import org.opensha.sha.earthquake.nshmp.seismicity.SeismicityRateFileLoader.PureGR;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues;
@@ -60,11 +61,9 @@ public class NSHM27_LogicTree {
 			LogicTreeLevel.forEnum(NSHM27_InterfaceMinSubSects.class, "Interface Minimum Subsection Count", "InterfaceMinSubSects");
 	public static double INTERFACE_B_HINGED_WEIGHT = 0.25;
 	public static double INTERFACE_B_SINGLE_DEFAULT = 1d;
-	// TODO derive this from the preferred supplied mixture branch once final branch files are available
-	public static double INTERFACE_B_UPPER_DEFAULT = 1d;
 	public static ContinuousDistribution getInterfaceBDist(NSHM27_SeismicityRegions seisReg) {
-		System.err.println("TODO: use mixture b-value!!!!!!");
-		return UniformContinuousDistribution.of(0.5d, INTERFACE_B_UPPER_DEFAULT);
+		PureGR gr = (PureGR)NSHM27_SeisRateModelBranch.loadMixtureRateModel(seisReg, TectonicRegionType.SUBDUCTION_INTERFACE).getMeanRecord();
+		return UniformContinuousDistribution.of(0.5d, gr.b);
 	}
 
 	public static final double INTERFACE_MAX_LEN_SINGLE_DEFAULT = 750d;
@@ -391,7 +390,8 @@ public class NSHM27_LogicTree {
 //		System.exit(0);
 //		int numSamples = 1000;
 //		int numSamples = 5000;
-		int numSamples = 2 << 11;
+//		int numSamples = 2 << 11;
+		int numSamples = 256;
 //		int numSamples = 10000;
 //		int numSamples = 100000;
 		

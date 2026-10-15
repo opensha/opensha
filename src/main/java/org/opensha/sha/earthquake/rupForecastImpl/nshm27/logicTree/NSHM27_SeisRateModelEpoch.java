@@ -5,10 +5,11 @@ import java.util.List;
 import java.util.Objects;
 
 import org.opensha.commons.logicTree.LogicTreeLevel.DataBackedLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.ValueBackedLevel;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeNode;
-import org.opensha.commons.logicTree.LogicTreeNode.FixedWeightNode;
+import org.opensha.commons.logicTree.LogicTreeNode.ValuedLogicTreeNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.NSHM27_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -26,7 +27,7 @@ import com.google.gson.JsonObject;
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public final class NSHM27_SeisRateModelEpoch implements FixedWeightNode {
+public final class NSHM27_SeisRateModelEpoch implements ValuedLogicTreeNode<Integer> {
 
 	private final NSHM27_SeismicityRegions region;
 	private final TectonicRegionType trt;
@@ -62,6 +63,18 @@ public final class NSHM27_SeisRateModelEpoch implements FixedWeightNode {
 	public int getEpochIndex() { return index; }
 
 	@Override
+	public Integer getValue() { return index; }
+
+	@Override
+	public Class<? extends Integer> getValueType() { return Integer.class; }
+
+	@Override
+	public void init(Integer value, Class<? extends Integer> valueClass, double weight,
+			String name, String shortName, String filePrefix) {
+		throw new UnsupportedOperationException("Epoch nodes must be built by their catalog-backed level");
+	}
+
+	@Override
 	public String getFilePrefix() {
 		return NSHM27_RegionLoader.getNameForTRT(trt)+"Epoch"+(index+1);
 	}
@@ -95,7 +108,8 @@ public final class NSHM27_SeisRateModelEpoch implements FixedWeightNode {
 		return getName()+" ["+region+", "+trt+", "+datasetId+"]";
 	}
 
-	public static final class Level extends DataBackedLevel<NSHM27_SeisRateModelEpoch> {
+	public static final class Level extends DataBackedLevel<NSHM27_SeisRateModelEpoch>
+	implements ValueBackedLevel<Integer, NSHM27_SeisRateModelEpoch> {
 
 		private NSHM27_SeisRateModelEpochCatalog catalog;
 
@@ -120,6 +134,15 @@ public final class NSHM27_SeisRateModelEpoch implements FixedWeightNode {
 
 		@Override
 		public boolean isMember(LogicTreeNode node) { return catalog.getEpochs().contains(node); }
+
+		@Override
+		public Class<? extends Integer> getValueType() { return Integer.class; }
+
+		@Override
+		public NSHM27_SeisRateModelEpoch build(Integer index, double weight, String name,
+				String shortName, String filePrefix) {
+			return catalog.getEpoch(index);
+		}
 
 		@Override
 		public JsonObject toJsonObject() { return catalog.toJSON(); }

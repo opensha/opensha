@@ -14,13 +14,13 @@ import org.opensha.commons.logicTree.LogicTreeLevel.BinnableLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.FractileSamplingLevel;
 import org.opensha.sha.earthquake.nshmp.seismicity.SeismicityRateFileLoader;
 import org.opensha.sha.earthquake.nshmp.seismicity.SeismicityRateFileLoader.PureGR;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm27.NSHM27_InvConfigFactory;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisRateModel.BinnedSamplesLevel;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisRateModel.BinnedSamplesNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisRateModel.EpochDependentGR;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisRateModel.NSHM27_SeisRateModelSample;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.NSHM27_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.NSHM27_SeismicityDataFiles;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -69,22 +69,21 @@ FractileSamplingLevel<EpochDependentGR, NSHM27_SeisRateModelSample> {
 		Preconditions.checkState(epoch.getRegion() == catalog.getRegion()
 				&& epoch.getTectonicRegion() == catalog.getTectonicRegion()
 				&& epoch.getDatasetId().equals(catalog.getDatasetId()), "Epoch/catalog mismatch");
-		File dir = new File(NSHM27_InvConfigFactory.locateDataDirectory(), "seis_rate_samples/"
-				+catalog.getRegion().name().toLowerCase()+"/"+catalog.getDatasetId());
-		String prefix = "comb-"+catalog.getRegion().name()+"-"
-				+NSHM27_SeisRateModelEpochCatalog.regimeFileLabel(catalog.getTectonicRegion())+"-";
-		String suffix = "-epoch-"+(epoch.getEpochIndex()+1)+"-pairs.csv";
-		File[] matches = dir.listFiles((d, name) -> name.startsWith(prefix) && name.endsWith(suffix));
-		Preconditions.checkState(matches != null && matches.length == 1,
-				"Expected exactly one epoch sample CSV beginning '%s' and ending '%s' in %s; found %s",
-				prefix, suffix, dir, matches == null ? 0 : matches.length);
-		return CSVFile.readFile(matches[0], false);
+		Preconditions.checkState(catalog.getDatasetId().equals(NSHM27_SeismicityDataFiles.RATE_DATASET),
+				"Unsupported rate dataset '%s'; configured dataset is '%s'", catalog.getDatasetId(),
+				NSHM27_SeismicityDataFiles.RATE_DATASET);
+		File file = NSHM27_SeismicityDataFiles.locateEpochRatePairs(catalog.getRegion(),
+				catalog.getTectonicRegion(), epoch.getEpochIndex());
+		return CSVFile.readFile(file, false);
 	}
 	
 	public static List<PureGR> loadOrigSamples(NSHM27_SeismicityRegions seisReg,
 			NSHM27_SeisRateModelEpoch epoch, TectonicRegionType trt) throws IOException {
+		Preconditions.checkState(epoch.getDatasetId().equals(NSHM27_SeismicityDataFiles.RATE_DATASET),
+				"Unsupported rate dataset '%s'; configured dataset is '%s'", epoch.getDatasetId(),
+				NSHM27_SeismicityDataFiles.RATE_DATASET);
 		NSHM27_SeisRateModelEpochCatalog catalog = NSHM27_SeisRateModelEpochCatalog.load(
-				seisReg, trt, epoch.getDatasetId(), NSHM27_SeisRateModelEpochCatalog.DEFAULT_WEIGHTING);
+				seisReg, trt, NSHM27_SeisRateModelEpochCatalog.DEFAULT_WEIGHTING);
 		CSVFile<String> csv = loadCSV(catalog, epoch);
 		return SeismicityRateFileLoader.loadSamplesCSV(csv);
 	}

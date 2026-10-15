@@ -11,6 +11,7 @@ import java.util.List;
 
 import org.junit.Test;
 import org.opensha.commons.logicTree.LogicTreeLevel;
+import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.nshmp.seismicity.SeismicityRateFileLoader.PureGR;
 import org.opensha.sha.earthquake.nshmp.seismicity.SeismicityRateFileLoader.RateType;
@@ -54,6 +55,24 @@ public class NSHM27SeisRateEpochSerializationTest {
 		assertEquals(0.25d, sample.getValue().getSampleFractile(), 0d);
 		assertEquals(0.01d, sample.getValue().getValue(catalog.getEpoch(0)).rateAboveM1, 0d);
 		assertEquals(0.02d, sample.getValue().getValue(catalog.getEpoch(1)).rateAboveM1, 0d);
+	}
+
+	@Test
+	public void testEpochBranchRoundTripUsesCatalogIndex() throws Exception {
+		NSHM27_SeisRateModelEpochCatalog catalog = buildCatalog();
+		NSHM27_SeisRateModelEpoch.Level level = new NSHM27_SeisRateModelEpoch.Level(catalog);
+		LogicTreeBranch<LogicTreeNode> branch = new LogicTreeBranch<>(List.of(level), List.of(catalog.getEpoch(1)));
+
+		File file = File.createTempFile("nshm27-epoch-branch", ".json");
+		file.deleteOnExit();
+		branch.writeToFile(file);
+		String json = Files.readString(file.toPath());
+		assertTrue(json.contains("\"value\": 1"));
+
+		LogicTreeBranch<LogicTreeNode> loaded = LogicTreeBranch.read(file);
+		assertTrue(loaded.getLevel(0) instanceof NSHM27_SeisRateModelEpoch.Level);
+		assertTrue(loaded.getValue(0) instanceof NSHM27_SeisRateModelEpoch);
+		assertEquals(catalog.getEpoch(1), loaded.getValue(0));
 	}
 
 	private static NSHM27_SeisRateModelEpochCatalog buildCatalog() throws Exception {

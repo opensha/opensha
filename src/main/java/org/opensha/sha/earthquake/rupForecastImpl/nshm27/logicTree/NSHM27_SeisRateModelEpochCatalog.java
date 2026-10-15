@@ -8,8 +8,8 @@ import java.util.List;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.opensha.commons.data.CSVFile;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm27.NSHM27_InvConfigFactory;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.NSHM27_SeismicityDataFiles;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -29,7 +29,6 @@ public final class NSHM27_SeisRateModelEpochCatalog {
 		}
 	}
 
-	public static final String DEFAULT_DATASET_ID = "2026_10_13";
 	public static final EpochWeighting DEFAULT_WEIGHTING = EpochWeighting.SQRTN;
 
 	private final NSHM27_SeismicityRegions region;
@@ -56,13 +55,14 @@ public final class NSHM27_SeisRateModelEpochCatalog {
 	}
 
 	public static NSHM27_SeisRateModelEpochCatalog load(NSHM27_SeismicityRegions region, TectonicRegionType trt) {
-		return load(region, trt, DEFAULT_DATASET_ID, DEFAULT_WEIGHTING);
+		return load(region, trt, DEFAULT_WEIGHTING);
 	}
 
 	public static NSHM27_SeisRateModelEpochCatalog load(NSHM27_SeismicityRegions region, TectonicRegionType trt,
-			String datasetId, EpochWeighting weighting) {
+			EpochWeighting weighting) {
 		try {
-			return load(locateWeightsCSV(region, trt, datasetId), region, trt, datasetId, weighting);
+			return load(NSHM27_SeismicityDataFiles.locateRateWeights(region, trt), region, trt,
+					NSHM27_SeismicityDataFiles.RATE_DATASET, weighting);
 		} catch (IOException e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
@@ -115,27 +115,6 @@ public final class NSHM27_SeisRateModelEpochCatalog {
 			epochs.add(new NSHM27_SeisRateModelEpoch(region, trt, datasetId,
 					startYears[i], endYears[i], mcs[i], i, weights[i]/weightSum));
 		return new NSHM27_SeisRateModelEpochCatalog(region, trt, datasetId, weighting, epochs);
-	}
-
-	private static File locateWeightsCSV(NSHM27_SeismicityRegions region, TectonicRegionType trt, String datasetId) {
-		File dir = new File(NSHM27_InvConfigFactory.locateDataDirectory(),
-				"seis_rate_samples/"+region.name().toLowerCase()+"/"+datasetId);
-		Preconditions.checkState(dir.isDirectory(), "Seismicity-rate dataset directory does not exist: %s", dir);
-		String prefix = "comb-"+region.name()+"-"+regimeFileLabel(trt)+"-";
-		File[] matches = dir.listFiles((d, name) -> name.startsWith(prefix) && name.endsWith("-weights.csv"));
-		Preconditions.checkState(matches != null && matches.length == 1,
-				"Expected exactly one epoch weights CSV beginning '%s' in %s; found %s",
-				prefix, dir, matches == null ? 0 : matches.length);
-		return matches[0];
-	}
-
-	static String regimeFileLabel(TectonicRegionType trt) {
-		return switch (trt) {
-		case ACTIVE_SHALLOW -> "Crustal";
-		case SUBDUCTION_INTERFACE -> "Interface";
-		case SUBDUCTION_SLAB -> "Downgoing";
-		default -> throw new IllegalArgumentException("Unsupported tectonic regime: "+trt);
-		};
 	}
 
 	public NSHM27_SeismicityRegions getRegion() { return region; }

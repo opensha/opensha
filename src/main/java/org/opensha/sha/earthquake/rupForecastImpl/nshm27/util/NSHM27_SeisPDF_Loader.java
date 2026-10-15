@@ -35,7 +35,6 @@ import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.NSHM27_GridSourceBuilder;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm27.NSHM27_InvConfigFactory;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_DeclusteringAlgorithms;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_InterfaceFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisSmoothingAlgorithms;
@@ -51,18 +50,7 @@ public class NSHM27_SeisPDF_Loader {
 	
 	private static final DecimalFormat pDF = new DecimalFormat("0.00%");
 	
-	public static final String DATA_DATE_2D = "2026_07_10-2D";
-	public static final String DATA_DATE_3D = "2026_07_10-3D";
-	
 	public static GriddedGeoDataSet load2D(NSHM27_SeismicityRegions region, TectonicRegionType trt,
-			NSHM27_DeclusteringAlgorithms decluster, NSHM27_SeisSmoothingAlgorithms smooth) throws IOException {
-		File dataDir = NSHM27_InvConfigFactory.locateDataDirectory();
-		File baseDir = new File(dataDir, "spatial_seis_pdfs/"+region.name().toLowerCase()
-				+"/"+DATA_DATE_2D+"/"+NSHM27_RegionLoader.getNameForTRT(trt).toUpperCase()+"/");
-		return load2D(baseDir, region, decluster, smooth);
-	}
-	
-	public static GriddedGeoDataSet load2D(File baseDir, NSHM27_SeismicityRegions region,
 			NSHM27_DeclusteringAlgorithms decluster, NSHM27_SeisSmoothingAlgorithms smooth) throws IOException {
 		if (decluster == NSHM27_DeclusteringAlgorithms.AVERAGE || smooth == NSHM27_SeisSmoothingAlgorithms.AVERAGE) {
 			WeightedList<GriddedGeoDataSet> wtList = new WeightedList<>();
@@ -84,13 +72,13 @@ public class NSHM27_SeisPDF_Loader {
 					double sWeight = smooth == NSHM27_SeisSmoothingAlgorithms.AVERAGE ? s.getNodeWeight(null) : 1d;
 					if (sWeight == 0d)
 						continue;
-					wtList.add(load2D(region,  new File(baseDir, d.name()+"_"+s.name()+".csv")), dWeight*sWeight);
+					File file = NSHM27_SeismicityDataFiles.locateSpatialPDF(region, trt, d, s);
+					wtList.add(load2D(region, file), dWeight*sWeight);
 				}
 			}
 			return avg2D(wtList);
 		}
-		File file = new File(baseDir, decluster.name()+"_"+smooth.name()+".csv");
-		return load2D(region, file);
+		return load2D(region, NSHM27_SeismicityDataFiles.locateSpatialPDF(region, trt, decluster, smooth));
 	}
 	
 	private static GriddedGeoDataSet avg2D(WeightedList<GriddedGeoDataSet> xyzs) {
@@ -183,14 +171,6 @@ public class NSHM27_SeisPDF_Loader {
 	
 	public static GriddedGeoDepthValueDataSet load3D(NSHM27_SeismicityRegions region,
 			TectonicRegionType trt, NSHM27_DeclusteringAlgorithms decluster, NSHM27_SeisSmoothingAlgorithms smooth) throws IOException {
-		File dataDir = NSHM27_InvConfigFactory.locateDataDirectory();
-		File baseDir = new File(dataDir, "spatial_seis_pdfs/"+region.name().toLowerCase()
-				+"/"+DATA_DATE_3D+"/"+NSHM27_RegionLoader.getNameForTRT(trt).toUpperCase()+"/");
-		return load3D(baseDir, region, decluster, smooth);
-	}
-	
-	public static GriddedGeoDepthValueDataSet load3D(File baseDir, NSHM27_SeismicityRegions region,
-			NSHM27_DeclusteringAlgorithms decluster, NSHM27_SeisSmoothingAlgorithms smooth) throws IOException {
 		if (decluster == NSHM27_DeclusteringAlgorithms.AVERAGE || smooth == NSHM27_SeisSmoothingAlgorithms.AVERAGE) {
 			WeightedList<GriddedGeoDepthValueDataSet> wtList = new WeightedList<>();
 			NSHM27_DeclusteringAlgorithms[] declusters;
@@ -211,13 +191,13 @@ public class NSHM27_SeisPDF_Loader {
 					double sWeight = smooth == NSHM27_SeisSmoothingAlgorithms.AVERAGE ? s.getNodeWeight(null) : 1d;
 					if (sWeight == 0d)
 						continue;
-					wtList.add(load3D(region,  new File(baseDir, d.name()+"_"+s.name()+".csv")), dWeight*sWeight);
+					File file = NSHM27_SeismicityDataFiles.locateSpatialPDF(region, trt, d, s);
+					wtList.add(load3D(region, file), dWeight*sWeight);
 				}
 			}
 			return avg3D(wtList);
 		}
-		File file = new File(baseDir, decluster.name()+"_"+smooth.name()+".csv");
-		return load3D(region, file);
+		return load3D(region, NSHM27_SeismicityDataFiles.locateSpatialPDF(region, trt, decluster, smooth));
 	}
 	
 	private static GriddedGeoDepthValueDataSet avg3D(WeightedList<GriddedGeoDepthValueDataSet> xyzs) {
