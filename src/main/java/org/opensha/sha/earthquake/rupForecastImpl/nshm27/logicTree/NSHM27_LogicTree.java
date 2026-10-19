@@ -235,7 +235,7 @@ public class NSHM27_LogicTree {
 			branch.setValue(NSHM27_InterfaceObsSeisDMAdjustment.AVERAGE); // TODO
 			branch.setValue(NSHM27_InterfaceMinSubSects.FOUR); // TODO
 		} else if (trt == TectonicRegionType.ACTIVE_SHALLOW && seisReg == NSHM27_SeismicityRegions.GNMI) {
-			branch.setValue(NSHM27_CrustalFaultModels.GNMI_V1);
+			branch.setValue(NSHM27_CrustalFaultModels.GNMI);
 			if (!sampled)
 				branch.setValue(NSHM27_CrustalDeformationModels.Aggregated.AVERAGE);
 			branch.setValue(NSHM23_ScalingRelationships.LOGA_C4p2);

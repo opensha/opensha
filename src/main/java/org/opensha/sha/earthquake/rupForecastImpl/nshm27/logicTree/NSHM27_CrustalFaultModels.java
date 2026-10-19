@@ -28,8 +28,8 @@ import org.opensha.sha.util.TectonicRegionType;
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum NSHM27_CrustalFaultModels implements NSHM27_FaultModel {
-	GNMI_V1("Guam & Northern Mariana Islands (Crustal FM v1)", "GNMI-Crust-V1", NSHM27_SeismicityRegions.GNMI, 1d,
-			"/data/erf/nshm27/gnmi/fault_models/crustal/NSHM27_GNMI_FaultSections_v1.geojson");
+	GNMI("Guam & Northern Mariana Islands (Crustal FM)", "GNMI-Crustal", NSHM27_SeismicityRegions.GNMI, 1d,
+			"/data/erf/nshm27/gnmi/fault_models/crustal/NSHM27_GNMI_FaultSections_v2.geojson");
 	
 	private String name;
 	private String shortName;
