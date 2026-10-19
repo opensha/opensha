@@ -45,7 +45,7 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public class NSHM27_InterfaceDeformationModels extends RupSetDeformationModelDistribution<FixedSampler> {
 	
-	public static final String CSV_NAME = "2026_07_10.csv";
+	public static final String CSV_NAME = "2026_10_19-gamma.csv";
 	
 //	public static final double MIN_DM_FRACTILE = 0.0000001; // 0.00001% (1 in 10,000,000)
 	public static final double MIN_DM_FRACTILE = 0.000001; // 0.0001% (1 in 1,000,000)	
