@@ -89,8 +89,8 @@ public class NSHM27_GridSourceBuilder {
 	
 	// for intraslab sources, assign these IDs as associated sections (even though there aren't sections with these IDs)
 	// so that we can track them later and in nshmp-haz
-	public static final int GNMI_SLAB_ASSOC_ID = 6300;
-	public static final int AMSAM_SLAB_ASSOC_ID = 6800;
+	public static final int GNMI_SLAB_ASSOC_ID = 9300;
+	public static final int AMSAM_SLAB_ASSOC_ID = 9800;
 	
 	public static final double OVERALL_MMIN = 2.55;
 

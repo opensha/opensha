@@ -5,7 +5,7 @@
       "type": "Feature",
       "id": 6200,
       "properties": {
-        "FaultID": 6200,
+        "FaultID": 9200,
         "FaultName": "Mariana Trench",
         "Rake": 90.0,
         "AseismicSlipFactor": 0.0,

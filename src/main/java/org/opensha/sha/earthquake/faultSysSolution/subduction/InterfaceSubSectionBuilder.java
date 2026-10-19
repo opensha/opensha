@@ -981,7 +981,7 @@ public class InterfaceSubSectionBuilder {
 		double backTraceDist = 100d;
 		
 //		String faultName = "Tonga Trench";
-//		int faultID = 6700;
+//		int faultID = 9700;
 //		String resourcePrefix = "/data/erf/nshm27/amsam/fault_models/subduction/";
 //		BufferedReader countoursIn = new BufferedReader(new InputStreamReader(
 //				InterfaceSubSectionBuilder.class.getResourceAsStream(resourcePrefix+"ker_slab2_dep_10km_contours.xyz")));
@@ -1000,7 +1000,7 @@ public class InterfaceSubSectionBuilder {
 //		boolean filterEndPerpendicular = true;
 		
 		String faultName = "Mariana Trench";
-		int faultID = 6200;
+		int faultID = 9200;
 		String resourcePrefix = "/data/erf/nshm27/gnmi/fault_models/subduction/";
 		BufferedReader countoursIn = new BufferedReader(new InputStreamReader(
 				InterfaceSubSectionBuilder.class.getResourceAsStream(resourcePrefix+"izu_slab2_dep_10km_contours.xyz")));
