@@ -434,7 +434,6 @@ public class SeismicityRateFileLoader {
 	public static List<Direct> loadDirectBranches(CSVFile<String> csv) {
 		String M1_FIELD_NAME = "minmag:"; // different for this file
 		Double M1 = null;
-		Double duration = null;
 		Integer nQuantiles = null;
 		Integer nMagnitudes = null;
 		
@@ -443,8 +442,6 @@ public class SeismicityRateFileLoader {
 			if (col1 == null || col1.isBlank())
 				continue;
 			col1 = col1.trim();
-			if (duration == null && col1.equalsIgnoreCase("duration:"))
-				duration = csv.getDouble(row, 1);
 			if (M1 == null && col1.equals(M1_FIELD_NAME))
 				M1 = csv.getDouble(row, 1);
 			if (col1.equals(N_QUANTILES_FIELD_NAME)) {
@@ -455,15 +452,34 @@ public class SeismicityRateFileLoader {
 				// found it
 				nMagnitudes = csv.getInt(row, 1);
 			}
-			if (col1.equals("M") && csv.get(row, 1).trim().equals("Nobs")) {
+			if (col1.equals("M")) {
+				int nObsCol;
+				if (csv.get(row, 1).trim().equals("Nobs")) {
+					// original layout: M,Nobs,<cumulative quantiles>,Nobsb,<incremental quantiles>
+					nObsCol = 1;
+				} else if (csv.getLine(row).size() > 2 && csv.get(row, 1).trim().equals("Duration")
+						&& csv.get(row, 2).trim().equals("Nobs")) {
+					// epoch-dependent layout: M,Duration,Nobs,<cumulative quantiles>,Nobsb,<incremental quantiles>
+					nObsCol = 2;
+				} else {
+					continue;
+				}
 				// start reading
-				Preconditions.checkNotNull(M1, "'%s' not found before reading quantiles", M1_FIELD_NAME);
+				Preconditions.checkNotNull(nQuantiles, "Expected to find '%s' before reading direct distributions",
+						N_QUANTILES_FIELD_NAME);
+				Preconditions.checkNotNull(nMagnitudes, "Expected to find '%s' before reading direct distributions",
+						N_MAGNITUDES_FIELD_NAME);
+				int cmlRateStartCol = nObsCol+1;
+				int incrObsCol = cmlRateStartCol+nQuantiles;
+				int incrRateStartCol = incrObsCol+1;
 				double[] quantiles = new double[nQuantiles];
 				for (int i=0; i<nQuantiles; i++)
-					quantiles[i] = csv.getDouble(row, i+2);
-				Preconditions.checkNotNull(nMagnitudes, "Expected to find '%s' before reading exact distributions", N_MAGNITUDES_FIELD_NAME);
+					quantiles[i] = csv.getDouble(row, cmlRateStartCol+i);
 				row++; // now at first magnitude
 				double mag1 = csv.getDouble(row, 0);
+				if (M1 == null)
+					// newer files omit minmag; their first magnitude threshold is the reference magnitude
+					M1 = mag1;
 				double mag2 = csv.getDouble(row+1, 0);
 				Preconditions.checkState(mag2 > mag1);
 				double delta = mag2-mag1;
@@ -481,18 +497,18 @@ public class SeismicityRateFileLoader {
 					double mag = cmlFuncs[0].getX(m);
 					double csvMag = csv.getDouble(row, 0);
 					Preconditions.checkState((float)mag == (float)csvMag, "Expected m=%s at index %s, have %s", mag, m, csvMag);
-					double cmlObs = csv.getDouble(row, 1);
+					double cmlObs = csv.getDouble(row, nObsCol);
 					if (m == 0)
 						nObs0 = cmlObs;
 					if (cmlObs > 0)
 						maxObsCmlMag = mag;
-					double incrObs = csv.getDouble(row, 2+nQuantiles);
+					double incrObs = csv.getDouble(row, incrObsCol);
 					if (incrObs > 0)
 						maxObsIncrMag = mag;
 					for (int n=0; n<nQuantiles; n++) {
-						double cmlVal = csv.getDouble(row, n+2);
+						double cmlVal = csv.getDouble(row, cmlRateStartCol+n);
 						cmlFuncs[n].set(m, cmlVal);
-						double incrVal = csv.getDouble(row, n+3+nQuantiles);
+						double incrVal = csv.getDouble(row, incrRateStartCol+n);
 						incrFuncs[n].set(m, incrVal);
 					}
 					row++;
@@ -507,7 +523,7 @@ public class SeismicityRateFileLoader {
 			}
 			
 		}
-		throw new IllegalStateException("Never found '"+RateType.EXACT.fileHeading+"'");
+		throw new IllegalStateException("Never found a supported direct-rate table");
 	}
 	
 	public static <E extends RateRecord> E locateQuantile(List<E> records, double quantile) {

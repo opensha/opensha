@@ -16,7 +16,7 @@ import com.google.common.base.Preconditions;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
-/** Ordered epoch catalog for one region, tectonic regime, dataset, and weighting scheme. */
+/** Ordered epoch catalog for one region, rate-model scope, dataset, and weighting scheme. */
 public final class NSHM27_SeisRateModelEpochCatalog {
 
 	public enum EpochWeighting {
@@ -33,14 +33,18 @@ public final class NSHM27_SeisRateModelEpochCatalog {
 
 	private final NSHM27_SeismicityRegions region;
 	private final TectonicRegionType trt;
+	private final boolean union;
 	private final String datasetId;
 	private final EpochWeighting weighting;
 	private final List<NSHM27_SeisRateModelEpoch> epochs;
 
-	private NSHM27_SeisRateModelEpochCatalog(NSHM27_SeismicityRegions region, TectonicRegionType trt,
+	private NSHM27_SeisRateModelEpochCatalog(NSHM27_SeismicityRegions region, TectonicRegionType trt, boolean union,
 			String datasetId, EpochWeighting weighting, List<NSHM27_SeisRateModelEpoch> epochs) {
 		this.region = Preconditions.checkNotNull(region);
-		this.trt = Preconditions.checkNotNull(trt);
+		Preconditions.checkArgument(union == (trt == null),
+				"Union catalogs must omit TRT; regime catalogs must supply TRT");
+		this.trt = trt;
+		this.union = union;
 		this.datasetId = Preconditions.checkNotNull(datasetId);
 		this.weighting = Preconditions.checkNotNull(weighting);
 		Preconditions.checkArgument(!epochs.isEmpty(), "Epoch catalog is empty");
@@ -49,6 +53,7 @@ public final class NSHM27_SeisRateModelEpochCatalog {
 			Preconditions.checkState(epoch.getEpochIndex() == i,
 					"Epoch indexes must be contiguous and ordered: expected %s, found %s", i, epoch.getEpochIndex());
 			Preconditions.checkState(epoch.getRegion() == region && epoch.getTectonicRegion() == trt
+					&& epoch.isUnion() == union
 					&& epoch.getDatasetId().equals(datasetId), "Epoch does not belong to this catalog: %s", epoch);
 		}
 		double sum = 0d;
@@ -68,11 +73,27 @@ public final class NSHM27_SeisRateModelEpochCatalog {
 
 	public static NSHM27_SeisRateModelEpochCatalog load(NSHM27_SeismicityRegions region, TectonicRegionType trt,
 			EpochWeighting weighting) {
+		return load(region, Preconditions.checkNotNull(trt), false, weighting);
+	}
+
+	public static NSHM27_SeisRateModelEpochCatalog loadUnion(NSHM27_SeismicityRegions region) {
+		return loadUnion(region, DEFAULT_WEIGHTING);
+	}
+
+	public static NSHM27_SeisRateModelEpochCatalog loadUnion(NSHM27_SeismicityRegions region,
+			EpochWeighting weighting) {
+		return load(region, null, true, weighting);
+	}
+
+	private static NSHM27_SeisRateModelEpochCatalog load(NSHM27_SeismicityRegions region,
+			TectonicRegionType trt, boolean union, EpochWeighting weighting) {
 		try {
 			ParsedEpochs[] parsed = new ParsedEpochs[NSHM27_SeisBValueMethod.values().length];
-			for (NSHM27_SeisBValueMethod bMethod : NSHM27_SeisBValueMethod.values())
-				parsed[bMethod.ordinal()] = parse(NSHM27_SeismicityDataFiles.locateRateWeights(region, trt, bMethod),
-						weighting);
+			for (NSHM27_SeisBValueMethod bMethod : NSHM27_SeisBValueMethod.values()) {
+				File weightsFile = union ? NSHM27_SeismicityDataFiles.locateUnionRateWeights(region, bMethod)
+						: NSHM27_SeismicityDataFiles.locateRateWeights(region, trt, bMethod);
+				parsed[bMethod.ordinal()] = parse(weightsFile, weighting);
+			}
 			ParsedEpochs reference = parsed[0];
 			for (int m=1; m<parsed.length; m++)
 				reference.validateDefinitions(parsed[m], NSHM27_SeisBValueMethod.values()[m]);
@@ -81,10 +102,15 @@ public final class NSHM27_SeisRateModelEpochCatalog {
 				weightsByMethod[m] = parsed[m].weights;
 			double[] averagedWeights = calcLogicTreeWeightedEpochWeights(weightsByMethod);
 			List<NSHM27_SeisRateModelEpoch> epochs = new ArrayList<>(reference.size());
-			for (int i=0; i<reference.size(); i++)
-				epochs.add(new NSHM27_SeisRateModelEpoch(region, trt, NSHM27_SeismicityDataFiles.RATE_DATASET,
-						reference.startYears[i], reference.endYears[i], reference.mcs[i], i, averagedWeights[i]));
-			return new NSHM27_SeisRateModelEpochCatalog(region, trt,
+			for (int i=0; i<reference.size(); i++) {
+				NSHM27_SeisRateModelEpoch epoch = union
+						? NSHM27_SeisRateModelEpoch.forUnion(region, NSHM27_SeismicityDataFiles.RATE_DATASET,
+								reference.startYears[i], reference.endYears[i], reference.mcs[i], i, averagedWeights[i])
+						: new NSHM27_SeisRateModelEpoch(region, trt, NSHM27_SeismicityDataFiles.RATE_DATASET,
+								reference.startYears[i], reference.endYears[i], reference.mcs[i], i, averagedWeights[i]);
+				epochs.add(epoch);
+			}
+			return new NSHM27_SeisRateModelEpochCatalog(region, trt, union,
 					NSHM27_SeismicityDataFiles.RATE_DATASET, weighting, epochs);
 		} catch (IOException e) {
 			throw ExceptionUtils.asRuntimeException(e);
@@ -123,7 +149,7 @@ public final class NSHM27_SeisRateModelEpochCatalog {
 		for (int i=0; i<parsed.size(); i++)
 			epochs.add(new NSHM27_SeisRateModelEpoch(region, trt, datasetId,
 					parsed.startYears[i], parsed.endYears[i], parsed.mcs[i], i, parsed.weights[i]));
-		return new NSHM27_SeisRateModelEpochCatalog(region, trt, datasetId, weighting, epochs);
+		return new NSHM27_SeisRateModelEpochCatalog(region, trt, false, datasetId, weighting, epochs);
 	}
 
 	private static ParsedEpochs parse(File weightsFile, EpochWeighting weighting) throws IOException {
@@ -199,6 +225,7 @@ public final class NSHM27_SeisRateModelEpochCatalog {
 	}
 
 	public NSHM27_SeismicityRegions getRegion() { return region; }
+	public boolean isUnion() { return union; }
 	public TectonicRegionType getTectonicRegion() { return trt; }
 	public String getDatasetId() { return datasetId; }
 	public EpochWeighting getWeighting() { return weighting; }
@@ -208,7 +235,9 @@ public final class NSHM27_SeisRateModelEpochCatalog {
 	public JsonObject toJSON() {
 		JsonObject json = new JsonObject();
 		json.addProperty("region", region.name());
-		json.addProperty("tectonicRegime", trt.name());
+		json.addProperty("union", isUnion());
+		if (!isUnion())
+			json.addProperty("tectonicRegime", trt.name());
 		json.addProperty("datasetId", datasetId);
 		json.addProperty("weighting", weighting.name());
 		JsonArray array = new JsonArray();
@@ -227,24 +256,31 @@ public final class NSHM27_SeisRateModelEpochCatalog {
 
 	public static NSHM27_SeisRateModelEpochCatalog fromJSON(JsonObject json) {
 		NSHM27_SeismicityRegions region = NSHM27_SeismicityRegions.valueOf(json.get("region").getAsString());
-		TectonicRegionType trt = TectonicRegionType.valueOf(json.get("tectonicRegime").getAsString());
+		boolean union = json.has("union") && json.get("union").getAsBoolean();
+		TectonicRegionType trt = union ? null
+				: TectonicRegionType.valueOf(json.get("tectonicRegime").getAsString());
 		String datasetId = json.get("datasetId").getAsString();
 		EpochWeighting weighting = EpochWeighting.valueOf(json.get("weighting").getAsString());
 		JsonArray array = json.getAsJsonArray("epochs");
 		List<NSHM27_SeisRateModelEpoch> epochs = new ArrayList<>(array.size());
 		for (int i=0; i<array.size(); i++) {
 			JsonObject epochJSON = array.get(i).getAsJsonObject();
-			epochs.add(new NSHM27_SeisRateModelEpoch(region, trt, datasetId,
-					epochJSON.get("startYear").getAsDouble(), epochJSON.get("endYear").getAsDouble(),
-					epochJSON.get("mc").getAsDouble(), epochJSON.get("index").getAsInt(),
-					epochJSON.get("weight").getAsDouble()));
+			double startYear = epochJSON.get("startYear").getAsDouble();
+			double endYear = epochJSON.get("endYear").getAsDouble();
+			double mc = epochJSON.get("mc").getAsDouble();
+			int index = epochJSON.get("index").getAsInt();
+			double weight = epochJSON.get("weight").getAsDouble();
+			epochs.add(union ? NSHM27_SeisRateModelEpoch.forUnion(region, datasetId,
+					startYear, endYear, mc, index, weight)
+					: new NSHM27_SeisRateModelEpoch(region, trt, datasetId,
+							startYear, endYear, mc, index, weight));
 		}
-		return new NSHM27_SeisRateModelEpochCatalog(region, trt, datasetId, weighting, epochs);
+		return new NSHM27_SeisRateModelEpochCatalog(region, trt, union, datasetId, weighting, epochs);
 	}
 
 	@Override
 	public int hashCode() {
-		int result = java.util.Objects.hash(region, trt, datasetId, weighting);
+		int result = java.util.Objects.hash(region, trt, union, datasetId, weighting);
 		for (NSHM27_SeisRateModelEpoch epoch : epochs)
 			result = 31*result + java.util.Objects.hash(epoch.getEpochIndex(), epoch.getStartYear(),
 					epoch.getEndYear(), epoch.getMagComplete());
@@ -258,7 +294,7 @@ public final class NSHM27_SeisRateModelEpochCatalog {
 		if (this == obj) return true;
 		if (!(obj instanceof NSHM27_SeisRateModelEpochCatalog)) return false;
 		NSHM27_SeisRateModelEpochCatalog other = (NSHM27_SeisRateModelEpochCatalog)obj;
-		if (region != other.region || trt != other.trt || !datasetId.equals(other.datasetId)
+		if (region != other.region || trt != other.trt || union != other.union || !datasetId.equals(other.datasetId)
 				|| weighting != other.weighting || epochs.size() != other.epochs.size())
 			return false;
 		for (int i=0; i<epochs.size(); i++) {

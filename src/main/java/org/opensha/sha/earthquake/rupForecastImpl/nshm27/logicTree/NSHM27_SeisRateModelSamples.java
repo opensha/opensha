@@ -45,8 +45,10 @@ FractileSamplingLevel<Double, NSHM27_SeisRateModelSample> {
 	}
 
 	public NSHM27_SeisRateModelSamples(NSHM27_SeisRateModelEpochCatalog catalog) {
-		super(NSHM27_RegionLoader.getNameForTRT(catalog.getTectonicRegion())+" seismicity rate model samples",
-				NSHM27_RegionLoader.getNameForTRT(catalog.getTectonicRegion())+"RateSamples",
+		super((catalog.isUnion() ? "Union" : NSHM27_RegionLoader.getNameForTRT(catalog.getTectonicRegion()))
+				+" seismicity rate model samples",
+				(catalog.isUnion() ? "Union" : NSHM27_RegionLoader.getNameForTRT(catalog.getTectonicRegion()))
+				+"RateSamples",
 				"Rate sample ", "RateSample", "RateSample");
 		this.catalog = Preconditions.checkNotNull(catalog);
 	}
@@ -74,14 +76,17 @@ FractileSamplingLevel<Double, NSHM27_SeisRateModelSample> {
 		Preconditions.checkState(catalog.getDatasetId().equals(NSHM27_SeismicityDataFiles.RATE_DATASET),
 				"Unsupported rate dataset '%s'; configured dataset is '%s'", catalog.getDatasetId(),
 				NSHM27_SeismicityDataFiles.RATE_DATASET);
-		File file = NSHM27_SeismicityDataFiles.locateEpochRatePairs(catalog.getRegion(),
-				catalog.getTectonicRegion(), bMethod, epoch.getEpochIndex());
+		File file = catalog.isUnion()
+				? NSHM27_SeismicityDataFiles.locateUnionEpochRatePairs(catalog.getRegion(), bMethod, epoch.getEpochIndex())
+				: NSHM27_SeismicityDataFiles.locateEpochRatePairs(catalog.getRegion(),
+						catalog.getTectonicRegion(), bMethod, epoch.getEpochIndex());
 		return CSVFile.readFile(file, false);
 	}
 	
 	public static List<PureGR> loadOrigSamples(NSHM27_SeismicityRegions seisReg,
 			NSHM27_SeisRateModelEpoch epoch, TectonicRegionType trt,
 			NSHM27_SeisBValueMethod bMethod) throws IOException {
+		Preconditions.checkArgument(!epoch.isUnion(), "Use loadUnionSamples for a union epoch");
 		Preconditions.checkState(epoch.getDatasetId().equals(NSHM27_SeismicityDataFiles.RATE_DATASET),
 				"Unsupported rate dataset '%s'; configured dataset is '%s'", epoch.getDatasetId(),
 				NSHM27_SeismicityDataFiles.RATE_DATASET);
@@ -89,6 +94,18 @@ FractileSamplingLevel<Double, NSHM27_SeisRateModelSample> {
 				seisReg, trt, NSHM27_SeisRateModelEpochCatalog.DEFAULT_WEIGHTING);
 		CSVFile<String> csv = loadCSV(catalog, bMethod, epoch);
 		return SeismicityRateFileLoader.loadSamplesCSV(csv);
+	}
+
+	public static List<PureGR> loadUnionSamples(NSHM27_SeismicityRegions region,
+			NSHM27_SeisRateModelEpoch epoch, NSHM27_SeisBValueMethod bMethod) throws IOException {
+		Preconditions.checkArgument(epoch.isUnion(), "Epoch is not from a union catalog");
+		Preconditions.checkState(epoch.getRegion() == region, "Epoch region mismatch");
+		Preconditions.checkState(epoch.getDatasetId().equals(NSHM27_SeismicityDataFiles.RATE_DATASET),
+				"Unsupported rate dataset '%s'; configured dataset is '%s'", epoch.getDatasetId(),
+				NSHM27_SeismicityDataFiles.RATE_DATASET);
+		File file = NSHM27_SeismicityDataFiles.locateUnionEpochRatePairs(
+				region, bMethod, epoch.getEpochIndex());
+		return SeismicityRateFileLoader.loadSamplesCSV(CSVFile.readFile(file, false));
 	}
 	
 	public List<PureGR> loadOrigSamples(NSHM27_SeisBValueMethod bMethod, NSHM27_SeisRateModelEpoch epoch) {
@@ -114,7 +131,14 @@ FractileSamplingLevel<Double, NSHM27_SeisRateModelSample> {
 
 	private static synchronized List<PureGR> loadSortedSamples(NSHM27_SeismicityRegions region,
 			TectonicRegionType trt, NSHM27_SeisBValueMethod bMethod, NSHM27_SeisRateModelEpoch epoch) {
-		File file = NSHM27_SeismicityDataFiles.locateEpochRatePairs(region, trt, bMethod, epoch.getEpochIndex());
+		File file;
+		if (epoch.isUnion()) {
+			Preconditions.checkState(trt == null, "TRT must be null for union samples");
+			file = NSHM27_SeismicityDataFiles.locateUnionEpochRatePairs(region, bMethod, epoch.getEpochIndex());
+		} else {
+			Preconditions.checkNotNull(trt, "TRT is required for non-union samples");
+			file = NSHM27_SeismicityDataFiles.locateEpochRatePairs(region, trt, bMethod, epoch.getEpochIndex());
+		}
 		List<PureGR> samples = SAMPLE_CACHE.get(file);
 		if (samples == null) {
 			try {
@@ -132,6 +156,7 @@ FractileSamplingLevel<Double, NSHM27_SeisRateModelSample> {
 
 	public static PureGR loadSample(NSHM27_SeismicityRegions region, NSHM27_SeisRateModelEpoch epoch,
 			TectonicRegionType trt, NSHM27_SeisBValueMethod bMethod, double fractile) {
+		Preconditions.checkArgument(!epoch.isUnion(), "Use loadUnionSample for a union epoch");
 		Preconditions.checkArgument(fractile >= 0d && fractile < 1d,
 				"Sample fractile must be in [0,1): %s", fractile);
 		Preconditions.checkState(epoch.getRegion() == region && epoch.getTectonicRegion() == trt,
@@ -140,6 +165,20 @@ FractileSamplingLevel<Double, NSHM27_SeisRateModelSample> {
 				"Unsupported rate dataset '%s'; configured dataset is '%s'", epoch.getDatasetId(),
 				NSHM27_SeismicityDataFiles.RATE_DATASET);
 		List<PureGR> samples = loadSortedSamples(region, trt, bMethod, epoch);
+		int index = Math.min(samples.size()-1, (int)(fractile*samples.size()));
+		return samples.get(index);
+	}
+
+	public static PureGR loadUnionSample(NSHM27_SeismicityRegions region,
+			NSHM27_SeisRateModelEpoch epoch, NSHM27_SeisBValueMethod bMethod, double fractile) {
+		Preconditions.checkArgument(fractile >= 0d && fractile < 1d,
+				"Sample fractile must be in [0,1): %s", fractile);
+		Preconditions.checkArgument(epoch.isUnion(), "Epoch is not from a union catalog");
+		Preconditions.checkState(epoch.getRegion() == region, "Epoch region mismatch");
+		Preconditions.checkState(epoch.getDatasetId().equals(NSHM27_SeismicityDataFiles.RATE_DATASET),
+				"Unsupported rate dataset '%s'; configured dataset is '%s'", epoch.getDatasetId(),
+				NSHM27_SeismicityDataFiles.RATE_DATASET);
+		List<PureGR> samples = loadSortedSamples(region, null, bMethod, epoch);
 		int index = Math.min(samples.size()-1, (int)(fractile*samples.size()));
 		return samples.get(index);
 	}

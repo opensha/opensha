@@ -2,21 +2,29 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.List;
 
 import org.junit.Test;
+import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.sha.earthquake.nshmp.seismicity.SeismicityRateFileLoader;
+import org.opensha.sha.earthquake.nshmp.seismicity.SeismicityRateFileLoader.Direct;
+import org.opensha.sha.earthquake.nshmp.seismicity.SeismicityRateFileLoader.PureGR;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisRateModel.NSHM27_SeisRateModelSample;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisRateModelEpochCatalog.EpochWeighting;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.NSHM27_SeismicityDataFiles;
 import org.opensha.sha.util.TectonicRegionType;
 
 public class NSHM27SeisRateEpochSerializationTest {
@@ -43,6 +51,57 @@ public class NSHM27SeisRateEpochSerializationTest {
 		// Current b-method weights are 0.5, 0, and 0.5.
 		assertEquals(0.3d, averaged[0], 1e-15);
 		assertEquals(0.7d, averaged[1], 1e-15);
+	}
+
+	@Test
+	public void testUnionCatalogAndSamples() throws Exception {
+		for (NSHM27_SeismicityRegions region : NSHM27_SeismicityRegions.values()) {
+			NSHM27_SeisRateModelEpochCatalog catalog = NSHM27_SeisRateModelEpochCatalog.loadUnion(region);
+			assertTrue(catalog.isUnion());
+			assertNull(catalog.getTectonicRegion());
+			assertFalse(catalog.getEpochs().isEmpty());
+			assertEquals(catalog, NSHM27_SeisRateModelEpochCatalog.fromJSON(catalog.toJSON()));
+
+			NSHM27_SeisRateModelEpoch epoch = catalog.getEpoch(0);
+			assertTrue(epoch.isUnion());
+			for (NSHM27_SeisBValueMethod bMethod : NSHM27_SeisBValueMethod.values()) {
+				List<PureGR> samples = NSHM27_SeisRateModelSamples.loadUnionSamples(region, epoch, bMethod);
+				assertFalse(samples.isEmpty());
+				PureGR sample = NSHM27_SeisRateModelSamples.loadUnionSample(region, epoch, bMethod, 0.5d);
+				assertTrue(Double.isFinite(sample.rateAboveM1));
+				assertTrue(Double.isFinite(sample.b));
+			}
+		}
+	}
+
+	@Test
+	public void testDirectRateLoading() throws Exception {
+		for (NSHM27_SeismicityRegions region : NSHM27_SeismicityRegions.values()) {
+			validateDirectRates(NSHM27_SeismicityDataFiles.loadUnionDirectRates(region));
+			for (TectonicRegionType trt : List.of(TectonicRegionType.ACTIVE_SHALLOW,
+					TectonicRegionType.SUBDUCTION_INTERFACE, TectonicRegionType.SUBDUCTION_SLAB))
+				validateDirectRates(NSHM27_SeismicityDataFiles.loadDirectRates(region, trt));
+		}
+	}
+
+	@Test
+	public void testLegacyDirectRateLayoutStillLoads() throws Exception {
+		String resource = "/data/erf/prvi25/seismicity/rates/2025_07_17/direct/"
+				+"directrates-PRVI Union-Full-1973-2024-v10.csv";
+		try (InputStream stream = NSHM27SeisRateEpochSerializationTest.class.getResourceAsStream(resource)) {
+			assertNotNull(stream);
+			validateDirectRates(SeismicityRateFileLoader.loadDirectBranches(CSVFile.readStream(stream, false)));
+		}
+	}
+
+	private static void validateDirectRates(List<Direct> records) {
+		assertEquals(5, records.size());
+		Direct mean = SeismicityRateFileLoader.locateMean(records);
+		assertTrue(mean.mean);
+		assertTrue(Double.isFinite(mean.rateAboveM1));
+		assertTrue(mean.rateAboveM1 > 0d);
+		assertEquals(mean.M1, mean.cumulativeDist.getMinX(), 0d);
+		assertEquals(mean.M1+0.5d*mean.incrementalDist.getDelta(), mean.incrementalDist.getMinX(), 1e-12);
 	}
 
 	@Test

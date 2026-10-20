@@ -31,6 +31,7 @@ public final class NSHM27_SeisRateModelEpoch implements ValuedLogicTreeNode<Inte
 
 	private final NSHM27_SeismicityRegions region;
 	private final TectonicRegionType trt;
+	private final boolean union;
 	private final String datasetId;
 	private final double startYear;
 	private final double endYear;
@@ -40,8 +41,20 @@ public final class NSHM27_SeisRateModelEpoch implements ValuedLogicTreeNode<Inte
 
 	NSHM27_SeisRateModelEpoch(NSHM27_SeismicityRegions region, TectonicRegionType trt, String datasetId,
 			double startYear, double endYear, double mc, int index, double weight) {
+		this(region, Objects.requireNonNull(trt), false, datasetId, startYear, endYear, mc, index, weight);
+	}
+
+	static NSHM27_SeisRateModelEpoch forUnion(NSHM27_SeismicityRegions region, String datasetId,
+			double startYear, double endYear, double mc, int index, double weight) {
+		return new NSHM27_SeisRateModelEpoch(region, null, true, datasetId,
+				startYear, endYear, mc, index, weight);
+	}
+
+	private NSHM27_SeisRateModelEpoch(NSHM27_SeismicityRegions region, TectonicRegionType trt,
+			boolean union, String datasetId, double startYear, double endYear, double mc, int index, double weight) {
 		this.region = region;
 		this.trt = trt;
+		this.union = union;
 		this.datasetId = datasetId;
 		this.startYear = startYear;
 		this.endYear = endYear;
@@ -53,6 +66,7 @@ public final class NSHM27_SeisRateModelEpoch implements ValuedLogicTreeNode<Inte
 	private static final DecimalFormat oDF = new DecimalFormat("0.#");
 
 	public NSHM27_SeismicityRegions getRegion() { return region; }
+	public boolean isUnion() { return union; }
 	public TectonicRegionType getTectonicRegion() { return trt; }
 	public String getDatasetId() { return datasetId; }
 	public double getStartYear() { return startYear; }
@@ -76,7 +90,7 @@ public final class NSHM27_SeisRateModelEpoch implements ValuedLogicTreeNode<Inte
 
 	@Override
 	public String getFilePrefix() {
-		return NSHM27_RegionLoader.getNameForTRT(trt)+"Epoch"+(index+1);
+		return (isUnion() ? "Union" : NSHM27_RegionLoader.getNameForTRT(trt))+"Epoch"+(index+1);
 	}
 
 	@Override
@@ -93,14 +107,15 @@ public final class NSHM27_SeisRateModelEpoch implements ValuedLogicTreeNode<Inte
 	public double getNodeWeight() { return weight; }
 
 	@Override
-	public int hashCode() { return Objects.hash(region, trt, datasetId, index); }
+	public int hashCode() { return Objects.hash(region, trt, union, datasetId, index); }
 
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) return true;
 		if (!(obj instanceof NSHM27_SeisRateModelEpoch)) return false;
 		NSHM27_SeisRateModelEpoch other = (NSHM27_SeisRateModelEpoch)obj;
-		return region == other.region && trt == other.trt && index == other.index && datasetId.equals(other.datasetId);
+		return region == other.region && trt == other.trt && union == other.union
+				&& index == other.index && datasetId.equals(other.datasetId);
 	}
 
 	@Override
@@ -119,8 +134,10 @@ public final class NSHM27_SeisRateModelEpoch implements ValuedLogicTreeNode<Inte
 		}
 
 		public Level(NSHM27_SeisRateModelEpochCatalog catalog) {
-			super(NSHM27_RegionLoader.getNameForTRT(catalog.getTectonicRegion())+" seismicity rate epoch",
-					NSHM27_RegionLoader.getNameForTRT(catalog.getTectonicRegion())+"Epoch");
+			super((catalog.isUnion() ? "Union" : NSHM27_RegionLoader.getNameForTRT(catalog.getTectonicRegion()))
+					+" seismicity rate epoch",
+					(catalog.isUnion() ? "Union" : NSHM27_RegionLoader.getNameForTRT(catalog.getTectonicRegion()))
+					+"Epoch");
 			this.catalog = catalog;
 		}
 

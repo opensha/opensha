@@ -11,7 +11,10 @@ import java.util.Locale;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
+import org.opensha.commons.data.CSVFile;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.NSHM27_InvConfigFactory;
+import org.opensha.sha.earthquake.nshmp.seismicity.SeismicityRateFileLoader;
+import org.opensha.sha.earthquake.nshmp.seismicity.SeismicityRateFileLoader.Direct;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_DeclusteringAlgorithms;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisBValueMethod;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisRateModelEpochCatalog.EpochWeighting;
@@ -38,6 +41,13 @@ public final class NSHM27_SeismicityDataFiles {
 				region.getShortName()+" "+NSHM27_RegionLoader.getNameForTRT(trt)+" epoch weights");
 	}
 
+	public static File locateUnionRateWeights(NSHM27_SeismicityRegions region,
+			NSHM27_SeisBValueMethod bMethod) {
+		String prefix = unionRatePrefix(region);
+		return findUnique(rateDirectory(region, bMethod), name -> name.startsWith(prefix) && name.endsWith("-weights.csv"),
+				region.getShortName()+" union epoch weights");
+	}
+
 	public static File locateEpochRatePairs(NSHM27_SeismicityRegions region, TectonicRegionType trt,
 			NSHM27_SeisBValueMethod bMethod, int epochIndex) {
 		Preconditions.checkArgument(epochIndex >= 0, "Epoch index must be nonnegative: %s", epochIndex);
@@ -46,6 +56,15 @@ public final class NSHM27_SeismicityDataFiles {
 		return findUnique(rateDirectory(region, bMethod), name -> name.startsWith(prefix) && name.endsWith(suffix),
 				region.getShortName()+" "+NSHM27_RegionLoader.getNameForTRT(trt)
 				+" epoch "+(epochIndex+1)+" rate pairs");
+	}
+
+	public static File locateUnionEpochRatePairs(NSHM27_SeismicityRegions region,
+			NSHM27_SeisBValueMethod bMethod, int epochIndex) {
+		Preconditions.checkArgument(epochIndex >= 0, "Epoch index must be nonnegative: %s", epochIndex);
+		String prefix = unionRatePrefix(region);
+		String suffix = "-epoch-"+(epochIndex+1)+"-pairs.csv";
+		return findUnique(rateDirectory(region, bMethod), name -> name.startsWith(prefix) && name.endsWith(suffix),
+				region.getShortName()+" union epoch "+(epochIndex+1)+" rate pairs");
 	}
 
 	public static File locateMixtureRatePairs(NSHM27_SeismicityRegions region, TectonicRegionType trt,
@@ -82,6 +101,26 @@ public final class NSHM27_SeismicityDataFiles {
 		return findUnique(rateDirectory(region, NSHM27_SeisBValueMethod.CLASSIFICATION_DEPENDENT),
 				name -> name.startsWith(prefix) && name.endsWith("-directrates.csv"),
 				region.getShortName()+" "+NSHM27_RegionLoader.getNameForTRT(trt)+" direct rates");
+	}
+
+	public static File locateUnionDirectRates(NSHM27_SeismicityRegions region) {
+		String prefix = region.getTitleCaseAcronym()+"-Union-";
+		return findUnique(rateDirectory(region, NSHM27_SeisBValueMethod.CLASSIFICATION_DEPENDENT),
+				name -> name.startsWith(prefix) && name.endsWith("-directrates.csv"),
+				region.getShortName()+" union direct rates");
+	}
+
+	public static List<Direct> loadDirectRates(NSHM27_SeismicityRegions region,
+			TectonicRegionType trt) throws IOException {
+		return loadDirectRates(locateDirectRates(region, trt));
+	}
+
+	public static List<Direct> loadUnionDirectRates(NSHM27_SeismicityRegions region) throws IOException {
+		return loadDirectRates(locateUnionDirectRates(region));
+	}
+
+	private static List<Direct> loadDirectRates(File file) throws IOException {
+		return SeismicityRateFileLoader.loadDirectBranches(CSVFile.readFile(file, false));
 	}
 
 	public static File locateSpatialPDF(NSHM27_SeismicityRegions region, TectonicRegionType trt,
@@ -139,6 +178,10 @@ public final class NSHM27_SeismicityDataFiles {
 
 	private static String ratePrefix(NSHM27_SeismicityRegions region, TectonicRegionType trt) {
 		return "comb-"+region.getTitleCaseAcronym()+"-"+rateRegimeLabel(trt)+"-";
+	}
+
+	private static String unionRatePrefix(NSHM27_SeismicityRegions region) {
+		return "comb-"+region.getTitleCaseAcronym()+"-Union-";
 	}
 
 	private static String rateRegimeLabel(TectonicRegionType trt) {

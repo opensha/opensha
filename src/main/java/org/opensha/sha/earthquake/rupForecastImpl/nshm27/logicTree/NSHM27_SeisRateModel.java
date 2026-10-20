@@ -50,6 +50,7 @@ public interface NSHM27_SeisRateModel extends LogicTreeNode {
 		
 		private NSHM27_SeismicityRegions region;
 		private TectonicRegionType trt;
+		private boolean union;
 		private String datasetId;
 
 		@SuppressWarnings("unused") // deserialization
@@ -61,6 +62,7 @@ public interface NSHM27_SeisRateModel extends LogicTreeNode {
 			super(value, Double.class, weight, name, shortName, filePrefix);
 			this.region = catalog.getRegion();
 			this.trt = catalog.getTectonicRegion();
+			this.union = catalog.isUnion();
 			this.datasetId = catalog.getDatasetId();
 		}
 
@@ -82,12 +84,15 @@ public interface NSHM27_SeisRateModel extends LogicTreeNode {
 			NSHM27_SeisRateModelEpoch epoch = branch.requireValue(NSHM27_SeisRateModelEpoch.class);
 			validateEpoch(epoch);
 			NSHM27_SeisBValueMethod bMethod = branch.requireValue(NSHM27_SeisBValueMethod.class);
+			if (epoch.isUnion())
+				return NSHM27_SeisRateModelSamples.loadUnionSample(region, epoch, bMethod, getValue());
 			return NSHM27_SeisRateModelSamples.loadSample(region, epoch, trt, bMethod, getValue());
 		}
 
 		private void validateEpoch(NSHM27_SeisRateModelEpoch epoch) {
 			Preconditions.checkNotNull(epoch, "Epoch cannot be null");
 			Preconditions.checkState(region == null || epoch.getRegion() == region, "Epoch region mismatch");
+			Preconditions.checkState(epoch.isUnion() == union, "Epoch union/regime scope mismatch");
 			Preconditions.checkState(trt == null || epoch.getTectonicRegion() == trt, "Epoch TRT mismatch");
 			Preconditions.checkState(datasetId == null || epoch.getDatasetId().equals(datasetId), "Epoch dataset mismatch");
 		}
