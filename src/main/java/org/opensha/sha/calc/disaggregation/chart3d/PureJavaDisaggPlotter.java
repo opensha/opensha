@@ -53,12 +53,35 @@ import com.itextpdf.text.pdf.PdfContentByte;
 import com.itextpdf.text.pdf.PdfTemplate;
 import com.itextpdf.text.pdf.PdfWriter;
 
+/**
+ * Pure-Java (client-side) renderer for disaggregation plots. Draws the 3-D bar chart of percent contribution by rupture
+ * distance, magnitude and epsilon (stacked by {@link EpsilonCategories}) from a {@link DisaggregationPlotData} using
+ * Orson Charts, and can write it as PNG or PDF. It replaces the server-side GMT {@code DisaggregationPlotServlet}: no
+ * network access or GMT installation is required, and it works headless.
+ * <p>
+ * Typical use: {@code PureJavaDisaggPlotter.buildChartPanel(calc.getDisaggPlotData())} for an on-screen panel, or
+ * {@link #writeChartPlot(File, String, DisaggregationPlotData, int, int, boolean, boolean)} to write files.
+ */
 public class PureJavaDisaggPlotter {
 	
+	/**
+	 * Builds an 800x800 chart panel for the given disaggregation data with the fixed (non-rotatable) view point.
+	 * 
+	 * @param data disaggregation results, e.g. from {@link DisaggregationCalculator#getDisaggPlotData()}
+	 * @return panel that can be shown in a window or passed to the {@code writeChart*} methods
+	 */
 	public static Chart3DPanel buildChartPanel(DisaggregationPlotData data) {
 		return buildChartPanel(data, true);
 	}
 	
+	/**
+	 * Builds an 800x800 chart panel for the given disaggregation data.
+	 * 
+	 * @param data disaggregation results, e.g. from {@link DisaggregationCalculator#getDisaggPlotData()}
+	 * @param fixedPerspective if true, the user cannot rotate/zoom the 3-D view ({@link FixedPerspectiveChart3DPanel});
+	 * if false, the standard interactive {@link Chart3DPanel} is used
+	 * @return panel that can be shown in a window or passed to the {@code writeChart*} methods
+	 */
 	public static Chart3DPanel buildChartPanel(DisaggregationPlotData data, boolean fixedPerspective) {
 		Chart3D chart = buildChart(data);
 		Chart3DPanel chartPanel;
@@ -73,6 +96,20 @@ public class PureJavaDisaggPlotter {
         return chartPanel;
 	}
 	
+	/**
+	 * Builds the 3-D chart: distance (rows) and magnitude (columns) category axes, a percent-contribution value axis, bars
+	 * stacked and colored by epsilon category, an epsilon legend and the standard view point.
+	 * <p>
+	 * The value (Z) axis starts at 0 and is automatically ranged to fit the tallest bin's total contribution. If
+	 * {@link DisaggregationPlotData#getMaxContrEpsilonForGMT_Plot()} (set via
+	 * {@link DisaggregationCalculator#setMaxZAxisForPlot(double)}) is larger than the tallest bin's total, the axis is fixed
+	 * to 0 to that value so the user can force a common Z-axis maximum across plots. A requested maximum that does not
+	 * exceed the data (including the calculator's own automatic value, which is the data maximum) is ignored rather than
+	 * clipping bars.
+	 * 
+	 * @param data disaggregation results
+	 * @return the configured chart
+	 */
 	public static Chart3D buildChart(DisaggregationPlotData data) {
 		DisaggDataset3D dataset = new DisaggDataset3D(data);
 		
@@ -89,9 +126,12 @@ public class PureJavaDisaggPlotter {
 			}
 		}
 		
+		// the tallest bin's total, before rounding
+		double dataMaxZ = maxZ;
+
 		// round to nearest 10%
 		maxZ = 10d*Math.ceil(maxZ/10d);
-		
+
 		DisaggCategoryLabelGenerator labelGen = new DisaggCategoryLabelGenerator();
 		
 		BasicStroke axisStroke = new BasicStroke(1f);
@@ -133,6 +173,14 @@ public class PureJavaDisaggPlotter {
 		renderer.setBarZWidth(0.85);
 		CategoryPlot3D plot = new CategoryPlot3D(dataset, renderer, rowAxis, 
 				columnAxis, valueAxis);
+		
+		// the plot auto-ranges the value axis from the data when it is constructed (the range passed to the axis above is
+		// overwritten), so a requested Z axis max, e.g. to keep several plots on the same scale, must be set afterwards.
+		// Only a max larger than the data's is applied; the default (auto) range is otherwise left alone. The calculator's
+		// own "automatic" value is the data max itself, hence the tolerance rather than a plain comparison.
+		double requestedMaxZ = data.getMaxContrEpsilonForGMT_Plot();
+		if (Double.isFinite(requestedMaxZ) && requestedMaxZ > dataMaxZ*(1d + 1e-9))
+			valueAxis.setRange(0d, requestedMaxZ);
 		
 		Chart3D chart = new DisaggChart3D(null, null, plot, new DisaggChartStyle());
 		
@@ -180,6 +228,18 @@ public class PureJavaDisaggPlotter {
 		return chart;
 	}
 	
+	/**
+	 * Builds a chart of the given size and writes it as PNG and/or PDF.
+	 * 
+	 * @param outputDir directory to write to
+	 * @param prefix file name without extension ({@code .png}/{@code .pdf} is appended)
+	 * @param data disaggregation results
+	 * @param width image width in pixels (PDF page width in points)
+	 * @param height image height in pixels (PDF page height in points)
+	 * @param writePNG if true, write {@code prefix.png}
+	 * @param writePDF if true, write {@code prefix.pdf}
+	 * @throws IOException if a file cannot be written
+	 */
 	public static void writeChartPlot(File outputDir, String prefix, DisaggregationPlotData data,
 			int width, int height, boolean writePNG, boolean writePDF) throws IOException {
 		Chart3DPanel panel = buildChartPanel(data);
@@ -189,6 +249,17 @@ public class PureJavaDisaggPlotter {
 		writeChartPlot(outputDir, prefix, panel, writePNG, writePDF);
 	}
 	
+	/**
+	 * Writes an existing chart panel as PNG and/or PDF at the panel's current size. The PDF contains only the chart; use
+	 * {@link #writeChartPDF(File, Chart3DPanel, String)} to add text.
+	 * 
+	 * @param outputDir directory to write to
+	 * @param prefix file name without extension ({@code .png}/{@code .pdf} is appended)
+	 * @param panel panel from {@link #buildChartPanel(DisaggregationPlotData)}
+	 * @param writePNG if true, write {@code prefix.png}
+	 * @param writePDF if true, write {@code prefix.pdf}
+	 * @throws IOException if a file cannot be written
+	 */
 	public static void writeChartPlot(File outputDir, String prefix, Chart3DPanel panel,
 			boolean writePNG, boolean writePDF) throws IOException {
 		int width = panel.getWidth();
@@ -201,6 +272,14 @@ public class PureJavaDisaggPlotter {
 		}
 	}
 	
+	/**
+	 * Writes the chart as a vector PDF page sized to the panel, optionally followed by a second page of text.
+	 * 
+	 * @param outputFile PDF file to write
+	 * @param panel panel whose chart is drawn
+	 * @param metadata text (e.g. mean/mode, bin and source data) placed on a second page, or null/blank for a chart-only PDF
+	 * @throws IOException if the file cannot be created
+	 */
 	public static void writeChartPDF(File outputFile, Chart3DPanel panel, String metadata) throws IOException {
 		int width = panel.getWidth();
 		int height = panel.getHeight();
@@ -257,19 +336,23 @@ public class PureJavaDisaggPlotter {
 	private static DecimalFormat magDF = new DecimalFormat("0.0#");
 	private static DecimalFormat distDF = new DecimalFormat("0");
 	
+	/** Formats distance/magnitude bin centers and epsilon category labels for the chart axes and legend. */
 	private static class DisaggCategoryLabelGenerator implements CategoryLabelGenerator<EpsilonCategories, Double, Double> {
 
+		/** @return the epsilon category label (e.g. "0&lt;&epsilon;&lt;0.5") used in the legend */
 		@Override
 		public String generateSeriesLabel(CategoryDataset3D<EpsilonCategories, Double, Double> dataset,
 				EpsilonCategories seriesKey) {
 			return seriesKey.label;
 		}
 
+		/** @return the rupture distance bin center, formatted as an integer */
 		@Override
 		public String generateRowLabel(CategoryDataset3D<EpsilonCategories, Double, Double> dataset, Double rowKey) {
 			return distDF.format(rowKey);
 		}
 
+		/** @return the magnitude bin center, formatted with one or two decimals */
 		@Override
 		public String generateColumnLabel(CategoryDataset3D<EpsilonCategories, Double, Double> dataset,
 				Double columnKey) {
@@ -278,25 +361,37 @@ public class PureJavaDisaggPlotter {
 		
 	}
 	
+	/** Colors bars and legend entries by {@link EpsilonCategories}. */
 	private static class EpsilonColorSource implements CategoryColorSource {
 
+		/** @return the color of the epsilon category for the given series (independent of row and column) */
 		@Override
 		public Color getColor(int series, int row, int column) {
 //			System.out.println("getColor: series="+series+", row="+row+", column="+column);
 			return EpsilonCategories.values()[series].color;
 		}
 
+		/** @return the legend swatch color of the epsilon category for the given series */
 		@Override
 		public Color getLegendColor(int series) {
 //			System.out.println("getLegendColor: series="+series);
 			return EpsilonCategories.values()[series].color;
 		}
 
+		/** Does nothing: colors are fixed by {@link EpsilonCategories}. */
 		@Override
 		public void style(Color... colors) {}
 		
 	}
 	
+	/**
+	 * Manual test: disaggregates Los Angeles with MeanUCERF2 and ASK 2014 (1 s SA), shows the chart in a window and writes
+	 * {@code /tmp/disagg_test.png/.pdf}.
+	 * 
+	 * @param args unused
+	 * @throws InterruptedException if interrupted while the window is open
+	 * @throws IOException if the output files cannot be written
+	 */
 	public static void main(String[] args) throws InterruptedException, IOException {
 //		Frankel96_AdjustableEqkRupForecast erf = new Frankel96_AdjustableEqkRupForecast();
 //		erf.getTimeSpan().setDuration(1d);
