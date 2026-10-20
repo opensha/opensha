@@ -13,6 +13,11 @@ import java.util.function.Supplier;
 
 import org.apache.commons.numbers.core.Precision;
 import org.apache.commons.statistics.distribution.ContinuousDistribution;
+import org.apache.commons.statistics.distribution.LogNormalDistribution;
+import org.apache.commons.statistics.distribution.NormalDistribution;
+import org.apache.commons.statistics.distribution.TriangularDistribution;
+import org.apache.commons.statistics.distribution.TruncatedNormalDistribution;
+import org.apache.commons.statistics.distribution.UniformContinuousDistribution;
 import org.opensha.commons.data.ShortNamed;
 import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.sampling.CategoricalSamplingDimension;
@@ -1019,6 +1024,55 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		
 		public String getUnits() {
 			return units;
+		}
+		
+		public String getDistributionString() {
+			String distStr;
+			if (dist == null) {
+				distStr = "Unknown distribution";
+			} else {
+				double lower = getLowerBound();
+				double upper = getUpperBound();
+				String rangeStr = "["+distParamStr(lower)+", "+distParamStr(upper)+"]";
+				if (dist instanceof UniformContinuousDistribution) {
+					distStr = "𝑈"+rangeStr;
+				} else if (dist instanceof NormalDistribution) {
+					NormalDistribution norm = (NormalDistribution)dist;
+					distStr = "𝑁(μ="+distParamStr(norm.getMean())
+							+", σ="+distParamStr(norm.getStandardDeviation())+")";
+				} else if (dist instanceof TruncatedNormalDistribution) {
+					TruncatedNormalDistribution tNorm = (TruncatedNormalDistribution)dist;
+					distStr = "Trunc𝑁(μ="+distParamStr(tNorm.getParentMean())
+							+", σ="+distParamStr(tNorm.getParentStandardDeviation())
+							+", "+rangeStr+")";
+				} else if (dist instanceof TriangularDistribution) {
+					TriangularDistribution triDist = (TriangularDistribution)dist;
+					distStr = "Tri("+distParamStr(lower)
+							+", "+distParamStr(triDist.getMode())+", "+distParamStr(upper)+")";
+				} else if (dist instanceof LogNormalDistribution) {
+					LogNormalDistribution logNorm = (LogNormalDistribution)dist;
+					distStr = "Log𝑁(μ="+distParamStr(logNorm.getMu())
+							+", σ="+distParamStr(logNorm.getSigma())+")";
+				} else {
+					distStr = "Unknown"+rangeStr;
+				}
+				String units = getUnits();
+				if (units != null && !units.isBlank())
+					distStr += " "+units;
+			}
+			return distStr;
+		}
+		
+		private static DecimalFormat threeODF = new DecimalFormat("0.###");
+		private static String distParamStr(double distParam) {
+			if (!Double.isFinite(distParam))
+				return distParam+"";
+			double abs = Math.abs(distParam);
+			if ((float)abs == (float)Math.round(abs))
+				return (int)distParam+"";
+			if (abs < 0.001 || abs > 1e7)
+				return (float)distParam+"";
+			return threeODF.format(distParam);
 		}
 		
 		public double getRoundedToPrecision(double value) {

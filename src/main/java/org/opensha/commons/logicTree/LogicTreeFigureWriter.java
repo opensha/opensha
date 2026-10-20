@@ -255,7 +255,7 @@ public class LogicTreeFigureWriter extends JPanel {
 						leftX = rightX;
 						if (subNode.level instanceof AbstractContinuousDistributionSampledLevel<?>) {
 							AbstractContinuousDistributionSampledLevel<?> distLevel = (AbstractContinuousDistributionSampledLevel<?>)subNode.level;
-							String distStr = getDistString(distLevel);
+							String distStr = distLevel.getDistributionString();
 							g2d.setFont(distFont);
 							drawText(g2d, distStr, choiceCenterX, topChoiceY, RectangleAnchor.TOP);
 						} else {
@@ -327,7 +327,7 @@ public class LogicTreeFigureWriter extends JPanel {
 				}
 				if (level instanceof AbstractContinuousDistributionSampledLevel<?>) {
 					AbstractContinuousDistributionSampledLevel<?> distLevel = (AbstractContinuousDistributionSampledLevel<?>)level;
-					String distStr = getDistString(distLevel);
+					String distStr = distLevel.getDistributionString();
 					g2d.setFont(distFont);
 					drawText(g2d, distStr, middleX, topWeightY, RectangleAnchor.TOP);
 				} else if ((float)minWeight == (float)maxWeight) {
@@ -368,57 +368,6 @@ public class LogicTreeFigureWriter extends JPanel {
 //		
 //		drawText(g2d, "Test Text", 200, 0, RectangleAnchor.TOP);
 		
-	}
-
-	public static String getDistString(AbstractContinuousDistributionSampledLevel<?> distLevel) {
-		ContinuousDistribution dist = distLevel.getDistribution();
-		
-		String distStr;
-		if (dist == null) {
-			distStr = "Unknown distribution";
-		} else {
-			double lower = distLevel.getLowerBound();
-			double upper = distLevel.getUpperBound();
-			String rangeStr = "["+distParamStr(lower)+", "+distParamStr(upper)+"]";
-			if (dist instanceof UniformContinuousDistribution) {
-				distStr = "𝑈"+rangeStr;
-			} else if (dist instanceof NormalDistribution) {
-				NormalDistribution norm = (NormalDistribution)dist;
-				distStr = "𝑁(μ="+distParamStr(norm.getMean())
-						+", σ="+distParamStr(norm.getStandardDeviation())+")";
-			} else if (dist instanceof TruncatedNormalDistribution) {
-				TruncatedNormalDistribution tNorm = (TruncatedNormalDistribution)dist;
-				distStr = "Trunc𝑁(μ="+distParamStr(tNorm.getParentMean())
-						+", σ="+distParamStr(tNorm.getParentStandardDeviation())
-						+", "+rangeStr+")";
-			} else if (dist instanceof TriangularDistribution) {
-				TriangularDistribution triDist = (TriangularDistribution)dist;
-				distStr = "Tri("+distParamStr(lower)
-						+", "+distParamStr(triDist.getMode())+", "+distParamStr(upper)+")";
-			} else if (dist instanceof LogNormalDistribution) {
-				LogNormalDistribution logNorm = (LogNormalDistribution)dist;
-				distStr = "Log𝑁(μ="+distParamStr(logNorm.getMu())
-						+", σ="+distParamStr(logNorm.getSigma())+")";
-			} else {
-				distStr = "Unknown"+rangeStr;
-			}
-			String units = distLevel.getUnits();
-			if (units != null && !units.isBlank())
-				distStr += " "+units;
-		}
-		return distStr;
-	}
-	
-	private static DecimalFormat oDF = new DecimalFormat("0.###");
-	private static String distParamStr(double distParam) {
-		if (!Double.isFinite(distParam))
-			return distParam+"";
-		double abs = Math.abs(distParam);
-		if ((float)abs == (float)Math.round(abs))
-			return (int)distParam+"";
-		if (abs < 0.001 || abs > 1e7)
-			return (float)distParam+"";
-		return oDF.format(distParam);
 	}
 	
 	private static void drawText(Graphics2D g2d, String text, int x, int y, RectangleAnchor anchor) {

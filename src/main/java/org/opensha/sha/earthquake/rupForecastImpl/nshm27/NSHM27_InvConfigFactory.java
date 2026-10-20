@@ -81,7 +81,8 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.G
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.ClassicModelInversionSolver;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_CrustalFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_InterfaceFaultModels;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_InterfaceObsSeisDMAdjustment;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_InterfaceMFDModel;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_InterfaceSeismicityMomentReduction;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_ModelRegimeNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisRateModel;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.InterfaceGridAssociations;
@@ -332,14 +333,7 @@ ExclusionaryInversionConfigurationFactory {
 		RandomBValSampler.Node bValNode = branch.getValue(RandomBValSampler.Node.class);
 		double bVal;
 		double[] sectSpecificBValues = null;
-		if (branch.hasValue(NSHM27_InterfaceObsSeisDMAdjustment.EXTRAPOLATE)) {
-			// use obs seis b-value
-			NSHM27_SeismicityRegions reg = branch.requireValue(NSHM27_InterfaceFaultModels.class).getSeismicityRegion();
-			RateRecord rateModel = branch.requireValue(NSHM27_SeisRateModel.class).getRateRecord(
-					reg, TectonicRegionType.SUBDUCTION_INTERFACE, branch);
-			Preconditions.checkState(rateModel instanceof PureGR);
-			bVal = ((PureGR)rateModel).b;
-		} else if (bValNode != null) {
+		if (bValNode != null) {
 			RandomBValSampler sampler = rupSet.requireModule(BranchSamplingManager.class).getSampler(bValNode);
 			sectSpecificBValues = sampler.getBValues();
 			Preconditions.checkState(sectSpecificBValues.length == rupSet.getNumSections(),
@@ -355,9 +349,11 @@ ExclusionaryInversionConfigurationFactory {
 		}
 		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal, sectSpecificBValues);
 		
-		if (branch.hasValue(NSHM27_InterfaceObsSeisDMAdjustment.class)) {
-			NSHM27_InterfaceObsSeisDMAdjustment adjustment = branch.requireValue(NSHM27_InterfaceObsSeisDMAdjustment.class);
-			if (adjustment == NSHM27_InterfaceObsSeisDMAdjustment.NONE) {
+		if (branch.hasValue(NSHM27_InterfaceSeismicityMomentReduction.class)) {
+			NSHM27_InterfaceSeismicityMomentReduction reduction =
+					branch.requireValue(NSHM27_InterfaceSeismicityMomentReduction.class);
+			if (reduction == NSHM27_InterfaceSeismicityMomentReduction.NONE
+					&& !NSHM27_InterfaceMFDModel.isExtrapolated(branch)) {
 				constrBuilder.subSeisMoRateReduction(SubSeisMoRateReduction.NONE);
 			} else {
 				// tell it to use input slip rates, which should have already been applied
@@ -365,7 +361,7 @@ ExclusionaryInversionConfigurationFactory {
 						"Have an obs seis adjustment but default slip rates are still attached!");
 				constrBuilder.subSeisMoRateReduction(SubSeisMoRateReduction.FROM_INPUT_SLIP_RATES);
 				
-				// override the sub-seis b-value from observed seismicity
+				// use the observed-seismicity b-value below the inversion magnitude range
 				NSHM27_InterfaceFaultModels fm = branch.getValue(NSHM27_InterfaceFaultModels.class);
 				if (fm != null && branch.hasValue(NSHM27_SeisRateModel.class)) {
 					NSHM27_SeisRateModel rateModel = branch.requireValue(NSHM27_SeisRateModel.class);
@@ -648,25 +644,36 @@ ExclusionaryInversionConfigurationFactory {
 			// add fault grid associations
 			NSHM27_GridSourceBuilder.offerAssociations(rupSet, branch);
 			
-			NSHM27_InterfaceObsSeisDMAdjustment obsAdj = branch.getValue(NSHM27_InterfaceObsSeisDMAdjustment.class);
-			if (obsAdj == null || obsAdj == NSHM27_InterfaceObsSeisDMAdjustment.NONE) {
-				// no DM adjustment (or crustal), apply default treatment with no sub-seis reduction
-				rupSet.addAvailableModule(()->NSHM27_InterfaceObsSeisDMAdjustment.NONE.adjustSlipRates(rupSet, branch), SectSlipRates.class);
+			NSHM27_InterfaceSeismicityMomentReduction momentReduction =
+					branch.getValue(NSHM27_InterfaceSeismicityMomentReduction.class);
+			NSHM27_InterfaceMFDModel interfaceMFDModel = momentReduction == null ? null
+					: NSHM27_InterfaceMFDModel.getModel(branch);
+			boolean extrapolated = interfaceMFDModel == NSHM27_InterfaceMFDModel.EXTRAPOLATED;
+			if (momentReduction == null
+					|| momentReduction == NSHM27_InterfaceSeismicityMomentReduction.NONE && !extrapolated) {
+				// no moment reduction (or crustal), use the coupled deformation-model slip rates
+				rupSet.addAvailableModule(()->NSHM27_InterfaceSeismicityMomentReduction.NONE
+						.adjustSlipRates(rupSet, branch), SectSlipRates.class);
 			} else {
 				SectSlipRates slipRates = rupSet.requireModule(SectSlipRates.class);
 				if (slipRates instanceof SectSlipRates.Default) {
 					// first time, apply the adjustment
 					Preconditions.checkState(!rupSet.hasModule(RuptureSubSetMappings.class),
 							"Can't adjust when we have subset mappings (should never happen)");
-					rupSet.addAvailableModule(()->obsAdj.adjustSlipRates(rupSet, branch), SectSlipRates.class);
+					if (extrapolated)
+						rupSet.addAvailableModule(()->interfaceMFDModel
+								.applyExtrapolatedSlipRateScaling(rupSet, branch), SectSlipRates.class);
+					else
+						rupSet.addAvailableModule(()->momentReduction.adjustSlipRates(rupSet, branch), SectSlipRates.class);
 				} else {
 					// already applied
 					Preconditions.checkState(slipRates instanceof SectSlipRates.Precomputed);
-					if (branch.hasValue(NSHM27_InterfaceObsSeisDMAdjustment.EXTRAPOLATE)) {
+					if (extrapolated) {
 						// make sure they were actually applied
 						for (int s=0; s<rupSet.getNumSections(); s++) {
 							GeoJSONFaultSection sect = (GeoJSONFaultSection)rupSet.getFaultSectionData(s);
-							Preconditions.checkState(sect.getProperties().containsKey(NSHM27_InterfaceObsSeisDMAdjustment.GEOJSON_INPUT_SLIP_RATE_PROP_NAME));
+							Preconditions.checkState(sect.getProperties().containsKey(
+									NSHM27_InterfaceMFDModel.GEOJSON_INPUT_SLIP_RATE_PROP_NAME));
 						}
 					}
 				}

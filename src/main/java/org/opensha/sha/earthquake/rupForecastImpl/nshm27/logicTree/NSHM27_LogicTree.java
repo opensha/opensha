@@ -55,14 +55,16 @@ public class NSHM27_LogicTree {
 			LogicTreeLevel.forEnum(NSHM27_InterfaceDeformationModels.Aggregated.class, "Interface Aggregated Deformation Model", "InterfaceAggDM");
 	public static final LogicTreeLevel<PRVI25_SubductionScalingRelationships> INTERFACE_SCALE = 
 			LogicTreeLevel.forEnum(PRVI25_SubductionScalingRelationships.class, "Interface Scaling Relationship", "InterfaceScale");
-	public static final LogicTreeLevel<NSHM27_InterfaceObsSeisDMAdjustment> INTERFACE_OBS_SEIS_DM_ADJ =
-			LogicTreeLevel.forEnum(NSHM27_InterfaceObsSeisDMAdjustment.class, "Interface Observed Seismicity Adjustment", "InterfaceObsSeisDMAdj");
+	public static final LogicTreeLevel<NSHM27_InterfaceSeismicityMomentReduction> INTERFACE_SEIS_MOMENT_REDUCTION =
+			LogicTreeLevel.forEnum(NSHM27_InterfaceSeismicityMomentReduction.class,
+					"Interface Seismicity Moment Reduction", "InterfaceSeisMomentReduction");
+	public static final LogicTreeLevel<NSHM27_InterfaceMFDModel> INTERFACE_MFD_MODEL =
+			LogicTreeLevel.forEnum(NSHM27_InterfaceMFDModel.class,
+					"Interface MFD Model", "InterfaceMFDModel");
 	public static final LogicTreeLevel<NSHM27_InterfaceMinSubSects> INTERFACE_MIN_SUB_SECTS =
 			LogicTreeLevel.forEnum(NSHM27_InterfaceMinSubSects.class, "Interface Minimum Subsection Count", "InterfaceMinSubSects");
 	public static final LogicTreeLevel<NSHM27_SeisBValueMethod> SEIS_B_VALUE_METHOD =
 			LogicTreeLevel.forEnum(NSHM27_SeisBValueMethod.class, "Seismicity b-value Method", "SeisBMethod");
-	public static double INTERFACE_B_HINGED_WEIGHT = 0.25;
-	public static double INTERFACE_B_SINGLE_DEFAULT = 1d;
 	public static ContinuousDistribution getInterfaceBDist(NSHM27_SeismicityRegions seisReg) {
 		PureGR gr = (PureGR)NSHM27_SeisRateModelBranch.loadMixtureRateModel(seisReg,
 				TectonicRegionType.SUBDUCTION_INTERFACE, NSHM27_SeisBValueMethod.UNION_WIDE).getMeanRecord();
@@ -135,8 +137,8 @@ public class NSHM27_LogicTree {
 		
 		// inversion
 		if (inversion) {
-			String supraBname = sampled ? trtName+" Inversion b-value Samples" : trtName+" Inversion Fixed b-value";
-			String supraBshortName = sampled ? trtName+"-bSamples" : trtName+"-FixedB";
+		String inversionBName = sampled ? trtName+" Inversion b-value Samples" : trtName+" Inversion Fixed b-value";
+		String inversionBShortName = sampled ? trtName+"-bSamples" : trtName+"-FixedB";
 			if (trt == TectonicRegionType.SUBDUCTION_INTERFACE) {
 				levels.add(INTERFACE_FM);
 				levels.add(INTERFACE_DEPTH_COUPLING);
@@ -144,19 +146,12 @@ public class NSHM27_LogicTree {
 					levels.add(new NSHM27_InterfaceDeformationModels.SamplingLevel());
 				else
 					levels.add(INTERFACE_AGG_DM);
-				levels.add(INTERFACE_OBS_SEIS_DM_ADJ);
+				if (sampled)
+					levels.add(new NSHM27_InterfaceMFDModel.SamplingLevel(getInterfaceBDist(seisReg)));
+				else
+					levels.add(INTERFACE_MFD_MODEL);
+				levels.add(INTERFACE_SEIS_MOMENT_REDUCTION);
 				levels.add(INTERFACE_SCALE);
-				if (INTERFACE_B_HINGED_WEIGHT == 1d) {
-					levels.add(new NSHM27_InterfaceHingedBValue.FixedLevel(supraBname, supraBshortName));
-				} else if (sampled && INTERFACE_B_HINGED_WEIGHT > 0d) {
-					Preconditions.checkState(INTERFACE_B_HINGED_WEIGHT < 1d);
-					levels.add(new NSHM27_InterfaceHingedBValue.CombinedSamplingLevel(supraBname, supraBshortName,
-							INTERFACE_B_HINGED_WEIGHT, getInterfaceBDist(seisReg), 1d-INTERFACE_B_HINGED_WEIGHT));
-				} else if (sampled) {
-					levels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(supraBname, supraBshortName, getInterfaceBDist(seisReg)));
-				} else {
-					levels.add(new SectionSupraSeisBValues.FixedValueLevel(supraBname, supraBshortName, INTERFACE_B_SINGLE_DEFAULT));
-				}
 				levels.add(INTERFACE_MIN_SUB_SECTS);
 				if (sampled)
 					levels.add(new MaxRuptureLengthBranchNode.DistributionSamplingLevel(
@@ -173,9 +168,9 @@ public class NSHM27_LogicTree {
 					levels.add(CRUSTAL_AGG_DM);
 				levels.add(CRUSTAL_SCALE);
 				if (sampled)
-					levels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(supraBname, supraBshortName, CRUSTAL_B_DIST));
+					levels.add(new SectionSupraSeisBValues.DistributionSamplingLevel(inversionBName, inversionBShortName, CRUSTAL_B_DIST));
 				else
-					levels.add(new SectionSupraSeisBValues.FixedValueLevel(supraBname, supraBshortName, CRUSTAL_B_SINGLE_DEFAULT));
+					levels.add(new SectionSupraSeisBValues.FixedValueLevel(inversionBName, inversionBShortName, CRUSTAL_B_SINGLE_DEFAULT));
 				levels.add(SEG);
 			}
 		}
@@ -243,7 +238,9 @@ public class NSHM27_LogicTree {
 			if (!sampled)
 				branch.setValue(NSHM27_InterfaceDeformationModels.Aggregated.PREF_COUPLING);
 			branch.setValue(PRVI25_SubductionScalingRelationships.LOGA_C4p0);
-			branch.setValue(NSHM27_InterfaceObsSeisDMAdjustment.AVERAGE); // TODO
+			branch.setValue(NSHM27_InterfaceSeismicityMomentReduction.REGIONAL); // TODO
+			if (!sampled)
+				branch.setValue(NSHM27_InterfaceMFDModel.INDEPENDENT); // TODO
 			branch.setValue(NSHM27_InterfaceMinSubSects.FOUR); // TODO
 		} else if (trt == TectonicRegionType.ACTIVE_SHALLOW && seisReg == NSHM27_SeismicityRegions.GNMI) {
 			branch.setValue(NSHM27_CrustalFaultModels.GNMI);

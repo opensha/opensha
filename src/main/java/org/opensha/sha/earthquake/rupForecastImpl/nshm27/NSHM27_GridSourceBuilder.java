@@ -65,7 +65,8 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_Declus
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_FaultModel;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_InterfaceFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_InterfaceMinSubSects;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_InterfaceObsSeisDMAdjustment;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_InterfaceMFDModel;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_InterfaceSeismicityMomentReduction;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_LogicTree;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisRateModel;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisSmoothingAlgorithms;
@@ -350,15 +351,17 @@ public class NSHM27_GridSourceBuilder {
 		//				boolean rateToFullMmax = false;
 
 		// same as above, except when on the extrapolate branch, the true rate will be preserved across both
-		//				boolean rateToFullMmax = fullBranch.hasValue(NSHM27_InterfaceObsSeisDMAdjustment.EXTRAPOLATE);
+		//				boolean rateToFullMmax = NSHM27_InterfaceMFDModel.isExtrapolated(fullBranch);
 
 		// do for all branches except for the no-adjustment branch
 		// will only under-count total rate if the DM is below extrapolation from observed seismicity, which is rarely the case
 		// for these regions (only extreme lower tail DM samples would do this). On all other branches (unless
-		// EXTRAPOLATE is chosen), there will still be a net overcount relative to observed seismicity but it will be
+		// the extrapolated MFD model is chosen), there will still be a net overcount relative to observed seismicity but it will be
 		// slightly smaller than if rateToFullMmax was false
-		NSHM27_InterfaceObsSeisDMAdjustment obsMethod = fullBranch.getValue(NSHM27_InterfaceObsSeisDMAdjustment.class);
-		return obsMethod != null && obsMethod != NSHM27_InterfaceObsSeisDMAdjustment.NONE;
+		NSHM27_InterfaceSeismicityMomentReduction reduction =
+				fullBranch.getValue(NSHM27_InterfaceSeismicityMomentReduction.class);
+		return NSHM27_InterfaceMFDModel.isExtrapolated(fullBranch)
+				|| reduction != null && reduction != NSHM27_InterfaceSeismicityMomentReduction.NONE;
 	}
 	
 	public static IncrementalMagFreqDist buildInterfaceGriddedMFD(NSHM27_SeismicityRegions seisRegion, LogicTreeBranch<?> fullBranch,
