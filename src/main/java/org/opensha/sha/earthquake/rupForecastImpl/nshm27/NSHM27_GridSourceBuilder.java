@@ -68,7 +68,6 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_Interf
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_InterfaceObsSeisDMAdjustment;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_LogicTree;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisRateModel;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisRateModelEpoch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisSmoothingAlgorithms;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.InterfaceGridAssociations;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.NSHM27_SeisPDF_Loader;
@@ -372,18 +371,18 @@ public class NSHM27_GridSourceBuilder {
 		boolean rateToFullMmax = isInterfaceRateToFullMmax(fullBranch);
 		
 		NSHM27_SeisRateModel rateBranch = fullBranch.requireValue(NSHM27_SeisRateModel.class);
-		NSHM27_SeisRateModelEpoch epoch = fullBranch.requireValue(NSHM27_SeisRateModelEpoch.class);
 		
 		if (rateToFullMmax) {
 			double snappedFullMMax = refMFD.getX(refMFD.getClosestXIndex(faultMmax));
-			IncrementalMagFreqDist mfd = rateBranch.build(seisRegion, epoch, TectonicRegionType.SUBDUCTION_INTERFACE, refMFD, snappedFullMMax);
+			IncrementalMagFreqDist mfd = rateBranch.build(seisRegion, TectonicRegionType.SUBDUCTION_INTERFACE,
+					fullBranch, refMFD, snappedFullMMax);
 			// now zero out above mMax
 			for (int i=mfd.getClosestXIndex(gridMmax)+1; i<mfd.size(); i++)
 				mfd.set(i, 0d);
 			return mfd;
 		}
 		
-		return rateBranch.build(seisRegion, epoch, TectonicRegionType.SUBDUCTION_INTERFACE, refMFD, gridMmax);
+		return rateBranch.build(seisRegion, TectonicRegionType.SUBDUCTION_INTERFACE, fullBranch, refMFD, gridMmax);
 	}
 	
 	public static GridSourceList buildInterfaceGridSourceList(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch,
@@ -568,14 +567,13 @@ public class NSHM27_GridSourceBuilder {
 		NSHM27_SeisRateModel rateBranch = fullBranch.requireValue(NSHM27_SeisRateModel.class);
 		NSHM27_DeclusteringAlgorithms decluster = fullBranch.requireValue(NSHM27_DeclusteringAlgorithms.class);
 		NSHM27_SeisSmoothingAlgorithms smooth = fullBranch.requireValue(NSHM27_SeisSmoothingAlgorithms.class);
-		NSHM27_SeisRateModelEpoch epoch = fullBranch.requireValue(NSHM27_SeisRateModelEpoch.class);
 		
 		double mMax = fullBranch.requireValue(MaxMagOffFaultBranchNode.class).getMaxMagOffFault();
 		
 		IncrementalMagFreqDist refMFD = FaultSysTools.initEmptyMFD(OVERALL_MMIN, mMax+0.1);
 		
-		IncrementalMagFreqDist totalGR = rateBranch.build(seisRegion, epoch, TectonicRegionType.SUBDUCTION_SLAB,
-				refMFD, refMFD.getX(refMFD.getClosestXIndex(mMax-0.001)));
+		IncrementalMagFreqDist totalGR = rateBranch.build(seisRegion, TectonicRegionType.SUBDUCTION_SLAB,
+				fullBranch, refMFD, refMFD.getX(refMFD.getClosestXIndex(mMax-0.001)));
 		double m5Rate = totalGR.getCumRate(totalGR.getClosestXIndex(5.05));
 		
 		// this is what nshm23 did for NSHM23 Cascadia and PRVI25
@@ -680,14 +678,13 @@ public class NSHM27_GridSourceBuilder {
 		NSHM27_SeisRateModel rateBranch = fullBranch.requireValue(NSHM27_SeisRateModel.class);
 		NSHM27_DeclusteringAlgorithms decluster = fullBranch.requireValue(NSHM27_DeclusteringAlgorithms.class);
 		NSHM27_SeisSmoothingAlgorithms smooth = fullBranch.requireValue(NSHM27_SeisSmoothingAlgorithms.class);
-		NSHM27_SeisRateModelEpoch epoch = fullBranch.requireValue(NSHM27_SeisRateModelEpoch.class);
 		
 		double mMax = fullBranch.requireValue(MaxMagOffFaultBranchNode.class).getMaxMagOffFault();
 		
 		IncrementalMagFreqDist refMFD = FaultSysTools.initEmptyMFD(OVERALL_MMIN, mMax+0.1);
 		
-		IncrementalMagFreqDist totalGR = rateBranch.build(seisRegion, epoch, TectonicRegionType.ACTIVE_SHALLOW,
-				refMFD, refMFD.getX(refMFD.getClosestXIndex(mMax-0.001)));
+		IncrementalMagFreqDist totalGR = rateBranch.build(seisRegion, TectonicRegionType.ACTIVE_SHALLOW,
+				fullBranch, refMFD, refMFD.getX(refMFD.getClosestXIndex(mMax-0.001)));
 		
 		GriddedGeoDataSet pdf = NSHM27_SeisPDF_Loader.load2D(seisRegion, TectonicRegionType.ACTIVE_SHALLOW, decluster, smooth);
 		

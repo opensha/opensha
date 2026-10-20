@@ -1,13 +1,12 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree;
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
+import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.json.DoubleRangeAdapter;
 import org.opensha.commons.logicTree.LogicTreeLevel.BinnedLevel;
@@ -19,7 +18,6 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.nshmp.seismicity.SeismicityRateFileLoader;
 import org.opensha.sha.earthquake.nshmp.seismicity.SeismicityRateFileLoader.PureGR;
 import org.opensha.sha.earthquake.nshmp.seismicity.SeismicityRateFileLoader.RateRecord;
-import org.opensha.sha.earthquake.nshmp.seismicity.SeismicityRateFileLoader.RateType;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
@@ -29,94 +27,15 @@ import com.google.common.collect.Range;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import com.google.gson.TypeAdapter;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonWriter;
 
 public interface NSHM27_SeisRateModel extends LogicTreeNode {
 	
 	public abstract IncrementalMagFreqDist build(NSHM27_SeismicityRegions region,
-			NSHM27_SeisRateModelEpoch epoch, TectonicRegionType trt,
+			TectonicRegionType trt, LogicTreeBranch<?> branch,
 			EvenlyDiscretizedFunc refMFD, double mMax);
 	
 	public abstract RateRecord getRateRecord(NSHM27_SeismicityRegions region,
-			NSHM27_SeisRateModelEpoch epoch, TectonicRegionType trt);
-	
-	public static class EpochDependentGR {
-		private final List<PureGR> grs;
-		private final double sampleFractile;
-		
-		public EpochDependentGR(List<PureGR> grs, double sampleFractile) {
-			Preconditions.checkState(!grs.isEmpty());
-			Preconditions.checkState(sampleFractile >= 0d && sampleFractile < 1d);
-			for (PureGR gr : grs)
-				Preconditions.checkNotNull(gr, "Epoch GR values cannot contain null");
-			this.grs = Collections.unmodifiableList(new ArrayList<>(grs));
-			this.sampleFractile = sampleFractile;
-		}
-		
-		public PureGR getValue(NSHM27_SeisRateModelEpoch epoch) {
-			Preconditions.checkNotNull(epoch, "Epoch cannot be null");
-			Preconditions.checkState(epoch.getEpochIndex() < grs.size(),
-					"Epoch index %s outside sampled epoch count %s", epoch.getEpochIndex(), grs.size());
-			return grs.get(epoch.getEpochIndex());
-		}
-
-		public int getEpochCount() { return grs.size(); }
-		
-		public double getSampleFractile() {
-			return sampleFractile;
-		}
-	}
-	
-	public static class EpochDependentGRAdapter extends TypeAdapter<EpochDependentGR> {
-		private final int epochCount;
-
-		public EpochDependentGRAdapter(int epochCount) {
-			Preconditions.checkArgument(epochCount > 0);
-			this.epochCount = epochCount;
-		}
-
-		@Override
-		public void write(JsonWriter out, EpochDependentGR value) throws IOException {
-			Preconditions.checkState(value.grs.size() == epochCount,
-					"Expected %s epoch values, found %s", epochCount, value.grs.size());
-			out.beginArray();
-			out.value(value.getSampleFractile());
-			out.beginArray();
-			for (PureGR gr : value.grs) {
-				out.beginArray();
-				out.value(gr.M1);
-				out.value(gr.rateAboveM1);
-				out.value(gr.b);
-				out.endArray();
-			}
-			out.endArray();
-			out.endArray();
-		}
-
-		@Override
-		public EpochDependentGR read(JsonReader in) throws IOException {
-			in.beginArray();
-			double fractile = in.nextDouble();
-			List<PureGR> grs = new ArrayList<>(epochCount);
-			in.beginArray();
-			while (in.hasNext()) {
-				in.beginArray();
-				double m1 = in.nextDouble();
-				double rateAboveM1 = in.nextDouble();
-				double b = in.nextDouble();
-				grs.add(new PureGR(RateType.M1, m1, Double.POSITIVE_INFINITY, rateAboveM1, b, Double.NaN, true));
-				in.endArray();
-			}
-			in.endArray();
-			in.endArray();
-			if (grs.size() != epochCount)
-				throw new IOException("Expected "+epochCount+" epoch GR values, found "+grs.size());
-			return new EpochDependentGR(grs, fractile);
-		}
-		
-	}
+			TectonicRegionType trt, LogicTreeBranch<?> branch);
 	
 	// this affects interface slip rates
 	@Affects(FaultSystemRupSet.SECTS_FILE_NAME)
@@ -127,7 +46,7 @@ public interface NSHM27_SeisRateModel extends LogicTreeNode {
 	@DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 	@DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 	@Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-	public static class NSHM27_SeisRateModelSample extends SimpleValuedNode<EpochDependentGR> implements NSHM27_SeisRateModel {
+	public static class NSHM27_SeisRateModelSample extends SimpleValuedNode<Double> implements NSHM27_SeisRateModel {
 		
 		private NSHM27_SeismicityRegions region;
 		private TectonicRegionType trt;
@@ -136,10 +55,10 @@ public interface NSHM27_SeisRateModel extends LogicTreeNode {
 		@SuppressWarnings("unused") // deserialization
 		private NSHM27_SeisRateModelSample() {}
 
-		public NSHM27_SeisRateModelSample(EpochDependentGR value, NSHM27_SeisRateModelEpochCatalog catalog,
+		public NSHM27_SeisRateModelSample(Double value, NSHM27_SeisRateModelEpochCatalog catalog,
 				double weight, String name,
 				String shortName, String filePrefix) {
-			super(value, EpochDependentGR.class, weight, name, shortName, filePrefix);
+			super(value, Double.class, weight, name, shortName, filePrefix);
 			this.region = catalog.getRegion();
 			this.trt = catalog.getTectonicRegion();
 			this.datasetId = catalog.getDatasetId();
@@ -147,27 +66,23 @@ public interface NSHM27_SeisRateModel extends LogicTreeNode {
 
 		@Override
 		public IncrementalMagFreqDist build(NSHM27_SeismicityRegions region,
-				NSHM27_SeisRateModelEpoch epoch, TectonicRegionType trt,
+				TectonicRegionType trt, LogicTreeBranch<?> branch,
 				EvenlyDiscretizedFunc refMFD, double mMax) {
-			EpochDependentGR value = getValue();
-			Preconditions.checkState(this.region == null || region == this.region,
-					"Region mismatch: %s != %s", region, this.region);
-			Preconditions.checkState(this.trt == null || trt == this.trt,
-					"TRT mismatch: %s != %s", trt, this.trt);
-			validateEpoch(epoch);
-			PureGR gr = value.getValue(epoch);
-			return SeismicityRateFileLoader.buildIncrementalMFD(gr, refMFD, mMax, Double.NaN);
+			return SeismicityRateFileLoader.buildIncrementalMFD(
+					(PureGR)getRateRecord(region, trt, branch), refMFD, mMax, Double.NaN);
 		}
 
 		@Override
 		public RateRecord getRateRecord(NSHM27_SeismicityRegions region,
-				NSHM27_SeisRateModelEpoch epoch, TectonicRegionType trt) {
+				TectonicRegionType trt, LogicTreeBranch<?> branch) {
 			Preconditions.checkState(this.region == null || region == this.region,
 					"Region mismatch: %s != %s", region, this.region);
 			Preconditions.checkState(this.trt == null || trt == this.trt,
 					"TRT mismatch: %s != %s", trt, this.trt);
+			NSHM27_SeisRateModelEpoch epoch = branch.requireValue(NSHM27_SeisRateModelEpoch.class);
 			validateEpoch(epoch);
-			return getValue().getValue(epoch);
+			NSHM27_SeisBValueMethod bMethod = branch.requireValue(NSHM27_SeisBValueMethod.class);
+			return NSHM27_SeisRateModelSamples.loadSample(region, epoch, trt, bMethod, getValue());
 		}
 
 		private void validateEpoch(NSHM27_SeisRateModelEpoch epoch) {
@@ -180,7 +95,7 @@ public interface NSHM27_SeisRateModel extends LogicTreeNode {
 	}
 	
 	public static class BinnedSamplesLevel extends DataBackedLevel<BinnedSamplesNode>
-	implements BinnedLevel<EpochDependentGR, BinnedSamplesNode>{
+	implements BinnedLevel<Double, BinnedSamplesNode>{
 		
 		private List<BinnedSamplesNode> nodes;
 		
@@ -209,7 +124,7 @@ public interface NSHM27_SeisRateModel extends LogicTreeNode {
 		}
 
 		@Override
-		public BinnedSamplesNode getBin(EpochDependentGR value) {
+		public BinnedSamplesNode getBin(Double value) {
 			for (BinnedSamplesNode node : nodes)
 				if (node.isMember(value))
 					return node;
@@ -298,8 +213,8 @@ public interface NSHM27_SeisRateModel extends LogicTreeNode {
 			return filePrefix;
 		}
 		
-		public boolean isMember(EpochDependentGR gr) {
-			return fractileRange.contains(gr.sampleFractile);
+		public boolean isMember(Double fractile) {
+			return fractileRange.contains(fractile);
 		}
 		
 	}

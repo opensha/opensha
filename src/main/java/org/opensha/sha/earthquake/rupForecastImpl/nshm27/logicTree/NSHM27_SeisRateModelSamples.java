@@ -4,8 +4,11 @@ import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.opensha.commons.data.CSVFile;
@@ -16,7 +19,6 @@ import org.opensha.sha.earthquake.nshmp.seismicity.SeismicityRateFileLoader;
 import org.opensha.sha.earthquake.nshmp.seismicity.SeismicityRateFileLoader.PureGR;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisRateModel.BinnedSamplesLevel;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisRateModel.BinnedSamplesNode;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisRateModel.EpochDependentGR;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisRateModel.NSHM27_SeisRateModelSample;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.NSHM27_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
@@ -26,11 +28,10 @@ import org.opensha.sha.util.TectonicRegionType;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Range;
 import com.google.gson.JsonObject;
-import com.google.gson.TypeAdapter;
 
-public class NSHM27_SeisRateModelSamples extends AbstractRandomlySampledLevel<EpochDependentGR, NSHM27_SeisRateModelSample>
-implements BinnableLevel<EpochDependentGR, NSHM27_SeisRateModelSample, BinnedSamplesLevel>,
-FractileSamplingLevel<EpochDependentGR, NSHM27_SeisRateModelSample> {
+public class NSHM27_SeisRateModelSamples extends AbstractRandomlySampledLevel<Double, NSHM27_SeisRateModelSample>
+implements BinnableLevel<Double, NSHM27_SeisRateModelSample, BinnedSamplesLevel>,
+FractileSamplingLevel<Double, NSHM27_SeisRateModelSample> {
 	
 	private NSHM27_SeisRateModelEpochCatalog catalog;
 	
@@ -55,16 +56,17 @@ FractileSamplingLevel<EpochDependentGR, NSHM27_SeisRateModelSample> {
 	}
 	
 	@Override
-	public Class<? extends EpochDependentGR> getValueType() {
-		return EpochDependentGR.class;
+	public Class<? extends Double> getValueType() {
+		return Double.class;
 	}
 	
-	protected CSVFile<String> loadCSV(NSHM27_SeisRateModelEpoch epoch) throws IOException {
-		return loadCSV(catalog, epoch);
+	protected CSVFile<String> loadCSV(NSHM27_SeisBValueMethod bMethod,
+			NSHM27_SeisRateModelEpoch epoch) throws IOException {
+		return loadCSV(catalog, bMethod, epoch);
 	}
 	
 	private static CSVFile<String> loadCSV(NSHM27_SeisRateModelEpochCatalog catalog,
-			NSHM27_SeisRateModelEpoch epoch) throws IOException {
+			NSHM27_SeisBValueMethod bMethod, NSHM27_SeisRateModelEpoch epoch) throws IOException {
 		Preconditions.checkNotNull(epoch, "Epoch cannot be null");
 		Preconditions.checkState(epoch.getRegion() == catalog.getRegion()
 				&& epoch.getTectonicRegion() == catalog.getTectonicRegion()
@@ -73,26 +75,27 @@ FractileSamplingLevel<EpochDependentGR, NSHM27_SeisRateModelSample> {
 				"Unsupported rate dataset '%s'; configured dataset is '%s'", catalog.getDatasetId(),
 				NSHM27_SeismicityDataFiles.RATE_DATASET);
 		File file = NSHM27_SeismicityDataFiles.locateEpochRatePairs(catalog.getRegion(),
-				catalog.getTectonicRegion(), epoch.getEpochIndex());
+				catalog.getTectonicRegion(), bMethod, epoch.getEpochIndex());
 		return CSVFile.readFile(file, false);
 	}
 	
 	public static List<PureGR> loadOrigSamples(NSHM27_SeismicityRegions seisReg,
-			NSHM27_SeisRateModelEpoch epoch, TectonicRegionType trt) throws IOException {
+			NSHM27_SeisRateModelEpoch epoch, TectonicRegionType trt,
+			NSHM27_SeisBValueMethod bMethod) throws IOException {
 		Preconditions.checkState(epoch.getDatasetId().equals(NSHM27_SeismicityDataFiles.RATE_DATASET),
 				"Unsupported rate dataset '%s'; configured dataset is '%s'", epoch.getDatasetId(),
 				NSHM27_SeismicityDataFiles.RATE_DATASET);
 		NSHM27_SeisRateModelEpochCatalog catalog = NSHM27_SeisRateModelEpochCatalog.load(
 				seisReg, trt, NSHM27_SeisRateModelEpochCatalog.DEFAULT_WEIGHTING);
-		CSVFile<String> csv = loadCSV(catalog, epoch);
+		CSVFile<String> csv = loadCSV(catalog, bMethod, epoch);
 		return SeismicityRateFileLoader.loadSamplesCSV(csv);
 	}
 	
-	public List<PureGR> loadOrigSamples(NSHM27_SeisRateModelEpoch epoch) {
+	public List<PureGR> loadOrigSamples(NSHM27_SeisBValueMethod bMethod, NSHM27_SeisRateModelEpoch epoch) {
 		Preconditions.checkNotNull(epoch, "Epoch cannot be null");
 		CSVFile<String> csv;
 		try {
-			csv = loadCSV(epoch);
+			csv = loadCSV(bMethod, epoch);
 		} catch (IOException e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
@@ -107,34 +110,50 @@ FractileSamplingLevel<EpochDependentGR, NSHM27_SeisRateModelSample> {
 		return cmp;
 	};
 
+	private static final Map<File, List<PureGR>> SAMPLE_CACHE = new HashMap<>();
+
+	private static synchronized List<PureGR> loadSortedSamples(NSHM27_SeismicityRegions region,
+			TectonicRegionType trt, NSHM27_SeisBValueMethod bMethod, NSHM27_SeisRateModelEpoch epoch) {
+		File file = NSHM27_SeismicityDataFiles.locateEpochRatePairs(region, trt, bMethod, epoch.getEpochIndex());
+		List<PureGR> samples = SAMPLE_CACHE.get(file);
+		if (samples == null) {
+			try {
+				samples = SeismicityRateFileLoader.loadSamplesCSV(CSVFile.readFile(file, false));
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+			Preconditions.checkState(!samples.isEmpty(), "No rate samples found in %s", file);
+			samples.sort(COMP);
+			samples = Collections.unmodifiableList(samples);
+			SAMPLE_CACHE.put(file, samples);
+		}
+		return samples;
+	}
+
+	public static PureGR loadSample(NSHM27_SeismicityRegions region, NSHM27_SeisRateModelEpoch epoch,
+			TectonicRegionType trt, NSHM27_SeisBValueMethod bMethod, double fractile) {
+		Preconditions.checkArgument(fractile >= 0d && fractile < 1d,
+				"Sample fractile must be in [0,1): %s", fractile);
+		Preconditions.checkState(epoch.getRegion() == region && epoch.getTectonicRegion() == trt,
+				"Epoch does not match region/TRT");
+		Preconditions.checkState(epoch.getDatasetId().equals(NSHM27_SeismicityDataFiles.RATE_DATASET),
+				"Unsupported rate dataset '%s'; configured dataset is '%s'", epoch.getDatasetId(),
+				NSHM27_SeismicityDataFiles.RATE_DATASET);
+		List<PureGR> samples = loadSortedSamples(region, trt, bMethod, epoch);
+		int index = Math.min(samples.size()-1, (int)(fractile*samples.size()));
+		return samples.get(index);
+	}
+
 	@Override
 	protected void doBuild(double[] unitSamples, double weightEach) {
-		List<List<PureGR>> origSamples = new ArrayList<>(catalog.getEpochs().size());
-		int numOrigSamples = -1;
-		for (NSHM27_SeisRateModelEpoch epoch : catalog.getEpochs()) {
-			List<PureGR> samples = loadOrigSamples(epoch);
-			if (numOrigSamples == -1)
-				numOrigSamples = samples.size();
-			else
-				Preconditions.checkState(numOrigSamples == samples.size(),
-						"Epoch sample count mismatch: expected %s, found %s for %s", numOrigSamples, samples.size(), epoch);
-			// sort by rate
-			samples.sort(COMP);
-			origSamples.add(samples);
-		}
-		List<EpochDependentGR> samples = new ArrayList<>(unitSamples.length);
-		for (double p : unitSamples) {
-			int index = Math.min(numOrigSamples-1, (int)(p*numOrigSamples));
-			List<PureGR> grs = new ArrayList<>(origSamples.size());
-			for (List<PureGR> epochSamples : origSamples)
-				grs.add(epochSamples.get(index));
-			samples.add(new EpochDependentGR(grs, p));
-		}
+		List<Double> samples = new ArrayList<>(unitSamples.length);
+		for (double p : unitSamples)
+			samples.add(p);
 		setValues(samples, weightEach);
 	}
 
 	@Override
-	public NSHM27_SeisRateModelSample build(EpochDependentGR value, double weight, String name, String shortName,
+	public NSHM27_SeisRateModelSample build(Double value, double weight, String name, String shortName,
 			String filePrefix) {
 		return new NSHM27_SeisRateModelSample(value, catalog, weight, name, shortName, filePrefix);
 	}
@@ -153,11 +172,6 @@ FractileSamplingLevel<EpochDependentGR, NSHM27_SeisRateModelSample> {
 		return json;
 	}
 	
-	@Override
-	public TypeAdapter<EpochDependentGR> getValueTypeAdapter() {
-		return new NSHM27_SeisRateModel.EpochDependentGRAdapter(catalog.getEpochs().size());
-	}
-
 	@Override
 	public void initFromJsonObject(JsonObject jsonObj) {
 		catalog = NSHM27_SeisRateModelEpochCatalog.fromJSON(jsonObj.getAsJsonObject("epochCatalog"));
@@ -226,8 +240,8 @@ FractileSamplingLevel<EpochDependentGR, NSHM27_SeisRateModelSample> {
 	}
 
 	@Override
-	public double getFractile(EpochDependentGR value) {
-		return value.getSampleFractile();
+	public double getFractile(Double value) {
+		return value;
 	}
 
 }

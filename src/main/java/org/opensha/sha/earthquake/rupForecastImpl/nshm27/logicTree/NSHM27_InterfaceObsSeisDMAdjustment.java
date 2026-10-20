@@ -209,9 +209,8 @@ public enum NSHM27_InterfaceObsSeisDMAdjustment implements LogicTreeNode.FixedWe
 			IncrementalMagFreqDist refMFD = FaultSysTools.initEmptyMFD(NSHM27_GridSourceBuilder.OVERALL_MMIN, mMax);
 			NSHM27_SeisRateModel rateModel = branch.requireValue(NSHM27_SeisRateModel.class);
 			int mMaxIndex = refMFD.getClosestXIndex(mMax);
-			NSHM27_SeisRateModelEpoch epoch = branch.requireValue(NSHM27_SeisRateModelEpoch.class);
-			IncrementalMagFreqDist totalGR = rateModel.build(seisReg, epoch, TectonicRegionType.SUBDUCTION_INTERFACE,
-					refMFD, refMFD.getX(mMaxIndex));
+			IncrementalMagFreqDist totalGR = rateModel.build(seisReg, TectonicRegionType.SUBDUCTION_INTERFACE,
+					branch, refMFD, refMFD.getX(mMaxIndex));
 			
 			System.out.println("Building extrapolated DM with mMax="+(float)mMax);
 			

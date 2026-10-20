@@ -11,6 +11,7 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
+import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -27,8 +28,6 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.Table;
 
 @Affects(FaultSystemRupSet.SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
@@ -38,45 +37,9 @@ import com.google.common.collect.Table;
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum NSHM27_SeisRateModelBranch implements NSHM27_SeisRateModel, LogicTreeNode.FixedWeightNode {
-	LOW("Lower Seismicity Bound (p2.5)", "Low", 0.13d) {
-		@Override
-		public IncrementalMagFreqDist build(NSHM27_SeismicityRegions region, NSHM27_SeisRateModelEpoch epoch,
-				TectonicRegionType trt, EvenlyDiscretizedFunc refMFD, double mMax) {
-			return loadRateModel(region, epoch, trt, TYPE).buildLower(refMFD, mMax);
-		}
-
-		@Override
-		public RateRecord getRateRecord(NSHM27_SeismicityRegions region, NSHM27_SeisRateModelEpoch epoch,
-				TectonicRegionType trt) {
-			return loadRateModel(region, epoch, trt, TYPE).getLowerRecord();
-		}
-	},
-	PREFFERRED("Preffered Seismicity Rate", "Preferred", 0.74d) {
-		@Override
-		public IncrementalMagFreqDist build(NSHM27_SeismicityRegions region, NSHM27_SeisRateModelEpoch epoch,
-				TectonicRegionType trt, EvenlyDiscretizedFunc refMFD, double mMax) {
-			return loadRateModel(region, epoch, trt, TYPE).buildPreferred(refMFD, mMax);
-		}
-
-		@Override
-		public RateRecord getRateRecord(NSHM27_SeismicityRegions region, NSHM27_SeisRateModelEpoch epoch,
-				TectonicRegionType trt) {
-			return loadRateModel(region, epoch, trt, TYPE).getMeanRecord();
-		}
-	},
-	HIGH("Upper Seismicity Bound (p97.5)", "High", 0.13d) {
-		@Override
-		public IncrementalMagFreqDist build(NSHM27_SeismicityRegions region, NSHM27_SeisRateModelEpoch epoch,
-				TectonicRegionType trt, EvenlyDiscretizedFunc refMFD, double mMax) {
-			return loadRateModel(region, epoch, trt, TYPE).buildUpper(refMFD, mMax);
-		}
-
-		@Override
-		public RateRecord getRateRecord(NSHM27_SeismicityRegions region, NSHM27_SeisRateModelEpoch epoch,
-				TectonicRegionType trt) {
-			return loadRateModel(region, epoch, trt, TYPE).getUpperRecord();
-		}
-	};
+	LOW("Lower Seismicity Bound (p2.5)", "Low", 0.13d),
+	PREFFERRED("Preffered Seismicity Rate", "Preferred", 0.74d),
+	HIGH("Upper Seismicity Bound (p97.5)", "High", 0.13d);
 
 	public static RateType TYPE = RateType.M1_TO_MMAX;
 	private static final UncertaintyBoundType BOUND_TYPE = UncertaintyBoundType.CONF_95;
@@ -85,8 +48,7 @@ public enum NSHM27_SeisRateModelBranch implements NSHM27_SeisRateModel, LogicTre
 	private final String shortName;
 	private final double weight;
 
-	private static Table<NSHM27_SeismicityRegions, TectonicRegionType,
-			Map<NSHM27_SeisRateModelEpoch, SeismicityRateModel>> rateModelsCache;
+	private static Map<String, SeismicityRateModel> epochRateModelsCache;
 	private static Map<String, SeismicityRateModel> mixtureRateModelsCache;
 
 	private NSHM27_SeisRateModelBranch(String name, String shortName, double weight) {
@@ -100,6 +62,37 @@ public enum NSHM27_SeisRateModelBranch implements NSHM27_SeisRateModel, LogicTre
 	@Override public double getNodeWeight() { return weight; }
 	@Override public String getFilePrefix() { return getShortName(); }
 
+	@Override
+	public IncrementalMagFreqDist build(NSHM27_SeismicityRegions region, TectonicRegionType trt,
+			LogicTreeBranch<?> branch, EvenlyDiscretizedFunc refMFD, double mMax) {
+		SeismicityRateModel model = loadRateModel(region, trt, branch);
+		return switch (this) {
+		case LOW -> model.buildLower(refMFD, mMax);
+		case PREFFERRED -> model.buildPreferred(refMFD, mMax);
+		case HIGH -> model.buildUpper(refMFD, mMax);
+		};
+	}
+
+	@Override
+	public RateRecord getRateRecord(NSHM27_SeismicityRegions region, TectonicRegionType trt,
+			LogicTreeBranch<?> branch) {
+		SeismicityRateModel model = loadRateModel(region, trt, branch);
+		return switch (this) {
+		case LOW -> model.getLowerRecord();
+		case PREFFERRED -> model.getMeanRecord();
+		case HIGH -> model.getUpperRecord();
+		};
+	}
+
+	private static SeismicityRateModel loadRateModel(NSHM27_SeismicityRegions region,
+			TectonicRegionType trt, LogicTreeBranch<?> branch) {
+		NSHM27_SeisBValueMethod bMethod = branch.requireValue(NSHM27_SeisBValueMethod.class);
+		NSHM27_SeisRateModelEpoch epoch = branch.getValue(NSHM27_SeisRateModelEpoch.class);
+		if (epoch == null)
+			return loadMixtureRateModel(region, trt, bMethod);
+		return loadRateModel(region, epoch, trt, bMethod);
+	}
+
 	public static double getPlotMmax(TectonicRegionType trt) {
 		return switch (trt) {
 		case ACTIVE_SHALLOW, SUBDUCTION_SLAB -> 8d;
@@ -109,60 +102,50 @@ public enum NSHM27_SeisRateModelBranch implements NSHM27_SeisRateModel, LogicTre
 	}
 
 	public static SeismicityRateModel loadRateModel(NSHM27_SeismicityRegions region,
-			NSHM27_SeisRateModelEpoch epoch, TectonicRegionType trt) {
-		return loadRateModel(region, epoch, trt, TYPE);
+			NSHM27_SeisRateModelEpoch epoch, TectonicRegionType trt, NSHM27_SeisBValueMethod bMethod) {
+		return loadRateModel(region, epoch, trt, bMethod, TYPE);
 	}
 
 	public synchronized static SeismicityRateModel loadRateModel(NSHM27_SeismicityRegions region,
-			NSHM27_SeisRateModelEpoch epoch, TectonicRegionType trt, RateType type) {
+			NSHM27_SeisRateModelEpoch epoch, TectonicRegionType trt, NSHM27_SeisBValueMethod bMethod,
+			RateType type) {
 		Preconditions.checkNotNull(epoch, "Epoch cannot be null; use loadMixtureRateModel for mixture models");
-		Preconditions.checkState(epoch.getRegion() == region, "Epoch region mismatch: %s != %s", epoch.getRegion(), region);
-		Preconditions.checkState(epoch.getTectonicRegion() == trt, "Epoch TRT mismatch: %s != %s", epoch.getTectonicRegion(), trt);
-		if (rateModelsCache == null)
-			rateModelsCache = HashBasedTable.create();
-		if (type == TYPE) {
-			Map<NSHM27_SeisRateModelEpoch, SeismicityRateModel> models = rateModelsCache.get(region, trt);
-			if (models == null) {
-				models = new HashMap<>();
-				rateModelsCache.put(region, trt, models);
+		Preconditions.checkState(epoch.getRegion() == region,
+				"Epoch region mismatch: %s != %s", epoch.getRegion(), region);
+		Preconditions.checkState(epoch.getTectonicRegion() == trt,
+				"Epoch TRT mismatch: %s != %s", epoch.getTectonicRegion(), trt);
+		if (epochRateModelsCache == null)
+			epochRateModelsCache = new HashMap<>();
+		String key = region.name()+"/"+trt.name()+"/"+bMethod.name()+"/"+epoch.getDatasetId()
+				+"/"+epoch.getEpochIndex();
+		SeismicityRateModel model = type == TYPE ? epochRateModelsCache.get(key) : null;
+		if (model == null) {
+			try {
+				model = new SeismicityRateModel(loadEpochCSV(region, epoch, trt, bMethod), type, BOUND_TYPE);
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
 			}
-			SeismicityRateModel model = models.get(epoch);
-			if (model == null) {
-				model = buildModel(region, epoch, trt, type);
-				models.put(epoch, model);
-			}
-			return model;
+			if (type == TYPE)
+				epochRateModelsCache.put(key, model);
 		}
-		return buildModel(region, epoch, trt, type);
-	}
-
-	private static SeismicityRateModel buildModel(NSHM27_SeismicityRegions region,
-			NSHM27_SeisRateModelEpoch epoch, TectonicRegionType trt, RateType type) {
-		try {
-			return new SeismicityRateModel(loadEpochCSV(region, epoch, trt), type, BOUND_TYPE);
-		} catch (IOException e) {
-			throw ExceptionUtils.asRuntimeException(e);
-		}
-	}
-
-	public static SeismicityRateModel loadMixtureRateModel(NSHM27_SeismicityRegions region, TectonicRegionType trt) {
-		return loadMixtureRateModel(region, trt, NSHM27_SeisRateModelEpochCatalog.DEFAULT_WEIGHTING);
+		return model;
 	}
 
 	public synchronized static SeismicityRateModel loadMixtureRateModel(NSHM27_SeismicityRegions region,
-			TectonicRegionType trt, EpochWeighting weighting) {
-		return loadMixtureRateModel(region, trt, weighting, TYPE);
+			TectonicRegionType trt, NSHM27_SeisBValueMethod bMethod) {
+		return loadMixtureRateModel(region, trt, bMethod,
+				NSHM27_SeisRateModelEpochCatalog.DEFAULT_WEIGHTING, TYPE);
 	}
 
 	public synchronized static SeismicityRateModel loadMixtureRateModel(NSHM27_SeismicityRegions region,
-			TectonicRegionType trt, EpochWeighting weighting, RateType type) {
+			TectonicRegionType trt, NSHM27_SeisBValueMethod bMethod, EpochWeighting weighting, RateType type) {
 		if (mixtureRateModelsCache == null)
 			mixtureRateModelsCache = new HashMap<>();
-		String key = region.name()+"/"+trt.name()+"/"+weighting.name();
+		String key = region.name()+"/"+trt.name()+"/"+bMethod.name()+"/"+weighting.name();
 		SeismicityRateModel model = type == TYPE ? mixtureRateModelsCache.get(key) : null;
 		if (model == null) {
 			try {
-				model = new SeismicityRateModel(loadMixtureCSV(region, trt, weighting), type, BOUND_TYPE);
+				model = new SeismicityRateModel(loadMixtureCSV(region, trt, bMethod, weighting), type, BOUND_TYPE);
 			} catch (IOException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
@@ -176,27 +159,27 @@ public enum NSHM27_SeisRateModelBranch implements NSHM27_SeisRateModel, LogicTre
 		return "/data/erf/nshm27/"+region.name().toLowerCase()+"/seismicity/rates/"+datasetId+"/";
 	}
 
-	/** Placeholder convention until final epoch branch files are supplied. */
-	private static String getEpochRateModelCSVName(TectonicRegionType trt, NSHM27_SeisRateModelEpoch epoch) {
-		return NSHM27_RegionLoader.getNameForTRT(trt).toUpperCase()
-				+"_EPOCH_"+(epoch.getEpochIndex()+1)+".csv";
-	}
-
-	/** Placeholder convention until final mixture branch files are supplied. */
 	private static String getMixtureRateModelCSVName(TectonicRegionType trt, EpochWeighting weighting) {
 		return NSHM27_RegionLoader.getNameForTRT(trt).toUpperCase()
 				+"_MIXTURE_"+weighting.name()+".csv";
 	}
 
+	private static String getEpochRateModelCSVName(TectonicRegionType trt, NSHM27_SeisRateModelEpoch epoch) {
+		return NSHM27_RegionLoader.getNameForTRT(trt).toUpperCase()
+				+"_EPOCH_"+(epoch.getEpochIndex()+1)+".csv";
+	}
+
 	private static CSVFile<String> loadEpochCSV(NSHM27_SeismicityRegions region,
-			NSHM27_SeisRateModelEpoch epoch, TectonicRegionType trt) throws IOException {
-		String resourceName = getRateModelPath(region, epoch.getDatasetId())+getEpochRateModelCSVName(trt, epoch);
+			NSHM27_SeisRateModelEpoch epoch, TectonicRegionType trt,
+			NSHM27_SeisBValueMethod bMethod) throws IOException {
+		String resourceName = getRateModelPath(region, NSHM27_SeismicityDataFiles.rateDatasetDirectoryName(bMethod))
+				+getEpochRateModelCSVName(trt, epoch);
 		return loadResourceCSV(resourceName, "epoch rate-model");
 	}
 
 	private static CSVFile<String> loadMixtureCSV(NSHM27_SeismicityRegions region,
-			TectonicRegionType trt, EpochWeighting weighting) throws IOException {
-		String resourceName = getRateModelPath(region, NSHM27_SeismicityDataFiles.RATE_DATASET)
+			TectonicRegionType trt, NSHM27_SeisBValueMethod bMethod, EpochWeighting weighting) throws IOException {
+		String resourceName = getRateModelPath(region, NSHM27_SeismicityDataFiles.rateDatasetDirectoryName(bMethod))
 				+getMixtureRateModelCSVName(trt, weighting);
 		return loadResourceCSV(resourceName, "mixture rate-model");
 	}

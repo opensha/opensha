@@ -83,7 +83,6 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_Crusta
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_InterfaceFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_InterfaceObsSeisDMAdjustment;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_ModelRegimeNode;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisRateModelEpoch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisRateModel;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.InterfaceGridAssociations;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
@@ -336,8 +335,8 @@ ExclusionaryInversionConfigurationFactory {
 		if (branch.hasValue(NSHM27_InterfaceObsSeisDMAdjustment.EXTRAPOLATE)) {
 			// use obs seis b-value
 			NSHM27_SeismicityRegions reg = branch.requireValue(NSHM27_InterfaceFaultModels.class).getSeismicityRegion();
-			NSHM27_SeisRateModelEpoch epoch = branch.requireValue(NSHM27_SeisRateModelEpoch.class);
-			RateRecord rateModel = branch.requireValue(NSHM27_SeisRateModel.class).getRateRecord(reg, epoch, TectonicRegionType.SUBDUCTION_INTERFACE);
+			RateRecord rateModel = branch.requireValue(NSHM27_SeisRateModel.class).getRateRecord(
+					reg, TectonicRegionType.SUBDUCTION_INTERFACE, branch);
 			Preconditions.checkState(rateModel instanceof PureGR);
 			bVal = ((PureGR)rateModel).b;
 		} else if (bValNode != null) {
@@ -370,8 +369,8 @@ ExclusionaryInversionConfigurationFactory {
 				NSHM27_InterfaceFaultModels fm = branch.getValue(NSHM27_InterfaceFaultModels.class);
 				if (fm != null && branch.hasValue(NSHM27_SeisRateModel.class)) {
 					NSHM27_SeisRateModel rateModel = branch.requireValue(NSHM27_SeisRateModel.class);
-					NSHM27_SeisRateModelEpoch epoch = branch.requireValue(NSHM27_SeisRateModelEpoch.class);
-					RateRecord record = rateModel.getRateRecord(fm.getSeismicityRegion(), epoch, TectonicRegionType.SUBDUCTION_INTERFACE);
+					RateRecord record = rateModel.getRateRecord(fm.getSeismicityRegion(),
+							TectonicRegionType.SUBDUCTION_INTERFACE, branch);
 					if (record instanceof PureGR)
 						constrBuilder.subSeisBOverride(((PureGR)record).b);
 					else

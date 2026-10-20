@@ -51,6 +51,14 @@ public final class NSHM27_SeisRateModelEpochCatalog {
 			Preconditions.checkState(epoch.getRegion() == region && epoch.getTectonicRegion() == trt
 					&& epoch.getDatasetId().equals(datasetId), "Epoch does not belong to this catalog: %s", epoch);
 		}
+		double sum = 0d;
+		for (NSHM27_SeisRateModelEpoch epoch : epochs) {
+			double weight = epoch.getNodeWeight();
+			Preconditions.checkState(Double.isFinite(weight) && weight >= 0d,
+					"Invalid weight for %s: %s", epoch, weight);
+			sum += weight;
+		}
+		Preconditions.checkState(Math.abs(sum-1d) <= 1e-10, "Epoch weights sum to %s", sum);
 		this.epochs = Collections.unmodifiableList(new ArrayList<>(epochs));
 	}
 
@@ -61,15 +69,64 @@ public final class NSHM27_SeisRateModelEpochCatalog {
 	public static NSHM27_SeisRateModelEpochCatalog load(NSHM27_SeismicityRegions region, TectonicRegionType trt,
 			EpochWeighting weighting) {
 		try {
-			return load(NSHM27_SeismicityDataFiles.locateRateWeights(region, trt), region, trt,
-					NSHM27_SeismicityDataFiles.RATE_DATASET, weighting);
+			ParsedEpochs[] parsed = new ParsedEpochs[NSHM27_SeisBValueMethod.values().length];
+			for (NSHM27_SeisBValueMethod bMethod : NSHM27_SeisBValueMethod.values())
+				parsed[bMethod.ordinal()] = parse(NSHM27_SeismicityDataFiles.locateRateWeights(region, trt, bMethod),
+						weighting);
+			ParsedEpochs reference = parsed[0];
+			for (int m=1; m<parsed.length; m++)
+				reference.validateDefinitions(parsed[m], NSHM27_SeisBValueMethod.values()[m]);
+			double[][] weightsByMethod = new double[parsed.length][];
+			for (int m=0; m<parsed.length; m++)
+				weightsByMethod[m] = parsed[m].weights;
+			double[] averagedWeights = calcLogicTreeWeightedEpochWeights(weightsByMethod);
+			List<NSHM27_SeisRateModelEpoch> epochs = new ArrayList<>(reference.size());
+			for (int i=0; i<reference.size(); i++)
+				epochs.add(new NSHM27_SeisRateModelEpoch(region, trt, NSHM27_SeismicityDataFiles.RATE_DATASET,
+						reference.startYears[i], reference.endYears[i], reference.mcs[i], i, averagedWeights[i]));
+			return new NSHM27_SeisRateModelEpochCatalog(region, trt,
+					NSHM27_SeismicityDataFiles.RATE_DATASET, weighting, epochs);
 		} catch (IOException e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
 	}
 
+	static double[] calcLogicTreeWeightedEpochWeights(double[][] weightsByMethod) {
+		NSHM27_SeisBValueMethod[] methods = NSHM27_SeisBValueMethod.values();
+		Preconditions.checkArgument(weightsByMethod.length == methods.length,
+				"Expected weights for %s b-value methods, found %s", methods.length, weightsByMethod.length);
+		Preconditions.checkArgument(weightsByMethod.length > 0 && weightsByMethod[0].length > 0,
+				"Epoch weights cannot be empty");
+		int numEpochs = weightsByMethod[0].length;
+		double[] averaged = new double[numEpochs];
+		double methodWeightSum = 0d;
+		for (int m=0; m<methods.length; m++) {
+			Preconditions.checkArgument(weightsByMethod[m].length == numEpochs,
+					"Epoch count mismatch for %s", methods[m]);
+			double methodWeight = methods[m].getNodeWeight();
+			Preconditions.checkState(Double.isFinite(methodWeight) && methodWeight >= 0d,
+					"Invalid logic-tree weight for %s: %s", methods[m], methodWeight);
+			methodWeightSum += methodWeight;
+			for (int i=0; i<numEpochs; i++)
+				averaged[i] += methodWeight*weightsByMethod[m][i];
+		}
+		Preconditions.checkState(methodWeightSum > 0d, "No positive b-value method weights");
+		for (int i=0; i<numEpochs; i++)
+			averaged[i] /= methodWeightSum;
+		return averaged;
+	}
+
 	static NSHM27_SeisRateModelEpochCatalog load(File weightsFile, NSHM27_SeismicityRegions region,
 			TectonicRegionType trt, String datasetId, EpochWeighting weighting) throws IOException {
+		ParsedEpochs parsed = parse(weightsFile, weighting);
+		List<NSHM27_SeisRateModelEpoch> epochs = new ArrayList<>(parsed.size());
+		for (int i=0; i<parsed.size(); i++)
+			epochs.add(new NSHM27_SeisRateModelEpoch(region, trt, datasetId,
+					parsed.startYears[i], parsed.endYears[i], parsed.mcs[i], i, parsed.weights[i]));
+		return new NSHM27_SeisRateModelEpochCatalog(region, trt, datasetId, weighting, epochs);
+	}
+
+	private static ParsedEpochs parse(File weightsFile, EpochWeighting weighting) throws IOException {
 		CSVFile<String> csv = CSVFile.readFile(weightsFile, false);
 		int numEpochs = -1;
 		int epochStartRow = -1;
@@ -110,11 +167,35 @@ public final class NSHM27_SeisRateModelEpochCatalog {
 		}
 		Preconditions.checkState(Math.abs(weightSum-1d) <= 1e-5,
 				"Epoch weights do not sum to 1 in %s: %s", weightsFile, weightSum);
-		List<NSHM27_SeisRateModelEpoch> epochs = new ArrayList<>(numEpochs);
 		for (int i=0; i<numEpochs; i++)
-			epochs.add(new NSHM27_SeisRateModelEpoch(region, trt, datasetId,
-					startYears[i], endYears[i], mcs[i], i, weights[i]/weightSum));
-		return new NSHM27_SeisRateModelEpochCatalog(region, trt, datasetId, weighting, epochs);
+			weights[i] /= weightSum;
+		return new ParsedEpochs(startYears, endYears, mcs, weights);
+	}
+
+	private static final class ParsedEpochs {
+		final double[] startYears;
+		final double[] endYears;
+		final double[] mcs;
+		final double[] weights;
+
+		ParsedEpochs(double[] startYears, double[] endYears, double[] mcs, double[] weights) {
+			this.startYears = startYears;
+			this.endYears = endYears;
+			this.mcs = mcs;
+			this.weights = weights;
+		}
+
+		int size() { return weights.length; }
+
+		void validateDefinitions(ParsedEpochs other, NSHM27_SeisBValueMethod bMethod) {
+			Preconditions.checkState(size() == other.size(),
+					"Epoch count differs for b-value method %s: %s != %s", bMethod, size(), other.size());
+			for (int i=0; i<size(); i++)
+				Preconditions.checkState(Double.doubleToLongBits(startYears[i]) == Double.doubleToLongBits(other.startYears[i])
+						&& Double.doubleToLongBits(endYears[i]) == Double.doubleToLongBits(other.endYears[i])
+						&& Double.doubleToLongBits(mcs[i]) == Double.doubleToLongBits(other.mcs[i]),
+						"Epoch %s definition differs for b-value method %s", i+1, bMethod);
+		}
 	}
 
 	public NSHM27_SeismicityRegions getRegion() { return region; }
@@ -166,7 +247,9 @@ public final class NSHM27_SeisRateModelEpochCatalog {
 		int result = java.util.Objects.hash(region, trt, datasetId, weighting);
 		for (NSHM27_SeisRateModelEpoch epoch : epochs)
 			result = 31*result + java.util.Objects.hash(epoch.getEpochIndex(), epoch.getStartYear(),
-					epoch.getEndYear(), epoch.getMagComplete(), epoch.getNodeWeight());
+					epoch.getEndYear(), epoch.getMagComplete());
+		for (NSHM27_SeisRateModelEpoch epoch : epochs)
+			result = 31*result + Double.hashCode(epoch.getNodeWeight());
 		return result;
 	}
 
@@ -184,8 +267,9 @@ public final class NSHM27_SeisRateModelEpochCatalog {
 			if (e1.getEpochIndex() != e2.getEpochIndex()
 					|| Double.doubleToLongBits(e1.getStartYear()) != Double.doubleToLongBits(e2.getStartYear())
 					|| Double.doubleToLongBits(e1.getEndYear()) != Double.doubleToLongBits(e2.getEndYear())
-					|| Double.doubleToLongBits(e1.getMagComplete()) != Double.doubleToLongBits(e2.getMagComplete())
-					|| Double.doubleToLongBits(e1.getNodeWeight()) != Double.doubleToLongBits(e2.getNodeWeight()))
+					|| Double.doubleToLongBits(e1.getMagComplete()) != Double.doubleToLongBits(e2.getMagComplete()))
+				return false;
+			if (Double.doubleToLongBits(e1.getNodeWeight()) != Double.doubleToLongBits(e2.getNodeWeight()))
 				return false;
 		}
 		return true;

@@ -13,6 +13,7 @@ import java.util.regex.Pattern;
 
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.NSHM27_InvConfigFactory;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_DeclusteringAlgorithms;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisBValueMethod;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisRateModelEpochCatalog.EpochWeighting;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree.NSHM27_SeisSmoothingAlgorithms;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm27.util.NSHM27_RegionLoader.NSHM27_SeismicityRegions;
@@ -23,43 +24,45 @@ import com.google.common.base.Preconditions;
 /** Locates NSHM27 seismicity inputs with their original, data-provider filenames. */
 public final class NSHM27_SeismicityDataFiles {
 
-	public static final String RATE_DATASET = "2026_10_13-gamma";
+	public static final String RATE_DATASET = "2026_10_19-gamma";
 	public static final String PDF_DATASET = "2026_10_10-gamma";
 
 	private static final Pattern ADAPTIVE_SUFFIX = Pattern.compile(".*_adn\\d+\\.csv");
 
 	private NSHM27_SeismicityDataFiles() {}
 
-	public static File locateRateWeights(NSHM27_SeismicityRegions region, TectonicRegionType trt) {
+	public static File locateRateWeights(NSHM27_SeismicityRegions region, TectonicRegionType trt,
+			NSHM27_SeisBValueMethod bMethod) {
 		String prefix = ratePrefix(region, trt);
-		return findUnique(rateDirectory(region), name -> name.startsWith(prefix) && name.endsWith("-weights.csv"),
+		return findUnique(rateDirectory(region, bMethod), name -> name.startsWith(prefix) && name.endsWith("-weights.csv"),
 				region.getShortName()+" "+NSHM27_RegionLoader.getNameForTRT(trt)+" epoch weights");
 	}
 
-	public static File locateEpochRatePairs(NSHM27_SeismicityRegions region, TectonicRegionType trt, int epochIndex) {
+	public static File locateEpochRatePairs(NSHM27_SeismicityRegions region, TectonicRegionType trt,
+			NSHM27_SeisBValueMethod bMethod, int epochIndex) {
 		Preconditions.checkArgument(epochIndex >= 0, "Epoch index must be nonnegative: %s", epochIndex);
 		String prefix = ratePrefix(region, trt);
 		String suffix = "-epoch-"+(epochIndex+1)+"-pairs.csv";
-		return findUnique(rateDirectory(region), name -> name.startsWith(prefix) && name.endsWith(suffix),
+		return findUnique(rateDirectory(region, bMethod), name -> name.startsWith(prefix) && name.endsWith(suffix),
 				region.getShortName()+" "+NSHM27_RegionLoader.getNameForTRT(trt)
 				+" epoch "+(epochIndex+1)+" rate pairs");
 	}
 
 	public static File locateMixtureRatePairs(NSHM27_SeismicityRegions region, TectonicRegionType trt,
-			EpochWeighting weighting) {
-		return locateMixtureRateFile(region, trt, weighting, "-pairs.csv", "rate pairs");
+			NSHM27_SeisBValueMethod bMethod, EpochWeighting weighting) {
+		return locateMixtureRateFile(region, trt, bMethod, weighting, "-pairs.csv", "rate pairs");
 	}
 
 	public static File locateMixtureRateBranches(NSHM27_SeismicityRegions region, TectonicRegionType trt,
-			EpochWeighting weighting) {
-		return locateMixtureRateFile(region, trt, weighting, "-branches.csv", "rate branches");
+			NSHM27_SeisBValueMethod bMethod, EpochWeighting weighting) {
+		return locateMixtureRateFile(region, trt, bMethod, weighting, "-branches.csv", "rate branches");
 	}
 
 	private static File locateMixtureRateFile(NSHM27_SeismicityRegions region, TectonicRegionType trt,
-			EpochWeighting weighting, String suffix, String description) {
+			NSHM27_SeisBValueMethod bMethod, EpochWeighting weighting, String suffix, String description) {
 		String prefix = ratePrefix(region, trt);
 		String mixtureSuffix = ("-mixture-"+weighting.name()+suffix).toLowerCase(Locale.US);
-		return findUnique(rateDirectory(region), name -> name.startsWith(prefix)
+		return findUnique(rateDirectory(region, bMethod), name -> name.startsWith(prefix)
 				&& name.toLowerCase(Locale.US).endsWith(mixtureSuffix),
 				region.getShortName()+" "+NSHM27_RegionLoader.getNameForTRT(trt)+" "
 				+weighting.name()+" mixture "+description);
@@ -67,7 +70,8 @@ public final class NSHM27_SeismicityDataFiles {
 
 	public static File locateDirectRates(NSHM27_SeismicityRegions region, TectonicRegionType trt) {
 		String prefix = region.getTitleCaseAcronym()+"-"+rateRegimeLabel(trt)+"-";
-		return findUnique(rateDirectory(region), name -> name.startsWith(prefix) && name.endsWith("-directrates.csv"),
+		return findUnique(rateDirectory(region, NSHM27_SeisBValueMethod.CLASSIFICATION_DEPENDENT),
+				name -> name.startsWith(prefix) && name.endsWith("-directrates.csv"),
 				region.getShortName()+" "+NSHM27_RegionLoader.getNameForTRT(trt)+" direct rates");
 	}
 
@@ -105,8 +109,12 @@ public final class NSHM27_SeismicityDataFiles {
 				+declustering.name()+" "+smoothing.name()+" spatial PDF");
 	}
 
-	private static File rateDirectory(NSHM27_SeismicityRegions region) {
-		return datasetDirectory("seis_rate_samples", region, RATE_DATASET);
+	private static File rateDirectory(NSHM27_SeismicityRegions region, NSHM27_SeisBValueMethod bMethod) {
+		return datasetDirectory("seis_rate_samples", region, rateDatasetDirectoryName(bMethod));
+	}
+
+	public static String rateDatasetDirectoryName(NSHM27_SeisBValueMethod bMethod) {
+		return RATE_DATASET+"-"+bMethod.getDatasetSuffix();
 	}
 
 	private static File pdfDirectory(NSHM27_SeismicityRegions region) {
@@ -172,21 +180,23 @@ public final class NSHM27_SeismicityDataFiles {
 		TectonicRegionType[] trts = { TectonicRegionType.ACTIVE_SHALLOW,
 				TectonicRegionType.SUBDUCTION_INTERFACE, TectonicRegionType.SUBDUCTION_SLAB };
 		for (NSHM27_SeismicityRegions region : NSHM27_SeismicityRegions.values()) {
-			File destinationDir = new File(resourceRoot, region.name().toLowerCase(Locale.US)
-					+"/seismicity/rates/"+RATE_DATASET);
-			Files.createDirectories(destinationDir.toPath());
-			for (TectonicRegionType trt : trts) {
-				File source = locateMixtureRateBranches(region, trt, EpochWeighting.SQRTN);
-				File destination = new File(destinationDir,
-						NSHM27_RegionLoader.getNameForTRT(trt).toUpperCase(Locale.US)+"_MIXTURE_SQRTN.csv");
-				if (destination.exists()) {
-					Preconditions.checkState(Arrays.equals(Files.readAllBytes(source.toPath()),
-							Files.readAllBytes(destination.toPath())),
-							"Refusing to overwrite a different resource file: %s", destination);
-					System.out.println("Already current: "+destination);
-				} else {
-					Files.copy(source.toPath(), destination.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
-					System.out.println("Copied "+source+" -> "+destination);
+			for (NSHM27_SeisBValueMethod bMethod : NSHM27_SeisBValueMethod.values()) {
+				File destinationDir = new File(resourceRoot, region.name().toLowerCase(Locale.US)
+						+"/seismicity/rates/"+rateDatasetDirectoryName(bMethod));
+				Files.createDirectories(destinationDir.toPath());
+				for (TectonicRegionType trt : trts) {
+					File source = locateMixtureRateBranches(region, trt, bMethod, EpochWeighting.SQRTN);
+					File destination = new File(destinationDir,
+							NSHM27_RegionLoader.getNameForTRT(trt).toUpperCase(Locale.US)+"_MIXTURE_SQRTN.csv");
+					if (destination.exists()) {
+						Preconditions.checkState(Arrays.equals(Files.readAllBytes(source.toPath()),
+								Files.readAllBytes(destination.toPath())),
+								"Refusing to overwrite a different resource file: %s", destination);
+						System.out.println("Already current: "+destination);
+					} else {
+						Files.copy(source.toPath(), destination.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
+						System.out.println("Copied "+source+" -> "+destination);
+					}
 				}
 			}
 		}
