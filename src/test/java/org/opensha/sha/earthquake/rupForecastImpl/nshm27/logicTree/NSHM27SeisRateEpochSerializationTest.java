@@ -93,6 +93,10 @@ public class NSHM27SeisRateEpochSerializationTest {
 				for (NSHM27_SeisBValueMethod bMethod : NSHM27_SeisBValueMethod.values())
 					assertTrue(NSHM27_SeisRateModelBranch.loadMixtureRateModel(region, trt, bMethod)
 							.getMeanRecord() != null);
+		for (NSHM27_SeismicityRegions region : NSHM27_SeismicityRegions.values())
+			for (NSHM27_SeisBValueMethod bMethod : NSHM27_SeisBValueMethod.values())
+				assertTrue(NSHM27_SeisRateModelBranch.loadUnionMixtureRateModel(region, bMethod)
+						.getMeanRecord() != null);
 	}
 
 	private static NSHM27_SeisRateModelEpochCatalog buildCatalog() throws Exception {

@@ -58,6 +58,15 @@ public final class NSHM27_SeismicityDataFiles {
 		return locateMixtureRateFile(region, trt, bMethod, weighting, "-branches.csv", "rate branches");
 	}
 
+	public static File locateUnionMixtureRateBranches(NSHM27_SeismicityRegions region,
+			NSHM27_SeisBValueMethod bMethod, EpochWeighting weighting) {
+		String prefix = "comb-"+region.getTitleCaseAcronym()+"-Union-";
+		String suffix = ("-mixture-"+weighting.name()+"-branches.csv").toLowerCase(Locale.US);
+		return findUnique(rateDirectory(region, bMethod), name -> name.startsWith(prefix)
+				&& name.toLowerCase(Locale.US).endsWith(suffix),
+				region.getShortName()+" union "+weighting.name()+" mixture rate branches");
+	}
+
 	private static File locateMixtureRateFile(NSHM27_SeismicityRegions region, TectonicRegionType trt,
 			NSHM27_SeisBValueMethod bMethod, EpochWeighting weighting, String suffix, String description) {
 		String prefix = ratePrefix(region, trt);
@@ -188,17 +197,23 @@ public final class NSHM27_SeismicityDataFiles {
 					File source = locateMixtureRateBranches(region, trt, bMethod, EpochWeighting.SQRTN);
 					File destination = new File(destinationDir,
 							NSHM27_RegionLoader.getNameForTRT(trt).toUpperCase(Locale.US)+"_MIXTURE_SQRTN.csv");
-					if (destination.exists()) {
-						Preconditions.checkState(Arrays.equals(Files.readAllBytes(source.toPath()),
-								Files.readAllBytes(destination.toPath())),
-								"Refusing to overwrite a different resource file: %s", destination);
-						System.out.println("Already current: "+destination);
-					} else {
-						Files.copy(source.toPath(), destination.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
-						System.out.println("Copied "+source+" -> "+destination);
-					}
+					copyResource(source, destination);
 				}
+				File unionSource = locateUnionMixtureRateBranches(region, bMethod, EpochWeighting.SQRTN);
+				copyResource(unionSource, new File(destinationDir, "UNION_MIXTURE_SQRTN.csv"));
 			}
+		}
+	}
+
+	private static void copyResource(File source, File destination) throws IOException {
+		if (destination.exists()) {
+			Preconditions.checkState(Arrays.equals(Files.readAllBytes(source.toPath()),
+					Files.readAllBytes(destination.toPath())),
+					"Refusing to overwrite a different resource file: %s", destination);
+			System.out.println("Already current: "+destination);
+		} else {
+			Files.copy(source.toPath(), destination.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
+			System.out.println("Copied "+source+" -> "+destination);
 		}
 	}
 }

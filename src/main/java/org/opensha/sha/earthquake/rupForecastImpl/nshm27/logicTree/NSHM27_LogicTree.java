@@ -254,6 +254,7 @@ public class NSHM27_LogicTree {
 		}
 		
 		// gridded seismicity
+		branch.setValue(NSHM27_SeisBValueMethod.UNION_WIDE);
 		if (!sampled)
 			branch.setValue(NSHM27_SeisRateModelBranch.PREFFERRED);
 		branch.setValue(NSHM27_DeclusteringAlgorithms.AVERAGE);

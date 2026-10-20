@@ -155,6 +155,35 @@ public enum NSHM27_SeisRateModelBranch implements NSHM27_SeisRateModel, LogicTre
 		return model;
 	}
 
+	public static SeismicityRateModel loadUnionMixtureRateModel(NSHM27_SeismicityRegions region,
+			NSHM27_SeisBValueMethod bMethod) {
+		return loadUnionMixtureRateModel(region, bMethod,
+				NSHM27_SeisRateModelEpochCatalog.DEFAULT_WEIGHTING, TYPE);
+	}
+
+	public static SeismicityRateModel loadUnionMixtureRateModel(NSHM27_SeismicityRegions region,
+			NSHM27_SeisBValueMethod bMethod, EpochWeighting weighting) {
+		return loadUnionMixtureRateModel(region, bMethod, weighting, TYPE);
+	}
+
+	public synchronized static SeismicityRateModel loadUnionMixtureRateModel(NSHM27_SeismicityRegions region,
+			NSHM27_SeisBValueMethod bMethod, EpochWeighting weighting, RateType type) {
+		if (mixtureRateModelsCache == null)
+			mixtureRateModelsCache = new HashMap<>();
+		String key = region.name()+"/UNION/"+bMethod.name()+"/"+weighting.name();
+		SeismicityRateModel model = type == TYPE ? mixtureRateModelsCache.get(key) : null;
+		if (model == null) {
+			try {
+				model = new SeismicityRateModel(loadUnionMixtureCSV(region, bMethod, weighting), type, BOUND_TYPE);
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+			if (type == TYPE)
+				mixtureRateModelsCache.put(key, model);
+		}
+		return model;
+	}
+
 	private static String getRateModelPath(NSHM27_SeismicityRegions region, String datasetId) {
 		return "/data/erf/nshm27/"+region.name().toLowerCase()+"/seismicity/rates/"+datasetId+"/";
 	}
@@ -182,6 +211,13 @@ public enum NSHM27_SeisRateModelBranch implements NSHM27_SeisRateModel, LogicTre
 		String resourceName = getRateModelPath(region, NSHM27_SeismicityDataFiles.rateDatasetDirectoryName(bMethod))
 				+getMixtureRateModelCSVName(trt, weighting);
 		return loadResourceCSV(resourceName, "mixture rate-model");
+	}
+
+	private static CSVFile<String> loadUnionMixtureCSV(NSHM27_SeismicityRegions region,
+			NSHM27_SeisBValueMethod bMethod, EpochWeighting weighting) throws IOException {
+		String resourceName = getRateModelPath(region, NSHM27_SeismicityDataFiles.rateDatasetDirectoryName(bMethod))
+				+"UNION_MIXTURE_"+weighting.name()+".csv";
+		return loadResourceCSV(resourceName, "union mixture rate-model");
 	}
 
 	private static CSVFile<String> loadResourceCSV(String resourceName, String description) throws IOException {
