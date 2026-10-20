@@ -37,9 +37,9 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum NSHM27_SeisRateModelBranch implements NSHM27_SeisRateModel, LogicTreeNode.FixedWeightNode {
-	LOW("Lower Seismicity Bound (p2.5)", "Low", 0.13d),
-	PREFFERRED("Preffered Seismicity Rate", "Preferred", 0.74d),
-	HIGH("Upper Seismicity Bound (p97.5)", "High", 0.13d);
+	LOW("Lower seismicity bound (p2.5)", "Low", 0.13d),
+	PREFFERRED("Preffered seismicity rate", "Preferred", 0.74d),
+	HIGH("Upper seismicity bound (p97.5)", "High", 0.13d);
 
 	public static RateType TYPE = RateType.M1_TO_MMAX;
 	private static final UncertaintyBoundType BOUND_TYPE = UncertaintyBoundType.CONF_95;

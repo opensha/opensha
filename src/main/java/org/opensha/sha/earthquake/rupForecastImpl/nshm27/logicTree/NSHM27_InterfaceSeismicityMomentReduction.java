@@ -35,9 +35,9 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum NSHM27_InterfaceSeismicityMomentReduction implements LogicTreeNode.FixedWeightNode {
-	NONE("No Seismicity Moment Reduction", "No Reduction", 1d/3d),
-	REGIONAL("Regional-Average Seismicity Moment Reduction", "Regional Reduction", 1d/3d),
-	SECTION_SPECIFIC("Section-Specific Seismicity Moment Reduction", "Section Reduction", 1d/3d);
+	NONE("No seismicity moment reduction", "No reduction", 1d/3d),
+	REGIONAL("Regional-average seismicity moment reduction", "Regional reduction", 1d/3d),
+	SECTION_SPECIFIC("Section-specific seismicity moment reduction", "Section reduction", 1d/3d);
 	
 	// never allow a reduction below this fraction in order to prevent zero-slip inversions
 	// (ignored by the extrapolated MFD model, which can be small but will never be zero anyway)

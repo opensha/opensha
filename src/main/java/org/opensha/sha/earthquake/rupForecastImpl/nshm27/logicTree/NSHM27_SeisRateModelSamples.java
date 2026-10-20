@@ -45,7 +45,7 @@ FractileSamplingLevel<Double, NSHM27_SeisRateModelSample> {
 	}
 
 	public NSHM27_SeisRateModelSamples(NSHM27_SeisRateModelEpochCatalog catalog) {
-		super(NSHM27_RegionLoader.getNameForTRT(catalog.getTectonicRegion())+" Seismicity Rate Model Samples",
+		super(NSHM27_RegionLoader.getNameForTRT(catalog.getTectonicRegion())+" seismicity rate model samples",
 				NSHM27_RegionLoader.getNameForTRT(catalog.getTectonicRegion())+"RateSamples",
 				"Rate sample ", "RateSample", "RateSample");
 		this.catalog = Preconditions.checkNotNull(catalog);

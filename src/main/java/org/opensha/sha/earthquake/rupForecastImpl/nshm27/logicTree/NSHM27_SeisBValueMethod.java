@@ -19,7 +19,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 public enum NSHM27_SeisBValueMethod implements LogicTreeNode.FixedWeightNode {
 	CLASSIFICATION_DEPENDENT("Classification-dependent b-values", "Class-dependent", "bClass", 0.5d),
 	UNION("Union catalog b-values", "Union", "bUnion", 0d),
-	UNION_WIDE("Union catalog b-values (wide)", "Union (Wide)", "bUnionwide", 0.5d);
+	UNION_WIDE("Union catalog b-values (wide)", "Union (wide)", "bUnionwide", 0.5d);
 
 	private final String name;
 	private final String shortName;

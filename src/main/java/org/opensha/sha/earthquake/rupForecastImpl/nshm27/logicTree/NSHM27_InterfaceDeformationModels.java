@@ -51,7 +51,7 @@ public class NSHM27_InterfaceDeformationModels extends RupSetDeformationModelDis
 	public static final double MIN_DM_FRACTILE = 0.000001; // 0.0001% (1 in 1,000,000)	
 	public static class SamplingLevel extends SectDistributionSampleLevels.UniformSamplingLevel<NSHM27_InterfaceDeformationModels> {
 		
-		public static String NAME = "Interface Deformation Model Sample";
+		public static String NAME = "Interface deformation model sample";
 		public static String SHORT_NAME = "DMSample";
 
 		public SamplingLevel() {

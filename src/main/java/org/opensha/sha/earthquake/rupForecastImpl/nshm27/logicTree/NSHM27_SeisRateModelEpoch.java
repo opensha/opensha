@@ -119,7 +119,7 @@ public final class NSHM27_SeisRateModelEpoch implements ValuedLogicTreeNode<Inte
 		}
 
 		public Level(NSHM27_SeisRateModelEpochCatalog catalog) {
-			super(NSHM27_RegionLoader.getNameForTRT(catalog.getTectonicRegion())+" Seismicity Rate Epoch",
+			super(NSHM27_RegionLoader.getNameForTRT(catalog.getTectonicRegion())+" seismicity rate epoch",
 					NSHM27_RegionLoader.getNameForTRT(catalog.getTectonicRegion())+"Epoch");
 			this.catalog = catalog;
 		}

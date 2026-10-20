@@ -53,7 +53,7 @@ public class NSHM27_CrustalDeformationModels extends RupSetDeformationModelDistr
 	
 	public static class SamplingLevel extends SectDistributionSampleLevels.GroupedSamplingLevel<NSHM27_CrustalDeformationModels> {
 		
-		public static String NAME = "Crustal Deformation Model Sample";
+		public static String NAME = "Crustal deformation model sample";
 		public static String SHORT_NAME = "DMSample";
 
 		public SamplingLevel() {

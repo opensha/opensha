@@ -48,23 +48,23 @@ public class NSHM27_LogicTree {
 	 * * and maybe obs seis rate as well?
 	 */
 	public static final LogicTreeLevel<NSHM27_InterfaceFaultModels> INTERFACE_FM =
-			LogicTreeLevel.forEnum(NSHM27_InterfaceFaultModels.class, "Interface Fault Model", "InterfaceFM");
+			LogicTreeLevel.forEnum(NSHM27_InterfaceFaultModels.class, "Interface fault model", "InterfaceFM");
 	public static final LogicTreeLevel<NSHM27_InterfaceCouplingDepthModels> INTERFACE_DEPTH_COUPLING =
-			LogicTreeLevel.forEnum(NSHM27_InterfaceCouplingDepthModels.class, "Interface Depth Coupling Taper", "InterfaceDepthCoupling");
+			LogicTreeLevel.forEnum(NSHM27_InterfaceCouplingDepthModels.class, "Interface depth coupling taper", "InterfaceDepthCoupling");
 	public static final LogicTreeLevel<NSHM27_InterfaceDeformationModels.Aggregated> INTERFACE_AGG_DM =
-			LogicTreeLevel.forEnum(NSHM27_InterfaceDeformationModels.Aggregated.class, "Interface Aggregated Deformation Model", "InterfaceAggDM");
+			LogicTreeLevel.forEnum(NSHM27_InterfaceDeformationModels.Aggregated.class, "Interface aggregated deformation model", "InterfaceAggDM");
 	public static final LogicTreeLevel<PRVI25_SubductionScalingRelationships> INTERFACE_SCALE = 
-			LogicTreeLevel.forEnum(PRVI25_SubductionScalingRelationships.class, "Interface Scaling Relationship", "InterfaceScale");
+			LogicTreeLevel.forEnum(PRVI25_SubductionScalingRelationships.class, "Interface scaling relationship", "InterfaceScale");
 	public static final LogicTreeLevel<NSHM27_InterfaceSeismicityMomentReduction> INTERFACE_SEIS_MOMENT_REDUCTION =
 			LogicTreeLevel.forEnum(NSHM27_InterfaceSeismicityMomentReduction.class,
-					"Interface Seismicity Moment Reduction", "InterfaceSeisMomentReduction");
+					"Interface seismicity moment reduction", "InterfaceSeisMomentReduction");
 	public static final LogicTreeLevel<NSHM27_InterfaceMFDModel> INTERFACE_MFD_MODEL =
 			LogicTreeLevel.forEnum(NSHM27_InterfaceMFDModel.class,
-					"Interface MFD Model", "InterfaceMFDModel");
+					"Interface MFD model", "InterfaceMFDModel");
 	public static final LogicTreeLevel<NSHM27_InterfaceMinSubSects> INTERFACE_MIN_SUB_SECTS =
-			LogicTreeLevel.forEnum(NSHM27_InterfaceMinSubSects.class, "Interface Minimum Subsection Count", "InterfaceMinSubSects");
+			LogicTreeLevel.forEnum(NSHM27_InterfaceMinSubSects.class, "Interface minimum subsection count", "InterfaceMinSubSects");
 	public static final LogicTreeLevel<NSHM27_SeisBValueMethod> SEIS_B_VALUE_METHOD =
-			LogicTreeLevel.forEnum(NSHM27_SeisBValueMethod.class, "Seismicity b-value Method", "SeisBMethod");
+			LogicTreeLevel.forEnum(NSHM27_SeisBValueMethod.class, "Seismicity b-value method", "SeisBMethod");
 	public static ContinuousDistribution getInterfaceBDist(NSHM27_SeismicityRegions seisReg) {
 		PureGR gr = (PureGR)NSHM27_SeisRateModelBranch.loadMixtureRateModel(seisReg,
 				TectonicRegionType.SUBDUCTION_INTERFACE, NSHM27_SeisBValueMethod.UNION_WIDE).getMeanRecord();
@@ -108,13 +108,13 @@ public class NSHM27_LogicTree {
 	 * missing/TODO:
 	 */
 	public static final LogicTreeLevel<NSHM27_CrustalFaultModels> CRUSTAL_FM =
-			LogicTreeLevel.forEnum(NSHM27_CrustalFaultModels.class, "Crustal Fault Model", "CrustalFM");
+			LogicTreeLevel.forEnum(NSHM27_CrustalFaultModels.class, "Crustal fault model", "CrustalFM");
 	public static final LogicTreeLevel<NSHM27_CrustalDeformationModels.Aggregated> CRUSTAL_AGG_DM =
-			LogicTreeLevel.forEnum(NSHM27_CrustalDeformationModels.Aggregated.class, "Crustal Aggregated Deformation Model", "CrustalAggDM");
+			LogicTreeLevel.forEnum(NSHM27_CrustalDeformationModels.Aggregated.class, "Crustal aggregated deformation model", "CrustalAggDM");
 	public static final LogicTreeLevel<NSHM23_ScalingRelationships> CRUSTAL_SCALE =
-			LogicTreeLevel.forEnum(NSHM23_ScalingRelationships.class, "Crustal Scaling Relationship", "CrustalScale");
+			LogicTreeLevel.forEnum(NSHM23_ScalingRelationships.class, "Crustal scaling relationship", "CrustalScale");
 	public static final LogicTreeLevel<NSHM23_SegmentationModels> SEG =
-			LogicTreeLevel.forEnum(NSHM23_SegmentationModels.class, "Crustal Segmentation Model", "CrustalSegModel");
+			LogicTreeLevel.forEnum(NSHM23_SegmentationModels.class, "Crustal segmentation model", "CrustalSegModel");
 	public static final double CRUSTAL_B_SINGLE_DEFAULT = 0.5d;
 	public static final ContinuousDistribution CRUSTAL_B_DIST = UniformContinuousDistribution.of(0d, 1d);
 	public static final double CRUSTAL_MMAX_OFF_SINGLE_DEFAULT = 7.6;
@@ -137,7 +137,7 @@ public class NSHM27_LogicTree {
 		
 		// inversion
 		if (inversion) {
-		String inversionBName = sampled ? trtName+" Inversion b-value Samples" : trtName+" Inversion Fixed b-value";
+		String inversionBName = sampled ? trtName+" inversion b-value samples" : trtName+" inversion Fixed b-value";
 		String inversionBShortName = sampled ? trtName+"-bSamples" : trtName+"-FixedB";
 			if (trt == TectonicRegionType.SUBDUCTION_INTERFACE) {
 				levels.add(INTERFACE_FM);
@@ -155,10 +155,10 @@ public class NSHM27_LogicTree {
 				levels.add(INTERFACE_MIN_SUB_SECTS);
 				if (sampled)
 					levels.add(new MaxRuptureLengthBranchNode.DistributionSamplingLevel(
-							"Interface Maximum Rupture Length", "Interface Max. Len.", getInterfaceLMax(seisReg)));
+							"Interface maximum rupture length", "Interface Max. Len.", getInterfaceLMax(seisReg)));
 				else
 					levels.add(new MaxRuptureLengthBranchNode.FixedValueLevel(
-							"Interface Maximum Rupture Length", "Interface Max. Len.", INTERFACE_MAX_LEN_SINGLE_DEFAULT));
+							"Interface maximum rupture length", "Interface Max. Len.", INTERFACE_MAX_LEN_SINGLE_DEFAULT));
 			} else if (trt == TectonicRegionType.ACTIVE_SHALLOW && seisReg == NSHM27_SeismicityRegions.GNMI) {
 				// have crustal on-fault
 				levels.add(CRUSTAL_FM);
@@ -184,14 +184,14 @@ public class NSHM27_LogicTree {
 				levels.add(new NSHM27_SeisRateModelSamples(epochCatalog));
 			} else {
 				levels.add(LogicTreeLevel.forEnum(NSHM27_SeisRateModelBranch.class,
-						NSHM27_RegionLoader.getNameForTRT(trt)+" Rate Model Branch",
+						NSHM27_RegionLoader.getNameForTRT(trt)+" rate model branch",
 						NSHM27_RegionLoader.getNameForTRT(trt)+"Branch"));
 			}
 			levels.add(LogicTreeLevel.forEnum(NSHM27_DeclusteringAlgorithms.class,
-					NSHM27_RegionLoader.getNameForTRT(trt)+" Declustering Algorithm",
+					NSHM27_RegionLoader.getNameForTRT(trt)+" declustering algorithm",
 					NSHM27_RegionLoader.getNameForTRT(trt)+"-Decluster"));
 			levels.add(LogicTreeLevel.forEnum(NSHM27_SeisSmoothingAlgorithms.class,
-					NSHM27_RegionLoader.getNameForTRT(trt)+" Smoothing Kernel",
+					NSHM27_RegionLoader.getNameForTRT(trt)+" smoothing kernel",
 					NSHM27_RegionLoader.getNameForTRT(trt)+"-Smooth"));
 			if (trt != TectonicRegionType.SUBDUCTION_INTERFACE) {
 				// these only affect inversion if subduction interface
@@ -202,7 +202,7 @@ public class NSHM27_LogicTree {
 				}
 			}
 
-			String mMaxName = sampled ? trtName+" Off Fault Mmax Samples" : trtName+" Fixed Off Fault Mmax";
+			String mMaxName = sampled ? trtName+" off fault Mmax samples" : trtName+" fixed off fault Mmax";
 			String mMaxShortName = sampled ? trtName+"-MmaxOffSamples" : trtName+"-FixedMmaxOff";
 			if (trt == TectonicRegionType.ACTIVE_SHALLOW) {
 				if (sampled)
@@ -377,13 +377,13 @@ public class NSHM27_LogicTree {
 
 		List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>(commonTree.getLevels());
 		levels.add(new TectonicRegionBranchTreeNode.Level(TectonicRegionType.SUBDUCTION_INTERFACE, interfaceTree,
-				seisReg.getName()+" Interface Branches", seisReg.name()+"-Interface",
+				seisReg.getName()+" interface branches", seisReg.name()+"-Interface",
 				seisReg.name()+"-Interface Branch", "InterfaceBranch", "InterfaceBranch"));
 		levels.add(new TectonicRegionBranchTreeNode.Level(TectonicRegionType.SUBDUCTION_SLAB, intraslabTree,
-				seisReg.getName()+" Intraslab Branches", seisReg.name()+"-Intraslab",
+				seisReg.getName()+" intraslab branches", seisReg.name()+"-Intraslab",
 				seisReg.name()+"-Intraslab Branch", "IntraslabBranch", "IntraslabBranch"));
 		levels.add(new TectonicRegionBranchTreeNode.Level(TectonicRegionType.ACTIVE_SHALLOW, crustalTree,
-				seisReg.getName()+" Crustal Branches", seisReg.name()+"-Crustal",
+				seisReg.getName()+" crustal branches", seisReg.name()+"-Crustal",
 				seisReg.name()+"-Crustal Branch", "CrustalBranch", "CrustalBranch"));
 		List<LogicTreeBranch<LogicTreeNode>> branches = new ArrayList<>(numEach);
 		for (int i=0; i<numEach; i++) {

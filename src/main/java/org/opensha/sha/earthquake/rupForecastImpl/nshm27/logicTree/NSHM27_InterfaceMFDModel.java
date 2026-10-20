@@ -48,9 +48,9 @@ import com.google.gson.JsonPrimitive;
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum NSHM27_InterfaceMFDModel implements SectionSupraSeisBValues.FixedWeight {
-	EXTRAPOLATED("Extrapolated Interface MFD", "Extrapolated", 0.1d),
-	HINGED("Hinged Interface MFD", "Hinged", 0.4d),
-	INDEPENDENT("Independent Interface MFD", "Independent", 0.5d);
+	EXTRAPOLATED("Extrapolated interface MFD", "Extrapolated", 0.1d),
+	HINGED("Hinged interface MFD", "Hinged", 0.4d),
+	INDEPENDENT("Independent interface MFD", "Independent", 0.5d);
 
 	public static final double DEFAULT_INDEPENDENT_B = 1d;
 	public static final String GEOJSON_INPUT_SLIP_RATE_PROP_NAME = "InputSlipRate";
@@ -344,7 +344,7 @@ public enum NSHM27_InterfaceMFDModel implements SectionSupraSeisBValues.FixedWei
 		}
 
 		public SamplingLevel(ContinuousDistribution independentBDist) {
-			super("Interface MFD Model Samples", "Interface-MFD-Samples", "InterfaceMFDSample");
+			super("Interface MFD model", "Interface-MFD", "InterfaceMFDSample");
 			IndependentBLevel independent = new IndependentBLevel(independentBDist);
 			WeightedList<LogicTreeLevel<? extends SectionSupraSeisBValues.FixedWeight>> levels =
 					new WeightedList<>(3);
