@@ -147,7 +147,7 @@ public interface SectionSupraSeisBValues extends LogicTreeNode {
 	public static class DistributionSamplingLevel extends LogicTreeLevel.AbstractContinuousDistributionSampledLevel<Default> {
 
 		@SuppressWarnings("unused") // deserialization
-		private DistributionSamplingLevel(String name, String shortName) {
+		protected DistributionSamplingLevel(String name, String shortName) {
 			super(name, shortName);
 		}
 

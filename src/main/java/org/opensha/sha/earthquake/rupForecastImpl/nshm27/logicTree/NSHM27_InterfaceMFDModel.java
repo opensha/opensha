@@ -284,6 +284,23 @@ public enum NSHM27_InterfaceMFDModel implements SectionSupraSeisBValues.FixedWei
 		}
 	}
 
+	private static final class IndependentBLevel
+	extends SectionSupraSeisBValues.DistributionSamplingLevel {
+		@SuppressWarnings("unused") // deserialization
+		private IndependentBLevel(String name, String shortName) {
+			super(name, shortName);
+		}
+
+		private IndependentBLevel(ContinuousDistribution distribution) {
+			super("Independent Interface Inversion b-value", "Independent-b", distribution);
+		}
+
+		@Override
+		public String getDistributionString() {
+			return "b∈"+super.getDistributionString();
+		}
+	}
+
 	public static final class SampledNode
 	extends CombinedSamplingNode<SectionSupraSeisBValues.FixedWeight>
 	implements SectionSupraSeisBValues {
@@ -328,14 +345,7 @@ public enum NSHM27_InterfaceMFDModel implements SectionSupraSeisBValues.FixedWei
 
 		public SamplingLevel(ContinuousDistribution independentBDist) {
 			super("Interface MFD Model Samples", "Interface-MFD-Samples", "InterfaceMFDSample");
-			SectionSupraSeisBValues.DistributionSamplingLevel independent =
-					new SectionSupraSeisBValues.DistributionSamplingLevel(
-							"Independent Interface Inversion b-value", "Independent-b", independentBDist) {
-				@Override
-				public String getDistributionString() {
-					return "b∈"+super.getDistributionString();
-				}
-			};
+			IndependentBLevel independent = new IndependentBLevel(independentBDist);
 			WeightedList<LogicTreeLevel<? extends SectionSupraSeisBValues.FixedWeight>> levels =
 					new WeightedList<>(3);
 			levels.add(new SingleModelLevel(EXTRAPOLATED), EXTRAPOLATED.weight);
