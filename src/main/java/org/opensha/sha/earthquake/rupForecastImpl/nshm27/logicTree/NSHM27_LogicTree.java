@@ -60,7 +60,7 @@ public class NSHM27_LogicTree {
 	public static final LogicTreeLevel<NSHM27_InterfaceMinSubSects> INTERFACE_MIN_SUB_SECTS =
 			LogicTreeLevel.forEnum(NSHM27_InterfaceMinSubSects.class, "Interface Minimum Subsection Count", "InterfaceMinSubSects");
 	public static final LogicTreeLevel<NSHM27_SeisBValueMethod> SEIS_B_VALUE_METHOD =
-			LogicTreeLevel.forEnum(NSHM27_SeisBValueMethod.class, "Seismicity b-Value Method", "SeisBMethod");
+			LogicTreeLevel.forEnum(NSHM27_SeisBValueMethod.class, "Seismicity b-value Method", "SeisBMethod");
 	public static double INTERFACE_B_HINGED_WEIGHT = 0.25;
 	public static double INTERFACE_B_SINGLE_DEFAULT = 1d;
 	public static ContinuousDistribution getInterfaceBDist(NSHM27_SeismicityRegions seisReg) {
