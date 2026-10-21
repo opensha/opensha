@@ -179,10 +179,12 @@ public class NSHM27_LogicTree {
 		if (gridded) {
 			int seisLevelsStart = levels.size();
 			if (sampled) {
+				// epoch catalogs are only for sampled pairs
 				NSHM27_SeisRateModelEpochCatalog epochCatalog = NSHM27_SeisRateModelEpochCatalog.load(seisReg, trt);
 				levels.add(new NSHM27_SeisRateModelEpoch.Level(epochCatalog));
 				levels.add(new NSHM27_SeisRateModelSamples(epochCatalog));
 			} else {
+				// rate models must use the mixture models (we don't have individual epoch rate model files)
 				levels.add(LogicTreeLevel.forEnum(NSHM27_SeisRateModelBranch.class,
 						NSHM27_RegionLoader.getNameForTRT(trt)+" rate model branch",
 						NSHM27_RegionLoader.getNameForTRT(trt)+"Branch"));
@@ -262,8 +264,21 @@ public class NSHM27_LogicTree {
 			LogicTreeNode value = branch.getValue(i);
 			if (value == null) {
 				LogicTreeLevel<?> level = levels.get(i);
-				if (!(level instanceof RandomLevel<?,?>))
-					branch.setValue(level.getNodes().get(0));
+				if (!(level instanceof RandomLevel<?,?>)) {
+					// set to max weight
+					double maxWeight = 0d;
+					LogicTreeNode maxWeightNode = null;
+					for (LogicTreeNode node : level.getNodes()) {
+						double weight = node.getNodeWeight(branch);
+						if (weight > maxWeight) {
+							maxWeight = weight;
+							maxWeightNode = node;
+						}
+						if (maxWeightNode == null)
+							maxWeightNode = node;
+					}
+					branch.setValue(maxWeightNode);
+				}
 			}
 		}
 		
