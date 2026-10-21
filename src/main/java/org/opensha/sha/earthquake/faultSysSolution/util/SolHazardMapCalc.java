@@ -480,8 +480,8 @@ public class SolHazardMapCalc {
 			this.calcIndexes = calcIndexes;
 			this.track = track;
 			this.combineWith = combineWith;
-			this.numFaultSysSources = erf.getNumFaultSystemSources();
 			IncludeBackgroundOption bgOption = (IncludeBackgroundOption) erf.getParameter(IncludeBackgroundParam.NAME).getValue();
+			this.numFaultSysSources = getNumFaultSystemSourcesForSiteSkip(erf, bgOption);
 			if (bgOption == IncludeBackgroundOption.INCLUDE || bgOption == IncludeBackgroundOption.ONLY)
 				gridProv = erf.getSolution().requireModule(GridSourceProvider.class);
 			this.erf = distCacheWrapper ? new DistCachedERFWrapper(erf) : erf;
@@ -551,11 +551,21 @@ public class SolHazardMapCalc {
 			maxDist = Math.min(maxDist, trtCutoffFilter.getCutoffs().getCutoffDist(trt));
 		return maxDist;
 	}
+
+	static int getNumFaultSystemSourcesForSiteSkip(BaseFaultSystemSolutionERF erf,
+			IncludeBackgroundOption bgOption) {
+		// getNumFaultSystemSources() reports the solution's available fault sources even when the ERF is configured
+		// to expose gridded sources only; in that mode, none of those fault sources can be queried from the ERF.
+		return bgOption == IncludeBackgroundOption.ONLY ? 0 : erf.getNumFaultSystemSources();
+	}
 	
 	public static boolean shouldSkipSite(Site site, SourceFilterManager siteSkipSourceFilter, AbstractERF erf,
-			int numFaultSysSources, GridSourceProvider gridProv) {
+			int numERFSourcesToCheck, GridSourceProvider gridProv) {
 		if (siteSkipSourceFilter == null)
 			return false;
+		Preconditions.checkArgument(numERFSourcesToCheck >= 0 && numERFSourcesToCheck <= erf.getNumSources(),
+				"Invalid number of ERF sources to check: %s; ERF has %s total sources",
+				numERFSourcesToCheck, erf.getNumSources());
 		boolean hasSourceWithin = false;
 		List<SourceFilter> fitlers = siteSkipSourceFilter.getEnabledFilters();
 		if (gridProv != null) {
@@ -577,7 +587,7 @@ public class SolHazardMapCalc {
 			}
 		}
 		
-		for (int sourceID=0; !hasSourceWithin && sourceID<numFaultSysSources; sourceID++) {
+		for (int sourceID=0; !hasSourceWithin && sourceID<numERFSourcesToCheck; sourceID++) {
 			ProbEqkSource source = erf.getSource(sourceID);
 			if (!SourceFilterUtils.canSkipSource(fitlers, source, site)) {
 				hasSourceWithin = true;
