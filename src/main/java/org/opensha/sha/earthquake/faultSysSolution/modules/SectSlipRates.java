@@ -173,6 +173,11 @@ SplittableRuptureModule<SectSlipRates>, MergeableRuptureModule<SectSlipRates> {
 			}
 			return new Default(mergedRupSet);
 		}
+
+		@Override
+		public Class<? extends SectSlipRates> getMergingType() {
+			return SectSlipRates.class;
+		}
 		
 	}
 	
@@ -360,6 +365,11 @@ SplittableRuptureModule<SectSlipRates>, MergeableRuptureModule<SectSlipRates> {
 				}
 			}
 			return new Precomputed(mergedRupSet, mergedSlipRates, mergedSlipRateStdDevs);
+		}
+
+		@Override
+		public Class<? extends SectSlipRates> getMergingType() {
+			return SectSlipRates.class;
 		}
 
 	}

@@ -7,6 +7,7 @@ import org.junit.runners.Suite;
 @Suite.SuiteClasses({
 	ArbitrarilyDiscretizedFunctionTest.class,
 	EvenlyDiscretizedFuncTest.class,
+	DefaultXYDataSetEqualityTest.class,
 	XY_JSONDeserializationTests.class,
 	EvenlyDiscrFuncContinuousDistributionTest.class,
 	QuickDiscretizedFuncInterpolatorTest.class

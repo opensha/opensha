@@ -11,6 +11,7 @@ import java.util.List;
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 import org.dom4j.Element;
 
+import com.google.common.base.Objects;
 import com.google.common.primitives.Doubles;
 import com.google.gson.annotations.JsonAdapter;
 
@@ -105,13 +106,43 @@ public class DefaultXY_DataSet extends AbstractXY_DataSet {
 
 	@Override
 	public boolean equals(Object obj) {
+		if (obj == this)
+			return true;
 		if (!(obj instanceof DefaultXY_DataSet))
 			return false;
 		DefaultXY_DataSet function = (DefaultXY_DataSet)obj;
-		if( !getName().equals(function.getName() )  ) return false;
-
-		if( !getInfo().equals(function.getInfo() )  ) return false;
+		if (!Objects.equal(getName(), function.getName()))
+			return false;
+		if (!Objects.equal(getInfo(), function.getInfo()))
+			return false;
+		int size = this.size();
+		if (size != function.size())
+			return false;
+		for (int i=0; i<size; i++) {
+			if ((float)getX(i) != (float)function.getX(i))
+				return false;
+			if ((float)getY(i) != (float)function.getY(i))
+				return false;
+		}
 		return true;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = 17;
+		result = 31 * result + (getName() == null ? 0 : getName().hashCode());
+		result = 31 * result + (getInfo() == null ? 0 : getInfo().hashCode());
+		for (int i=0; i<size(); i++) {
+			result = 31 * result + floatHashCode(getX(i));
+			result = 31 * result + floatHashCode(getY(i));
+		}
+		return result;
+	}
+
+	private static int floatHashCode(double value) {
+		float floatValue = (float)value;
+		// equals() considers positive and negative zero equal
+		return floatValue == 0f ? 0 : Float.floatToIntBits(floatValue);
 	}
 
 	@Override
