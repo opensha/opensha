@@ -117,10 +117,8 @@ public enum NSHM27_InterfaceMFDModel implements SectionSupraSeisBValues.FixedWei
 	 * Scales interface slip rates so that their associated moment equals the moment in the
 	 * extrapolated observed-seismicity MFD that is available to the inversion.
 	 */
-	public SectSlipRates applyExtrapolatedSlipRateScaling(FaultSystemRupSet rupSet,
+	public static SectSlipRates applyExtrapolatedSlipRateScaling(FaultSystemRupSet rupSet,
 			LogicTreeBranch<?> branch) throws IOException {
-		Preconditions.checkState(this == EXTRAPOLATED,
-				"Extrapolated slip-rate scaling is not applicable to %s", this);
 		Preconditions.checkState(getModel(branch) == EXTRAPOLATED,
 				"Logic-tree branch does not select the extrapolated interface MFD model");
 
