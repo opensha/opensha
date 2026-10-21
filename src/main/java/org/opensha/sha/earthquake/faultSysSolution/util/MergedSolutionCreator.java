@@ -149,7 +149,9 @@ public class MergedSolutionCreator {
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private static OpenSHA_Module mergeRuptureModule(OpenSHA_Module module, FaultSystemRupSet mergedRupSet,
 			MergedRupSetMappings mappings, FaultSystemSolution... sols) {
-		Class moduleClass = module.getClass();
+		Preconditions.checkState(module instanceof MergeableRuptureModule,
+				"Module is not a MergeableRuptureModule? %s %s", module.getName(), module.getClass());
+		Class moduleClass = ((MergeableRuptureModule)module).getMergingType();
 		List<OpenSHA_Module> originalModules = new ArrayList<>(sols.length);
 		for (FaultSystemSolution sol : sols)
 			originalModules.add(sol.getRupSet().getModule(moduleClass));
@@ -167,7 +169,9 @@ public class MergedSolutionCreator {
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private static OpenSHA_Module mergeSolutionModule(OpenSHA_Module module, FaultSystemSolution mergedSol,
 			MergedRupSetMappings mappings, FaultSystemSolution... sols) {
-		Class moduleClass = module.getClass();
+		Preconditions.checkState(module instanceof MergeableSolutionModule,
+				"Module is not a MergeableSolutionModule? %s %s", module.getName(), module.getClass());
+		Class moduleClass = ((MergeableSolutionModule)module).getMergingType();
 		List<OpenSHA_Module> originalModules = new ArrayList<>(sols.length);
 		for (FaultSystemSolution sol : sols)
 			originalModules.add(sol.getModule(moduleClass));
