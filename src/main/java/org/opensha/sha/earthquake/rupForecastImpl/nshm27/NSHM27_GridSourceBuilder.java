@@ -430,7 +430,7 @@ public class NSHM27_GridSourceBuilder {
 				TectonicRegionType.SUBDUCTION_INTERFACE, decluster, smooth);
 		GriddedGeoDataSet clippedPDF = new GriddedGeoDataSet(pdf.getRegion());
 		int skipped = 0;
-		double skippedWeight = 0d;
+		double skippedWt = 0d;
 		double overallMinDepth = Double.POSITIVE_INFINITY;
 		for (int i=0; i<pdf.size(); i++) {
 			double val = pdf.get(i);
@@ -440,7 +440,7 @@ public class NSHM27_GridSourceBuilder {
 			if (val > 0) {
 				if (!Double.isFinite(depth) || depth > INTERFACE_MAX_HYOPCENTRAL_DEPTH
 						|| !Double.isFinite(dips.get(i)) || !Double.isFinite(strikes.get(i))) {
-					skippedWeight += val;
+					skippedWt += val;
 					skipped++;
 					continue;
 				}
@@ -448,7 +448,7 @@ public class NSHM27_GridSourceBuilder {
 			}
 		}
 		if (skipped > 0) {
-			System.err.println("WARNING: clipped out "+skipped+" PDF locations with "+(float)skippedWeight+" for "+fullBranch);
+			System.err.println("WARNING: clipped out "+skipped+" interface PDF locations with skippedWt="+(float)skippedWt+" for "+fullBranch);
 			clippedPDF.scale(1d/clippedPDF.getSumZ());
 		}
 		
