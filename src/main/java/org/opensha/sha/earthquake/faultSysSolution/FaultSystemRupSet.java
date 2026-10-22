@@ -1418,11 +1418,16 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 
 	public final List<Integer> getParentSectionsForRup(int rupIndex) {
-		List<Integer> parents = Lists.newArrayList();
+		List<Integer> parents = new ArrayList<>();
+		int prevParent = -1;
 		for (int sectIndex : getSectionsIndicesForRup(rupIndex)) {
 			int parent = getFaultSectionData(sectIndex).getParentSectionId();
-			if (!parents.contains(parent))
-				parents.add(parent);
+			Preconditions.checkState(parent >= 0, "Bad parentID=%s", parent);
+			if (parent != prevParent) {
+				if (!parents.contains(parent))
+					parents.add(parent);
+				prevParent = parent;
+			}
 		}
 		return parents;
 	}
