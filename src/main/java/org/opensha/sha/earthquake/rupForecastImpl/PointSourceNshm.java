@@ -269,6 +269,7 @@ public class PointSourceNshm extends PoissonPointSource {
 	private static final int RJB_R_MAX_INDEX = RJB_R_SIZE - 1;
 	private static final String RJB_DAT_DIR = "data/nshmp/";
 	private static final double[][] RJB_WC94LENGTH = readRjb("rjb_wc94length.dat");
+	private static final double[][] RJB_GEOMATRIX = readRjb("rjb_geomatrix.dat");
 	private static final double[][] RJB_SOMERVILLE = readRjb("rjb_somerville.dat");
 
 	/* package visibility for testing */
@@ -316,19 +317,19 @@ public class PointSourceNshm extends PoissonPointSource {
 	public static class DistanceCorrection2013 implements PointSourceDistanceCorrection {
 
 		public double getCorrectedDistanceJB(double mag, double horzDist, TectonicRegionType trt) {
+			if (trt == TectonicRegionType.SUBDUCTION_SLAB)
+				throw new IllegalArgumentException("Slab distance corrections require rupture length information");
+			return getCorrectedDistanceJB(mag, horzDist,
+					trt == TectonicRegionType.STABLE_SHALLOW ? RJB_SOMERVILLE : RJB_WC94LENGTH);
+		}
+
+		private double getCorrectedDistanceJB(double mag, double horzDist, double[][] rJBTable) {
 			if (mag < RJB_M_CUTOFF) {
 				return horzDist;
 			}
 			int mIndex = min((int) round((mag - RJB_M_MIN) / RJB_M_DELTA), RJB_M_MAX_INDEX);
 			int rIndex = min(RJB_R_MAX_INDEX, (int) floor(horzDist));
-			return switch (trt) {
-			case STABLE_SHALLOW:
-				yield RJB_SOMERVILLE[mIndex][rIndex];
-				// TODO: add subduction logic?
-			default:
-				// active
-				yield RJB_WC94LENGTH[mIndex][rIndex];
-			};
+			return rJBTable[mIndex][rIndex];
 		}
 		
 		public double getCorrectedDistanceRup(double rJB, double zTop, double zBot, double dipRad, double horzWidth, boolean footwall) {
@@ -361,13 +362,18 @@ public class PointSourceNshm extends PoissonPointSource {
 				TectonicRegionType trt, double mag, double horzDist) {
 			Location surfLoc = surf.getLocation();
 			if (trt == TectonicRegionType.SUBDUCTION_SLAB) {
-				// NSHM13 always treats slab ruptures as true point sources
-				double corrJB = horzDist;
-				double zTop = surf.getAveRupTopDepth();
-				double rRup = hypot2(corrJB, zTop);
-				double rX = -corrJB;
-				return WeightedList.evenlyWeighted(
-						new SurfaceDistances.Precomputed(siteLoc, rRup, corrJB, rX));
+				double length = surf.getAveLength();
+				if (!Double.isFinite(length) || length < 0d)
+					throw new IllegalStateException("Invalid slab rupture length: "+length);
+				if (length == 0d) {
+					// Some NSHMPs, including PRVI, use true-point slab sources without a distance correction.
+					double corrJB = horzDist;
+					double zTop = surf.getAveRupTopDepth();
+					double rRup = hypot2(corrJB, zTop);
+					double rX = -corrJB;
+					return WeightedList.evenlyWeighted(
+							new SurfaceDistances.Precomputed(siteLoc, rRup, corrJB, rX));
+				}
 			} else if (trt == TectonicRegionType.ACTIVE_SHALLOW && surfLoc.lon >= -115 && surfLoc.lon <= -100
 					&& surf.getAveLength() > 0d && surf.getAveRupTopDepth() > 4.9) {
 				// TODO: keep this hack? it's dirty and not sure if it changes things much
@@ -391,7 +397,9 @@ public class PointSourceNshm extends PoissonPointSource {
 			}
 			// note: nshmp-haz still uses all of this logic for M<6, just with corrJB == horzDist, which will happen
 			// in getCorrectedDistanceJB
-			double corrJB = getCorrectedDistanceJB(mag, horzDist, trt);
+			double corrJB = trt == TectonicRegionType.SUBDUCTION_SLAB
+					? getCorrectedDistanceJB(mag, horzDist, RJB_GEOMATRIX)
+					: getCorrectedDistanceJB(mag, horzDist, trt);
 			
 			double dip = surf.getAveDip();
 			

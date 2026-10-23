@@ -238,17 +238,29 @@ public interface JumpProbabilityCalc extends RuptureProbabilityCalc {
 		
 		@JsonAdapter(GenericJumpProbCalcAdapter.class)
 		private JumpProbabilityCalc fallback;
+		private double fallbackValue;
 
 		public HardcodedJumpProb(String name, Map<IDPairing, Double> idsToProbs, boolean parentSects) {
-			this(name, idsToProbs, parentSects, null);
+			this(name, idsToProbs, parentSects, 1d);
 		}
 
 		public HardcodedJumpProb(String name, Map<IDPairing, Double> idsToProbs, boolean parentSects,
 				JumpProbabilityCalc fallback) {
+			this(name, idsToProbs, parentSects, fallback, 1d);
+		}
+
+		public HardcodedJumpProb(String name, Map<IDPairing, Double> idsToProbs, boolean parentSects,
+				double fallbackValue) {
+			this(name, idsToProbs, parentSects, null, fallbackValue);
+		}
+
+		private HardcodedJumpProb(String name, Map<IDPairing, Double> idsToProbs, boolean parentSects,
+				JumpProbabilityCalc fallback, double fallbackValue) {
 			this.name = name;
 			this.idsToProbs = idsToProbs;
 			this.parentSects = parentSects;
 			this.fallback = fallback;
+			this.fallbackValue = fallbackValue;
 		}
 
 		@Override
@@ -274,7 +286,7 @@ public interface JumpProbabilityCalc extends RuptureProbabilityCalc {
 			if (prob != null)
 				return prob;
 			if (fallback == null)
-				return 1d;
+				return fallbackValue;
 			return fallback.calcJumpProbability(fullRupture, jump, verbose);
 		}
 	}

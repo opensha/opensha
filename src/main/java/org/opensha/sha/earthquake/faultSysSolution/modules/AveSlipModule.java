@@ -177,6 +177,11 @@ SplittableRuptureModule<AveSlipModule>, MergeableRuptureModule<AveSlipModule> {
 			}
 			return new ModelBased(mergedRupSet, scale);
 		}
+
+		@Override
+		public Class<? extends AveSlipModule> getMergingType() {
+			return AveSlipModule.class;
+		}
 		
 	}
 	
@@ -331,6 +336,11 @@ SplittableRuptureModule<AveSlipModule>, MergeableRuptureModule<AveSlipModule> {
 					aveSlips[rupMappings.get(origRupIndex)] = orig.getAveSlip(origRupIndex);
 			}
 			return new Precomputed(mergedRupSet, aveSlips);
+		}
+
+		@Override
+		public Class<? extends AveSlipModule> getMergingType() {
+			return AveSlipModule.class;
 		}
 
 	}

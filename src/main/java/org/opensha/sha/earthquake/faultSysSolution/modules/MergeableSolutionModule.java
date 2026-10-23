@@ -2,6 +2,7 @@ package org.opensha.sha.earthquake.faultSysSolution.modules;
 
 import java.util.List;
 
+import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.ModuleHelper;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -20,6 +21,13 @@ public interface MergeableSolutionModule<E extends OpenSHA_Module> extends OpenS
 	 * @return merged module across the given original modules, or null if impossible
 	 */
 	public E getForMergedSolution(FaultSystemSolution mergedSolution, MergedRupSetMappings mappings, List<E> originalModules);
+	
+	/**
+	 * Different module subclasses can have the same parent class merging 
+	 * 
+	 * @return the class that should be used to load this module from an archive
+	 */
+	public Class<? extends E> getMergingType();
 	
 	/**
 	 * Helper for a module that is a constant value, where any instance can be copied over in a merging operation

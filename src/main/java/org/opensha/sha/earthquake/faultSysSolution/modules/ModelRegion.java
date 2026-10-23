@@ -70,4 +70,9 @@ MergeableRuptureModule.ConstantMergeable<ModelRegion> {
 		return module == this || module.region.equalsRegion(region);
 	}
 
+	@Override
+	public Class<? extends ModelRegion> getMergingType() {
+		return ModelRegion.class;
+	}
+
 }
