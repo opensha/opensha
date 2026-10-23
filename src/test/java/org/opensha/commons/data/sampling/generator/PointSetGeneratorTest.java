@@ -112,6 +112,25 @@ public class PointSetGeneratorTest {
 	}
 
 	@Test
+	public void testSobolDimensionBlockMatchesFullSet() {
+		PointSet full = new SobolPointSetGenerator(13L).generate(31, 9);
+		PointSet block = new SobolPointSetGenerator(13L, 3).generate(31, 4);
+		for (int p=0; p<block.size(); p++)
+			for (int d=0; d<block.dimensions(); d++)
+				assertEquals(full.get(p, d+3), block.get(p, d), TOL);
+	}
+
+	@Test
+	public void testOwenDimensionBlockMatchesFullSet() {
+		long seed = 918273L;
+		PointSet full = new OwenScrambledSobolPointSetGenerator(new Random(seed), 13L).generate(31, 9);
+		PointSet block = new OwenScrambledSobolPointSetGenerator(new Random(seed), 13L, 3).generate(31, 4);
+		for (int p=0; p<block.size(); p++)
+			for (int d=0; d<block.dimensions(); d++)
+				assertEquals(full.get(p, d+3), block.get(p, d), TOL);
+	}
+
+	@Test
 	public void testOwenScramblePreservesPowerOfTwoMarginalStrata() {
 		int size = 256;
 		PointSet points = new OwenScrambledSobolPointSetGenerator(new Random(78342L)).generate(size, 10);

@@ -6,6 +6,7 @@ import org.opensha.commons.data.sampling.PointSetTransform;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.logicTree.sampling.SamplingMethod.PreparedPointSet;
 
 import com.google.common.base.Preconditions;
 
@@ -14,6 +15,7 @@ public final class SampledLogicTreeBuilder<E extends LogicTreeNode> {
 
 	private final LogicTreePointSetMapper<E> mapper;
 	private PointSetTransform transform;
+	private int storedPointSetDimensions = -1;
 
 	public SampledLogicTreeBuilder(List<? extends LogicTreeLevel<? extends E>> levels,
 			LogicTreeNode... required) {
@@ -26,9 +28,33 @@ public final class SampledLogicTreeBuilder<E extends LogicTreeNode> {
 		return this;
 	}
 
+	/**
+	 * Sets the width of the point set retained with the sampled tree. It must be at least the number of dimensions
+	 * currently mapped to logic-tree levels; additional dimensions are generated and stored for future extensions.
+	 */
+	public SampledLogicTreeBuilder<E> storedPointSetDimensions(int storedPointSetDimensions) {
+		Preconditions.checkArgument(storedPointSetDimensions > 0,
+				"Stored point-set dimension count must be positive");
+		this.storedPointSetDimensions = storedPointSetDimensions;
+		return this;
+	}
+
 	public LogicTree<E> build(int numSamples, long seed, SamplingMethod samplingMethod) {
-		PointSet points = samplingMethod.prepare(numSamples, mapper.getSamplingDimensions(), seed);
-		return finish(points, samplingMethod, samplingMethod.usesRandomSeed() ? seed : null);
+		int mappedDimensions = mapper.dimensions();
+		int storedDimensions = storedPointSetDimensions < 0 ? mappedDimensions : storedPointSetDimensions;
+		Preconditions.checkArgument(storedDimensions >= mappedDimensions,
+				"Stored point-set dimension count %s is less than mapped dimension count %s",
+				storedDimensions, mappedDimensions);
+		PreparedPointSet prepared = samplingMethod.prepare(
+				numSamples, mapper.getSamplingDimensions(), storedDimensions, seed);
+		PointSet finalMappedPoints = applyTransform(prepared.mappedPointSet());
+		PointSet finalStoredPoints = transform == null ? prepared.pointSet()
+				: prepared.replaceMappedPointSet(finalMappedPoints);
+		LogicTree<E> tree = mapper.map(finalMappedPoints);
+		tree.setSamplingParameters(samplingMethod.usesRandomSeed() ? seed : null, 0, samplingMethod);
+		tree.setSamplingPointSet(finalStoredPoints, SamplingPointSetLayout.DIRECT,
+				prepared.dimensionIndexes());
+		return tree;
 	}
 
 	public LogicTree<E> build(PointSet pointSet) {

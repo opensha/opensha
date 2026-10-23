@@ -14,6 +14,7 @@ import org.opensha.commons.data.sampling.ContinuousSamplingDimension;
 import org.opensha.commons.data.sampling.InactiveSamplingDimension;
 import org.opensha.commons.data.sampling.PointSet;
 import org.opensha.commons.data.sampling.SamplingDimension;
+import org.opensha.commons.logicTree.sampling.SamplingMethod.PreparedPointSet;
 
 public class SamplingMethodTest {
 
@@ -58,6 +59,42 @@ public class SamplingMethodTest {
 		for (SamplingMethod method : SamplingMethod.values())
 			assertEquals(method == SamplingMethod.OWEN_SCRAMBLED_SOBOL,
 					method.randomizesDimensionAssignments());
+	}
+
+	@Test
+	public void testReservedDimensionsPreserveMappedSample() {
+		List<SamplingDimension> dimensions = List.of(
+				CategoricalSamplingDimension.forWeights(1d, 2d),
+				ContinuousSamplingDimension.INSTANCE,
+				ContinuousSamplingDimension.INSTANCE);
+		long seed = 182734L;
+		PointSet standard = SamplingMethod.OWEN_SCRAMBLED_SOBOL.prepare(32, dimensions, seed);
+		PreparedPointSet reserved = SamplingMethod.OWEN_SCRAMBLED_SOBOL.prepare(
+				32, dimensions, 7, seed);
+		assertPointSetsEqual(standard, reserved.mappedPointSet());
+		assertEquals(7, reserved.pointSet().dimensions());
+		boolean[] mapped = new boolean[7];
+		for (int index : reserved.dimensionIndexes()) {
+			assertTrue(index < dimensions.size());
+			mapped[index] = true;
+		}
+		for (int d=0; d<mapped.length; d++)
+			assertEquals(!mapped[d], reserved.pointSet().getDimension(d) == InactiveSamplingDimension.INSTANCE);
+	}
+
+	@Test
+	public void testStoredWidthDoesNotChangeMappedCoordinates() {
+		List<SamplingDimension> dimensions = List.of(
+				ContinuousSamplingDimension.INSTANCE,
+				ContinuousSamplingDimension.INSTANCE,
+				ContinuousSamplingDimension.INSTANCE);
+		for (SamplingMethod method : List.of(SamplingMethod.MONTE_CARLO, SamplingMethod.LATIN_HYPERCUBE,
+				SamplingMethod.SOBOL, SamplingMethod.OWEN_SCRAMBLED_SOBOL)) {
+			long seed = 9182734L;
+			PointSet standard = method.prepare(32, dimensions, seed);
+			PointSet reserved = method.prepare(32, dimensions, 8, seed).mappedPointSet();
+			assertPointSetsEqual(standard, reserved);
+		}
 	}
 
 	@Test(expected=IllegalStateException.class)

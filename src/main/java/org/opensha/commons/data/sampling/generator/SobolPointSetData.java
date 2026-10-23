@@ -14,6 +14,11 @@ final class SobolPointSetData {
 	}
 
 	static double[][] generate(int numPoints, int dimensions, long startIndex, CoordinateScrambler scrambler) {
+		return generate(numPoints, dimensions, startIndex, 0, scrambler);
+	}
+
+	static double[][] generate(int numPoints, int dimensions, long startIndex, int firstDimension,
+			CoordinateScrambler scrambler) {
 		PointSetGeneratorUtils.validateShape(numPoints, dimensions);
 		if (startIndex < 0L)
 			throw new IllegalArgumentException("Sobol starting index cannot be negative, have " + startIndex);
@@ -27,12 +32,13 @@ final class SobolPointSetData {
 			throw new IllegalArgumentException("Sobol index range must end by " + MAX_INDEX_EXCLUSIVE
 					+ ", have " + endExclusive);
 
-		long[][] directions = SobolDirectionNumbers.forDimensions(dimensions);
+		long[][] directions = SobolDirectionNumbers.forDimensions(firstDimension, dimensions);
 		long[] state = stateAt(startIndex, directions);
 		double[][] points = new double[numPoints][dimensions];
 		for (int p=0; p<numPoints; p++) {
 			for (int d=0; d<dimensions; d++) {
-				long coordinate = scrambler == null ? state[d] : scrambler.scramble(state[d], d);
+				long coordinate = scrambler == null ? state[d]
+						: scrambler.scramble(state[d], firstDimension+d);
 				if ((coordinate & -MAX_INDEX_EXCLUSIVE) != 0L)
 					throw new IllegalStateException("Scrambler returned a coordinate outside 52 bits");
 				points[p][d] = coordinate*TO_UNIT_INTERVAL;

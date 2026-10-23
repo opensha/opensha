@@ -55,6 +55,20 @@ public class PointSetTest {
 	}
 
 	@Test
+	public void testDimensionSubsetSupportsReordering() {
+		PointSet source = new ArrayPointSet(new double[][] { { 0.1, 0.2, 0.3 } });
+		DimensionSubsetPointSet subset = new DimensionSubsetPointSet(source, 2, 0);
+		assertEquals(0.3, subset.get(0, 0), 0d);
+		assertEquals(0.1, subset.get(0, 1), 0d);
+		assertEquals(2, subset.getSourceDimensionIndex(0));
+	}
+
+	@Test(expected=IllegalArgumentException.class)
+	public void testDimensionSubsetRejectsRepeatedSource() {
+		new DimensionSubsetPointSet(new ArrayPointSet(new double[][] { { 0.1, 0.2 } }), 1, 1);
+	}
+
+	@Test
 	public void testRandomDimensionPermutationIsNoCopyAndMovesMetadata() {
 		MutablePointSet coordinates = new MutablePointSet(new double[][] {
 				{ 0.1, 0.2, 0.3 }, { 0.4, 0.5, 0.6 }

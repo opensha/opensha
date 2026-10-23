@@ -3,6 +3,7 @@ package org.opensha.commons.logicTree.sampling;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.StringReader;
@@ -139,6 +140,41 @@ public class LogicTreePointSetMapperTest {
 		assertEquals(SamplingMethod.EXTERNAL, external.getSamplingMethod());
 		assertEquals(level.getNodes().get(0), external.getBranch(0).getValue(0));
 		assertEquals(level.getNodes().get(1), external.getBranch(1).getValue(0));
+	}
+
+	@Test
+	public void testReservedPointSetDimensionsAndMappingRoundTrip() throws Exception {
+		List<LogicTreeLevel<? extends LogicTreeNode>> levels = List.of(
+				binaryLevel("First", "F"), binaryLevel("Second", "S"));
+		long seed = 812734L;
+		LogicTree<LogicTreeNode> standard = new SampledLogicTreeBuilder<LogicTreeNode>(levels)
+				.build(16, seed, SamplingMethod.OWEN_SCRAMBLED_SOBOL);
+		LogicTree<LogicTreeNode> reserved = new SampledLogicTreeBuilder<LogicTreeNode>(levels)
+				.storedPointSetDimensions(6)
+				.build(16, seed, SamplingMethod.OWEN_SCRAMBLED_SOBOL);
+		assertEquals(6, reserved.getSamplingPointSet().dimensions());
+		assertEquals(2, reserved.getMappedSamplingPointSet().dimensions());
+		for (int p=0; p<standard.size(); p++) {
+			assertEquals(standard.getBranch(p), reserved.getBranch(p));
+			for (int d=0; d<levels.size(); d++)
+				assertEquals(standard.getSamplingPointSet().get(p, d),
+						reserved.getMappedSamplingPointSet().get(p, d), 0d);
+		}
+		int[] indexes = reserved.getSamplingPointSetDimensionIndexes();
+		assertEquals(2, indexes.length);
+		for (int d=2; d<reserved.getSamplingPointSet().dimensions(); d++)
+			assertTrue(reserved.getSamplingPointSet().getDimension(d) instanceof InactiveSamplingDimension);
+
+		Gson gson = new GsonBuilder().serializeSpecialFloatingPointValues().create();
+		String json = gson.toJson(reserved, LogicTree.class);
+		assertTrue(json.contains("\"samplingPointSetDimensionIndexes\""));
+		LogicTree<LogicTreeNode> loaded = LogicTree.read(new StringReader(json));
+		assertArrayEquals(indexes, loaded.getSamplingPointSetDimensionIndexes());
+		assertEquals(6, loaded.getSamplingPointSet().dimensions());
+		for (int p=0; p<reserved.size(); p++)
+			for (int d=0; d<levels.size(); d++)
+				assertEquals(reserved.getMappedSamplingPointSet().get(p, d),
+						loaded.getMappedSamplingPointSet().get(p, d), 0d);
 	}
 
 	@Test

@@ -17,12 +17,18 @@ final class SobolDirectionNumbers {
 	private SobolDirectionNumbers() {}
 
 	static long[][] forDimensions(int dimensions) {
-		if (dimensions < 1 || dimensions > MAX_DIMENSIONS)
-			throw new IllegalArgumentException("Sobol dimensions must be in [1," + MAX_DIMENSIONS
-					+ "], have " + dimensions);
+		return forDimensions(0, dimensions);
+	}
+
+	static long[][] forDimensions(int firstDimension, int dimensions) {
+		if (firstDimension < 0)
+			throw new IllegalArgumentException("First Sobol dimension cannot be negative, have " + firstDimension);
+		if (dimensions < 1 || (long)firstDimension + dimensions > MAX_DIMENSIONS)
+			throw new IllegalArgumentException("Sobol dimension range must be within [0," + MAX_DIMENSIONS
+					+ "), have [" + firstDimension + "," + ((long)firstDimension+dimensions) + ")");
 		long[][] all = Holder.DIRECTIONS;
 		long[][] selected = new long[dimensions][];
-		System.arraycopy(all, 0, selected, 0, dimensions);
+		System.arraycopy(all, firstDimension, selected, 0, dimensions);
 		return selected;
 	}
 

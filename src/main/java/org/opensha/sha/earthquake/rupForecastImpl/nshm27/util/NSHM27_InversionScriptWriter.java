@@ -45,6 +45,10 @@ public class NSHM27_InversionScriptWriter {
 		ops.addRequiredOption(null, "samples", true, "Number of logic tree samples.");
 		ops.addOption(null, "unique-seed", false, "Flag to use a unique seed from this calculation rather than the "
 				+ "deterministic seed based on the region and sample count/method.");
+		ops.addOption(null, "point-set-dimensions", true, "Total number of point-set dimensions to generate and store; "
+				+ "must be at least the number currently mapped to logic-tree levels.");
+		ops.addOption(null, "extra-point-set-dimensions", true, "Number of additional inactive point-set dimensions to "
+				+ "generate and store for future logic-tree extensions.");
 		ops.addOption(null, "name-add", true, "Add arbitrary additional directory name strings");
 		ops.addOption(null, "date", true, "Date override");
 		
@@ -103,6 +107,7 @@ public class NSHM27_InversionScriptWriter {
 //					"--unique-seed",
 //					"--name-add", "2",
 //					"--name-add", "reserve",
+					"--extra-point-set-dimensions", "20",
 					
 					"--hazard-grid-spacing", "0.2",
 					"--write-hazard-curves",
@@ -118,9 +123,27 @@ public class NSHM27_InversionScriptWriter {
 				SamplingMethod.valueOf(cmd.getOptionValue("sampling-method")) : SAMPLING_METHOD_DEFAULT;
 		double gridSpacing = cmd.hasOption("hazard-grid-spacing") ?
 				Double.parseDouble(cmd.getOptionValue("hazard-grid-spacing")) : GRID_SPACING_DEFAULT;
+		if (cmd.hasOption("point-set-dimensions") && cmd.hasOption("extra-point-set-dimensions"))
+			throw new IllegalArgumentException("Specify only one of --point-set-dimensions and "
+					+ "--extra-point-set-dimensions");
+		int storedPointSetDimensions = -1;
+		if (cmd.hasOption("point-set-dimensions")) {
+			storedPointSetDimensions = Integer.parseInt(cmd.getOptionValue("point-set-dimensions"));
+			if (storedPointSetDimensions <= 0)
+				throw new IllegalArgumentException("--point-set-dimensions must be positive");
+		} else if (cmd.hasOption("extra-point-set-dimensions")) {
+			int extraDimensions = Integer.parseInt(cmd.getOptionValue("extra-point-set-dimensions"));
+			if (extraDimensions < 0)
+				throw new IllegalArgumentException("--extra-point-set-dimensions cannot be negative");
+			storedPointSetDimensions = Math.addExact(
+					NSHM27_LogicTree.getMultiRegimeSamplingDimensionCount(seisReg), extraDimensions);
+		}
 
-		LogicTree<LogicTreeNode> logicTree = NSHM27_LogicTree.buildMultiRegimeTree(
-				seisReg, numBranchSamples, deterministicSeed, samplingMethod);
+		LogicTree<LogicTreeNode> logicTree = storedPointSetDimensions < 0
+				? NSHM27_LogicTree.buildMultiRegimeTree(
+						seisReg, numBranchSamples, deterministicSeed, samplingMethod)
+				: NSHM27_LogicTree.buildMultiRegimeTree(
+						seisReg, numBranchSamples, deterministicSeed, samplingMethod, storedPointSetDimensions);
 		LogicTree<LogicTreeNode> analysisTree = LogicTree.applyBinning(LogicTree.unrollTRTs(logicTree));
 
 		GriddedRegion hazardRegion = new GriddedRegion(

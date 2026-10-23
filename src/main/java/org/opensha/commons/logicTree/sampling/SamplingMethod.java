@@ -1,12 +1,17 @@
 package org.opensha.commons.logicTree.sampling;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.SplittableRandom;
 import java.util.random.RandomGenerator;
 
 import org.opensha.commons.data.ShortNamed;
+import org.opensha.commons.data.sampling.ArrayPointSet;
+import org.opensha.commons.data.sampling.DimensionSubsetPointSet;
 import org.opensha.commons.data.sampling.DimensionedPointSet;
+import org.opensha.commons.data.sampling.InactiveSamplingDimension;
 import org.opensha.commons.data.sampling.PermutedPointSet;
 import org.opensha.commons.data.sampling.PointSet;
 import org.opensha.commons.data.sampling.RandomDimensionPermutationTransform;
@@ -92,21 +97,153 @@ public enum SamplingMethod implements ShortNamed {
 	 * Generates and decorates a point set, then applies any dimension-aware processing selected by this method.
 	 */
 	public PointSet prepare(int numPoints, List<? extends SamplingDimension> dimensions, RandomGenerator random) {
+		return prepare(numPoints, dimensions, dimensions.size(), random).mappedPointSet();
+	}
+
+	/**
+	 * Generates a point set whose stored width may exceed the number of dimensions currently used for sampling. The
+	 * returned mapping identifies the stored coordinate column assigned to each supplied sampling dimension. Any
+	 * additional stored dimensions are retained as inactive dimensions for future extensions.
+	 */
+	public PreparedPointSet prepare(int numPoints, List<? extends SamplingDimension> dimensions,
+			int storedDimensions, long seed) {
+		return prepare(numPoints, dimensions, storedDimensions, new Random(seed));
+	}
+
+	/**
+	 * Generates a point set whose stored width may exceed the number of dimensions currently used for sampling. The
+	 * supplied random generator is split into the same independent streams used by the standard preparation method.
+	 */
+	public PreparedPointSet prepare(int numPoints, List<? extends SamplingDimension> dimensions,
+			int storedDimensions, RandomGenerator random) {
 		Preconditions.checkNotNull(dimensions, "Sampling dimensions cannot be null");
+		Preconditions.checkArgument(!dimensions.isEmpty(), "Sampling dimensions cannot be empty");
+		Preconditions.checkArgument(storedDimensions >= dimensions.size(),
+				"Stored dimension count %s is less than mapped dimension count %s",
+				storedDimensions, dimensions.size());
 		RandomStreams streams = randomStreams(random);
-		PointSet pointSet = generate(numPoints, dimensions.size(), streams);
-		pointSet = new DimensionedPointSet(pointSet, dimensions);
-		return optimizeIfRequested(pointSet, streams.optimization());
+		PointSet generated = generateRawForPreparation(
+				numPoints, dimensions.size(), storedDimensions, streams.generation());
+		int[] dimensionIndexes = identity(dimensions.size());
+		if (randomizeDimensionAssignments)
+			shuffle(dimensionIndexes, streams.dimensionAssignment());
+
+		List<SamplingDimension> storedDefinitions = new ArrayList<>(
+				java.util.Collections.nCopies(storedDimensions, InactiveSamplingDimension.INSTANCE));
+		for (int d=0; d<dimensionIndexes.length; d++)
+			storedDefinitions.set(dimensionIndexes[d], dimensions.get(d));
+		PointSet storedPointSet = new DimensionedPointSet(generated, storedDefinitions);
+		PointSet mappedPointSet = new DimensionSubsetPointSet(storedPointSet, dimensionIndexes);
+		PointSet optimizedPointSet = optimizeIfRequested(mappedPointSet, streams.optimization());
+		if (optimizedPointSet != mappedPointSet)
+			storedPointSet = replaceMappedPointSet(storedPointSet, optimizedPointSet, dimensionIndexes);
+		return new PreparedPointSet(storedPointSet, dimensionIndexes);
 	}
 
 	private PointSet generate(int numPoints, int dimensions, RandomStreams streams) {
-		Preconditions.checkArgument(numPoints > 0, "NumPoints must be positive");
-		Preconditions.checkArgument(dimensions > 0, "Dimensions must be positive");
-		Preconditions.checkState(this != EXTERNAL, "External point sets cannot be generated");
-		PointSet pointSet = createGenerator(streams.generation()).generate(numPoints, dimensions);
+		PointSet pointSet = generateRaw(numPoints, dimensions, streams.generation());
 		if (randomizeDimensionAssignments)
 			pointSet = new RandomDimensionPermutationTransform(streams.dimensionAssignment()).apply(pointSet);
 		return pointSet;
+	}
+
+	private PointSet generateRaw(int numPoints, int dimensions, RandomGenerator random) {
+		Preconditions.checkArgument(numPoints > 0, "NumPoints must be positive");
+		Preconditions.checkArgument(dimensions > 0, "Dimensions must be positive");
+		Preconditions.checkState(this != EXTERNAL, "External point sets cannot be generated");
+		return createGenerator(random).generate(numPoints, dimensions);
+	}
+
+	private PointSet generateRawForPreparation(int numPoints, int mappedDimensions, int storedDimensions,
+			RandomGenerator random) {
+		if (this != MONTE_CARLO || storedDimensions == mappedDimensions)
+			return generateRaw(numPoints, storedDimensions, random);
+		// Monte Carlo generation is point-major, so generating the wider matrix directly would change every point after
+		// the first. Generate the mapped prefix first to keep existing samples independent of reserved storage width.
+		PointSet mapped = generateRaw(numPoints, mappedDimensions, random);
+		PointSet reserved = generateRaw(numPoints, storedDimensions-mappedDimensions, random);
+		double[][] values = new double[numPoints][storedDimensions];
+		for (int p=0; p<numPoints; p++) {
+			for (int d=0; d<mappedDimensions; d++)
+				values[p][d] = mapped.get(p, d);
+			for (int d=mappedDimensions; d<storedDimensions; d++)
+				values[p][d] = reserved.get(p, d-mappedDimensions);
+		}
+		return new ArrayPointSet(values);
+	}
+
+	private static int[] identity(int dimensions) {
+		int[] indexes = new int[dimensions];
+		for (int d=0; d<dimensions; d++)
+			indexes[d] = d;
+		return indexes;
+	}
+
+	private static void shuffle(int[] indexes, RandomGenerator random) {
+		for (int d=indexes.length-1; d>0; d--) {
+			int swap = random.nextInt(d+1);
+			int index = indexes[d];
+			indexes[d] = indexes[swap];
+			indexes[swap] = index;
+		}
+	}
+
+	private static PointSet replaceMappedPointSet(PointSet storedPointSet, PointSet mappedPointSet,
+			int[] dimensionIndexes) {
+		Preconditions.checkNotNull(mappedPointSet, "Mapped point set cannot be null");
+		Preconditions.checkArgument(mappedPointSet.size() == storedPointSet.size(),
+				"Mapped point count %s != stored point count %s", mappedPointSet.size(), storedPointSet.size());
+		Preconditions.checkArgument(mappedPointSet.dimensions() == dimensionIndexes.length,
+				"Mapped dimension count %s != mapping length %s",
+				mappedPointSet.dimensions(), dimensionIndexes.length);
+		double[][] values = new double[storedPointSet.size()][];
+		for (int p=0; p<values.length; p++) {
+			values[p] = storedPointSet.getPoint(p);
+			for (int d=0; d<dimensionIndexes.length; d++)
+				values[p][dimensionIndexes[d]] = mappedPointSet.get(p, d);
+		}
+		List<SamplingDimension> definitions = new ArrayList<>(storedPointSet.dimensions());
+		for (int d=0; d<storedPointSet.dimensions(); d++)
+			definitions.add(storedPointSet.getDimension(d));
+		for (int d=0; d<dimensionIndexes.length; d++)
+			definitions.set(dimensionIndexes[d], mappedPointSet.getDimension(d));
+		return new DimensionedPointSet(new ArrayPointSet(values), definitions);
+	}
+
+	/** Full stored point set plus the stored-column assignment of each currently mapped dimension. */
+	public static final class PreparedPointSet {
+		private final PointSet pointSet;
+		private final int[] dimensionIndexes;
+
+		private PreparedPointSet(PointSet pointSet, int[] dimensionIndexes) {
+			this.pointSet = pointSet;
+			this.dimensionIndexes = dimensionIndexes.clone();
+		}
+
+		/** @return full stored point set, including inactive reserved dimensions */
+		public PointSet pointSet() {
+			return pointSet;
+		}
+
+		/** @return no-copy logical-order view containing only currently mapped dimensions */
+		public PointSet mappedPointSet() {
+			return new DimensionSubsetPointSet(pointSet, dimensionIndexes);
+		}
+
+		/** @return stored point-set column for each logical sampling dimension */
+		public int[] dimensionIndexes() {
+			return dimensionIndexes.clone();
+		}
+
+		/** Replaces mapped coordinates while retaining all reserved coordinates. */
+		public PointSet replaceMappedPointSet(PointSet mappedPointSet) {
+			return SamplingMethod.replaceMappedPointSet(pointSet, mappedPointSet, dimensionIndexes);
+		}
+
+		@Override public String toString() {
+			return "PreparedPointSet[points=" + pointSet.size() + ", storedDimensions=" + pointSet.dimensions()
+					+ ", dimensionIndexes=" + Arrays.toString(dimensionIndexes) + "]";
+		}
 	}
 
 	private PointSet optimizeIfRequested(PointSet pointSet, RandomGenerator random) {

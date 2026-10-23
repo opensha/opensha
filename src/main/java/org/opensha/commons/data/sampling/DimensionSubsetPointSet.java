@@ -1,6 +1,6 @@
 package org.opensha.commons.data.sampling;
 
-/** A no-copy view selecting an ordered subset of dimensions from another point set. */
+/** A no-copy view selecting dimensions from another point set in the supplied order. */
 public final class DimensionSubsetPointSet implements PointSet {
 
 	private final PointSet source;
@@ -15,12 +15,14 @@ public final class DimensionSubsetPointSet implements PointSet {
 			throw new IllegalArgumentException("At least one dimension must be selected");
 		this.source = source;
 		this.sourceDimensions = sourceDimensions.clone();
+		boolean[] used = new boolean[source.dimensions()];
 		for (int i=0; i<this.sourceDimensions.length; i++) {
 			int dimension = this.sourceDimensions[i];
 			if (dimension < 0 || dimension >= source.dimensions())
 				throw new IndexOutOfBoundsException("Source dimension out of range: " + dimension);
-			if (i > 0 && dimension <= this.sourceDimensions[i-1])
-				throw new IllegalArgumentException("Source dimensions must be strictly increasing");
+			if (used[dimension])
+				throw new IllegalArgumentException("Source dimension " + dimension + " is repeated");
+			used[dimension] = true;
 		}
 	}
 

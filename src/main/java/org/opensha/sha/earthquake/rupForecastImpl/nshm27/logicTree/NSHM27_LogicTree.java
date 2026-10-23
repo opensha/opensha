@@ -18,6 +18,7 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
 import org.opensha.commons.logicTree.sampling.SamplingMethod;
+import org.opensha.commons.logicTree.sampling.SamplingMethod.PreparedPointSet;
 import org.opensha.commons.logicTree.sampling.SamplingPointSetLayout;
 import org.opensha.commons.logicTree.sampling.LogicTreePointSetMapper;
 import org.opensha.commons.logicTree.LogicTreeNode;
@@ -318,6 +319,11 @@ public class NSHM27_LogicTree {
 	
 	public static LogicTree<LogicTreeNode> buildMultiRegimeTree(NSHM27_SeismicityRegions seisReg,
 			int numSamples, boolean deterministicSeed, SamplingMethod samplingMethod) {
+		return buildMultiRegimeTree(seisReg, numSamples, deterministicSeed, samplingMethod, -1);
+	}
+
+	public static LogicTree<LogicTreeNode> buildMultiRegimeTree(NSHM27_SeismicityRegions seisReg,
+			int numSamples, boolean deterministicSeed, SamplingMethod samplingMethod, int storedPointSetDimensions) {
 		long seed;
 		if (deterministicSeed) {
 			List<Integer> seedComponents = new ArrayList<>();
@@ -328,11 +334,16 @@ public class NSHM27_LogicTree {
 		} else {
 			seed = new Random().nextLong();
 		}
-		return buildMultiRegimeTree(seisReg, numSamples, seed, samplingMethod);
+		return buildMultiRegimeTree(seisReg, numSamples, seed, samplingMethod, storedPointSetDimensions);
 	}
 	
 	public static LogicTree<LogicTreeNode> buildMultiRegimeTree(NSHM27_SeismicityRegions seisReg,
 			int numSamples, long seed, SamplingMethod samplingMethod) {
+		return buildMultiRegimeTree(seisReg, numSamples, seed, samplingMethod, -1);
+	}
+
+	public static LogicTree<LogicTreeNode> buildMultiRegimeTree(NSHM27_SeismicityRegions seisReg,
+			int numSamples, long seed, SamplingMethod samplingMethod, int storedPointSetDimensions) {
 		List<LogicTreeLevel<? extends LogicTreeNode>> commonLevels = buildCommonLevels();
 		List<LogicTreeLevel<? extends LogicTreeNode>> interfaceLevels = buildLevels(seisReg,
 				TectonicRegionType.SUBDUCTION_INTERFACE, true, true, true, false);
@@ -352,10 +363,17 @@ public class NSHM27_LogicTree {
 		dimensions.addAll(commonMapper.getSamplingDimensions());
 		for (LogicTreePointSetMapper<LogicTreeNode> mapper : mappers)
 			dimensions.addAll(mapper.getSamplingDimensions());
-		PointSet fullPoints = samplingMethod.prepare(numSamples, dimensions, seed);
+		if (storedPointSetDimensions < 0)
+			storedPointSetDimensions = dimensions.size();
+		Preconditions.checkArgument(storedPointSetDimensions >= dimensions.size(),
+				"Stored point-set dimension count %s is less than mapped dimension count %s",
+				storedPointSetDimensions, dimensions.size());
+		PreparedPointSet prepared = samplingMethod.prepare(
+				numSamples, dimensions, storedPointSetDimensions, seed);
+		PointSet mappedPoints = prepared.mappedPointSet();
 
 		int start = 0;
-		PointSet commonPoints = DimensionSubsetPointSet.range(fullPoints, start, start+commonMapper.dimensions());
+		PointSet commonPoints = DimensionSubsetPointSet.range(mappedPoints, start, start+commonMapper.dimensions());
 		LogicTree<LogicTreeNode> commonTree = commonMapper.map(commonPoints);
 		commonTree.setSamplingPointSet(commonPoints);
 		commonTree.setSamplingParameters(samplingMethod.usesRandomSeed() ? seed : null, 0, samplingMethod);
@@ -363,7 +381,7 @@ public class NSHM27_LogicTree {
 
 		List<LogicTree<LogicTreeNode>> trees = new ArrayList<>(mappers.size());
 		for (LogicTreePointSetMapper<LogicTreeNode> mapper : mappers) {
-			PointSet subset = DimensionSubsetPointSet.range(fullPoints, start, start+mapper.dimensions());
+			PointSet subset = DimensionSubsetPointSet.range(mappedPoints, start, start+mapper.dimensions());
 			LogicTree<LogicTreeNode> subTree = mapper.map(subset);
 			subTree.setSamplingPointSet(subset);
 			subTree.setSamplingParameters(samplingMethod.usesRandomSeed() ? seed : null, 0, samplingMethod);
@@ -374,8 +392,21 @@ public class NSHM27_LogicTree {
 		LogicTree<LogicTreeNode> tree = buildMultiRegimeTree(seisReg, commonTree,
 				trees.get(0), trees.get(1), trees.get(2));
 		tree.setSamplingParameters(samplingMethod.usesRandomSeed() ? seed : null, 0, samplingMethod);
-		tree.setSamplingPointSet(fullPoints, SamplingPointSetLayout.EXPANDED);
+		tree.setSamplingPointSet(prepared.pointSet(), SamplingPointSetLayout.EXPANDED,
+				prepared.dimensionIndexes());
 		return tree;
+	}
+
+	/** Returns the number of dimensions currently mapped by the multi-regime tree. */
+	public static int getMultiRegimeSamplingDimensionCount(NSHM27_SeismicityRegions seisReg) {
+		int dimensions = buildCommonLevels().size();
+		dimensions += buildLevels(seisReg,
+				TectonicRegionType.SUBDUCTION_INTERFACE, true, true, true, false).size();
+		dimensions += buildLevels(seisReg,
+				TectonicRegionType.SUBDUCTION_SLAB, true, true, true, false).size();
+		dimensions += buildLevels(seisReg,
+				TectonicRegionType.ACTIVE_SHALLOW, true, true, true, false).size();
+		return dimensions;
 	}
 	
 	private static LogicTree<LogicTreeNode> buildMultiRegimeTree(NSHM27_SeismicityRegions seisReg,
@@ -439,8 +470,8 @@ public class NSHM27_LogicTree {
 		System.out.println("Will build "+numSamples+" samples with method="+samplingMethod);
 		
 		TectonicRegionType[] trts = {TectonicRegionType.SUBDUCTION_INTERFACE, TectonicRegionType.SUBDUCTION_SLAB, TectonicRegionType.ACTIVE_SHALLOW};
-//		NSHM27_SeismicityRegions[] seisRegs = NSHM27_SeismicityRegions.values();
-		NSHM27_SeismicityRegions[] seisRegs = {NSHM27_SeismicityRegions.GNMI};
+		NSHM27_SeismicityRegions[] seisRegs = NSHM27_SeismicityRegions.values();
+//		NSHM27_SeismicityRegions[] seisRegs = {NSHM27_SeismicityRegions.GNMI};
 //		NSHM27_SeismicityRegions[] seisRegs = {NSHM27_SeismicityRegions.AMSAM};
 		for (NSHM27_SeismicityRegions seisReg : seisRegs) {
 			List<LogicTree<LogicTreeNode>> trees = new ArrayList<>(3);

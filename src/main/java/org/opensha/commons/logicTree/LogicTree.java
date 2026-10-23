@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Random;
 
 import org.opensha.commons.data.sampling.ArrayPointSet;
+import org.opensha.commons.data.sampling.DimensionSubsetPointSet;
 import org.opensha.commons.data.sampling.DimensionedPointSet;
 import org.opensha.commons.data.sampling.PointSet;
 import org.opensha.commons.data.sampling.PointSetTransform;
@@ -67,6 +68,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	private SamplingMethod samplingMethod;
 	private PointSet samplingPointSet;
 	private SamplingPointSetLayout samplingPointSetLayout;
+	private int[] samplingPointSetDimensionIndexes;
 	
 	private LogicTree(BranchWeightProvider weightProvider) {
 		this.weightProvider = weightProvider;
@@ -229,10 +231,32 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		return samplingPointSetLayout;
 	}
 
+	/**
+	 * Returns the stored point-set column assigned to each logical sampling dimension. Logical dimension order follows
+	 * {@link #getSamplingPointSetLayout()}.
+	 */
+	public int[] getSamplingPointSetDimensionIndexes() {
+		return samplingPointSetDimensionIndexes == null ? null : samplingPointSetDimensionIndexes.clone();
+	}
+
+	/** @return stored point-set column assigned to the given logical sampling dimension */
+	public int getSamplingPointSetDimensionIndex(int logicalDimension) {
+		Preconditions.checkState(samplingPointSetDimensionIndexes != null, "Logic tree has no sampling point set");
+		return samplingPointSetDimensionIndexes[logicalDimension];
+	}
+
+	/** @return a no-copy logical-order view of the dimensions currently mapped to this tree */
+	public PointSet getMappedSamplingPointSet() {
+		if (samplingPointSet == null)
+			return null;
+		return new DimensionSubsetPointSet(samplingPointSet, samplingPointSetDimensionIndexes);
+	}
+
 	public void setSamplingPointSet(PointSet pointSet) {
 		if (pointSet == null) {
 			samplingPointSet = null;
 			samplingPointSetLayout = null;
+			samplingPointSetDimensionIndexes = null;
 			return;
 		}
 		SamplingPointSetLayout layout = pointSet.dimensions() == levels.size()
@@ -252,11 +276,62 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		Preconditions.checkArgument(pointSet.dimensions() == expectedDimensions,
 				"Point dimensions %s != %s level count %s", pointSet.dimensions(), layout.name().toLowerCase(),
 				expectedDimensions);
+		setSamplingPointSet(pointSet, layout, identityDimensionIndexes(expectedDimensions));
+	}
+
+	/**
+	 * Attaches a point set whose stored dimensions may include inactive columns reserved for future tree extensions.
+	 * {@code dimensionIndexes[d]} gives the stored column mapped to logical dimension {@code d}.
+	 */
+	public void setSamplingPointSet(PointSet pointSet, SamplingPointSetLayout layout, int... dimensionIndexes) {
+		if (pointSet == null) {
+			setSamplingPointSet(null);
+			return;
+		}
+		Preconditions.checkNotNull(layout, "Sampling point-set layout cannot be null");
+		Preconditions.checkNotNull(dimensionIndexes, "Sampling point-set dimension indexes cannot be null");
+		Preconditions.checkArgument(pointSet.size() == size(), "Point count %s != branch count %s",
+				pointSet.size(), size());
+		int expectedDimensions = layout.dimensions(this);
+		Preconditions.checkArgument(dimensionIndexes.length == expectedDimensions,
+				"Dimension mapping length %s != %s level count %s", dimensionIndexes.length,
+				layout.name().toLowerCase(), expectedDimensions);
+		boolean[] mapped = new boolean[pointSet.dimensions()];
+		for (int d=0; d<dimensionIndexes.length; d++) {
+			int storedDimension = dimensionIndexes[d];
+			Preconditions.checkElementIndex(storedDimension, pointSet.dimensions(),
+					"Stored point-set dimension");
+			Preconditions.checkArgument(!mapped[storedDimension],
+					"Stored point-set dimension %s is mapped more than once", storedDimension);
+			mapped[storedDimension] = true;
+		}
+		for (int d=0; d<mapped.length; d++)
+			Preconditions.checkArgument(mapped[d] || !pointSet.getDimension(d).isActive(),
+					"Unmapped stored point-set dimension %s must be inactive", d);
 		List<SamplingDimension> dimensions = new ArrayList<>(pointSet.dimensions());
 		for (int d=0; d<pointSet.dimensions(); d++)
 			dimensions.add(pointSet.getDimension(d));
 		samplingPointSet = new DimensionedPointSet(new ArrayPointSet(pointSet), dimensions);
 		samplingPointSetLayout = layout;
+		samplingPointSetDimensionIndexes = dimensionIndexes.clone();
+	}
+
+	private static int[] identityDimensionIndexes(int dimensions) {
+		int[] indexes = new int[dimensions];
+		for (int d=0; d<dimensions; d++)
+			indexes[d] = d;
+		return indexes;
+	}
+
+	private boolean shouldWriteSamplingPointSetDimensionIndexes() {
+		if (samplingPointSetDimensionIndexes == null)
+			return false;
+		if (samplingPointSet.dimensions() != samplingPointSetDimensionIndexes.length)
+			return true;
+		for (int d=0; d<samplingPointSetDimensionIndexes.length; d++)
+			if (samplingPointSetDimensionIndexes[d] != d)
+				return true;
+		return false;
 	}
 	
 	/**
@@ -811,6 +886,8 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		this.samplingMethod = tree.samplingMethod;
 		this.samplingPointSet = tree.samplingPointSet;
 		this.samplingPointSetLayout = tree.samplingPointSetLayout;
+		this.samplingPointSetDimensionIndexes = tree.samplingPointSetDimensionIndexes == null ? null
+				: tree.samplingPointSetDimensionIndexes.clone();
 	}
 	
 	public void write(File jsonFile) throws IOException {
@@ -923,6 +1000,12 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 				out.name("samplingMethod").value(value.samplingMethod.name());
 			if (value.samplingPointSet != null) {
 				out.name("samplingPointSetLayout").value(value.samplingPointSetLayout.name());
+				if (value.shouldWriteSamplingPointSetDimensionIndexes()) {
+					out.name("samplingPointSetDimensionIndexes").beginArray();
+					for (int index : value.samplingPointSetDimensionIndexes)
+						out.value(index);
+					out.endArray();
+				}
 				out.name("samplingPointSet");
 				PointSetJsonAdapter.INSTANCE.write(out, value.samplingPointSet);
 			}
@@ -951,6 +1034,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			SamplingMethod samplingMethod = null;
 			PointSet samplingPointSet = null;
 			SamplingPointSetLayout samplingPointSetLayout = null;
+			int[] samplingPointSetDimensionIndexes = null;
 			
 			while (in.hasNext()) {
 				switch (in.nextName()) {
@@ -1095,6 +1179,16 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 				case "samplingPointSetLayout":
 					samplingPointSetLayout = SamplingPointSetLayout.valueOf(in.nextString());
 					break;
+				case "samplingPointSetDimensionIndexes":
+					List<Integer> indexList = new ArrayList<>();
+					in.beginArray();
+					while (in.hasNext())
+						indexList.add(in.nextInt());
+					in.endArray();
+					samplingPointSetDimensionIndexes = new int[indexList.size()];
+					for (int i=0; i<indexList.size(); i++)
+						samplingPointSetDimensionIndexes[i] = indexList.get(i);
+					break;
 				case "samplingPointSet":
 					samplingPointSet = PointSetJsonAdapter.INSTANCE.read(in);
 					break;
@@ -1136,12 +1230,17 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			tree.origNumBranches = origNumBranches;
 			tree.samplingMethod = samplingMethod;
 			if (samplingPointSet != null) {
-				if (samplingPointSetLayout == null)
+				if (samplingPointSetDimensionIndexes != null) {
+					if (samplingPointSetLayout == null)
+						throw new IllegalStateException("Sampling point-set dimension indexes supplied without a layout");
+					tree.setSamplingPointSet(samplingPointSet, samplingPointSetLayout,
+							samplingPointSetDimensionIndexes);
+				} else if (samplingPointSetLayout == null)
 					tree.setSamplingPointSet(samplingPointSet);
 				else
 					tree.setSamplingPointSet(samplingPointSet, samplingPointSetLayout);
-			} else if (samplingPointSetLayout != null) {
-				throw new IllegalStateException("Sampling point-set layout supplied without a point set");
+			} else if (samplingPointSetLayout != null || samplingPointSetDimensionIndexes != null) {
+				throw new IllegalStateException("Sampling point-set metadata supplied without a point set");
 			}
 			
 			return tree;
