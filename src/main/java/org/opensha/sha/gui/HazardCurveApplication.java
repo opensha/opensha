@@ -79,7 +79,6 @@ import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.HazardCurveCalculatorAPI;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculator;
-import org.opensha.sha.calc.disaggregation.DisaggregationCalculatorAPI;
 import org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter;
 import org.opensha.sha.earthquake.BaseERF;
 import org.opensha.sha.earthquake.ERF;
@@ -270,7 +269,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 
 	// instances of various calculators
 	protected HazardCurveCalculatorAPI calc;
-	protected DisaggregationCalculatorAPI disaggCalc;
+	protected DisaggregationCalculator disaggCalc;
 	private GcimCalculator gcimCalc;
 	protected CalcProgressBar progressClass;
 	private CalcProgressBar disaggProgressClass;
@@ -1666,7 +1665,6 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 			boolean imlBasedDisaggr, double imlVal, double probVal) {
 		boolean binDataToShow = disaggregationControlPanel.isShowDisaggrBinDataSelected();
 
-		String disaggregationPlotWebAddr = null;
 		String metadata = getMapParametersInfoAsHTML();
 		String modeString = "";
 		if (imlBasedDisaggr)
@@ -1676,37 +1674,9 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 			modeString = "Disaggregation Results for Prob = " + probVal
 			+ " (for IML = " + (float) imlVal + ")";
 		modeString += "\n" + disaggregationString;
-		DisaggregationPlotViewerWindow disagg;
-		if (disaggregationControlPanel.isUseGMT()) {
-			// String pdfImageLink;
-			try {
-				disaggregationPlotWebAddr = getDisaggregationPlot();
-//				System.out.println("Link: "+disaggregationPlotWebAddr);
-				/*
-				 * pdfImageLink = "<br>Click  " + "<a href=\"" +
-				 * disaggregationPlotWebAddr +
-				 * DisaggregationCalculator.DISAGGREGATION_PLOT_PDF_NAME + "\">" +
-				 * "here" + "</a>" +
-				 * " to view a PDF (non-pixelated) version of the image (this will be deleted at midnight)."
-				 * ;
-				 */
-
-				
-				metadata += "<br><br>Click  " + "<a href=\""
-				+ disaggregationPlotWebAddr + "\">" + "here" + "</a>"
-				+ " to download files. They will be deleted at midnight";
-			} catch (RuntimeException e) {
-				e.printStackTrace();
-				JOptionPane.showMessageDialog(this, e.getMessage(),
-						"Server Problem", JOptionPane.INFORMATION_MESSAGE);
-				return;
-			}
-			disagg = new DisaggregationPlotViewerWindow(disaggregationPlotWebAddr
-					+ DisaggregationCalculator.DISAGGREGATION_PLOT_PNG_NAME, disaggCalc, modeString, metadata, binDataToShow);
-		} else {
-			disagg = new DisaggregationPlotViewerWindow(PureJavaDisaggPlotter.buildChartPanel(disaggCalc.getDisaggPlotData()),
-					disaggCalc, modeString, metadata, binDataToShow);
-		}
+		DisaggregationPlotViewerWindow disagg = new DisaggregationPlotViewerWindow(
+				PureJavaDisaggPlotter.buildChartPanel(disaggCalc.getDisaggPlotData()),
+				disaggCalc, modeString, metadata, binDataToShow);
 		// uncomment to center the window, default goes top left of screen
 		// not sure which is more useful for most people
 //		disagg.setLocationRelativeTo(this);
@@ -2527,26 +2497,6 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 			setButtonsEnable(true);
 			cancelButton.setEnabled(false);
 		});
-	}
-
-	/**
-	 * Returns the Disaggregation plot image webaddr to be shown in the plot
-	 * window.
-	 * 
-	 * @return String
-	 */
-	public String getDisaggregationPlot() {
-		try {
-			return disaggCalc.getDisaggregationPlotUsingServlet(this
-					.getParametersInfoAsString());
-		} catch (Exception ex) {
-			ex.printStackTrace();
-			setButtonsEnable(true);
-			BugReport bug = new BugReport(ex, getParametersInfoAsString(), appShortName, getAppVersion(), this);
-			BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
-			bugDialog.setVisible(true);
-		}
-		return null;
 	}
 
 	/**
