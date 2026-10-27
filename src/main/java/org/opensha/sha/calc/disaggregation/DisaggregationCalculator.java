@@ -2,9 +2,7 @@ package org.opensha.sha.calc.disaggregation;
 
 
 import java.awt.Color;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.net.URL;
 import java.net.URLConnection;
 import java.text.DecimalFormat;
@@ -39,7 +37,6 @@ import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.imr.ScalarIMR;
-import org.opensha.sha.imr.param.PropagationEffectParams.DistanceRupParameter;
 import org.opensha.sha.util.TRTUtils;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -48,25 +45,31 @@ import com.google.common.base.Preconditions;
 
 /**
  * <p>Title: DisaggregationCalculator </p>
- * <p>Description: This class disaggregates a hazard curve based on the
- * input parameters imr, site and eqkRupforecast.  See Bazzurro and Cornell
- * (1999, Bull. Seism. Soc. Am., 89, pp. 501-520) for a complete discussion
- * of disaggregation.  The Dbar computed here is for rupture distance.  This
- * assumes all sources in the ERF are Poissonian.</p>
+ * <p>Description: Hazard disaggregation calculator. For a site, an ERF, one or more ground motion models and a given
+ * intensity measure level, it computes the fractional contribution to the exceedance rate of every rupture, binned by
+ * magnitude, rupture distance and epsilon ({@link EpsilonCategories}), along with the mean (Mbar, Dbar, Ebar) and mode bins
+ * and a ranked list of contributing sources. See Bazzurro and Cornell (1999, Bull. Seism. Soc. Am., 89, pp. 501-520) for a
+ * complete discussion of disaggregation. The Dbar computed here is for rupture distance. This assumes all sources in the
+ * ERF are Poissonian.</p>
+ * <p>
+ * Usage: configure the bins ({@link #setMagRange(double, int, double)}, {@link #setDistanceRange(double, int, double)}),
+ * call {@link #disaggregate(double, Site, ScalarIMR, ERF, Collection, ParameterList)}, then read results with
+ * {@link #getMeanAndModeInfo()}, {@link #getBinData()}, {@link #getDisaggregationSourceInfo()} and
+ * {@link #getDisaggPlotData()}. Rendering is separate: pass {@link #getDisaggPlotData()} to
+ * {@link org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter}. The calculation can be cancelled
+ * ({@link #stopCalc()}) and its progress polled ({@link #getCurrRuptures()}, {@link #getTotRuptures()}, {@link #done()}).
+ * <p>
+ * This class is not thread safe: results are held in instance state and overwritten by each {@code disaggregate} call.
  * <p>Copyright: Copyright (c) 2002</p>
- * <p>Company: </p>
  * @author Ned Field
  * @date Oct 28, 2002
  * @version 1.0
  */
-
 public class DisaggregationCalculator extends AbstractCalculator
-implements DisaggregationCalculatorAPI {
+        implements Serializable {
 
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 1L;
+	@Serial
+    private static final long serialVersionUID = 1L;
 	
 	private final static String C = "DisaggregationCalculator";
 	private final static boolean D = false;
@@ -83,6 +86,11 @@ implements DisaggregationCalculatorAPI {
 	private double[] mag_center, mag_binEdges;
 	private double[] dist_center, dist_binEdges;
 
+	/**
+	 * The epsilon bins used for disaggregation (epsilon is the number of standard deviations the ground motion needed to
+	 * reach the target level lies above the median), with the label and bar color used by the plots. Bins are
+	 * lower-exclusive, upper-inclusive: {@code min < epsilon <= max}.
+	 */
 	public enum EpsilonCategories {
 		LESS_NEG_TWO("ε<-2", Double.NEGATIVE_INFINITY, -2d, new Color(215, 38, 3)),
 		NEG_TWO_ONE("-2<ε<-1", -2d, -1d, new Color(252, 94, 62)),
@@ -105,6 +113,10 @@ implements DisaggregationCalculatorAPI {
 			this.color = color;
 		}
 		
+		/**
+		 * @return this category's color as a GMT fill option ({@code -Gr/g/b}); only used by the GMT script generated for the
+		 * disaggregation servlet
+		 */
 		public String gmtColorStr() {
 			return "-G"+color.getRed()+"/"+color.getGreen()+"/"+color.getBlue();
 		}
@@ -218,6 +230,22 @@ implements DisaggregationCalculatorAPI {
 		return disaggregate(iml, site, TRTUtils.wrapInHashMap(imr), eqkRupForecast, sourceFilters, calcParams);
 	}
 	
+	/**
+	 * Disaggregates the hazard at the given site and intensity measure level, using a different ground motion model per
+	 * tectonic region type. Results (bins, mode/mean, source lists) replace those of any previous call and are available from
+	 * the getters afterwards. Honors cancellation ({@link #stopCalc()}).
+	 * 
+	 * @param iml intensity measure level to disaggregate, as the natural log of the level in the IMR's linear units
+	 * (e.g. {@code Math.log(0.4)} for 0.4 g SA or PGA), as passed by HazardCurveApplication and the CyberShake plotter
+	 * @param site site, which must contain the parameters the IMRs require
+	 * @param imrMap IMR to use for each tectonic region type
+	 * @param eqkRupForecast earthquake rupture forecast, already updated
+	 * @param sourceFilters filters that exclude sources/ruptures (e.g. by distance); may be null or empty. A distance cutoff
+	 * is also applied to the IMRs' maximum distance
+	 * @param calcParams calculation parameters, as from {@code HazardCurveCalculator} (tectonic region handling options)
+	 * @return true if the disaggregation completed and found a nonzero total rate; false if {@code iml} is infinite/NaN, the
+	 * calculation was cancelled, or no rupture contributes
+	 */
 	public boolean disaggregate(
 			double iml,
 			Site site,
@@ -692,7 +720,6 @@ implements DisaggregationCalculatorAPI {
 	/**
 	 * @return disaggregation source list, sorted by contribution
 	 */
-	@Override
 	public List<DisaggregationSourceRuptureInfo> getDisaggregationSourceList() {
 		return disaggSourceList;
 	}
@@ -707,7 +734,6 @@ implements DisaggregationCalculatorAPI {
 	 *
 	 * @return String
 	 */
-	@Override
 	public String getConsolidatedDisaggregationSourceInfo() {
 		if(numSourcesToShow >0 && consolidatedSourceDisaggInfo != null)
 			return consolidatedSourceDisaggInfo;
@@ -717,16 +743,22 @@ implements DisaggregationCalculatorAPI {
 	/**
 	 * @return consolidated disaggregation source list, sorted by contribution
 	 */
-	@Override
 	public List<DisaggregationSourceRuptureInfo> getConsolidatedDisaggregationSourceList() {
 		return consolidatedDisaggSourceList;
 	}
 	
+	/**
+	 * Enables computing a conditional exceedance curve for each contributing source during the next disaggregation.
+	 * 
+	 * @param xValues intensity measure levels at which to evaluate the exceedance curves, or null to disable (equivalent to
+	 * {@link #setSkipCalculateSourceExceedanceCurves()})
+	 */
 	public void setCalculateSourceExceedanceCurves(DiscretizedFunc xValues) {
 		this.calcSourceExceedances = xValues != null;
 		this.exceedXVals = xValues;
 	}
 	
+	/** Disables per-source exceedance curves (the default). */
 	public void setSkipCalculateSourceExceedanceCurves() {
 		this.calcSourceExceedances = false;
 		this.exceedXVals = null;
@@ -750,7 +782,7 @@ implements DisaggregationCalculatorAPI {
 
 	/**
 	 * Setting up the Mag Range
-	 * @param dmagBinEdges - a double array of the distance-bin edges (in correct order, from low to high)
+	 * @param magBinEdges - a double array of the distance-bin edges (in correct order, from low to high)
 	 */
 	public void setMagRange(double[] magBinEdges) {
 		this.mag_binEdges = magBinEdges;
@@ -873,6 +905,10 @@ implements DisaggregationCalculatorAPI {
 
 	}
 	
+	/**
+	 * @return the total exceedance rate summed over all contributing ruptures, over the ERF's time span (not annualized), from
+	 * the most recent {@code disaggregate} call. This is the denominator that converts bin rates to percent contribution.
+	 */
 	public double getTotalRate() {
 		return totalRate;
 	}
@@ -967,7 +1003,10 @@ implements DisaggregationCalculatorAPI {
 	}
 
 	/**
-	 * Gets the plot image for the Disaggregation
+	 * Gets the plot image for the Disaggregation from the OpenSHA server, rendered with GMT via the
+	 * {@code DisaggregationPlotServlet}. This is the optional server-side path (slower, better quality for
+	 * publications); the default is to render client-side with
+	 * {@link org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter} using {@link #getDisaggPlotData()}.
 	 * @param metadata String
 	 * @return String
 	 */
@@ -977,6 +1016,14 @@ implements DisaggregationCalculatorAPI {
 		return disaggregationPlotImgWebAddr;
 	}
 	
+	/**
+	 * Packages the current results for plotting. This is the hand-off to renderers such as
+	 * {@link org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter}: bin centers/edges, the percent-contribution
+	 * grid {@code pdf3D[distance][magnitude][epsilon]}, and the Z-axis maximum set by {@link #setMaxZAxisForPlot(double)}.
+	 * Must be called after a successful {@code disaggregate}.
+	 * 
+	 * @return a new plot data object (the {@code pdf3D} array is shared, not copied)
+	 */
 	public DisaggregationPlotData getDisaggPlotData() {
 		return new DisaggregationPlotData(mag_center, mag_binEdges, dist_center, dist_binEdges,
 				maxContrEpsilonForGMT_Plot, NUM_E, pdf3D);
@@ -1239,10 +1286,16 @@ implements DisaggregationCalculatorAPI {
 		numSourcesToShow = numSources;
 	}
 	
+	/** @return the number of top contributing sources included in the source info text */
 	public int getNumSourcesToShow() {
 		return numSourcesToShow;
 	}
 	
+	/**
+	 * Sets whether the source info text includes each source's distance metrics (default true).
+	 * 
+	 * @param showDistances true to include distances
+	 */
 	public void setShowDistances(boolean showDistances) {
 		this.showDistances = showDistances;
 	}
@@ -1255,10 +1308,15 @@ implements DisaggregationCalculatorAPI {
 		this.storeRupProbEpsilons = storeRupProbEpsilons;
 	}
 	
+	/** @return true if per-rupture probability and epsilon values are being stored for GCIM calculations */
 	public boolean isStoreRupProbEpsilons() {
 		return this.storeRupProbEpsilons;
 	}
 	
+	/**
+	 * @return for each source and rupture, a two-element array of {rupture rate normalized by the total rate, epsilon}, or
+	 * null unless {@link #setStoreRupProbEpsilons(boolean)} was enabled before disaggregating
+	 */
 	public double[][][] getRupProbEpsilons() {
 		return rupProbEpsilons;
 	}

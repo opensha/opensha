@@ -159,7 +159,7 @@ implements ParameterChangeFailListener, ParameterChangeListener{
 		zMaxParam.setInfo(Z_AXIS_MAX_INFO);
 		
 		useGMTparam.setInfo("If enabled, plots will be generated on the OpenSHA server via GMT.\n"
-				+ "This requires more time and an active internet connection, but may look better.");
+				+ "Better quality for publications, just slower. Requires an active internet connection.");
 
 
 		try {
