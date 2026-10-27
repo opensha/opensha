@@ -2,9 +2,7 @@ package org.opensha.sha.calc.disaggregation;
 
 
 import java.awt.Color;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.net.URL;
 import java.net.URLConnection;
 import java.text.DecimalFormat;
@@ -39,7 +37,6 @@ import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.imr.ScalarIMR;
-import org.opensha.sha.imr.param.PropagationEffectParams.DistanceRupParameter;
 import org.opensha.sha.util.TRTUtils;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -69,12 +66,10 @@ import com.google.common.base.Preconditions;
  * @version 1.0
  */
 public class DisaggregationCalculator extends AbstractCalculator
-implements DisaggregationCalculatorAPI {
+        implements Serializable {
 
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 1L;
+	@Serial
+    private static final long serialVersionUID = 1L;
 	
 	private final static String C = "DisaggregationCalculator";
 	private final static boolean D = false;
@@ -120,7 +115,7 @@ implements DisaggregationCalculatorAPI {
 		
 		/**
 		 * @return this category's color as a GMT fill option ({@code -Gr/g/b}); only used by the GMT script generated for the
-		 * retired disaggregation servlet
+		 * disaggregation servlet
 		 */
 		public String gmtColorStr() {
 			return "-G"+color.getRed()+"/"+color.getGreen()+"/"+color.getBlue();
@@ -725,7 +720,6 @@ implements DisaggregationCalculatorAPI {
 	/**
 	 * @return disaggregation source list, sorted by contribution
 	 */
-	@Override
 	public List<DisaggregationSourceRuptureInfo> getDisaggregationSourceList() {
 		return disaggSourceList;
 	}
@@ -740,7 +734,6 @@ implements DisaggregationCalculatorAPI {
 	 *
 	 * @return String
 	 */
-	@Override
 	public String getConsolidatedDisaggregationSourceInfo() {
 		if(numSourcesToShow >0 && consolidatedSourceDisaggInfo != null)
 			return consolidatedSourceDisaggInfo;
@@ -750,7 +743,6 @@ implements DisaggregationCalculatorAPI {
 	/**
 	 * @return consolidated disaggregation source list, sorted by contribution
 	 */
-	@Override
 	public List<DisaggregationSourceRuptureInfo> getConsolidatedDisaggregationSourceList() {
 		return consolidatedDisaggSourceList;
 	}
@@ -790,7 +782,7 @@ implements DisaggregationCalculatorAPI {
 
 	/**
 	 * Setting up the Mag Range
-	 * @param dmagBinEdges - a double array of the distance-bin edges (in correct order, from low to high)
+	 * @param magBinEdges - a double array of the distance-bin edges (in correct order, from low to high)
 	 */
 	public void setMagRange(double[] magBinEdges) {
 		this.mag_binEdges = magBinEdges;
@@ -1011,13 +1003,13 @@ implements DisaggregationCalculatorAPI {
 	}
 
 	/**
-	 * Gets the plot image for the Disaggregation
+	 * Gets the plot image for the Disaggregation from the OpenSHA server, rendered with GMT via the
+	 * {@code DisaggregationPlotServlet}. This is the optional server-side path (slower, better quality for
+	 * publications); the default is to render client-side with
+	 * {@link org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter} using {@link #getDisaggPlotData()}.
 	 * @param metadata String
 	 * @return String
-	 * @deprecated the GMT DisaggregationPlotServlet is being retired. Render client-side with
-	 * {@link org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter} using {@link #getDisaggPlotData()}.
 	 */
-	@Deprecated
 	public String getDisaggregationPlotUsingServlet(String metadata) {
 		DisaggregationPlotData data = getDisaggPlotData();
 		disaggregationPlotImgWebAddr = openServletConnection(data, metadata);

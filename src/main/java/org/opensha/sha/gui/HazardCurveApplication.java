@@ -1665,6 +1665,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 			boolean imlBasedDisaggr, double imlVal, double probVal) {
 		boolean binDataToShow = disaggregationControlPanel.isShowDisaggrBinDataSelected();
 
+		String disaggregationPlotWebAddr = null;
 		String metadata = getMapParametersInfoAsHTML();
 		String modeString = "";
 		if (imlBasedDisaggr)
@@ -1674,9 +1675,37 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 			modeString = "Disaggregation Results for Prob = " + probVal
 			+ " (for IML = " + (float) imlVal + ")";
 		modeString += "\n" + disaggregationString;
-		DisaggregationPlotViewerWindow disagg = new DisaggregationPlotViewerWindow(
-				PureJavaDisaggPlotter.buildChartPanel(disaggCalc.getDisaggPlotData()),
-				disaggCalc, modeString, metadata, binDataToShow);
+		DisaggregationPlotViewerWindow disagg;
+		if (disaggregationControlPanel.isUseGMT()) {
+			// String pdfImageLink;
+			try {
+				disaggregationPlotWebAddr = getDisaggregationPlot();
+//				System.out.println("Link: "+disaggregationPlotWebAddr);
+				/*
+				 * pdfImageLink = "<br>Click  " + "<a href=\"" +
+				 * disaggregationPlotWebAddr +
+				 * DisaggregationCalculator.DISAGGREGATION_PLOT_PDF_NAME + "\">" +
+				 * "here" + "</a>" +
+				 * " to view a PDF (non-pixelated) version of the image (this will be deleted at midnight)."
+				 * ;
+				 */
+
+				
+				metadata += "<br><br>Click  " + "<a href=\""
+				+ disaggregationPlotWebAddr + "\">" + "here" + "</a>"
+				+ " to download files. They will be deleted at midnight";
+			} catch (RuntimeException e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(this, e.getMessage(),
+						"Server Problem", JOptionPane.INFORMATION_MESSAGE);
+				return;
+			}
+			disagg = new DisaggregationPlotViewerWindow(disaggregationPlotWebAddr
+					+ DisaggregationCalculator.DISAGGREGATION_PLOT_PNG_NAME, disaggCalc, modeString, metadata, binDataToShow);
+		} else {
+			disagg = new DisaggregationPlotViewerWindow(PureJavaDisaggPlotter.buildChartPanel(disaggCalc.getDisaggPlotData()),
+					disaggCalc, modeString, metadata, binDataToShow);
+		}
 		// uncomment to center the window, default goes top left of screen
 		// not sure which is more useful for most people
 //		disagg.setLocationRelativeTo(this);
@@ -2161,9 +2190,6 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	/**
 	 * set x values in log space for Hazard Function to be passed to IMR if the
 	 * selected IMT are SA , PGA , PGV or FaultDispl It accepts 1 parameters
-	 * 
-	 * @param arb
-	 *            : this is the function with X values set
 	 */
 	protected LightFixedXFunc initX_Values() {
 
@@ -2188,9 +2214,6 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 * set x values back from the log space to the original linear values for
 	 * Hazard Function after completion of the Hazard Calculations if the
 	 * selected IMT are SA , PGA or PGV It accepts 1 parameters
-	 * 
-	 * @param hazFunc
-	 *            : this is the function with X values set
 	 */
 	protected DiscretizedFunc toggleHazFuncLogValues(
 			DiscretizedFunc inputFunc) {
@@ -2497,6 +2520,26 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 			setButtonsEnable(true);
 			cancelButton.setEnabled(false);
 		});
+	}
+
+	/**
+	 * Returns the Disaggregation plot image webaddr to be shown in the plot
+	 * window.
+	 * 
+	 * @return String
+	 */
+	public String getDisaggregationPlot() {
+		try {
+			return disaggCalc.getDisaggregationPlotUsingServlet(this
+					.getParametersInfoAsString());
+		} catch (Exception ex) {
+			ex.printStackTrace();
+			setButtonsEnable(true);
+			BugReport bug = new BugReport(ex, getParametersInfoAsString(), appShortName, getAppVersion(), this);
+			BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
+			bugDialog.setVisible(true);
+		}
+		return null;
 	}
 
 	/**

@@ -27,6 +27,9 @@ import com.google.common.base.Preconditions;
  * <p>Title: DisaggregationPlotServlet </p>
  * <p>Description: this servlet runs the GMT script based on the parameters and generates the
  * image file and returns that back to the calling application applet </p>
+ * <p>This is the optional server-side (GMT) disaggregation plot path, used when "Use GMT Plotter" is selected in
+ * HazardCurveApplication: slower, but better quality for publications. It is not the default: plots are otherwise
+ * rendered client-side by {@link org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter}.</p>
 
  * @author :Nitin Gupta and Vipin Gupta
  * @version 1.0

@@ -134,9 +134,6 @@
   </servlet-mapping>
 
   <!-- ** GMT Disaggregation Service ** -->
-  <!-- DEPRECATED: disaggregation plots are now rendered client-side by
-       org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter. This servlet and its mapping below
-       remain only for older clients and will be removed in a future release (GMT servlet migration). -->
   <servlet>
     <servlet-name>disaggServlet</servlet-name>
     <servlet-class>org.opensha.sha.gui.servlets.DisaggregationPlotServlet</servlet-class>

@@ -56,8 +56,9 @@ import com.itextpdf.text.pdf.PdfWriter;
 /**
  * Pure-Java (client-side) renderer for disaggregation plots. Draws the 3-D bar chart of percent contribution by rupture
  * distance, magnitude and epsilon (stacked by {@link EpsilonCategories}) from a {@link DisaggregationPlotData} using
- * Orson Charts, and can write it as PNG or PDF. It replaces the server-side GMT {@code DisaggregationPlotServlet}: no
- * network access or GMT installation is required, and it works headless.
+ * Orson Charts, and can write it as PNG or PDF. This is the default renderer, a client-side alternative to the optional
+ * server-side GMT {@code DisaggregationPlotServlet} (slower, better quality for publications): no network access or GMT
+ * installation is required, and it works headless.
  * <p>
  * Typical use: {@code PureJavaDisaggPlotter.buildChartPanel(calc.getDisaggPlotData())} for an on-screen panel, or
  * {@link #writeChartPlot(File, String, DisaggregationPlotData, int, int, boolean, boolean)} to write files.

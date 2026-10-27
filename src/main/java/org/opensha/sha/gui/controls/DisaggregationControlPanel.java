@@ -114,6 +114,9 @@ implements ParameterChangeFailListener, ParameterChangeListener{
 	private static final String Z_AXIS_MAX_CHOICE_MANUALLY = "Manually";
 	private static final String Z_AXIS_MAX_CHOICE_FROM_DATA = "From Data";
 
+	private final static String USE_GMT_PLOTTER_NAME = "Use GMT Plotter";
+	private BooleanParameter useGMTparam = new BooleanParameter(USE_GMT_PLOTTER_NAME, false);
+
 	private ParameterListEditor paramListEditor;
 
 	private boolean isDisaggregationSelected;
@@ -154,6 +157,9 @@ implements ParameterChangeFailListener, ParameterChangeListener{
 		showDistancesParam.setInfo("Compute and display source distance metrics");
 
 		zMaxParam.setInfo(Z_AXIS_MAX_INFO);
+		
+		useGMTparam.setInfo("If enabled, plots will be generated on the OpenSHA server via GMT.\n"
+				+ "Better quality for publications, just slower. Requires an active internet connection.");
 
 
 		try {
@@ -218,6 +224,7 @@ implements ParameterChangeFailListener, ParameterChangeListener{
 
 			paramList.addParameter(zMaxChoiceParam);
 			paramList.addParameter(zMaxParam);
+			paramList.addParameter(useGMTparam);
 
 
 			paramListEditor = new ParameterListEditor(paramList);
@@ -397,6 +404,10 @@ implements ParameterChangeFailListener, ParameterChangeListener{
 		return Double.NaN;  
 	}
 	
+	public boolean isUseGMT() {
+		return useGMTparam.getValue();
+	}
+
 	/**
 	 * Makes the parameters visible based on the choice of the user for Disaggregation
 	 */
@@ -420,6 +431,7 @@ implements ParameterChangeFailListener, ParameterChangeListener{
 			paramListEditor.getParameterEditor(Z_AXIS_MAX_CHOICE_NAME).setVisible(false);
 			showNumSourcesParam(false);
 			paramListEditor.getParameterEditor(Z_AXIS_MAX_NAME).setVisible(false);
+			paramListEditor.getParameterEditor(USE_GMT_PLOTTER_NAME).setVisible(false);
 
 			frame.setSize(300,200);
 		}
@@ -450,6 +462,7 @@ implements ParameterChangeFailListener, ParameterChangeListener{
 			String distType = (String)distBinTypeSelector.getValue(); 
 			setCustomBinning(distType.equals(DIST_TYPE_CUSTOM));
 			paramListEditor.getParameterEditor(Z_AXIS_MAX_CHOICE_NAME).setVisible(true);
+			paramListEditor.getParameterEditor(USE_GMT_PLOTTER_NAME).setVisible(true);
 			this.showZMaxAxisParam();
 			showNumSourcesParam(((Boolean)sourceDisaggregationParam.getValue()).booleanValue());
 			Dimension curDims = frame.getSize();

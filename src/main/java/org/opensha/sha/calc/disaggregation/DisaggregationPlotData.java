@@ -6,8 +6,8 @@ import java.io.Serializable;
  * Renderer-independent data needed to draw a disaggregation plot: magnitude and distance bin centers and edges, the
  * percent-contribution grid by distance, magnitude and epsilon bin, and the requested Z-axis maximum. Created by
  * {@link DisaggregationCalculator#getDisaggPlotData()} and consumed by
- * {@link org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter}. It is {@link Serializable} because it was
- * originally sent to the GMT plot servlet.
+ * {@link org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter}. It is {@link Serializable} because it is
+ * sent to the GMT plot servlet when that option is used.
  * 
  * @author kevin
  *

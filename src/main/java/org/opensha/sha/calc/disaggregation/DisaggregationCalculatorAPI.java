@@ -24,10 +24,9 @@ import org.opensha.sha.util.TectonicRegionType;
  * @version 1.0
  * @deprecated This interface adds no abstraction: {@link DisaggregationCalculator} is its only implementation, and
  * every caller (HazardCurveApplication, DisaggregationPlotViewerWindow, the CyberShake plotters) constructs or receives
- * that concrete class anyway, so no caller can substitute another implementation. It also exposed the GMT servlet
- * plotting method, which is being retired in favor of client-side rendering with
- * {@link org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter}. Use {@link DisaggregationCalculator}
- * directly. Scheduled for deletion once it is confirmed that no external workflows depend on it.
+ * that concrete class anyway, so no caller can substitute another implementation. Use
+ * {@link DisaggregationCalculator} directly. Scheduled for deletion once it is confirmed that no external workflows
+ * depend on it.
  */
 @Deprecated
 public interface DisaggregationCalculatorAPI extends CalculatorAPI {
@@ -126,13 +125,12 @@ public interface DisaggregationCalculatorAPI extends CalculatorAPI {
 
 	/**
 	 * Creates the disaggregation plot using the GMT and return Disaggregation plot
-	 * image web address as the URL string.
+	 * image web address as the URL string. This is the optional server-side path (slower, better quality for
+	 * publications); the default is to render client-side with
+	 * {@link org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter} using {@link #getDisaggPlotData()}.
 	 * @param metadata String
 	 * @return String
-	 * @deprecated the GMT DisaggregationPlotServlet is being retired. Render client-side with
-	 * {@link org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter} using {@link #getDisaggPlotData()}.
 	 */
-	@Deprecated
 	public String getDisaggregationPlotUsingServlet(String metadata);
 	
 	public DisaggregationPlotData getDisaggPlotData();
