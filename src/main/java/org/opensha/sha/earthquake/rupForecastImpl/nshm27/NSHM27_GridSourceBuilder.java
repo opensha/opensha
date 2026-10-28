@@ -104,6 +104,8 @@ public class NSHM27_GridSourceBuilder {
 //	public static double[] SLAB_DEPTH_REDISCRETIZATION = { 10, 20, 30, 40, 60, 80, 100, 150, 200, 250, 350, 450, 550 };
 	public static double[] SLAB_DEPTH_REDISCRETIZATION = { 10, 20, 40, 60, 100, 150, 250, 350, 450, 550 };
 	
+	public static final boolean SLAB_FININTE_GEOMETRY = true;
+	
 	public static final double MIN_RATE_THRESHOLD = 1e-10; // approximately 1 in the age of the known universe
 	
 	public static boolean RATE_BALANCE_CRUSTAL_GRIDDED = true;
@@ -642,12 +644,20 @@ public class NSHM27_GridSourceBuilder {
 		final int[] assocIDarray = {assocID};
 		final double[] assocFractArray = {1d};
 		
+		GriddedGeoDataSet bathymetry = SLAB_FININTE_GEOMETRY && ADJUST_CRUSTAL_DEPTHS_TO_BATHYMETRY ? loadBathymetry(seisRegion) : null;
+		
 		int rupCount = 0;
 		for (int gridIndex=0; gridIndex<gridReg.getNodeCount(); gridIndex++) {
 			List<GriddedRupture> ruptureList = new ArrayList<>();
 			ruptureLists.add(ruptureList);
 			
 			Location gridLoc = gridReg.getLocation(gridIndex);
+			
+			double minDepth = 0;
+			if (bathymetry != null) {
+				Preconditions.checkState(bathymetry.indexOf(gridLoc) == gridIndex);
+				minDepth = Double.max(0d, Precision.round(bathymetry.get(gridIndex), 0));
+			}
 			
 			for (int d=0; d<pdf.getDepthCount(); d++) {
 				double fract = pdf.get(gridIndex, d);
@@ -660,10 +670,23 @@ public class NSHM27_GridSourceBuilder {
 						if (rate == 0d || (float)mag < (float)OVERALL_MMIN)
 							continue;
 						
-						double length = 0d; // true point source
+						double upper, lower, length;
+						if (SLAB_FININTE_GEOMETRY) {
+							length = NSHM23_WUS_FiniteRuptureConverter.getSlabLength(mag);
+							// square until it hits max width or 8km
+							double width = Math.min(NSHM23_WUS_FiniteRuptureConverter.NSHM23_SLAB_WIDTH, length);
+							// centered on specified depth, unless that pushes us above seafloor
+							upper = Math.max(minDepth, depth - 0.5*width);
+							lower = upper + width;
+						} else {
+							// true point source
+							upper = depth;
+							lower = depth;
+							length = 0d;
+						}
 						
 						GriddedRuptureProperties props = new GriddedRuptureProperties(mag, rake, dip, strike, null,
-								depth, depth, length, Double.NaN, Double.NaN, TectonicRegionType.SUBDUCTION_SLAB);
+								upper, lower, length, Double.NaN, Double.NaN, TectonicRegionType.SUBDUCTION_SLAB);
 						ruptureList.add(new GriddedRupture(gridIndex, gridLoc, props, rate, assocIDarray, assocFractArray));
 						rupCount++;
 					}
