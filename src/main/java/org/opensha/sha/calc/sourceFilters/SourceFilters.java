@@ -25,6 +25,12 @@ public enum SourceFilters {
 		public synchronized SourceFilter initFilter() {
 			return new MinMagFilter();
 		}
+	},
+	TECTONIC_REGION_TYPES(TectonicRegionSourceFilter.class, "Included Tectonic Region Types") {
+		@Override
+		public synchronized SourceFilter initFilter() {
+			return new TectonicRegionSourceFilter();
+		}
 	};
 	
 	private String label;

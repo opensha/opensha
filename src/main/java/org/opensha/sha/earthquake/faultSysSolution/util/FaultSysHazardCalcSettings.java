@@ -23,6 +23,7 @@ import org.opensha.sha.calc.sourceFilters.SourceFilterManager;
 import org.opensha.sha.calc.sourceFilters.SourceFilters;
 import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter;
 import org.opensha.sha.calc.sourceFilters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
+import org.opensha.sha.calc.sourceFilters.TectonicRegionSourceFilter;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
@@ -301,6 +302,17 @@ public class FaultSysHazardCalcSettings {
 		} else {
 			sourceFilters = getDefaultSourceFilters();
 		}
+		if (cmd.hasOption("include-trts")) {
+			List<TectonicRegionType> includedTRTs = new ArrayList<>();
+			for (String value : cmd.getOptionValues("include-trts")) {
+				for (String name : value.split(","))
+					includedTRTs.add(TectonicRegionType.valueOf(name.trim()));
+			}
+			TectonicRegionSourceFilter trtFilter = sourceFilters.getFilterInstance(
+					TectonicRegionSourceFilter.class);
+			trtFilter.setIncludedTectonicRegionTypes(includedTRTs);
+			sourceFilters.setEnabled(SourceFilters.TECTONIC_REGION_TYPES, true);
+		}
 		return sourceFilters;
 	}
 
@@ -505,6 +517,9 @@ public class FaultSysHazardCalcSettings {
 				+ "For example: ACTIVE_SHALLOW:ASK_2014. Note that this will be overriden if the Logic Tree supplies GMPE choices.");
 		ops.addOption("p", "periods", true, "Calculation period(s). Mutliple can be comma separated");
 		ops.addOption("md", "max-distance", true, "Maximum source-site distance in km. Default is TectonicRegionType-specific.");
+		ops.addOption(null, "include-trts", true, "Include only sources from the supplied tectonic region types. "
+				+"May be supplied multiple times or as a comma-separated list. Options: "
+				+FaultSysTools.enumOptions(TectonicRegionType.class));
 		ops.addOption(null, "vs30", true, "Site Vs30 value (uses GMM default otherwise)");
 		ops.addOption(null, "gmm-sigma-trunc-one-sided", true, "Enables one-sided GMM sigma truncation; default is disabled.");
 		ops.addOption(null, "gmm-sigma-trunc-two-sided", true, "Enables two-sided GMM sigma truncation; default is disabled.");

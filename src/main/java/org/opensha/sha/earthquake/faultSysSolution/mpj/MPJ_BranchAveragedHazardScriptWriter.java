@@ -13,6 +13,7 @@ import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_SingleSolHazar
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.faultSurface.utils.ptSrcCorr.PointSourceDistanceCorrections;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
@@ -87,6 +88,8 @@ public class MPJ_BranchAveragedHazardScriptWriter {
 			appendGriddedSourceArgs(args, request);
 		HazardScriptUtil.appendSharedArgs(args, request.hazard(), false);
 		appendSupersamplingArgs(args, request.supersamplingMode());
+		for (TectonicRegionType trt : request.tectonicRegionTypes())
+			HazardScriptUtil.appendArg(args, "--include-trts", trt.name());
 		for (String extraArg : request.extraArgs())
 			args.append(" ").append(extraArg);
 		args.append(" ").append(buildDispatchArgs(request, backgroundOption));
@@ -200,6 +203,7 @@ public class MPJ_BranchAveragedHazardScriptWriter {
 		private final Double pointFiniteMinMag;
 		private final Integer maxDispatch;
 		private final boolean singleNodeIncludeWhenWritingAllBackgroundOptions;
+		private final List<TectonicRegionType> tectonicRegionTypes;
 		private final List<String> extraArgs;
 
 		private Request(Builder builder) {
@@ -224,6 +228,7 @@ public class MPJ_BranchAveragedHazardScriptWriter {
 			this.pointFiniteMinMag = builder.pointFiniteMinMag;
 			this.maxDispatch = builder.maxDispatch;
 			this.singleNodeIncludeWhenWritingAllBackgroundOptions = builder.singleNodeIncludeWhenWritingAllBackgroundOptions;
+			this.tectonicRegionTypes = List.copyOf(builder.tectonicRegionTypes);
 			this.extraArgs = List.copyOf(builder.extraArgs);
 		}
 
@@ -299,6 +304,10 @@ public class MPJ_BranchAveragedHazardScriptWriter {
 			return singleNodeIncludeWhenWritingAllBackgroundOptions;
 		}
 
+		public List<TectonicRegionType> tectonicRegionTypes() {
+			return tectonicRegionTypes;
+		}
+
 		public List<String> extraArgs() {
 			return extraArgs;
 		}
@@ -321,6 +330,7 @@ public class MPJ_BranchAveragedHazardScriptWriter {
 			private Double pointFiniteMinMag;
 			private Integer maxDispatch;
 			private boolean singleNodeIncludeWhenWritingAllBackgroundOptions = true;
+			private final List<TectonicRegionType> tectonicRegionTypes = new ArrayList<>();
 			private final List<String> extraArgs = new ArrayList<>();
 
 			private Builder() {
@@ -419,6 +429,20 @@ public class MPJ_BranchAveragedHazardScriptWriter {
 			public Builder singleNodeIncludeWhenWritingAllBackgroundOptions(
 					boolean singleNodeIncludeWhenWritingAllBackgroundOptions) {
 				this.singleNodeIncludeWhenWritingAllBackgroundOptions = singleNodeIncludeWhenWritingAllBackgroundOptions;
+				return this;
+			}
+
+			public Builder tectonicRegionTypes(TectonicRegionType... tectonicRegionTypes) {
+				this.tectonicRegionTypes.clear();
+				if (tectonicRegionTypes != null)
+					this.tectonicRegionTypes.addAll(Arrays.asList(tectonicRegionTypes));
+				return this;
+			}
+
+			public Builder tectonicRegionTypes(Collection<TectonicRegionType> tectonicRegionTypes) {
+				this.tectonicRegionTypes.clear();
+				if (tectonicRegionTypes != null)
+					this.tectonicRegionTypes.addAll(tectonicRegionTypes);
 				return this;
 			}
 

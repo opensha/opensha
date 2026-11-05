@@ -31,6 +31,10 @@ public class NSHM27_InversionScriptWriter {
 	private static SamplingMethod SAMPLING_METHOD_DEFAULT = SamplingMethod.MONTE_CARLO;
 	private static double GRID_SPACING_DEFAULT = 0.1;
 	
+	public static AttenRelRef GMM_ACTIVE = AttenRelRef.USGS_NSHM23_ACTIVE;
+	public static AttenRelRef GMM_INTERFACE = AttenRelRef.USGS_NSHM27_TEMP_INTERFACE;
+	public static AttenRelRef GMM_SLAB = AttenRelRef.USGS_NSHM27_TEMP_SLAB;
+	
 	private static Options buildOptions() {
 		Options ops = new Options();
 		
@@ -184,9 +188,9 @@ public class NSHM27_InversionScriptWriter {
 				.backgroundOption(IncludeBackgroundOption.INCLUDE)
 				.region(hazardRegion)
 				.sigmaTruncation(3d)
-				.gmpe(AttenRelRef.USGS_NSHM23_ACTIVE)
-				.gmpe(AttenRelRef.USGS_NSHM27_TEMP_INTERFACE)
-				.gmpe(AttenRelRef.USGS_NSHM27_TEMP_SLAB)
+				.gmpe(GMM_ACTIVE)
+				.gmpe(GMM_INTERFACE)
+				.gmpe(GMM_SLAB)
 				.sites(hazardSites)
 				// now allow cmd overrides
 				.forCMD(cmd)

@@ -104,6 +104,11 @@ public class NSHM27_GridSourceBuilder {
 //	public static double[] SLAB_DEPTH_REDISCRETIZATION = { 10, 20, 30, 40, 60, 80, 100, 150, 200, 250, 350, 450, 550 };
 	public static double[] SLAB_DEPTH_REDISCRETIZATION = { 10, 20, 40, 60, 100, 150, 250, 350, 450, 550 };
 	
+	/**
+	 * If true, slab ruptures are given finite lengths (using the 'geomat' formulat from nshmp-lib) and DDWs. They will
+	 * be centered at the grid node, except taking care to ensure they don't extend above bathymetric depths if
+	 * ADJUST_CRUSTAL_DEPTHS_TO_BATHYMETRY is also true.
+	 */
 	public static final boolean SLAB_FININTE_GEOMETRY = true;
 	
 	public static final double MIN_RATE_THRESHOLD = 1e-10; // approximately 1 in the age of the known universe

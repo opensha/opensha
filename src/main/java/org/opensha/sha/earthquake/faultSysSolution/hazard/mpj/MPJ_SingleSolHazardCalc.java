@@ -166,6 +166,10 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 			gridSpacing = Double.parseDouble(cmd.getOptionValue("grid-spacing"));
 		
 		sourceFilter = FaultSysHazardCalcSettings.getSourceFilters(cmd);
+		if (cmd.hasOption("include-trts")) {
+			debug("Including only tectonic region types: "
+					+String.join(",", cmd.getOptionValues("include-trts")));
+		}
 		xValManager = FaultSysHazardCalcSettings.getXValManager(cmd);
 		siteSkipSourceFilter = FaultSysHazardCalcSettings.getSiteSkipSourceFilters(sourceFilter, cmd);
 		
