@@ -66,22 +66,22 @@ public class NSHM27_InversionScriptWriter {
 //			int samples = 50000;
 			// 1 << N = 2^N
 //			int samples = 1 << 9; // 512
-			int samples = 1 << 10; // 1024
+//			int samples = 1 << 10; // 1024
 //			int samples = 1 << 11; // 2048
 //			int samples = 1 << 12; // 4096
-//			int samples = 1 << 13; // 8192
+			int samples = 1 << 13; // 8192
 //			int samples = 1 << 14; // 16384
 //			int samples = 1 << 15; // 32768
 			args = new String[] {
-//					"--region", NSHM27_SeismicityRegions.AMSAM.name(),
-					"--region", NSHM27_SeismicityRegions.GNMI.name(),
+					"--region", NSHM27_SeismicityRegions.AMSAM.name(),
+//					"--region", NSHM27_SeismicityRegions.GNMI.name(),
 					
 					"--local-dir", "/home/kevin/OpenSHA/fss_inversions",
 					
 					"--hpc-site", HPCConfig.HPCSite.USC_CARC_FMPJ.name(),
 					"--remote-dir", "/project2/scec_608/kmilner/fss_inversions",
 //					"--nodes", "36",
-					"--nodes", "32",
+					"--nodes", "34",
 //					"--nodes", "18",
 					"--job-time-hours", "48",
 //					"--job-time-hours", "10",
@@ -109,7 +109,7 @@ public class NSHM27_InversionScriptWriter {
 //					"--name-add", "reserve",
 					"--extra-point-set-dimensions", "20",
 					
-					"--hazard-grid-spacing", "0.2",
+//					"--hazard-grid-spacing", "0.2",
 					"--write-hazard-curves",
 			};
 		}
