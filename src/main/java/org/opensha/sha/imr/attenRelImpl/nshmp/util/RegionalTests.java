@@ -19,7 +19,7 @@ import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_GMM_Wrapper;
 import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_GMM_Wrapper.RegionalCombination;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
 
-public class RegionalTests {
+class RegionalTests {
 
 	public static void main(String[] args) throws IOException {
 		List<Location> testLocs = new ArrayList<>();
