@@ -31,7 +31,7 @@ public class NSHM27_InversionScriptWriter {
 	private static SamplingMethod SAMPLING_METHOD_DEFAULT = SamplingMethod.MONTE_CARLO;
 	private static double GRID_SPACING_DEFAULT = 0.1;
 	
-	public static AttenRelRef GMM_ACTIVE = AttenRelRef.USGS_NSHM23_ACTIVE;
+	public static AttenRelRef GMM_ACTIVE = AttenRelRef.USGS_NSHM27_TEMP_ACTIVE;
 	public static AttenRelRef GMM_INTERFACE = AttenRelRef.USGS_NSHM27_TEMP_INTERFACE;
 	public static AttenRelRef GMM_SLAB = AttenRelRef.USGS_NSHM27_TEMP_SLAB;
 	

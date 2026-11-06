@@ -678,9 +678,10 @@ public class NSHM27_GridSourceBuilder {
 						double upper, lower, length;
 						if (SLAB_FININTE_GEOMETRY) {
 							length = NSHM23_WUS_FiniteRuptureConverter.getSlabLength(mag);
-							// square until it hits max width or 8km
+							// square until it hits max width of 8km
 							double width = Math.min(NSHM23_WUS_FiniteRuptureConverter.NSHM23_SLAB_WIDTH, length);
 							// centered on specified depth, unless that pushes us above seafloor
+							Preconditions.checkState(dip == 90d);
 							upper = Math.max(minDepth, depth - 0.5*width);
 							lower = upper + width;
 						} else {

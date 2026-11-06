@@ -438,17 +438,26 @@ public enum AttenRelRef implements AttenRelSupplier {
 	/** Tavakoli and Pezeshk (2005). For NSHMP CEUS. */
 	TP_2005(TP2005_AttenRel.class, TP2005_AttenRel.NAME, TP2005_AttenRel.SHORT_NAME, DEVELOPMENT),
 	
+	USGS_NSHM27_TEMP_ACTIVE(null, "USGS NSHM27 Active (global, temporary)",
+			"NSHM27-Active-Temp", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			// use PRVI scaled backbone but with the global sigma models ('SIGMA_NGA')
+			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.PRVI_2025_ACTIVE_CRUST_SIGMA_NGA, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
 	USGS_NSHM27_TEMP_INTERFACE(null, "USGS NSHM27 Interface (global, temporary)",
 			"NSHM27-Interface-Temp", DEVELOPMENT) {
 		
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			WeightedList<NshmpGmm> gmms = WeightedList.of(
-					new WeightedValue<>(NshmpGmm.AG_20_GLOBAL_INTERFACE, 0.3333),
-					new WeightedValue<>(NshmpGmm.KBCG_20_GLOBAL_INTERFACE, 0.3333),
-					new WeightedValue<>(NshmpGmm.PSBAH_20_GLOBAL_INTERFACE, 0.3334));
-			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
+			// use PRVI scaled backbone but with the global sigma models ('SIGMA_NGA')
+			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.PRVI_2025_INTERFACE_SIGMA_NGA, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -459,11 +468,8 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			WeightedList<NshmpGmm> gmms = WeightedList.of(
-					new WeightedValue<>(NshmpGmm.AG_20_GLOBAL_SLAB, 0.3333),
-					new WeightedValue<>(NshmpGmm.KBCG_20_GLOBAL_SLAB, 0.3333),
-					new WeightedValue<>(NshmpGmm.PSBAH_20_GLOBAL_SLAB, 0.3334));
-			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
+			// use PRVI scaled backbone but with the global sigma models ('SIGMA_NGA')
+			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.PRVI_2025_INTRASLAB_SIGMA_NGA, getName(), getShortName(), false, null);
 		}
 		
 	},
