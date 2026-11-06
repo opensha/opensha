@@ -79,7 +79,6 @@ import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.HazardCurveCalculatorAPI;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculator;
-import org.opensha.sha.calc.disaggregation.DisaggregationCalculatorAPI;
 import org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter;
 import org.opensha.sha.earthquake.BaseERF;
 import org.opensha.sha.earthquake.ERF;
@@ -270,7 +269,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 
 	// instances of various calculators
 	protected HazardCurveCalculatorAPI calc;
-	protected DisaggregationCalculatorAPI disaggCalc;
+	protected DisaggregationCalculator disaggCalc;
 	private GcimCalculator gcimCalc;
 	protected CalcProgressBar progressClass;
 	private CalcProgressBar disaggProgressClass;
@@ -2191,9 +2190,6 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	/**
 	 * set x values in log space for Hazard Function to be passed to IMR if the
 	 * selected IMT are SA , PGA , PGV or FaultDispl It accepts 1 parameters
-	 * 
-	 * @param arb
-	 *            : this is the function with X values set
 	 */
 	protected LightFixedXFunc initX_Values() {
 
@@ -2218,9 +2214,6 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 * set x values back from the log space to the original linear values for
 	 * Hazard Function after completion of the Hazard Calculations if the
 	 * selected IMT are SA , PGA or PGV It accepts 1 parameters
-	 * 
-	 * @param hazFunc
-	 *            : this is the function with X values set
 	 */
 	protected DiscretizedFunc toggleHazFuncLogValues(
 			DiscretizedFunc inputFunc) {

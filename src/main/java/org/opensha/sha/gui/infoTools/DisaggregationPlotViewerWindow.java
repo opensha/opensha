@@ -37,7 +37,7 @@ import org.opensha.commons.util.BrowserUtils;
 import org.opensha.commons.util.CustomFileFilter;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
-import org.opensha.sha.calc.disaggregation.DisaggregationCalculatorAPI;
+import org.opensha.sha.calc.disaggregation.DisaggregationCalculator;
 import org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter;
 
 import com.google.common.base.Preconditions;
@@ -117,7 +117,7 @@ public class DisaggregationPlotViewerWindow extends JFrame implements HyperlinkL
 	 * @param showBinData if ture, bin data will be shown in a tab
 	 */
 	public DisaggregationPlotViewerWindow(String imageURL,
-			DisaggregationCalculatorAPI calc, String meanModeText, String metadataText, boolean showBinData) throws RuntimeException{
+			DisaggregationCalculator calc, String meanModeText, String metadataText, boolean showBinData) throws RuntimeException{
 		this(null, imageURL, calc, meanModeText, metadataText, showBinData);
 	}
 	
@@ -130,13 +130,13 @@ public class DisaggregationPlotViewerWindow extends JFrame implements HyperlinkL
 	 * @param showBinData if ture, bin data will be shown in a tab
 	 */
 	public DisaggregationPlotViewerWindow(Chart3DPanel imagePanel,
-			DisaggregationCalculatorAPI calc, String meanModeText, String metadataText, boolean showBinData) {
+			DisaggregationCalculator calc, String meanModeText, String metadataText, boolean showBinData) {
 		this(imagePanel, null, calc, meanModeText, metadataText, showBinData);
 	}
 	
 	private DisaggregationPlotViewerWindow(
 			Chart3DPanel imagePanel, String imageURL,
-			DisaggregationCalculatorAPI calc, String meanModeText, String metadataText, boolean showBinData) {
+			DisaggregationCalculator calc, String meanModeText, String metadataText, boolean showBinData) {
 		this(imagePanel, imageURL, meanModeText, metadataText,
 				showBinData ? calc.getBinData() : null,
 				calc.getNumSourcesToShow() > 0 ? calc.getDisaggregationSourceInfo() : null,
