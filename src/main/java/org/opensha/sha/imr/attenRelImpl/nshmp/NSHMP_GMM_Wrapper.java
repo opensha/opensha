@@ -1,10 +1,5 @@
 package org.opensha.sha.imr.attenRelImpl.nshmp;
 
-import static org.opensha.nshmp.shaded.gmm.NshmpGmmInput.Field.MW;
-import static org.opensha.nshmp.shaded.gmm.NshmpGmmInput.Field.RJB;
-import static org.opensha.nshmp.shaded.gmm.NshmpGmmInput.Field.VS30;
-import static org.opensha.commons.geo.GeoTools.TO_RAD;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
@@ -19,7 +14,6 @@ import java.util.Set;
 import org.opensha.commons.calc.GaussianExceedProbCalculator;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.WeightedList;
-import org.opensha.commons.data.WeightedValue;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.exceptions.ConstraintException;
@@ -27,10 +21,11 @@ import org.opensha.commons.exceptions.IMRException;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.constraint.impl.DoubleConstraint;
 import org.opensha.commons.param.constraint.impl.DoubleDiscreteConstraint;
-import org.opensha.commons.param.constraint.impl.StringConstraint;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.sha.earthquake.DistCachedERFWrapper.DistCacheWrapperRupture;
@@ -38,7 +33,6 @@ import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
 import org.opensha.sha.gcim.imr.param.EqkRuptureParams.FocalDepthParam;
-import org.opensha.sha.imr.AbstractIMR;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.param.EqkRuptureParams.DipParam;
 import org.opensha.sha.imr.param.EqkRuptureParams.MagParam;
@@ -339,6 +333,52 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 			return gmmsList;
 		}
 		
+	}
+	
+	public static RegionalCombination loadRegionalOverrides(WeightedList<NshmpGmm> fallback,
+			List<Feature> overrideFeatures, Type type, String name, String shortName, boolean parameterize, Component component) {
+		Preconditions.checkNotNull(type, "Type cannot be null");
+		Map<Region, WeightedList<NshmpGmm>> regional = new LinkedHashMap<>();
+		for (Feature feature : overrideFeatures) {
+			Region region = Region.fromFeature(feature);
+			FeatureProperties props = feature.properties;
+			Preconditions.checkState(props.containsKey("gmm-trees"));
+			// gmm trees will be loaded as nested FeatureProperties types
+			FeatureProperties treesProp = props.getProperties("gmm-trees");
+			Preconditions.checkNotNull(treesProp);
+			List<FeatureProperties> gmmTree = switch (type) {
+			case ACTIVE_CRUST: {
+				yield treesProp.getProperties("active-crust").getPropertiesList("all");
+			}
+			case STABLE_CRUST: {
+				yield treesProp.getProperties("stable-crust").getPropertiesList("all");
+			}
+			case SUBDUCTION_INTERFACE: {
+				yield treesProp.getProperties("subduction").getPropertiesList("interface");
+			}
+			case SUBDUCTION_SLAB: {
+				yield treesProp.getProperties("subduction").getPropertiesList("slab");
+			}
+			default:
+				throw new IllegalArgumentException("Unexpected type: " + type);
+			};
+			Preconditions.checkNotNull(gmmTree);
+			Preconditions.checkState(!gmmTree.isEmpty());
+			// each element is it's on map with an id and weight field
+			WeightedList<NshmpGmm> gmms = new WeightedList<>(gmmTree.size());
+			for (FeatureProperties gmmProps : gmmTree) {
+				String id = gmmProps.getString("id");
+				double weight = gmmProps.getDouble("weight", Double.NaN);
+				Preconditions.checkNotNull(id);
+				Preconditions.checkState(Double.isFinite(weight));
+				NshmpGmm gmm = NshmpGmm.valueOf(id);
+				Preconditions.checkNotNull(gmm, "GMM not found: %s", id);
+				gmms.add(gmm, weight);
+			}
+//			System.out.println("Loaded GMMs for region "+regional.size()+". ("+props.getString("name")+"):\n"+gmms);
+			regional.put(region, gmms);
+		}
+		return new RegionalCombination(fallback, regional, name, shortName, parameterize, component);
 	}
 	
 	public static class RegionalCombination extends AbstractCombination {
