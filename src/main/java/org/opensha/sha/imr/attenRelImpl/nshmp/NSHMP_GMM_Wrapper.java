@@ -6,9 +6,11 @@ import static org.opensha.nshmp.shaded.gmm.NshmpGmmInput.Field.VS30;
 import static org.opensha.commons.geo.GeoTools.TO_RAD;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -24,6 +26,7 @@ import org.opensha.commons.exceptions.ConstraintException;
 import org.opensha.commons.exceptions.IMRException;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.Region;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.constraint.impl.DoubleConstraint;
 import org.opensha.commons.param.constraint.impl.DoubleDiscreteConstraint;
@@ -283,44 +286,37 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 		}
 	}
 	
-	public static class WeightedCombination extends NSHMP_GMM_Wrapper {
+	public static class WeightedCombination extends AbstractCombination {
 		
-		private WeightedList<NshmpGmm> gmms;
-		private List<EnumMap<NshmpImt, NshmpGroundMotionModel>> instanceMaps;
-		private List<Constraints> constraintsList;
+		private WeightedList<NshmpGmm> gmmsList;
 		
 		public WeightedCombination(Map<NshmpGmm, Double> gmms, String name, String shortName) {
 			this(gmmMapToList(gmms), name, shortName);
 		}
 		
-		public WeightedCombination(WeightedList<NshmpGmm> gmms, String name, String shortName) {
-			this(gmms, name, shortName, true);
+		public WeightedCombination(WeightedList<NshmpGmm> gmmsList, String name, String shortName) {
+			this(gmmsList, name, shortName, true);
 		}
 		
 		public WeightedCombination(Map<NshmpGmm, Double> gmms, String name, String shortName, boolean parameterize) {
 			this(gmmMapToList(gmms), name, shortName, parameterize, null);
 		}
 		
-		public WeightedCombination(WeightedList<NshmpGmm> gmms, String name, String shortName, boolean parameterize) {
-			this(gmms, name, shortName, parameterize, null);
+		public WeightedCombination(WeightedList<NshmpGmm> gmmsList, String name, String shortName, boolean parameterize) {
+			this(gmmsList, name, shortName, parameterize, null);
 		}
 		
 		public WeightedCombination(Map<NshmpGmm, Double> gmms, String name, String shortName, boolean parameterize, Component component) {
 			this(gmmMapToList(gmms), name, shortName, parameterize, component);
 		}
 		
-		public WeightedCombination(WeightedList<NshmpGmm> gmms, String name, String shortName, boolean parameterize, Component component) {
-			super(name, shortName, parameterize, component);
-			Preconditions.checkNotNull(gmms, "Gmms must be supplied; use InputCacheGen if you don't have any Gmms");
-			if (!gmms.isNormalized())
-				gmms.normalize();
-			if (!(gmms instanceof WeightedList.Unmodifiable<?>))
-				gmms = new WeightedList.Unmodifiable<>(gmms);
-			this.gmms = gmms;
-			instanceMaps = new ArrayList<>(gmms.size());
-			for (int i=0; i<gmms.size(); i++)
-				instanceMaps.add(new EnumMap<>(NshmpImt.class));
-			init();
+		public WeightedCombination(WeightedList<NshmpGmm> gmmsList, String name, String shortName, boolean parameterize, Component component) {
+			super(gmmSet(gmmsList), name, shortName, parameterize, component);
+			if (!gmmsList.isNormalized())
+				gmmsList.normalize();
+			if (!(gmmsList instanceof WeightedList.Unmodifiable<?>))
+				gmmsList = new WeightedList.Unmodifiable<>(gmmsList);
+			this.gmmsList = gmmsList;
 		}
 		
 		private static WeightedList<NshmpGmm> gmmMapToList(Map<NshmpGmm, Double> map) {
@@ -329,12 +325,137 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 				list.add(gmm, map.get(gmm));
 			return list;
 		}
+		
+		private static EnumSet<NshmpGmm> gmmSet(WeightedList<NshmpGmm> gmms) {
+			EnumSet<NshmpGmm> gmmsSet = EnumSet.noneOf(NshmpGmm.class);
+			for (int i=0; i<gmms.size(); i++)
+				gmmsSet.add(gmms.getValue(i));
+			Preconditions.checkState(gmmsSet.size() == gmms.size(), "Weighted list had a duplicate: %s", gmms);
+			return gmmsSet;
+		}
+
+		@Override
+		protected WeightedList<NshmpGmm> getCurrentGmms() {
+			return gmmsList;
+		}
+		
+	}
+	
+	public static class RegionalCombination extends AbstractCombination {
+		
+		private WeightedList<NshmpGmm> fallback;
+		private Map<Region, WeightedList<NshmpGmm>> regional;
+		
+		private WeightedList<NshmpGmm> current;
+		
+		public RegionalCombination(WeightedList<NshmpGmm> fallback, Map<Region, WeightedList<NshmpGmm>> regional,
+				String name, String shortName) {
+			this(fallback, regional, name, shortName, true);
+		}
+		
+		public RegionalCombination(WeightedList<NshmpGmm> fallback, Map<Region, WeightedList<NshmpGmm>> regional,
+				String name, String shortName, boolean parameterize) {
+			this(fallback, regional, name, shortName, parameterize, null);
+		}
+		
+		public RegionalCombination(WeightedList<NshmpGmm> fallback, Map<Region, WeightedList<NshmpGmm>> regional,
+				String name, String shortName, boolean parameterize, Component component) {
+			super(gmmSet(fallback, regional), name, shortName, parameterize, component);
+			if (!fallback.isNormalized())
+				fallback.normalize();
+			if (!(fallback instanceof WeightedList.Unmodifiable<?>))
+				fallback = new WeightedList.Unmodifiable<>(fallback);
+			// linked hash map preserves iteration order (important for the case of overlaps)
+			Map<Region, WeightedList<NshmpGmm>> myRegional = new LinkedHashMap<>(regional.size());
+			for (Region region : regional.keySet()) {
+				WeightedList<NshmpGmm> gmms = regional.get(region);
+				if (!gmms.isNormalized())
+					gmms.normalize();
+				if (!(gmms instanceof WeightedList.Unmodifiable<?>))
+					gmms = new WeightedList.Unmodifiable<>(gmms);
+				myRegional.put(region, gmms);
+			}
+			this.fallback = fallback;
+			this.regional = myRegional;
+		}
+		
+		private static EnumSet<NshmpGmm> gmmSet(WeightedList<NshmpGmm> fallback, Map<Region, WeightedList<NshmpGmm>> regional) {
+			EnumSet<NshmpGmm> gmmsSet = EnumSet.noneOf(NshmpGmm.class);
+			for (int i=0; i<fallback.size(); i++)
+				gmmsSet.add(fallback.getValue(i));
+			for (WeightedList<NshmpGmm> regionalList : regional.values())
+				for (int i=0; i<regionalList.size(); i++)
+					gmmsSet.add(regionalList.getValue(i));
+			return gmmsSet;
+		}
+
+		@Override
+		public void setSite(Site site) {
+			current = null;
+			super.setSite(site);
+		}
+
+		@Override
+		public void setSiteLocation(Location loc) {
+			current = null;
+			super.setSiteLocation(loc);
+		}
+
+		@Override
+		protected void setSite(Site site, boolean requireAllParams, boolean setPropEffectParams) {
+			current = null;
+			super.setSite(site, requireAllParams, setPropEffectParams);
+		}
+
+		@Override
+		protected WeightedList<NshmpGmm> getCurrentGmms() {
+			if (current != null)
+				// cache hit
+				return current;
+			
+			// cache miss
+			Site site = getSite();
+			if (site == null || site.getLocation() == null)
+				return fallback;
+			
+			// start with fallback, override if necessary
+			current = fallback;
+			Location loc = site.getLocation();
+			for (Region region : regional.keySet()) {
+				if (region.contains(loc)) {
+					// found a region-specific GMM
+					current = regional.get(region);
+					break;
+				}
+			}
+			
+			return current;
+		}
+		
+	}
+	
+	private static abstract class AbstractCombination extends NSHMP_GMM_Wrapper {
+		
+		private EnumSet<NshmpGmm> gmmsSet;
+		private EnumMap<NshmpGmm, EnumMap<NshmpImt, NshmpGroundMotionModel>> instanceMaps;
+		private List<Constraints> constraintsList;
+		
+		public AbstractCombination(Collection<NshmpGmm> gmms, String name, String shortName, boolean parameterize, Component component) {
+			super(name, shortName, parameterize, component);
+			Preconditions.checkState(gmms != null && !gmms.isEmpty(),
+					"Gmms must be supplied; use InputCacheGen if you don't have any Gmms");
+			this.gmmsSet = EnumSet.copyOf(gmms);
+			instanceMaps = new EnumMap<>(NshmpGmm.class);
+			for (NshmpGmm gmm : this.gmmsSet)
+				instanceMaps.put(gmm, new EnumMap<>(NshmpImt.class));
+			init();
+		}
 
 		@Override
 		public Type getType() {
 			Type type = null;
-			for (int i=0; i<gmms.size(); i++) {
-				Type subType = gmms.getValue(i).type();
+			for (NshmpGmm gmm : gmmsSet) {
+				Type subType = gmm.type();
 				if (subType == null || (type != null && type != subType))
 					return null;
 				if (type == null)
@@ -343,8 +464,10 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 			return type;
 		}
 		
-		private NshmpGroundMotionModel getBuildGMM(NshmpGmm gmm, EnumMap<NshmpImt, NshmpGroundMotionModel> instanceMap, NshmpImt imt) {
-			Preconditions.checkNotNull(imt);
+		private NshmpGroundMotionModel getBuildGMM(NshmpGmm gmm, NshmpImt imt) {
+			Preconditions.checkNotNull(imt, "Null IMT: %s", imt);
+			EnumMap<NshmpImt, NshmpGroundMotionModel> instanceMap = instanceMaps.get(gmm);
+			Preconditions.checkNotNull(instanceMap, "Unexpected GMM: %s", gmm);
 			NshmpGroundMotionModel gmmInstance = instanceMap.get(imt);
 			if (gmmInstance == null) {
 				gmmInstance = gmm.instance(imt);
@@ -352,16 +475,19 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 			}
 			return gmmInstance;
 		}
+		
+		protected abstract WeightedList<NshmpGmm> getCurrentGmms();
 
 		@Override
 		protected NshmpLogicTree<NshmpGroundMotion> buildGroundMotionTree() {
 			Builder<NshmpGroundMotion> builder = NshmpLogicTree.builder("multi-gmms");
 			NshmpGmmInput input = getCurrentGmmInput();
 			NshmpImt imt = getCurrentIMT();
+			WeightedList<NshmpGmm> gmms = getCurrentGmms();
 			for (int i=0; i<gmms.size(); i++) {
 				NshmpGmm gmm = gmms.getValue(i);
 				double weight = gmms.getWeight(i);
-				NshmpGroundMotionModel model = getBuildGMM(gmm, instanceMaps.get(i), imt);
+				NshmpGroundMotionModel model = getBuildGMM(gmm, imt);
 				String prefix = gmm.name();
 				NshmpLogicTree<NshmpGroundMotion> subTree = model.calc(input);
 				if (subTree.size() == 1) {
@@ -377,8 +503,8 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 		@Override
 		protected Set<NshmpImt> getSupportedIMTs() {
 			Set<NshmpImt> ret = null;
-			for (int i=0; i<gmms.size(); i++) {
-				Set<NshmpImt> subIMTs = gmms.getValue(i).supportedImts();
+			for (NshmpGmm gmm : gmmsSet) {
+				Set<NshmpImt> subIMTs = gmm.supportedImts();
 				if (ret == null)
 					ret = EnumSet.copyOf(subIMTs);
 				else
@@ -390,9 +516,9 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 
 		@Override
 		protected ImmutableList<Field> initFieldsUsed() {
-			constraintsList = new ArrayList<>(gmms.size());
-			for (int i=0; i<gmms.size(); i++)
-				constraintsList.add(gmms.getValue(i).constraints());
+			constraintsList = new ArrayList<>(gmmsSet.size());
+			for (NshmpGmm gmm : gmmsSet)
+				constraintsList.add(gmm.constraints());
 			ImmutableList.Builder<Field> builder = ImmutableList.builder();
 			for (Field field : Field.values()) {
 				for (Constraints constraints : constraintsList) {
