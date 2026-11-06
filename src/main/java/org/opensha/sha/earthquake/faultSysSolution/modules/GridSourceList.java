@@ -2498,14 +2498,16 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 	@Override
 	public GridSourceList getForMergedSolution(FaultSystemSolution mergedSolution, MergedRupSetMappings mappings,
 			List<GridSourceList> originalModules) {
-		System.out.println("Merging "+originalModules+" GridSourceList instances");
+		System.out.println("Merging "+originalModules.size()+" GridSourceList instances");
 		List<GridSourceList> remapped = new ArrayList<>(originalModules.size());
 		for (int i=0; i<originalModules.size(); i++) {
 			GridSourceList orig = originalModules.get(i);
-			if (orig == null)
+			if (orig == null) {
 				System.out.println("\toriginal "+i+" was null, skipping");
-			else
+			} else {
+				System.out.println("\tmapping "+i+" of type "+orig.getClass());
 				remapped.add(remapAssociations(orig, mappings.getSectMappingsOldToNew(i)));
+			}
 		}
 		System.out.println("\tFound "+remapped.size()+" GridSourceList instances to merge");
 		if (remapped.isEmpty())

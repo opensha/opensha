@@ -1,0 +1,41 @@
+{
+  "type": "Feature",
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [[
+      [-100.5, 24.2],
+      [-85.0, 24.2],
+      [-81.5, 24.2],
+      [-72.5, 24.2],
+      [-66.5, 43.5],
+      [-70.0, 43.5],
+      [-78.0, 39.0],
+      [-78.0, 36.5],
+      [-85.0, 33.0],
+      [-87.5, 34.5],
+      [-87.5, 37.5],
+      [-90.0, 37.5],
+      [-93.5, 34.5],
+      [-97.5, 34.5],
+      [-99.0, 33.0],
+      [-102.5, 33.0],
+      [-104.5, 30.0],
+      [-100.5, 24.2]
+    ]]
+  },
+  "properties": {
+    "name": "Coastal Plain CPA region",
+    "gmm-trees": {
+      "stable-crust": {
+        "all": [
+          { "id": "NGA_EAST_2026", "weight": 0.1667 },
+          { "id": "NGA_EAST_2026_CPA", "weight": 0.1667 },
+          { "id": "NGA_EAST_2026_ADJUSTED", "weight": 0.3333 },
+          { "id": "NGA_EAST_SEEDS_2026", "weight": 0.0833 },
+          { "id": "NGA_EAST_SEEDS_2026_CPA", "weight": 0.0833 },
+          { "id": "NGA_EAST_SEEDS_2026_ADJUSTED", "weight": 0.1667 }
+        ]
+      }
+    }
+  }
+}
