@@ -1,0 +1,36 @@
+{
+  "type": "Feature",
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [[
+      [-122.25, 38.63],
+      [-122.81, 38.80],
+      [-123.50, 38.60],
+      [-123.17, 38.05],
+      [-122.72, 37.54],
+      [-122.23, 36.85],
+      [-121.48, 36.98],
+      [-121.34, 37.15],
+      [-121.53, 37.39],
+      [-122.00, 38.19],
+      [-122.25, 38.63]
+    ]]
+  },
+  "properties": {
+    "name": "San Francisco Bay Area: Native basin models",
+    "gmm-trees": {
+      "active-crust": {
+        "all": [
+          { "id": "ASK_14", "weight": 0.125 },
+          { "id": "BSSA_14", "weight": 0.125 },
+          { "id": "CB_14", "weight": 0.125 },
+          { "id": "CY_14", "weight": 0.125 },
+          { "id": "ASK_14_BASIN", "weight": 0.125 },
+          { "id": "BSSA_14_BASIN", "weight": 0.125 },
+          { "id": "CB_14_BASIN", "weight": 0.125 },
+          { "id": "CY_14_BASIN", "weight": 0.125 }
+        ] 
+      }
+    }
+  }
+}

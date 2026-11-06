@@ -100,21 +100,21 @@ class Benchmark {
 		gmms.add(AttenRelRef.CY_2014.get());
 		gmmNames.add("Original CY 2014");
 		
-		gmms.add(new NSHMP_GMM_Wrapper.Single(NshmpGmm.COMBINED_ACTIVE_CRUST_2014_42, true));
-		gmmNames.add("NSHMP 2014 Combined, Parameterized");
-		gmms.add(new NSHMP_GMM_Wrapper.Single(NshmpGmm.COMBINED_ACTIVE_CRUST_2014_42, false));
-		gmmNames.add("NSHMP 2014 Combined");
-		gmms.add(AttenRelRef.NGAWest_2014_AVG_NOIDRISS.get());
-		gmmNames.add("Original NGA-West2 (No Idriss)");
-		
-		gmms.add(new NSHMP_GMM_Wrapper.Single(NshmpGmm.COMBINED_ACTIVE_CRUST_2023, true));
-		gmmNames.add("NSHMP 2023 Combined, Parameterized");
-		gmms.add(new NSHMP_GMM_Wrapper.Single(NshmpGmm.COMBINED_ACTIVE_CRUST_2023, false));
-		gmmNames.add("NSHMP 2023 Combined");
-		gmms.add(new NSHMP_GMM_Wrapper.Single(NshmpGmm.COMBINED_ACTIVE_CRUST_2023_LOS_ANGELES, false));
-		gmmNames.add("NSHMP 2023 Combined, LA");
-		gmms.add(new NSHMP_GMM_Wrapper.Single(NshmpGmm.COMBINED_ACTIVE_CRUST_2023_SAN_FRANCISCO, false));
-		gmmNames.add("NSHMP 2023 Combined, SF");
+//		gmms.add(new NSHMP_GMM_Wrapper.Single(NshmpGmm.COMBINED_ACTIVE_CRUST_2014_42, true));
+//		gmmNames.add("NSHMP 2014 Combined, Parameterized");
+//		gmms.add(new NSHMP_GMM_Wrapper.Single(NshmpGmm.COMBINED_ACTIVE_CRUST_2014_42, false));
+//		gmmNames.add("NSHMP 2014 Combined");
+//		gmms.add(AttenRelRef.NGAWest_2014_AVG_NOIDRISS.get());
+//		gmmNames.add("Original NGA-West2 (No Idriss)");
+//		
+//		gmms.add(new NSHMP_GMM_Wrapper.Single(NshmpGmm.COMBINED_ACTIVE_CRUST_2023, true));
+//		gmmNames.add("NSHMP 2023 Combined, Parameterized");
+//		gmms.add(new NSHMP_GMM_Wrapper.Single(NshmpGmm.COMBINED_ACTIVE_CRUST_2023, false));
+//		gmmNames.add("NSHMP 2023 Combined");
+//		gmms.add(new NSHMP_GMM_Wrapper.Single(NshmpGmm.COMBINED_ACTIVE_CRUST_2023_LOS_ANGELES, false));
+//		gmmNames.add("NSHMP 2023 Combined, LA");
+//		gmms.add(new NSHMP_GMM_Wrapper.Single(NshmpGmm.COMBINED_ACTIVE_CRUST_2023_SAN_FRANCISCO, false));
+//		gmmNames.add("NSHMP 2023 Combined, SF");
 		
 		Random rand = new Random(totNumSites*fss.getRupSet().getNumRuptures());
 		

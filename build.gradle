@@ -119,7 +119,7 @@ task testOperational(type: Test) {
 
 dependencies {
 
-	api 'org.opensha:opensha-nshmp-gmm:1.8.5-opensha.1' // when you update this, also update nshmp-haz in dev to match
+	api 'org.opensha:opensha-nshmp-gmm:1.8.6-opensha.1' // when you update this, also update nshmp-haz in dev to match
 
 	api 'com.google.guava:guava:33.7.1-jre'
 	api 'com.google.code.gson:gson:2.14.0'

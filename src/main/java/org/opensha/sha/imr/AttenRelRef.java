@@ -2,6 +2,9 @@ package org.opensha.sha.imr;
 
 import static org.opensha.commons.util.DevStatus.*;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -14,8 +17,10 @@ import java.util.Set;
 import org.apache.commons.lang3.ArrayUtils;
 import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.WeightedValue;
+import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
 import org.opensha.commons.util.DevStatus;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.ServerPrefs;
 import org.opensha.nshmp2.imr.NSHMP08_CEUS;
 import org.opensha.nshmp2.imr.impl.AB2006_140_AttenRel;
@@ -71,9 +76,11 @@ import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_GMM_Wrapper;
 import org.opensha.sha.imr.mod.ModAttenuationRelationship;
 import org.opensha.sha.imr.mod.impl.stewartSiteSpecific.StewartAfshariGoulet2017NonergodicGMPE;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
 import org.opensha.nshmp.shaded.gmm.NshmpGmm;
+import org.opensha.nshmp.shaded.gmm.NshmpGmm.Type;
 import org.opensha.nshmp.shaded.gmm.NshmpGmmInput.Field;
 
 /**
@@ -182,54 +189,22 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-//			Unmodifiable<NshmpGmm> gmms = WeightedList.evenlyWeighted(
-//					NshmpGmm.ASK_14_BASIN, NshmpGmm.BSSA_14_BASIN, NshmpGmm.CB_14_BASIN, NshmpGmm.CY_14_BASIN);
-//			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
-			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.TOTAL_TREE_CONUS_ACTIVE_CRUST_2023, getName(), getShortName(), false, null);
-		}
-		
-	},
-	
-	USGS_NSHM23_ACTIVE_LA(null, "USGS NSHM23 Los Angeles Basin",
-			"NSHM23-Active-LA", PRODUCTION) {
-		
-		@Override
-		public AttenuationRelationship instance(
-				ParameterChangeWarningListener listener) {
-			WeightedList<NshmpGmm> gmms = WeightedList.of(
-					new WeightedValue<>(NshmpGmm.ASK_14, 0.125),
-					new WeightedValue<>(NshmpGmm.BSSA_14, 0.125),
-					new WeightedValue<>(NshmpGmm.CB_14, 0.125),
-					new WeightedValue<>(NshmpGmm.CY_14, 0.125),
-					new WeightedValue<>(NshmpGmm.ASK_14_BASIN, 0.0625),
-					new WeightedValue<>(NshmpGmm.BSSA_14_BASIN, 0.0625),
-					new WeightedValue<>(NshmpGmm.CB_14_BASIN, 0.0625),
-					new WeightedValue<>(NshmpGmm.CY_14_BASIN, 0.0625),
-					new WeightedValue<>(NshmpGmm.ASK_14_CYBERSHAKE, 0.0625),
-					new WeightedValue<>(NshmpGmm.BSSA_14_CYBERSHAKE, 0.0625),
-					new WeightedValue<>(NshmpGmm.CB_14_CYBERSHAKE, 0.0625),
-					new WeightedValue<>(NshmpGmm.CY_14_CYBERSHAKE, 0.0625));
-			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
-		}
-		
-	},
-	
-	USGS_NSHM23_ACTIVE_SF(null, "USGS NSHM23 San Francisco",
-			"NSHM23-Active-SF", PRODUCTION) {
-		
-		@Override
-		public AttenuationRelationship instance(
-				ParameterChangeWarningListener listener) {
-			WeightedList<NshmpGmm> gmms = WeightedList.of(
-					new WeightedValue<>(NshmpGmm.ASK_14, 0.125),
-					new WeightedValue<>(NshmpGmm.BSSA_14, 0.125),
-					new WeightedValue<>(NshmpGmm.CB_14, 0.125),
-					new WeightedValue<>(NshmpGmm.CY_14, 0.125),
-					new WeightedValue<>(NshmpGmm.ASK_14_BASIN, 0.125),
-					new WeightedValue<>(NshmpGmm.BSSA_14_BASIN, 0.125),
-					new WeightedValue<>(NshmpGmm.CB_14_BASIN, 0.125),
-					new WeightedValue<>(NshmpGmm.CY_14_BASIN, 0.125));
-			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
+			WeightedList<NshmpGmm> fallback = WeightedList.evenlyWeighted(NshmpGmm.TOTAL_TREE_CONUS_ACTIVE_CRUST_2023);
+			List<String> featurePaths = List.of(
+					"/data/imr/nshm23_imr_regions/bay-area-alt-basin.geojson",
+					"/data/imr/nshm23_imr_regions/los-angeles-cybershake.geojson");
+			List<Feature> overrideFeatures = featurePaths.stream().map(S->{
+				InputStream stream = NSHMP_GMM_Wrapper.class.getResourceAsStream(S);
+				Preconditions.checkNotNull(stream, "Could not locate %s", S);
+				InputStreamReader reader = new InputStreamReader(stream);
+				Preconditions.checkNotNull(reader, "Could not build reader for %s", S);
+				try {
+					return Feature.read(reader);
+				} catch (IOException e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+			}).toList();
+			return NSHMP_GMM_Wrapper.loadRegionalOverrides(fallback, overrideFeatures, Type.ACTIVE_CRUST, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -240,22 +215,8 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.TOTAL_TREE_CONUS_STABLE_CRUST_2023_R1_CPA, getName(), getShortName(), false, null) {
-
-				@Override
-				protected ImmutableList<Field> initFieldsUsed() {
-					// dirty hack to fix the fields used in nshmp-haz, but not reported as such by this GMM
-					// TODO: remove this when NSHMP-haz fixes their bug
-//					System.out.println("Hack for NSHM23-Stable fields. Declared: "+super.initFieldsUsed());
-					return ImmutableList.of(
-							Field.MW,
-							Field.RRUP,
-							Field.VS30,
-							Field.RJB,
-							Field.ZSED);
-				}
-				
-			};
+			// the CPA versions take care of regionalization; they are the same as the non CPA version if zSed is ommitted
+			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.TOTAL_TREE_CONUS_STABLE_CRUST_2023_R1_CPA, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -266,22 +227,8 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.TOTAL_TREE_CONUS_STABLE_CRUST_2023_R2_CPA, getName(), getShortName(), false, null) {
-
-				@Override
-				protected ImmutableList<Field> initFieldsUsed() {
-					// dirty hack to fix the fields used in nshmp-haz, but not reported as such by this GMM
-					// TODO: remove this when NSHMP-haz fixes their bug
-//					System.out.println("Hack for NSHM23-Stable fields. Declared: "+super.initFieldsUsed());
-					return ImmutableList.of(
-							Field.MW,
-							Field.RRUP,
-							Field.VS30,
-							Field.RJB,
-							Field.ZSED);
-				}
-				
-			};
+			// the CPA versions take care of regionalization; they are the same as the non CPA version if zSed is ommitted
+			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.TOTAL_TREE_CONUS_STABLE_CRUST_2023_R2_CPA, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -292,21 +239,21 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.TOTAL_TREE_CONUS_INTERFACE_2023, getName(), getShortName(), false, null) {
-
-				@Override
-				protected ImmutableList<Field> initFieldsUsed() {
-					// dirty hack to fix the fields used in nshmp-haz, but not reported as such by this GMM
-					// TODO: remove this when NSHMP-haz fixes their bug
-//					System.out.println("Hack for NSHM23-Interface fields. Declared: "+super.initFieldsUsed());
-					return ImmutableList.of(
-							Field.MW,
-							Field.RRUP,
-							Field.VS30,
-							Field.ZTOR);
+			WeightedList<NshmpGmm> fallback = WeightedList.evenlyWeighted(NshmpGmm.TOTAL_TREE_CONUS_INTERFACE_2023);
+			List<String> featurePaths = List.of(
+					"/data/imr/nshm23_imr_regions/seattle-m9.geojson");
+			List<Feature> overrideFeatures = featurePaths.stream().map(S->{
+				InputStream stream = NSHMP_GMM_Wrapper.class.getResourceAsStream(S);
+				Preconditions.checkNotNull(stream, "Could not locate %s", S);
+				InputStreamReader reader = new InputStreamReader(stream);
+				Preconditions.checkNotNull(reader, "Could not build reader for %s", S);
+				try {
+					return Feature.read(reader);
+				} catch (IOException e) {
+					throw ExceptionUtils.asRuntimeException(e);
 				}
-				
-			};
+			}).toList();
+			return NSHMP_GMM_Wrapper.loadRegionalOverrides(fallback, overrideFeatures, Type.SUBDUCTION_INTERFACE, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -317,7 +264,21 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper.Single(NshmpGmm.TOTAL_TREE_CONUS_INTRASLAB_2023, getName(), getShortName(), false, null);
+			WeightedList<NshmpGmm> fallback = WeightedList.evenlyWeighted(NshmpGmm.TOTAL_TREE_CONUS_INTRASLAB_2023);
+			List<String> featurePaths = List.of(
+					"/data/imr/nshm23_imr_regions/seattle-m9.geojson");
+			List<Feature> overrideFeatures = featurePaths.stream().map(S->{
+				InputStream stream = NSHMP_GMM_Wrapper.class.getResourceAsStream(S);
+				Preconditions.checkNotNull(stream, "Could not locate %s", S);
+				InputStreamReader reader = new InputStreamReader(stream);
+				Preconditions.checkNotNull(reader, "Could not build reader for %s", S);
+				try {
+					return Feature.read(reader);
+				} catch (IOException e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+			}).toList();
+			return NSHMP_GMM_Wrapper.loadRegionalOverrides(fallback, overrideFeatures, Type.SUBDUCTION_SLAB, getName(), getShortName(), false, null);
 		}
 		
 	},
