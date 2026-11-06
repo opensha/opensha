@@ -36,8 +36,9 @@ public class RegionalTests {
 //		testLocs.add(new Location(37.77384915552912, -122.41768206093282));
 		
 //		Type type = Type.SUBDUCTION_INTERFACE;
+//		WeightedList<NshmpGmm> fallback = WeightedList.evenlyWeighted(NshmpGmm.TOTAL_TREE_CONUS_INTERFACE_2023);
 		Type type = Type.SUBDUCTION_SLAB;
-		WeightedList<NshmpGmm> fallback = WeightedList.evenlyWeighted(NshmpGmm.TOTAL_TREE_CONUS_INTERFACE_2023);
+		WeightedList<NshmpGmm> fallback = WeightedList.evenlyWeighted(NshmpGmm.TOTAL_TREE_CONUS_INTRASLAB_2023);
 		List<Feature> overrideFeatures = List.of(
 				Feature.read(new File(inputDir, "seattle-m9.geojson")));
 		testLocs.add(new Location(47.60292680381297, -122.33014591064673));
