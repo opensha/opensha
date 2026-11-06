@@ -478,7 +478,7 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 		
 		private EnumSet<NshmpGmm> gmmsSet;
 		private EnumMap<NshmpGmm, EnumMap<NshmpImt, NshmpGroundMotionModel>> instanceMaps;
-		private List<Constraints> constraintsList;
+		private Constraints constraints;
 		
 		public AbstractCombination(Collection<NshmpGmm> gmms, String name, String shortName, boolean parameterize, Component component) {
 			super(name, shortName, parameterize, component);
@@ -556,34 +556,20 @@ public abstract class NSHMP_GMM_Wrapper extends AttenuationRelationship implemen
 
 		@Override
 		protected ImmutableList<Field> initFieldsUsed() {
-			constraintsList = new ArrayList<>(gmmsSet.size());
-			for (NshmpGmm gmm : gmmsSet)
-				constraintsList.add(gmm.constraints());
+			constraints = Constraints.union(gmmsSet);
+
 			ImmutableList.Builder<Field> builder = ImmutableList.builder();
-			for (Field field : Field.values()) {
-				for (Constraints constraints : constraintsList) {
-					if (constraints.get(field).isPresent()) {
-						// this field is used by at least one NshmpGmm
-						
-						// make sure we support this field
-						FieldParameterValueManager.ensureSupported(field);
-						builder.add(field);
-						break;
-					}
-				}
+			for (Field field : constraints.fields()) {
+				FieldParameterValueManager.ensureSupported(field);
+				builder.add(field);
 			}
 			return builder.build();
 		}
 
 		@Override
 		protected Object getCustomConstraintRange(Field field) {
-			// return the first match
-			for (Constraints constraints : constraintsList) {
-				Optional<?> optional = constraints.get(field);
-				if (optional.isPresent())
-					return optional.get();
-			}
-			throw new IllegalStateException("No Gmms use field "+field);
+			return constraints.get(field).orElseThrow(
+					() -> new IllegalStateException("No GMMs use field " + field));
 		}
 		
 	}
