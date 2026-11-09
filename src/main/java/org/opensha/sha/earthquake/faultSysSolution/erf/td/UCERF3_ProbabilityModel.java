@@ -138,6 +138,14 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 		// this gets the cached value and is updated automatically if averagingTypeParam changes
 		double aveCondRecurInterval = getAveCondRecurIntervalForFltSysRups()[fltSysRupIndex];
 		
+//// PoissonAltTest TEST RIGHT HERE
+//double ex = durationYears/aveCondRecurInterval;
+//double cp = 1 - Math.exp(-ex);
+//double g = cp/ex;
+////System.out.println("working");
+//if(true)
+//	return g;
+				
 		// get aveTimeSinceLastWhereKnownYears
 		double aveTimeSinceLastWhereKnownYears;
 		double aveNormTimeSinceLastEventWhereKnown=Double.NaN;
@@ -194,6 +202,8 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 				|| aveTimeSinceLastWhereKnownYears >= 0, "aveTimeSinceLastWhereKnownYears=%s", aveTimeSinceLastWhereKnownYears);
 		
 		double expNum = durationYears/aveCondRecurInterval;
+//expNum = 1 - Math.exp(-expNum);
+
 		float fractAreaWithDateOfLast = (float)(totRupAreaWithDateOfLast/totRupArea);
 		
 		double probGain;
@@ -348,6 +358,10 @@ public class UCERF3_ProbabilityModel extends AbstractProbDistProbabilityModel im
 				}
 			}
 		}
+		
+//// TEST RIGHT HERE
+//condProb = 1 - Math.exp(-expNum);
+//probGain = condProb/expNum;
 		
 		if (saveDebugInfo) {
 			// csv file line

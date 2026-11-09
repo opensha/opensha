@@ -43,6 +43,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.timeDependence.TimeDepe
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
+import org.opensha.sha.util.TectonicRegionType;
 
 /**
  * @author field
@@ -240,14 +241,21 @@ public class ProbModelsPlottingUtils {
 	}
 	
 	public static void writeMFD_ComprisonPlot(IncrementalMagFreqDist targetMFD, IncrementalMagFreqDist aveMFD,
-			EvenlyDiscretizedFunc minConfMFD, EvenlyDiscretizedFunc maxConfMFD, File outputDir) {
-		writeMFD_ComprisonPlot(targetMFD, aveMFD, minConfMFD, maxConfMFD, outputDir, "", new Range(1e-5,2));
+			EvenlyDiscretizedFunc minConfMFD, EvenlyDiscretizedFunc maxConfMFD, File outputDir,
+			TectonicRegionType trt) {
+		writeMFD_ComprisonPlot(targetMFD, aveMFD, minConfMFD, maxConfMFD, outputDir, "", new Range(1e-5,2), trt);
 	}
-
+	
 	
 	public static void writeMFD_ComprisonPlot(IncrementalMagFreqDist targetMFD, IncrementalMagFreqDist aveMFD,
+			EvenlyDiscretizedFunc minConfMFD, EvenlyDiscretizedFunc maxConfMFD, File outputDir) {
+		writeMFD_ComprisonPlot(targetMFD, aveMFD, minConfMFD, maxConfMFD, outputDir, "", new Range(1e-5,2), null);
+	}
+
+
+	public static void writeMFD_ComprisonPlot(IncrementalMagFreqDist targetMFD, IncrementalMagFreqDist aveMFD,
 			EvenlyDiscretizedFunc minConfMFD, EvenlyDiscretizedFunc maxConfMFD, File outputDir, String namePrefix,
-			Range yAxisRange) {
+			Range yAxisRange, TectonicRegionType trt) {
 		double maxX = Math.ceil(targetMFD.getMaxMagWithNonZeroRate()/0.5)*0.5;
 		double minX = Math.floor(targetMFD.getMinMagWithNonZeroRate()/0.5)*0.5;
 		
@@ -272,6 +280,8 @@ public class ProbModelsPlottingUtils {
 		plotChars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 1f, Color.RED));
 
 		String plotName = "MFD Comparsion";
+		if(trt != null)
+			plotName += " for "+trt;
 		String xAxisLabel = "Magnitude";
 		String yAxisLabel = "Rate (per year)";
 		Range xAxisRange = new Range(minX,maxX);
@@ -280,6 +290,9 @@ public class ProbModelsPlottingUtils {
 		double widthInches = 7; // inches
 		double heightInches = 6; // inches
 		String fileNamePrefix = "magFreqDists";
+		if(trt != null)
+			fileNamePrefix += "_"+trt.toString().replace(" ", "_");
+
 		if(!namePrefix.equals(""))
 			fileNamePrefix = namePrefix+"_"+fileNamePrefix;
 		boolean popupWindow = false;
@@ -311,10 +324,15 @@ public class ProbModelsPlottingUtils {
 		funcs.add(minConfRatioMFD);
 		funcs.add(maxConfRatioMFD);
 		plotName = "MFD Ratio (to target)";
+		if(trt != null)
+			plotName += " for "+trt;
+
 		yAxisLabel = "Ratio";
 		yAxisRange = new Range(0,2);
 		logY = false;
 		fileNamePrefix = "magFreqDistRatio";
+		if(trt != null)
+			fileNamePrefix += "_"+trt.toString().replace(" ", "_");
 		if(!namePrefix.equals(""))
 			fileNamePrefix = namePrefix+"_"+fileNamePrefix;
 		writeAndOrPlotFuncs(funcs,plotChars,plotName,xAxisLabel,yAxisLabel,xAxisRange,yAxisRange,
