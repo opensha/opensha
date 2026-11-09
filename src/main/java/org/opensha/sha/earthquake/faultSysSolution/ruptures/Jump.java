@@ -23,7 +23,7 @@ import org.opensha.sha.faultSurface.FaultSection;
  * @author kevin
  *
  */
-public class Jump {
+public class Jump implements Transition {
 	
 	/**
 	 * Section on fromCluster which is the jumping point
@@ -67,6 +67,16 @@ public class Jump {
 	}
 	
 	private static final DecimalFormat distDF = new DecimalFormat("0.0");
+
+	@Override
+	public FaultSection getFromSection() {
+		return fromSection;
+	}
+
+	@Override
+	public FaultSection getToSection() {
+		return toSection;
+	}
 	
 	@Override
 	public String toString() {

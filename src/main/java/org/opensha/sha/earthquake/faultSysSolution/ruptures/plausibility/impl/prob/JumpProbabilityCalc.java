@@ -26,7 +26,17 @@ import com.google.gson.stream.JsonWriter;
  * @author kevin
  *
  */
-public interface JumpProbabilityCalc extends RuptureProbabilityCalc {
+public interface JumpProbabilityCalc extends TransitionProbabilityCalc<Jump> {
+
+	@Override
+	public default Iterable<Jump> getTransitions(ClusterRupture rupture) {
+		return rupture.getJumpsIterable();
+	}
+
+	@Override
+	public default double calcTransitionProbability(ClusterRupture rupture, Jump jump, boolean verbose) {
+		return calcJumpProbability(rupture, jump, verbose);
+	}
 	
 	/**
 	 * This computes the probability of this jump occurring conditioned on the rupture
@@ -42,17 +52,7 @@ public interface JumpProbabilityCalc extends RuptureProbabilityCalc {
 
 	@Override
 	public default double calcRuptureProb(ClusterRupture rupture, boolean verbose) {
-		double prob = 1d;
-		for (Jump jump : rupture.getJumpsIterable()) {
-			double jumpProb = calcJumpProbability(rupture, jump, verbose);
-			if (verbose)
-				System.out.println(getName()+": "+jump+", P="+jumpProb);
-			prob *= jumpProb;
-			if (prob == 0d && !verbose)
-				// don't bother continuing
-				break;
-		}
-		return prob;
+		return TransitionProbabilityCalc.super.calcRuptureProb(rupture, verbose);
 	}
 	
 	public static interface DistDependentJumpProbabilityCalc extends JumpProbabilityCalc {
