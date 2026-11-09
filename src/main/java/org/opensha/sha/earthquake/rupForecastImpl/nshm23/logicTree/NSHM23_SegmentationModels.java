@@ -292,6 +292,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	
 	public abstract JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch);
 	
+	/** Pass wasatchProb=1 to omit the hardcoded Wasatch segmentation rules. */
 	public static JumpProbabilityCalc buildModel(FaultSystemRupSet rupSet, double shawR0, double shawShift,
 			double wasatchProb, double creepingProb, double hardCutoff, boolean namedFaultsOnly) {
 		// distance dependent model, possibly with a horizontal shift
@@ -323,7 +324,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 			}
 			
 			// Wasatch model
-			JumpProbabilityCalc wasatch = NSHM23_WasatchSegmentationData.build(rupSet, wasatchProb);
+			JumpProbabilityCalc wasatch = wasatchProb == 1d ? null : NSHM23_WasatchSegmentationData.build(rupSet, wasatchProb);
 			if (wasatch != null) {
 				// this rupture set has Wasatch
 				if (model == null)
