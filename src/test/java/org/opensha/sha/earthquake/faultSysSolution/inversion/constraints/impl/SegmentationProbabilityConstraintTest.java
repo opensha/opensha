@@ -18,6 +18,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.Inversi
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.JumpProbabilityConstraint.InitialModelParticipationRateEstimator;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SegmentationProbabilityConstraint.EndpointReferenceRateWeighting;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SegmentationProbabilityConstraint.ReferenceRateWeighting;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SegmentationProbabilityConstraint.ProbabilityAggregation;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
@@ -224,11 +225,116 @@ public class SegmentationProbabilityConstraintTest {
 		}
 	}
 
-	@Test(expected=IllegalArgumentException.class)
-	public void testRejectRuptureDependentProbabilities() {
+	@Test
+	public void testAggregateRuptureDependentProbabilitiesAndDuplicateEnumeration() {
 		InternalCalc calc = new InternalCalc(0.5);
 		calc.ruptureDependent = true;
-		new SegmentationProbabilityConstraint(1d, rupSet, calc).getNumRows();
+		for (ProbabilityAggregation aggregation : ProbabilityAggregation.values()) {
+			DoubleMatrix2D matrix = encode(new SegmentationProbabilityConstraint(1d, rupSet, calc, aggregation));
+			double p = aggregation == ProbabilityAggregation.MIN ? 0.25
+					: aggregation == ProbabilityAggregation.MAX ? 0.5 : 1d/3d;
+			// Boundary 0-1 is crossed by r3 (p=.5), r5 (p=.25), r7 (p=.25).
+			for (int r : new int[] {3, 5, 7}) assertEquals((1d-p)/p, matrix.get(0, r), 1e-12);
+			assertEquals(-1d, matrix.get(0, 0), 1e-12);
+			calc.includeReverse = true;
+			calc.duplicateShortRupturesOnly = true;
+			assertMatrixEquals(matrix, encode(new SegmentationProbabilityConstraint(1d, rupSet, calc, aggregation)));
+			calc.includeReverse = false;
+		}
+	}
+
+	@Test
+	public void testDifferentDistancesShareBoundAndAverageOncePerRupture() {
+		useDifferentJumpDistances();
+		JumpProbabilityCalc calc = new DistanceJumpCalc(0.8, 0.2);
+		SegmentationProbabilityConstraint defaultConstraint = new SegmentationProbabilityConstraint(1d, rupSet, calc);
+		assertEquals(ProbabilityAggregation.AVERAGE, defaultConstraint.getProbabilityAggregation());
+		for (ProbabilityAggregation aggregation : ProbabilityAggregation.values()) {
+			SegmentationProbabilityConstraint constraint = new SegmentationProbabilityConstraint(1d, rupSet, calc, aggregation);
+			assertEquals(2, constraint.getNumRows()); // one pair, two sides; distances do not add rows
+			DoubleMatrix2D matrix = encode(constraint);
+			// One rupture at p=.8 and two at p=.2: average=.4, not the mean of distance-group means (.5).
+			double p = aggregation == ProbabilityAggregation.MIN ? 0.2
+					: aggregation == ProbabilityAggregation.MAX ? 0.8 : 0.4;
+			for (int row=0; row<2; row++)
+				for (int r : new int[] {6, 7, 11}) assertEquals((1d-p)/p, matrix.get(row, r), 1e-12);
+			assertEquals(-1d, matrix.get(0, 2), 1e-12);
+			assertEquals(-1d, matrix.get(1, 8), 1e-12);
+			if (aggregation == ProbabilityAggregation.AVERAGE) assertMatrixEquals(matrix, encode(defaultConstraint));
+		}
+	}
+
+	@Test
+	public void testCombinedBoundClosesSeparateDistanceAllowances() {
+		useDifferentJumpDistances();
+		JumpProbabilityCalc calc = new ConstantJumpCalc(0.3);
+		DoubleMatrix2D legacy = encode(new JumpProbabilityConstraint.RelativeRate(1d, true, rupSet, calc));
+		DoubleMatrix2D combined = encode(new SegmentationProbabilityConstraint(1d, rupSet, calc));
+		assertEquals(4, legacy.rows());
+		assertEquals(2, combined.rows());
+		double[] rates = new double[rupSet.getNumRuptures()];
+		rates[2] = rates[8] = 0.6; // stop on either side; each endpoint's total participation is 1
+		rates[6] = 0.2; // distance group 1 crosses at .2
+		rates[7] = rates[11] = 0.1; // distance group 2 also crosses at .2
+		for (int row=0; row<legacy.rows(); row++) assertTrue(rowMisfit(legacy, row, rates) <= 0d);
+		for (int row=0; row<combined.rows(); row++) assertTrue(rowMisfit(combined, row, rates) > 0d);
+	}
+
+	@Test
+	public void testAggregationIncludesZeroAndOneAndSerializesPolicy() {
+		useDifferentJumpDistances();
+		JumpProbabilityCalc calc = new DistanceJumpCalc(0d, 1d);
+		Gson gson = new GsonBuilder().registerTypeAdapter(InversionConstraint.class,
+				new InversionConstraint.Adapter(rupSet)).create();
+		for (ProbabilityAggregation aggregation : ProbabilityAggregation.values()) {
+			SegmentationProbabilityConstraint original = new SegmentationProbabilityConstraint(1d, rupSet, calc, aggregation);
+			String json = gson.toJson(original, InversionConstraint.class);
+			SegmentationProbabilityConstraint restored = (SegmentationProbabilityConstraint)gson.fromJson(json, InversionConstraint.class);
+			assertEquals(aggregation, restored.getProbabilityAggregation());
+			assertMatrixEquals(encode(original), encode(restored));
+			DoubleMatrix2D matrix = encode(original);
+			double expected = aggregation == ProbabilityAggregation.MIN ? 1e5
+					: aggregation == ProbabilityAggregation.MAX ? 0d : 0.5; // average=2/3
+			for (int r : new int[] {6, 7, 11}) assertEquals(expected, matrix.get(0, r), 1e-12);
+			// Older JSON without this option defaults to AVERAGE.
+			com.google.gson.JsonObject oldJSON = gson.toJsonTree(original, InversionConstraint.class).getAsJsonObject();
+			oldJSON.getAsJsonObject("data").remove("probabilityAggregation");
+			SegmentationProbabilityConstraint oldRestored = (SegmentationProbabilityConstraint)gson.fromJson(oldJSON, InversionConstraint.class);
+			assertEquals(ProbabilityAggregation.AVERAGE, oldRestored.getProbabilityAggregation());
+			assertMatrixEquals(encode(new SegmentationProbabilityConstraint(1d, rupSet, calc)), encode(oldRestored));
+		}
+	}
+
+	@Test
+	public void testSubsetRebuildsProbabilityAverage() {
+		InternalCalc calc = new InternalCalc(0.5);
+		calc.ruptureDependent = true;
+		SegmentationProbabilityConstraint constraint = new SegmentationProbabilityConstraint(1d, rupSet, calc);
+		constraint.getNumRows();
+		FaultSystemRupSet subset = rupSet.getForRuptureSubSet(Arrays.asList(3));
+		constraint.setRuptureSet(subset);
+		assertMatrixEquals(encode(new SegmentationProbabilityConstraint(1d, subset, calc), subset), encode(constraint, subset));
+		assertEquals(1d, encode(constraint, subset).get(0, 0), 1e-12); // only the p=.5 crossing remains
+	}
+
+	private void useDifferentJumpDistances() {
+		List<ClusterRupture> ruptures = new ArrayList<>(rupSet.requireModule(ClusterRuptures.class).getAll());
+		for (int r : new int[] {6, 7}) {
+			ClusterRupture original = ruptures.get(r);
+			Jump jump = original.getJumpsIterable().iterator().next();
+			ruptures.set(r, new ClusterRupture(jump.fromCluster).take(new Jump(jump.fromSection, jump.fromCluster,
+					jump.toSection, jump.toCluster, r == 6 ? 1d : 2d)));
+		}
+		ruptures.add(ruptures.get(7).reversed());
+		double[] mags = new double[ruptures.size()];
+		Arrays.fill(mags, 6d);
+		rupSet = FaultSystemRupSet.builderForClusterRups(rupSet.getFaultSectionDataList(), ruptures).rupMags(mags).build();
+	}
+
+	private static double rowMisfit(DoubleMatrix2D matrix, int row, double[] rates) {
+		double sum = 0d;
+		for (int r=0; r<rates.length; r++) sum += matrix.get(row, r)*rates[r];
+		return sum;
 	}
 
 	@Test(expected=IllegalArgumentException.class)
@@ -283,6 +389,19 @@ public class SegmentationProbabilityConstraintTest {
 		@Override public double calcJumpProbability(ClusterRupture rupture, Jump jump, boolean verbose) { return probability; }
 	}
 
+	public static class DistanceJumpCalc implements JumpProbabilityCalc {
+		private double firstProbability, secondProbability;
+		DistanceJumpCalc(double firstProbability, double secondProbability) {
+			this.firstProbability = firstProbability;
+			this.secondProbability = secondProbability;
+		}
+		@Override public String getName() { return "Distance-varying jump"; }
+		@Override public boolean isDirectional(boolean splayed) { return false; }
+		@Override public double calcJumpProbability(ClusterRupture rupture, Jump jump, boolean verbose) {
+			return jump.distance == 1d ? firstProbability : secondProbability;
+		}
+	}
+
 	private static class Boundary implements Transition {
 		private final FaultSection from, to;
 		Boundary(FaultSection from, FaultSection to) { this.from = from; this.to = to; }
@@ -292,7 +411,7 @@ public class SegmentationProbabilityConstraintTest {
 
 	public static class InternalCalc implements TransitionProbabilityCalc<Boundary> {
 		private double probability;
-		private boolean includeReverse, ruptureDependent, directional;
+		private boolean includeReverse, ruptureDependent, directional, duplicateShortRupturesOnly;
 		InternalCalc(double probability) { this.probability = probability; }
 		@Override public String getName() { return "Internal boundaries"; }
 		@Override public boolean isDirectional(boolean splayed) { return directional; }
@@ -303,7 +422,8 @@ public class SegmentationProbabilityConstraintTest {
 					for (FaultSection to : rupture.getTreeNavigator().getDescendants(from)) {
 						if (from.getParentSectionId() == to.getParentSectionId()) {
 							boundaries.add(new Boundary(from, to));
-							if (includeReverse) boundaries.add(new Boundary(to, from));
+							if (includeReverse && (!duplicateShortRupturesOnly || rupture.getTotalNumSects() == 2))
+								boundaries.add(new Boundary(to, from));
 						}
 					}
 				}

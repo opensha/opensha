@@ -47,6 +47,15 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
  * There is 1 constraint for each side of each jump in the given rupture set. So for a simple 2 section case, with 1
  * jumping point between them, there would be 2 constraints, one in each direction.
  * <p>
+ * Note: jumps are grouped by subsection endpoints and distance (via {@link UniqueDistJump}).
+ * Different distances for the same endpoints therefore receive separate constraints.
+ * In relative-rate inequality mode, each group has its own crossing-rate allowance
+ * against the same endpoint participation rate. Their combined crossing rate can
+ * exceed the intended passage fraction, especially for many similar-distance groups.
+ * This potential issue is not addressed in this legacy implementation;
+ * {@link SegmentationProbabilityConstraint} instead combines all distances for an
+ * endpoint pair into one crossing-rate bound per side.
+ * <p>
  * First, we use the given model (e.g., {@link Shaw07JumpDistProb}) to compute the conditional probability of taking all
  * possible jumps. These probabilities don't take into account other possible options, they are just the probability
  * of taking the given jump relative to doing nothing.

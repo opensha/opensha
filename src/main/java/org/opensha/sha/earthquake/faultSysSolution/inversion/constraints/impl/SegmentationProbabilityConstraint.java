@@ -36,11 +36,13 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
  * J <= p * sum_s(w_s R_s), where R_s is subsection participation rate and the
  * reference weights sum to one. This does not enforce products along rupture paths.
  *
- * <p>This initial implementation requires non-directional probabilities that are
- * constant across all occurrences of an unordered subsection pair. Multiple features
- * at the same boundary should be combined by the calculator into one probability.
- * Rupture-dependent probabilities (including differing jump distances for the same
- * endpoints) are rejected rather than silently averaged. Unlike the legacy
+ * <p>All occurrences of an unordered subsection pair share one crossing-rate bound
+ * per side, including jumps with different distances. Rupture-dependent probabilities
+ * are combined using {@link ProbabilityAggregation}; the default is an unweighted
+ * arithmetic mean, counting each crossing rupture once. This avoids giving each
+ * distance variant its own rate allowance against the same reference rate.
+ * Probabilities must be non-directional. Multiple features at the same boundary
+ * should be combined by the calculator into one probability. Unlike the legacy
  * {@link JumpProbabilityConstraint}, there is no equality/alternative-normalization
  * or proxy-slip variant.
  *
@@ -61,12 +63,18 @@ public class SegmentationProbabilityConstraint extends InversionConstraint {
 	private TransitionProbabilityCalc<?> probabilityCalc;
 	@JsonAdapter(ReferenceRateWeightingAdapter.class)
 	private ReferenceRateWeighting referenceRateWeighting;
+	private ProbabilityAggregation probabilityAggregation = ProbabilityAggregation.AVERAGE;
 	// Snapshot used only for misfit normalization, not as the reference rate in the inequality.
 	private double[] estimatedParticipationRates;
 
 	public SegmentationProbabilityConstraint(double weight, FaultSystemRupSet rupSet,
 			TransitionProbabilityCalc<?> probabilityCalc) {
 		this(weight, rupSet, probabilityCalc, new EndpointReferenceRateWeighting(), null);
+	}
+
+	public SegmentationProbabilityConstraint(double weight, FaultSystemRupSet rupSet,
+			TransitionProbabilityCalc<?> probabilityCalc, ProbabilityAggregation probabilityAggregation) {
+		this(weight, rupSet, probabilityCalc, new EndpointReferenceRateWeighting(), null, probabilityAggregation);
 	}
 
 	public SegmentationProbabilityConstraint(double weight, FaultSystemRupSet rupSet,
@@ -83,13 +91,35 @@ public class SegmentationProbabilityConstraint extends InversionConstraint {
 	public SegmentationProbabilityConstraint(double weight, FaultSystemRupSet rupSet,
 			TransitionProbabilityCalc<?> probabilityCalc, ReferenceRateWeighting referenceRateWeighting,
 			SectParticipationRateEstimator rateEstimator) {
+		this(weight, rupSet, probabilityCalc, referenceRateWeighting, rateEstimator, ProbabilityAggregation.AVERAGE);
+	}
+
+	public SegmentationProbabilityConstraint(double weight, FaultSystemRupSet rupSet,
+			TransitionProbabilityCalc<?> probabilityCalc, ReferenceRateWeighting referenceRateWeighting,
+			SectParticipationRateEstimator rateEstimator, ProbabilityAggregation probabilityAggregation) {
 		super("Segmentation Probability Constraint, "+Preconditions.checkNotNull(probabilityCalc).getName(),
 				"SegProb", weight, true);
 		this.probabilityCalc = Preconditions.checkNotNull(probabilityCalc);
 		this.referenceRateWeighting = Preconditions.checkNotNull(referenceRateWeighting);
+		this.probabilityAggregation = Preconditions.checkNotNull(probabilityAggregation);
 		if (rateEstimator != null)
 			estimatedParticipationRates = rateEstimator.estimateSectParticRates().clone();
 		setRuptureSet(rupSet);
+	}
+
+	/** Combines probabilities over crossing ruptures, not over distinct distances. */
+	public enum ProbabilityAggregation {
+		/** Unweighted arithmetic mean; each crossing rupture contributes once. */
+		AVERAGE,
+		/** Smallest probability, giving the most restrictive combined bound. */
+		MIN,
+		/** Largest probability, giving the least restrictive combined bound. */
+		MAX
+	}
+
+	public ProbabilityAggregation getProbabilityAggregation() {
+		// Older serialized constraints did not specify an aggregation policy.
+		return probabilityAggregation == null ? ProbabilityAggregation.AVERAGE : probabilityAggregation;
 	}
 
 	/**
@@ -159,6 +189,7 @@ public class SegmentationProbabilityConstraint extends InversionConstraint {
 			Preconditions.checkArgument(!calc.isDirectional(!rupture.splays.isEmpty()),
 					"Initial segmentation constraint requires non-directional probabilities");
 			Set<Integer> ruptureSections = new HashSet<>(rupSet.getSectionsIndicesForRup(r));
+			Map<IDPairing, Double> ruptureProbabilities = new TreeMap<>();
 			for (T transition : calc.getTransitions(rupture)) {
 				int from = transition.getFromSection().getSectionId();
 				int to = transition.getToSection().getSectionId();
@@ -177,17 +208,20 @@ public class SegmentationProbabilityConstraint extends InversionConstraint {
 				int second = Math.max(from, to);
 				// Store both traversal directions under the same ordered subsection pair.
 				IDPairing key = new IDPairing(first, second);
+				Double previous = ruptureProbabilities.putIfAbsent(key, probability);
+				if (previous != null) {
+					Preconditions.checkArgument(Math.abs(previous-probability) <= PROB_TOLERANCE,
+							"Conflicting duplicate probabilities for transition %s -> %s in rupture %s: %s != %s",
+							first, second, r, previous, probability);
+					continue;
+				}
 				Crossing crossing = crossings.get(key);
 				if (crossing == null) {
-					crossing = new Crossing(first, second, probability);
+					crossing = new Crossing(first, second);
 					crossings.put(key, crossing);
-				} else {
-					Preconditions.checkArgument(Math.abs(crossing.probability-probability) <= PROB_TOLERANCE,
-							"Rupture-dependent probabilities for transition %s -> %s: %s != %s",
-							first, second, crossing.probability, probability);
 				}
 				// Count each physical crossing once, including when enumerated in reverse.
-				crossing.ruptures.add(r);
+				crossing.addRupture(r, probability);
 			}
 		}
 	}
@@ -223,7 +257,7 @@ public class SegmentationProbabilityConstraint extends InversionConstraint {
 				&& Double.isFinite(weight*MAX_WEIGHT_SCALAR), "Invalid constraint weight: %s", weight);
 		long count = 0;
 		for (Row row : rows) {
-			double probability = row.crossing.probability;
+			double probability = row.crossing.getProbability(getProbabilityAggregation());
 			double scalar = weight;
 			if (estimatedParticipationRates != null) {
 				double estimate = 0d;
@@ -255,13 +289,30 @@ public class SegmentationProbabilityConstraint extends InversionConstraint {
 
 	private static class Crossing {
 		final int first, second;
-		final double probability;
+		double probabilitySum;
+		double minProbability = Double.POSITIVE_INFINITY;
+		double maxProbability = Double.NEGATIVE_INFINITY;
 		final Set<Integer> ruptures = new HashSet<>();
 
-		Crossing(int first, int second, double probability) {
+		Crossing(int first, int second) {
 			this.first = first;
 			this.second = second;
-			this.probability = probability;
+		}
+
+		void addRupture(int rupture, double probability) {
+			ruptures.add(rupture);
+			probabilitySum += probability;
+			minProbability = Math.min(minProbability, probability);
+			maxProbability = Math.max(maxProbability, probability);
+		}
+
+		double getProbability(ProbabilityAggregation aggregation) {
+			switch (aggregation) {
+			case AVERAGE: return probabilitySum/ruptures.size();
+			case MIN: return minProbability;
+			case MAX: return maxProbability;
+			default: throw new IllegalStateException("Unknown aggregation: "+aggregation);
+			}
 		}
 	}
 
