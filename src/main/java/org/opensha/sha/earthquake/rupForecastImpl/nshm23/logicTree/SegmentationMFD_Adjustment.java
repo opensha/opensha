@@ -13,6 +13,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.TransitionProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.DistDependentJumpProbabilityCalc;
+import org.opensha.sha.earthquake.nshmp.inversion.mfdPreInversion.MFD_ScaledInversionAdjustment;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ThresholdAveragingSectNuclMFD_Estimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.StrictSegReproductionMFDAdjustment;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ImprobModelRupMultiplyingSectNuclMFD_Estimator;
@@ -29,25 +30,25 @@ import com.google.common.base.Preconditions;
 public enum SegmentationMFD_Adjustment implements LogicTreeNode {
 	JUMP_PROB_THRESHOLD_AVG("Threshold Averaging", "ThreshAvg", 0d) {
 		@Override
-		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel) {
+		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel, int maxThreads) {
 			return new ThresholdAveragingSectNuclMFD_Estimator.WorstAvgJumpProb<>(segModel);
 		}
 	},
 	REL_GR_THRESHOLD_AVG_SINGLE_ITER("Threshold Averaging, Single-Iter Rel G-R", "ThreshAvgSingleIterRelGR", 0d) {
 		@Override
-		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel) {
+		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel, int maxThreads) {
 			return new ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb<>(segModel, 1, true);
 		}
 	},
 	REL_GR_THRESHOLD_AVG("Threshold Averaging, Rel G-R", "ThreshAvgIterRelGR", 1d) {
 		@Override
-		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel) {
+		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel, int maxThreads) {
 			return new ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb<>(segModel, 100, true);
 		}
 	},
 	JUMP_PROB_THRESHOLD_AVG_MATCH_STRICT("Strict-Seg Equiv Threshold Averaging", "StrictEquivThreshAvg", 0d) {
 		@Override
-		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel) {
+		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel, int maxThreads) {
 			Preconditions.checkState(segModel instanceof DistDependentJumpProbabilityCalc,
 					"Only works with dist-dependent models");
 			DistDependentJumpProbabilityCalc distModel = (DistDependentJumpProbabilityCalc)segModel;
@@ -59,7 +60,7 @@ public enum SegmentationMFD_Adjustment implements LogicTreeNode {
 	},
 	JUMP_PROB_THRESHOLD_AVG_ABOVE_1KM("Threshold Averaging >1km", "JumpProbGt1km", 0d) {
 		@Override
-		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel) {
+		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel, int maxThreads) {
 			Preconditions.checkState(segModel instanceof DistDependentJumpProbabilityCalc,
 					"Only works with dist-dependent models");
 			DistDependentJumpProbabilityCalc distModel = (DistDependentJumpProbabilityCalc)segModel;
@@ -75,53 +76,59 @@ public enum SegmentationMFD_Adjustment implements LogicTreeNode {
 	},
 	RUP_PROB_THRESHOLD_AVG("Rup Prob Threshold Averaging", "RupProb", 0d) {
 		@Override
-		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel) {
+		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel, int maxThreads) {
 			return new ThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb<>(segModel);
 		}
 	},
 	RUP_MULTIPLY_WORST_JUMP_PROB("Rup Multyplied By Worst Jump Prob", "RupMultiplyWorstJumpProb", 0d) {
 		@Override
-		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel) {
+		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel, int maxThreads) {
 			return new ImprobModelRupMultiplyingSectNuclMFD_Estimator.WorstJumpProb(segModel);
 		}
 	},
 	GREEDY("Greedy", "Greedy", 0d) {
 		@Override
-		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel) {
+		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel, int maxThreads) {
 			return new SegmentationImpliedSectNuclMFD_Estimator(
 					requireJumpModel(segModel), MultiBinDistributionMethod.GREEDY, false);
 		}
 	},
 	GREEDY_SELF_CONTAINED("Greedy Self-Contained", "GreedySlfCont", 0d) {
 		@Override
-		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel) {
+		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel, int maxThreads) {
 			return new SegmentationImpliedSectNuclMFD_Estimator(
 					requireJumpModel(segModel), MultiBinDistributionMethod.GREEDY, true);
 		}
 	},
 	CAPPED_REDIST("Capped Redistributed", "CappedRdst", 0d) {
 		@Override
-		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel) {
+		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel, int maxThreads) {
 			return new SegmentationImpliedSectNuclMFD_Estimator(
 					requireJumpModel(segModel), MultiBinDistributionMethod.CAPPED_DISTRIBUTED, false);
 		}
 	},
 	CAPPED_REDIST_SELF_CONTAINED("Capped Redistributed Self-Contained", "CappedRdstSlfCont", 0d) {
 		@Override
-		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel) {
+		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel, int maxThreads) {
 			return new SegmentationImpliedSectNuclMFD_Estimator(
 					requireJumpModel(segModel), MultiBinDistributionMethod.CAPPED_DISTRIBUTED, true);
 		}
 	},
 	NONE("No Adjustment", "NoAdj", 0d) {
 		@Override
-		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel) {
+		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel, int maxThreads) {
 			return null;
+		}
+	},
+	MFD_PRE_INVERSION("MFD Pre-inversion", "MFDPreInv", 0d) {
+		@Override
+		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel, int maxThreads) {
+			return new MFD_ScaledInversionAdjustment(maxThreads, requireJumpModel(segModel));
 		}
 	},
 	STRICT_SEG_REPRODUCE_THROUGH_INVERSION("Strict-Segmentation", "StrictSeg", 0d) {
 		@Override
-		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel) {
+		public SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel, int maxThreads) {
 			System.err.println("WARNING: using strict-seg reproduction, will be slow and do inversions, only use for small test cases");
 			return new StrictSegReproductionMFDAdjustment(requireJumpModel(segModel));
 		}
@@ -137,7 +144,7 @@ public enum SegmentationMFD_Adjustment implements LogicTreeNode {
 		this.weight = weight;
 	}
 	
-	public abstract SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel);
+	public abstract SectNucleationMFD_Estimator getAdjustment(TransitionProbabilityCalc<?> segModel, int maxThreads);
 
 	private static JumpProbabilityCalc requireJumpModel(TransitionProbabilityCalc<?> model) {
 		Preconditions.checkArgument(model instanceof JumpProbabilityCalc, "This adjustment requires a jump-only model");

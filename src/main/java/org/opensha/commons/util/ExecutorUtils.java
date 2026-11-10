@@ -83,6 +83,17 @@ public class ExecutorUtils {
 		return Executors.newFixedThreadPool(threads, new DaemonThreadFactory(nameAdd));
 	}
 	
+	public static ExecutorService newCachedDaemonThreadPool(String nameAdd) {
+		return Executors.newCachedThreadPool(new DaemonThreadFactory(nameAdd));
+	}
+	
+	public static ExecutorService newCachedDaemonThreadPool(String nameAdd, int timeoutSecs) {
+		return new ThreadPoolExecutor(0, Integer.MAX_VALUE,
+				timeoutSecs, TimeUnit.SECONDS,
+				new SynchronousQueue<Runnable>(),
+				new DaemonThreadFactory(nameAdd));
+	}
+	
 	public static class DaemonThreadFactory implements ThreadFactory {
 		private static final AtomicInteger poolNumber = new AtomicInteger(1);
 		private final ThreadGroup group;

@@ -451,7 +451,7 @@ public class Inversions {
 				if (segModel instanceof BinaryJumpProbabilityCalc)
 					builder.forBinaryRupProbModel((BinaryJumpProbabilityCalc)segModel);
 				else
-					builder.adjustTargetsForData(NSHM23_ConstraintBuilder.SEG_ADJ_METHOD_DEFAULT.getAdjustment(segModel));
+					builder.adjustTargetsForData(NSHM23_ConstraintBuilder.SEG_ADJ_METHOD_DEFAULT.getAdjustment(segModel, FaultSysTools.getNumThreads(cmd)));
 			}
 			
 			if (cmd.hasOption("adj-mfds-for-slips"))

@@ -275,4 +275,11 @@ public class ComplexRuptureTreeNavigator implements RuptureTreeNavigator {
 		Preconditions.checkState(connections != null, "Cluster not found in rupture: %s", cluster);
 		return connections.jumpTo;
 	}
+
+	@Override
+	public FaultSubsectionCluster[] locateClustersForParent(int parentID) {
+		FaultSubsectionCluster[] ret = parentClusterMap.get(parentID);
+		Preconditions.checkState(ret != null, "No clusters for parent: %s", parentID);
+		return ret;
+	}
 }
