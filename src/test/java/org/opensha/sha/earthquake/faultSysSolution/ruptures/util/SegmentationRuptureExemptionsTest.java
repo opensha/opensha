@@ -10,8 +10,11 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SegmentationPlot;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SegmentationProbabilityConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SegmentationProbabilityConstraint.EndpointReferenceRateWeighting;
@@ -20,6 +23,8 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.SubsectionTransition;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.TransitionProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationRuptureExemptions.Policy;
@@ -198,6 +203,56 @@ public class SegmentationRuptureExemptionsTest {
 
 	private SegmentationRuptureExemptions build(BitSet eligible) {
 		return SegmentationRuptureExemptions.build(rupSet, model, Policy.MINIMUM_INTERNAL_IF_NO_ALTERNATIVE, eligible);
+	}
+
+	@Test
+	public void testReportingSeparatesPhysicalAndConstrainedRates() {
+		FaultSystemSolution solution = new FaultSystemSolution(rupSet, new double[] {2d, 3d, 5d, 7d, 0d, 0d, 0d});
+		SegmentationTransitionRates rates = new SegmentationTransitionRates(solution, model, build(eligible()), model);
+		IDPairing pair = new IDPairing(0, 1);
+		assertEquals(12d, rates.crossingRate(pair, 0d), 0d);
+		assertEquals(9d, rates.exemptRate(0, 1, 0d), 0d);
+		assertEquals(0d, rates.exemptRate(1, 0, 0d), 0d);
+		assertEquals(3d, rates.properties(pair, 0d).getDouble("first_constrained_crossing_rate", Double.NaN), 0d);
+		assertEquals(-3d, rates.properties(pair, 0d).getDouble("first_endpoint_bound_residual", Double.NaN), 0d);
+		assertEquals(3.5, rates.properties(pair, 0d).getDouble("second_endpoint_bound_residual", Double.NaN), 0d);
+		assertEquals(3d, rates.crossingRate(pair, 6.5), 0d);
+		assertEquals(0d, rates.exemptRate(0, 1, 6.5), 0d);
+		assertFalse(rates.properties(new IDPairing(2, 3), 0d).containsKey("second_physical_passthrough"));
+		assertEquals(rupSet.getFaultSectionData(0).getFaultTrace().last(), rates.boundaryLocation(pair));
+	}
+
+	@Test
+	public void testReportingUsesActualRuptureContextsAndIndependentDiscovery() {
+		FaultSystemSolution solution = new FaultSystemSolution(rupSet, new double[rupSet.getNumRuptures()]);
+		AllTransitions varying = new AllTransitions() {
+			@Override public double calcTransitionProbability(ClusterRupture rupture, SubsectionTransition t,
+					boolean verbose) {
+				assertNotNull(rupture);
+				return rupture.getTotalNumSects() == 3 ? 0.2 : 0.8;
+			}
+		};
+		SegmentationTransitionRates rates = new SegmentationTransitionRates(solution, varying, null, model);
+		assertEquals(0.6, rates.probability(new IDPairing(0, 1)), 1e-12);
+		// The comparison can display the primary model's boundaries without inventing its own model probabilities.
+		rates = new SegmentationTransitionRates(solution, null, null, model);
+		assertTrue(rates.getPairs().contains(new IDPairing(0, 1)));
+		assertTrue(Double.isNaN(rates.probability(new IDPairing(0, 1))));
+	}
+
+	@Test
+	public void testReportingFallbackIncludesOnlyObservedConnections() {
+		SectionDistanceAzimuthCalculator distances = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
+		assertEquals(2, SegmentationPlot.connectionStrategy(rupSet, distances).getAllPossibleJumps().size());
+		FaultSystemRupSet noJumps = rupSet.getForRuptureSubSet(List.of(0, 1, 2, 3, 4, 5));
+		assertTrue(SegmentationPlot.connectionStrategy(noJumps, distances).getAllPossibleJumps().isEmpty());
+		assertFalse(new SegmentationPlot().getRequiredModules().contains(
+				PlausibilityConfiguration.class));
+		ClusterConnectionStrategy supplied =
+				SegmentationPlot.connectionStrategy(rupSet, distances);
+		rupSet.addModule(new PlausibilityConfiguration(
+				null, 0, supplied, distances));
+		assertSame(supplied, SegmentationPlot.connectionStrategy(rupSet, distances));
 	}
 
 	private SegmentationProbabilityConstraint constraint(BitSet eligible) {

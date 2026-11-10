@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.ToDoubleFunction;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -31,6 +32,8 @@ import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
@@ -59,6 +62,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.TransitionProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.DistDependentJumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
@@ -93,6 +97,41 @@ public class SegmentationCalculator {
 	
 	private SubSectStiffnessCalculator stiffnessCalc;
 	
+	private SegmentationTransitionRates transitionRates;
+	private boolean combinedJumps;
+
+	/** Adds internal-boundary markers and endpoint diagnostics to the existing connection maps. */
+	public void setTransitionRates(SegmentationTransitionRates transitionRates) {
+		this.transitionRates = transitionRates;
+	}
+
+	private void plotInternalTransitions(GeographicMapMaker plotter, int magIndex, CPT cpt,
+			ToDoubleFunction<IDPairing> value) {
+		if (transitionRates == null) return;
+		List<Location> locations = new ArrayList<>();
+		List<Double> values = new ArrayList<>();
+		List<FeatureProperties> properties = new ArrayList<>();
+		for (IDPairing pair : transitionRates.getPairs()) {
+			if (!transitionRates.isInternal(pair)) continue;
+			double scalar = value.applyAsDouble(pair);
+			if (Double.isNaN(scalar)) continue;
+			locations.add(transitionRates.boundaryLocation(pair));
+			values.add(scalar);
+			FeatureProperties metadata = transitionRates.properties(pair, minMags[magIndex]);
+			if (Double.isFinite(scalar)) metadata.set("displayed_value", scalar);
+			properties.add(metadata);
+		}
+		plotter.plotScatterScalars(locations, values, cpt, null);
+		plotter.setScatterSymbol(PlotSymbol.FILLED_CIRCLE, 5f, PlotSymbol.CIRCLE, Color.BLACK);
+		plotter.setScatterProperties(properties);
+		Map<Jump, FeatureProperties> jumpProperties = new HashMap<>();
+		if (!combinedJumps)
+			for (Jump jump : parentJumpRateTable.columnKeySet())
+				jumpProperties.put(jump,
+						transitionRates.properties(TransitionProbabilityUtils.pair(jump), minMags[magIndex]));
+		plotter.setJumpProperties(jumpProperties);
+	}
+
 	private JumpProbabilityCalc detrendProb = new Shaw07JumpDistProb(1d, 3d);
 	
 	private boolean uniqueDists = true;
@@ -630,6 +669,8 @@ public class SegmentationCalculator {
 	}
 	
 	private SegmentationCalculator(SegmentationCalculator other, Table<IDPairing, Jump, JumpRates> parentJumpRateTable) {
+		this.combinedJumps = true;
+		this.transitionRates = other.transitionRates;
 		this.subSects = other.subSects;
 		this.sol = other.sol;
 		this.ruptures = other.ruptures;
@@ -925,6 +966,8 @@ public class SegmentationCalculator {
 			}
 			plotter.plotJumpScalars(jumps, values, cpt, "Log10 "+getMagLabel(minMags[m])+" Connection Rates");
 			
+			final int index = m;
+			plotInternalTransitions(plotter, m, cpt, pair -> Math.log10(transitionRates.crossingRate(pair, minMags[index])));
 			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
 			ret[m] = new File(outputDir, myPrefix+".png");
 			plotter.plot(outputDir, myPrefix, title, width);
@@ -975,6 +1018,9 @@ public class SegmentationCalculator {
 				label += " (Rel. "+combiner+")";
 			plotter.plotJumpScalars(calcJumpPassthroughs(m, combiner == null ? RateCombiner.MIN : combiner), cpt, label);
 			
+			final int index = m;
+			plotInternalTransitions(plotter, m, cpt, pair -> transitionRates.passthrough(pair, minMags[index],
+					combiner == null ? RateCombiner.MIN : combiner));
 			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
 			ret[m] = new File(outputDir, myPrefix+".png");
 			plotter.plot(outputDir, myPrefix, title, width);
@@ -1029,6 +1075,13 @@ public class SegmentationCalculator {
 			}
 			plotter.plotJumpScalars(jumps, values, cpt, label);
 			
+			final int index = m;
+			plotInternalTransitions(plotter, m, cpt, pair -> {
+				if (compCalc.transitionRates == null) return Double.NaN;
+				double first = transitionRates.passthrough(pair, minMags[index], combiner);
+				double second = compCalc.transitionRates.passthrough(pair, minMags[index], combiner);
+				return first-second;
+			});
 			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
 			ret[m] = new File(outputDir, myPrefix+".png");
 			plotter.plot(outputDir, myPrefix, title, 800);
@@ -1069,6 +1122,13 @@ public class SegmentationCalculator {
 			}
 			plotter.plotJumpScalars(jumps, values, cpt, label);
 			
+			final int index = m;
+			plotInternalTransitions(plotter, m, cpt, pair -> {
+				if (compCalc.transitionRates == null) return Double.NaN;
+				double first = transitionRates.passthrough(pair, minMags[index], combiner);
+				double second = compCalc.transitionRates.passthrough(pair, minMags[index], combiner);
+				return Math.log10(first/second);
+			});
 			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
 			ret[m] = new File(outputDir, myPrefix+".png");
 			plotter.plot(outputDir, myPrefix, title, 800);
@@ -1120,9 +1180,27 @@ public class SegmentationCalculator {
 			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 2f, new Color(0, 0, 0, 127)));
 			
 			
+			DefaultXY_DataSet internal = new DefaultXY_DataSet();
+			if (transitionRates != null && compCalc.transitionRates != null)
+				for (IDPairing pair : transitionRates.getPairs()) {
+					if (!transitionRates.isInternal(pair)) continue;
+					double first = transitionRates.passthrough(pair, minMags[m], combiner);
+					double second = compCalc.transitionRates.passthrough(pair, minMags[m], combiner);
+					if (!Double.isFinite(first) || !Double.isFinite(second)) continue;
+					internal.set(log ? Math.max(second, range.getLowerBound()) : second,
+							log ? Math.max(first, range.getLowerBound()) : first);
+				}
+			if (internal.size() > 0) {
+				scatter.setName("Jumps");
+				internal.setName("Internal transitions");
+				funcs.add(internal);
+				chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_SQUARE, 3f, Color.BLUE));
+			}
+
 			PlotSpec spec = new PlotSpec(funcs, chars, getMagLabel(minMags[m])+" "+PASSTHROUGH_LABEL+" Comparison",
 					"Comparison "+PASSTHROUGH_LABEL, "Primary "+PASSTHROUGH_LABEL);
 			
+			spec.setLegendVisible(internal.size() > 0);
 			HeadlessGraphPanel gp = new HeadlessGraphPanel();
 			gp.setTickLabelFontSize(18);
 			gp.setAxisLabelFontSize(24);
@@ -1143,10 +1221,11 @@ public class SegmentationCalculator {
 	}
 	
 	public File[] plotConnectionModelDiffs(File outputDir, String prefix, String title, RateCombiner combiner,
-			JumpProbabilityCalc segModel) throws IOException {
+			TransitionProbabilityCalc<?> segModel) throws IOException {
 		GeographicMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
 //		plotter.setJumpLineThickness(4f);
 		
+		Map<IDPairing, Double> modelProbabilities = TransitionProbabilityUtils.averageProbabilities(ruptures, segModel);
 		CPT cpt = getConnectionDiffCPT();
 		
 		File[] ret = new File[minMags.length];
@@ -1160,7 +1239,7 @@ public class SegmentationCalculator {
 			List<Double> values = new ArrayList<>();
 			for (Jump jump : primary.keySet()) {
 				Double val1 = primary.get(jump);
-				double val2 = segModel.calcJumpProbability(null, jump, false);
+				double val2 = modelProbabilities.getOrDefault(TransitionProbabilityUtils.pair(jump), Double.NaN);
 				if (val1 == null)
 					val1 = 0d;
 				jumps.add(jump);
@@ -1168,6 +1247,12 @@ public class SegmentationCalculator {
 			}
 			plotter.plotJumpScalars(jumps, values, cpt, label);
 			
+			final int index = m;
+			plotInternalTransitions(plotter, m, cpt, pair -> {
+				double actual = transitionRates.passthrough(pair, minMags[index], combiner);
+				double expected = modelProbabilities.getOrDefault(pair, Double.NaN);
+				return actual-expected;
+			});
 			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
 			ret[m] = new File(outputDir, myPrefix+".png");
 			plotter.plot(outputDir, myPrefix, title, 800);
@@ -1177,10 +1262,11 @@ public class SegmentationCalculator {
 	}
 	
 	public File[] plotConnectionModelLogRatios(File outputDir, String prefix, String title, RateCombiner combiner,
-			JumpProbabilityCalc segModel) throws IOException {
+			TransitionProbabilityCalc<?> segModel) throws IOException {
 		GeographicMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
 //		plotter.setJumpLineThickness(4f);
 		
+		Map<IDPairing, Double> modelProbabilities = TransitionProbabilityUtils.averageProbabilities(ruptures, segModel);
 		CPT cpt = getConnectionLogRatioCPT();
 		
 		File[] ret = new File[minMags.length];
@@ -1194,7 +1280,7 @@ public class SegmentationCalculator {
 			List<Double> values = new ArrayList<>();
 			for (Jump jump : primary.keySet()) {
 				Double val1 = primary.get(jump);
-				double val2 = segModel.calcJumpProbability(null, jump, false);
+				double val2 = modelProbabilities.getOrDefault(TransitionProbabilityUtils.pair(jump), Double.NaN);
 				if (val1 == null)
 					val1 = 0d;
 				jumps.add(jump);
@@ -1202,6 +1288,12 @@ public class SegmentationCalculator {
 			}
 			plotter.plotJumpScalars(jumps, values, cpt, label);
 			
+			final int index = m;
+			plotInternalTransitions(plotter, m, cpt, pair -> {
+				double actual = transitionRates.passthrough(pair, minMags[index], combiner);
+				double expected = modelProbabilities.getOrDefault(pair, Double.NaN);
+				return Math.log10(actual/expected);
+			});
 			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
 			ret[m] = new File(outputDir, myPrefix+".png");
 			plotter.plot(outputDir, myPrefix, title, 800);

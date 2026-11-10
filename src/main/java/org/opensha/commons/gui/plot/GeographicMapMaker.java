@@ -173,6 +173,7 @@ public class GeographicMapMaker {
 	protected List<Double> scalarJumpValues;
 	protected CPT scalarJumpsCPT;
 	protected String scalarJumpsLabel;
+	private Map<Jump, FeatureProperties> jumpProperties;
 	
 	/**
 	 * Scatter data
@@ -400,6 +401,11 @@ public class GeographicMapMaker {
 
 	public void setScalarThickness(float scalarThickness) {
 		this.sectScalarThickness = scalarThickness;
+	}
+
+	/** Optional per-connection metadata for GeoJSON exports. */
+	public void setJumpProperties(Map<Jump, FeatureProperties> properties) {
+		this.jumpProperties = properties;
 	}
 
 	public void setJumpLineThickness(float jumpLineThickness) {
@@ -1691,6 +1697,8 @@ public class GeographicMapMaker {
 						if (writeGeoJSON) {
 							LineString line = new LineString(loc1, loc2);
 							FeatureProperties props = new FeatureProperties();
+							if (jumpProperties != null && jumpProperties.containsKey(jump))
+								props.putAll(jumpProperties.get(jump));
 							props.set(FeatureProperties.STROKE_WIDTH_PROP, jumpLineThickness);
 							props.set(FeatureProperties.STROKE_COLOR_PROP, color);
 							if (color.getAlpha() != 255)
@@ -1723,6 +1731,8 @@ public class GeographicMapMaker {
 					if (writeGeoJSON) {
 						LineString line = new LineString(loc1, loc2);
 						FeatureProperties props = new FeatureProperties();
+						if (jumpProperties != null && jumpProperties.containsKey(jump))
+							props.putAll(jumpProperties.get(jump));
 						props.set(FeatureProperties.STROKE_WIDTH_PROP, jumpLineThickness);
 						Color color = scalarJumpsCPT.getColor((float)scalar);
 						props.set(FeatureProperties.STROKE_COLOR_PROP, color);
