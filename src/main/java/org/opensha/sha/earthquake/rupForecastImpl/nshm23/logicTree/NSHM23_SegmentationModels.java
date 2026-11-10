@@ -45,7 +45,8 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
-public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, RupsThroughCreepingSectBranchNode, LogicTreeNode.FixedWeightNode {
+public enum NSHM23_SegmentationModels
+implements JumpSegmentationModelBranchNode, RupsThroughCreepingSectBranchNode, LogicTreeNode.FixedWeightNode {
 	/**
 	 * No segmentation:
 	 * 	* No distance-dependence
@@ -426,7 +427,8 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	@Override
 	public BinaryRuptureProbabilityCalc getExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 		List<BinaryRuptureProbabilityCalc> exclusions = new ArrayList<>();
-		BinaryRuptureProbabilityCalc primaryExclusion = SegmentationModelBranchNode.super.getExclusionModel(rupSet, branch);
+		BinaryRuptureProbabilityCalc primaryExclusion =
+				JumpSegmentationModelBranchNode.super.getExclusionModel(rupSet, branch);
 		if (primaryExclusion != null)
 			exclusions.add(primaryExclusion);
 		

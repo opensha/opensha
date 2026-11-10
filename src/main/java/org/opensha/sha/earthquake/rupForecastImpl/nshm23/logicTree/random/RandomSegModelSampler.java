@@ -32,7 +32,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilde
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels.ExcludeRupsThroughCreepingSegmentationModel;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels.MaxLengthSegmentationModel;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationModelBranchNode;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.JumpSegmentationModelBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SupraSeisBValues;
 import org.opensha.sha.faultSurface.FaultSection;
 
@@ -126,7 +126,7 @@ public class RandomSegModelSampler implements BranchDependentSampler<RandomSegMo
 	public synchronized BinaryRuptureProbabilityCalc getExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 		if (exclusionModel == null) {
 			List<BinaryRuptureProbabilityCalc> exclusions = new ArrayList<>();
-			BinaryRuptureProbabilityCalc primaryExclusion = SegmentationModelBranchNode.buildJumpExclusionModel(
+			BinaryRuptureProbabilityCalc primaryExclusion = JumpSegmentationModelBranchNode.buildJumpExclusionModel(
 					rupSet, getModel(rupSet, branch));
 			if (primaryExclusion != null)
 				exclusions.add(primaryExclusion);
@@ -355,7 +355,8 @@ public class RandomSegModelSampler implements BranchDependentSampler<RandomSegMo
 	@DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 	@DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 	@Affects(FaultSystemSolution.RATES_FILE_NAME)
-	public static class Node extends AbstractSamplingNode<RandomSegModelSampler> implements SegmentationModelBranchNode {
+	public static class Node extends AbstractSamplingNode<RandomSegModelSampler>
+	implements JumpSegmentationModelBranchNode {
 		
 		@SuppressWarnings("unused") // deserialization
 		private Node() {

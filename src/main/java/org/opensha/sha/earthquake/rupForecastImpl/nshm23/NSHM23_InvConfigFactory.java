@@ -31,6 +31,7 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.IDPairing;
 import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -50,6 +51,10 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionSolver;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.JumpProbabilityConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SegmentationProbabilityConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SegmentationProbabilityConstraint.EndpointReferenceRateWeighting;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.TransitionProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.TransitionProbabilityUtils;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.LaplacianSmoothingInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipInversionConstraint;
@@ -769,11 +774,11 @@ ExclusionaryInversionConfigurationFactory {
 		else
 			bVals = new SectionSupraSeisBValues[] { branch.requireValue(SectionSupraSeisBValues.class) };
 		
-		SegmentationModelBranchNode[] segModels;
+		SegmentationModelBranchNode<?>[] segModels;
 		if (branch.hasValue(NSHM23_SegmentationModels.AVERAGE))
 			segModels = NSHM23_SegmentationModels.values();
 		else
-			segModels = new SegmentationModelBranchNode[] { branch.requireValue(SegmentationModelBranchNode.class) };
+			segModels = new SegmentationModelBranchNode<?>[] { branch.requireValue(SegmentationModelBranchNode.class) };
 
 		List<LogicTreeBranch<?>> avgBranches = new ArrayList<>();
 		List<Double> avgWeights = new ArrayList<>();
@@ -785,7 +790,7 @@ ExclusionaryInversionConfigurationFactory {
 		for (LogicTreeNode node : branch)
 			branchCopy.setValue(node);
 		for (SectionSupraSeisBValues bVal : bVals) {
-			for (SegmentationModelBranchNode segModel : segModels) {
+			for (SegmentationModelBranchNode<?> segModel : segModels) {
 				// create copy of the branch
 				LogicTreeBranch<LogicTreeNode> subBranch = branchCopy.copy();
 				// now override our values
@@ -880,16 +885,15 @@ ExclusionaryInversionConfigurationFactory {
 		constrBuilder.adjustForActualRupSlips(NSHM23_ConstraintBuilder.ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT,
 				NSHM23_ConstraintBuilder.ADJ_FOR_SLIP_ALONG_DEFAULT);
 		
-		// apply any segmentation adjustments
-		if (hasJumps(rupSet)) {
+		// Internal bends can affect MFDs even when this rupture set has no jumps.
+		TransitionProbabilityCalc<?> targetSegModel = buildSegModel(rupSet, branch);
+		if (hasJumps(rupSet) || (targetSegModel != null && !(targetSegModel instanceof JumpProbabilityCalc))) {
 			// this handles creeping section, binary segmentation, and max dist models
 			BinaryRuptureProbabilityCalc rupExclusionModel = buildExclusionModel(
 					rupSet, branch, rupSet.requireModule(ClusterRuptures.class));
 			
 			if (rupExclusionModel != null)
 				constrBuilder.excludeRuptures(rupExclusionModel);
-			
-			JumpProbabilityCalc targetSegModel = buildSegModel(rupSet, branch);
 			
 			if (targetSegModel != null) {
 				if (targetSegModel instanceof BinaryJumpProbabilityCalc) {
@@ -943,12 +947,21 @@ ExclusionaryInversionConfigurationFactory {
 		return false;
 	}
 	
-	private static JumpProbabilityCalc buildSegModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-		SegmentationModelBranchNode segModel = branch.getValue(SegmentationModelBranchNode.class);
-		JumpProbabilityCalc jumpProb = segModel == null ? null : segModel.getModel(rupSet, branch);
-		return jumpProb;
+	private static TransitionProbabilityCalc<?> buildSegModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+		SegmentationModelBranchNode<?> segModel = branch.getValue(SegmentationModelBranchNode.class);
+		return segModel == null ? null : segModel.getModel(rupSet, branch);
 	}
-	
+
+	private static boolean hasConstrainableTransitions(FaultSystemRupSet rupSet, TransitionProbabilityCalc<?> model) {
+		if (model instanceof JumpProbabilityCalc)
+			return hasConstrainableJumps(rupSet, (JumpProbabilityCalc)model);
+		Map<IDPairing, Double> probabilities = TransitionProbabilityUtils.averageProbabilities(
+				rupSet.requireModule(ClusterRuptures.class), model);
+		for (double p : probabilities.values())
+			if (p > 0d && p < 1d) return true;
+		return false;
+	}
+
 	@Override
 	public LogicTree<?> getGridSourceTree(LogicTree<?> faultTree) {
 		if (isU3Branch(faultTree.getBranch(0)))
@@ -1542,8 +1555,8 @@ ExclusionaryInversionConfigurationFactory {
 		
 		GRParticRateEstimator rateEst = new GRParticRateEstimator(rupSet, targetMFDs);
 		
-		JumpProbabilityCalc segModel = buildSegModel(rupSet, branch);
-		if (segModel != null && hasConstrainableJumps(rupSet, segModel)) {
+		TransitionProbabilityCalc<?> segModel = buildSegModel(rupSet, branch);
+		if (segModel != null && hasConstrainableTransitions(rupSet, segModel)) {
 			constraints = new ArrayList<>(constraints);
 			
 //			InitialModelParticipationRateEstimator rateEst = new InitialModelParticipationRateEstimator(
@@ -1554,8 +1567,12 @@ ExclusionaryInversionConfigurationFactory {
 			double weight = 100000d;
 			boolean ineq = true;
 			
-			constraints.add(new JumpProbabilityConstraint.RelativeRate(
-					weight, ineq, rupSet, buildSegModel(rupSet, branch), rateEst));
+			if (segModel instanceof JumpProbabilityCalc)
+				constraints.add(new JumpProbabilityConstraint.RelativeRate(
+						weight, ineq, rupSet, (JumpProbabilityCalc)segModel, rateEst));
+			else
+				constraints.add(new SegmentationProbabilityConstraint(
+						weight, rupSet, segModel, new EndpointReferenceRateWeighting(), rateEst));
 		}
 		
 		int avgThreads = Integer.max(1, threads / 4);
@@ -1598,7 +1615,7 @@ ExclusionaryInversionConfigurationFactory {
 			ClusterRuptures cRups) {
 		// segmentation model
 		List<BinaryRuptureProbabilityCalc> exclusionModels = new ArrayList<>();
-		SegmentationModelBranchNode segChoice = branch.getValue(SegmentationModelBranchNode.class);
+		SegmentationModelBranchNode<?> segChoice = branch.getValue(SegmentationModelBranchNode.class);
 		if (segChoice != null) {
 			BinaryRuptureProbabilityCalc exclusionModel = segChoice.getExclusionModel(rupSet, branch);
 			if (exclusionModel != null)
@@ -1962,7 +1979,8 @@ ExclusionaryInversionConfigurationFactory {
 				return null;
 			
 			for (InversionConstraint constraint : config.getConstraints())
-				if (constraint instanceof JumpProbabilityConstraint)
+				if (constraint instanceof JumpProbabilityConstraint
+						|| constraint instanceof SegmentationProbabilityConstraint)
 					constraint.setWeight(100);
 			
 			return config;
@@ -1981,7 +1999,8 @@ ExclusionaryInversionConfigurationFactory {
 				return null;
 			
 			for (InversionConstraint constraint : config.getConstraints())
-				if (constraint instanceof JumpProbabilityConstraint)
+				if (constraint instanceof JumpProbabilityConstraint
+						|| constraint instanceof SegmentationProbabilityConstraint)
 					constraint.setWeight(1000);
 			
 			return config;
@@ -2000,7 +2019,8 @@ ExclusionaryInversionConfigurationFactory {
 				return null;
 			
 			for (InversionConstraint constraint : config.getConstraints())
-				if (constraint instanceof JumpProbabilityConstraint)
+				if (constraint instanceof JumpProbabilityConstraint
+						|| constraint instanceof SegmentationProbabilityConstraint)
 					constraint.setWeight(10000);
 			
 			return config;
@@ -2019,7 +2039,8 @@ ExclusionaryInversionConfigurationFactory {
 				return null;
 			
 			for (InversionConstraint constraint : config.getConstraints())
-				if (constraint instanceof JumpProbabilityConstraint)
+				if (constraint instanceof JumpProbabilityConstraint
+						|| constraint instanceof SegmentationProbabilityConstraint)
 					constraint.setWeight(100000);
 			
 			return config;

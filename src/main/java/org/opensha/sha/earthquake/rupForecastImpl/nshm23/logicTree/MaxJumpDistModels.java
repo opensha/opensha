@@ -23,7 +23,7 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
-public enum MaxJumpDistModels implements LogicTreeNode, SegmentationModelBranchNode {
+public enum MaxJumpDistModels implements LogicTreeNode, JumpSegmentationModelBranchNode {
 //	ONE(		1d),
 	THREE(		3d),
 	FIVE(		5d),

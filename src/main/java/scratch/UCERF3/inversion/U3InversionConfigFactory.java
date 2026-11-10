@@ -59,7 +59,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.Plausib
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.data.NSHM23_PaleoDataLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_PaleoUncertainties;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationModelBranchNode;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.JumpSegmentationModelBranchNode;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -179,7 +179,7 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 		
 		List<InversionConstraint> constraints = inputGen.getConstraints();
 		
-		SegmentationModelBranchNode segModelChoice = branch.getValue(SegmentationModelBranchNode.class);
+		JumpSegmentationModelBranchNode segModelChoice = branch.getValue(JumpSegmentationModelBranchNode.class);
 		if (segModelChoice != null) {
 			JumpProbabilityCalc segModel = segModelChoice.getModel(rupSet, branch);
 			if (segModel != null) {

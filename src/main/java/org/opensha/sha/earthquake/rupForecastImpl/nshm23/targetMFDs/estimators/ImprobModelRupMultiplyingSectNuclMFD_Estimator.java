@@ -9,8 +9,8 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.TransitionProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.TransitionProbabilityUtils;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -46,19 +46,16 @@ public class ImprobModelRupMultiplyingSectNuclMFD_Estimator extends SectNucleati
 	 */
 	public static class WorstJumpProb extends ImprobModelRupMultiplyingSectNuclMFD_Estimator {
 		
-		private JumpProbabilityCalc jumpModel;
+		private TransitionProbabilityCalc<?> jumpModel;
 
-		public WorstJumpProb(JumpProbabilityCalc improbModel) {
+		public WorstJumpProb(TransitionProbabilityCalc<?> improbModel) {
 			super(improbModel);
 			this.jumpModel = improbModel;
 		}
 
 		@Override
 		protected double calcRupProb(ClusterRupture rup) {
-			double worstProb = 1d;
-			for (Jump jump : rup.getJumpsIterable())
-				worstProb = Math.min(worstProb, jumpModel.calcJumpProbability(rup, jump, false));
-			return worstProb;
+			return TransitionProbabilityUtils.worstProbability(rup, jumpModel);
 		}
 		
 	}

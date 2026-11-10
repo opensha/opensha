@@ -1,49 +1,57 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree;
 
 import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 import org.opensha.commons.logicTree.LogicTreeBranch;
-import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.BinaryJumpProbabilityCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.HardcodedBinaryJumpProb;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.Transition;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.TransitionProbabilityUtils;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.TransitionProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.TransitionProbabilityCalc.GenericTransitionProbCalcAdapter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 
-public interface SegmentationModelBranchNode extends ExclusionaryLogicTreeNode {
+import com.google.gson.annotations.JsonAdapter;
+
+/** Segmentation branch node for transitions of type T, including internal fault-section boundaries. */
+public interface SegmentationModelBranchNode<T extends Transition> extends ExclusionaryLogicTreeNode {
 	
-	public abstract JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch);
-	
+	public TransitionProbabilityCalc<T> getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch);
+
+	/** Excludes pairs whose mean probability across crossing ruptures is zero. */
 	public default BinaryRuptureProbabilityCalc getExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-		JumpProbabilityCalc segModel = getModel(rupSet, branch);
-		return buildJumpExclusionModel(rupSet, segModel);
+		TransitionProbabilityCalc<T> segModel = getModel(rupSet, branch);
+		if (segModel == null) return null;
+		Set<IDPairing> excluded = new HashSet<>();
+		// A zero in only one rupture context does not imply a zero averaged bound.
+		for (Map.Entry<IDPairing, Double> entry : TransitionProbabilityUtils.averageProbabilities(
+				rupSet.requireModule(ClusterRuptures.class), segModel).entrySet())
+			if (entry.getValue() == 0d) excluded.add(entry.getKey());
+		return excluded.isEmpty() ? null : new TransitionExclusionModel(segModel, excluded);
 	}
-	
-	public static BinaryJumpProbabilityCalc buildJumpExclusionModel(FaultSystemRupSet rupSet, JumpProbabilityCalc segModel) {
-		if (segModel instanceof BinaryJumpProbabilityCalc) {
-			return (BinaryJumpProbabilityCalc)segModel;
-		} else if (segModel != null && rupSet.hasModule(ClusterRuptures.class)) {
-			ClusterRuptures cRups = rupSet.getModule(ClusterRuptures.class);
-			// see if it has any zeroes, and if so exclude ruptures that use them from being sampled in the inversion
-			HashSet<IDPairing> excluded = new HashSet<>();
-			for (int rupIndex=0; rupIndex<rupSet.getNumRuptures(); rupIndex++) {
-				ClusterRupture rup = cRups.get(rupIndex);
-				for (Jump jump : rup.getJumpsIterable()) {
-					if (segModel.calcJumpProbability(rup, jump, false) == 0d) {
-						IDPairing pair = new IDPairing(jump.fromSection.getSectionId(), jump.toSection.getSectionId());
-						excluded.add(pair);
-						excluded.add(pair.getReversed());
-					}
-				}
-			}
-			if (!excluded.isEmpty())
-				return new HardcodedBinaryJumpProb(segModel.getName(), true, excluded, false);
+
+	/** Excludes rupture paths traversing a pair with zero mean passage probability. */
+	public static class TransitionExclusionModel implements BinaryRuptureProbabilityCalc {
+		@JsonAdapter(GenericTransitionProbCalcAdapter.class)
+		private final TransitionProbabilityCalc<?> model;
+		private final Set<IDPairing> excluded;
+
+		public TransitionExclusionModel(TransitionProbabilityCalc<?> model, Set<IDPairing> excluded) {
+			this.model = model;
+			this.excluded = new HashSet<>(excluded);
 		}
-		return null;
+
+		@Override public String getName() { return model.getName()+" zero-probability transitions"; }
+		@Override public boolean isDirectional(boolean splayed) { return false; }
+		@Override public boolean isRupAllowed(ClusterRupture rupture, boolean verbose) {
+			for (Transition transition : model.getTransitions(rupture))
+				if (excluded.contains(TransitionProbabilityUtils.pair(transition))) return false;
+			return true;
+		}
 	}
 
 }

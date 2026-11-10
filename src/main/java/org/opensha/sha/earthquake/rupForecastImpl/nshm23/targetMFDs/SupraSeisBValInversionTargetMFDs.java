@@ -1824,7 +1824,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 //				MultiBinDistributionMethod.CAPPED_DISTRIBUTED, true));
 //		builder.adjustTargetsForData(new ImprobabilityImpliedSectNuclMFD_Estimator(segModel));
 //		builder.adjustTargetsForData(new ImprobModelThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel));
-		builder.adjustTargetsForData(new ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 100, true));
+		builder.adjustTargetsForData(new ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb<>(segModel, 100, true));
 //		builder.forBinaryRupProbModel(MaxJumpDistModels.FIVE.getModel(rupSet));
 //		builder.forSegmentationModel(segModel);
 //		builder.forSegmentationModel(new JumpProbabilityCalc() {

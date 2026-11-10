@@ -14,7 +14,6 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.math3.stat.StatUtils;
 import org.opensha.commons.calc.FaultMomentCalc;
-import org.opensha.commons.data.IntegerSampler;
 import org.opensha.commons.data.IntegerSampler.ExclusionIntegerSampler;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
@@ -48,8 +47,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBValuePlot;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.TransitionProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
@@ -59,14 +57,10 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_PaleoU
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationMFD_Adjustment;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.Builder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.SubSeisMoRateReduction;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.APrioriSectNuclEstimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SectNucleationMFD_Estimator;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SegmentationImpliedSectNuclMFD_Estimator;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SegmentationImpliedSectNuclMFD_Estimator.MultiBinDistributionMethod;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.PaleoSectNuclEstimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ScalingRelSlipRateMFD_Estimator;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -80,7 +74,6 @@ import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.inversion.UCERF2_ComparisonSolutionFetcher;
-import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.U3SectionMFD_constraint;
 import scratch.UCERF3.utils.UCERF2_A_FaultMapper;
@@ -112,7 +105,7 @@ public class NSHM23_ConstraintBuilder {
 	
 	private BinaryRuptureProbabilityCalc rupExclusionModel;
 	
-	private JumpProbabilityCalc segModel;
+	private TransitionProbabilityCalc<?> segModel;
 	
 	public static SegmentationMFD_Adjustment SEG_ADJ_METHOD_DEFAULT = SegmentationMFD_Adjustment.REL_GR_THRESHOLD_AVG;
 	private SegmentationMFD_Adjustment segAdjMethod = SEG_ADJ_METHOD_DEFAULT;
@@ -266,20 +259,20 @@ public class NSHM23_ConstraintBuilder {
 		return this;
 	}
 	
-	public NSHM23_ConstraintBuilder adjustForSegmentationModel(JumpProbabilityCalc segModel) {
+	public NSHM23_ConstraintBuilder adjustForSegmentationModel(TransitionProbabilityCalc<?> segModel) {
 		this.segModel = segModel;
 		targetCache = null;
 		return this;
 	}
-	
-	public NSHM23_ConstraintBuilder adjustForSegmentationModel(JumpProbabilityCalc segModel,
+
+	public NSHM23_ConstraintBuilder adjustForSegmentationModel(TransitionProbabilityCalc<?> segModel,
 			SegmentationMFD_Adjustment segAdjMethod) {
 		this.segModel = segModel;
 		this.segAdjMethod = segAdjMethod;
 		targetCache = null;
 		return this;
 	}
-	
+
 	public NSHM23_ConstraintBuilder proxyFaultMagCorner(double proxyFaultMagCorner) {
 		this.proxyFaultMagCorner = proxyFaultMagCorner;
 		targetCache = null;
@@ -291,8 +284,8 @@ public class NSHM23_ConstraintBuilder {
 		targetCache = null;
 		return this;
 	}
-	
-	public JumpProbabilityCalc getSegmentationModel() {
+
+	public TransitionProbabilityCalc<?> getTransitionSegmentationModel() {
 		return segModel;
 	}
 	

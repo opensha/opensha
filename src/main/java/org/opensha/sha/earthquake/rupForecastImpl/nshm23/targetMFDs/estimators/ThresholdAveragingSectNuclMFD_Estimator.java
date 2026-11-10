@@ -21,7 +21,6 @@ import org.jfree.data.Range;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.XY_DataSet;
-import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.data.uncertainty.UncertainIncrMagFreqDist;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.GeographicMapMaker;
@@ -33,19 +32,22 @@ import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.ExceptionUtils;
-import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.Transition;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.SubsectionTransition;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.TransitionProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.TransitionProbabilityUtils;
+import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.U3_UncertAddDeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.SubSeisMoRateReduction;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -53,9 +55,6 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
-
-import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 
 /**
  * This adjusts target supra-seismogenic nucleation MFDs for an improbability model (likely a segmentation model). It
@@ -67,6 +66,9 @@ import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
  * <p>
  * This creates equivalent MFDs to if we filtered the rupture set to only contain ruptures at or above each unique
  * probability level, generated subsection MFDs for that rupture subset, and then weight-averaged them a posteriori.
+ * <p>
+ * The classes named WorstJumpProb, WorstAvgJumpProb, and RelGRWorstJumpProb also accept generic transition models,
+ * including internal bends.
  * <p>
  * If you wish to only consider the individual probability from the worst jump within a rupture, which might be the case
  * for a segmentation model, see {@link WorstJumpProb}. If you want that penalty to take into account the G-R probability
@@ -125,7 +127,8 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 	 * @author kevin
 	 *
 	 */
-	public static abstract class AbstractWorstJumpProb extends ThresholdAveragingSectNuclMFD_Estimator {
+	public static abstract class AbstractWorstJumpProb<T extends Transition>
+	extends ThresholdAveragingSectNuclMFD_Estimator {
 		
 		public AbstractWorstJumpProb() {
 			this(null);
@@ -135,13 +138,15 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 			super(fixedBinEdges);
 		}
 		
-		protected abstract double calcJumpProb(ClusterRupture rup, Jump jump);
+		protected abstract Iterable<T> getTransitions(ClusterRupture rup);
+
+		protected abstract double calcTransitionProb(ClusterRupture rup, T transition);
 
 		@Override
 		protected double calcRupProb(ClusterRupture rup) {
 			double worstProb = 1d;
-			for (Jump jump : rup.getJumpsIterable())
-				worstProb = Math.min(worstProb, calcJumpProb(rup, jump));
+			for (T transition : getTransitions(rup))
+				worstProb = Math.min(worstProb, calcTransitionProb(rup, transition));
 			return worstProb;
 		}
 		
@@ -155,24 +160,28 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 	 * @author kevin
 	 *
 	 */
-	public static class WorstJumpProb extends AbstractWorstJumpProb {
+	public static class WorstJumpProb<T extends Transition> extends AbstractWorstJumpProb<T> {
 		
-		private JumpProbabilityCalc jumpModel;
+		private TransitionProbabilityCalc<T> jumpModel;
 
-		public WorstJumpProb(JumpProbabilityCalc improbModel) {
+		public WorstJumpProb(TransitionProbabilityCalc<T> improbModel) {
 			this(improbModel, null);
 		}
 
-		public WorstJumpProb(JumpProbabilityCalc improbModel, List<? extends Number> fixedBinEdges) {
+		public WorstJumpProb(TransitionProbabilityCalc<T> improbModel, List<? extends Number> fixedBinEdges) {
 			super(fixedBinEdges);
 			this.jumpModel = improbModel;
 		}
 
 		@Override
-		protected double calcJumpProb(ClusterRupture rup, Jump jump) {
-			return jumpModel.calcJumpProbability(rup, jump, false);
+		protected Iterable<T> getTransitions(ClusterRupture rup) {
+			return jumpModel.getTransitions(rup);
 		}
-		
+
+		@Override
+		protected double calcTransitionProb(ClusterRupture rup, T transition) {
+			return jumpModel.calcTransitionProbability(rup, transition, false);
+		}
 	}
 	
 	/**
@@ -185,17 +194,17 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 	 * @author kevin
 	 *
 	 */
-	public static class WorstAvgJumpProb extends AbstractWorstJumpProb {
+	public static class WorstAvgJumpProb<T extends Transition> extends AbstractWorstJumpProb<T> {
 		
-		private JumpProbabilityCalc jumpModel;
+		private TransitionProbabilityCalc<T> jumpModel;
 		
-		private Map<Jump, Double> avgJumpProbs;
+		private Map<IDPairing, Double> avgJumpProbs;
 
-		public WorstAvgJumpProb(JumpProbabilityCalc improbModel) {
+		public WorstAvgJumpProb(TransitionProbabilityCalc<T> improbModel) {
 			this(improbModel, null);
 		}
 
-		public WorstAvgJumpProb(JumpProbabilityCalc improbModel, List<? extends Number> fixedBinEdges) {
+		public WorstAvgJumpProb(TransitionProbabilityCalc<T> improbModel, List<? extends Number> fixedBinEdges) {
 			super(fixedBinEdges);
 			this.jumpModel = improbModel;
 		}
@@ -205,15 +214,20 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 				double[] targetSectSupraMoRates, double[] targetSectSupraSlipRates, double[] sectSupraSlipRateStdDevs,
 				List<BitSet> sectRupUtilizations, int[] sectMinMagIndexes, int[] sectMaxMagIndexes,
 				int[][] sectRupInBinCounts, EvenlyDiscretizedFunc refMFD) {
-			avgJumpProbs = calcAverageJumpProbs(rupSet.requireModule(ClusterRuptures.class), jumpModel);
+			avgJumpProbs = calcAverageTransitionProbs(rupSet.requireModule(ClusterRuptures.class), jumpModel);
 			
 			super.init(rupSet, origSectSupraSeisMFDs, targetSectSupraMoRates, targetSectSupraSlipRates, sectSupraSlipRateStdDevs,
 					sectRupUtilizations, sectMinMagIndexes, sectMaxMagIndexes, sectRupInBinCounts, refMFD);
 		}
 
 		@Override
-		protected double calcJumpProb(ClusterRupture rup, Jump jump) {
-			Double prob = avgJumpProbs.get(jump);
+		protected Iterable<T> getTransitions(ClusterRupture rup) {
+			return jumpModel.getTransitions(rup);
+		}
+
+		@Override
+		protected double calcTransitionProb(ClusterRupture rup, T jump) {
+			Double prob = avgJumpProbs.get(TransitionProbabilityUtils.pair(jump));
 			Preconditions.checkNotNull(prob, "No precomputed prob for jump %s in rupture %s", jump, rup);
 			return prob;
 		}
@@ -226,7 +240,7 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 	 * @author kevin
 	 *
 	 */
-	public static class WorstPrecomputedJumpProb extends AbstractWorstJumpProb {
+	public static class WorstPrecomputedJumpProb extends AbstractWorstJumpProb<Jump> {
 		
 		private Map<Jump, Double> jumpProbs;
 
@@ -240,7 +254,12 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 		}
 
 		@Override
-		protected double calcJumpProb(ClusterRupture rup, Jump jump) {
+		protected Iterable<Jump> getTransitions(ClusterRupture rup) {
+			return rup.getJumpsIterable();
+		}
+
+		@Override
+		protected double calcTransitionProb(ClusterRupture rup, Jump jump) {
 			Double prob = jumpProbs.get(jump);
 			Preconditions.checkNotNull(prob, "No precomputed prob for jump %s in rupture %s", jump, rup);
 			return prob;
@@ -285,6 +304,17 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 		return avgOrigJumpProbs;
 	}
 	
+	public static Map<IDPairing, Double> calcAverageTransitionProbs(
+			ClusterRuptures ruptures, TransitionProbabilityCalc<?> model) {
+		if (model instanceof JumpProbabilityCalc) {
+			Map<IDPairing, Double> probabilities = new HashMap<>();
+			for (Map.Entry<Jump, Double> entry : calcAverageJumpProbs(ruptures, (JumpProbabilityCalc)model).entrySet())
+				probabilities.put(TransitionProbabilityUtils.pair(entry.getKey()), entry.getValue());
+			return probabilities;
+		}
+		return TransitionProbabilityUtils.averageProbabilities(ruptures, model);
+	}
+
 	/**
 	 * For each jump, this calculates a G-R adjusted probability such that the participation rate of ruptures
 	 * using the jump shall not exceed the segmentation model implied fraction of the total participation rate. This
@@ -299,14 +329,14 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 	 * @author kevin
 	 *
 	 */
-	public static class RelGRWorstJumpProb extends AbstractWorstJumpProb {
+	public static class RelGRWorstJumpProb<T extends Transition> extends AbstractWorstJumpProb<T> {
 		
 		public static boolean D = false;
 		
-		private JumpProbabilityCalc jumpModel;
+		private TransitionProbabilityCalc<T> jumpModel;
 		private int iterations;
 		
-		private Map<Jump, Double> jumpProbs;
+		private Map<IDPairing, Double> jumpProbs;
 		
 		private boolean applyOrigProbFloor;
 
@@ -318,7 +348,8 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 		 * jump probability, which could occur in certain cases where the jump uses most magnitude bins and the
 		 * participation-to-nucleation conversion is high in those bins
 		 */
-		public RelGRWorstJumpProb(JumpProbabilityCalc improbModel, int iterations, boolean applyOrigProbFloor) {
+		public RelGRWorstJumpProb(
+				TransitionProbabilityCalc<T> improbModel, int iterations, boolean applyOrigProbFloor) {
 			super(null);
 			this.jumpModel = improbModel;
 			this.iterations = iterations;
@@ -332,16 +363,15 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 				int[][] sectRupInBinCounts, EvenlyDiscretizedFunc refMFD) {
 			ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
 			
-			Map<Jump, Double> avgOrigJumpProbs = calcAverageJumpProbs(cRups, jumpModel);
+			Map<IDPairing, Double> avgOrigJumpProbs = calcAverageTransitionProbs(cRups, jumpModel);
 			
-			Map<Jump, BitSet> jumpMagBins = new HashMap<>();
+			Map<IDPairing, BitSet> jumpMagBins = new HashMap<>();
 			
 			// figure out which jumps use which mag bins
 			for (int r=0; r<cRups.size(); r++) {
 				int magBin = refMFD.getClosestXIndex(rupSet.getMagForRup(r));
-				for (Jump jump : cRups.get(r).getJumpsIterable()) {
-					if (jump.fromSection.getSectionId() > jump.toSection.getSectionId())
-						jump = jump.reverse();
+				for (Transition transition : jumpModel.getTransitions(cRups.get(r))) {
+					IDPairing jump = TransitionProbabilityUtils.pair(transition);
 					BitSet bitSet = jumpMagBins.get(jump);
 					if (bitSet == null) {
 						bitSet = new BitSet(refMFD.size());
@@ -394,17 +424,19 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 			Preconditions.checkState(iterations >= 1);
 			ExecutorService exec = Executors.newFixedThreadPool(D ? 1 : FaultSysTools.defaultNumThreads());
 			
-			Map<Jump, Future<Double>> jumpFutures = new HashMap<>();
-			for (Jump jump : jumpMagBins.keySet()) {
+			Map<IDPairing, Future<Double>> jumpFutures = new HashMap<>();
+			for (IDPairing jump : jumpMagBins.keySet()) {
 				BitSet jumpBitSet = jumpMagBins.get(jump);
 				double jumpProb = avgOrigJumpProbs.get(jump);
-				RelGRJumpProbCalc calc = new RelGRJumpProbCalc(jump, jumpProb, jumpBitSet, refMFD,
+				SubsectionTransition transition = new SubsectionTransition(rupSet.getFaultSectionData(jump.getID1()),
+						rupSet.getFaultSectionData(jump.getID2()));
+				RelGRJumpProbCalc calc = new RelGRJumpProbCalc(transition, jumpProb, jumpBitSet, refMFD,
 						origSectSupraSeisMFDs, sectNuclToParticScalars, sectMinMagIndexes, iterations);
 				jumpFutures.put(jump, exec.submit(calc));
 			}
 			
 			jumpProbs = new HashMap<>();
-			for (Jump jump : jumpFutures.keySet()) {
+			for (IDPairing jump : jumpFutures.keySet()) {
 				double relGRProb;
 				try {
 					relGRProb = jumpFutures.get(jump).get();
@@ -415,7 +447,6 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 				if (applyOrigProbFloor && relGRProb > 0d)
 					relGRProb = Math.max(relGRProb, avgOrigJumpProbs.get(jump));
 				jumpProbs.put(jump, relGRProb);
-				jumpProbs.put(jump.reverse(), relGRProb);
 			}
 			
 			exec.shutdown();
@@ -425,17 +456,22 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 		}
 
 		@Override
-		protected double calcJumpProb(ClusterRupture rup, Jump jump) {
-			Double jumpProb = jumpProbs.get(jump);
+		protected Iterable<T> getTransitions(ClusterRupture rup) {
+			return jumpModel.getTransitions(rup);
+		}
+
+		@Override
+		protected double calcTransitionProb(ClusterRupture rup, T jump) {
+			Double jumpProb = jumpProbs.get(TransitionProbabilityUtils.pair(jump));
 			Preconditions.checkNotNull(jumpProb, "No jump probability for %s (have %s in total)", jump, jumpProbs.size());
 			return jumpProb;
 		}
 		
 	}
 	
-	private static class RelGRJumpProbCalc implements Callable<Double> {
+	static class RelGRJumpProbCalc implements Callable<Double> {
 		
-		private Jump jump;
+		private Transition jump;
 		private double jumpProb;
 		private BitSet jumpBitSet;
 		private EvenlyDiscretizedFunc refMFD;
@@ -444,7 +480,7 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 		private int[] sectMinMagIndexes;
 		private int iterations;
 
-		RelGRJumpProbCalc(Jump jump, double jumpProb, BitSet jumpBitSet, EvenlyDiscretizedFunc refMFD,
+		RelGRJumpProbCalc(Transition jump, double jumpProb, BitSet jumpBitSet, EvenlyDiscretizedFunc refMFD,
 				List<? extends IncrementalMagFreqDist> sectMFDs, double[][] sectNuclToParticScalars,
 				int[] sectMinMagIndexes, int iterations) {
 			this.jump = jump;
@@ -459,14 +495,16 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 		}
 		
 		public Double call() {
-			final boolean D = RelGRWorstJumpProb.D || jump.fromSection.getSectionId() == DEBUG_SECT
-					|| jump.toSection.getSectionId() == DEBUG_SECT;	
+			final boolean D = RelGRWorstJumpProb.D || jump.getFromSection().getSectionId() == DEBUG_SECT
+					|| jump.getToSection().getSectionId() == DEBUG_SECT;
 			
 			double minProb = 1d;
 			if (D) {
-				System.out.println("Jump from "+jump.fromSection.getSectionId()+". "+jump.fromSection.getSectionName()
-					+" to "+jump.toSection.getSectionId()+". "+jump.toSection.getSectionName());
-				System.out.println("\tDist: "+(float)jump.distance);
+				System.out.println("Transition from "+jump.getFromSection().getSectionId()+". "
+						+jump.getFromSection().getSectionName()+" to "+jump.getToSection().getSectionId()+". "
+						+jump.getToSection().getSectionName());
+				if (jump instanceof Jump)
+					System.out.println("\tDist: "+(float)((Jump)jump).distance);
 				System.out.println("\tProb: "+(float)jumpProb);
 				String magBinStr = null;
 				for (int m=0; m<refMFD.size(); m++) {
@@ -484,7 +522,8 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 			if (jumpProb == 0d) {
 				minProb = 0d;
 			} else {
-				for (int sectIndex : new int[] {jump.fromSection.getSectionId(), jump.toSection.getSectionId()}) {
+				for (int sectIndex : new int[] {
+						jump.getFromSection().getSectionId(), jump.getToSection().getSectionId()}) {
 					IncrementalMagFreqDist sectMFD = sectMFDs.get(sectIndex);
 					if (sectMFD == null || sectMFD.calcSumOfY_Vals() == 0d) {
 						minProb = 0d;
@@ -508,8 +547,8 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 							binsNotUsing++;
 					}
 					if (D) {
-						String name = jump.fromSection.getSectionId() == sectIndex ?
-								jump.fromSection.getSectionName() : jump.toSection.getSectionName();
+						String name = jump.getFromSection().getSectionId() == sectIndex ?
+								jump.getFromSection().getSectionName() : jump.getToSection().getSectionName();
 						System.out.println("\tSection "+sectIndex+". "+name);
 						System.out.println("\t\tOrig total participation rate: "+(float)totParticRate);
 						System.out.println("\t\tOrig jump participation rate: "+(float)jumpParticRate);
@@ -921,10 +960,10 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 
 		ThresholdAveragingSectNuclMFD_Estimator improb1 =
 //				new ThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel);
-				new ThresholdAveragingSectNuclMFD_Estimator.WorstAvgJumpProb(segModel);
+				new ThresholdAveragingSectNuclMFD_Estimator.WorstAvgJumpProb<>(segModel);
 		String name1 = "Seg-Prob";
 		ThresholdAveragingSectNuclMFD_Estimator improb2 =
-				new ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 100, true);
+				new ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb<>(segModel, 100, true);
 		String name2 = "Rel-GR-100-Iters";
 		String prefix = "thresh_avg_vs_rel_gr_iter";
 
@@ -1011,8 +1050,8 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 					if (jump.fromSection.getSectionId() > jump.toSection.getSectionId())
 						jump = jump.reverse();
 					if (!prevJumps.contains(jump)) {
-						double prob1 = ((AbstractWorstJumpProb)improb1).calcJumpProb(rup, jump);
-						double prob2 = ((AbstractWorstJumpProb)improb2).calcJumpProb(rup, jump);
+						double prob1 = ((AbstractWorstJumpProb)improb1).calcTransitionProb(rup, jump);
+						double prob2 = ((AbstractWorstJumpProb)improb2).calcTransitionProb(rup, jump);
 						
 						if ((prob1 != 1d || prob2 != 1d) && (prob1 != 0d || prob2 != 0d)) {
 							probScatter.set(prob1, prob2);

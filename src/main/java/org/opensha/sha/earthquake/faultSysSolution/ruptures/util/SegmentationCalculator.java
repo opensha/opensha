@@ -7,7 +7,6 @@ import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -18,14 +17,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.stream.Collectors;
 
 import org.apache.commons.math3.stat.StatUtils;
 import org.apache.commons.math3.stat.regression.SimpleRegression;
 import org.dom4j.DocumentException;
 import org.jfree.chart.annotations.XYTextAnnotation;
-import org.jfree.chart.plot.CombinedDomainXYPlot;
-import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.Range;
 import org.opensha.commons.util.ColorUtils;
@@ -53,7 +49,6 @@ import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
-import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.RateCombiner;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
@@ -62,18 +57,13 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.CumulativeProbabilityFilter.*;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.DistDependentJumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.InputJumpsOrDistClusterConnectionStrategy;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.DistDependSegShift;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationModelBranchNode;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.JumpSegmentationModelBranchNode;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
@@ -86,9 +76,6 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 import com.google.common.collect.Table.Cell;
 import com.google.common.primitives.Doubles;
-
-import scratch.UCERF3.U3SlipEnabledSolution;
-import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class SegmentationCalculator {
 	
@@ -1716,15 +1703,16 @@ public class SegmentationCalculator {
 			branch = sol.getRupSet().getModule(LogicTreeBranch.class);
 		DistDependentJumpProbabilityCalc chosenSegModel = null;
 		if (branch != null) {
-			SegmentationModelBranchNode segChoice = branch.getValue(SegmentationModelBranchNode.class);
+			JumpSegmentationModelBranchNode segChoice = branch.getValue(JumpSegmentationModelBranchNode.class);
 			
 			for (LogicTreeLevel<?> level : branch.getLevels()) {
-				if (SegmentationModelBranchNode.class.isAssignableFrom(level.getType())
-						|| level.getType().equals(SegmentationModelBranchNode.class)) {
-					Class<? extends SegmentationModelBranchNode> segClass =
-							(Class<? extends SegmentationModelBranchNode>) level.getType();
-					if (segClass != null && segClass.isEnum() && SegmentationModelBranchNode.class.isAssignableFrom(segClass)) {
-						for (SegmentationModelBranchNode option : segClass.getEnumConstants()) {
+				if (JumpSegmentationModelBranchNode.class.isAssignableFrom(level.getType())
+						|| level.getType().equals(JumpSegmentationModelBranchNode.class)) {
+					Class<? extends JumpSegmentationModelBranchNode> segClass =
+							(Class<? extends JumpSegmentationModelBranchNode>) level.getType();
+					if (segClass != null && segClass.isEnum()
+							&& JumpSegmentationModelBranchNode.class.isAssignableFrom(segClass)) {
+						for (JumpSegmentationModelBranchNode option : segClass.getEnumConstants()) {
 							if (option.getNodeWeight(branch) > 0d || option == segChoice) {
 								try {
 									JumpProbabilityCalc model = option.getModel(sol.getRupSet(), branch);

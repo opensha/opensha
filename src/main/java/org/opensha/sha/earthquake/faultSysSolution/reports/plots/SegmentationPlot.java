@@ -25,7 +25,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationCalculator.Scalars;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationModelBranchNode;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.JumpSegmentationModelBranchNode;
 
 import com.google.common.base.Preconditions;
 
@@ -500,15 +500,15 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 		return lines;
 	}
 	
-	private SegmentationModelBranchNode getBranchSegModelChoice(FaultSystemRupSet rupSet) {
+	private JumpSegmentationModelBranchNode getBranchSegModelChoice(FaultSystemRupSet rupSet) {
 		LogicTreeBranch<?> branch = rupSet.getModule(LogicTreeBranch.class);
-		return branch.getValue(SegmentationModelBranchNode.class);
+		return branch.getValue(JumpSegmentationModelBranchNode.class);
 	}
 	
 	private JumpProbabilityCalc getBranchSegModel(FaultSystemRupSet rupSet) {
 		LogicTreeBranch<?> branch = rupSet.getModule(LogicTreeBranch.class);
-		if (branch != null && branch.hasValue(SegmentationModelBranchNode.class)) {
-			SegmentationModelBranchNode segModelChoice = branch.getValue(SegmentationModelBranchNode.class);
+		if (branch != null && branch.hasValue(JumpSegmentationModelBranchNode.class)) {
+			JumpSegmentationModelBranchNode segModelChoice = branch.getValue(JumpSegmentationModelBranchNode.class);
 			if (segModelChoice != null) {
 				return segModelChoice.getModel(rupSet, branch);
 			}
