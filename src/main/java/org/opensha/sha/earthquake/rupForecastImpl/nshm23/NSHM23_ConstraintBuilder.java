@@ -50,6 +50,9 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.TransitionProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationRuptureExemptions;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationRuptureExemptions.Policy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationRuptureExemptions.Configurable;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
@@ -106,6 +109,7 @@ public class NSHM23_ConstraintBuilder {
 	private BinaryRuptureProbabilityCalc rupExclusionModel;
 	
 	private TransitionProbabilityCalc<?> segModel;
+	private Policy ruptureExemptionPolicy = Policy.NONE;
 	
 	public static SegmentationMFD_Adjustment SEG_ADJ_METHOD_DEFAULT = SegmentationMFD_Adjustment.REL_GR_THRESHOLD_AVG;
 	private SegmentationMFD_Adjustment segAdjMethod = SEG_ADJ_METHOD_DEFAULT;
@@ -273,6 +277,12 @@ public class NSHM23_ConstraintBuilder {
 		return this;
 	}
 
+	public NSHM23_ConstraintBuilder ruptureExemptionPolicy(Policy policy) {
+		ruptureExemptionPolicy = Preconditions.checkNotNull(policy);
+		targetCache = null;
+		return this;
+	}
+
 	public NSHM23_ConstraintBuilder proxyFaultMagCorner(double proxyFaultMagCorner) {
 		this.proxyFaultMagCorner = proxyFaultMagCorner;
 		targetCache = null;
@@ -378,8 +388,15 @@ public class NSHM23_ConstraintBuilder {
 				builder.forBinaryRupProbModel((BinaryRuptureProbabilityCalc)segModel);
 			} else {
 				SectNucleationMFD_Estimator adjustment = segAdjMethod.getAdjustment(segModel);
-				if (adjustment != null)
+				if (adjustment != null) {
+					if (ruptureExemptionPolicy != Policy.NONE) {
+						Preconditions.checkArgument(adjustment instanceof Configurable,
+								"%s does not support rupture exemptions", segAdjMethod);
+						((Configurable)adjustment).setRuptureExemptions(ruptureExemptionPolicy,
+								SegmentationRuptureExemptions.eligibleRuptures(rupSet, rupExclusionModel));
+					}
 					builder.adjustTargetsForData(adjustment);
+				}
 			}
 		}
 		if (rupExclusionModel != null)

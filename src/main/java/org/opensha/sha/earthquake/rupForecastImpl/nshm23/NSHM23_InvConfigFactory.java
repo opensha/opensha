@@ -55,6 +55,8 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Se
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SegmentationProbabilityConstraint.EndpointReferenceRateWeighting;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.TransitionProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.TransitionProbabilityUtils;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationRuptureExemptions;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SegmentationProbabilityConstraint.ProbabilityAggregation;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.LaplacianSmoothingInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipInversionConstraint;
@@ -887,6 +889,9 @@ ExclusionaryInversionConfigurationFactory {
 		
 		// Internal bends can affect MFDs even when this rupture set has no jumps.
 		TransitionProbabilityCalc<?> targetSegModel = buildSegModel(rupSet, branch);
+		SegmentationModelBranchNode<?> segmentationChoice = branch.getValue(SegmentationModelBranchNode.class);
+		if (segmentationChoice != null)
+			constrBuilder.ruptureExemptionPolicy(segmentationChoice.getRuptureExemptionPolicy());
 		if (hasJumps(rupSet) || (targetSegModel != null && !(targetSegModel instanceof JumpProbabilityCalc))) {
 			// this handles creeping section, binary segmentation, and max dist models
 			BinaryRuptureProbabilityCalc rupExclusionModel = buildExclusionModel(
@@ -1572,7 +1577,10 @@ ExclusionaryInversionConfigurationFactory {
 						weight, ineq, rupSet, (JumpProbabilityCalc)segModel, rateEst));
 			else
 				constraints.add(new SegmentationProbabilityConstraint(
-						weight, rupSet, segModel, new EndpointReferenceRateWeighting(), rateEst));
+						weight, rupSet, segModel, new EndpointReferenceRateWeighting(), rateEst,
+						ProbabilityAggregation.AVERAGE,
+						branch.requireValue(SegmentationModelBranchNode.class).getRuptureExemptionPolicy(),
+						SegmentationRuptureExemptions.eligibleRuptures(rupSet, rupExcludeModel)));
 		}
 		
 		int avgThreads = Integer.max(1, threads / 4);

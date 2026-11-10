@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.faultSysSolution;
 
 import org.junit.runner.RunWith;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationRuptureExemptionsTest;
 import org.junit.runners.Suite;
 import org.opensha.sha.earthquake.faultSysSolution.modules.StandardFaultSysModulesTest;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SegmentationProbabilityConstraintTest;
@@ -12,7 +13,8 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.FaultTraceSegme
 	RupSetSaveLoadTests.class,
 	StandardFaultSysModulesTest.class,
 	SegmentationProbabilityConstraintTest.class,
-	FaultTraceSegmentationGeometryTest.class
+	FaultTraceSegmentationGeometryTest.class,
+	SegmentationRuptureExemptionsTest.class
 })
 
 public class FaultSystemTestSuite {

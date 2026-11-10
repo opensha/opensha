@@ -11,6 +11,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Transition;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.TransitionProbabilityUtils;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationRuptureExemptions.Policy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.TransitionProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.TransitionProbabilityCalc.GenericTransitionProbCalcAdapter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
@@ -21,6 +22,9 @@ import com.google.gson.annotations.JsonAdapter;
 public interface SegmentationModelBranchNode<T extends Transition> extends ExclusionaryLogicTreeNode {
 	
 	public TransitionProbabilityCalc<T> getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch);
+
+	/** Enforcement policy; standard jump-only branches retain their original behavior. */
+	public default Policy getRuptureExemptionPolicy() { return Policy.NONE; }
 
 	/** Excludes pairs whose mean probability across crossing ruptures is zero. */
 	public default BinaryRuptureProbabilityCalc getExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {

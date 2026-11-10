@@ -11,6 +11,10 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.TransitionProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.TransitionProbabilityUtils;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.Transition;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationRuptureExemptions;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationRuptureExemptions.Policy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationRuptureExemptions.Configurable;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -44,9 +48,30 @@ public class ImprobModelRupMultiplyingSectNuclMFD_Estimator extends SectNucleati
 	 * @author kevin
 	 *
 	 */
-	public static class WorstJumpProb extends ImprobModelRupMultiplyingSectNuclMFD_Estimator {
+	public static class WorstJumpProb extends ImprobModelRupMultiplyingSectNuclMFD_Estimator implements Configurable {
 		
 		private TransitionProbabilityCalc<?> jumpModel;
+		private Policy exemptionPolicy = Policy.NONE;
+		private BitSet eligibleRuptures;
+		private SegmentationRuptureExemptions ruptureExemptions;
+
+		@Override
+		public void setRuptureExemptions(Policy policy, BitSet eligibleRuptures) {
+			exemptionPolicy = policy;
+			this.eligibleRuptures = eligibleRuptures == null ? null : (BitSet)eligibleRuptures.clone();
+		}
+
+		@Override
+		public void init(FaultSystemRupSet rupSet, List<IncrementalMagFreqDist> origSectSupraSeisMFDs,
+				double[] targetSectSupraMoRates, double[] targetSectSupraSlipRates, double[] sectSupraSlipRateStdDevs,
+				List<BitSet> sectRupUtilizations, int[] sectMinMagIndexes, int[] sectMaxMagIndexes,
+				int[][] sectRupInBinCounts, EvenlyDiscretizedFunc refMFD) {
+			ruptureExemptions = exemptionPolicy == Policy.NONE ? null
+					: SegmentationRuptureExemptions.build(rupSet, jumpModel, exemptionPolicy, eligibleRuptures);
+			super.init(rupSet, origSectSupraSeisMFDs, targetSectSupraMoRates, targetSectSupraSlipRates,
+					sectSupraSlipRateStdDevs, sectRupUtilizations, sectMinMagIndexes, sectMaxMagIndexes,
+					sectRupInBinCounts, refMFD);
+		}
 
 		public WorstJumpProb(TransitionProbabilityCalc<?> improbModel) {
 			super(improbModel);
@@ -55,9 +80,20 @@ public class ImprobModelRupMultiplyingSectNuclMFD_Estimator extends SectNucleati
 
 		@Override
 		protected double calcRupProb(ClusterRupture rup) {
-			return TransitionProbabilityUtils.worstProbability(rup, jumpModel);
+			if (ruptureExemptions == null) return TransitionProbabilityUtils.worstProbability(rup, jumpModel);
+			if (!ruptureExemptions.isEligible(rup)) return 1d;
+			return exemptedWorstProbability(rup, jumpModel);
 		}
 		
+		private <T extends Transition> double exemptedWorstProbability(ClusterRupture rupture,
+				TransitionProbabilityCalc<T> model) {
+			double worst = 1d;
+			for (T transition : model.getTransitions(rupture))
+				if (!ruptureExemptions.isExemptOnBothSides(transition, rupture))
+					worst = Math.min(worst, model.calcTransitionProbability(rupture, transition, false));
+			return worst;
+		}
+
 	}
 
 	public ImprobModelRupMultiplyingSectNuclMFD_Estimator(RuptureProbabilityCalc improbModel) {

@@ -2,6 +2,7 @@ package org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -19,6 +20,8 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.Transition;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.TransitionProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.TransitionProbabilityCalc.GenericTransitionProbCalcAdapter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationRuptureExemptions;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationRuptureExemptions.Policy;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -35,6 +38,8 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
  * transitions. For each side of each transition, constrains the total crossing rate
  * J <= p * sum_s(w_s R_s), where R_s is subsection participation rate and the
  * reference weights sum to one. This does not enforce products along rupture paths.
+ * Optional minimum-rupture exemptions omit eligible baseline ruptures from J separately on each side;
+ * their participation still contributes to the reference rate. Physical passage probabilities are not changed.
  *
  * <p>All occurrences of an unordered subsection pair share one crossing-rate bound
  * per side, including jumps with different distances. Rupture-dependent probabilities
@@ -58,6 +63,10 @@ public class SegmentationProbabilityConstraint extends InversionConstraint {
 
 	private transient FaultSystemRupSet rupSet;
 	private transient List<Row> rows;
+	private transient SegmentationRuptureExemptions ruptureExemptions;
+	private Policy ruptureExemptionPolicy = Policy.NONE;
+	private BitSet eligibleRuptures;
+	private int eligibilityRuptureCount;
 
 	@JsonAdapter(GenericTransitionProbCalcAdapter.class)
 	private TransitionProbabilityCalc<?> probabilityCalc;
@@ -97,11 +106,23 @@ public class SegmentationProbabilityConstraint extends InversionConstraint {
 	public SegmentationProbabilityConstraint(double weight, FaultSystemRupSet rupSet,
 			TransitionProbabilityCalc<?> probabilityCalc, ReferenceRateWeighting referenceRateWeighting,
 			SectParticipationRateEstimator rateEstimator, ProbabilityAggregation probabilityAggregation) {
+		this(weight, rupSet, probabilityCalc, referenceRateWeighting, rateEstimator, probabilityAggregation,
+				Policy.NONE, null);
+	}
+
+	/** Eligibility masks are snapshots using this rupture set's IDs, like the rate-estimator snapshot. */
+	public SegmentationProbabilityConstraint(double weight, FaultSystemRupSet rupSet,
+			TransitionProbabilityCalc<?> probabilityCalc, ReferenceRateWeighting referenceRateWeighting,
+			SectParticipationRateEstimator rateEstimator, ProbabilityAggregation probabilityAggregation,
+			Policy ruptureExemptionPolicy, BitSet eligibleRuptures) {
 		super("Segmentation Probability Constraint, "+Preconditions.checkNotNull(probabilityCalc).getName(),
 				"SegProb", weight, true);
 		this.probabilityCalc = Preconditions.checkNotNull(probabilityCalc);
 		this.referenceRateWeighting = Preconditions.checkNotNull(referenceRateWeighting);
 		this.probabilityAggregation = Preconditions.checkNotNull(probabilityAggregation);
+		this.ruptureExemptionPolicy = Preconditions.checkNotNull(ruptureExemptionPolicy);
+		this.eligibleRuptures = eligibleRuptures == null ? null : (BitSet)eligibleRuptures.clone();
+		this.eligibilityRuptureCount = rupSet.getNumRuptures();
 		if (rateEstimator != null)
 			estimatedParticipationRates = rateEstimator.estimateSectParticRates().clone();
 		setRuptureSet(rupSet);
@@ -153,8 +174,12 @@ public class SegmentationProbabilityConstraint extends InversionConstraint {
 				Preconditions.checkArgument(Double.isFinite(rate) && rate >= 0d,
 						"Invalid participation rate estimate: %s", rate);
 		}
+		if (eligibleRuptures != null)
+			Preconditions.checkArgument(eligibilityRuptureCount == rupSet.getNumRuptures()
+					&& eligibleRuptures.length() <= rupSet.getNumRuptures(), "Eligibility mask must match rupture IDs");
 		this.rupSet = rupSet;
 		rows = null;
+		ruptureExemptions = null;
 	}
 
 	private synchronized void initRows() {
@@ -163,6 +188,8 @@ public class SegmentationProbabilityConstraint extends InversionConstraint {
 		Preconditions.checkNotNull(rupSet, "Must set rupture set before using constraint");
 		Map<IDPairing, Crossing> crossings = new TreeMap<>();
 		collectCrossings(probabilityCalc, crossings);
+		ruptureExemptions = SegmentationRuptureExemptions.build(rupSet, probabilityCalc,
+				ruptureExemptionPolicy == null ? Policy.NONE : ruptureExemptionPolicy, eligibleRuptures);
 		List<Row> newRows = new ArrayList<>();
 		for (Crossing crossing : crossings.values()) {
 			newRows.add(buildRow(crossing, crossing.first, crossing.second));
@@ -241,7 +268,9 @@ public class SegmentationProbabilityConstraint extends InversionConstraint {
 		Preconditions.checkArgument(Double.isFinite(sum) && sum > 0d, "Reference weights must have positive finite sum");
 		final double total = sum;
 		weights.replaceAll((id, value) -> value/total);
-		return new Row(from, to, crossing, weights);
+		Set<Integer> chargedRuptures = new HashSet<>(crossing.ruptures);
+		chargedRuptures.removeIf(r -> ruptureExemptions.isExempt(from, to, r));
+		return new Row(from, to, crossing, weights, chargedRuptures);
 	}
 
 	@Override
@@ -274,10 +303,10 @@ public class SegmentationProbabilityConstraint extends InversionConstraint {
 				for (int rupture : rupSet.getRupturesForSection(entry.getKey()))
 					referenceContributions.merge(rupture, entry.getValue(), Double::sum);
 			}
-			for (int rupture : row.crossing.ruptures)
+			for (int rupture : row.chargedRuptures)
 				referenceContributions.putIfAbsent(rupture, 0d);
 			for (Map.Entry<Integer, Double> entry : referenceContributions.entrySet()) {
-				double coefficient = ((row.crossing.ruptures.contains(entry.getKey()) ? 1d : 0d)
+				double coefficient = ((row.chargedRuptures.contains(entry.getKey()) ? 1d : 0d)
 						-probability*entry.getValue())*scalar;
 				setA(A, startRow, entry.getKey(), coefficient);
 				if (coefficient != 0d) count++;
@@ -285,6 +314,11 @@ public class SegmentationProbabilityConstraint extends InversionConstraint {
 			d[startRow++] = 0d;
 		}
 		return count;
+	}
+
+	public SegmentationRuptureExemptions getRuptureExemptions() {
+		initRows();
+		return ruptureExemptions;
 	}
 
 	private static class Crossing {
@@ -320,12 +354,14 @@ public class SegmentationProbabilityConstraint extends InversionConstraint {
 		final int from, to;
 		final Crossing crossing;
 		final Map<Integer, Double> weights;
+		final Set<Integer> chargedRuptures;
 
-		Row(int from, int to, Crossing crossing, Map<Integer, Double> weights) {
+		Row(int from, int to, Crossing crossing, Map<Integer, Double> weights, Set<Integer> chargedRuptures) {
 			this.from = from;
 			this.to = to;
 			this.crossing = crossing;
 			this.weights = weights;
+			this.chargedRuptures = chargedRuptures;
 		}
 	}
 
