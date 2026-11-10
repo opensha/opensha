@@ -6,7 +6,8 @@ import org.opensha.commons.data.xyz.XYZSuite;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
-	PlotRendererCreationTest.class
+	PlotRendererCreationTest.class,
+	GraphPanelDatasetIndexTest.class
 })
 public class PlotSuite {
 	public static void main(String args[]) {

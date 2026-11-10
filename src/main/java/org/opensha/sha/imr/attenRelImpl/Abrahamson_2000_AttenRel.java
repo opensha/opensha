@@ -81,8 +81,7 @@ public class Abrahamson_2000_AttenRel extends AttenuationRelationship {
 	public final static String SHORT_NAME = "Abrahamson2000";
 	private static final long serialVersionUID = 1234567890987654351L;
 
-	// URL Info String
-	private final static String URL_INFO_STRING = "http://www.opensha.org/glossary-attenuationRelation-ABRAHAM_2000";
+	// No URL_INFO_STRING: this model has no published paper or DOI (see getInfoURL()).
 
 
 
@@ -1226,12 +1225,16 @@ public class Abrahamson_2000_AttenRel extends AttenuationRelationship {
 
 
 	/**
-	 * This provides a URL where more info on this model can be obtained
-	 * @throws MalformedURLException if returned URL is not a valid URL.
-	 * @return the URL to the AttenuationRelationship document on the Web.
+	 * This model was described only in a conference presentation/proceedings
+	 * (Abrahamson, 2000) and was never published as a journal article, so it
+	 * has no DOI or web document to link to. Returns {@code null} so the
+	 * plotter intentionally reports that no information exists, rather than
+	 * linking to an unrelated page.
+	 * @return null; no information URL exists for this model.
 	 */
 	public URL getInfoURL() throws MalformedURLException{
-		return new URL(URL_INFO_STRING);
+		// No DOI/paper exists for Abrahamson (2000); intentionally return null.
+		return null;
 	}
 
 

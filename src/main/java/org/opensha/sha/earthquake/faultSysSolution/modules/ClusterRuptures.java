@@ -377,6 +377,11 @@ SplittableRuptureModule<ClusterRuptures> {
 			}
 			return new SingleStranded(mergedRupSet, null);
 		}
+
+		@Override
+		public Class<? extends SingleStranded> getMergingType() {
+			return SingleStranded.class;
+		}
 		
 	}
 	

@@ -3,6 +3,7 @@ package org.opensha.sha.earthquake.faultSysSolution.hazard;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
@@ -11,10 +12,11 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
+import java.util.zip.GZIPInputStream;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
@@ -37,9 +39,9 @@ import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.SiteLogicTreeHazardPageGen.ValueDistribution;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_LogicTreeHazardCalc;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_SiteLogicTreeHazardCurveCalc;
+import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
-import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
 import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_Config;
 
 import com.google.common.base.Preconditions;
@@ -87,30 +89,41 @@ public class LogicTreeSimplifiedMapCurveWriter {
 	public static void run(String[] args) throws IOException {
 		CommandLine cmd = FaultSysTools.parseOptions(createOptions(), args, LogicTreeSimplifiedMapCurveWriter.class);
 		args = cmd.getArgs();
-		if (args.length < 5 || args.length > 6) {
-			System.err.println("USAGE: LogicTreeSimplifiedMapCurveWriter <results-dir> <logic-tree-file.json> "
-					+ "<gridded-region.geojson> <hazard-dir-name> [<full-output-dir>] <summary-output-dir>");
+		if (args.length < 2 || args.length > 3) {
+			System.err.println("USAGE: LogicTreeSimplifiedMapCurveWriter <hazard-curves-file.zip> "
+					+ "[<full-output-file.zip>] <summary-output-file.zip>");
 			System.exit(1);
 		}
-		File resultsDir = new File(args[0]);
-		Preconditions.checkState(resultsDir.exists());
-		File logicTreeFile = new File(args[1]);
-		Preconditions.checkState(logicTreeFile.exists());
-		File gridRegFile = new File(args[2]);
-		Preconditions.checkState(gridRegFile.exists());
-		String hazardDirName = args[3];
+		File curvesInputFile = new File(args[0]);
+		Preconditions.checkState(curvesInputFile.isFile(), "Hazard curve archive doesn't exist: %s",
+				curvesInputFile.getAbsolutePath());
 		File fullOutputFile, summaryOutputFile;
-		if (args.length == 5) {
+		if (args.length == 2) {
 			fullOutputFile = null;
-			summaryOutputFile = new File(args[4]);
+			summaryOutputFile = new File(args[1]);
 		} else {
-			fullOutputFile = new File(args[4]);
-			summaryOutputFile = new File(args[5]);
+			fullOutputFile = new File(args[1]);
+			summaryOutputFile = new File(args[2]);
+		}
+		Preconditions.checkArgument(!curvesInputFile.getCanonicalFile().equals(summaryOutputFile.getCanonicalFile()),
+				"Input and summary output files must be different: %s", curvesInputFile.getAbsolutePath());
+		if (fullOutputFile != null) {
+			Preconditions.checkArgument(!curvesInputFile.getCanonicalFile().equals(fullOutputFile.getCanonicalFile()),
+					"Input and full output files must be different: %s", curvesInputFile.getAbsolutePath());
+			Preconditions.checkArgument(!fullOutputFile.getCanonicalFile().equals(summaryOutputFile.getCanonicalFile()),
+					"Full and summary output files must be different: %s", fullOutputFile.getAbsolutePath());
 		}
 		
 		boolean nshmpIMLs = cmd.hasOption("nshmp-imls");
 		
-		LogicTree<?> tree = LogicTree.read(logicTreeFile);
+		ArchiveInput curvesInput = new ArchiveInput.PreloadingZipFileInput(curvesInputFile);
+		Preconditions.checkState(curvesInput.hasEntry(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME),
+				"Hazard curve archive is missing %s", AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME);
+		LogicTree<?> tree;
+		try (InputStream input = curvesInput.getInputStream(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME);
+				InputStreamReader reader = new InputStreamReader(input)) {
+			tree = LogicTree.read(reader);
+		}
 		
 		int treeSize = tree.size();
 		
@@ -127,7 +140,7 @@ public class LogicTreeSimplifiedMapCurveWriter {
 				branchWeights.set(i, branchWeights.get(i)*scalar);
 		}
 		
-		GriddedRegion gridReg = loadGridReg(gridRegFile);
+		GriddedRegion gridReg = loadGridReg(curvesInput);
 		
 		System.out.println("Initializing output writers");
 		
@@ -183,16 +196,8 @@ public class LogicTreeSimplifiedMapCurveWriter {
 		sitesCSV = null;
 		logicTreeCSV = null;
 		
-		ArchiveInput resultsDirInput;
-		// see if there's a zip version
-		File resultsDirZip = new File(resultsDir.getParentFile(), resultsDir.getName()+".zip");
-		if (resultsDirZip.exists())
-			resultsDirInput = new ArchiveInput.ZipFileInput(resultsDirZip);
-		else 
-			resultsDirInput = new ArchiveInput.DirectoryInput(resultsDir.toPath());
-		System.out.println("Detecting calculation periods from "+resultsDirInput.getName());
-		double[] periods = LogicTreeHazardCompare.detectHazardPeriods(new ReturnPeriods[] {ReturnPeriods.TWO_IN_50}, resultsDirInput);
-		resultsDirInput.close();
+		System.out.println("Detecting calculation periods from "+curvesInput.getName());
+		double[] periods = detectCurvePeriods(curvesInput);
 		
 		int maxSitesInMemory = MAX_SITES_IN_MEMORY_DEFAULT;
 		if (cmd.hasOption("max-sites-in-memory"))
@@ -291,18 +296,14 @@ public class LogicTreeSimplifiedMapCurveWriter {
 					
 					LogicTreeBranch<?> branch = tree.getBranch(i);
 					
-					File resultsSubDir = branch.getBranchDirectory(resultsDir, false);
-					Preconditions.checkState(resultsSubDir.exists(), "Results sub-dir doesn't exist: %s", resultsSubDir.getAbsolutePath());
+					String curvesEntry = branch.getBranchZipPath()+"/"
+							+SolHazardMapCalc.getCSV_FileName("curves", periods[p]);
+					if (!curvesInput.hasEntry(curvesEntry))
+						curvesEntry += ".gz";
+					Preconditions.checkState(curvesInput.hasEntry(curvesEntry),
+							"Curve entry doesn't exist: %s", curvesEntry);
 					
-					File hazardDir = new File(resultsSubDir, hazardDirName);
-					Preconditions.checkState(hazardDir.exists(), "Hazard dir doesn't exist: %s", hazardDir.getAbsolutePath());
-					
-					File curvesFile = new File(hazardDir, SolHazardMapCalc.getCSV_FileName("curves", periods[p]));
-					if (!curvesFile.exists())
-						curvesFile = new File(curvesFile.getAbsolutePath()+".gz");
-					Preconditions.checkState(curvesFile.exists(), "Curve files doesn't exist: %s", curvesFile.getAbsolutePath());
-					
-					final File loadCurvesFile = curvesFile;
+					final String loadCurvesEntry = curvesEntry;
 					final int branchIndex = i;
 					
 					boolean firstXValWarn = b == 0 && i == 0;
@@ -312,8 +313,10 @@ public class LogicTreeSimplifiedMapCurveWriter {
 						@Override
 						public void run() {
 							CSVFile<String> csv;
-							try {
-								csv = CSVFile.readFile(loadCurvesFile, true);
+							try (InputStream archiveStream = curvesInput.getInputStream(loadCurvesEntry);
+									InputStream csvStream = loadCurvesEntry.endsWith(".gz")
+											? new GZIPInputStream(archiveStream) : archiveStream) {
+								csv = CSVFile.readStream(csvStream, true);
 							} catch (IOException e) {
 								throw ExceptionUtils.asRuntimeException(e);
 							}
@@ -479,6 +482,7 @@ public class LogicTreeSimplifiedMapCurveWriter {
 		if (fullOutput != null)
 			fullOutput.close();
 		summaryOutput.close();
+		curvesInput.close();
 		
 		System.out.println("DONE");
 		overallWatch.stop();
@@ -535,20 +539,34 @@ public class LogicTreeSimplifiedMapCurveWriter {
 		return logicTreeCSV;
 	}
 	
-	private static GriddedRegion loadGridReg(File regFile) throws IOException {
-		Preconditions.checkState(regFile.exists(), "Supplied region file doesn't exist: %s", regFile.getAbsolutePath());
-		if (regFile.getName().toLowerCase().endsWith(".zip")) {
-			// it's a zip file, assume it's a prior hazard calc
-			ZipFile zip = new ZipFile(regFile);
-			ZipEntry regEntry = zip.getEntry(MPJ_LogicTreeHazardCalc.GRID_REGION_ENTRY_NAME);
-			System.out.println("Reading gridded region from zip file: "+regEntry.getName());
-			BufferedReader bRead = new BufferedReader(new InputStreamReader(zip.getInputStream(regEntry)));
-			GriddedRegion region = GriddedRegion.fromFeature(Feature.read(bRead));
-			zip.close();
-			return region;
-		} else {
-			Feature feature = Feature.read(regFile);
-			return GriddedRegion.fromFeature(feature);
+	static double[] detectCurvePeriods(ArchiveInput input) throws IOException {
+		Set<Double> periods = new TreeSet<>();
+		for (String entry : input.getEntries()) {
+			String fileName = entry.substring(entry.lastIndexOf('/')+1);
+			if (fileName.endsWith(".gz"))
+				fileName = fileName.substring(0, fileName.length()-3);
+			if (fileName.equals("curves_pgv.csv"))
+				periods.add(-1d);
+			else if (fileName.equals("curves_pga.csv"))
+				periods.add(0d);
+			else if (fileName.startsWith("curves_sa_") && fileName.endsWith(".csv"))
+				periods.add(Double.parseDouble(fileName.substring("curves_sa_".length(), fileName.length()-4)));
+		}
+		Preconditions.checkState(!periods.isEmpty(), "No hazard curve periods detected in %s", input.getName());
+		System.out.println("\tDetected periods: "+periods);
+		double[] ret = new double[periods.size()];
+		int index = 0;
+		for (double period : periods)
+			ret[index++] = period;
+		return ret;
+	}
+
+	private static GriddedRegion loadGridReg(ArchiveInput input) throws IOException {
+		String entryName = MPJ_LogicTreeHazardCalc.GRID_REGION_ENTRY_NAME;
+		Preconditions.checkState(input.hasEntry(entryName), "Hazard curve archive is missing %s", entryName);
+		System.out.println("Reading gridded region from archive: "+entryName);
+		try (BufferedReader reader = new BufferedReader(new InputStreamReader(input.getInputStream(entryName)))) {
+			return GriddedRegion.fromFeature(Feature.read(reader));
 		}
 	}
 	

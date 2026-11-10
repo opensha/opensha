@@ -10,6 +10,7 @@ import org.opensha.commons.hpc.JavaShellScriptWriter;
 import org.opensha.commons.hpc.mpj.FastMPJShellScriptWriter;
 import org.opensha.commons.hpc.mpj.NoMPJSingleNodeShellScriptWriter;
 import org.opensha.commons.hpc.pbs.BatchScriptWriter;
+import org.opensha.commons.hpc.pbs.FronteraScriptWriter;
 import org.opensha.commons.hpc.pbs.HovenweepScriptWriter;
 import org.opensha.commons.hpc.pbs.USC_CARC_ScriptWriter;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
@@ -27,6 +28,7 @@ public final class HPCConfig {
 	private final int threadsPerNode;
 	private final int memGB;
 	private final int inversionsPerBundle;
+	private final Integer jobTimeMinutes;
 	private final String queue;
 	private final String followUpQueue;
 	private final String jarFileName;
@@ -40,6 +42,7 @@ public final class HPCConfig {
 		this.threadsPerNode = builder.threadsPerNode;
 		this.memGB = builder.memGB;
 		this.inversionsPerBundle = builder.inversionsPerBundle;
+		this.jobTimeMinutes = builder.jobTimeMinutes;
 		this.queue = builder.queue;
 		this.followUpQueue = builder.followUpQueue;
 		this.jarFileName = builder.jarFileName;
@@ -80,6 +83,10 @@ public final class HPCConfig {
 
 	public int inversionsPerBundle() {
 		return inversionsPerBundle;
+	}
+
+	public Integer jobTimeMinutes() {
+		return jobTimeMinutes;
 	}
 
 	public String queue() {
@@ -138,6 +145,10 @@ public final class HPCConfig {
 		ops.addOption(null, "threads-per-node", true, "Threads per node override.");
 		ops.addOption(null, "mem-gb", true, "Memory in GB override.");
 		ops.addOption(null, "inversions-per-bundle", true, "Inversions per bundle override.");
+		ops.addOption(null, "job-time-minutes", true,
+				"Default total wall time in minutes for inversion and hazard jobs.");
+		ops.addOption(null, "job-time-hours", true,
+				"Default total wall time in hours for inversion and hazard jobs; may be fractional.");
 		ops.addOption(null, "queue", true, "Primary queue override.");
 		ops.addOption(null, "follow-up-queue", true,
 				"Follow-up queue override for post-inversion jobs. If omitted, the site default will be used.");
@@ -155,6 +166,7 @@ public final class HPCConfig {
 		private int threadsPerNode;
 		private int memGB;
 		private int inversionsPerBundle;
+		private Integer jobTimeMinutes;
 		private String queue;
 		private String followUpQueue;
 		private String jarFileName;
@@ -177,6 +189,12 @@ public final class HPCConfig {
 				memGB = Integer.parseInt(cmd.getOptionValue("mem-gb"));
 			if (cmd.hasOption("inversions-per-bundle"))
 				inversionsPerBundle = Integer.parseInt(cmd.getOptionValue("inversions-per-bundle"));
+			Preconditions.checkArgument(!(cmd.hasOption("job-time-minutes") && cmd.hasOption("job-time-hours")),
+					"cannot supply both --job-time-minutes and --job-time-hours");
+			if (cmd.hasOption("job-time-minutes"))
+				jobTimeMinutes = Integer.parseInt(cmd.getOptionValue("job-time-minutes"));
+			else if (cmd.hasOption("job-time-hours"))
+				jobTimeMinutes = (int)Math.ceil(60d*Double.parseDouble(cmd.getOptionValue("job-time-hours")));
 			if (cmd.hasOption("queue"))
 				queue = cmd.getOptionValue("queue");
 			if (cmd.hasOption("follow-up-queue"))
@@ -236,6 +254,16 @@ public final class HPCConfig {
 			return this;
 		}
 
+		public Builder jobTimeMinutes(Integer jobTimeMinutes) {
+			this.jobTimeMinutes = jobTimeMinutes;
+			return this;
+		}
+
+		public Builder jobTimeHours(double jobTimeHours) {
+			this.jobTimeMinutes = (int)Math.ceil(60d*jobTimeHours);
+			return this;
+		}
+
 		public Builder queue(String queue) {
 			this.queue = queue;
 			return this;
@@ -263,6 +291,8 @@ public final class HPCConfig {
 			Preconditions.checkArgument(threadsPerNode > 0, "threadsPerNode must be > 0");
 			Preconditions.checkArgument(memGB > 0, "memGB must be > 0");
 			Preconditions.checkArgument(inversionsPerBundle > 0, "inversionsPerBundle must be > 0");
+			Preconditions.checkArgument(jobTimeMinutes == null || jobTimeMinutes > 0,
+					"jobTimeMinutes must be > 0");
 			Preconditions.checkNotNull(jarFileName, "jarFileName is required");
 			return new HPCConfig(this);
 		}
@@ -270,8 +300,8 @@ public final class HPCConfig {
 
 	public enum HPCSite {
 
-		USC_CARC_FMPJ("scec", 36, 20, 50, 1,
-				true, USC_CARC_ScriptWriter.JAVA_BIN, USC_CARC_ScriptWriter.FMPJ_HOME) {
+		USC_CARC_FMPJ("scec", 36 /*nodes*/, 20 /*cores*/, 50 /*mem in GB*/, 1 /*inversions per bundle*/,
+				true /*exhaustive*/, USC_CARC_ScriptWriter.JAVA_BIN, USC_CARC_ScriptWriter.FMPJ_HOME) {
 			@Override
 			BatchScriptWriter buildBatchWriter() {
 				return new USC_CARC_ScriptWriter();
@@ -285,8 +315,16 @@ public final class HPCConfig {
 			}
 		},
 
-		HOVENWEEP_FMPJ(null, 25, 16, 60, 1,
-				false, HovenweepScriptWriter.JAVA_BIN, HovenweepScriptWriter.FMPJ_HOME) {
+		FRONTERA_FMPJ(null /*queue*/, 10 /*nodes*/, 56 /*cores*/, 150 /*mem in GB*/, 3 /*inversions per bundle*/,
+				true /*exhaustive*/, FronteraScriptWriter.JAVA_BIN, FronteraScriptWriter.FMPJ_HOME) {
+			@Override
+			BatchScriptWriter buildBatchWriter() {
+				return new FronteraScriptWriter();
+			}
+		},
+
+		HOVENWEEP_FMPJ(null /*queue*/, 25 /*nodes*/, 16 /*cores*/, 60 /*mem in GB*/, 1 /*inversions per bundle*/,
+				false /*exhaustive*/, HovenweepScriptWriter.JAVA_BIN, HovenweepScriptWriter.FMPJ_HOME) {
 			@Override
 			BatchScriptWriter buildBatchWriter() {
 				return new HovenweepScriptWriter();

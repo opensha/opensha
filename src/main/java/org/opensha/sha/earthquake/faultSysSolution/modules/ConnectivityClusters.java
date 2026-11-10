@@ -412,4 +412,9 @@ MergeableRuptureModule<ConnectivityClusters>{
 		return new ConnectivityClusters(mergedRupSet, clusters);
 	}
 
+	@Override
+	public Class<? extends ConnectivityClusters> getMergingType() {
+		return ConnectivityClusters.class;
+	}
+
 }

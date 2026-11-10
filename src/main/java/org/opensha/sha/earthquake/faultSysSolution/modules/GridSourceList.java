@@ -868,17 +868,17 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		@Override
 		public String toString() {
 		   return "GriddedRuptureProperties[" +
-		           "magnitude=" + (float) magnitude + "; " +
+		           "mag=" + (float) magnitude + "; " +
 		           "rake=" + (float) rake + "; " +
 		           "dip=" + (float) dip + "; " +
 		           "strike=" + (float) strike + "; " +
-		           "strikeRange=" + strikeRange + "; " +
-		           "upperDepth=" + (float) upperDepth + "; " +
-		           "lowerDepth=" + (float) lowerDepth + "; " +
-		           "length=" + (float) length + "; " +
-		           "hypocentralDepth=" + (float) hypocentralDepth + "; " +
-		           "hypocentralDAS=" + (float) hypocentralDAS + "; " +
-		           "tectonicRegionType=" + (tectonicRegionType != null ? tectonicRegionType.name() : "null") +
+		           "range=" + strikeRange + "; " +
+		           "zTOR=" + (float) upperDepth + "; " +
+		           "zBOT=" + (float) lowerDepth + "; " +
+		           "len=" + (float) length + "; " +
+		           "hypoDepth=" + (float) hypocentralDepth + "; " +
+		           "hypoDAS=" + (float) hypocentralDAS + "; " +
+		           "trt=" + (tectonicRegionType != null ? tectonicRegionType.name() : "null") +
 		           "]";
 		}
 		
@@ -918,7 +918,9 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		private TectonicRegionType tectonicRegionType;
 		
 		public GriddedRupturePropertiesBuilder() {
-			
+			this(Double.NaN, Double.NaN, Double.NaN, Double.NaN, null,
+					Double.NaN, Double.NaN, Double.NaN,
+					Double.NaN, Double.NaN, null);
 		}
 		
 		public GriddedRupturePropertiesBuilder(GriddedRuptureProperties other) {
@@ -2496,17 +2498,28 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 	@Override
 	public GridSourceList getForMergedSolution(FaultSystemSolution mergedSolution, MergedRupSetMappings mappings,
 			List<GridSourceList> originalModules) {
+		System.out.println("Merging "+originalModules.size()+" GridSourceList instances");
 		List<GridSourceList> remapped = new ArrayList<>(originalModules.size());
 		for (int i=0; i<originalModules.size(); i++) {
 			GridSourceList orig = originalModules.get(i);
-			if (orig != null)
+			if (orig == null) {
+				System.out.println("\toriginal "+i+" was null, skipping");
+			} else {
+				System.out.println("\tmapping "+i+" of type "+orig.getClass());
 				remapped.add(remapAssociations(orig, mappings.getSectMappingsOldToNew(i)));
+			}
 		}
+		System.out.println("\tFound "+remapped.size()+" GridSourceList instances to merge");
 		if (remapped.isEmpty())
 			return null;
 		if (remapped.size() == 1)
 			return remapped.get(0);
 		return combine(remapped.toArray(new GridSourceList[remapped.size()]));
+	}
+
+	@Override
+	public Class<? extends GridSourceList> getMergingType() {
+		return GridSourceList.class;
 	}
 
 }

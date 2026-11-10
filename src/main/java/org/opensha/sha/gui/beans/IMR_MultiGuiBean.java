@@ -9,19 +9,20 @@ import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
 import javax.swing.*;
+import javax.swing.event.PopupMenuEvent;
+import javax.swing.event.PopupMenuListener;
 import javax.swing.plaf.basic.BasicComboBoxRenderer;
 
 import org.opensha.commons.gui.LabeledBoxPanel;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.util.ListUtils;
 import org.opensha.commons.util.NtoNMap;
 import org.opensha.commons.util.ServerPrefUtils;
@@ -82,8 +83,7 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 	private int defaultIMRIndex = 0;
 	
 	private Color backgroundColor;
-
-    private Dimension chooserBoxSize = null;
+	private Dimension chooserBoxSize = null;
 
 	/**
 	 * Initializes the GUI with the given list of IMRs
@@ -96,8 +96,7 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 		Preconditions.checkArgument(!imrs.isEmpty(), "IMR list cannot be empty!");
 		
 		Color defaultBackground = UIManager.getColor ( "Panel.background" );
-		double avgColor = (defaultBackground.getRed() + defaultBackground.getGreen() + defaultBackground.getBlue())/3d;
-		if (avgColor > 127d) {
+		if (ColorUtils.isLight(defaultBackground)) {
 			// light theme
 			backgroundColor = Color.WHITE;
 		} else {
@@ -405,7 +404,7 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 	 * @author kevin
 	 *
 	 */
-	public class ChooserComboBox extends JComboBox {
+	public class ChooserComboBox extends JComboBox<String> {
 		/**
 		 * 
 		 */
@@ -437,12 +436,44 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 			resetRenderer();
 			
 			this.addActionListener(new ComboListener(this));
-//            Dimension imrBoxSize = new Dimension(220, 25);
-            if (chooserBoxSize != null) {
-                this.setPreferredSize(chooserBoxSize);
-                this.setMinimumSize(chooserBoxSize);
-                this.setMaximumSize(chooserBoxSize);
-            }
+			this.addPopupMenuListener(new PopupMenuListener() {
+				@Override
+				public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
+					/*
+					 * Some look-and-feels, including GTK, size the popup from the combo box
+					 * while opening it. Temporarily expose the width required by the longest
+					 * rendered item so that the popup can display full IMR names, then restore
+					 * the constrained control size on the next event-queue turn. This keeps
+					 * the containing panel at its normal width while the popup remains wide.
+					 */
+					Dimension collapsedSize = getSize();
+					setSize(getPopupWidth(), collapsedSize.height);
+					SwingUtilities.invokeLater(() -> setSize(collapsedSize));
+				}
+
+				@Override
+				public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {}
+
+				@Override
+				public void popupMenuCanceled(PopupMenuEvent e) {}
+			});
+			if (chooserBoxSize != null) {
+				this.setPreferredSize(chooserBoxSize);
+				this.setMinimumSize(chooserBoxSize);
+				this.setMaximumSize(chooserBoxSize);
+			}
+		}
+
+		private int getPopupWidth() {
+			ListCellRenderer<? super String> renderer = getRenderer();
+			JList<String> list = new JList<>();
+			int widestCell = getWidth();
+			for (int i=0; i<getItemCount(); i++) {
+				Component cell = renderer.getListCellRendererComponent(list, getItemAt(i), i, false, false);
+				widestCell = Integer.max(widestCell, cell.getPreferredSize().width);
+			}
+			// Space for the popup's border and vertical scrollbar, if present.
+			return widestCell + 24;
 		}
 		
 		public void resetRenderer() {
@@ -897,9 +928,9 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 		this.maxChooserChars = maxChooserChars;
 	}
 
-    public void setChooserBoxSize(Dimension size) {
-        this.chooserBoxSize = size;
-    }
+	public void setChooserBoxSize(Dimension size) {
+		this.chooserBoxSize = size;
+	}
 
     /**
      * Demonstration of how to use IMR_MultiGuiBean

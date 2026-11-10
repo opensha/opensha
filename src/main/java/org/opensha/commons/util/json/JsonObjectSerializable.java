@@ -85,7 +85,9 @@ public interface JsonObjectSerializable {
 		public E instance(JsonObject json) {
 			E obj;
 			try {
-				obj = clazz.getDeclaredConstructor().newInstance();
+				Constructor<E> constructor = clazz.getDeclaredConstructor();
+				constructor.setAccessible(true);
+				obj = constructor.newInstance();
 			} catch (InstantiationException | IllegalAccessException | IllegalArgumentException
 					| InvocationTargetException | NoSuchMethodException | SecurityException e) {
 				throw ExceptionUtils.asRuntimeException(e);

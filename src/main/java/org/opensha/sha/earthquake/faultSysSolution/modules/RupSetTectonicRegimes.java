@@ -241,4 +241,9 @@ public class RupSetTectonicRegimes implements CSV_BackedModule, SubModule<FaultS
 		return new RupSetTectonicRegimes(mergedRupSet, trts);
 	}
 
+	@Override
+	public Class<? extends RupSetTectonicRegimes> getMergingType() {
+		return RupSetTectonicRegimes.class;
+	}
+
 }

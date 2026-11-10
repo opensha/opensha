@@ -1,0 +1,41 @@
+{
+  "type": "Feature",
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [[
+      [-119.66000, 34.28000],
+      [-119.97172, 34.43575],
+      [-119.76298, 34.51493],
+      [-119.39952, 34.70065],
+      [-119.19960, 34.79709],
+      [-118.64526, 34.70718],
+      [-117.98979, 34.45032],
+      [-117.74823, 34.11186],
+      [-117.49204, 33.91388],
+      [-117.39105, 33.26888],
+      [-118.17976, 33.49368],
+      [-119.66000, 34.28000]
+    ]]
+  },
+  "properties": {
+    "name": "Los Angeles: CyberShake simulations and native basin models",
+    "gmm-trees": {
+      "active-crust": {
+        "all": [
+          { "id": "ASK_14", "weight": 0.125 },
+          { "id": "BSSA_14", "weight": 0.125 },
+          { "id": "CB_14", "weight": 0.125 },
+          { "id": "CY_14", "weight": 0.125 },
+          { "id": "ASK_14_BASIN", "weight": 0.0625 },
+          { "id": "BSSA_14_BASIN", "weight": 0.0625 },
+          { "id": "CB_14_BASIN", "weight": 0.0625 },
+          { "id": "CY_14_BASIN", "weight": 0.0625 },
+          { "id": "ASK_14_CYBERSHAKE", "weight": 0.0625 },
+          { "id": "BSSA_14_CYBERSHAKE", "weight": 0.0625 },
+          { "id": "CB_14_CYBERSHAKE", "weight": 0.0625 },
+          { "id": "CY_14_CYBERSHAKE", "weight": 0.0625 }
+        ]
+      }
+    }
+  }
+}

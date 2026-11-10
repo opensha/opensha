@@ -10,6 +10,7 @@ import java.util.List;
 
 import org.apache.commons.math3.stat.StatUtils;
 import org.jfree.data.Range;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
@@ -242,7 +243,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 					
 					incrFuncs.add(bounded);
 					incrChars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f,
-							new Color(color.getRed(), color.getGreen(), color.getBlue(), 60)));
+							ColorUtils.transparent(color, 60)));
 					
 					EvenlyDiscretizedFunc upperCumulative = bounded.getUpper().getCumRateDistWithOffset();
 					EvenlyDiscretizedFunc lowerCumulative = bounded.getLower().getCumRateDistWithOffset();
@@ -256,7 +257,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 					cmlBounded.setName(bounded.getName());
 					cmlFuncs.add(cmlBounded);
 					cmlChars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f,
-							new Color(color.getRed(), color.getGreen(), color.getBlue(), 60)));
+							ColorUtils.transparent(color, 60)));
 				}
 			}
 			
@@ -837,7 +838,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 			if (any) {
 				IncrementalMagFreqDist[] incrPercentiles = sectDists.calcIncrementalFractiles(sectFracts, standardFractiles);
 				
-				Color transColor = new Color(color.getRed(), color.getGreen(), color.getBlue(), transAlpha);
+				Color transColor = ColorUtils.transparent(color, transAlpha);
 				PlotCurveCharacterstics minMaxChar = new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, transColor);
 				
 				for (IncrementalMagFreqDist bounds : processIncrFractiles(incrPercentiles)) {
@@ -909,7 +910,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 			cmlPercentiles = regMFDModule.calcTotalCumulativeFractiles(regType, standardFractiles);
 		}
 		
-		Color transColor = new Color(refColor.getRed(), refColor.getGreen(), refColor.getBlue(), transAlpha);
+		Color transColor = ColorUtils.transparent(refColor, transAlpha);
 		PlotCurveCharacterstics minMaxChar = new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, transColor);
 		
 		for (IncrementalMagFreqDist bounds : processIncrFractiles(incrPercentiles)) {

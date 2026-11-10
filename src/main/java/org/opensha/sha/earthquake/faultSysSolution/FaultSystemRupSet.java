@@ -5,7 +5,6 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.stream.IntStream;
 import java.util.zip.ZipFile;
-import java.util.zip.ZipOutputStream;
 
 import javax.annotation.Nullable;
 
@@ -53,7 +52,6 @@ import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
-import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
 import org.opensha.sha.util.TectonicRegionType;
@@ -1420,11 +1418,16 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 
 	public final List<Integer> getParentSectionsForRup(int rupIndex) {
-		List<Integer> parents = Lists.newArrayList();
+		List<Integer> parents = new ArrayList<>();
+		int prevParent = -1;
 		for (int sectIndex : getSectionsIndicesForRup(rupIndex)) {
 			int parent = getFaultSectionData(sectIndex).getParentSectionId();
-			if (!parents.contains(parent))
-				parents.add(parent);
+			Preconditions.checkState(parent >= 0, "Bad parentID=%s", parent);
+			if (parent != prevParent) {
+				if (!parents.contains(parent))
+					parents.add(parent);
+				prevParent = parent;
+			}
 		}
 		return parents;
 	}
@@ -1684,7 +1687,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			modRupAreas[rupIndex] = rupAreas[origID];
 			if (modRupLengths != null)
 				modRupLengths[rupIndex] = rupLengths[origID];
-			modSectionForRups.add(getSectionsIndicesForRup(rupIndex));
+			modSectionForRups.add(getSectionsIndicesForRup(origID));
 		}
 		
 		FaultSystemRupSet modRupSet = new FaultSystemRupSet(getFaultSectionDataList(), modSectionForRups,

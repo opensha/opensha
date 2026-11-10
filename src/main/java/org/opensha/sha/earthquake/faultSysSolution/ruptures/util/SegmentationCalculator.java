@@ -28,6 +28,7 @@ import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.Range;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -1089,6 +1090,71 @@ public class SegmentationCalculator {
 		return ret;
 	}
 	
+	public File[] plotConnectionScatter(File outputDir, String prefix, RateCombiner combiner,
+			SegmentationCalculator compCalc, boolean log) throws IOException {
+		File[] ret = new File[minMags.length];
+		
+		Range range = log ? new Range(1e-3, 1e0) : new Range(0, 1);
+		
+		for (int m=0; m<minMags.length; m++) {
+			XY_DataSet scatter = new DefaultXY_DataSet();
+			
+			Map<Jump, Double> primary = calcJumpPassthroughs(m, combiner);
+			Map<Jump, Double> comp = compCalc.calcJumpPassthroughs(m, combiner);
+			HashSet<Jump> allJumps = new HashSet<>();
+			allJumps.addAll(primary.keySet());
+			allJumps.addAll(comp.keySet());
+			
+			for (Jump jump : allJumps) {
+				Double val1 = primary.get(jump);
+				Double val2 = comp.get(jump);
+				if (val1 == null)
+					val1 = 0d;
+				if (val2 == null)
+					val2 = 0d;
+				
+				if (log) {
+					val1 = Math.max(val1, range.getLowerBound());
+					val2 = Math.max(val2, range.getLowerBound());
+				}
+				scatter.set(val2, val1);
+			}
+			
+			List<XY_DataSet> funcs = new ArrayList<>();
+			List<PlotCurveCharacterstics> chars = new ArrayList<>();
+			
+			DefaultXY_DataSet oneToOne = new DefaultXY_DataSet();
+			oneToOne.set(range.getLowerBound(), range.getLowerBound());
+			oneToOne.set(range.getUpperBound(), range.getUpperBound());
+			funcs.add(oneToOne);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.GRAY));
+			
+			funcs.add(scatter);
+			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 2f, new Color(0, 0, 0, 127)));
+			
+			
+			PlotSpec spec = new PlotSpec(funcs, chars, getMagLabel(minMags[m])+" "+PASSTHROUGH_LABEL+" Comparison",
+					"Comparison "+PASSTHROUGH_LABEL, "Primary "+PASSTHROUGH_LABEL);
+			
+			HeadlessGraphPanel gp = new HeadlessGraphPanel();
+			gp.setTickLabelFontSize(18);
+			gp.setAxisLabelFontSize(24);
+			gp.setPlotLabelFontSize(24);
+			gp.setLegendFontSize(legendFontSize);
+			gp.setBackgroundColor(Color.WHITE);
+			
+			int width = 800;
+			gp.drawGraphPanel(spec, log, log, range, range);
+
+			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
+			PlotUtils.writePlots(outputDir, myPrefix, gp, width, false, true, WRITE_PDFS, false);
+			
+			ret[m] = new File(outputDir, myPrefix+".png");
+		}
+		
+		return ret;
+	}
+	
 	public File[] plotConnectionModelDiffs(File outputDir, String prefix, String title, RateCombiner combiner,
 			JumpProbabilityCalc segModel) throws IOException {
 		GeographicMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
@@ -1285,7 +1351,7 @@ public class SegmentationCalculator {
 						double rate = combiner.combine(fromVal, toVal);
 						fract = jumpRate/rate;
 						Color c = rateCPT.getColor((float)Math.log10(rate));
-						c = new Color(c.getRed(), c.getGreen(), c.getBlue(), 200);
+						c = ColorUtils.transparent(c, 200);
 						
 						XY_DataSet scatter = new DefaultXY_DataSet();
 						scatter.set(scalarVal, fract);
@@ -1768,7 +1834,7 @@ public class SegmentationCalculator {
 //							System.out.println("\tfract = "+jumpRate+" / "+rate+" = "+fract);
 //						}
 						Color c = rateCPT.getColor((float)Math.log10(rate));
-						c = new Color(c.getRed(), c.getGreen(), c.getBlue(), 200);
+						c = ColorUtils.transparent(c, 200);
 						
 						XY_DataSet scatter = new DefaultXY_DataSet();
 						scatter.set(scalarVal, fract);
@@ -2003,7 +2069,7 @@ public class SegmentationCalculator {
 //						System.out.println("\tfract = "+jumpRate+" / "+rate+" = "+fract);
 //					}
 					Color c = rateCPT.getColor((float)Math.log10(rate));
-					c = new Color(c.getRed(), c.getGreen(), c.getBlue(), 200);
+					c = ColorUtils.transparent(c, 200);
 					
 					XY_DataSet scatter = new DefaultXY_DataSet();
 					scatter.set(scalarVal, fract);

@@ -37,6 +37,9 @@ public class GriddedGeoDepthValueDataSet implements GeoXYZW_DataSet {
 
 	public GriddedGeoDepthValueDataSet(GriddedRegion griddedRegion, DiscretizedFunc depthFunction, double[][] values) {
 		this.griddedRegion = griddedRegion;
+		if (!(depthFunction instanceof EvenlyDiscretizedFunc))
+			// so that x values can't change
+			depthFunction = new UnmodifiableDiscrFunc(depthFunction);
 		this.depthFunction = depthFunction;
 		if (values == null) {
 			values = new double[griddedRegion.getNodeCount()][depthFunction.size()];
@@ -48,9 +51,6 @@ public class GriddedGeoDepthValueDataSet implements GeoXYZW_DataSet {
 						"Expected %s depth values for row %s, have %s", depthFunction.size(), i, values[i].length);
 		}
 		this.values = values;
-		if (!(depthFunction instanceof EvenlyDiscretizedFunc))
-			// so that x values can't change
-			depthFunction = new UnmodifiableDiscrFunc(depthFunction);
 		if (depthFunction.size() == 1) {
 			minSnapDepth = (float)(depthFunction.getX(0) - depthFunction.getTolerance());
 			maxSnapDepth = (float)(depthFunction.getX(0) + depthFunction.getTolerance());

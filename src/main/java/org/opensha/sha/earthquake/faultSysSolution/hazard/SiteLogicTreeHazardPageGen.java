@@ -33,6 +33,7 @@ import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.plot.DatasetRenderingOrder;
 import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.Range;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.NamedComparator;
 import org.opensha.commons.data.Site;
@@ -468,7 +469,7 @@ public class SiteLogicTreeHazardPageGen {
 						}
 					}
 					table.finalizeLine();
-					table.initNewLine().addColumn("__COV__");
+					table.initNewLine().addColumn("__CV__");
 					for (int r=0; r<rps.length; r++) {
 						table.addColumn((float)(branchDists[r].stdDev/rpMeans.get(r))+"");
 						if (compBranchDists != null) {
@@ -983,7 +984,7 @@ public class SiteLogicTreeHazardPageGen {
 		UncertainBoundedDiscretizedFunc bounds68 = new UncertainArbDiscFunc(medianCurve,
 				calcFractileCurve(curveDists, xVals, 0.16d), calcFractileCurve(curveDists, xVals, 0.84d));
 		
-		Color transColor = new Color(color.getRed(), color.getGreen(), color.getBlue(), 60);
+		Color transColor = ColorUtils.transparent(color, 60);
 		
 		meanCurve.setName("Mean");
 		funcs.add(meanCurve);
@@ -1166,7 +1167,7 @@ public class SiteLogicTreeHazardPageGen {
 				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, nodeColor));
 				
 				if (alpha != 255)
-					nodeColor = new Color(nodeColor.getRed(), nodeColor.getGreen(), nodeColor.getBlue(), alpha);
+					nodeColor = ColorUtils.transparent(nodeColor, alpha);
 				PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, nodeColor);
 				// do a full shuffle here so that when we block suffle latter there are fewer near-identical overlaps
 				List<DiscretizedFunc> shuffledNodeCurves = new ArrayList<>(nodeIndvCurves.get(i));
@@ -1282,7 +1283,7 @@ public class SiteLogicTreeHazardPageGen {
 		header.add(firstCol);
 		header.add("Mean"+units);
 		header.add("Std. Dev."+units);
-		header.add("COV");
+		header.add("CV");
 		for (String f : fractileHeaders)
 			header.add(f+units);
 		return header;

@@ -148,6 +148,11 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module {
 				RuptureSetSplitMappings mappings) {
 			return this;
 		}
+
+		@Override
+		public Class<? extends NamedSlipAlongRuptureModel> getMergingType() {
+			return NamedSlipAlongRuptureModel.class;
+		}
 		
 	}
 

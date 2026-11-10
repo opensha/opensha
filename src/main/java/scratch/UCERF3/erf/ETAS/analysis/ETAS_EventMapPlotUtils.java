@@ -12,6 +12,7 @@ import org.jfree.chart.axis.TickUnit;
 import org.jfree.chart.axis.TickUnits;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.data.Range;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -264,9 +265,9 @@ public class ETAS_EventMapPlotUtils {
 				PlotCurveCharacterstics surfChar = surfChars.get(i);
 				Color c = surfChar.getColor();
 				if (surfChar.getLineType() == PlotLineType.SOLID)
-					c = new Color(c.getRed(), c.getGreen(), c.getBlue(), 220);
+					c = ColorUtils.transparent(c, 220);
 				else
-					c = new Color(c.getRed(), c.getGreen(), c.getBlue(), 127);
+					c = ColorUtils.transparent(c, 127);
 				chars.add(new PlotCurveCharacterstics(surfChar.getLineType(), surfChar.getLineWidth(), c));
 			}
 		}
@@ -412,9 +413,9 @@ public class ETAS_EventMapPlotUtils {
 			PlotCurveCharacterstics surfChar = surfChars.get(i);
 			Color c = surfChar.getColor();
 			if (surfChar.getLineType() == PlotLineType.SOLID)
-				c = new Color(c.getRed(), c.getGreen(), c.getBlue(), 220);
+				c = ColorUtils.transparent(c, 220);
 			else
-				c = new Color(c.getRed(), c.getGreen(), c.getBlue(), 127);
+				c = ColorUtils.transparent(c, 127);
 			chars.add(new PlotCurveCharacterstics(surfChar.getLineType(), surfChar.getLineWidth(), c));
 		}
 	}

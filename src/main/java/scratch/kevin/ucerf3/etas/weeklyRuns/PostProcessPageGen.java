@@ -25,6 +25,7 @@ import org.jfree.chart.title.PaintScaleLegend;
 import org.jfree.data.Range;
 import org.jfree.chart.ui.RectangleEdge;
 import org.jfree.chart.ui.TextAnchor;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.comcat.ComcatAccessor;
 import org.opensha.commons.data.comcat.ComcatRegion;
@@ -900,8 +901,8 @@ public class PostProcessPageGen {
 			CPTVal cptVal = cpt.get(i);
 			Color min = cptVal.minColor;
 			Color max = cptVal.maxColor;
-			cptVal.minColor = new Color(min.getRed(), min.getGreen(), min.getBlue(), 50);
-			cptVal.maxColor = new Color(max.getRed(), max.getGreen(), max.getBlue(), 50);
+			cptVal.minColor = ColorUtils.transparent(min, 50);
+			cptVal.maxColor = ColorUtils.transparent(max, 50);
 		}
 		cpt.setBelowMinColor(cpt.getMinColor());
 		cpt.setAboveMaxColor(cpt.getMaxColor());

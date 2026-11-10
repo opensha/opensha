@@ -39,6 +39,7 @@ import javax.swing.event.HyperlinkListener;
 
 import org.opensha.commons.util.ApplicationVersion;
 import org.opensha.commons.util.BrowserUtils;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.util.bugReports.knownBugImpl.ExceptionTypeKnownBugDetector;
 
 public class BugReportDialog extends JDialog implements ActionListener, HyperlinkListener {
@@ -149,7 +150,7 @@ public class BugReportDialog extends JDialog implements ActionListener, Hyperlin
 	private void init() {
 		mainColor = getThemeColor("Panel.background", Color.WHITE);
 		textColor = getThemeColor("Panel.foreground", Color.BLACK);
-		headerFooterColor = blend(mainColor, textColor, HEADER_SHADE_FRACTION);
+		headerFooterColor = ColorUtils.blend(mainColor, textColor, HEADER_SHADE_FRACTION);
 
 		this.setTitle(message);
 
@@ -185,14 +186,6 @@ public class BugReportDialog extends JDialog implements ActionListener, Hyperlin
 		return color == null ? fallback : color;
 	}
 
-	private static Color blend(Color base, Color overlay, double fraction) {
-		double baseFraction = 1d - fraction;
-		return new Color(
-				(int)Math.round(base.getRed() * baseFraction + overlay.getRed() * fraction),
-				(int)Math.round(base.getGreen() * baseFraction + overlay.getGreen() * fraction),
-				(int)Math.round(base.getBlue() * baseFraction + overlay.getBlue() * fraction));
-	}
-	
 	private JPanel getTopPanel() {
 		JPanel topPanel = new JPanel();
 		topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.X_AXIS));

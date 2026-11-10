@@ -51,7 +51,7 @@ import com.google.common.base.Preconditions;
 @Affects(MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME)
 @Affects(MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum NSHM23_RegionalSeismicity implements LogicTreeNode {
+public enum NSHM23_RegionalSeismicity implements LogicTreeNode.FixedWeightNode {
 	PREFFERRED("Preffered Seismicity Rate", "PrefSeis", 0.74d) {
 		@Override
 		public IncrementalMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
@@ -335,7 +335,7 @@ public enum NSHM23_RegionalSeismicity implements LogicTreeNode {
 	}
 
 	@Override
-	public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+	public double getNodeWeight() {
 		return weight;
 	}
 

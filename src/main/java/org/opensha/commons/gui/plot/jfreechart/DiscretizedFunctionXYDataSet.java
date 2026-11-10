@@ -268,15 +268,23 @@ public class DiscretizedFunctionXYDataSet extends AbstractXYDataset implements N
 
 
 	/**
-	 *  Returns true if all the Functions in this list are equal. See
-	 * DiscretizedFunctList.equals() for further details.
+	 * Dataset wrappers are mutable adapters used by JFreeChart, which also locates
+	 * datasets by identity. Two independently constructed wrappers are therefore
+	 * distinct even if they currently wrap equal function lists.
 	 */
-	public boolean equals(Object list ){
-		if (list instanceof DiscretizedFunctionXYDataSet) {
-			if( ((DiscretizedFunctionXYDataSet)list).getFunctions().equals( this.functions ) )
-				return true;
-		}
-		return false;
+	@Override
+	public boolean equals(Object obj) {
+		return obj == this;
+	}
+
+	@Override
+	public boolean canEqual(Object other) {
+		return other instanceof DiscretizedFunctionXYDataSet;
+	}
+
+	@Override
+	public int hashCode() {
+		return System.identityHashCode(this);
 	}
 
 //	/**
@@ -566,6 +574,4 @@ public class DiscretizedFunctionXYDataSet extends AbstractXYDataset implements N
 		return new String(this.getSeriesName(series));
 	}
 }
-
-
 

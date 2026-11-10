@@ -230,6 +230,9 @@ public interface SectDistributionSampler extends ShortNamed {
 		private transient SectionGrouping grouping;
 		private transient double[] groupFractiles;
 
+		@SuppressWarnings("unused") // deserialization
+		private GroupedFractileSampler() {}
+
 		public GroupedFractileSampler(long seed, SectionGroupingType groupingType) {
 			this.seed = seed;
 			this.groupingType = groupingType;

@@ -68,6 +68,7 @@ import org.opensha.commons.param.editor.impl.ParameterListEditor;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.util.ApplicationVersion;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.ListUtils;
@@ -78,7 +79,6 @@ import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.HazardCurveCalculatorAPI;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculator;
-import org.opensha.sha.calc.disaggregation.DisaggregationCalculatorAPI;
 import org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter;
 import org.opensha.sha.earthquake.BaseERF;
 import org.opensha.sha.earthquake.ERF;
@@ -269,7 +269,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 
 	// instances of various calculators
 	protected HazardCurveCalculatorAPI calc;
-	protected DisaggregationCalculatorAPI disaggCalc;
+	protected DisaggregationCalculator disaggCalc;
 	private GcimCalculator gcimCalc;
 	protected CalcProgressBar progressClass;
 	private CalcProgressBar disaggProgressClass;
@@ -358,8 +358,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	
 	public static Color getBottomBarColor() {
 		Color defaultBackground = UIManager.getColor ( "Panel.background" );
-		double avgColor = (defaultBackground.getRed() + defaultBackground.getGreen() + defaultBackground.getBlue())/3d;
-		if (avgColor > 127d) {
+		if (ColorUtils.isLight(defaultBackground)) {
 			// light theme
 			return new Color(220,220,220);
 		} else {
@@ -1914,8 +1913,7 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 
 		imrGuiBean = new IMR_MultiGuiBean(imrs);
 		imrGuiBean.addIMRChangeListener(this);
-		// imrGuiBean.setMaxChooserChars(30);
-        imrGuiBean.setChooserBoxSize(new Dimension(220, 25));
+		imrGuiBean.setChooserBoxSize(new Dimension(220, 25));
 		imrGuiBean.rebuildGUI();
 	}
 
@@ -2192,9 +2190,6 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	/**
 	 * set x values in log space for Hazard Function to be passed to IMR if the
 	 * selected IMT are SA , PGA , PGV or FaultDispl It accepts 1 parameters
-	 * 
-	 * @param arb
-	 *            : this is the function with X values set
 	 */
 	protected LightFixedXFunc initX_Values() {
 
@@ -2219,9 +2214,6 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	 * set x values back from the log space to the original linear values for
 	 * Hazard Function after completion of the Hazard Calculations if the
 	 * selected IMT are SA , PGA or PGV It accepts 1 parameters
-	 * 
-	 * @param hazFunc
-	 *            : this is the function with X values set
 	 */
 	protected DiscretizedFunc toggleHazFuncLogValues(
 			DiscretizedFunc inputFunc) {
@@ -2793,4 +2785,3 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 		}
 	}
 }
-

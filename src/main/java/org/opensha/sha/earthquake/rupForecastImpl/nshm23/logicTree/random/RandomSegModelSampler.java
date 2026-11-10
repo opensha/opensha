@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
+
+import org.opensha.commons.data.sampling.generator.MonteCarloPointSetGenerator;
 import java.util.stream.Collectors;
 
 import org.opensha.commons.calc.WeightedSampler;
@@ -427,7 +429,7 @@ public class RandomSegModelSampler implements BranchDependentSampler<RandomSegMo
 		public Level(int numSamples, long seed) {
 			super("Segmentation Model Samples", "SegSamples",
 					"Segmentation Model Sample ", "SegSample", "SegSample");
-			build(seed, numSamples);
+			build(new MonteCarloPointSetGenerator(new Random(seed)).generate(numSamples, 1).getDimensionValues(0));
 		}
 
 		@Override

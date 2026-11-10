@@ -923,18 +923,18 @@ ExclusionaryInversionConfigurationFactory {
 			bVals = new SectionSupraSeisBValues[] { branch.requireValue(SectionSupraSeisBValues.class) };
 		}
 		
-		NSHM23_SegmentationModels[] segModels;
+		SegmentationModelBranchNode[] segModels;
 		if (branch.hasValue(NSHM23_SegmentationModels.AVERAGE))
 			segModels = NSHM23_SegmentationModels.values();
 		else
-			segModels = new NSHM23_SegmentationModels[] { branch.requireValue(NSHM23_SegmentationModels.class) };
+			segModels = new SegmentationModelBranchNode[] { branch.requireValue(SegmentationModelBranchNode.class) };
 
 		List<LogicTreeBranch<?>> avgBranches = new ArrayList<>();
 		List<Double> avgWeights = new ArrayList<>();
 		
 		LogicTreeBranch<LogicTreeNode> branchCopy = new LogicTreeBranch<>(levels, nodes);
 		for (SectionSupraSeisBValues bVal : bVals) {
-			for (NSHM23_SegmentationModels segModel : segModels) {
+			for (SegmentationModelBranchNode segModel : segModels) {
 				// create copy of the branch
 				LogicTreeBranch<LogicTreeNode> subBranch = branchCopy.copy();
 				// now override our values

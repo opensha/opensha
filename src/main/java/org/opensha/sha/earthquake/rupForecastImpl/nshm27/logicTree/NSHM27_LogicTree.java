@@ -6,6 +6,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import org.opensha.commons.data.sampling.DimensionSubsetPointSet;
+import org.opensha.commons.data.sampling.PointSet;
+import org.opensha.commons.data.sampling.SamplingDimension;
 import org.apache.commons.numbers.core.Precision;
 import org.apache.commons.statistics.distribution.ContinuousDistribution;
 import org.apache.commons.statistics.distribution.TruncatedNormalDistribution;
@@ -14,11 +17,11 @@ import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomLevel;
-import org.opensha.commons.logicTree.LogicTreeLevel.SamplingMethod;
+import org.opensha.commons.logicTree.sampling.SamplingMethod;
+import org.opensha.commons.logicTree.sampling.SamplingPointSetLayout;
+import org.opensha.commons.logicTree.sampling.LogicTreePointSetMapper;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.logicTree.TectonicRegionBranchTreeNode;
-import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeBranchOrderIteration;
-import org.opensha.commons.logicTree.lhs.PairwiseLogicTreeNodeSwapIteration;
 import org.opensha.commons.util.RandomSeedUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -330,37 +333,41 @@ public class NSHM27_LogicTree {
 	
 	public static LogicTree<LogicTreeNode> buildMultiRegimeTree(NSHM27_SeismicityRegions seisReg,
 			int numSamples, long seed, SamplingMethod samplingMethod) {
-		Random rand = new Random(seed);
-		
-		// build common tree
-		LogicTree<LogicTreeNode> commonTree = LogicTree.buildSampled(buildCommonLevels(),
-				numSamples, rand.nextLong(), samplingMethod);
-		
-		// build each subtree without common levels
-		LogicTree<LogicTreeNode> interfaceTree = buildLogicTree(seisReg,
-				TectonicRegionType.SUBDUCTION_INTERFACE, numSamples, rand.nextLong(), samplingMethod, false);
-		LogicTree<LogicTreeNode> intraslabTree = buildLogicTree(seisReg,
-				TectonicRegionType.SUBDUCTION_SLAB, numSamples, rand.nextLong(), samplingMethod, false);
-		LogicTree<LogicTreeNode> crustalTree = buildLogicTree(seisReg,
-				TectonicRegionType.ACTIVE_SHALLOW, numSamples, rand.nextLong(), samplingMethod, false);
-		
-		if (samplingMethod == SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE) {
-			// sample the tree combinations as well
-			PairwiseLogicTreeBranchOrderIteration<LogicTreeNode> treeOptimizer = new PairwiseLogicTreeBranchOrderIteration<>(
-					List.of(commonTree, interfaceTree, intraslabTree, crustalTree));
-//			int nIters = Integer.max(10000, numSamples*100);
-			int nIters = Integer.min(1000000, Integer.max(10000, numSamples*100));
-			treeOptimizer.iterate(nIters, rand);
-			List<LogicTree<LogicTreeNode>> optimizedTrees = treeOptimizer.getReorderedTrees();
-			Preconditions.checkState(optimizedTrees.size() == 4);
-			commonTree = optimizedTrees.get(0);
-			interfaceTree = optimizedTrees.get(1);
-			intraslabTree = optimizedTrees.get(2);
-			crustalTree = optimizedTrees.get(3);
+		List<LogicTreeLevel<? extends LogicTreeNode>> commonLevels = buildCommonLevels();
+		List<LogicTreeLevel<? extends LogicTreeNode>> interfaceLevels = buildLevels(seisReg,
+				TectonicRegionType.SUBDUCTION_INTERFACE, true, true, true, false);
+		List<LogicTreeLevel<? extends LogicTreeNode>> slabLevels = buildLevels(seisReg,
+				TectonicRegionType.SUBDUCTION_SLAB, true, true, true, false);
+		List<LogicTreeLevel<? extends LogicTreeNode>> crustalLevels = buildLevels(seisReg,
+				TectonicRegionType.ACTIVE_SHALLOW, true, true, true, false);
+
+		LogicTreeNode required = NSHM27_InterfaceFaultModels.regionDefault(seisReg);
+		LogicTreePointSetMapper<LogicTreeNode> commonMapper = new LogicTreePointSetMapper<>(commonLevels);
+		LogicTreePointSetMapper<LogicTreeNode> interfaceMapper = new LogicTreePointSetMapper<>(interfaceLevels, required);
+		LogicTreePointSetMapper<LogicTreeNode> slabMapper = new LogicTreePointSetMapper<>(slabLevels, required);
+		LogicTreePointSetMapper<LogicTreeNode> crustalMapper = new LogicTreePointSetMapper<>(crustalLevels, required);
+		List<LogicTreePointSetMapper<LogicTreeNode>> mappers =
+				List.of(commonMapper, interfaceMapper, slabMapper, crustalMapper);
+
+		List<SamplingDimension> dimensions = new ArrayList<>();
+		for (LogicTreePointSetMapper<LogicTreeNode> mapper : mappers)
+			dimensions.addAll(mapper.getSamplingDimensions());
+		PointSet fullPoints = samplingMethod.prepare(numSamples, dimensions, seed);
+
+		List<LogicTree<LogicTreeNode>> trees = new ArrayList<>(mappers.size());
+		int start = 0;
+		for (LogicTreePointSetMapper<LogicTreeNode> mapper : mappers) {
+			PointSet subset = DimensionSubsetPointSet.range(fullPoints, start, start+mapper.dimensions());
+			LogicTree<LogicTreeNode> subTree = mapper.map(subset);
+			subTree.setSamplingPointSet(subset);
+			subTree.setSamplingParameters(samplingMethod.usesRandomSeed() ? seed : null, 0, samplingMethod);
+			trees.add(subTree);
+			start += mapper.dimensions();
 		}
-		
-		LogicTree<LogicTreeNode> tree = buildMultiRegimeTree(seisReg, commonTree, interfaceTree, intraslabTree, crustalTree);
-		tree.setSamplingParameters(seed, 0, samplingMethod);
+
+		LogicTree<LogicTreeNode> tree = buildMultiRegimeTree(seisReg, trees.get(0), trees.get(1), trees.get(2), trees.get(3));
+		tree.setSamplingParameters(samplingMethod.usesRandomSeed() ? seed : null, 0, samplingMethod);
+		tree.setSamplingPointSet(fullPoints, SamplingPointSetLayout.EXPANDED);
 		return tree;
 	}
 	
@@ -415,15 +422,17 @@ public class NSHM27_LogicTree {
 //				SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE);
 //		System.exit(0);
 //		int numSamples = 1000;
-		int numSamples = 5000;
+//		int numSamples = 5000;
+		int numSamples = 2 << 11;
 //		int numSamples = 10000;
 //		int numSamples = 100000;
 		
-		PairwiseLogicTreeNodeSwapIteration.VERBOSE_DEFAULT = false;
-		PairwiseLogicTreeBranchOrderIteration.VERBOSE_DEFAULT = PairwiseLogicTreeNodeSwapIteration.VERBOSE_DEFAULT;
-		
 //		SamplingMethod samplingMethod = SamplingMethod.MONTE_CARLO;
-		SamplingMethod samplingMethod = SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE;
+//		SamplingMethod samplingMethod = SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE;
+		SamplingMethod samplingMethod = SamplingMethod.OWEN_SCRAMBLED_SOBOL;
+		
+		System.out.println("Will build "+numSamples+" samples with method="+samplingMethod);
+		
 		TectonicRegionType[] trts = {TectonicRegionType.SUBDUCTION_INTERFACE, TectonicRegionType.SUBDUCTION_SLAB, TectonicRegionType.ACTIVE_SHALLOW};
 //		NSHM27_SeismicityRegions[] seisRegs = NSHM27_SeismicityRegions.values();
 		NSHM27_SeismicityRegions[] seisRegs = {NSHM27_SeismicityRegions.GNMI};
@@ -440,14 +449,14 @@ public class NSHM27_LogicTree {
 				File treeFile = new File("/tmp/nshm27_tree_test_"+seisReg.name()+"_"+trt.name()+".json");
 				tree.write(treeFile);
 				LogicTree<LogicTreeNode> tree2 = LogicTree.read(treeFile);
-				tree2.write(new File(treeFile.getParentFile(), treeFile.getName()+".rerpo"));
+				tree2.write(new File(treeFile.getParentFile(), treeFile.getName()+".repro"));
 				LogicTreeBranch<LogicTreeNode> branch = tree2.getBranch(0);
 				System.out.println("\tOrig branch origWeight="+branch.getOrigBranchWeight());
 				File branchFile = new File("/tmp/nshm27_tree_test_"+seisReg.name()+"_"+trt.name()+"_branch0.json");
 				branch.writeToFile(branchFile);
 				LogicTreeBranch<LogicTreeNode> branch2 = LogicTreeBranch.read(branchFile);
 				System.out.println("\tLoaded branch origWeight="+branch2.getOrigBranchWeight());
-				branch2.writeToFile(new File(branchFile.getParentFile(), branchFile.getName()+".rerpo"));
+				branch2.writeToFile(new File(branchFile.getParentFile(), branchFile.getName()+".repro"));
 				for (LogicTreeLevel<? extends LogicTreeNode> level : tree.getLevels()) {
 					if (!LogicTreeNode.FixedWeightNode.class.isAssignableFrom(level.getType()))
 						System.err.println("WARNING: Level not fixed-weight: "+level.getName()+" ("+level.getType().getClass().getName()+")");
@@ -464,17 +473,17 @@ public class NSHM27_LogicTree {
 			File treeFile = new File("/tmp/nshm27_tree_test_"+seisReg.name()+"_multi.json");
 			multiTree.write(treeFile);
 			LogicTree<LogicTreeNode> tree2 = LogicTree.read(treeFile);
-			tree2.write(new File(treeFile.getParentFile(), treeFile.getName()+".rerpo"));
+			tree2.write(new File(treeFile.getParentFile(), treeFile.getName()+".repro"));
 			LogicTree<LogicTreeNode> tree = LogicTree.unrollTRTs(multiTree);
 			treeFile = new File("/tmp/nshm27_tree_test_"+seisReg.name()+"_multi_unrolled.json");
 			tree.write(treeFile);
 			tree2 = LogicTree.read(treeFile);
-			tree2.write(new File(treeFile.getParentFile(), treeFile.getName()+".rerpo"));
+			tree2.write(new File(treeFile.getParentFile(), treeFile.getName()+".repro"));
 			tree = LogicTree.applyBinning(tree);
 			treeFile = new File("/tmp/nshm27_tree_test_"+seisReg.name()+"_multi_unrolled_binned.json");
 			tree.write(treeFile);
 			tree2 = LogicTree.read(treeFile);
-			tree2.write(new File(treeFile.getParentFile(), treeFile.getName()+".rerpo"));
+			tree2.write(new File(treeFile.getParentFile(), treeFile.getName()+".repro"));
 		}
 	}
 

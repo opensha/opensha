@@ -22,6 +22,13 @@ public interface MergeableRuptureModule<E extends OpenSHA_Module> extends OpenSH
 	public E getForMergedRuptureSet(FaultSystemRupSet mergedRupSet, MergedRupSetMappings mappings, List<E> originalModules);
 	
 	/**
+	 * Different module subclasses can have the same parent class merging 
+	 * 
+	 * @return the class that should be used to load this module from an archive
+	 */
+	public Class<? extends E> getMergingType();
+	
+	/**
 	 * Helper for a module that is a constant value, where any instance can be copied over in a merging operation
 	 * 
 	 * @author kevin

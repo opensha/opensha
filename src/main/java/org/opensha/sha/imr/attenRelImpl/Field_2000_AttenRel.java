@@ -754,7 +754,7 @@ public class Field_2000_AttenRel extends AttenuationRelationship {
 	 * @return the URL to the AttenuationRelationship document on the Web.
 	 */
 	public URL getInfoURL() throws MalformedURLException{
-		return new URL("http://www.opensha.org/glossary-attenuationRelation-FIELD_2000");
+		return new URL("https://doi.org/10.1785/0120000507");
 	}
 
 }

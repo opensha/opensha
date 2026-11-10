@@ -3,13 +3,10 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm27.logicTree;
 import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
-import java.util.Random;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.opensha.commons.data.CSVFile;
@@ -136,7 +133,7 @@ FractileSamplingLevel<ClassificationDependentGR, NSHM27_SiesRateModelSample> {
 	};
 
 	@Override
-	protected void doBuild(long seed, int numNodes, SamplingMethod samplingMethod, double weightEach) {
+	protected void doBuild(double[] unitSamples, double weightEach) {
 //		List<PureGR> origSamples = loadOrigSamples();
 		EnumMap<NSHM27_SeisClassificationMethod, List<PureGR>> origSamples = new EnumMap<>(NSHM27_SeisClassificationMethod.class);
 		int numOrigSamples = -1;
@@ -152,46 +149,15 @@ FractileSamplingLevel<ClassificationDependentGR, NSHM27_SiesRateModelSample> {
 			samples.sort(COMP);
 			origSamples.put(classification, samples);
 		}
-		Random rand = new Random(seed);
-		ArrayDeque<ClassificationDependentGR> samples = new ArrayDeque<>(numNodes);
-		if (samplingMethod.isLHS()) {
-			List<ClassificationDependentGR> sampled = new ArrayList<>(numNodes);
-			for (int i=0; i<numNodes; i++) {
-				double binStart = (double)i / numNodes;
-				double binEnd = (double)(i + 1) / numNodes;
-				double p = rand.nextDouble(binStart, binEnd);
-
-				int index = (int)(p * numOrigSamples);
-				if (index == numOrigSamples)
-					index = numOrigSamples - 1;
-				
-				EnumMap<NSHM27_SeisClassificationMethod, PureGR> grs = new EnumMap<>(NSHM27_SeisClassificationMethod.class);
-				for (NSHM27_SeisClassificationMethod classification : origSamples.keySet())
-					grs.put(classification, origSamples.get(classification).get(index));
-
-				sampled.add(new ClassificationDependentGR(grs, p));
-			}
-			Collections.shuffle(sampled, rand);
-			samples.addAll(sampled);
-		} else {
-			// monte carlo
-			List<Integer> origIndexes = new ArrayList<>(numOrigSamples);
-			for (int i=0; i<numOrigSamples; i++)
-				origIndexes.add(i);
-			for (int i=0; i<numNodes; i++) {
-				int sampleIndex = i % numOrigSamples;
-				if (sampleIndex == 0)
-					// shuffle the list (and reshuffle on any subsequent passes through it)
-					Collections.shuffle(origIndexes, rand);
-				int index = origIndexes.get(sampleIndex);
-				EnumMap<NSHM27_SeisClassificationMethod, PureGR> grs = new EnumMap<>(NSHM27_SeisClassificationMethod.class);
-				for (NSHM27_SeisClassificationMethod classification : origSamples.keySet())
-					grs.put(classification, origSamples.get(classification).get(index));
-				double p = (double)index/(double)numOrigSamples;
-				samples.addLast(new ClassificationDependentGR(grs, p));
-			}
+		List<ClassificationDependentGR> samples = new ArrayList<>(unitSamples.length);
+		for (double p : unitSamples) {
+			int index = Math.min(numOrigSamples-1, (int)(p*numOrigSamples));
+			EnumMap<NSHM27_SeisClassificationMethod, PureGR> grs = new EnumMap<>(NSHM27_SeisClassificationMethod.class);
+			for (NSHM27_SeisClassificationMethod classification : origSamples.keySet())
+				grs.put(classification, origSamples.get(classification).get(index));
+			samples.add(new ClassificationDependentGR(grs, p));
 		}
-		build(()->{ return samples.pop(); }, numNodes, weightEach);
+		setValues(samples, weightEach);
 	}
 
 	@Override

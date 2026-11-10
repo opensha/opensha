@@ -19,6 +19,7 @@ import org.jfree.chart.renderer.xy.XYItemRenderer;
 import org.jfree.chart.renderer.xy.XYItemRendererState;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.data.xy.XYDataset;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.XY_DataSet;
@@ -26,7 +27,6 @@ import org.opensha.commons.data.uncertainty.UncertainArbDiscFunc;
 import org.opensha.commons.data.uncertainty.UncertainBoundedDiscretizedFunc;
 import org.opensha.commons.gui.plot.jfreechart.DiscretizedFunctionXYDataSet;
 import org.opensha.commons.gui.plot.jfreechart.JFreeLogarithmicAxis;
-
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Lists;
@@ -113,7 +113,7 @@ public class XYShadedUncertainLineRenderer extends AbstractXYItemRenderer {
 			g2.setPaint(paint);
 		} else {
 			Color lineColor = (Color)paint;
-			Color fillColor = new Color(lineColor.getRed(), lineColor.getGreen(), lineColor.getBlue(), (int)(255d*fillTrans));
+			Color fillColor = ColorUtils.transparent(lineColor, fillTrans);
 			g2.setPaint(fillColor);
 		}
 		g2.fillPolygon(p);

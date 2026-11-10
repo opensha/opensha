@@ -355,4 +355,9 @@ BranchAverageableModule<RegionsOfInterest>, MergeableRuptureModule<RegionsOfInte
 		return new RegionsOfInterest(mergedRegions, mergedRegionalMFDs, mergedRegionalTRTs);
 	}
 
+	@Override
+	public Class<? extends RegionsOfInterest> getMergingType() {
+		return RegionsOfInterest.class;
+	}
+
 }

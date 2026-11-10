@@ -16,6 +16,8 @@ import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.imr.AttenRelRef;
 
+import com.google.common.base.Preconditions;
+
 public final class HazardConfig {
 
 	private final IncludeBackgroundOption backgroundOption;
@@ -29,7 +31,10 @@ public final class HazardConfig {
 	private final boolean disablePointOptimizations;
 	private final boolean useNSHMP_IMLs;
 	private final boolean supersample;
+	private final boolean writeCurves;
 	private final double[] periods;
+	private final boolean useInversionJobTime;
+	private final Double minutesPerBranch;
 
 	private HazardConfig(Builder builder) {
 		this.backgroundOption = builder.backgroundOption;
@@ -43,7 +48,10 @@ public final class HazardConfig {
 		this.disablePointOptimizations = builder.disablePointOptimizations;
 		this.useNSHMP_IMLs = builder.useNSHMP_IMLs;
 		this.supersample = builder.supersample;
+		this.writeCurves = builder.writeCurves;
 		this.periods = builder.periods == null ? null : builder.periods.clone();
+		this.useInversionJobTime = builder.useInversionJobTime;
+		this.minutesPerBranch = builder.minutesPerBranch;
 	}
 
 	public static Builder builder() {
@@ -94,8 +102,20 @@ public final class HazardConfig {
 		return supersample;
 	}
 
+	public boolean writeCurves() {
+		return writeCurves;
+	}
+
 	public double[] periods() {
 		return periods == null ? null : periods.clone();
+	}
+
+	public boolean useInversionJobTime() {
+		return useInversionJobTime;
+	}
+
+	public Double minutesPerBranch() {
+		return minutesPerBranch;
 	}
 	
 	public static void addOptions(Options ops) {
@@ -112,7 +132,13 @@ public final class HazardConfig {
 		ops.addOption(null, "nshmp-imls", false, "Use NSHMP period-dependent IMLs.");
 		ops.addOption(null, "supersample", false, "Enable hazard supersampling.");
 		ops.addOption(null, "no-supersample", false, "Disable hazard supersampling.");
+		ops.addOption(null, "write-hazard-curves", false,
+				"Write a separate hazard curve archive containing curves for every logic-tree branch.");
 		ops.addOption(null, "periods", true, "Comma-separated hazard periods, e.g., 0,0.2,1");
+		ops.addOption(null, "hazard-time-same-as-inversion", false,
+				"Use the computed inversion job wall time for the main hazard job.");
+		ops.addOption(null, "hazard-minutes-per-branch", true,
+				"Estimated main hazard calculation time per logic-tree branch in minutes.");
 	}
 
 	public static final class Builder {
@@ -127,9 +153,15 @@ public final class HazardConfig {
 		private boolean disablePointOptimizations;
 		private boolean useNSHMP_IMLs;
 		private boolean supersample;
+		private boolean writeCurves;
 		private double[] periods;
+		private boolean useInversionJobTime;
+		private Double minutesPerBranch;
 		
 		public Builder forCMD(CommandLine cmd) {
+			Preconditions.checkArgument(!(cmd.hasOption("hazard-time-same-as-inversion")
+					&& cmd.hasOption("hazard-minutes-per-branch")),
+					"cannot supply both --hazard-time-same-as-inversion and --hazard-minutes-per-branch");
 			if (cmd.hasOption("hazard-gridded-seis"))
 				backgroundOption = IncludeBackgroundOption.valueOf(cmd.getOptionValue("hazard-gridded-seis"));
 			if (cmd.hasOption("hazard-gridded-region")) {
@@ -166,6 +198,8 @@ public final class HazardConfig {
 				supersample = true;
 			if (cmd.hasOption("no-supersample"))
 				supersample = false;
+			if (cmd.hasOption("write-hazard-curves"))
+				writeCurves = true;
 			if (cmd.hasOption("periods")) {
 				String[] split = cmd.getOptionValue("periods").split(",");
 				double[] parsed = new double[split.length];
@@ -173,6 +207,10 @@ public final class HazardConfig {
 					parsed[i] = Double.parseDouble(split[i].trim());
 				periods = parsed;
 			}
+			if (cmd.hasOption("hazard-time-same-as-inversion"))
+				useInversionJobTime(true);
+			else if (cmd.hasOption("hazard-minutes-per-branch"))
+				minutesPerBranch(Double.parseDouble(cmd.getOptionValue("hazard-minutes-per-branch")));
 			return this;
 		}
 
@@ -245,12 +283,34 @@ public final class HazardConfig {
 			return this;
 		}
 
+		public Builder writeCurves(boolean writeCurves) {
+			this.writeCurves = writeCurves;
+			return this;
+		}
+
 		public Builder periods(double... periods) {
 			this.periods = periods == null ? null : periods.clone();
 			return this;
 		}
 
+		public Builder useInversionJobTime(boolean useInversionJobTime) {
+			this.useInversionJobTime = useInversionJobTime;
+			if (useInversionJobTime)
+				this.minutesPerBranch = null;
+			return this;
+		}
+
+		public Builder minutesPerBranch(Double minutesPerBranch) {
+			this.minutesPerBranch = minutesPerBranch;
+			if (minutesPerBranch != null)
+				this.useInversionJobTime = false;
+			return this;
+		}
+
 		public HazardConfig build() {
+			Preconditions.checkArgument(minutesPerBranch == null
+					|| (Double.isFinite(minutesPerBranch) && minutesPerBranch > 0d),
+					"minutesPerBranch must be finite and > 0");
 			return new HazardConfig(this);
 		}
 	}

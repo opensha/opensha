@@ -2,6 +2,7 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm27.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.cli.CommandLine;
@@ -9,7 +10,7 @@ import org.apache.commons.cli.Options;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.logicTree.LogicTree;
-import org.opensha.commons.logicTree.LogicTreeLevel.SamplingMethod;
+import org.opensha.commons.logicTree.sampling.SamplingMethod;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.mpj.HPCConfig;
 import org.opensha.sha.earthquake.faultSysSolution.mpj.HazardConfig;
@@ -45,6 +46,8 @@ public class NSHM27_InversionScriptWriter {
 		ops.addRequiredOption(null, "samples", true, "Number of logic tree samples.");
 		ops.addOption(null, "unique-seed", false, "Flag to use a unique seed from this calculation rather than the "
 				+ "deterministic seed based on the region and sample count/method.");
+		ops.addOption(null, "name-add", true, "Add arbitrary additional directory name strings");
+		ops.addOption(null, "date", true, "Date override");
 		
 		return ops;
 	}
@@ -54,23 +57,49 @@ public class NSHM27_InversionScriptWriter {
 			// for Kevin's convenience within eclipse
 			System.err.println("No command line arguments, using hardcoded defaults; use --help to see available options instead.");
 			
+//			int samples = 5000;
+//			int samples = 10000;
+			int samples = 20000;
+//			int samples = 50000;
+			// 1 << N = 2^N
+//			int samples = 1 << 9; // 512
+//			int samples = 1 << 10; // 1024
+//			int samples = 1 << 11; // 2048
+//			int samples = 1 << 12; // 4096
+//			int samples = 1 << 13; // 8192
+//			int samples = 1 << 14; // 16384
 			args = new String[] {
 					"--region", NSHM27_SeismicityRegions.AMSAM.name(),
 //					"--region", NSHM27_SeismicityRegions.GNMI.name(),
 					
-					"--hpc-site", HPCConfig.HPCSite.USC_CARC_FMPJ.name(),
-					"--nodes", "32",
-					
 					"--local-dir", "/home/kevin/OpenSHA/fss_inversions",
-					"--remote-dir", "/project2/scec_608/kmilner/fss_inversions",
+					
+//					"--hpc-site", HPCConfig.HPCSite.USC_CARC_FMPJ.name(),
+//					"--remote-dir", "/project2/scec_608/kmilner/fss_inversions",
+//					"--nodes", "36",
+////					"--job-time-hours", "48",
+//					"--job-time-hours", "10",
+					
+					"--hpc-site", HPCConfig.HPCSite.FRONTERA_FMPJ.name(),
+					"--remote-dir", "/scratch2/00950/kevinm/fss_inversions",
+					"--nodes", "40",
+					"--job-time-hours", "20", // for 20k
+//					"--job-time-hours", "10", // for 8192
+//					"--job-time-hours", "48",
+//					"--hazard-time-same-as-inversion",
+					
+//					"--date", "2026_09_10",
 					
 					"--sampling-method", SamplingMethod.MONTE_CARLO.name(),
+//					"--sampling-method", SamplingMethod.OWEN_SCRAMBLED_SOBOL.name(),
 //					"--sampling-method", SamplingMethod.LATIN_HYPERCUBE.name(),
 //					"--sampling-method", SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE.name(),
-					"--samples", "5000",
-//					"--unique-seed",
+					"--samples", samples+"",
+					"--unique-seed",
+					"--name-add", "20",
 					
-//					"--hazard-grid-spacing", "0.2",
+					"--hazard-grid-spacing", "0.2",
+					"--write-hazard-curves",
 			};
 		}
 		
@@ -91,6 +120,11 @@ public class NSHM27_InversionScriptWriter {
 		GriddedRegion hazardRegion = new GriddedRegion(
 				NSHM27_MapRegions.valueOf(seisReg.name()).load(), gridSpacing, GriddedRegion.ANCHOR_0_0);
 		List<Site> hazardSites = NSHM27_RegionLoader.loadHazardSites(seisReg);
+		
+		List<String> nameAdds = new ArrayList<>();
+		if (cmd.hasOption("name-add"))
+			for (String nameAdd : cmd.getOptionValues("name-add"))
+				nameAdds.add(nameAdd);
 
 		RunConfig run = RunConfig.builder()
 				.baseName("nshm27")
@@ -98,6 +132,8 @@ public class NSHM27_InversionScriptWriter {
 				.addNameToken(numBranchSamples+"samples")
 				.addNameToken(samplingMethod.getFilePrefix())
 				.addNameToken(deterministicSeed ? null : "unique_seed")
+				.addNameTokens(nameAdds)
+				.datePrefix(cmd.hasOption("date") ? cmd.getOptionValue("date") : null)
 				.build();
 
 		HPCConfig hpc = HPCConfig.builder(cmd)
@@ -110,7 +146,7 @@ public class NSHM27_InversionScriptWriter {
 		InversionConfig inversion = InversionConfig.builder()
 				.factoryClass(NSHM27_InvConfigFactory.class)
 //				.estimateWallTimeMinutes(200000d, 2000, 200000d)
-				.wallTimeMinutesPerRound(10)
+				.wallTimeMinutesPerRound(5)
 				.parallelBranchAverage(true)
 				.build();
 

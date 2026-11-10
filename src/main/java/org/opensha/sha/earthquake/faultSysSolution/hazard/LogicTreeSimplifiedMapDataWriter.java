@@ -140,10 +140,10 @@ public class LogicTreeSimplifiedMapDataWriter {
 				GriddedGeoDataSet min = loader.buildMin(maps, branchWeights);
 				GriddedGeoDataSet max = loader.buildMax(maps, branchWeights);
 				
-				System.out.println("\tCalculating SD/COV");
+				System.out.println("\tCalculating SD/CV");
 				GriddedGeoDataSet sd = new GriddedGeoDataSet(gridReg);
-				GriddedGeoDataSet cov = new GriddedGeoDataSet(gridReg);
-				LogicTreeHazardCompare.calcSD_COV(maps, branchWeights, meanMap, sd, cov, exec);
+				GriddedGeoDataSet cv = new GriddedGeoDataSet(gridReg);
+				LogicTreeHazardCompare.calcSD_CV(maps, branchWeights, meanMap, sd, cv, exec);
 				
 				System.out.println("\tCalculating NCDFs");
 				LightFixedXFunc[] ncdfs = loader.buildNormCDFs(maps, branchWeights);
@@ -166,7 +166,7 @@ public class LogicTreeSimplifiedMapDataWriter {
 				header.add("Mean");
 				header.add("Median");
 				header.add("Standard Deviation");
-				header.add("COV");
+				header.add("CV");
 				header.add("Min");
 				for (String pHeader : PERCENTILE_HEADERS)
 					header.add(pHeader);
@@ -181,7 +181,7 @@ public class LogicTreeSimplifiedMapDataWriter {
 					line.add(meanMap.get(i)+"");
 					line.add(medianMap.get(i)+"");
 					line.add(sd.get(i)+"");
-					line.add(cov.get(i)+"");
+					line.add(cv.get(i)+"");
 					line.add(min.get(i)+"");
 					for (int f=0; f<percentileMaps.length; f++)
 						line.add(percentileMaps[f].get(i)+"");

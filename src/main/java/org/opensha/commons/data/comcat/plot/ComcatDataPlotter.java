@@ -39,8 +39,9 @@ import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
-import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.ColorUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.cpt.CPTVal;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
@@ -721,22 +722,7 @@ public class ComcatDataPlotter {
 		return xy;
 	}
 	
-	private static final int saturation_steps = 1;
 	private static final boolean linear_mag_time_prob = false;
-	
-	private static Color saturate(Color c) {
-		int r = c.getRed();
-		int g = c.getGreen();
-		int b = c.getBlue();
-		
-		for (int i=0; i<saturation_steps; i++) {
-			r = (int)(0.5d*(r + 255d)+0.5);
-			g = (int)(0.5d*(g + 255d)+0.5);
-			b = (int)(0.5d*(b + 255d)+0.5);
-		}
-		
-		return new Color(r, g, b, c.getAlpha());
-	}
 	
 //	private void plotMagTimeFunc(double[][] magTimeProbs, EvenlyDiscretizedFunc magTimeXAxis, String title,
 //			File outputDir, String prefix) throws IOException {
@@ -788,8 +774,8 @@ public class ComcatDataPlotter {
 				modelXYZ.log10();
 			}
 			for (CPTVal cVal : cpt) {
-				cVal.minColor = saturate(cVal.minColor);
-				cVal.maxColor = saturate(cVal.maxColor);
+				cVal.minColor = ColorUtils.saturate(cVal.minColor, 1);
+				cVal.maxColor = ColorUtils.saturate(cVal.maxColor, 1);
 			}
 			cpt.setBelowMinColor(belowColor);
 			cpt.setNanColor(belowColor);

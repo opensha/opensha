@@ -119,7 +119,8 @@ public class TectonicRegionBranchTreeNode implements LogicTreeNode.ValuedLogicTr
 	
 	private static LogicTree.Adapter<LogicTreeNode> treeAdapter = new LogicTree.Adapter<>();
 	
-	public static class Level extends LogicTreeLevel.AbstractValueByIndexLevel<LogicTreeBranch<?>, TectonicRegionBranchTreeNode> {
+	public static class Level extends LogicTreeLevel.AbstractValueByIndexLevel<LogicTreeBranch<?>, TectonicRegionBranchTreeNode>
+	implements NestedLogicTreeLevel {
 		
 		private TectonicRegionType trt;
 		private LogicTree<LogicTreeNode> tree;
@@ -247,6 +248,11 @@ public class TectonicRegionBranchTreeNode implements LogicTreeNode.ValuedLogicTr
 		}
 		
 		public LogicTree<LogicTreeNode> getTree() {
+			return tree;
+		}
+
+		@Override
+		public LogicTree<LogicTreeNode> getNestedTree() {
 			return tree;
 		}
 		

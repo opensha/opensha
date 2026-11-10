@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -136,67 +137,151 @@ public class RuptureConnectionSearch implements SubModule<FaultSystemRupSet> {
 		}
 	};
 	
-	private class ClusterPath implements Comparable<ClusterPath> {
-		private final FaultSubsectionCluster start;
+	private static class SearchEdge {
+		private final int toIndex;
+		private final Jump jump;
+
+		private SearchEdge(int toIndex, Jump jump) {
+			this.toIndex = toIndex;
+			this.jump = jump;
+		}
+	}
+
+	private static class SearchGraph {
+		private final FaultSubsectionCluster[] clusters;
+		private final SearchEdge[][] edges;
+
+		private SearchGraph(List<FaultSubsectionCluster> clusters) {
+			this.clusters = clusters.toArray(new FaultSubsectionCluster[0]);
+			this.edges = new SearchEdge[clusters.size()][];
+
+			Map<FaultSubsectionCluster, Integer> indexMap = new IdentityHashMap<>();
+			for (int i=0; i<clusters.size(); i++)
+				Preconditions.checkState(indexMap.put(clusters.get(i), i) == null,
+						"Duplicate cluster at index %s: %s", i, clusters.get(i));
+
+			for (int i=0; i<clusters.size(); i++) {
+				FaultSubsectionCluster from = clusters.get(i);
+				List<SearchEdge> fromEdges = new ArrayList<>();
+				// Build and sort this once rather than at every recursive search node.
+				for (FaultSubsectionCluster to : from.getDistSortedConnectedClusters()) {
+					Integer toIndex = indexMap.get(to);
+					if (toIndex == null)
+						// Public callers can supply clusters that also have connections outside this rupture.
+						continue;
+					Collection<Jump> jumpsTo = from.getConnectionsTo(to);
+					Preconditions.checkState(jumpsTo.size() == 1, "%s paths between cluster pair?", jumpsTo.size());
+					fromEdges.add(new SearchEdge(toIndex, jumpsTo.iterator().next()));
+				}
+				edges[i] = fromEdges.toArray(new SearchEdge[0]);
+			}
+		}
+	}
+
+	private class ClusterPath {
 		private final FaultSubsectionCluster target;
+		private final SearchGraph graph;
+		private final int targetIndex;
+		private final boolean[] available;
+		private final int[] path;
+		private final Jump[] jumps;
+		private int pathSize;
+		private double maxJumpDist;
+		private double cmlJumpDist;
+
+		public ClusterPath(SearchGraph graph, int startIndex, int targetIndex) {
+			this.graph = graph;
+			this.target = graph.clusters[targetIndex];
+			this.targetIndex = targetIndex;
+			this.available = new boolean[graph.clusters.length];
+			Arrays.fill(available, true);
+			available[startIndex] = false;
+			this.path = new int[graph.clusters.length];
+			this.path[0] = startIndex;
+			this.jumps = new Jump[Math.max(0, graph.clusters.length-1)];
+			this.pathSize = 1;
+		}
+
+		private void take(SearchEdge edge) {
+			Preconditions.checkState(!isComplete());
+			Preconditions.checkState(available[edge.toIndex]);
+			available[edge.toIndex] = false;
+			path[pathSize] = edge.toIndex;
+			jumps[pathSize-1] = edge.jump;
+			pathSize++;
+			maxJumpDist = Math.max(maxJumpDist, edge.jump.distance);
+			cmlJumpDist += edge.jump.distance;
+		}
+
+		private void backtrack(double previousMaxJumpDist, double previousCmlJumpDist) {
+			Preconditions.checkState(pathSize > 1);
+			int removedIndex = path[--pathSize];
+			available[removedIndex] = true;
+			jumps[pathSize-1] = null;
+			maxJumpDist = previousMaxJumpDist;
+			cmlJumpDist = previousCmlJumpDist;
+		}
 		
-		private final HashSet<FaultSubsectionCluster> availableClusters;
+		public boolean isComplete() {
+			return path[pathSize-1] == targetIndex;
+		}
+
+		private CompletedPath completedCopy() {
+			Preconditions.checkState(isComplete());
+			FaultSubsectionCluster[] completedPath = new FaultSubsectionCluster[pathSize];
+			for (int i=0; i<pathSize; i++)
+				completedPath[i] = graph.clusters[path[i]];
+			return new CompletedPath(target, completedPath, Arrays.copyOf(jumps, pathSize-1),
+					maxJumpDist, cmlJumpDist);
+		}
+
+		private int compareTo(CompletedPath o) {
+			return comparePaths(jumps, pathSize-1, maxJumpDist, cmlJumpDist,
+					o.jumps, o.jumps.length, o.maxJumpDist, o.cmlJumpDist);
+		}
+
+		private int currentIndex() {
+			return path[pathSize-1];
+		}
 		
+		public String toString() {
+			FaultSubsectionCluster[] currentPath = new FaultSubsectionCluster[pathSize];
+			for (int i=0; i<pathSize; i++)
+				currentPath[i] = graph.clusters[path[i]];
+			return pathToString(currentPath, jumps, target, maxJumpDist, cmlJumpDist, isComplete());
+		}
+	}
+
+	private class CompletedPath implements Comparable<CompletedPath> {
+		private final FaultSubsectionCluster target;
 		private final FaultSubsectionCluster[] path;
 		private final Jump[] jumps;
-		
 		private final double maxJumpDist;
 		private final double cmlJumpDist;
 
-		public ClusterPath(FaultSubsectionCluster start, FaultSubsectionCluster target,
-				HashSet<FaultSubsectionCluster> availableClusters) {
-			this(start, target, availableClusters,
-					new FaultSubsectionCluster[] {start}, // path starts with just this cluster
-					new Jump[0], 0d, 0d); // no jumps yet
-		}
-		
-		public ClusterPath(FaultSubsectionCluster start, FaultSubsectionCluster target,
-				HashSet<FaultSubsectionCluster> availableClusters,
+		private CompletedPath(FaultSubsectionCluster target,
 				FaultSubsectionCluster[] path, Jump[] jumps, double maxJumpDist, double cmlJumpDist) {
-			this.start = start;
 			this.target = target;
-			this.availableClusters = new HashSet<>(availableClusters);
-			
 			this.path = path;
-			Preconditions.checkState(jumps.length == path.length-1);
 			this.jumps = jumps;
 			this.maxJumpDist = maxJumpDist;
 			this.cmlJumpDist = cmlJumpDist;
 		}
-		
-		public ClusterPath take(FaultSubsectionCluster to) {
-			Preconditions.checkState(!isComplete());
-			
-			HashSet<FaultSubsectionCluster> newAvailClusters = new HashSet<>(availableClusters);
-			Preconditions.checkState(newAvailClusters.remove(to));
-			
-			FaultSubsectionCluster from = path[path.length-1];
-			FaultSubsectionCluster[] newPath = Arrays.copyOf(path, path.length+1);
-			newPath[path.length] = to;
-			
-			Collection<Jump> jumpsTo = from.getConnectionsTo(to);
-			Preconditions.checkState(jumpsTo.size() == 1, "%s paths between cluster pair?", jumpsTo.size());
-			Jump jump = jumpsTo.iterator().next();
-			Preconditions.checkNotNull(jump);
-			Jump[] newJumps = Arrays.copyOf(jumps, jumps.length+1);
-			newJumps[jumps.length] = jump;
-			
-			double newMax = Math.max(maxJumpDist, jump.distance);
-			double newCml = cmlJumpDist + jump.distance;
-			
-			return new ClusterPath(start, target, newAvailClusters, newPath, newJumps, newMax, newCml);
-		}
-		
-		public boolean isComplete() {
-			return path[path.length-1] == target;
-		}
-		
+
+		@Override
 		public String toString() {
+			return pathToString(path, jumps, target, maxJumpDist, cmlJumpDist, true);
+		}
+
+		@Override
+		public int compareTo(CompletedPath o) {
+			return comparePaths(jumps, jumps.length, maxJumpDist, cmlJumpDist,
+					o.jumps, o.jumps.length, o.maxJumpDist, o.cmlJumpDist);
+		}
+	}
+
+	private static String pathToString(FaultSubsectionCluster[] path, Jump[] jumps,
+			FaultSubsectionCluster target, double maxJumpDist, double cmlJumpDist, boolean complete) {
 			String str = "";
 			for (int p=0; p<path.length; p++) {
 				if (p == 0)
@@ -212,44 +297,45 @@ public class RuptureConnectionSearch implements SubModule<FaultSystemRupSet> {
 			}
 			str += "]";
 			
-			if (isComplete())
+			if (complete)
 				str += " COMPLETE Rmax="+distDF.format(maxJumpDist)+", Rcml="+distDF.format(cmlJumpDist);
 			else
 				str += " INCOMPLETE (target: "+target.parentSectionName+") Rmax="
 						+distDF.format(maxJumpDist)+", Rcml="+distDF.format(cmlJumpDist);
 //			str += "\t"+maxJumpDist+"\t"+cmlJumpDist;
 			return str;
-		}
-		
-		private double maxDistBefore(double maxDist) {
+	}
+
+	private static double maxDistBefore(Jump[] jumps, int jumpCount, double maxDist) {
 			double curMax = 0d;
-			for (Jump jump : jumps) {
+			for (int i=0; i<jumpCount; i++) {
+				Jump jump = jumps[i];
 				if (jump.distance == maxDist)
 					break;
 				curMax = Math.max(curMax, jump.distance);
 			}
 			return curMax;
-		}
+	}
 
-		@Override
-		public int compareTo(ClusterPath o) {
+	private int comparePaths(Jump[] myJumps, int myJumpCount, double myMaxJumpDist, double myCmlJumpDist,
+			Jump[] oJumps, int oJumpCount, double oMaxJumpDist, double oCmlJumpDist) {
 			if (cumulativeJumps) {
-				return Double.compare(cmlJumpDist, o.cmlJumpDist);
+				return Double.compare(myCmlJumpDist, oCmlJumpDist);
 			}
-			int cmp = Double.compare(maxJumpDist, o.maxJumpDist);
+			int cmp = Double.compare(myMaxJumpDist, oMaxJumpDist);
 			if (cmp != 0)
 				return cmp;
 			// we have the same max, but there could be multiple non-equal paths leading
 			// to that maximum jump. choose the better one with the smallest max leading to
 			// the max jump
 			
-			double myMaxDist = maxJumpDist;
-			double oMaxDist = o.maxJumpDist;
+			double myMaxDist = myMaxJumpDist;
+			double oMaxDist = oMaxJumpDist;
 			
 //			System.out.println("max dists are equal ("+maxJumpDist+"), checking pre-max max dists");
 			while (myMaxDist > 0 || oMaxDist > 0) {
-				myMaxDist = maxDistBefore(myMaxDist);
-				oMaxDist = o.maxDistBefore(oMaxDist);
+				myMaxDist = maxDistBefore(myJumps, myJumpCount, myMaxDist);
+				oMaxDist = maxDistBefore(oJumps, oJumpCount, oMaxDist);
 				
 //				System.out.println("myPrevMax="+myMaxDist+"\toPrevMax="+oMaxDist);
 				cmp = Double.compare(myMaxDist, oMaxDist);
@@ -260,36 +346,38 @@ public class RuptureConnectionSearch implements SubModule<FaultSystemRupSet> {
 			}
 			
 			// if we're here then the previous max was equal between the two, so return the shortest path
-			return Integer.compare(jumps.length, o.jumps.length);
-		}
+			return Integer.compare(myJumpCount, oJumpCount);
 	}
 	
 	private static final DecimalFormat distDF = new DecimalFormat("0.0");
 	
 	private class PathResult {
-		private ClusterPath[] shortestPaths;
+		private CompletedPath[] shortestPaths;
 		private int completePathCount = 0;
 		
 		private void addPath(ClusterPath path, final boolean debug) {
 			Preconditions.checkState(path.isComplete());
 			if (shortestPaths == null) {
+				CompletedPath completed = path.completedCopy();
 				if (debug)
-					System.out.println("\t\t\t\tNew shortest (first): "+path);
-				shortestPaths = new ClusterPath[] { path };
+					System.out.println("\t\t\t\tNew shortest (first): "+completed);
+				shortestPaths = new CompletedPath[] { completed };
 			} else {
 				// we already have one, compare them
 				int cmp = path.compareTo(shortestPaths[0]);
 //				System.out.println("Compared to shortest: "+cmp);
 				if (cmp < 0) {
 					// we're new shortest path
+					CompletedPath completed = path.completedCopy();
 					if (debug)
-						System.out.println("\t\t\t\tNew shortest (better): "+path);
-					shortestPaths = new ClusterPath[] { path };
+						System.out.println("\t\t\t\tNew shortest (better): "+completed);
+					shortestPaths = new CompletedPath[] { completed };
 				} else if (cmp == 0) {
+					CompletedPath completed = path.completedCopy();
 					if (debug)
-						System.out.println("\t\t\t\tIt's a tie! Additional shortest: "+path);
+						System.out.println("\t\t\t\tIt's a tie! Additional shortest: "+completed);
 					shortestPaths = Arrays.copyOf(shortestPaths, shortestPaths.length+1);
-					shortestPaths[shortestPaths.length-1] = path;
+					shortestPaths[shortestPaths.length-1] = completed;
 				}
 			}
 			completePathCount++;
@@ -299,35 +387,34 @@ public class RuptureConnectionSearch implements SubModule<FaultSystemRupSet> {
 	private void pathSearch(final ClusterPath basePath, final PathResult result, final boolean debug) {
 		Preconditions.checkState(!basePath.isComplete());
 		
-		FaultSubsectionCluster from = basePath.path[basePath.path.length-1];
-		
-		// search in order of increasing distance // TODO
-//		for (FaultSubsectionCluster to : from.sortedConnections) {
-//			if (!basePath.availableClusters.contains(to))
-//				continue;
-		for (FaultSubsectionCluster to : from.getDistSortedConnectedClusters()) {
-			if (!basePath.availableClusters.contains(to)) {
+		for (SearchEdge edge : basePath.graph.edges[basePath.currentIndex()]) {
+			FaultSubsectionCluster to = basePath.graph.clusters[edge.toIndex];
+			if (!basePath.available[edge.toIndex]) {
 				if (debug)
 					System.out.println("\t\t\t\tCan't try because not available: ["
 							+to.parentSectionName+"; "+to.parentSectionID+"]");
 				continue;
 			}
-			ClusterPath path = basePath.take(to);
+			double previousMaxJumpDist = basePath.maxJumpDist;
+			double previousCmlJumpDist = basePath.cmlJumpDist;
+			basePath.take(edge);
 			if (debug)
-				System.out.println("\t\t\t"+path);
+				System.out.println("\t\t\t"+basePath);
 //			if (debug) System.out.println("\t\t\t\tTaking "+sect.getSectionId()+" complete="+path.isComplete()
 //							+", dist="+(float)path.cumulativeDistance);
-			if (path.isComplete()) {
-				result.addPath(path, debug);
+			if (basePath.isComplete()) {
+				result.addPath(basePath, debug);
 			} else {
-				if (result.shortestPaths != null && path.compareTo(result.shortestPaths[0]) > 0) {
+				if (result.shortestPaths != null && basePath.compareTo(result.shortestPaths[0]) > 0) {
 					// already worse than our current best, stop here
 					if (debug)
 						System.out.println("\t\t\t\tStopping this search as we're worse than the shortest");
+					basePath.backtrack(previousMaxJumpDist, previousCmlJumpDist);
 					continue;
 				}
-				pathSearch(path, result, debug);
+				pathSearch(basePath, result, debug);
 			}
+			basePath.backtrack(previousMaxJumpDist, previousCmlJumpDist);
 		}
 	}
 	
@@ -364,6 +451,7 @@ public class RuptureConnectionSearch implements SubModule<FaultSystemRupSet> {
 	 */
 	public List<Jump> calcRuptureJumps(List<FaultSubsectionCluster> rupClusters, final boolean debug) {
 		List<Jump> jumps = new ArrayList<>();
+		SearchGraph graph = new SearchGraph(rupClusters);
 		
 		if (debug) System.out.println("Searching for connections...");
 		
@@ -373,18 +461,13 @@ public class RuptureConnectionSearch implements SubModule<FaultSystemRupSet> {
 		
 		for (int i=0; i<rupClusters.size(); i++) {
 			FaultSubsectionCluster from = rupClusters.get(i);
-			HashSet<FaultSubsectionCluster> availableClusters = new HashSet<>(rupClusters);
-			availableClusters.remove(from);
-			
 			if (debug) {
 				System.out.println("\tFrom cluster "+0+", "+from.parentSectionName);
 				System.out.println("\t\tAvailable direct jumps:");
-				for (FaultSubsectionCluster to : from.getDistSortedConnectedClusters()) {
-					double minDist = Double.POSITIVE_INFINITY;
-					for (Jump jump : from.getConnectionsTo(to))
-						minDist = Math.min(minDist, jump.distance);
+				for (SearchEdge edge : graph.edges[i]) {
+					FaultSubsectionCluster to = graph.clusters[edge.toIndex];
 					System.out.println("\t\t\t["+to.parentSectionID+"; "+to.parentSectionName
-							+"] R="+distDF.format(minDist));
+							+"] R="+distDF.format(edge.jump.distance));
 				}
 			}
 			
@@ -392,18 +475,18 @@ public class RuptureConnectionSearch implements SubModule<FaultSystemRupSet> {
 			
 			for (int j=i+1; j<rupClusters.size(); j++) {
 				FaultSubsectionCluster target = rupClusters.get(j);
-				ClusterPath basePath = new ClusterPath(from, target, availableClusters);
+				ClusterPath basePath = new ClusterPath(graph, i, j);
 				
 				if (debug) System.out.println("\t\tSearching to cluster "+j+", "+target.parentSectionName);
 				
 				PathResult result = new PathResult();
 				pathSearch(basePath, result, debug);
 				
-				ClusterPath[] shortestPaths = result.shortestPaths;
+				CompletedPath[] shortestPaths = result.shortestPaths;
 				if (shortestPaths != null) {
 					// we have a valid path
 					
-					for (ClusterPath shortest : shortestPaths) {
+					for (CompletedPath shortest : shortestPaths) {
 						// only keep the first jump (as others are constrained and may not represent actual shortest path)
 						Jump jump = shortest.jumps[0];
 						IDPairing pair = jumpPair(jump);
@@ -648,15 +731,31 @@ public class RuptureConnectionSearch implements SubModule<FaultSystemRupSet> {
 				}
 				// see if this is the shortest jump to this cluster or if there is a better alternative
 				// from our current rupture
+				FaultSubsectionCluster currentEnd = currentStrand.clusters[currentStrand.clusters.length-1];
+				boolean deferToCurrentEnd = false;
+				shorterJumpSearch:
 				for (FaultSubsectionCluster cluster : rupture.clusters) {
 					for (Jump oJump : jumpsFromMap.get(cluster)) {
 						if (oJump.toCluster == jump.toCluster && oJump.distance < jump.distance) {
+							if (oJump.fromCluster == currentEnd && currentEnd != lastCluster) {
+								// jumpsFromList is a snapshot from lastCluster, but an earlier jump in that
+								// list extended this strand. Defer so the next pass processes all jumps
+								// from the new end rather than skipping its other branches.
+								deferToCurrentEnd = true;
+								break shorterJumpSearch;
+							}
 							if (debug)
 								System.out.println("Was going to take "+jump
 										+", but will instead take shorter "+oJump);
 							jump = oJump;
 						}
 					}
+				}
+				if (deferToCurrentEnd) {
+					if (debug)
+						System.out.println("Deferring jump to "+jump.toCluster
+								+" until processing new strand end "+currentEnd);
+					continue;
 				}
 				if (debug)
 					System.out.println("Evaluating jump "+jump+" with toCluster="+jump.toCluster);
