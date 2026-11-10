@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree;
 
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.math3.stat.StatUtils;
@@ -11,9 +12,12 @@ import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.util.json.ContinuousDistributionTypeAdapter;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler;
+import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler.AverageSampler;
+import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler.FixedFractileSampler;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -169,6 +173,66 @@ public interface SectionSupraSeisBValues extends LogicTreeNode {
 		public static DistributionSamplingLevel fromJson(JsonObject json) {
 			LogicTreeLevel.Adapter<Default> adapter = new LogicTreeLevel.Adapter<>();
 			return (DistributionSamplingLevel)adapter.fromJsonTree(json);
+		}
+		
+	}
+	
+	public static class DistributionAverageLevel extends FixedValueLevel {
+
+		private ContinuousDistribution dist;
+
+		@SuppressWarnings("unused") // deserialization
+		private DistributionAverageLevel(String name, String shortName) {
+			super(name, shortName);
+		}
+
+		public DistributionAverageLevel(String name, String shortName, ContinuousDistribution dist) {
+			super(name, shortName, dist.getMean());
+			this.dist = dist;
+		}
+		
+		public ContinuousDistribution getDistribution() {
+			return dist;
+		}
+		
+		private static ContinuousDistributionTypeAdapter distAdapter = ContinuousDistributionTypeAdapter.get();
+		
+		@Override
+		public JsonObject toJsonObject() {
+			JsonObject json = super.toJsonObject();
+			
+			if (dist != null)
+				json.add("dist", distAdapter.toJsonTree(dist));
+			
+			return json;
+		}
+
+		@Override
+		public void initFromJsonObject(JsonObject jsonObj) {
+			super.initFromJsonObject(jsonObj);
+			
+			if (jsonObj.has("dist"))
+				dist = distAdapter.fromJsonTree(jsonObj.get("dist"));
+		}
+
+		public List<Default> getDiscretizedValues(int numDiscr) {
+			Preconditions.checkState(numDiscr > 1);
+			double[] fractiles = new double[numDiscr];
+			double step = 1.0 / numDiscr; // also the weight
+			for (int i = 0; i < numDiscr; i++)
+				fractiles[i] = (i + 0.5) * step;
+			
+			List<Default> ret = new ArrayList<>(numDiscr);
+			
+			for (double fractile : fractiles) {
+				double b = dist.inverseCumulativeProbability(fractile);
+				
+				String name = "f"+(float)fractile+", b="+(float)b;
+				
+				ret.add(new Default(b, step, name, name, name));
+			}
+			
+			return ret;
 		}
 		
 	}
@@ -330,6 +394,49 @@ public interface SectionSupraSeisBValues extends LogicTreeNode {
 			this.shortName = shortName; 
 			this.prefix = filePrefix;
 			this.sampler = value;
+		}
+		
+	}
+	
+	public static abstract class SectSpecificDistributionAverage extends SectSpecificDistributionSample<SectDistributionSampler> {
+
+		public SectSpecificDistributionAverage(String name, String shortName, String prefix, double weight) {
+			super(name, shortName, prefix, weight, new AverageSampler());
+		}
+		
+		public List<SectSpecificDistributionSample<SectDistributionSampler>> getDiscretizedSamplers(
+				FaultSystemRupSet rupSet, LogicTreeBranch<?> branch, int numDiscr) {
+			Preconditions.checkState(numDiscr > 1);
+			double[] fractiles = new double[numDiscr];
+			double step = 1.0 / numDiscr; // also the weight
+			for (int i = 0; i < numDiscr; i++)
+				fractiles[i] = (i + 0.5) * step;
+			
+			List<SectSpecificDistributionSample<SectDistributionSampler>> ret = new ArrayList<>(numDiscr);
+			
+			final SectSpecificDistributionAverage avg = this;
+			avg.initDistributions(rupSet, branch);
+			
+			for (double fractile : fractiles) {
+				String name = "f"+(float)fractile;
+				
+				final FixedFractileSampler sampler = new FixedFractileSampler(fractile);
+				ret.add(new SectSpecificDistributionSample<SectDistributionSampler>(name, name, name, step, sampler) {
+					
+					@Override
+					public void initDistributions(FaultSystemRupSet rupSet2, LogicTreeBranch<? extends LogicTreeNode> branch2) {
+						Preconditions.checkState(rupSet2.equals(rupSet));
+						Preconditions.checkState(branch2.equals(branch));
+					}
+					
+					@Override
+					public ContinuousDistribution getSectDistribution(FaultSection subSect) {
+						return avg.getSectDistribution(subSect);
+					}
+				});
+			}
+			
+			return ret;
 		}
 		
 	}

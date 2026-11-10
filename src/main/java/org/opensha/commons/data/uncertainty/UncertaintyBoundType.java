@@ -1,6 +1,6 @@
 package org.opensha.commons.data.uncertainty;
 
-import org.apache.commons.math3.distribution.NormalDistribution;
+import org.apache.commons.statistics.distribution.NormalDistribution;
 
 import com.google.common.base.Preconditions;
 
@@ -19,7 +19,7 @@ public enum UncertaintyBoundType {
 	/**
 	 * 95% confidence bounds: roughly plus/minus 2-sigma if normally distributed
 	 */
-	CONF_95("95% bounds", new NormalDistribution(0d, 1d).inverseCumulativeProbability((1+0.95)/2d)),
+	CONF_95("95% bounds", NormalDistribution.of(0d, 1d).inverseCumulativeProbability((1+0.95)/2d)),
 	/**
 	 * plus/minus 1-sigma bounds: usually (but not necessarily) roughly the 68% confidence interval
 	 */
@@ -27,7 +27,7 @@ public enum UncertaintyBoundType {
 	/**
 	 * 68% confidence bounds: roughly plus/minus 1-sigma if normally distributed
 	 */
-	CONF_68("68% bounds", new NormalDistribution(0d, 1d).inverseCumulativeProbability((1+0.68)/2d)),
+	CONF_68("68% bounds", NormalDistribution.of(0d, 1d).inverseCumulativeProbability((1+0.68)/2d)),
 	/**
 	 * plus/minus 0.5-sigma bounds: this is how we treated average slip uncertainties in UCERF3,
 	 * but that was probably a poor assumption and will likely never be used

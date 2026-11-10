@@ -11,9 +11,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import org.apache.commons.statistics.distribution.ContinuousDistribution;
+import org.apache.commons.statistics.distribution.UniformContinuousDistribution;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.IntegerSampler.ExclusionIntegerSampler;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
@@ -59,6 +62,8 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.Compl
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.GenerationFunctionType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
+import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampleLevels;
+import org.opensha.sha.earthquake.faultSysSolution.logicTree.sectDistSampling.SectDistributionSampler;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
@@ -68,10 +73,12 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PosteriorSectionBValueDistributions;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
@@ -92,6 +99,11 @@ import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
 import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
+import org.opensha.sha.earthquake.nshmp.inversion.mfdPreInversion.PaleoBValueEstimator;
+import org.opensha.sha.earthquake.nshmp.inversion.mfdPreInversion.PaleoBValueEstimator.BackgroundDistribution;
+import org.opensha.sha.earthquake.nshmp.inversion.mfdPreInversion.PaleoBValueEstimator.MFDCalcInputs;
+import org.opensha.sha.earthquake.nshmp.inversion.mfdPreInversion.PaleoBValueEstimator.PosteriorCombination;
+import org.opensha.sha.earthquake.nshmp.inversion.mfdPreInversion.PaleoBValueEstimator.WeightingType;
 import org.opensha.sha.earthquake.nshmp.seismicity.CrustalGridSourceBuilder;
 import org.opensha.sha.earthquake.nshmp.seismicity.CrustalGridSourceBuilder.NearFaultCarveOutModel;
 import org.opensha.sha.earthquake.nshmp.seismicity.CrustalGridSourceBuilder.NucleationPDF_3D;
@@ -114,6 +126,10 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_Region
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels.ExcludeRupsThroughCreepingSegmentationModel;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues.DistributionAverageLevel;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues.DistributionSamplingLevel;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues.SectSpecificDistributionAverage;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues.SectSpecificDistributionSample;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.random.BranchSamplingManager;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.random.RandomBValSampler;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SeisSmoothingAlgorithms;
@@ -171,6 +187,8 @@ ExclusionaryInversionConfigurationFactory {
 	private boolean adjustForActualRupSlips = NSHM23_ConstraintBuilder.ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT;
 	private boolean adjustForSlipAlong = NSHM23_ConstraintBuilder.ADJ_FOR_SLIP_ALONG_DEFAULT;
 	
+	public static boolean APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT = SupraSeisBValInversionTargetMFDs.APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT;
+	
 	public static final long NUM_ITERS_PER_RUP_DEFAULT = 2000l;
 	protected long numItersPerRup;
 	
@@ -190,6 +208,12 @@ ExclusionaryInversionConfigurationFactory {
 	
 	public static SlipAlongRuptureModelBranchNode SLIP_ALONG_DEFAULT = NSHM23_SlipAlongRuptureModels.UNIFORM;
 	
+	public static ContinuousDistribution SUPRA_B_PRIOR_DIST = UniformContinuousDistribution.of(0d, 1d);
+	
+	// if true, smoothing on paleo sections will also apply to the paleo-visible rate (as well as normal rate)
+	public static final boolean SMOOTH_PALEO_VISIBLE_DEFAULT = false;
+	private boolean smoothPaleoVisible = SMOOTH_PALEO_VISIBLE_DEFAULT;
+	
 	public NSHM23_InvConfigFactory() {
 		numItersPerRup = NUM_ITERS_PER_RUP_DEFAULT;
 		solveClustersIndividually = SOLVE_CLUSTERS_INDIVIDUALLY_DEFAULT;
@@ -207,6 +231,14 @@ ExclusionaryInversionConfigurationFactory {
 
 	public void setSolveClustersIndividually(boolean solveClustersIndividually) {
 		this.solveClustersIndividually = solveClustersIndividually;
+	}
+	
+	public void setSmoothPaleoVisible(boolean smoothPaleoVisible) {
+		this.smoothPaleoVisible = smoothPaleoVisible;
+	}
+	
+	public boolean isSmoothPaleoVisible() {
+		return smoothPaleoVisible;
 	}
 	
 	private synchronized void checkAddDistAzCalc(FaultSystemRupSet rupSet, RupSetFaultModel fm) {
@@ -696,6 +728,42 @@ ExclusionaryInversionConfigurationFactory {
 					}
 				}, BranchSamplingManager.class);
 			}
+			
+			if (branch.hasValue(PosteriorSectionBValueDistributions.SamplingNode.class)) {
+				// we're doing posterior b-value sampling
+				
+				if (!rupSet.hasAvailableModule(PosteriorSectionBValueDistributions.class)) {
+					// we don't already have posterior b-value distributions calculated
+					// calculate them now; offering them can create deadlock issues
+					
+					EvenlyDiscretizedFunc bVals = new EvenlyDiscretizedFunc(0d, 1d, 21);
+					
+					PaleoBValueEstimator estimator = new PaleoBValueEstimator(SUPRA_B_PRIOR_DIST, bVals, new NSHM23_InvConfigFactory());
+					
+					// pre-load these so it's not trying to do so on every MFD calc call, which can result in deadlock issues
+					rupSet.requireModule(ClusterRuptures.class);
+					rupSet.requireModule(AveSlipModule.class);
+					rupSet.requireModule(SlipAlongRuptureModel.class);
+					
+					estimator.setTargetMFDCalc(getMFDCalcFunc());
+					
+//					estimator.setGaussianLogLikelihood();
+					estimator.setStudentsTLogLikelihood(5);
+					estimator.setLikelihoodInRecurrence(true);
+					estimator.setWeightingType(WeightingType.CONNECTED_FRACTION);
+					estimator.setBackgroundDistribution(BackgroundDistribution.GENERIC_PRIOR);
+					estimator.setPosteriorCombination(PosteriorCombination.WEIGHTED_SITE_LIKELIHOODS);
+//					estimator.setPosteriorCombination(PosteriorCombination.WEIGHTED_SITE_DISTRIBUTIONS);
+					
+					PosteriorSectionBValueDistributions posteriors = estimator.calculate(rupSet, branch, false);
+					rupSet.addModule(posteriors);
+					
+					// add regular inversion target MFDs (don't offer, make sure they're recalculated after doing this)
+					rupSet.addAvailableModule(() -> getConstraintBuilder(rupSet, branch).getTargetMFDs(),
+							SupraSeisBValInversionTargetMFDs.class);
+				}
+			}
+			
 			return rupSet;
 		}
 
@@ -761,13 +829,99 @@ ExclusionaryInversionConfigurationFactory {
 		
 	}
 	
+	public static Function<MFDCalcInputs, InversionTargetMFDs> getMFDCalcFunc() {
+		return (I)->{
+			if (I.branch().hasValue(NSHM23_SegmentationModels.AVERAGE)) {
+				LogicTreeBranch<? extends LogicTreeNode> modBranch = I.branch().copy();
+				AveragingAccumulator<InversionTargetMFDs> accumulator = null;
+				for (NSHM23_SegmentationModels segModel : NSHM23_SegmentationModels.values()) {
+					double weight = segModel.getNodeWeight();
+					if (weight > 0d) {
+						modBranch.setValueUnchecked(segModel);
+						SupraSeisBValInversionTargetMFDs mfds = getConstraintBuilder(I.rupSet(), modBranch).getRateOnlyTargetMFDs();
+						if (accumulator == null)
+							accumulator = mfds.averagingAccumulator();
+						accumulator.process(mfds, weight);
+					}
+				}
+				return accumulator.getAverage();
+			} else {
+				return getConstraintBuilder(I.rupSet(), I.branch()).getRateOnlyTargetMFDs();
+			}
+		};
+	}
+	
+	/**
+	 * Generic b-value level that accepts all values as members
+	 */
+	private static class GenericBLevel extends LogicTreeLevel<SectionSupraSeisBValues> {
+		
+		private LogicTreeLevel<?> level;
+
+		public GenericBLevel(LogicTreeLevel<?> level) {
+			this.level = level;
+		}
+
+		@Override
+		public String getShortName() {
+			return level.getShortName();
+		}
+
+		@Override
+		public String getName() {
+			return level.getName();
+		}
+
+		@Override
+		public Class<? extends SectionSupraSeisBValues> getType() {
+			return SectionSupraSeisBValues.class;
+		}
+
+		@Override
+		public List<? extends SectionSupraSeisBValues> getNodes() {
+			throw new IllegalStateException();
+		}
+
+		@Override
+		public boolean isMember(LogicTreeNode node) {
+			return node instanceof SectionSupraSeisBValues;
+		}
+		
+	}
+	
 	private static NSHM23_ConstraintBuilder getAveragedConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-		// TODO maybe add sampling support?
+		List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
+		for (int i=0; i<branch.size(); i++)
+			levels.add(branch.getLevel(i));
+		List<LogicTreeNode> nodes = new ArrayList<>(levels.size());
+		for (int i=0; i<branch.size(); i++)
+			nodes.add(branch.getValue(i));
+		
 		SectionSupraSeisBValues[] bVals;
-		if (branch.hasValue(SupraSeisBValues.AVERAGE))
+		if (branch.hasValue(SupraSeisBValues.AVERAGE)) {
 			bVals = SupraSeisBValues.values();
-		else
+		} else if (branch.hasValue(SectSpecificDistributionAverage.class)) {
+			List<SectSpecificDistributionSample<SectDistributionSampler>> bValsList =
+					branch.requireValue(SectSpecificDistributionAverage.class).getDiscretizedSamplers(rupSet, branch, 10);
+			bVals = bValsList.toArray(new SectionSupraSeisBValues[10]);
+			
+			int levelIndex = branch.getLevelTypeIndex(SectSpecificDistributionAverage.class);
+			Preconditions.checkState(levelIndex >= 0);
+			
+			// replace level
+			levels.set(levelIndex, new GenericBLevel(branch.getLevel(levelIndex)));
+			nodes.set(levelIndex, null);
+		} else if (branch.getLevelIndex(DistributionAverageLevel.class) >= 0) {
+			int levelIndex = branch.getLevelIndex(DistributionAverageLevel.class);
+			DistributionAverageLevel level = ((DistributionAverageLevel)branch.getLevel(levelIndex));
+			bVals = level.getDiscretizedValues(10).toArray(new SectionSupraSeisBValues[10]);
+			
+			// replace level
+			levels.set(levelIndex, new GenericBLevel(level));
+			nodes.set(levelIndex, null);
+		} else {
 			bVals = new SectionSupraSeisBValues[] { branch.requireValue(SectionSupraSeisBValues.class) };
+		}
 		
 		SegmentationModelBranchNode[] segModels;
 		if (branch.hasValue(NSHM23_SegmentationModels.AVERAGE))
@@ -778,12 +932,7 @@ ExclusionaryInversionConfigurationFactory {
 		List<LogicTreeBranch<?>> avgBranches = new ArrayList<>();
 		List<Double> avgWeights = new ArrayList<>();
 		
-		List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
-		for (int i=0; i<branch.size(); i++)
-			levels.add(branch.getLevel(i));
-		LogicTreeBranch<LogicTreeNode> branchCopy = new LogicTreeBranch<>(levels);
-		for (LogicTreeNode node : branch)
-			branchCopy.setValue(node);
+		LogicTreeBranch<LogicTreeNode> branchCopy = new LogicTreeBranch<>(levels, nodes);
 		for (SectionSupraSeisBValues bVal : bVals) {
 			for (SegmentationModelBranchNode segModel : segModels) {
 				// create copy of the branch
@@ -836,8 +985,9 @@ ExclusionaryInversionConfigurationFactory {
 		return ret;
 	}
 	
-	private static NSHM23_ConstraintBuilder getConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-		if (branch.hasValue(NSHM23_SegmentationModels.AVERAGE) || branch.hasValue(SupraSeisBValues.AVERAGE))
+	public static NSHM23_ConstraintBuilder getConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+		if (branch.hasValue(NSHM23_SegmentationModels.AVERAGE) || branch.hasValue(SupraSeisBValues.AVERAGE)
+				|| branch.hasValue(SectSpecificDistributionAverage.class) || branch.getLevelIndex(DistributionAverageLevel.class) >= 0)
 			// return averaged instance, looping over b-values and/or segmentation branches
 			return getAveragedConstraintBuilder(rupSet, branch);
 		return doGetConstraintBuilder(rupSet, branch);
@@ -861,7 +1011,10 @@ ExclusionaryInversionConfigurationFactory {
 				b = SectionSupraSeisBValues.momentWeightedAverage(rupSet, sectSpecificBValues);
 			bVal = b;
 		}
-		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal, sectSpecificBValues);
+//		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal, sectSpecificBValues);
+		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal, sectSpecificBValues,
+					APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT, SupraSeisBValInversionTargetMFDs.ADD_SECT_COUNT_UNCERTAINTIES_DEFAULT,
+					NSHM23_ConstraintBuilder.ADJ_FOR_INCOMPATIBLE_DATA_DEFAULT);
 		
 		RupSetFaultModel fm = branch.getValue(RupSetFaultModel.class);
 		constrBuilder.parkfieldSelection(getParkfieldSelectionCriteria(fm));
@@ -1524,9 +1677,14 @@ ExclusionaryInversionConfigurationFactory {
 		if (nuclMFDWeight > 0d)
 			constrBuilder.sectSupraNuclMFDs().weight(nuclMFDWeight);
 		
-		if (paleoSmoothWeight > 0d)
+		if (paleoSmoothWeight > 0d) {
 			// need to explicitly specify class for weighting as the constraint could be skipped
 			constrBuilder.supraPaleoSmooth().weight(LaplacianSmoothingInversionConstraint.class, paleoSmoothWeight);
+			if (smoothPaleoVisible) {
+				// TODO: for NSHM29, consider trying this as well:
+				constrBuilder.supraPaleoSmooth(true).weight(LaplacianSmoothingInversionConstraint.class, paleoSmoothWeight);
+			}
+		}
 		
 		// this will skip any ruptures below the minimim magnitude
 		ExclusionIntegerSampler sampler = rupSet.hasModule(ModSectMinMags.class) ? constrBuilder.getSkipBelowMinSampler() : null;
@@ -2743,6 +2901,13 @@ ExclusionaryInversionConfigurationFactory {
 			
 		}
 		
+	}
+	
+	public static class SmoothPaleoVisible extends NSHM23_InvConfigFactory {
+		
+		public SmoothPaleoVisible() {
+			setSmoothPaleoVisible(true);
+		}
 	}
 	
 	public static void main(String[] args) throws IOException {
