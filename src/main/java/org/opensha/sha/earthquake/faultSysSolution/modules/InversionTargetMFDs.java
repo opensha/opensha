@@ -681,6 +681,11 @@ BranchAverageableModule<InversionTargetMFDs>, MergeableRuptureModule<InversionTa
 				trulyOffFaultMFD.get(), mfdConstraints.get(), subSeisOnFaultMFDs, supraSeisOnFaultNuclMFDs.get());
 	}
 	
+	@Override
+	public Class<? extends InversionTargetMFDs> getMergingType() {
+		return InversionTargetMFDs.class;
+	}
+
 	private static class UncertAwareMFDSummation {
 		
 		private int count = 0;
