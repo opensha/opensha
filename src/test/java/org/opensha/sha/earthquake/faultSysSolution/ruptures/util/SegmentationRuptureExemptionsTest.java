@@ -106,6 +106,54 @@ public class SegmentationRuptureExemptionsTest {
 	}
 
 	@Test
+	public void testMinimumRupturesCanStartAcrossAdjacentBends() {
+		BitSet eligible = bits(0, 1, 2, 3, 6);
+		Policy policy = Policy.MINIMUM_INTERNAL_IF_NO_UNCONSTRAINED_RUPTURE;
+		SegmentationProbabilityConstraint constraint = new SegmentationProbabilityConstraint(
+				1d, rupSet, model, new EndpointReferenceRateWeighting(), null, ProbabilityAggregation.AVERAGE,
+				policy, eligible);
+		DoubleMatrix2D matrix = encode(constraint);
+		SegmentationRuptureExemptions exemptions = constraint.getRuptureExemptions();
+		assertEquals(bits(0, 3), exemptions.getExemptRuptures(1, 0));
+		assertEquals(bits(2), exemptions.getExemptRuptures(1, 2));
+		for (int row=0; row<matrix.rows(); row++) {
+			assertTrue(matrix.get(row, 0) <= 0d);
+			assertTrue(matrix.get(row, 2) <= 0d);
+			assertTrue(matrix.get(row, 3) <= 0d);
+		}
+		assertFalse(exemptions.isExempt(1, 0, 1)); // Larger crossing.
+		assertFalse(exemptions.isExempt(2, 3, 6)); // Between-parent jump.
+		assertEquals(exemptions.getExemptSides(),
+				SegmentationRuptureExemptions.build(rupSet, model, policy, eligible).getExemptSides());
+
+		eligible.set(5); // Subsection 0 now has an unconstrained singleton.
+		exemptions = SegmentationRuptureExemptions.build(rupSet, model, policy, eligible);
+		assertTrue(exemptions.getExemptRuptures(0, 1).isEmpty());
+		assertEquals(bits(0, 3), exemptions.getExemptRuptures(1, 0));
+	}
+
+	@Test
+	public void testStandaloneRateUsesAggregatedConstraintProbability() {
+		AllTransitions varying = new AllTransitions() {
+			@Override public double calcTransitionProbability(ClusterRupture rupture, SubsectionTransition transition,
+					boolean verbose) {
+				if (TransitionProbabilityUtils.pair(transition).equals(new IDPairing(0, 1))
+						&& rupture.getTotalNumSects() == 2)
+					return 1d;
+				return 0.5;
+			}
+		};
+		BitSet eligible = bits(0, 1, 2, 3);
+		Policy policy = Policy.MINIMUM_INTERNAL_IF_NO_UNCONSTRAINED_RUPTURE;
+		SegmentationProbabilityConstraint constraint = new SegmentationProbabilityConstraint(
+				1d, rupSet, varying, new EndpointReferenceRateWeighting(), null, ProbabilityAggregation.MAX,
+				policy, eligible);
+		assertTrue(constraint.getRuptureExemptions().getExemptRuptures(1, 2).isEmpty());
+		assertEquals(bits(2), SegmentationRuptureExemptions.build(rupSet, varying, policy, eligible)
+				.getExemptRuptures(1, 2)); // The default mean leaves the 0–1 rupture constrained.
+	}
+
+	@Test
 	public void testJumpThroughAlternativeDoesNotPreventExemption() {
 		addJumpThroughRuptures();
 		BitSet eligible = bits(0, 1, 3, 7, 8);

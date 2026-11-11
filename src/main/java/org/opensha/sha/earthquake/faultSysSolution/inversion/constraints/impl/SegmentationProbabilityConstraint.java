@@ -188,8 +188,9 @@ public class SegmentationProbabilityConstraint extends InversionConstraint {
 		Preconditions.checkNotNull(rupSet, "Must set rupture set before using constraint");
 		Map<IDPairing, Crossing> crossings = new TreeMap<>();
 		collectCrossings(probabilityCalc, crossings);
-		ruptureExemptions = SegmentationRuptureExemptions.build(rupSet, probabilityCalc,
-				ruptureExemptionPolicy == null ? Policy.NONE : ruptureExemptionPolicy, eligibleRuptures);
+		Policy policy = ruptureExemptionPolicy == null ? Policy.NONE : ruptureExemptionPolicy;
+		ruptureExemptions = SegmentationRuptureExemptions.build(
+				rupSet, probabilityCalc, policy, eligibleRuptures, () -> findConstrainedRuptures(crossings.values()));
 		List<Row> newRows = new ArrayList<>();
 		for (Crossing crossing : crossings.values()) {
 			newRows.add(buildRow(crossing, crossing.first, crossing.second));
@@ -253,7 +254,25 @@ public class SegmentationProbabilityConstraint extends InversionConstraint {
 		}
 	}
 
-	private Row buildRow(Crossing crossing, int from, int to) {
+	/** Finds ruptures that would have a positive coefficient in any row before exemptions. */
+	private BitSet findConstrainedRuptures(Iterable<Crossing> crossings) {
+		BitSet constrained = new BitSet();
+		for (Crossing crossing : crossings) {
+			if (crossing.getProbability(getProbabilityAggregation()) < 1d) {
+				for (int rupture : crossing.ruptures) constrained.set(rupture);
+			} else {
+				// At p=1, a crossing can still violate the bound if it misses any positive reference weight.
+				Set<Integer> referenceSections = new HashSet<>(referenceWeights(crossing.first, crossing.second).keySet());
+				referenceSections.addAll(referenceWeights(crossing.second, crossing.first).keySet());
+				for (int rupture : crossing.ruptures)
+					if (!rupSet.getSectionsIndicesForRup(rupture).containsAll(referenceSections))
+						constrained.set(rupture);
+			}
+		}
+		return constrained;
+	}
+
+	private Map<Integer, Double> referenceWeights(int from, int to) {
 		Map<Integer, Double> weights = new TreeMap<>(Preconditions.checkNotNull(
 				referenceRateWeighting.getSectionWeights(rupSet, from, to)));
 		double sum = 0d;
@@ -268,6 +287,12 @@ public class SegmentationProbabilityConstraint extends InversionConstraint {
 		Preconditions.checkArgument(Double.isFinite(sum) && sum > 0d, "Reference weights must have positive finite sum");
 		final double total = sum;
 		weights.replaceAll((id, value) -> value/total);
+		weights.values().removeIf(value -> value == 0d);
+		return weights;
+	}
+
+	private Row buildRow(Crossing crossing, int from, int to) {
+		Map<Integer, Double> weights = referenceWeights(from, to);
 		Set<Integer> chargedRuptures = new HashSet<>(crossing.ruptures);
 		chargedRuptures.removeIf(r -> ruptureExemptions.isExempt(from, to, r));
 		return new Row(from, to, crossing, weights, chargedRuptures);
