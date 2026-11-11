@@ -153,8 +153,16 @@ public class FaultTraceSegmentationGeometry {
 
 	/** Measures this subsection pair, not the nearest connection anywhere on its parents. */
 	public Measurements measure(FaultSection first, FaultSection second) {
+		return measure(first, second, false);
+	}
+
+	/**
+	 * Measures the subsection pair and optionally includes the trace segments used in the overlap distance search.
+	 * The diagnostic segments are the clipped pieces from the same projection used to measure the distance.
+	 */
+	public Measurements measure(FaultSection first, FaultSection second, boolean includeOverlapSegments) {
 		Preconditions.checkArgument(first.getSectionId() != second.getSectionId(), "Expected distinct subsections");
-		return new Measurements(new SectionGeometry(first), new SectionGeometry(second), this);
+		return new Measurements(new SectionGeometry(first), new SectionGeometry(second), this, includeOverlapSegments);
 	}
 
 	/** Snapshot of the geometry and identity of one subsection. */
@@ -191,6 +199,10 @@ public class FaultTraceSegmentationGeometry {
 		public final double averageStrikeAxisDegrees;
 		public final TraceRelation relation;
 		public final double overlapLengthKm;
+		/** Trace pieces within the shared along-strike interval, empty unless requested and overlap exists. */
+		public final List<LocationList> firstOverlapSegments;
+		/** Trace pieces within the shared along-strike interval, empty unless requested and overlap exists. */
+		public final List<LocationList> secondOverlapSegments;
 		public final double projectedGapKm;
 		public final Connector closestTraceConnector;
 		public final Connector closestEndConnector;
@@ -209,7 +221,8 @@ public class FaultTraceSegmentationGeometry {
 		public final double maxPerpendicularDeviationDegrees;
 		public final boolean bendTransitionDefined;
 
-		private Measurements(SectionGeometry first, SectionGeometry second, FaultTraceSegmentationGeometry settings) {
+		private Measurements(SectionGeometry first, SectionGeometry second, FaultTraceSegmentationGeometry settings,
+				boolean includeOverlapSegments) {
 			this.first = first;
 			this.second = second;
 			minBendAngleDegrees = settings.minBendAngleDegrees;
@@ -237,6 +250,8 @@ public class FaultTraceSegmentationGeometry {
 			if (relation == TraceRelation.OVERLAPPING) {
 				List<Segment> firstOverlap = clipToOverlap(firstSegments, overlap);
 				List<Segment> secondOverlap = clipToOverlap(secondSegments, overlap);
+				firstOverlapSegments = includeOverlapSegments ? toLocations(firstOverlap, frame) : List.of();
+				secondOverlapSegments = includeOverlapSegments ? toLocations(secondOverlap, frame) : List.of();
 				Candidate perpendicular = findPerpendicularConnector(firstOverlap, secondOverlap);
 				exactPerpendicularConnector = connector(perpendicular, frame, true);
 				Candidate stepover;
@@ -250,6 +265,8 @@ public class FaultTraceSegmentationGeometry {
 				stepoverConnector = connector(stepover, frame, true);
 				facingEndConnector = null;
 			} else {
+				firstOverlapSegments = List.of();
+				secondOverlapSegments = List.of();
 				exactPerpendicularConnector = null;
 				stepoverConnector = null;
 				if (hasStrikeAxis)
@@ -267,6 +284,14 @@ public class FaultTraceSegmentationGeometry {
 				facingEndsBoundProjectedGap = Math.abs(facingEndGapKm-projectedGapKm) <= DISTANCE_TOLERANCE_KM;
 			}
 		}
+	}
+
+	private static List<LocationList> toLocations(List<Segment> segments, LocalStrikeFrame frame) {
+		List<LocationList> locations = new ArrayList<>(segments.size());
+		for (Segment segment : segments)
+			locations.add(LocationList.of(frame.toLocation(segment.first), frame.toLocation(segment.second))
+					.unmodifiableList());
+		return List.copyOf(locations);
 	}
 
 	/** Connector endpoints and components always describe the same point pair. */
