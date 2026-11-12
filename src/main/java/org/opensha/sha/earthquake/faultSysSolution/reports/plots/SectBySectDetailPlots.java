@@ -86,15 +86,14 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PosteriorSectionBValueDistributions;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractRupSetPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
-import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RupHistogramPlots.HistScalar;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RupHistogramPlots.HistScalarValues;
-import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBySectDetailPlots.AlongStrikePlot;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
@@ -108,8 +107,8 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.Connectio
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupCartoonGenerator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectIDRange;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
+import org.opensha.sha.earthquake.nshmp.inversion.mfdPreInversion.PaleoBValueEstimator;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
@@ -562,6 +561,12 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			lines.addAll(getScalarLines(meta, parentSectIndex, parentName, parentSects,
 					rupSet, resourcesDir, topLink, scalarVals));
 		}
+		
+		PosteriorSectionBValueDistributions posteriorB = rupSet.getModule(PosteriorSectionBValueDistributions.class);
+		if (posteriorB != null && rupSet.hasModule(PaleoseismicConstraintData.class)) {
+			lines.add("");
+			lines.addAll(getPosteriorBLines(meta, parentName, parentSects, resourcesDir, topLink));
+		}
 
 		lines.add("");
 		lines.addAll(getConnectivityLines(meta, parentSectIndex, parentName, distAzCalc, sectsByParent,
@@ -784,6 +789,37 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		lines.add("");
 		
 		lines.add("![Length Hist]("+outputDir.getName()+"/"+pngFile.getName()+")");
+		return lines;
+	}
+	
+	static List<String> getPosteriorBLines(ReportMetadata meta, String faultName,
+			List<FaultSection> faultSects, File outputDir, String topLink) throws IOException {
+		FaultSystemRupSet rupSet = meta.primary.rupSet;
+		PosteriorSectionBValueDistributions posteriorB = rupSet.getModule(PosteriorSectionBValueDistributions.class);
+		if (posteriorB == null || posteriorB.getPaleoSitePosteriors() == null || posteriorB.getPaleoSiteMisfits() == null)
+			return new ArrayList<>();
+		boolean any = false;
+		for (FaultSection sect : faultSects) {
+			if (posteriorB.getSectPosteriors().get(sect.getSectionId()) != null) {
+				any = true;
+				break;
+			}
+		}
+		if (!any)
+			return new ArrayList<>();
+		
+		String prefix = "b_val_posterior";
+		PaleoBValueEstimator.plotSectDistribution(outputDir, prefix, faultSects, posteriorB, rupSet);
+		
+		List<String> lines = new ArrayList<>();
+		
+		lines.add("## b-value Posterior Distribution");
+		lines.add(topLink); lines.add("");
+		
+		lines.add("Section b-value posterior distributions. TODO: add description.");
+		lines.add("");
+		
+		lines.add("![Length Hist]("+outputDir.getName()+"/"+prefix+".png)");
 		return lines;
 	}
 	
@@ -2453,6 +2489,18 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 
 		lines.add("![Along-strike plot]("+outputDir.getName()+"/"+prefix+".png)");
 		
+		PosteriorSectionBValueDistributions posteriorB = meta.primary.rupSet.getModule(PosteriorSectionBValueDistributions.class);
+		boolean hasPaleoPosterior = false;
+		if (posteriorB != null) {
+			for (FaultSection sect : faultSects) {
+				if (posteriorB.getSectPosteriors().get(sect.getSectionId()) != null) {
+					hasPaleoPosterior = true;
+					break;
+				}
+			}
+			System.out.println("Have posterior paleo data; any for "+faultName+"? "+hasPaleoPosterior);
+		}
+		
 		if (meta.primary.rupSet.hasModule(AveSlipModule.class) && meta.hasPrimarySol()) {
 			lines.add("### Moment-Rates and b-Values");
 			lines.add(topLink); lines.add("");
@@ -2461,17 +2509,29 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 
 			plots.add(buildMoRatePlot(meta, faultSects, faultName, emptySectFuncs, xLabel, legendRelX));
 			plots.add(buildBValPlot(meta, faultSects, faultName, emptySectFuncs, xLabel, legendRelX));
+			if (hasPaleoPosterior)
+				plots.add(PaleoBValueEstimator.getPosteriorBValueAlongStrikePlot(posteriorB, faultSects, faultName, emptySectFuncs, xLabel));
 			
 			prefix = "sect_along_strike_mo_b";
 			writeAlongStrikePlots(outputDir, prefix, plots, parentsMap, latX, xLabel, xRange, faultName);
 
 			lines.add("![Along-strike plot]("+outputDir.getName()+"/"+prefix+".png)");
+		} else if (hasPaleoPosterior) {
+			lines.add("### Posterior b-Values");
+			lines.add(topLink); lines.add("");
+			
+			plots = new ArrayList<>();
+
+			plots.add(PaleoBValueEstimator.getPosteriorBValueAlongStrikePlot(posteriorB, faultSects, faultName, emptySectFuncs, xLabel));
+			
+			prefix = "sect_along_strike_post_b";
+			writeAlongStrikePlots(outputDir, prefix, plots, parentsMap, latX, xLabel, xRange, faultName);
 		}
 		
 		return lines;
 	}
 	
-	static void writeAlongStrikePlots(File outputDir, String prefix, List<AlongStrikePlot> plots,
+	public static void writeAlongStrikePlots(File outputDir, String prefix, List<AlongStrikePlot> plots,
 			Map<Integer, List<FaultSection>> parentsMap, boolean latX, String xLabel, Range xRange, String faultName)
 					throws IOException {
 		List<PlotSpec> specs = new ArrayList<>();
@@ -2600,7 +2660,20 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		List<Boolean> xLogs = List.of(false);
 		List<Range> xRanges = List.of(xRange);
 		
-		gp.setxAxisInverted(latX);
+		if (latX) {
+			for (PlotSpec spec : specs)
+				spec.setXAxisInverted(true);
+		}
+		for (int i=0; i<specs.size(); i++) {
+			if (yLogs.get(i)) {
+				Range yRange = yRanges.get(i);
+				if (yRange.getLowerBound() <= 0d) {
+					Preconditions.checkState(yRange.getUpperBound() > 0d, "Both lower and upper bound <=0 for %s",
+							specs.get(i).getYAxisLabel());
+					yRanges.set(i, new Range(yRange.getUpperBound()*0.01, yRange.getUpperBound()));
+				}
+			}
+		}
 		gp.drawGraphPanel(specs, xLogs, yLogs, xRanges, yRanges);
 		
 		if (specWeights != null)
@@ -2620,7 +2693,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		PlotUtils.writePlots(outputDir, prefix, gp, width, height, true, true, false);
 	}
 	
-	static class AlongStrikePlot {
+	public static class AlongStrikePlot {
 		
 		private PlotSpec spec;
 		private List<XY_DataSet> funcs;
@@ -2814,7 +2887,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		return new AlongStrikePlot(magRateSpec, funcs, chars, yRange(funcs, new Range(1e-4, 1e-3), new Range(1e-8, 1e1), 5), true);
 	}
 	
-	private static AlongStrikePlot buildPaleoRatePlot(ReportMetadata meta, List<FaultSection> faultSects,
+	public static AlongStrikePlot buildPaleoRatePlot(ReportMetadata meta, List<FaultSection> faultSects,
 			String faultName, List<XY_DataSet> emptySectFuncs, String xLabel, double legendRelX, Range xRange, boolean latX,
 			PaleoseismicConstraintData paleoData, List<SectMappedUncertainDataConstraint> paleoConstraints,
 			List<SectMappedUncertainDataConstraint> paleoSlipConstraints) {
@@ -3538,10 +3611,13 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 	}
 	
 	static XY_DataSet copyAtY(XY_DataSet func, double y) {
-		DefaultXY_DataSet ret = new DefaultXY_DataSet();
-		for (Point2D pt : func)
-			ret.set(pt.getX(), y);
-		return ret;
+		double[] xVals = new double[func.size()];
+		double[] yVals = new double[xVals.length];
+		for (int i=0; i<xVals.length; i++) {
+			xVals[i] = func.getX(i);
+			yVals[i] = y;
+		}
+		return new DefaultXY_DataSet(xVals, yVals);
 	}
 	
 	static UncertainArbDiscFunc uncertCopyAtY(XY_DataSet func, double y, double stdDev) {

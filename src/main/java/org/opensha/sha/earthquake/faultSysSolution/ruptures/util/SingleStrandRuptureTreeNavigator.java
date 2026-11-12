@@ -1,5 +1,6 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.util;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 
@@ -137,6 +138,23 @@ public class SingleStrandRuptureTreeNavigator implements RuptureTreeNavigator {
 			if (rupture.clusters[i].contains(section))
 				return rupture.clusters[i];
 		throw new IllegalStateException("Section "+section.getSectionId()+" not found in rupture: "+rupture);
+	}
+
+	@Override
+	public FaultSubsectionCluster[] locateClustersForParent(int parentID) {
+		FaultSubsectionCluster[] ret = null;
+		for (int i=0; i<rupture.clusters.length; i++) {
+			if (rupture.clusters[i].parentSectionID == parentID) {
+				if (ret == null) {
+					ret = new FaultSubsectionCluster[] {rupture.clusters[i]};
+				} else {
+					ret = Arrays.copyOf(ret, ret.length+1);
+					ret[ret.length-1] = rupture.clusters[i];
+				}
+			}
+		}
+		Preconditions.checkState(ret != null, "No clusters for parent: %s", parentID);
+		return ret;
 	}
 
 	@Override

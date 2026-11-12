@@ -67,6 +67,28 @@ public class UncertainDataConstraint implements Named {
 	public double getPreferredStdDev() {
 		return uncertainties[0].stdDev;
 	}
+	
+	/**
+	 * Estimates a z-score for the given value within the attached uncertainty distribution. If bounded/asymmetrical
+	 * uncertainties are available, those will be used according to {@link BoundedUncertainty#estimateDataZ(double, double)}.
+	 * <p>
+	 * If no bounded uncertainties are available, the returned z-score will use {@link #getPreferredStdDev()} assuming normality.
+	 * @param data
+	 * @return z score estimate for the given value within uncertainties
+	 */
+	public double estimateDataZ(double data) {
+		BoundedUncertainty uncert = null;
+		for (Uncertainty u : uncertainties) {
+			if (u instanceof BoundedUncertainty) {
+				uncert = (BoundedUncertainty)u;
+				break;
+			}
+		}
+		if (uncert == null)
+			return (data - bestEstimate)/getPreferredStdDev();
+		
+		return uncert.estimateDataZ(data, bestEstimate);
+	}
 
 	@Override
 	public String getName() {

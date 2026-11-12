@@ -53,6 +53,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
+import org.opensha.sha.earthquake.faultSysSolution.util.MergedSolutionCreator.MergedRupSetMappings;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues;
@@ -196,6 +197,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		private double subSeisBOverride = Double.NaN;
 		
 		private double slipStdDevFloor = 0d;
+		
+		private boolean updateSlipRates = true;
 		
 		// if non-null, subset of ruptures that we're allowed to use
 		private BitSet rupSubSet;
@@ -449,6 +452,16 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		}
 		
 		/**
+		 * Specifies whether or not we should override the slip rates in the attached module
+		 * @param updateSlipRates
+		 * @return
+		 */
+		public Builder updateSlipRates(boolean updateSlipRates) {
+			this.updateSlipRates = updateSlipRates;
+			return this;
+		}
+		
+		/**
 		 * Build target slip rates only
 		 * 
 		 * @return
@@ -526,7 +539,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			SectMFDCalculator calc = new SectMFDCalculator();
 			calc.calc(exec, refMFD, minMags, zeroRateAllowed, slipOnly, 0d);
 			// give the newly computed target slip rates to the rupture set for use in inversions
-			if (subSeisMoRateReduction != SubSeisMoRateReduction.FROM_INPUT_SLIP_RATES)
+			if (updateSlipRates && subSeisMoRateReduction != SubSeisMoRateReduction.FROM_INPUT_SLIP_RATES)
 				rupSet.addModule(calc.sectSlipRates);
 			if (slipOnly)
 				return new SupraSeisBValInversionTargetMFDs(rupSet, supraSeisBValue, sectSpecificBValues,
@@ -771,6 +784,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 
 					List<Double> mags = new ArrayList<>();
 					List<Integer> rups = new ArrayList<>();
+					List<Integer> zeroRateExcludedRups = new ArrayList<>();
 					// section minimum magnitude may be below the actual minimum magnitude, check that here
 					double minAbove = Double.POSITIVE_INFINITY;
 					// also, if we have a segmentation model, use the max mag that has a nonzero probability
@@ -791,6 +805,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 							}
 							if (zeroRateAllowed != null && !zeroRateAllowed.get(r)) {
 								numZeroRateExcluded++;
+								zeroRateExcludedRups.add(r);
 								continue;
 							}
 							minAbove = Math.min(mag, minAbove);
@@ -810,6 +825,30 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 								sectMaxSingleFaultMag = Math.max(sectMaxSingleFaultMag, mag);
 						} else {
 							numMinMagExcluded++;
+						}
+					}
+					if (rups.isEmpty() && creepReducedSlipRate > 0d && !zeroRateExcludedRups.isEmpty()) {
+						// Preserve a supra-seismogenic target for a positive-slip section if the zero-slip heuristic
+						// eliminated all otherwise branch-allowed ruptures that contain it.
+						System.err.println("WARNING: Section "+s+" has no ruptures after zero-slip filtering; restoring "
+								+zeroRateExcludedRups.size()+" otherwise allowed ruptures on "+sect.getSectionId()+". "+sect.getName());
+						for (int r : zeroRateExcludedRups) {
+							double mag = rupSet.getMagForRup(r);
+							minAbove = Math.min(mag, minAbove);
+							sectMaxMag = Math.max(sectMaxMag, mag);
+							mags.add(mag);
+							rups.add(r);
+							utilization.set(r);
+							sectRupInBinCounts[s][refMFD.getClosestXIndex(mag)]++;
+							boolean singleFault = true;
+							for (int rupSect : rupSet.getSectionsIndicesForRup(r)) {
+								if (rupSet.getFaultSectionData(rupSect).getParentSectionId() != parentID) {
+									singleFault = false;
+									break;
+								}
+							}
+							if (singleFault)
+								sectMaxSingleFaultMag = Math.max(sectMaxSingleFaultMag, mag);
 						}
 					}
 					sectRupUtilizations.add(utilization);
@@ -1645,9 +1684,17 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		return InversionTargetMFDs.Precomputed.class;
 	}
 	
+	public List<BitSet> getSectRupUtilizationsList() {
+		return sectRupUtilizations;
+	}
+	
+	public BitSet getSectRupUtilizations(int sectIndex) {
+		return sectRupUtilizations.get(sectIndex);
+	}
+	
 	public List<Integer> getRupturesForSect(int sectIndex) {
 		BitSet utilization = sectRupUtilizations.get(sectIndex);
-		List<Integer> rups = new ArrayList<>();
+		List<Integer> rups = new ArrayList<>(utilization.cardinality());
 		for (int r = utilization.nextSetBit(0); r >= 0; r = utilization.nextSetBit(r+1))
 		   rups.add(r);
 		return rups;
@@ -2016,6 +2063,35 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		equivB = SectBValuePlot.estBValue(minMag, maxMag, totRate, particMFD.getTotalMomentRate());
 		info += "\nTotal Participation Rate: "+(float)totRate+"\n\tb-value: "+(float)equivB;
 		mfd.setInfo(info);
+	}
+
+	@Override
+	public InversionTargetMFDs getForMergedRuptureSet(FaultSystemRupSet mergedRupSet,
+			MergedRupSetMappings mappings, List<InversionTargetMFDs> originalModules) {
+		InversionTargetMFDs ret = super.getForMergedRuptureSet(mergedRupSet, mappings, originalModules);
+		if (ret == null)
+			return null;
+		
+		// supra seis MFDs can override slip rates, so lets override those as well
+		double[] slipRates = new double[mergedRupSet.getNumSections()];
+		double[] slipRateStdDevs = new double[mergedRupSet.getNumSections()];
+		for (int i=0; i<originalModules.size(); i++) {
+			InversionTargetMFDs targets = originalModules.get(i);
+			if (!(targets instanceof SupraSeisBValInversionTargetMFDs))
+				return ret;
+			SectSlipRates subSlips = ((SupraSeisBValInversionTargetMFDs)targets).getSectSlipRates();
+			if (subSlips == null)
+				return ret;
+			for (int s=0; s<subSlips.size(); s++) {
+				int newIndex = mappings.getNewSectIndex(i, s);
+				slipRates[newIndex] = subSlips.getSlipRate(s);
+				slipRateStdDevs[newIndex] = subSlips.getSlipRateStdDev(s);
+			}
+		}
+		
+		mergedRupSet.addModule(SectSlipRates.precomputed(mergedRupSet, slipRates, slipRateStdDevs));
+		
+		return ret;
 	}
 
 }
