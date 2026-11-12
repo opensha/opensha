@@ -780,6 +780,9 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		double rateGain = getFaultSysRupRateGain(fltSystRupIndex);
 		boolean isPoisson = isFaultSysRupPoisson(fltSystRupIndex);
 		
+		if(isPoisson && rateGain != 1.0)
+			throw new RuntimeException("Poisson rateGain not equal 1.0; rateGain="+rateGain);
+		
 		Preconditions.checkState(isRateGainValid(rateGain, fltSystRupIndex, duration),
 				"Bad probGain=%s for rupIndex=%s, duration=%s", rateGain, fltSystRupIndex, duration);
 		

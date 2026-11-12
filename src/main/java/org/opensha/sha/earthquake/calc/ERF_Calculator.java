@@ -26,6 +26,7 @@ import org.opensha.sha.faultSurface.RupNodesCache;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Ints;
@@ -48,6 +49,23 @@ public class ERF_Calculator {
 	 * default class Constructor.
 	 */
 	public ERF_Calculator() {}
+
+	
+	/**
+	 * This computes the annualized total magnitude frequency distribution for the ERF.
+	 * Magnitudes that are out of the range specified are ignored.
+	 * @param eqkRupForecast - assumed to be updated before being passed in
+	 * @param min - for MagFreqDist x axis
+	 * @param max - for MagFreqDist x axis
+	 * @param num - for MagFreqDist x axis
+	 * @param preserveRates - if true rates are assigned to nearest discrete magnitude 
+	 * without modification,if false rates are adjusted to preserve moment rate.
+	 * @return
+	 */
+	public static SummedMagFreqDist getTotalMFD_ForERF(ERF eqkRupForecast, double min,double max,int num, boolean preserveRates, TectonicRegionType trt) {
+		return getTotalMFD_ForSourceRange(eqkRupForecast, min, max, num, preserveRates, 
+				0, eqkRupForecast.getNumSources()-1, trt);
+	}
 
 	/**
 	 * This computes the annualized total magnitude frequency distribution for the ERF.
@@ -78,14 +96,18 @@ public class ERF_Calculator {
 	 *        without modification,if false rates are adjusted to preserve moment rate.
 	 * @param firstSourceIndex - first index of sources to be included 
 	 * @param lastSourceIndex - last index of sources to be included 
+	 * @param TectonicRegionType - only sources with this TectonicRegionType are included
 	 * @return
 	 */
 	public static SummedMagFreqDist getTotalMFD_ForSourceRange(ERF eqkRupForecast, double min,double max,int num, 
-			boolean preserveRates, int firstSourceIndex, int lastSourceIndex) {
+			boolean preserveRates, int firstSourceIndex, int lastSourceIndex, TectonicRegionType trt) {
 		SummedMagFreqDist mfd = new SummedMagFreqDist(min,max,num);
 		double duration = eqkRupForecast.getTimeSpan().getDuration();
 		for(int s=firstSourceIndex;s<=lastSourceIndex;s++) {
 			ProbEqkSource src = eqkRupForecast.getSource(s);
+			if(trt != null)
+				if(src.getTectonicRegionType() != trt)
+					continue;
 			for(int r=0;r<src.getNumRuptures();r++) {
 				ProbEqkRupture rup = src.getRupture(r);
 				mfd.addResampledMagRate(rup.getMag(), rup.getMeanAnnualRate(duration), preserveRates);
@@ -93,6 +115,25 @@ public class ERF_Calculator {
 		}
 		return mfd;
 	}
+	
+	
+	/**
+	 * This sums over all tectonic regions types
+	 * @param eqkRupForecast
+	 * @param min
+	 * @param max
+	 * @param num
+	 * @param preserveRates
+	 * @param firstSourceIndex
+	 * @param lastSourceIndex
+	 * @return
+	 */
+	public static SummedMagFreqDist getTotalMFD_ForSourceRange(ERF eqkRupForecast, double min,double max,int num, 
+			boolean preserveRates, int firstSourceIndex, int lastSourceIndex) {
+		return getTotalMFD_ForSourceRange( eqkRupForecast,  min, max, num, 
+				 preserveRates,  firstSourceIndex,  lastSourceIndex, null);
+	}
+
 
 
 
