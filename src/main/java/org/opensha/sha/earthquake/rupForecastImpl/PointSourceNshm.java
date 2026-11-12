@@ -361,8 +361,8 @@ public class PointSourceNshm extends PoissonPointSource {
 		public WeightedList<SurfaceDistances> getCorrectedDistances(Location siteLoc, PointSurface surf,
 				TectonicRegionType trt, double mag, double horzDist) {
 			Location surfLoc = surf.getLocation();
+			double length = surf.getAveLength();
 			if (trt == TectonicRegionType.SUBDUCTION_SLAB) {
-				double length = surf.getAveLength();
 				if (!Double.isFinite(length) || length < 0d)
 					throw new IllegalStateException("Invalid slab rupture length: "+length);
 				if (length == 0d) {
@@ -375,7 +375,7 @@ public class PointSourceNshm extends PoissonPointSource {
 							new SurfaceDistances.Precomputed(siteLoc, rRup, corrJB, rX));
 				}
 			} else if (trt == TectonicRegionType.ACTIVE_SHALLOW && surfLoc.lon >= -115 && surfLoc.lon <= -100
-					&& surf.getAveLength() > 0d && surf.getAveRupTopDepth() > 4.9) {
+					&& length > 0d && surf.getAveRupTopDepth() > 4.9) {
 				// TODO: keep this hack? it's dirty and not sure if it changes things much
 				
 				// check for NSHM23.R2 hack where 2/3 of the sources were treated as "active" for GMMs (and thus
@@ -387,7 +387,7 @@ public class PointSourceNshm extends PoissonPointSource {
 				
 				// see if this rupture matches those
 				// but after applying the rounding that we typically apply...ugh
-				if (Precision.equals(DataUtils.roundSigFigs(surf.getAveLength(), 3), DataUtils.roundSigFigs(dims.length(), 3), 1e-1)
+				if (Precision.equals(DataUtils.roundSigFigs(length, 3), DataUtils.roundSigFigs(dims.length(), 3), 1e-1)
 						&& Precision.equals(DataUtils.roundSigFigs(surf.getAveRupTopDepth(), 3), DataUtils.roundSigFigs(dims.upperDepth(), 3), 1e-1)
 						&& Precision.equals(DataUtils.roundSigFigs(surf.getAveRupBottomDepth(), 3), DataUtils.roundSigFigs(dims.lowerDepth(), 3), 1e-1)) {
 					// it does, use the stable distance correction instead
@@ -397,9 +397,17 @@ public class PointSourceNshm extends PoissonPointSource {
 			}
 			// note: nshmp-haz still uses all of this logic for M<6, just with corrJB == horzDist, which will happen
 			// in getCorrectedDistanceJB
-			double corrJB = trt == TectonicRegionType.SUBDUCTION_SLAB
-					? getCorrectedDistanceJB(mag, horzDist, RJB_GEOMATRIX)
-					: getCorrectedDistanceJB(mag, horzDist, trt);
+			double corrJB;
+			if (trt == TectonicRegionType.SUBDUCTION_SLAB) {
+				corrJB = getCorrectedDistanceJB(mag, horzDist, RJB_GEOMATRIX);
+			} else if (length > 0d && Precision.equals(DataUtils.roundSigFigs(length, 3), DataUtils.roundSigFigs(WC94.getMedianLength(mag), 3), 1e-1)) {
+				// length is explicitly set to WC94, use that regardless of the TRT
+				// this allows the stable zone sources to use WC94 as parameterized in NSHM23
+				corrJB = getCorrectedDistanceJB(mag, horzDist, RJB_WC94LENGTH);
+			} else {
+				// TRT-dependent default
+				corrJB = getCorrectedDistanceJB(mag, horzDist, trt);
+			}
 			
 			double dip = surf.getAveDip();
 			
