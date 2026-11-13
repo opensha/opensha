@@ -41,6 +41,7 @@ import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.AggregationMethod;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
+import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchGenerationStrategy;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
 import com.google.common.base.Preconditions;
@@ -921,6 +922,7 @@ BranchAverageableModule<PlausibilityConfiguration> {
 			out.name("lameMu").value(calc.getLameMu());
 			out.name("coeffOfFriction").value(calc.getCoeffOfFriction());
 			out.name("patchAlignment").value(calc.getPatchAlignment().name());
+			out.name("patchGenerationStrategy").value(calc.getPatchGenerationStrategy().name());
 			out.name("selfStiffnessCap").value(calc.getSelfStiffnessCap());
 //			System.out.println("writing sub sect stiffness calc! cap="+calc.getSelfStiffnessCap());
 			out.endObject();
@@ -935,6 +937,7 @@ BranchAverageableModule<PlausibilityConfiguration> {
 			Double gridSpacing = null;
 			double selfStiffnessCap = 0d;
 			PatchAlignment alignment = SubSectStiffnessCalculator.alignment_default;
+			PatchGenerationStrategy strategy = PatchGenerationStrategy.STIRLING;
 			while (in.hasNext()) {
 				switch (in.nextName()) {
 				case "lameMu":
@@ -949,6 +952,9 @@ BranchAverageableModule<PlausibilityConfiguration> {
 				case "gridSpacing":
 					gridSpacing = in.nextDouble();
 					break;
+				case "patchGenerationStrategy":
+					strategy = PatchGenerationStrategy.valueOf(in.nextString());
+					break;
 				case "patchAlignment":
 					alignment = PatchAlignment.valueOf(in.nextString());
 					break;
@@ -957,6 +963,7 @@ BranchAverageableModule<PlausibilityConfiguration> {
 					break;
 
 				default:
+					in.skipValue();
 					break;
 				}
 			}
@@ -965,12 +972,14 @@ BranchAverageableModule<PlausibilityConfiguration> {
 				// see if it's the same
 				if (gridSpacing == prevCalc.getGridSpacing() && lambda == prevCalc.getLameLambda()
 						&& mu == prevCalc.getLameMu() && coeffOfFriction == prevCalc.getCoeffOfFriction()
-						&& selfStiffnessCap == prevCalc.getSelfStiffnessCap()) {
+						&& selfStiffnessCap == prevCalc.getSelfStiffnessCap()
+						&& alignment == prevCalc.getPatchAlignment()
+						&& strategy == prevCalc.getPatchGenerationStrategy()) {
 					return prevCalc;
 				}
 			}
 			SubSectStiffnessCalculator calc = new SubSectStiffnessCalculator(
-					subSects, gridSpacing, lambda, mu, coeffOfFriction, alignment, selfStiffnessCap);
+					subSects, gridSpacing, lambda, mu, coeffOfFriction, alignment, selfStiffnessCap, strategy);
 			prevCalc = calc;
 			return calc;
 		}

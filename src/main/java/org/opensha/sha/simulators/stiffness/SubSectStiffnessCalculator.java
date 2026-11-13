@@ -7,65 +7,40 @@ import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.zip.ZipException;
 
 import org.dom4j.DocumentException;
-import org.jfree.chart.ChartPanel;
 import org.jfree.chart.annotations.XYTextAnnotation;
-import org.jfree.chart.plot.CombinedRangeXYPlot;
-import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.Range;
-import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
-import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.geo.Location;
-import org.opensha.commons.geo.LocationUtils;
-import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.utm.UTM;
 import org.opensha.commons.gui.plot.GraphWidget;
 import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
-import org.opensha.commons.gui.plot.PlotElement;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
-import org.opensha.commons.util.ClassUtils;
-import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
-import org.opensha.commons.util.ExceptionUtils;
-import org.opensha.commons.util.IDPairing;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.cpt.CPTVal;
-import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
-import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
-import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.faultSurface.RuptureSurface;
-import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.AggregationMethod;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.StiffnessAggregation;
 import org.opensha.sha.simulators.stiffness.StiffnessCalc.Patch;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import com.google.common.collect.Lists;
-import com.google.common.primitives.Doubles;
+import com.google.common.hash.Hasher;
+import com.google.common.hash.Hashing;
 
 import scratch.UCERF3.utils.U3FaultSystemIO;
 
@@ -109,6 +84,14 @@ public class SubSectStiffnessCalculator {
 		}
 	}
 	
+	/** Geometry interpretation used to construct the fixed-size patches. */
+	public enum PatchGenerationStrategy {
+		STIRLING,
+		GENERIC
+	}
+
+	private final PatchGenerationStrategy patchGenerationStrategy;
+
 	public enum PatchAlignment {
 		CENTER,
 		FILL_OVERLAP
@@ -179,6 +162,17 @@ public class SubSectStiffnessCalculator {
 	public SubSectStiffnessCalculator(List<? extends FaultSection> subSects, double gridSpacing,
 			double lameLambda, double lameMu, double coeffOfFriction, PatchAlignment alignment,
 			double selfStiffnessCap) {
+		this(subSects, gridSpacing, lameLambda, lameMu, coeffOfFriction, alignment,
+				selfStiffnessCap, PatchGenerationStrategy.STIRLING);
+	}
+
+	/** Constructs a calculator with an explicit surface interpretation strategy. */
+	public SubSectStiffnessCalculator(List<? extends FaultSection> subSects, double gridSpacing,
+			double lameLambda, double lameMu, double coeffOfFriction, PatchAlignment alignment,
+			double selfStiffnessCap, PatchGenerationStrategy strategy) {
+		Preconditions.checkArgument(Double.isFinite(gridSpacing) && gridSpacing > 0, "Invalid patch spacing: %s", gridSpacing);
+		this.patchGenerationStrategy = Preconditions.checkNotNull(strategy);
+		Preconditions.checkNotNull(alignment);
 		this.subSects = subSects;
 		this.gridSpacing = gridSpacing;
 		this.lameLambda = lameLambda;
@@ -228,6 +222,7 @@ public class SubSectStiffnessCalculator {
 	
 	public synchronized void setPatchAlignment(PatchAlignment alignment) {
 		if (this.alignment != alignment) {
+			Preconditions.checkNotNull(alignment);
 			patchesMap = null;
 			this.alignment = alignment;
 			clearCaches();
@@ -249,190 +244,39 @@ public class SubSectStiffnessCalculator {
 	 * @return
 	 */
 	public List<PatchLocation> buildPatches(FaultSection sect) {
-		switch (alignment) {
-		case CENTER:
-			return buildCenterPatches(sect);
-		case FILL_OVERLAP:
-			return buildFillOverlapPatches(sect);
+		SubSectPatchBuilder builder = patchGenerationStrategy == PatchGenerationStrategy.STIRLING
+				? new StirlingSubSectPatchBuilder(gridSpacing, utmZone, utmChar, isApplyAseisReduction())
+				: new GenericSubSectPatchBuilder(gridSpacing, utmZone, utmChar, isApplyAseisReduction());
+		return builder.buildPatches(sect, alignment);
+	}
 
-		default:
-			throw new IllegalStateException("Patch alignment not supported: "+alignment);
-		}
-	}
-	
-	private List<PatchLocation> buildCenterPatches(FaultSection sect) {
-		// super sample the surface
-		double hiResSpacing = gridSpacing/10d;
-		StirlingGriddedSurface surf = new StirlingGriddedSurface(
-				sect.getSimpleFaultData(isApplyAseisReduction()), hiResSpacing, hiResSpacing);
-		
-		double surfLength = surf.getAveLength();
-		double surfWidth = surf.getAveWidth();
-//		System.out.println(sect.getName()+" dimensions: "+surfLength+" x "+surfWidth);
-		int numAS = Integer.max(1, (int)(surfLength/gridSpacing));
-		int numDD = Integer.max(1, (int)(surfWidth/gridSpacing));
-		double outerSpacingAS = surfLength/numAS;
-		double outerSpacingDD = surfWidth/numDD;
-		
-//		System.out.println("numAS="+numAS+", outerSpacing="+outerSpacingAS);
-//		System.out.println("numDD="+numDD+", outerSpacing="+outerSpacingDD);
-		
-		double aveDip = surf.getAveDip();
-		double aveRake = sect.getAveRake();
-		
-		List<PatchLocation> myPatches = new ArrayList<>();
-		
-		double halfSpacingKM = gridSpacing*0.5;
-		double dipRad = Math.toRadians(aveDip);
-		
-		for (int i=0; i<numAS; i++) {
-			// we want the middle so add 0.5 to index
-			double das = outerSpacingAS*(i+0.5);
-			for (int j=0; j<numDD; j++) {
-				double ddw = outerSpacingDD*(j+0.5);
-				
-				PatchLocation patchLoc = buildPatch(surf, aveDip, aveRake, halfSpacingKM, dipRad, das, ddw);
-				myPatches.add(patchLoc);
-			}
-		}
-		return myPatches;
-	}
-	
-	private List<PatchLocation> buildFillOverlapPatches(FaultSection sect) {
-		// super sample the surface
-		double hiResSpacing = gridSpacing/10d;
-		RuptureSurface surf = sect.getFaultSurface(hiResSpacing, false, isApplyAseisReduction());
-		if (!(surf instanceof StirlingGriddedSurface)) {
-			System.err.println("WARNING: "+sect.getSectionName()+" provides a "
-					+ClassUtils.getClassNameWithoutPackage(surf.getClass())+" rather than a StirlingGriddedSurface; "
-					+ "Coulomb calculations may be innacurate.");
-		}
-		Preconditions.checkState(surf instanceof AbstractEvenlyGriddedSurface, "Currently only support Coulomb calculations for "
-				+ "AbstractEvenlyGriddedSurface instances, have %s for %s",
-				ClassUtils.getClassNameWithoutPackage(surf.getClass()), sect.getSectionName());
-//		StirlingGriddedSurface surf = new StirlingGriddedSurface(
-//				sect.getSimpleFaultData(false), hiResSpacing, hiResSpacing);
-		
-		double surfLength = surf.getAveLength();
-		double surfWidth = surf.getAveWidth();
-		
-		List<Double> dasCenters = calcFullOverlapCenters(surfLength, gridSpacing);
-		List<Double> dasWidths = calcFullOverlapCenters(surfWidth, gridSpacing);
-		
-//		System.out.println("DAS centers: ["+Joiner.on(",").join(dasWidths)+"]");
-//		System.out.println("DDW centers: ["+Joiner.on(",").join(dasWidths)+"]");
-		
-		double aveDip = surf.getAveDip();
-		double aveRake = sect.getAveRake();
-		
-		List<PatchLocation> myPatches = new ArrayList<>();
-		
-		double halfSpacingKM = gridSpacing*0.5;
-		double dipRad = Math.toRadians(aveDip);
-		
-		for (double das : dasCenters) {
-			for (double ddw : dasWidths) {
-				PatchLocation patchLoc = buildPatch((AbstractEvenlyGriddedSurface)surf, aveDip, aveRake, halfSpacingKM, dipRad, das, ddw);
-				myPatches.add(patchLoc);
-			}
-		}
-		return myPatches;
-	}
-	
 	public boolean isApplyAseisReduction() {
 		return false;
 	}
-	
-	private static List<Double> calcFullOverlapCenters(double length, double gridSpacing) {
-		List<Double> centers = new ArrayList<>();
-		if (length <= gridSpacing) {
-			centers.add(0.5*length);
-			return centers;
-		}
-		double firstCenter = 0.5*gridSpacing;
-		double lastCenter = length - 0.5*gridSpacing;
-		centers.add(firstCenter);
-		double residual = length - 2*gridSpacing;
-		if (residual > 0) {
-//			// we have extra in the middle that we need to fill
-//			int numMiddles = (int)Math.ceil(residual/gridSpacing);
-//			double totExcess = numMiddles*gridSpacing - residual;
-//			Preconditions.checkState(totExcess < gridSpacing);
-//			Preconditions.checkState(totExcess >= 0);
-//			double excessEach = totExcess / (numMiddles + 1);
-//			double firstEdge = gridSpacing - excessEach;
-//			double curEdge = firstEdge;
-//			for (int i=0; i<numMiddles; i++) {
-//				centers.add(firstEdge + 0.5*gridSpacing);
-//				curEdge += gridSpacing;
-//			}
-//			double calcLastEdge = (length - gridSpacing + excessEach);
-//			Preconditions.checkState((float)curEdge == (float)calcLastEdge,
-//					"middle alignment is messed up. len=%s, residual=%s, numMiddles=%s\n\ttotExcess= %s, "
-//					+ "excessEach=%s, firstEdge=%s, lastEdge=%s, expected lastEdge=%s",
-//					length, residual, numMiddles, totExcess, excessEach, firstEdge, curEdge, calcLastEdge);
-			
-			// we have extra in the middle that we need to fill
-			int numMiddles = (int)Math.ceil(residual/gridSpacing);
-			if (numMiddles == 1) {
-				// just put it in the very middle
-				centers.add(length*0.5);
-			} else {
-				// more complicated, we need to space it out for equal overlap
-				
-				// this is the length between the center of the first and last ones
-				double subLength = length - gridSpacing;
-				// this is the center-to-center spacing
-				double subSpacing = subLength/(2 + numMiddles - 1);
-				for (int i=0; i<numMiddles; i++)
-					centers.add(firstCenter + subSpacing*(i+1));
-				double lastMiddleCenter = centers.get(centers.size()-1);
-				double calcLastCenter = lastMiddleCenter + subSpacing;
-				Preconditions.checkState((float)calcLastCenter == (float)lastCenter,
-						"middle alignment is off for length=%s, spacing=%s.\n\tcalcLast=%s != last=%s"
-						+ "\n\tresidual=%s, subLen=%s, numMiddles=%s, subSpacing=%s"
-						+ "\n\tcenters excluding end: %s",
-						length, gridSpacing, calcLastCenter, lastCenter, residual, subLength, numMiddles,
-						subSpacing, centers);
-			}
-		}
-		
-		centers.add(lastCenter);
-		return centers;
+
+	public PatchGenerationStrategy getPatchGenerationStrategy() {
+		return patchGenerationStrategy;
 	}
 
-	private PatchLocation buildPatch(AbstractEvenlyGriddedSurface surf, double aveDip, double aveRake,
-			double halfSpacingKM, double dipRad, double das, double ddw) {
-		Location center = surf.getInterpolatedLocation(das, ddw);
-		double strike = surf.getStrikeAtDAS(das);
-		
-		FocalMechanism mech = new FocalMechanism(strike, aveDip, aveRake);
-		// use the input grid spacing instead. this will be less than or equal
-		// to the full grid spacing, and ensures that the moment is identical for
-		// all patches across all subsections
-		double lengthM = gridSpacing*1000d; // km -> m
-		double widthM = lengthM;
-		Patch patch = new Patch(center, utmZone, utmChar, lengthM, widthM, mech);
-		Location[] corners = new Location[4];
-		// locs above are bounding corners, switch to the real patch corners
-		LocationVector alongStrikeHalfForward = new LocationVector(strike, halfSpacingKM, 0d);
-		LocationVector alongStrikeHalfBackward = new LocationVector(strike, -halfSpacingKM, 0d);
-		double halfDipVert =  Math.sin(dipRad)*halfSpacingKM;
-		double halfDipHorz = Math.cos(dipRad)*halfSpacingKM;
-		LocationVector downDipHalf = new LocationVector(strike+90d, halfDipHorz, halfDipVert);
-		LocationVector upDipHalf = new LocationVector(strike-90d, halfDipHorz, -halfDipVert);
-		corners[0] = LocationUtils.location(LocationUtils.location(center, upDipHalf),
-				alongStrikeHalfBackward); // upper left
-		corners[1] = LocationUtils.location(LocationUtils.location(center, upDipHalf),
-				alongStrikeHalfForward); // upper right
-		corners[2] = LocationUtils.location(LocationUtils.location(center, downDipHalf),
-				alongStrikeHalfForward); // bottom right
-		corners[3] = LocationUtils.location(LocationUtils.location(center, downDipHalf),
-				alongStrikeHalfBackward); // bottom left
-		PatchLocation patchLoc = new PatchLocation(patch, center, corners);
-		return patchLoc;
+	/** Fingerprint of the actual ordered patches, including mechanisms and Cartesian frame. */
+	String getPatchGeometryFingerprint() {
+		checkInitPatches();
+		Hasher hash = Hashing.sha256().newHasher();
+		hash.putInt(utmZone).putChar(utmChar).putBoolean(isApplyAseisReduction());
+		for (FaultSection section : subSects) {
+			List<PatchLocation> patches = patchesMap.get(section);
+			hash.putInt(section.getSectionId()).putInt(patches.size());
+			for (PatchLocation location : patches) {
+				Patch patch = location.patch;
+				for (double value : patch.center) hash.putDouble(value);
+				hash.putDouble(patch.L).putDouble(patch.W).putDouble(patch.strike)
+					.putDouble(patch.dip).putDouble(patch.rake);
+			}
+		}
+		return hash.hash().toString();
 	}
-	
+
+
 	private void checkInitPatches() {
 		if (patchesMap == null) {
 			synchronized (this) {
@@ -909,312 +753,6 @@ public class SubSectStiffnessCalculator {
 		}
 	}
 	
-//	public static class StiffnessResult {
-//		// metadata, can be either section or parent section IDs
-//		public final int sourceID;
-//		public final int receiverID;
-//		public final StiffnessType type;
-//		
-//		/**
-//		 * Statistics across all interactions between N source patches and M receiver patches
-//		 */
-//		public final StiffnessStats allInteractionStats;
-//		
-//		/**
-//		 * Array of receiver net values, summed across all sources
-//		 */
-//		public final double[] receiverSums;
-//		
-//		/**
-//		 * Statistics across all receiver sums
-//		 */
-//		public final StiffnessStats receiverPatchStats;
-//		
-//		/**
-//		 * 
-//		 * @param sourceID source ID
-//		 * @param receiverID receiver ID
-//		 * @param vals stiffness values, organized as [receiverIndex][sourceIndex]
-//		 * @param type stiffness type
-//		 */
-//		public StiffnessResult(int sourceID, int receiverID,
-//				double[][] vals, StiffnessType type) {
-//			this.sourceID = sourceID;
-//			this.receiverID = receiverID;
-//			this.type = type;
-//			
-//			this.allInteractionStats = new StiffnessStats(vals);
-//			
-//			this.receiverSums = new double[vals.length];
-//			for (int r=0; r<vals.length; r++)
-//				for (int s=0; s<vals[r].length; s++)
-//					receiverSums[r] += vals[r][s];
-//			
-//			this.receiverPatchStats = new StiffnessStats(receiverSums);
-//		}
-//		
-//		/**
-//		 * Aggregated stiffness results across multiple subsection pairs
-//		 * 
-//		 * @param sourceID source ID
-//		 * @param receiverID receiver ID
-//		 * @param results stiffness results from all relevant subsection pairs
-//		 * @param type stiffness type
-//		 */
-//		public StiffnessResult(int sourceID, int receiverID,
-//				List<StiffnessResult> results, StiffnessType type) {
-//			this(sourceID, receiverID, results, null, type);
-//		}
-//		
-//		/**
-//		 * Aggregated stiffness results across multiple subsection pairs
-//		 * 
-//		 * @param sourceID source ID
-//		 * @param receiverID receiver ID
-//		 * @param results stiffness results from all relevant subsection pairs
-//		 * @param weights for each result, or null for equal weighting (only affects 
-//		 * @param type stiffness type
-//		 */
-//		public StiffnessResult(int sourceID, int receiverID,
-//				List<StiffnessResult> results, List<Double> weights, StiffnessType type) {
-//			this.sourceID = sourceID;
-//			this.receiverID = receiverID;
-//			this.type = type;
-//			
-//			List<StiffnessStats> allList = new ArrayList<>();
-//			List<StiffnessStats> patchList = new ArrayList<>();
-//			
-//			for (StiffnessResult result : results) {
-//				allList.add(result.allInteractionStats);
-//				patchList.add(result.receiverPatchStats);
-//			}
-//			
-//			this.allInteractionStats = new StiffnessStats(allList);
-//			
-//			// don't bother with receiver values with aggregated results
-//			this.receiverSums = null;
-//			
-//			this.receiverPatchStats = new StiffnessStats(patchList);
-//		}
-//		
-//		@Override
-//		public String toString() {
-//			StringBuilder str = new StringBuilder();
-//			str.append("[").append(sourceID).append("=>").append(receiverID).append("] ");
-//			str.append(type.name).append(":\tallInteractions=["+allInteractionStats+"]\treceiverSums=["+receiverPatchStats+"]");
-//			return str.toString();
-//		}
-//	}
-//	
-//	public static class StiffnessStats {
-//		public final int numValues;
-//		public final double mean;
-//		public final double median;
-//		public final double min;
-//		public final double max;
-//		public final double sum;
-//		public final double fractPositive;
-//		public final double fractSingular;
-//		
-//		public StiffnessStats(double[] vals) {
-//			this(new double[][] { vals });
-//		}
-//		
-//		public StiffnessStats(double[][] vals) {
-//			int numSingular = 0;
-//			double min = Double.POSITIVE_INFINITY;
-//			double max = Double.NEGATIVE_INFINITY;
-//			double fractPositive = 0d;
-//			double sum = 0d;
-//			List<Double> nonSingularSortedVals = new ArrayList<>();
-//			int count = 0;
-//			for (double[] innerVals : vals) {
-//				for (double val : innerVals) {
-//					count++;
-//					if (Double.isNaN(val)) {
-//						numSingular++;
-//					} else {
-//						min = Math.min(min, val);
-//						max = Math.max(max, val);
-//						sum += val;
-//						if (val >= 0)
-//							fractPositive += 1d;
-//						int index = Collections.binarySearch(nonSingularSortedVals, val);
-//						if (index < 0)
-//							index = -(index+1);
-//						nonSingularSortedVals.add(index, val);
-//					}
-//				}
-//			}
-//			int nonSingular = count - numSingular;
-//			fractPositive /= (double)count;
-//			this.mean = sum/(double)nonSingular;
-//			this.median = DataUtils.median_sorted(Doubles.toArray(nonSingularSortedVals));
-//			this.min = min;
-//			this.max = max;
-//			this.fractPositive = fractPositive;
-//			this.fractSingular = (double)numSingular/(double)count;
-//			this.numValues = count;
-//			this.sum = sum;
-//		}
-//		
-//		public StiffnessStats(List<StiffnessStats> stats) {
-//			this(stats, null);
-//		}
-//		
-//		public StiffnessStats(List<StiffnessStats> stats, List<Double> weights) {
-//			Preconditions.checkState(!stats.isEmpty(), "Need at least 1 stiffness result to aggregate");
-//			Preconditions.checkState(weights == null || weights.size() == stats.size(), "Weights list size mismatch");
-//			// combine
-//			double min = Double.POSITIVE_INFINITY;
-//			double max = Double.NEGATIVE_INFINITY;
-//			// will sum mean & medians across all
-//			double mean = 0d;
-//			double median = 0d;
-//			double sum = 0d;
-//			// will average fractions
-//			double fractPositive = 0d;
-//			double fractSingular = 0d;
-//			
-//			int num = 0;
-//			
-//			double sumWeights = 0d;
-//			for (int i=0; i<stats.size(); i++) {
-//				double weight = weights == null ? 1d : weights.get(i);
-//				sumWeights += weight;
-//				
-//				StiffnessStats stat = stats.get(i);
-//				min = Math.min(min, stat.min);
-//				max = Math.max(max, stat.max);
-//				mean += stat.mean;
-//				median += stat.median;
-//				num += stat.numValues;
-//				sum += stat.sum;
-//				fractPositive += stat.fractPositive*weight;
-//				fractSingular += stat.fractSingular*weight;
-//			}
-//			
-//			fractPositive /= sumWeights;
-//			fractSingular /= sumWeights;
-//			
-//			this.mean = mean;
-//			this.median = median;
-//			this.min = min;
-//			this.max = max;
-//			this.fractPositive = fractPositive;
-//			this.fractSingular = fractSingular;
-//			this.numValues = num;
-//			this.sum = sum;
-//		}
-//		
-//		public StiffnessStats(int numValues, double mean, double median, double min, double max, double sum,
-//				double fractPositive, double fractSingular) {
-//			super();
-//			this.numValues = numValues;
-//			this.mean = mean;
-//			this.median = median;
-//			this.min = min;
-//			this.max = max;
-//			this.sum = sum;
-//			this.fractPositive = fractPositive;
-//			this.fractSingular = fractSingular;
-//		}
-//		
-//		@Override
-//		public String toString() {
-//			StringBuilder str = new StringBuilder();
-//			str.append("mean=").append((float)mean);
-//			str.append("\tmedian=").append((float)median);
-//			str.append("\tsum=").append((float)sum);
-//			str.append("\trange=[").append((float)min).append(",").append((float)max).append("]");
-//			str.append("\tfractPositive=").append((float)fractPositive);
-//			str.append("\tfractSingular=").append((float)fractSingular);
-//			return str.toString();
-//		}
-//	}
-//	
-//	public int calcCacheSize() {
-//		if (cache == null)
-//			return 0;
-//		int cached = 0;
-//		for (int i=0; i<cache.length; i++)
-//			for (int j=0; j<cache.length; j++)
-//				if (cache[i][j] != null)
-//					cached++;
-//		return cached;
-//	}
-//	
-//	public String getCacheFileName(StiffnessType type) {
-//		DecimalFormat df = new DecimalFormat("0.##");
-//		return type.name().toLowerCase()+"_cache_"+subSects.size()+"sects_"+df.format(gridSpacing)
-//			+"km_lambda"+df.format(lameLambda)+"_mu"+df.format(lameMu)+"_coeff"+(float)coeffOfFriction
-//			+"_align"+alignment.name()+".csv";
-//	}
-//	
-//	public void writeCacheFile(File cacheFile, StiffnessType type) throws IOException {
-//		CSVFile<String> csv = new CSVFile<>(true);
-//		csv.addLine("Source ID", "Receiver ID", "Mean", "Median", "Min", "Max", "Fraction Positive",
-//				"Fraction Singular", "Num Values", "Sum");
-//		for (int i=0; i<cache.length; i++) {
-//			for (int j=0; j<cache.length; j++) {
-//				if (cache[i][j] != null && cache[i][j][type.arrayIndex] != null) {
-//					StiffnessResult stiffness = cache[i][j][type.arrayIndex];
-//					csv.addLine(stiffness.sourceID+"", stiffness.receiverID+"", stiffness.mean+"",
-//							stiffness.median+"", stiffness.min+"", stiffness.max+"",
-//							stiffness.fractPositive+"", stiffness.fractSingular+"", stiffness.numValues+"",
-//							stiffness.sum+"");
-//				}
-//			}
-//		}
-//		csv.writeToFile(cacheFile);
-//	}
-//	
-//	public int loadCacheFile(File cacheFile, StiffnessType type) throws IOException {
-//		System.out.println("Loading "+type+" cache from "+cacheFile.getAbsolutePath()+"...");
-//		CSVFile<String> csv = CSVFile.readFile(cacheFile, true);
-//		checkInitCache();
-//		for (int row=1; row<csv.getNumRows(); row++) {
-//			int sourceID = csv.getInt(row, 0);
-//			int receiverID = csv.getInt(row, 1);
-//			double mean = csv.getDouble(row, 2);
-//			double median = csv.getDouble(row, 3);
-//			double min = csv.getDouble(row, 4);
-//			double max = csv.getDouble(row, 5);
-//			double fractPositive = csv.getDouble(row, 6);
-//			double fractSingular = csv.getDouble(row, 7);
-//			int numValues = csv.getInt(row, 8);
-//			double sum;
-//			if (csv.getNumCols() == 9)
-//				// infer sum from mean
-//				sum = mean*Math.round(numValues*(1d-fractSingular));
-//			else
-//				sum = csv.getDouble(row, 9);
-//			
-//			if (cache[sourceID][receiverID] == null)
-//				cache[sourceID][receiverID] = new StiffnessResult[3];
-//			cache[sourceID][receiverID][type.arrayIndex] = new StiffnessResult(
-//					sourceID, receiverID, mean, median, min, max, sum, fractPositive, fractSingular,
-//					type, numValues);
-//		}
-//		System.out.println("Loaded "+(csv.getNumRows()-1)+" values");
-//		return csv.getNumRows()-1;
-//	}
-//	
-//	public void copyCacheFrom(SubSectStiffnessCalculator o) {
-//		if (o.cache == null)
-//			return;
-//		if (cache == null) {
-//			// direct copy
-//			cache = o.cache;
-//			return;
-//		}
-//		Preconditions.checkState(cache.length == o.cache.length);
-//		for (int i=0; i<cache.length; i++)
-//			for (int j=0; j<cache[i].length; j++)
-//				if (cache[i][j] == null)
-//					cache[i][j] = o.cache[i][j];
-//	}
-	
 	public synchronized AggregatedStiffnessCache getAggregationCache(StiffnessType type) {
 		if (caches == null)
 			caches = new AggregatedStiffnessCache[StiffnessType.values().length];
@@ -1224,6 +762,7 @@ public class SubSectStiffnessCalculator {
 	}
 	
 	public synchronized void clearCaches() {
+		selfStiffnessCache = null;
 		if (caches != null)
 			for (AggregatedStiffnessCache cache : caches)
 				if (cache != null)
