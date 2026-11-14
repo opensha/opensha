@@ -33,6 +33,9 @@ import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.cpt.CPTVal;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
+import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.AggregationMethod;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.StiffnessAggregation;
 import org.opensha.sha.simulators.stiffness.StiffnessCalc.Patch;
@@ -86,6 +89,8 @@ public class SubSectStiffnessCalculator {
 	
 	/** Geometry interpretation used to construct the fixed-size patches. */
 	public enum PatchGenerationStrategy {
+		/** Choose separately for each supplied surface; this is the default. */
+		AUTO,
 		STIRLING,
 		GENERIC
 	}
@@ -163,15 +168,18 @@ public class SubSectStiffnessCalculator {
 			double lameLambda, double lameMu, double coeffOfFriction, PatchAlignment alignment,
 			double selfStiffnessCap) {
 		this(subSects, gridSpacing, lameLambda, lameMu, coeffOfFriction, alignment,
-				selfStiffnessCap, PatchGenerationStrategy.STIRLING);
+				selfStiffnessCap, PatchGenerationStrategy.AUTO);
 	}
 
-	/** Constructs a calculator with an explicit surface interpretation strategy. */
+	/**
+	 * Constructs a calculator with a surface interpretation strategy. A null strategy
+	 * is equivalent to AUTO; explicit STIRLING and GENERIC selections are honored.
+	 */
 	public SubSectStiffnessCalculator(List<? extends FaultSection> subSects, double gridSpacing,
 			double lameLambda, double lameMu, double coeffOfFriction, PatchAlignment alignment,
 			double selfStiffnessCap, PatchGenerationStrategy strategy) {
 		Preconditions.checkArgument(Double.isFinite(gridSpacing) && gridSpacing > 0, "Invalid patch spacing: %s", gridSpacing);
-		this.patchGenerationStrategy = Preconditions.checkNotNull(strategy);
+		this.patchGenerationStrategy = strategy == null ? PatchGenerationStrategy.AUTO : strategy;
 		Preconditions.checkNotNull(alignment);
 		this.subSects = subSects;
 		this.gridSpacing = gridSpacing;
@@ -244,16 +252,27 @@ public class SubSectStiffnessCalculator {
 	 * @return
 	 */
 	public List<PatchLocation> buildPatches(FaultSection sect) {
-		SubSectPatchBuilder builder = patchGenerationStrategy == PatchGenerationStrategy.STIRLING
-				? new StirlingSubSectPatchBuilder(gridSpacing, utmZone, utmChar, isApplyAseisReduction())
-				: new GenericSubSectPatchBuilder(gridSpacing, utmZone, utmChar, isApplyAseisReduction());
-		return builder.buildPatches(sect, alignment);
+		// Resolve and build from the same instance, preserving spacing and aseismicity
+		// settings even for section implementations that do not cache their surfaces.
+		RuptureSurface surface = sect.getFaultSurface(gridSpacing/10d, false, isApplyAseisReduction());
+		Preconditions.checkState(surface instanceof EvenlyGriddedSurface,
+				"Patch generation requires EvenlyGriddedSurface; section %s supplies %s",
+				sect.getSectionName(), surface == null ? "null" : surface.getClass().getName());
+		PatchGenerationStrategy resolved = patchGenerationStrategy;
+		if (resolved == PatchGenerationStrategy.AUTO)
+			resolved = surface instanceof StirlingGriddedSurface
+					? PatchGenerationStrategy.STIRLING : PatchGenerationStrategy.GENERIC;
+		SubSectPatchBuilder builder = resolved == PatchGenerationStrategy.STIRLING
+				? new StirlingSubSectPatchBuilder(gridSpacing, utmZone, utmChar)
+				: new GenericSubSectPatchBuilder(gridSpacing, utmZone, utmChar);
+		return builder.buildPatches(sect, (EvenlyGriddedSurface)surface, alignment);
 	}
 
 	public boolean isApplyAseisReduction() {
 		return false;
 	}
 
+	/** Returns the configured strategy; AUTO may resolve differently for each section. */
 	public PatchGenerationStrategy getPatchGenerationStrategy() {
 		return patchGenerationStrategy;
 	}

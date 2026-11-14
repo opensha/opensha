@@ -140,9 +140,9 @@ public class AggregatedStiffnessCache {
 		if (calc.getSelfStiffnessCap() > 0)
 			ret += "_stiffCap"+df.format(calc.getSelfStiffnessCap())+"x";
 		ret += "_gen"+calc.getPatchGenerationStrategy().name()+"_v"
-				+(calc.getPatchGenerationStrategy() == SubSectStiffnessCalculator.PatchGenerationStrategy.GENERIC
+				+(calc.getPatchGenerationStrategy() != SubSectStiffnessCalculator.PatchGenerationStrategy.STIRLING
 						? GenericSubSectPatchBuilder.VERSION : 1);
-		if (calc.getPatchGenerationStrategy() == SubSectStiffnessCalculator.PatchGenerationStrategy.GENERIC)
+		if (calc.getPatchGenerationStrategy() != SubSectStiffnessCalculator.PatchGenerationStrategy.STIRLING)
 			ret += "_geom"+calc.getPatchGeometryFingerprint();
 		return ret+".csv";
 	}

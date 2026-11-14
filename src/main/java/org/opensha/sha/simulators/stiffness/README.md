@@ -1,20 +1,30 @@
 # Surface-based subsection patches
 
-`SubSectStiffnessCalculator` supports two explicit patch-generation strategies.
-Existing constructors select `STIRLING`. To opt into the generic builder:
+`SubSectStiffnessCalculator` defaults to `PatchGenerationStrategy.AUTO`:
 
 ```java
 SubSectStiffnessCalculator calc = new SubSectStiffnessCalculator(
         subSections, 2d, 3e4, 3e4, 0.5,
-        PatchAlignment.FILL_OVERLAP, 1d, PatchGenerationStrategy.GENERIC);
+        PatchAlignment.FILL_OVERLAP, 1d);
 ```
 
-Both strategies request the section's supplied surface with the calculator's
-aseismicity setting. `STIRLING` requires `StirlingGriddedSurface` for both
-alignments; it does not substitute a simpler surface. `GENERIC` uses only the
-`EvenlyGriddedSurface` interface, including interior rows. Nominal spacings and
-average dip do not determine local geometry. Elastic calculations and aggregation
-are shared. The generic strategy remains opt-in pending real-model validation.
+For each section, the calculator requests its surface once with the requested
+spacing and aseismicity setting. AUTO selects `STIRLING` for a
+`StirlingGriddedSurface`, otherwise `GENERIC`. Selection and construction use the
+same returned instance. Mixed models may use different builders per section.
+Surfaces must implement `EvenlyGriddedSurface`; other surface types fail with a
+clear diagnostic.
+
+The strategy-taking constructor still accepts explicit `STIRLING` or `GENERIC`
+overrides. Passing `null` is equivalent to AUTO. `getPatchGenerationStrategy()`
+returns the configured mode, including AUTO, rather than a model-wide resolution.
+
+`STIRLING` requires `StirlingGriddedSurface` for both alignments; it does not
+substitute a simpler surface. `GENERIC` can also be explicitly selected for a
+Stirling surface, and uses only the `EvenlyGriddedSurface` interface, including
+interior rows. Nominal spacings and average dip do not determine its local
+geometry. Elastic calculations and aggregation are shared. The generic geometry
+still needs real-model plausibility and near-field validation.
 
 ## Classes
 
@@ -122,7 +132,7 @@ cannot be found. Depth constraints can increase boundary gaps near a tip.
 The suite covers interface-only and approximate surfaces, triangles, arch cutouts,
 planar skew, neighboring skewed sections, listric geometry, frame invariance to
 sampling density, inverse interpolation, global along-strike and depth limits, invalid projections,
-configuration/cache behavior, and far-field Coulomb spacing refinement.
+configuration/cache behavior, automatic per-surface dispatch, and far-field Coulomb spacing refinement.
 
 `GenericPatchDiagnostics.main(outputDirectory)` exports CSV files for reference
 nodes, physical centers/corners, logical grid identities, represented areas, and
@@ -138,9 +148,11 @@ self-intersection detection in 3D are not guaranteed. Collapsed boundary tips ar
 supported; collapsed interiors and single-row/column surfaces are rejected.
 Real-model plausibility and near-field spacing comparisons remain outstanding.
 
-Plausibility JSON records the strategy; older JSON defaults to `STIRLING`. Cache
-filenames include a generation version (currently generic v6) and generic keys
-fingerprint ordered physical patches and mechanisms. Older cache filenames are
+Plausibility JSON records the configured strategy. Missing or null fields default
+to AUTO; explicit STIRLING and GENERIC fields retain their meaning. Cache filenames
+include the configured mode and a generation version (currently generic v6).
+AUTO and GENERIC keys fingerprint ordered physical patches and mechanisms, so
+mixed-model and surface-geometry changes cannot reuse the same geometry key. Older cache filenames are
 not selected automatically. Explicit loading of an arbitrary cache file remains
 the caller's responsibility. Alignment changes clear self-stiffness and aggregate
 caches.

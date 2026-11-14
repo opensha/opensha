@@ -937,7 +937,7 @@ BranchAverageableModule<PlausibilityConfiguration> {
 			Double gridSpacing = null;
 			double selfStiffnessCap = 0d;
 			PatchAlignment alignment = SubSectStiffnessCalculator.alignment_default;
-			PatchGenerationStrategy strategy = PatchGenerationStrategy.STIRLING;
+			PatchGenerationStrategy strategy = PatchGenerationStrategy.AUTO;
 			while (in.hasNext()) {
 				switch (in.nextName()) {
 				case "lameMu":
@@ -953,7 +953,12 @@ BranchAverageableModule<PlausibilityConfiguration> {
 					gridSpacing = in.nextDouble();
 					break;
 				case "patchGenerationStrategy":
-					strategy = PatchGenerationStrategy.valueOf(in.nextString());
+					if (in.peek() == JsonToken.NULL) {
+						in.nextNull();
+						strategy = PatchGenerationStrategy.AUTO;
+					} else {
+						strategy = PatchGenerationStrategy.valueOf(in.nextString());
+					}
 					break;
 				case "patchAlignment":
 					alignment = PatchAlignment.valueOf(in.nextString());

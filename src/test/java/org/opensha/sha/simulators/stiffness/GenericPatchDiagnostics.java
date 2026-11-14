@@ -25,7 +25,7 @@ public class GenericPatchDiagnostics {
 	private static void write(Path directory,String name,EvenlyGriddedSurface surface) throws IOException {
 		for (PatchAlignment alignment : PatchAlignment.values()) {
 			String prefix=name+"_"+alignment.name().toLowerCase(Locale.ROOT);
-			GenericSubSectPatchBuilder.Layout layout=new GenericSubSectPatchBuilder(2,11,'S',false).buildLayout(surface,90,alignment);
+			GenericSubSectPatchBuilder.Layout layout=new GenericSubSectPatchBuilder(2,11,'S').buildLayout(surface,90,alignment);
 			GriddedSurfaceGeometry geometry=layout.frame.geometry;
 			double area=0;
 			for (int r=0; r<geometry.rows-1; r++) for (int c=0; c<geometry.cols-1; c++) area+=geometry.cellArea(r,c);

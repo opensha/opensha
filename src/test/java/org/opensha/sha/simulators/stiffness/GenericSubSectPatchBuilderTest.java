@@ -97,7 +97,7 @@ public class GenericSubSectPatchBuilderTest {
 		assertEquals(6*4,java.util.stream.IntStream.range(0,4).mapToDouble(r ->
 				java.util.stream.IntStream.range(0,3).mapToDouble(c -> geometry.cellArea(r,c)).sum()).sum(),0.001);
 		for (PatchAlignment alignment : PatchAlignment.values()) {
-			List<PatchLocation> patches=new GenericSubSectPatchBuilder(2,ZONE,LETTER,false).buildPatches(surface,90,alignment);
+			List<PatchLocation> patches=new GenericSubSectPatchBuilder(2,ZONE,LETTER).buildPatches(surface,90,alignment);
 			assertFalse(patches.isEmpty());
 			for (PatchLocation patch : patches) {
 				assertEquals(4e6,patch.patch.area,0);
@@ -122,7 +122,7 @@ public class GenericSubSectPatchBuilderTest {
 			assertTrue(frame.contains(x,4));
 			frame.sample(x,4);
 		}
-		assertFalse(new GenericSubSectPatchBuilder(2,ZONE,LETTER,false)
+		assertFalse(new GenericSubSectPatchBuilder(2,ZONE,LETTER)
 				.buildPatches(surface,0,PatchAlignment.FILL_OVERLAP).isEmpty());
 	}
 
@@ -130,7 +130,7 @@ public class GenericSubSectPatchBuilderTest {
 		EvenlyGriddedSurface surface=surface(10,new double[] {8,8,8},new double[] {80,60,40,20},5);
 		GriddedSurfaceGeometry geometry=new GriddedSurfaceGeometry(surface,ZONE,LETTER);
 		for (int r=0; r<4; r++) assertEquals(80-20*r,geometry.interpolate(r+0.5,1).dip,0.002);
-		List<PatchLocation> patches=new GenericSubSectPatchBuilder(2,ZONE,LETTER,false)
+		List<PatchLocation> patches=new GenericSubSectPatchBuilder(2,ZONE,LETTER)
 				.buildPatches(surface,0,PatchAlignment.FILL_OVERLAP);
 		double min=patches.stream().mapToDouble(p->p.patch.dip).min().getAsDouble();
 		double max=patches.stream().mapToDouble(p->p.patch.dip).max().getAsDouble();
@@ -143,12 +143,12 @@ public class GenericSubSectPatchBuilderTest {
 		lower.add(location(4,-2,9)); lower.add(location(4,10,9));
 		ApproxEvenlyGriddedSurface surface=new ApproxEvenlyGriddedSurface(upper,lower,0.2);
 		for (PatchAlignment alignment : PatchAlignment.values())
-			assertFalse(new GenericSubSectPatchBuilder(2,ZONE,LETTER,false).buildPatches(surface,90,alignment).isEmpty());
+			assertFalse(new GenericSubSectPatchBuilder(2,ZONE,LETTER).buildPatches(surface,90,alignment).isEmpty());
 	}
 
 	@Test public void shallowPatchesStayBelowFreeSurface() {
 		EvenlyGriddedSurface surface=surface(6,new double[] {4,4,4},new double[] {90,90},0);
-		for (PatchLocation p : new GenericSubSectPatchBuilder(2,ZONE,LETTER,false)
+		for (PatchLocation p : new GenericSubSectPatchBuilder(2,ZONE,LETTER)
 				.buildPatches(surface,0,PatchAlignment.FILL_OVERLAP))
 			for (double[] corner : p.patch.corner) assertTrue(corner[2] <= 1e-6);
 	}
@@ -167,7 +167,7 @@ public class GenericSubSectPatchBuilderTest {
 		for (double[] widths : new double[][] {{0,2,4,6,8}, {8,6,4,2,0}}) {
 			EvenlyGriddedSurface surface=surface(12,widths,new double[] {45,45,45,45},5);
 			for (PatchAlignment alignment : PatchAlignment.values()) {
-				GenericSubSectPatchBuilder.Layout layout=new GenericSubSectPatchBuilder(2,ZONE,LETTER,false)
+				GenericSubSectPatchBuilder.Layout layout=new GenericSubSectPatchBuilder(2,ZONE,LETTER)
 						.buildLayout(surface,90,alignment);
 				assertFalse(layout.patches.isEmpty());
 				for (double[] xy : layout.referenceCenters)
@@ -207,7 +207,7 @@ public class GenericSubSectPatchBuilderTest {
 		FaultSection section=section(surface(6,new double[] {4,4,4},new double[] {45,45},5));
 		for (PatchAlignment alignment : PatchAlignment.values()) {
 			try {
-				new SubSectStiffnessCalculator(List.of(section),2,30000,30000,0.5,alignment,0).buildPatches(section);
+				new SubSectStiffnessCalculator(List.of(section),2,30000,30000,0.5,alignment,0,PatchGenerationStrategy.STIRLING).buildPatches(section);
 				fail("Expected STIRLING type check");
 			} catch (IllegalStateException expected) {
 				assertTrue(expected.getMessage().contains("Use GENERIC"));
@@ -235,8 +235,13 @@ public class GenericSubSectPatchBuilderTest {
 		oldObject.remove("patchGenerationStrategy");
 		String oldJson=oldObject.toString();
 		SubSectStiffnessCalculator old=gson.fromJson(oldJson,SubSectStiffnessCalculator.class);
-		assertEquals(PatchGenerationStrategy.STIRLING,old.getPatchGenerationStrategy());
+		assertEquals(PatchGenerationStrategy.AUTO,old.getPatchGenerationStrategy());
 		assertNotSame(b,old);
+		assertEquals(PatchGenerationStrategy.AUTO,gson.fromJson(gson.toJson(old),SubSectStiffnessCalculator.class).getPatchGenerationStrategy());
+		oldObject.add("patchGenerationStrategy",com.google.gson.JsonNull.INSTANCE);
+		assertEquals(PatchGenerationStrategy.AUTO,gson.fromJson(oldObject,SubSectStiffnessCalculator.class).getPatchGenerationStrategy());
+		oldObject.addProperty("patchGenerationStrategy","STIRLING");
+		assertEquals(PatchGenerationStrategy.STIRLING,gson.fromJson(oldObject,SubSectStiffnessCalculator.class).getPatchGenerationStrategy());
 	}
 
 	@Test public void alignmentInvalidatesSelfStiffness() {
@@ -272,7 +277,7 @@ public class GenericSubSectPatchBuilderTest {
 	@Test public void sameGeometryDifferentGridResolution() {
 		EvenlyGriddedSurface coarse=surface(12,new double[] {8,8,8},new double[] {45,45},5);
 		EvenlyGriddedSurface fine=surface(12,new double[] {8,8,8,8,8},new double[] {45,45,45,45},5);
-		GenericSubSectPatchBuilder builder=new GenericSubSectPatchBuilder(2,ZONE,LETTER,false);
+		GenericSubSectPatchBuilder builder=new GenericSubSectPatchBuilder(2,ZONE,LETTER);
 		for (PatchAlignment alignment : PatchAlignment.values()) {
 			List<PatchLocation> a=builder.buildPatches(coarse,90,alignment);
 			List<PatchLocation> b=builder.buildPatches(fine,90,alignment);
@@ -296,7 +301,7 @@ public class GenericSubSectPatchBuilderTest {
 				});
 		double[] values=new double[2];
 		for (int i=0; i<2; i++) {
-			GenericSubSectPatchBuilder builder=new GenericSubSectPatchBuilder(i == 0 ? 2 : 1,ZONE,LETTER,false);
+			GenericSubSectPatchBuilder builder=new GenericSubSectPatchBuilder(i == 0 ? 2 : 1,ZONE,LETTER);
 			List<PatchLocation> sources=builder.buildPatches(source,90,PatchAlignment.FILL_OVERLAP);
 			List<PatchLocation> receivers=builder.buildPatches(receiver,90,PatchAlignment.FILL_OVERLAP);
 			for (PatchLocation r : receivers) for (PatchLocation s : sources) {
@@ -317,13 +322,13 @@ public class GenericSubSectPatchBuilderTest {
 			lower.add(location(4,-lowerLength*0.5,9)); lower.add(location(4,lowerLength*0.5,9));
 			ApproxEvenlyGriddedSurface surface=new ApproxEvenlyGriddedSurface(upper,lower,0.2);
 			for (PatchAlignment alignment : PatchAlignment.values())
-				assertFalse(new GenericSubSectPatchBuilder(2,ZONE,LETTER,false).buildPatches(surface,90,alignment).isEmpty());
+				assertFalse(new GenericSubSectPatchBuilder(2,ZONE,LETTER).buildPatches(surface,90,alignment).isEmpty());
 		}
 	}
 
 	@Test public void singleRowSurfaceRejectedClearly() {
 		try {
-			new GenericSubSectPatchBuilder(2,ZONE,LETTER,false).buildPatches(
+			new GenericSubSectPatchBuilder(2,ZONE,LETTER).buildPatches(
 					surface(6,new double[] {4,4},new double[0],5),90,PatchAlignment.FILL_OVERLAP);
 			fail("Expected invalid surface");
 		} catch (IllegalArgumentException expected) {
@@ -379,7 +384,7 @@ public class GenericSubSectPatchBuilderTest {
 
 	@Test public void skewedSidesHaveNeutralBoundaryCounts() {
 		EvenlyGriddedSurface surface=skewedSurface();
-		GenericSubSectPatchBuilder.Layout layout=new GenericSubSectPatchBuilder(2,ZONE,LETTER,false)
+		GenericSubSectPatchBuilder.Layout layout=new GenericSubSectPatchBuilder(2,ZONE,LETTER)
 				.buildLayout(surface,90,PatchAlignment.FILL_OVERLAP);
 		assertTrue(Double.isFinite(layout.maxBoundaryCorrection));
 		java.util.Set<String> cells=new java.util.HashSet<>();
@@ -400,7 +405,7 @@ public class GenericSubSectPatchBuilderTest {
 		for (EvenlyGriddedSurface surface : List.of(skewedSurface(),
 				surface(12,new double[] {0,2,4,6,8},new double[] {45,45,45,45},5),
 				surface(20,new double[] {10,10,2,2,10,10},new double[] {60,60,60,60},5))) {
-			GenericSubSectPatchBuilder.Layout layout=new GenericSubSectPatchBuilder(2,ZONE,LETTER,false)
+			GenericSubSectPatchBuilder.Layout layout=new GenericSubSectPatchBuilder(2,ZONE,LETTER)
 					.buildLayout(surface,90,PatchAlignment.FILL_OVERLAP);
 			ProjectedPatchCoverage coverage=new ProjectedPatchCoverage(layout,2);
 			assertEquals(0,coverage.interiorUncoveredArea,1e-10);
@@ -471,7 +476,7 @@ public class GenericSubSectPatchBuilderTest {
 				shallow=Math.min(shallow,depth); deep=Math.max(deep,depth);
 			}
 			for (PatchAlignment alignment : PatchAlignment.values()) {
-				var patches=new GenericSubSectPatchBuilder(2,ZONE,LETTER,false).buildPatches(surface,90,alignment);
+				var patches=new GenericSubSectPatchBuilder(2,ZONE,LETTER).buildPatches(surface,90,alignment);
 				for (PatchLocation patch : patches) for (double[] corner : patch.patch.corner) {
 					assertTrue(-corner[2] >= shallow*1000-1e-5);
 					assertTrue(-corner[2] <= deep*1000+1e-5);
@@ -482,11 +487,11 @@ public class GenericSubSectPatchBuilderTest {
 
 	@Test public void exactAndUndersizedDepthFits() {
 		EvenlyGriddedSurface exact=surface(6,new double[] {2,2,2},new double[] {90,90},5);
-		assertFalse(new GenericSubSectPatchBuilder(2,ZONE,LETTER,false).buildPatches(exact,90,PatchAlignment.FILL_OVERLAP).isEmpty());
+		assertFalse(new GenericSubSectPatchBuilder(2,ZONE,LETTER).buildPatches(exact,90,PatchAlignment.FILL_OVERLAP).isEmpty());
 		for (double top : new double[] {0,5}) {
 			EvenlyGriddedSurface undersized=surface(6,new double[] {1,1,1},new double[] {90,90},top);
 			for (PatchAlignment alignment : PatchAlignment.values()) {
-				var patches=new GenericSubSectPatchBuilder(2,ZONE,LETTER,false).buildPatches(undersized,90,alignment);
+				var patches=new GenericSubSectPatchBuilder(2,ZONE,LETTER).buildPatches(undersized,90,alignment);
 				assertFalse(patches.isEmpty());
 				for (PatchLocation patch : patches) {
 					assertEquals(4e6,patch.patch.area,0);
@@ -504,7 +509,7 @@ public class GenericSubSectPatchBuilderTest {
 		Location[][] shifted=new Location[first.getNumRows()][first.getNumCols()];
 		for (int r=0; r<shifted.length; r++) for (int c=0; c<shifted[0].length; c++)
 			shifted[r][c]=geometry.location(geometry.point(r,c).add(new org.apache.commons.math3.geometry.euclidean.threed.Vector3D(0,12,0)));
-		GenericSubSectPatchBuilder builder=new GenericSubSectPatchBuilder(2,ZONE,LETTER,false);
+		GenericSubSectPatchBuilder builder=new GenericSubSectPatchBuilder(2,ZONE,LETTER);
 		List<PatchLocation> a=builder.buildPatches(first,90,PatchAlignment.FILL_OVERLAP);
 		List<PatchLocation> b=builder.buildPatches(nodes(shifted),90,PatchAlignment.FILL_OVERLAP);
 		assertEquals(24,a.size()); assertEquals(24,b.size());
@@ -522,7 +527,7 @@ public class GenericSubSectPatchBuilderTest {
 
 	@Test public void disconnectedIntervalsStaySeparateEvenWithinOneGridSpacing() {
 		var surface=surface(4,new double[] {8,8,6,8,8},new double[] {45,45,45,45},5);
-		var layout=new GenericSubSectPatchBuilder(2,ZONE,LETTER,false).buildLayout(surface,90,PatchAlignment.FILL_OVERLAP);
+		var layout=new GenericSubSectPatchBuilder(2,ZONE,LETTER).buildLayout(surface,90,PatchAlignment.FILL_OVERLAP);
 		java.util.List<Integer> bottom=new java.util.ArrayList<>();
 		for (int i=0; i<layout.gridIndices.size(); i++) if (layout.gridIndices.get(i)[0] == 3) bottom.add(i);
 		assertEquals(2,bottom.size());
@@ -541,7 +546,7 @@ public class GenericSubSectPatchBuilderTest {
 				surface(12,new double[] {0,2,4,6,8},new double[] {45,45,45,45},5),
 				surface(12,new double[] {8,6,4,2,0},new double[] {45,45,45,45},5))) {
 			for (PatchAlignment alignment : PatchAlignment.values()) {
-				var layout=new GenericSubSectPatchBuilder(2,ZONE,LETTER,false).buildLayout(surface,90,alignment);
+				var layout=new GenericSubSectPatchBuilder(2,ZONE,LETTER).buildLayout(surface,90,alignment);
 				for (PatchLocation patch : layout.patches) for (double[] corner : patch.patch.corner) {
 					double x=layout.frame.project(new org.apache.commons.math3.geometry.euclidean.threed.Vector3D(corner).scalarMultiply(0.001))[0];
 					assertTrue(x >= layout.frame.minX-1e-8);
@@ -554,7 +559,7 @@ public class GenericSubSectPatchBuilderTest {
 	@Test public void triangleSingletonHonorsStraightOuterEdge() {
 		for (boolean reverse : new boolean[] {false,true}) {
 			double[] widths=reverse ? new double[] {8,6,4,2,0} : new double[] {0,2,4,6,8};
-			var layout=new GenericSubSectPatchBuilder(2,ZONE,LETTER,false).buildLayout(
+			var layout=new GenericSubSectPatchBuilder(2,ZONE,LETTER).buildLayout(
 					surface(12,widths,new double[] {45,45,45,45},5),90,PatchAlignment.FILL_OVERLAP);
 			java.util.List<Integer> bottom=new java.util.ArrayList<>();
 			for (int i=0; i<layout.gridIndices.size(); i++) if (layout.gridIndices.get(i)[0] == 3) bottom.add(i);
@@ -572,7 +577,7 @@ public class GenericSubSectPatchBuilderTest {
 
 	@Test public void exactAndUndersizedAlongStrikeFits() {
 		for (double length : new double[] {0.5,2}) for (PatchAlignment alignment : PatchAlignment.values()) {
-			var layout=new GenericSubSectPatchBuilder(2,ZONE,LETTER,false).buildLayout(
+			var layout=new GenericSubSectPatchBuilder(2,ZONE,LETTER).buildLayout(
 					surface(length,new double[] {1,1,1},new double[] {90,90},0),90,alignment);
 			assertFalse(layout.patches.isEmpty());
 			for (PatchLocation patch : layout.patches) {

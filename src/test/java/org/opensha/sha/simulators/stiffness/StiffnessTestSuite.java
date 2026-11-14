@@ -4,5 +4,5 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
 @RunWith(Suite.class)
-@Suite.SuiteClasses({GenericSubSectPatchBuilderTest.class})
+@Suite.SuiteClasses({GenericSubSectPatchBuilderTest.class, AutoPatchGenerationTest.class})
 public class StiffnessTestSuite {}

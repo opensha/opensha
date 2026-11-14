@@ -7,7 +7,6 @@ import org.opensha.commons.geo.Location;
 import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.simulators.stiffness.GriddedSurfaceGeometry.SurfacePoint;
 import org.opensha.sha.simulators.stiffness.StiffnessCalc.Patch;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
@@ -21,23 +20,17 @@ final class GenericSubSectPatchBuilder implements SubSectPatchBuilder {
 	private final double spacing;
 	private final int zone;
 	private final char letter;
-	private final boolean aseis;
 
-	GenericSubSectPatchBuilder(double spacing, int zone, char letter, boolean aseis) {
+	GenericSubSectPatchBuilder(double spacing, int zone, char letter) {
 		this.spacing=spacing;
 		this.zone=zone;
 		this.letter=letter;
-		this.aseis=aseis;
 	}
 
 	@Override
-	public List<PatchLocation> buildPatches(FaultSection section, PatchAlignment alignment) {
-		RuptureSurface surface=section.getFaultSurface(spacing/10d, false, aseis);
-		Preconditions.checkArgument(surface instanceof EvenlyGriddedSurface,
-				"GENERIC requires EvenlyGriddedSurface; section %s supplies %s",
-				section.getSectionName(),surface.getClass().getName());
+	public List<PatchLocation> buildPatches(FaultSection section, EvenlyGriddedSurface surface, PatchAlignment alignment) {
 		try {
-			return buildPatches((EvenlyGriddedSurface)surface, section.getAveRake(), alignment);
+			return buildPatches(surface, section.getAveRake(), alignment);
 		} catch (IllegalArgumentException | IllegalStateException e) {
 			throw new IllegalStateException("Cannot build GENERIC patches for section "
 					+section.getSectionId()+" ("+section.getSectionName()+"): "+e.getMessage(),e);

@@ -8,7 +8,7 @@ import org.opensha.commons.geo.LocationVector;
 import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.simulators.stiffness.StiffnessCalc.Patch;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
@@ -20,29 +20,23 @@ final class StirlingSubSectPatchBuilder implements SubSectPatchBuilder {
 	private final double gridSpacing;
 	private final int utmZone;
 	private final char utmChar;
-	private final boolean aseis;
 
-	StirlingSubSectPatchBuilder(double gridSpacing, int utmZone, char utmChar, boolean aseis) {
+	StirlingSubSectPatchBuilder(double gridSpacing, int utmZone, char utmChar) {
 		this.gridSpacing = gridSpacing;
 		this.utmZone = utmZone;
 		this.utmChar = utmChar;
-		this.aseis = aseis;
-	}
-
-	private StirlingGriddedSurface surface(FaultSection section) {
-		RuptureSurface surface = section.getFaultSurface(gridSpacing/10d, false, aseis);
-		Preconditions.checkState(surface instanceof StirlingGriddedSurface,
-				"STIRLING patch generation requires StirlingGriddedSurface; section %s supplies %s. Use GENERIC.",
-				section.getSectionName(), surface.getClass().getName());
-		return (StirlingGriddedSurface)surface;
 	}
 
 	@Override
-	public List<PatchLocation> buildPatches(FaultSection section, PatchAlignment alignment) {
-		return alignment == PatchAlignment.CENTER ? buildCenterPatches(section) : buildFillOverlapPatches(section);
+	public List<PatchLocation> buildPatches(FaultSection section, EvenlyGriddedSurface surface, PatchAlignment alignment) {
+		Preconditions.checkState(surface instanceof StirlingGriddedSurface,
+				"STIRLING patch generation requires StirlingGriddedSurface; section %s supplies %s. Use GENERIC or AUTO.",
+				section.getSectionName(), surface.getClass().getName());
+		StirlingGriddedSurface stirling = (StirlingGriddedSurface)surface;
+		return alignment == PatchAlignment.CENTER ? buildCenterPatches(section, stirling) : buildFillOverlapPatches(section, stirling);
 	}
-	private List<PatchLocation> buildCenterPatches(FaultSection sect) {
-		StirlingGriddedSurface surf = surface(sect);
+
+	private List<PatchLocation> buildCenterPatches(FaultSection sect, StirlingGriddedSurface surf) {
 
 		double surfLength = surf.getAveLength();
 		double surfWidth = surf.getAveWidth();
@@ -73,8 +67,7 @@ final class StirlingSubSectPatchBuilder implements SubSectPatchBuilder {
 		return myPatches;
 	}
 	
-	private List<PatchLocation> buildFillOverlapPatches(FaultSection sect) {
-		StirlingGriddedSurface surf = surface(sect);
+	private List<PatchLocation> buildFillOverlapPatches(FaultSection sect, StirlingGriddedSurface surf) {
 
 		double surfLength = surf.getAveLength();
 		double surfWidth = surf.getAveWidth();
