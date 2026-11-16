@@ -945,7 +945,9 @@ public class Region implements Serializable, XMLSaveable, Named {
 		// constructors that perform other checks on inputs
 		checkArgument(!area.isEmpty(), "Internally computed Area is empty");
 		checkArgument(area.isSingular(),
-			"Internally computed Area is not a single closed path");
+//			"Internally computed Area is not a single closed path");
+			"Internally computed Area is not a single closed path."
+			+ "\n\tNOTE/TODO: this may be Java 21+ bug JDK-8386576, to be hopefully backported in 21.0.14 and 25.0.6.");
 
 		return area;
 	}
