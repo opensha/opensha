@@ -30,6 +30,7 @@ final class SurfaceReferenceFrame {
 	final double[][] nodeX, nodeY;
 	final double minX=0, minY=0, maxX, maxY;
 	final double minimumEdgeRatio, minimumAreaRatio, rmsPlaneDistance;
+	final double maxPlaneDistance;
 	private final Vector3D origin, along, down;
 	private final double offsetX, offsetY;
 	private final List<double[]> boundary=new ArrayList<>();
@@ -79,7 +80,7 @@ final class SurfaceReferenceFrame {
 		Vector3D direction=geometry.point((geometry.rows-1)*0.5,geometry.cols-1)
 				.subtract(geometry.point((geometry.rows-1)*0.5,0));
 		Vector3D strike=new Vector3D(-normal.getY(),normal.getX(),0);
-		if (strike.getNorm() < 1e-8) strike=direction.subtract(normal.scalarMultiply(direction.dotProduct(normal)));
+		if (strike.getNorm() < EPS) strike=direction.subtract(normal.scalarMultiply(direction.dotProduct(normal)));
 		Preconditions.checkArgument(strike.getNorm() > EPS,"Undefined reference strike");
 		strike=strike.normalize();
 		if (strike.dotProduct(direction) < 0) strike=strike.negate();
@@ -87,13 +88,15 @@ final class SurfaceReferenceFrame {
 		down=along.crossProduct(normal).normalize();
 		nodeX=new double[geometry.rows][geometry.cols];
 		nodeY=new double[geometry.rows][geometry.cols];
-		double lowX=Double.POSITIVE_INFINITY, lowY=lowX, highX=-lowX, highY=-lowX;
+		double lowX=Double.POSITIVE_INFINITY, lowY=lowX, highX=-lowX, highY=-lowX, maxOffset=0;
 		for (int r=0; r<geometry.rows; r++) for (int c=0; c<geometry.cols; c++) {
 			Vector3D p=geometry.point(r,c).subtract(origin);
+			maxOffset=Math.max(maxOffset,Math.abs(p.dotProduct(normal)));
 			nodeX[r][c]=p.dotProduct(along); nodeY[r][c]=p.dotProduct(down);
 			lowX=Math.min(lowX,nodeX[r][c]); highX=Math.max(highX,nodeX[r][c]);
 			lowY=Math.min(lowY,nodeY[r][c]); highY=Math.max(highY,nodeY[r][c]);
 		}
+		maxPlaneDistance=maxOffset;
 		offsetX=lowX; offsetY=lowY;
 		maxX=highX-lowX; maxY=highY-lowY;
 		for (int r=0; r<geometry.rows; r++) for (int c=0; c<geometry.cols; c++) {
@@ -144,6 +147,11 @@ final class SurfaceReferenceFrame {
 		minimumAreaRatio=areaRatio;
 	}
 
+	/** Copy for callers that clip areas; never expose the frame's mutable outline. */
+	Path2D.Double outlineCopy() {
+		return (Path2D.Double)outline.clone();
+	}
+
 	double[] project(Vector3D point) {
 		Vector3D p=point.subtract(origin);
 		return new double[] {p.dotProduct(along)-offsetX,p.dotProduct(down)-offsetY};
@@ -169,6 +177,10 @@ final class SurfaceReferenceFrame {
 	 */
 	private Area depthCenterDomain(double spacing) {
 		Area centers=new Area(domain);
+		// Plane-depth strips are exact only for planar geometry (allowing the
+		// centimeter precision of coordinate conversion). Curved surfaces use
+		// the builder's actual 3D corner clearance, not this restrictive proxy.
+		if (maxPlaneDistance > 1e-5) return centers;
 		if (Math.abs(down.getZ()) < 1e-8) return centers;
 		double shallow=Math.max(0,geometry.minDepth), deep=geometry.maxDepth;
 		double halfDepth=0.5*spacing*Math.abs(down.getZ());
@@ -253,7 +265,8 @@ final class SurfaceReferenceFrame {
 		return geometry.point(indices[0],indices[1]);
 	}
 
-	private double[] indices(double x,double y) {
+	/** Original fractional row/column coordinates, also used to identify physical columns. */
+	double[] indices(double x,double y) {
 		List<int[]> candidates=buckets.get(key(bucket(Math.max(0,x)),bucket(Math.max(0,y))));
 		if (candidates != null) for (int[] cell : candidates) {
 			int r=cell[0], c=cell[1];

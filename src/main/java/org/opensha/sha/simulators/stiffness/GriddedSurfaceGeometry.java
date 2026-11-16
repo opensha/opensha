@@ -13,6 +13,7 @@ import com.google.common.base.Preconditions;
  * spacings are deliberately unused. Bilinear interpolation includes all four nodes.
  */
 final class GriddedSurfaceGeometry {
+	private static final double EDGE_NORMAL_TOLERANCE_KM = 1e-5; // 1 cm UTM rounding
 	final int rows, cols;
 	final double minDepth, maxDepth;
 	final double[][] distances;
@@ -87,19 +88,53 @@ final class GriddedSurfaceGeometry {
 		double v = row-r, u = col-c;
 		Vector3D along = new Vector3D(1-v, points[r][c+1].subtract(points[r][c]),
 				v, points[r+1][c+1].subtract(points[r+1][c]));
-		Vector3D down = new Vector3D(1-u, points[r+1][c].subtract(points[r][c]),
-				u, points[r+1][c+1].subtract(points[r][c+1]));
-		Vector3D normal = down.crossProduct(along);
+		Vector3D normal = sharedEdgeNormal(row, col, cellNormal(r, c, u, v));
 		Preconditions.checkState(normal.getNorm() > 1e-12, "Undefined tangent at (%s,%s)", row, col);
 		normal = normal.normalize();
 		Preconditions.checkState(normal.getZ() >= -1e-5,
 				"Overturned or inconsistently ordered cell at (%s,%s)", row, col);
-		double dip = Math.toDegrees(Math.acos(Math.min(1d, Math.max(0d, normal.getZ()))));
+		// atan2 retains small dips that acos loses when Z rounds near one.
+		double dip = Math.toDegrees(Math.atan2(Math.hypot(normal.getX(),normal.getY()), Math.max(0d,normal.getZ())));
 		// Horizontal planes have no unique strike; retain grid ordering there.
 		double strike = normal.getX()*normal.getX()+normal.getY()*normal.getY() < 1e-16
 				? Math.toDegrees(Math.atan2(along.getX(), along.getY()))
 				: Math.toDegrees(Math.atan2(-normal.getY(), normal.getX()));
 		return new SurfacePoint(point(row, col), (strike+360d)%360d, dip);
+	}
+
+	/** Raw bilinear tangents: u is fractional column, v is fractional row. */
+	private Vector3D cellNormal(int r, int c, double u, double v) {
+		Vector3D along = new Vector3D(1-v, points[r][c+1].subtract(points[r][c]),
+				v, points[r+1][c+1].subtract(points[r+1][c]));
+		Vector3D down = new Vector3D(1-u, points[r+1][c].subtract(points[r][c]),
+				u, points[r+1][c+1].subtract(points[r][c+1]));
+		return down.crossProduct(along);
+	}
+
+	/** Equal unit-normal weights avoid making the edge mechanism depend on cell area. */
+	private Vector3D sharedEdgeNormal(double row, double col, Vector3D normal) {
+		int r = before(row, rows), c = before(col, cols);
+		double v = row-r, u = col-c;
+		// A shared edge has two one-sided tangents. Average unit normals only
+		// within the centimeter precision of the Cartesian conversion; do not
+		// smooth genuine curvature over the patch size.
+		Vector3D sum=Vector3D.ZERO;
+		int nearRow=(int)Math.rint(row), nearCol=(int)Math.rint(col);
+		boolean rowEdge=nearRow > 0 && nearRow < rows-1
+				&& point(row,col).distance(point(nearRow,col)) <= EDGE_NORMAL_TOLERANCE_KM;
+		boolean colEdge=nearCol > 0 && nearCol < cols-1
+				&& point(row,col).distance(point(row,nearCol)) <= EDGE_NORMAL_TOLERANCE_KM;
+		if (rowEdge || colEdge) {
+			int firstRow=rowEdge ? nearRow-1 : r, lastRow=rowEdge ? nearRow : r;
+			int firstCol=colEdge ? nearCol-1 : c, lastCol=colEdge ? nearCol : c;
+			for (int rr=firstRow; rr<=lastRow; rr++) for (int cc=firstCol; cc<=lastCol; cc++) {
+				double vv=rowEdge ? nearRow-rr : v, uu=colEdge ? nearCol-cc : u;
+				Vector3D n=cellNormal(rr, cc, uu, vv);
+				if (n.getNorm() > 1e-12) sum=sum.add(n.normalize());
+			}
+			if (sum.getNorm() > 1e-12) normal=sum;
+		}
+		return normal;
 	}
 
 	double rowAtDistance(int col, double distance) {
@@ -132,6 +167,7 @@ final class GriddedSurfaceGeometry {
 		return Math.min(size-2, (int)index);
 	}
 
+	/** Cartesian center in km (Z up); strike and dip in degrees. */
 	static final class SurfacePoint {
 		final Vector3D center;
 		final double strike, dip;

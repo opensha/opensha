@@ -15,11 +15,41 @@ public class GenericPatchDiagnostics {
 	public static void main(String[] args) throws IOException {
 		Path directory=Path.of(args[0]);
 		Files.createDirectories(directory);
-		write(directory,"rectangle",GenericSubSectPatchBuilderTest.surface(12,new double[] {8,8,8,8,8},new double[] {45,45,45,45},5));
-		write(directory,"triangle",GenericSubSectPatchBuilderTest.surface(12,new double[] {0,2,4,6,8},new double[] {45,45,45,45},5));
-		write(directory,"undulating",GenericSubSectPatchBuilderTest.surface(20,new double[] {10,10,2,2,10,10},new double[] {60,60,60,60},5));
-		write(directory,"skewed",GenericSubSectPatchBuilderTest.skewedSurface());
-		write(directory,"listric",GenericSubSectPatchBuilderTest.surface(12,new double[] {8,8,8,8,8},new double[] {80,60,40,20},5));
+		java.util.Map<String,EvenlyGriddedSurface> cases=new java.util.LinkedHashMap<>();
+		String selection=args.length > 1 ? args[1] : "original";
+		if (!selection.equals("pathological")) {
+			cases.put("rectangle",GenericSubSectPatchBuilderTest.surface(12,new double[] {8,8,8,8,8},new double[] {45,45,45,45},5));
+			cases.put("triangle",GenericSubSectPatchBuilderTest.surface(12,new double[] {0,2,4,6,8},new double[] {45,45,45,45},5));
+			cases.put("undulating",GenericSubSectPatchBuilderTest.surface(20,new double[] {10,10,2,2,10,10},new double[] {60,60,60,60},5));
+			cases.put("skewed",GenericSubSectPatchBuilderTest.skewedSurface());
+			cases.put("listric",GenericSubSectPatchBuilderTest.surface(12,new double[] {8,8,8,8,8},new double[] {80,60,40,20},5));
+		}
+		if (selection.equals("pathological") || selection.equals("all")) cases.putAll(PathologicalSurfaceFixtures.examples());
+		for (var entry : cases.entrySet()) {
+			write(directory,entry.getKey(),entry.getValue());
+			writeRefinement(directory,entry.getKey(),entry.getValue());
+		}
+	}
+
+	/** Same fixed remote receivers at all source spacings; no self-stiffness cap. */
+	private static void writeRefinement(Path directory,String name,EvenlyGriddedSurface surface) throws IOException {
+		try (PrintWriter out=new PrintWriter(Files.newBufferedWriter(directory.resolve(name+"_refinement.csv")))) {
+			out.println("spacing,patches,source_area,receiver_0_cff,receiver_1_cff,receiver_2_cff");
+			for (double spacing : new double[] {2,1,0.5}) {
+				var patches=new GenericSubSectPatchBuilder(spacing,11,'S').buildPatches(surface,90,PatchAlignment.FILL_OVERLAP);
+				double[] values=new double[3];
+				for (int r=0; r<3; r++) {
+					var receiver=new StiffnessCalc.Patch(new double[] {530000+10000*r,3800000-5000*r,-10000},2000,2000,
+							new org.opensha.sha.earthquake.FocalMechanism(10,50,90));
+					for (PatchLocation source : patches) {
+						double[] stress=StiffnessCalc.calcStiffness(30000,30000,source.patch,receiver);
+						values[r]+=StiffnessCalc.calcCoulombStress(stress[1],stress[0],0.5);
+					}
+				}
+				out.printf(Locale.ROOT,"%.8f,%d,%.8f,%.12g,%.12g,%.12g%n",spacing,patches.size(),
+						patches.size()*spacing*spacing,values[0],values[1],values[2]);
+			}
+		}
 	}
 
 	private static void write(Path directory,String name,EvenlyGriddedSurface surface) throws IOException {
@@ -55,7 +85,7 @@ public class GenericPatchDiagnostics {
 			}
 			double minNeighbor=Double.POSITIVE_INFINITY;
 			try (PrintWriter out=new PrintWriter(Files.newBufferedWriter(directory.resolve(prefix+"_patches.csv")))) {
-				out.println("id,x,y,east,north,up,strike,dip,nearest,represented_area,row,col,segment");
+				out.println("id,x,y,east,north,up,strike,dip,nearest,represented_area,row,col,segment,infill");
 				for (int i=0; i<layout.patches.size(); i++) {
 					PatchLocation p=layout.patches.get(i);
 					double nearest=Double.POSITIVE_INFINITY;
@@ -63,8 +93,8 @@ public class GenericPatchDiagnostics {
 						nearest=Math.min(nearest,new Vector3D(p.patch.center).distance(new Vector3D(layout.patches.get(j).patch.center))/1000);
 					minNeighbor=Math.min(minNeighbor,nearest);
 					double[] xy=layout.referenceCenters.get(i), center=p.patch.center;
-					out.printf(Locale.ROOT,"%d,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%d,%d,%d%n",i,xy[0],xy[1],
-							center[0]/1000,center[1]/1000,center[2]/1000,Math.toDegrees(p.patch.strike),Math.toDegrees(p.patch.dip),nearest,represented[i],layout.gridIndices.get(i)[0],layout.gridIndices.get(i)[1],layout.gridIndices.get(i)[2]);
+					out.printf(Locale.ROOT,"%d,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%d,%d,%d,%d%n",i,xy[0],xy[1],
+							center[0]/1000,center[1]/1000,center[2]/1000,Math.toDegrees(p.patch.strike),Math.toDegrees(p.patch.dip),nearest,represented[i],layout.gridIndices.get(i)[0],layout.gridIndices.get(i)[1],layout.gridIndices.get(i)[2],layout.gridIndices.get(i)[0] < 0 ? 1 : 0);
 				}
 			}
 			try (PrintWriter out=new PrintWriter(Files.newBufferedWriter(directory.resolve(prefix+"_corners.csv")))) {
@@ -77,14 +107,14 @@ public class GenericPatchDiagnostics {
 			}
 			ProjectedPatchCoverage coverage=new ProjectedPatchCoverage(layout,2);
 			try (PrintWriter out=new PrintWriter(Files.newBufferedWriter(directory.resolve(prefix+"_metrics.csv")))) {
-				out.println("patches,surface_area,patch_area_ratio,uncovered_fraction,interior_uncovered_fraction,max_gap_distance,min_edge_ratio,min_area_ratio,rms_plane_distance,max_boundary_correction");
-				out.printf(Locale.ROOT,"%d,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f%n",layout.patches.size(),area,
+				out.println("patches,surface_area,patch_area_ratio,uncovered_fraction,interior_uncovered_fraction,max_gap_distance,min_edge_ratio,min_area_ratio,rms_plane_distance,max_boundary_correction,infill_patches");
+				out.printf(Locale.ROOT,"%d,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%d%n",layout.patches.size(),area,
 						layout.patches.size()*4/area,coverage.uncoveredArea/area,coverage.interiorUncoveredArea/area,
 						coverage.maximumGapDistance,layout.frame.minimumEdgeRatio,layout.frame.minimumAreaRatio,
-						layout.frame.rmsPlaneDistance,layout.maxBoundaryCorrection);
+						layout.frame.rmsPlaneDistance,layout.maxBoundaryCorrection,layout.infillCount);
 			}
-			System.out.printf(Locale.ROOT,"%s: %d patches, surface %.3f km^2, patch/surface area %.3f, min center spacing %.3f km, max boundary correction %.6g km, min edge ratio %.3f, min area ratio %.3f, uncovered %.2f%% (interior %.2f%%)%n",
-					prefix,layout.patches.size(),area,layout.patches.size()*4/area,minNeighbor,layout.maxBoundaryCorrection,layout.frame.minimumEdgeRatio,layout.frame.minimumAreaRatio,100*coverage.uncoveredArea/area,100*coverage.interiorUncoveredArea/area);
+			System.out.printf(Locale.ROOT,"%s: %d patches, surface %.3f km^2, patch/surface area %.3f, min center spacing %.3f km, max boundary correction %.6g km, min edge ratio %.3f, min area ratio %.3f, uncovered %.2f%% (interior %.2f%%), %d infill patches%n",
+					prefix,layout.patches.size(),area,layout.patches.size()*4/area,minNeighbor,layout.maxBoundaryCorrection,layout.frame.minimumEdgeRatio,layout.frame.minimumAreaRatio,100*coverage.uncoveredArea/area,100*coverage.interiorUncoveredArea/area,layout.infillCount);
 		}
 	}
 }

@@ -431,6 +431,23 @@ public class GenericSubSectPatchBuilderTest {
 		}
 	}
 
+	@Test public void listricCreaseUsesBothOneSidedNormals() {
+		EvenlyGriddedSurface surface=surface(12,new double[] {8,8,8,8,8},new double[] {80,60,40,20},5);
+		GriddedSurfaceGeometry geometry=new GriddedSurfaceGeometry(surface,ZONE,LETTER);
+		for (double col : new double[] {0.3,1,1.7,2.9,3.8}) {
+			for (double offset : new double[] {-1e-6,0,1e-6}) {
+				var sample=geometry.interpolate(2+offset,col);
+				assertEquals(50,sample.dip,0.001);
+				assertEquals(0,geometry.point(2+offset,col).distance(sample.center),1e-12);
+			}
+			assertEquals(60,geometry.interpolate(1.99,col).dip,0.001);
+			assertEquals(40,geometry.interpolate(2.01,col).dip,0.001);
+		}
+		var layout=new GenericSubSectPatchBuilder(2,ZONE,LETTER).buildLayout(surface,90,PatchAlignment.CENTER);
+		for (int i=0; i<layout.patches.size(); i++) if (layout.gridIndices.get(i)[0] == 1)
+			assertEquals(50,Math.toDegrees(layout.patches.get(i).patch.dip),0.001);
+	}
+
 	@Test public void planeFitUsesAreaRatherThanNodeDensity() {
 		EvenlyGriddedSurface coarse=surface(12,new double[] {8,8,8},new double[] {80,60,40,20},5);
 		GriddedSurfaceGeometry geometry=new GriddedSurfaceGeometry(coarse,ZONE,LETTER);
