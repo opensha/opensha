@@ -1,4 +1,4 @@
-package org.opensha.sha.simulators.stiffness;
+package org.opensha.sha.simulators.stiffness.patches;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

@@ -1,27 +1,29 @@
-package org.opensha.sha.simulators.stiffness;
+package org.opensha.sha.simulators.stiffness.patches;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import com.google.common.base.Preconditions;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
 import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
-import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.simulators.stiffness.StiffnessCalc.Patch;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchLocation;
-import com.google.common.base.Preconditions;
 
 /** Ribbon-based construction, preserving the original Stirling discretization. */
-final class StirlingSubSectPatchBuilder implements SubSectPatchBuilder {
+public final class StirlingSubSectPatchBuilder implements SubSectPatchBuilder {
 	private final double gridSpacing;
 	private final int utmZone;
 	private final char utmChar;
 
-	StirlingSubSectPatchBuilder(double gridSpacing, int utmZone, char utmChar) {
+	/** Configure patch side length in km and the shared Cartesian UTM zone/letter. */
+	public StirlingSubSectPatchBuilder(double gridSpacing, int utmZone, char utmChar) {
 		this.gridSpacing = gridSpacing;
 		this.utmZone = utmZone;
 		this.utmChar = utmChar;

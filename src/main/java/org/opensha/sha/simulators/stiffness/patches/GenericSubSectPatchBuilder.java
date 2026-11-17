@@ -1,36 +1,39 @@
-package org.opensha.sha.simulators.stiffness;
+package org.opensha.sha.simulators.stiffness.patches;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import com.google.common.base.Preconditions;
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import org.opensha.commons.geo.Location;
 import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.simulators.stiffness.GriddedSurfaceGeometry.SurfacePoint;
 import org.opensha.sha.simulators.stiffness.StiffnessCalc.Patch;
+import org.opensha.sha.simulators.stiffness.StiffnessCalc;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchLocation;
-import com.google.common.base.Preconditions;
+import org.opensha.sha.simulators.stiffness.patches.GriddedSurfaceGeometry.SurfacePoint;
 
 /**
  * Builds initial reference rows, optionally refits physical columns, then repairs
  * persistent thin strips. Geometry/reference coordinates are km; StiffnessCalc
  * centers, corners and side lengths are meters. Mechanisms enter in degrees.
  */
-final class GenericSubSectPatchBuilder implements SubSectPatchBuilder {
+public final class GenericSubSectPatchBuilder implements SubSectPatchBuilder {
 	private static final int MAX_BOUND_FIT_ATTEMPTS = 30;
 	private static final int DEPTH_SEARCH_SUBDIVISIONS = 20;
 	private static final int DEPTH_BISECTION_STEPS = 40;
 	private static final double CORNER_TOLERANCE_METERS = 1e-6;
 	private static final double EXTENT_TOLERANCE_KM = 1e-9;
 	/** Increment when geometry or layout conventions change; included in persistent cache keys. */
-	static final int VERSION=10;
+	public static final int VERSION=10;
 	private final double spacing;
 	private final int zone;
 	private final char letter;
 
-	GenericSubSectPatchBuilder(double spacing, int zone, char letter) {
+	/** Configure patch side length in km and the shared Cartesian UTM zone/letter. */
+	public GenericSubSectPatchBuilder(double spacing, int zone, char letter) {
 		this.spacing=spacing;
 		this.zone=zone;
 		this.letter=letter;

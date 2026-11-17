@@ -1,7 +1,7 @@
-package org.opensha.sha.simulators.stiffness;
+package org.opensha.sha.simulators.stiffness.patches;
 
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
 import com.google.common.base.Preconditions;
+import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
 
 /** One-dimensional alignment policy shared by generic row and column placement. */
 final class PatchIntervalPlacement {

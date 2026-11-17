@@ -1,4 +1,4 @@
-package org.opensha.sha.simulators.stiffness;
+package org.opensha.sha.simulators.stiffness.patches;
 
 import java.awt.geom.Area;
 import java.awt.geom.Line2D;
@@ -11,12 +11,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.base.Preconditions;
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.EigenDecomposition;
-import org.opensha.sha.simulators.stiffness.GriddedSurfaceGeometry.SurfacePoint;
-
-import com.google.common.base.Preconditions;
+import org.opensha.sha.simulators.stiffness.patches.GriddedSurfaceGeometry.SurfacePoint;
 
 /**
  * Orthogonal projection into an area-weighted best-fit plane, in km. Planar

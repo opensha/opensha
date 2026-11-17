@@ -1,19 +1,23 @@
-package org.opensha.sha.simulators.stiffness;
+package org.opensha.sha.simulators.stiffness.patches;
 
 import static org.junit.Assert.*;
+
 import java.lang.reflect.Proxy;
 import java.util.List;
+
 import org.junit.Test;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.utm.UTM;
 import org.opensha.commons.geo.utm.WGS84;
+import org.opensha.sha.faultSurface.ApproxEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
-import org.opensha.sha.faultSurface.ApproxEvenlyGriddedSurface;
+import org.opensha.sha.simulators.stiffness.StiffnessCalc;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchGenerationStrategy;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchLocation;
+import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
 
 /** Synthetic Cartesian fixtures intentionally hide all abstract-surface helpers. */
 public class GenericSubSectPatchBuilderTest {

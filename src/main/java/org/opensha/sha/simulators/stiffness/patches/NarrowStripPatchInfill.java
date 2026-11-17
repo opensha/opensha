@@ -1,4 +1,4 @@
-package org.opensha.sha.simulators.stiffness;
+package org.opensha.sha.simulators.stiffness.patches;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -6,9 +6,9 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
-import org.opensha.sha.simulators.stiffness.GenericSubSectPatchBuilder.PatchFactory;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchLocation;
+import org.opensha.sha.simulators.stiffness.patches.GenericSubSectPatchBuilder.PatchFactory;
 
 /**
  * Conservative FILL_OVERLAP repair for persistent narrow strips only. An interval

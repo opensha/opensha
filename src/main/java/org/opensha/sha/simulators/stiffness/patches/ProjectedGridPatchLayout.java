@@ -1,4 +1,4 @@
-package org.opensha.sha.simulators.stiffness;
+package org.opensha.sha.simulators.stiffness.patches;
 
 import java.awt.geom.Area;
 import java.util.ArrayList;

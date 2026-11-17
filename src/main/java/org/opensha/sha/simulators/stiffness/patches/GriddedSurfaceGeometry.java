@@ -1,11 +1,11 @@
-package org.opensha.sha.simulators.stiffness;
+package org.opensha.sha.simulators.stiffness.patches;
 
+import com.google.common.base.Preconditions;
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.utm.UTM;
 import org.opensha.commons.geo.utm.WGS84;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
-import com.google.common.base.Preconditions;
 
 /**
  * Snapshot of an interface-only surface in the calculator's shared Cartesian frame.

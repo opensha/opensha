@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.base.Preconditions;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -19,8 +20,7 @@ import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.Aggreg
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.ReceiverDistribution;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.StiffnessAggregation;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
-
-import com.google.common.base.Preconditions;
+import org.opensha.sha.simulators.stiffness.patches.GenericSubSectPatchBuilder;
 
 public class AggregatedStiffnessCache {
 	

@@ -1,4 +1,4 @@
-package org.opensha.sha.simulators.stiffness;
+package org.opensha.sha.simulators.stiffness.patches;
 
 import static org.junit.Assert.*;
 
@@ -17,6 +17,7 @@ import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlig
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchGenerationStrategy;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchLocation;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
+import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
 
 public class AutoPatchGenerationTest {
 	private static FaultSection stirlingSection() {

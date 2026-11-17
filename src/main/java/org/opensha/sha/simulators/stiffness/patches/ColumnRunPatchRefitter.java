@@ -1,4 +1,4 @@
-package org.opensha.sha.simulators.stiffness;
+package org.opensha.sha.simulators.stiffness.patches;
 
 import java.awt.BasicStroke;
 import java.awt.geom.Area;
@@ -11,8 +11,8 @@ import java.util.TreeMap;
 
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
-import org.opensha.sha.simulators.stiffness.GenericSubSectPatchBuilder.PatchFactory;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchLocation;
+import org.opensha.sha.simulators.stiffness.patches.GenericSubSectPatchBuilder.PatchFactory;
 
 /**
  * One pass over coherent bands of neighboring physical columns, before thin-strip

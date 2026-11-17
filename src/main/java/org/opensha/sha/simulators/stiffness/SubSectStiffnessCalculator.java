@@ -12,6 +12,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipException;
 
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
+import com.google.common.hash.Hasher;
+import com.google.common.hash.Hashing;
 import org.dom4j.DocumentException;
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.ui.TextAnchor;
@@ -32,19 +36,16 @@ import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.cpt.CPTVal;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
-import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.AggregationMethod;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.StiffnessAggregation;
 import org.opensha.sha.simulators.stiffness.StiffnessCalc.Patch;
-
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
-import com.google.common.hash.Hasher;
-import com.google.common.hash.Hashing;
-
+import org.opensha.sha.simulators.stiffness.patches.GenericSubSectPatchBuilder;
+import org.opensha.sha.simulators.stiffness.patches.StirlingSubSectPatchBuilder;
+import org.opensha.sha.simulators.stiffness.patches.SubSectPatchBuilder;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 
 /**

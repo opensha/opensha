@@ -26,9 +26,15 @@ interior rows. Nominal spacings and average dip do not determine its local
 geometry. Elastic calculations and aggregation are shared. The generic geometry
 still needs real-model plausibility and near-field validation.
 
+All patch-construction classes and package-level tests live in
+`org.opensha.sha.simulators.stiffness.patches`. Geometry/layout helpers remain
+package-private. The calculator's existing nested `PatchAlignment`,
+`PatchGenerationStrategy`, and `PatchLocation` types retain their public API paths;
+elastic stress calculations remain in the parent stiffness package.
+
 ## Classes
 
-- `SubSectPatchBuilder`: package-private common builder contract.
+- `SubSectPatchBuilder`: public common builder contract; concrete GENERIC and STIRLING builders are public entry points.
 - `StirlingSubSectPatchBuilder`: original ribbon-based placement and mechanisms.
 - `GriddedSurfaceGeometry`: Cartesian snapshot, four-node interpolation, local
   tangent mechanisms, node depth extrema, cumulative column distances, cell areas.
@@ -260,3 +266,5 @@ Use `GenericPatchDiagnostics.main(outputDirectory, "all")` to export the origina
 and pathological fixtures together for both alignments. The metrics CSV includes
 infill counts, and the patches CSV marks additions. Unique negative row IDs
 identify ungrouped infill patches rather than fitted row fragments.
+
+The diagnostic exporter is `org.opensha.sha.simulators.stiffness.patches.GenericPatchDiagnostics`.
