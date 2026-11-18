@@ -1045,7 +1045,7 @@ public class GeographicMapMaker {
 		}
 	}
 	
-	public static final double GEOJSON_DEFAULT_SURF_OPACITY = 0.05d;
+	public static double GEOJSON_DEFAULT_SURF_OPACITY = 0.05d;
 	
 	protected Feature surfFeature(FaultSection sect, PlotCurveCharacterstics pChar, double opacity) {
 		Polygon poly = new Polygon(getPerimeter(sect));
