@@ -176,6 +176,67 @@ public class FaultUtilsTests {
 			doTestResampleTraceExpectedNum(complexTrace);
 	}
 	
+	@Test
+	public void testResampleHairpinRetainsEndpoint() {
+		FaultTrace trace = new FaultTrace("hairpin");
+		trace.add(new Location(0, 0));
+		trace.add(new Location(0, 0.11));
+		trace.add(new Location(0, 0.082));
+		// For num=3, the last arc-length interval turns back so its chord is
+		// shorter than half an interval. For num=1 the entire trace does so.
+		for (int num : new int[] {1, 3, 10, 100}) {
+			FaultTrace sampled = FaultUtils.resampleTrace(trace, num);
+			assertEquals(num+1, sampled.size());
+			assertSame(trace.first(), sampled.first());
+			assertSame(trace.last(), sampled.last());
+		}
+		FaultTrace thirds = FaultUtils.resampleTrace(trace, 3);
+		assertEquals(0.046, thirds.get(1).getLongitude(), 1e-10);
+		assertEquals(0.092, thirds.get(2).getLongitude(), 1e-10);
+	}
+
+	@Test
+	public void testResampleIndianHillLowerTrace() {
+		FaultTrace trace = new FaultTrace("Indian Hill, Subsection 2 lower");
+		trace.add(new Location(39.04650353721698, -119.7506503711397, 5.973870399464156));
+		trace.add(new Location(39.048166295546466, -119.74875415260016, 6.091210054065506));
+		trace.add(new Location(39.060218319100564, -119.72457265710096, 8.4449140625));
+		trace.add(new Location(39.05877333632404, -119.73220800046131, 8.4449140625));
+		FaultTrace sampled = FaultUtils.resampleTrace(trace, 3);
+		assertEquals(4, sampled.size());
+		assertSame(trace.last(), sampled.last());
+		assertTrue(sampled.get(1).getDepth() > trace.first().getDepth());
+		assertTrue(sampled.get(1).getDepth() < trace.last().getDepth());
+	}
+
+	@Test
+	public void testResamplePortlandHillsLowerTrace() {
+		FaultTrace trace = new FaultTrace("Portland Hills (south), Subsection 0 lower");
+		trace.add(new Location(45.512101639223026, -122.70301287958166, 4.3687353515625));
+		trace.add(new Location(45.50586225234113, -122.70034133241876, 4.3687353515625));
+		trace.add(new Location(45.50855871374699, -122.7074110863874, 4.3687353515625));
+		FaultTrace sampled = FaultUtils.resampleTrace(trace, 1);
+		assertEquals(2, sampled.size());
+		assertSame(trace.first(), sampled.first());
+		assertSame(trace.last(), sampled.last());
+	}
+
+	@Test
+	public void testResampleExactEndpointAndRepeatedVertices() {
+		FaultTrace trace = new FaultTrace("repeated vertices");
+		trace.add(new Location(0, 0, 1));
+		trace.add(trace.first());
+		trace.add(new Location(0, 0.05, 2));
+		trace.add(new Location(0, 0.1, 3));
+		trace.add(trace.last());
+		for (int num : new int[] {1, 2, 3, 100}) {
+			FaultTrace sampled = FaultUtils.resampleTrace(trace, num);
+			assertEquals(num+1, sampled.size());
+			assertSame(trace.first(), sampled.first());
+			assertSame(trace.last(), sampled.last());
+		}
+	}
+
 	private void doTestResampleTraceExpectedNum(FaultTrace trace) {
 		for (int num=1; num<100; num++) {
 			FaultTrace resampled = FaultUtils.resampleTrace(trace, num);

@@ -4,16 +4,16 @@
 package org.opensha.sha.faultSurface;
 
 import java.io.FileWriter;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import org.opensha.commons.geo.GeoTools;
+import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.util.FaultUtils;
-import org.opensha.commons.util.FaultUtils.AngleAverager;
 
 import com.google.common.base.Preconditions;
 
@@ -36,10 +36,10 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 	private FaultTrace upperFaultTrace = null;
 	private FaultTrace lowerFaultTrace = null;
 	
-	// lazily initialized on first call to getAvgDip()
+	// lazily initialized on the first orientation request
 	private double avgDip = Double.NaN;
-	// lazily initialized on first call to getAvgDipDirection()
-	private double avgDipDir = Double.NaN;
+	// lazily initialized on the first orientation request 
+	private double avgStrike = Double.NaN;
 	// lazily initialized on first call to getAvgRupTopDepth()
 	private double aveUpperDepth = Double.NaN;
 	// lazily initialized on first call to getAvgRupBottomDepth()
@@ -53,6 +53,8 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 	 * @param aveGridSpacing
 	 */
 	public ApproxEvenlyGriddedSurface(int numRows,int numCols, double aveGridSpacing) {
+		Preconditions.checkArgument(Double.isFinite(aveGridSpacing) && aveGridSpacing > 0d,
+				"Grid spacing must be positive and finite");
 		setNumRowsAndNumCols(numRows, numCols);
 		gridSpacingAlong = aveGridSpacing;
 		gridSpacingDown = aveGridSpacing;
@@ -92,6 +94,8 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 	 */
 	public ApproxEvenlyGriddedSurface(FaultTrace upperFaultTrace,FaultTrace lowerFaultTrace, double aveGridSpacing,
 			boolean aseisReducesArea, double aseismicSlipFactor) {
+		Preconditions.checkArgument(Double.isFinite(aveGridSpacing) && aveGridSpacing > 0d,
+				"Grid spacing must be positive and finite");
 		gridSpacingAlong = aveGridSpacing;
 		gridSpacingDown = aveGridSpacing;
 		sameGridSpacing = true;
@@ -131,23 +135,32 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 		}
 
 		// Now check that Aki-Richards convention is adhered to (fault dips to right)
-		double dipDir = FaultUtils.getAngleAverage(List.of(
-				LocationUtils.azimuth(upperFaultTrace.first(), lowerFaultTrace.first()),
-				LocationUtils.azimuth(upperFaultTrace.last(), lowerFaultTrace.last())));
-		double idealDipDir = upperAz + 90d;
-		while (idealDipDir > 360d)
-			idealDipDir -= 360;
-		double arDiff = FaultUtils.getAbsAngleDiff(idealDipDir, dipDir);
-		if	(arDiff > 90d) {
-			upperFaultTrace.reverse();
-			lowerFaultTrace.reverse();
-			if(D) System.out.println("reversed trace order to adhere to Aki Richards; ideal dipDir="
-					+(float)idealDipDir+", actual="+(float)dipDir+", diff="+(float)arDiff);
+		// But also handle the special case where one of the traces is of negligible
+		// length (e.g., a triangular surface or somehow vertical trace) and doesn't
+		// establish a direction.
+		List<Double> endpointDirections = new ArrayList<>();
+		for (int end=0; end<2; end++) {
+			Location top = end == 0 ? upperFaultTrace.first() : upperFaultTrace.last();
+			Location bottom = end == 0 ? lowerFaultTrace.first() : lowerFaultTrace.last();
+			if (LocationUtils.horzDistance(top, bottom) > 1e-9)
+				// there is enough separation to determine the azimuth
+				endpointDirections.add(LocationUtils.azimuth(top, bottom));
+		}
+		if (!endpointDirections.isEmpty()) {
+			double dipDir = FaultUtils.getAngleAverage(endpointDirections);
+			double idealDipDir = (upperAz+90d)%360d;
+			if (FaultUtils.getAbsAngleDiff(idealDipDir, dipDir) > 90d) {
+				upperFaultTrace.reverse();
+				lowerFaultTrace.reverse();
+				if (D) System.out.println("Reversed trace order to follow the right-hand rule");
+			}
 		}
 
+		// Retain both boundaries even if either dimension is smaller than the
+		// requested spacing; orientation requires at least one actual grid cell.
 		// now compute num subsection of trace
 		double aveTraceLength = (upperFaultTrace.getTraceLength()+lowerFaultTrace.getTraceLength())/2;
-		int num = (int) Math.round(aveTraceLength/aveGridSpacing);
+		int num = Math.max(1, (int) Math.round(aveTraceLength/aveGridSpacing));
 		
 		if(D) System.out.println("gridSpacing="+gridSpacingAlong+", aveTraceLength="+aveTraceLength+", numCol="+num);
 
@@ -168,7 +181,7 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 		aveDist /= resampUpperTrace.size();
 		// reduce for aseismicity if applicable
 		aveDist *= traceDistFactor;
-		int nRows = (int) Math.round(aveDist/aveGridSpacing)+1;
+		int nRows = Math.max(2, (int) Math.round(aveDist/aveGridSpacing)+1);
 		
 		if(D) System.out.println("aveDist="+aveDist+", nRows="+nRows);
 
@@ -278,7 +291,17 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 	 * @exception  ArrayIndexOutOfBoundsException  Thrown if the row or column lies beyond the grid space indexes.
 	 */
 	public void setLocation( int row, int column, Location location ) {
-		super.set( row, column, location );
+		set(row, column, location);
+	}
+
+
+	@Override
+	public void set(int row, int column, Location location) {
+		super.set(row, column, location);
+		avgDip = Double.NaN;
+		avgStrike = Double.NaN;
+		aveUpperDepth = Double.NaN;
+		aveLowerDepth = Double.NaN;
 	}
 
 
@@ -407,44 +430,94 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 	}
 
 
+	/**
+	 * Area-weighted mean of local cell-center dips, in degrees. Each cell uses
+	 * the tangent at its bilinear center; its Jacobian magnitude is the exact
+	 * area for a planar quadrilateral and a midpoint area estimate for a warped
+	 * cell. This is a mean local dip, not the dip of a fitted plane.
+	 */
 	@Override
 	public synchronized double getAveDip() {
-		if (!Double.isNaN(avgDip))
-			return avgDip;
-		// (lazy) average the dips of lines connecting the first 
-		// and last points of the upper and lower traces
-		LocationList ut = upperFaultTrace;
-		LocationList lt = lowerFaultTrace;
-		Location pUp = ut.get(0);
-		Location pLo = lt.get(0);
-		LocationVector v = LocationUtils.vector(pUp, pLo);
-		double d1 = Math.atan(v.getVertDistance() / v.getHorzDistance());
-		pUp = ut.get(ut.size()-1);
-		pLo = lt.get(lt.size()-1);
-		v = LocationUtils.vector(pUp, pLo);
-		double d2 = Math.atan(v.getVertDistance() / v.getHorzDistance());
-		avgDip = ((d1 + d2) / 2) * GeoTools.TO_DEG;
+		if (Double.isNaN(avgDip)) calculateAverageOrientation();
 		return avgDip;
 	}
 
-
+	/**
+	 * Azimuth of the area-weighted horizontal cell normals (degrees clockwise
+	 * from north). Nonvertical normals point upward; grid winding sets the side of a vertical
+	 * fault, avoiding sign flips from roundoff in a nearly zero Z component.
+	 * Horizontal cells carry no direction weight. If directions cancel, use
+	 * upper-edge strike + 90 degrees as a convention, not a measured direction.
+	 */
 	@Override
-	public synchronized double getAveDipDirection() {
-		if (!Double.isNaN(avgDipDir))
-			return avgDipDir;
-		// (lazy) average direction between first and last 
-		// points of the upper and lower traces
-		LocationList ut = upperFaultTrace;
-		LocationList lt = lowerFaultTrace;
-		Location pUp = ut.get(0);
-		Location pLo = lt.get(0);
-		LocationVector v = LocationUtils.vector(pUp, pLo);
-		AngleAverager avg = new AngleAverager();
-		avg.add(v.getAzimuth(), 1d);
-		v = LocationUtils.vector(pUp, pLo);
-		avg.add(v.getAzimuth(), 1d);
-		avgDipDir = avg.getAverage();
-		return avgDipDir;
+	public double getAveDipDirection() {
+		return (getAveStrike()+90d)%360d;
+	}
+
+	// Relative to summed cell area, so tiny surfaces and nearly horizontal
+	// surfaces use the same criterion for an undefined representative direction.
+	// Also absorb small differences between the cells' local geographic frames.
+	private static final double DIRECTION_RESULTANT_TOLERANCE = 1e-8;
+	// Within about 0.0000006 degrees of vertical, retain the grid winding
+	// rather than deriving a normal sign from roundoff in its Z component.
+	private static final double VERTICAL_NORMAL_TOLERANCE = 1e-8;
+
+	/** Compute both summaries together from actual nodes, including any intermediate rows. */
+	private void calculateAverageOrientation() {
+		Preconditions.checkState(numRows >= 2 && numCols >= 2,
+				"Average orientation requires at least two rows and columns");
+		double totalArea = 0d, weightedDip = 0d, east = 0d, north = 0d;
+		for (int r=0; r<numRows-1; r++) {
+			for (int c=0; c<numCols-1; c++) {
+				// a,b,c,d run clockwise around the cell, starting at its upper left.
+				// Express all edges in one local east/north/up frame, in km.
+				Location a = getLocation(r, c);
+				Vector3D b = localVector(a, getLocation(r, c+1));
+				Vector3D cornerC = localVector(a, getLocation(r+1, c+1));
+				Vector3D d = localVector(a, getLocation(r+1, c));
+				Vector3D along = b.add(cornerC.subtract(d)).scalarMultiply(0.5);
+				Vector3D down = d.add(cornerC.subtract(b)).scalarMultiply(0.5);
+				Vector3D normal = down.crossProduct(along);
+				double area = normal.getNorm();
+				Preconditions.checkState(Double.isFinite(area), "Nonfinite cell geometry at (%s,%s)", r, c);
+				if (area == 0d) continue; // fully collapsed cells contribute no surface
+				if (normal.getZ() < -VERTICAL_NORMAL_TOLERANCE*area)
+					normal = normal.negate();
+				double dip = Math.toDegrees(Math.atan2(Math.hypot(normal.getX(), normal.getY()),
+						Math.abs(normal.getZ())));
+				totalArea += area;
+				weightedDip += area*dip;
+				// area times unit normal is just the unnormalized cross product.
+				east += normal.getX();
+				north += normal.getY();
+			}
+		}
+		Preconditions.checkState(totalArea > 0d, "Cannot average orientation of a zero-area surface");
+		double strike;
+		if (Math.hypot(east, north) > DIRECTION_RESULTANT_TOLERANCE*totalArea) {
+			// Strike is 90 degrees counterclockwise from the horizontal normal.
+			strike = Math.toDegrees(Math.atan2(-north, east));
+		} else {
+			FaultTrace upper = getRowAsTrace(0);
+			// A triangular tip can collapse the entire upper edge. In that case
+			// use the lower edge for the otherwise undefined direction convention.
+			FaultTrace edge = upper.getTraceLength() > 0d ? upper : getRowAsTrace(numRows-1);
+			strike = edge.getAveStrike();
+			Preconditions.checkState(Double.isFinite(strike), "No edge strike for orientation fallback");
+		}
+		// The weighted mean is mathematically in [0,90]; summation roundoff
+		// can put an exactly vertical surface a few ulps above 90.
+		avgDip = Math.min(90d, Math.max(0d, weightedDip/totalArea));
+		avgStrike = (strike%360d+360d)%360d;
+	}
+
+	/** Local tangent-plane vector, with depth positive down converted to Z positive up. */
+	private static Vector3D localVector(Location origin, Location point) {
+		Preconditions.checkState(origin != null && point != null, "Surface has missing grid locations");
+		LocationVector vector = LocationUtils.vector(origin, point);
+		double azimuth = vector.getAzimuthRad();
+		return new Vector3D(vector.getHorzDistance()*Math.sin(azimuth),
+				vector.getHorzDistance()*Math.cos(azimuth), origin.getDepth()-point.getDepth());
 	}
 
 	@Override
@@ -471,12 +544,15 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 	}
 
 
+	/**
+	 * Area-weighted representative right-hand-rule strike. Dip direction is
+	 * derived from this cached value. If the horizontal normals cancel, use
+	 * the edge-strike convention documented by {@link #getAveDipDirection()}.
+	 */
 	@Override
-	public double getAveStrike() {
-		AngleAverager averager = new FaultUtils.AngleAverager();
-		averager.add(upperFaultTrace.getAveStrike(), 1d);
-		averager.add(lowerFaultTrace.getAveStrike(), 1d);
-		return averager.getAverage();
+	public synchronized double getAveStrike() {
+		if (Double.isNaN(avgStrike)) calculateAverageOrientation();
+		return avgStrike;
 	}
 
 

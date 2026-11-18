@@ -511,6 +511,7 @@ public final class FaultUtils {
 	 * these subsections of are equal length on the original trace, and
 	 * that the final subsections will be less than that if there is curvature
 	 * in the original between the points (e.g., corners getting cut).
+	 * Both original endpoints are retained when num is positive.
 	 * @param trace
 	 * @param num - number of subsections
 	 * @return
@@ -542,11 +543,17 @@ public final class FaultUtils {
 			}
 		}
 
-		// the last one usually (always?) gets missed in the above, add it if needed
-		double dist = LocationUtils.linearDistanceFast(trace.get(trace.size()-1), resampTrace.get(resampTrace.size()-1));
-		if (dist> resampInt/2)
-			resampTrace.add(trace.get(trace.size()-1));
-		
+		// We need num+1 points, including both ends. Add the endpoint if we're one
+		// point short, even if it's close to a point already added: the trace may
+		// bend back toward that point before ending.
+		if (resampTrace.size() == num) {
+			resampTrace.add(trace.last());
+		} else if (num > 0 && resampTrace.size() == num+1) {
+			// The loop may already have added a point very close to the endpoint.
+			// Replace it with the original endpoint to preserve its exact location and depth.
+			resampTrace.set(num, trace.last());
+		}
+
 		Preconditions.checkState(resampTrace.size() == num+1,
 				"Resampled trace should have %s locations, but has %s", num+1, resampTrace.size());
 
