@@ -115,6 +115,41 @@ public class GenericSubSectPatchBuilderTest {
 		}
 	}
 
+	@Test public void reversingColumnsPreservesDippingPatchMechanismsAndStiffness() {
+		EvenlyGriddedSurface original=surface(6,new double[] {4,4,4,4},new double[] {45,45,45,45},5);
+		Location[][] reversed=new Location[original.getNumRows()][original.getNumCols()];
+		for (int r=0; r<reversed.length; r++) for (int c=0; c<reversed[0].length; c++)
+			reversed[r][c]=original.getLocation(r,reversed[0].length-1-c);
+		EvenlyGriddedSurface backward=nodes(reversed);
+		assertEquals(45,new GriddedSurfaceGeometry(backward,ZONE,LETTER).interpolate(1.5,1.5).dip,0.002);
+		for (PatchAlignment alignment : PatchAlignment.values()) {
+			GenericSubSectPatchBuilder builder=new GenericSubSectPatchBuilder(2,ZONE,LETTER);
+			List<PatchLocation> a=new java.util.ArrayList<>(builder.buildPatches(original,25,alignment));
+			List<PatchLocation> b=new java.util.ArrayList<>(builder.buildPatches(backward,25,alignment));
+			java.util.Comparator<PatchLocation> order=java.util.Comparator
+					.comparingLong((PatchLocation p)->Math.round(p.patch.center[2]/0.01))
+					.thenComparingDouble(p->p.patch.center[1]);
+			a.sort(order); b.sort(order);
+			assertEquals(a.size(),b.size());
+			for (int i=0; i<a.size(); i++) {
+				assertArrayEquals(a.get(i).patch.center,b.get(i).patch.center,0.02);
+				assertEquals(a.get(i).patch.strike,b.get(i).patch.strike,1e-6);
+				assertEquals(a.get(i).patch.dip,b.get(i).patch.dip,1e-6);
+				assertEquals(a.get(i).patch.rake,b.get(i).patch.rake,0);
+			}
+			assertArrayEquals(StiffnessCalc.calcStiffness(30000,30000,a.get(0).patch,a.get(a.size()-1).patch),
+					StiffnessCalc.calcStiffness(30000,30000,b.get(0).patch,b.get(b.size()-1).patch),1e-6);
+		}
+	}
+
+	@Test public void reversedWindingStillRejectsFoldedCells() {
+		Location[][] bowtie={{location(0,0,1),location(0,4,1)},
+				{location(2,4,3),location(2,0,3)}};
+		assertThrows(IllegalArgumentException.class,()->new GriddedSurfaceGeometry(nodes(bowtie),ZONE,LETTER));
+		Location[][] reversed={{bowtie[0][1],bowtie[0][0]},{bowtie[1][1],bowtie[1][0]}};
+		assertThrows(IllegalArgumentException.class,()->new GriddedSurfaceGeometry(nodes(reversed),ZONE,LETTER));
+	}
+
 	@Test public void rowsTerminateAndRestart() {
 		EvenlyGriddedSurface surface=surface(20,new double[] {10,10,2,2,10,10},new double[] {60,60,60,60},5);
 		SurfaceReferenceFrame frame=new SurfaceReferenceFrame(new GriddedSurfaceGeometry(surface,ZONE,LETTER));

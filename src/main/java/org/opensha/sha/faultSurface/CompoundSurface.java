@@ -6,7 +6,6 @@ import java.util.BitSet;
 import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.function.Function;
 
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
@@ -85,7 +84,7 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 		boolean anyDD = sections.stream().anyMatch(S->S.getSubSectionIndexDownDip()>0);
 		if (anyDD)
 			return new DownDip(surfaces, sections);
-		return new Simple(surfaces);
+		return new Simple(surfaces, sections);
 	}
 
 	protected CompoundSurface(List<? extends RuptureSurface> surfaces, List<? extends FaultSection> sects) {
@@ -355,13 +354,16 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 			for (int s=0; s<numSurfaces; s++) {
 				surf = surfaces.get(s);
 				double dip = surf.getAveDip();
-				if (reversed.get(s))
+				// Traversing backward and physically dipping left are separate reversals.
+				// Either changes the oriented dip; together they cancel.
+				boolean dipsLeftInTraversal = reversed.get(s) != GriddedSurfaceUtils.isDippingToLeft(surf);
+				if (dipsLeftInTraversal)
 					avgDip += (180d-dip)*surfaceAreas[s];
 				else
 					avgDip += dip*surfaceAreas[s];
 			}
 			avgDip /= totArea;
-			Preconditions.checkState(avgDip > 0 && avgDip < 180d, "Bad avgDip=%s", avgDip);
+			Preconditions.checkState(avgDip >= 0 && avgDip <= 180d, "Bad avgDip=%s", avgDip);
 			wholeRupReversed = avgDip > 90d;
 			
 			if (wholeRupReversed) {
@@ -665,9 +667,12 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 					if (g == groups.size()-1)
 						rightIndexes.add(row.get(row.size()-1));
 					for (int index : row) {
-						double dip = sections.get(index).getAveDip();
-						if (groupReversals[g]) {
+						RuptureSurface surface = surfaces.get(index);
+						double dip = surface.getAveDip();
+						if (groupReversals[g])
 							reversed.set(index);
+						boolean dipsLeftInTraversal = groupReversals[g] != GriddedSurfaceUtils.isDippingToLeft(surface);
+						if (dipsLeftInTraversal) {
 							avgDip += (180d-dip)*surfaceAreas[index];
 						} else {
 							avgDip += dip*surfaceAreas[index];
@@ -677,7 +682,7 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 			}
 			
 			avgDip /= totArea;
-			Preconditions.checkState(avgDip > 0 && avgDip < 180d, "Bad avgDip=%s", avgDip);
+			Preconditions.checkState(avgDip >= 0 && avgDip <= 180d, "Bad avgDip=%s", avgDip);
 			if (avgDip > 90d) {
 				// the whole thing is reversed
 				Collections.reverse(topIndexes);
@@ -792,7 +797,7 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 			for (int s=0; s<surfaceAreas.length; s++)
 				avgDip += surfaces.get(s).getAveDip()*surfaceAreas[s];
 			avgDip /= totArea;
-			Preconditions.checkState(avgDip < 90.0001 && avgDip > 0d, "Bad avgDip=%s", avgDip);
+			Preconditions.checkState(avgDip < 90.0001 && avgDip >= 0d, "Bad avgDip=%s", avgDip);
 			// can end up as barely over 90 due to floating point math, e.g., 90.00000000000001; clamp it to 90 after
 			// the check above
 			this.avgDip = Math.min(avgDip, 90d);
@@ -887,7 +892,8 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 				// we have subsections down-dip, approximate it
 				double upper = getAveRupTopDepth();
 				double lower = getAveRupBottomDepth();
-				width = (lower - upper)/Math.sin(Math.toRadians(getAveDip()));
+				width = getAveDip() == 0d ? getArea()/getAveLength()
+						: (lower - upper)/Math.sin(Math.toRadians(getAveDip()));
 			} else {
 				// simple
 				double width = 0d;
@@ -1333,43 +1339,11 @@ public abstract class CompoundSurface implements CacheEnabledSurface {
 				surfIndexForX = i;
 			}
 		}
-		// use the closest sub-surface (determined via rRup) for distanceX
-		// TODO: implement GC2 which gets rid of a lot of nastiness
-		final RuptureSurface theSurfForX = surfaces.get(surfIndexForX);
-		final boolean surfForXReversed = isSurfaceReversed(surfIndexForX);
-		return new SurfaceDistances.PrecomputedLazyX(loc, distanceRup, distanceJB, new Function<Location, Double>() {
-			
-			@Override
-			public Double apply(Location t) {
-				double rX = theSurfForX.getDistanceX(loc);
-				if (surfForXReversed) {
-					// The closest section, which we use to determine Rx, is reversed. That means that its Rx sign
-					// (footwall vs hanging wall) is opposite that of the rupture in general; we can either return its
-					// sign, e.g., saying that you are on the footwall of the closest section even if you are on the
-					// hanging wall side of the rupture more broadly, or flip it to match the full rupture.
-					
-					// If we return the sign as is, we're saying that what matters is if you're on the HW vs FW of the
-					// local/nearest surface, even if you are on the opposite side of the rupture more broadly. So if a
-					// fault briefly dips the opposite way in a complex rupture, this would return the HW/FW
-					// classification of that deviation (if it's closest). That might make sense if the local section
-					// is actually dipping because the closest section should control the ground motion and it makes
-					// sense that the HW term, if enabled, should be based on that closest section.
-					// 
-					// Looking at actual rupture examples in our models, they can get really squirrelly such that
-					// the rupture strike direction doesn't carry a lot of meaning; for now, we'll stick to using the
-					// closest section's Rx sign, and note that we should move to GC2 distance-weighting in the future
-					return rX;
-					
-					// If we instead return the flipped sign, we're saying that what matters is if you're on the HW vs
-					// FW more generally of the full rupture, even though the local version might be a deviation. The
-					// argument I can see here is that the closest section might be SS and its HW/FW classification
-					// might be arbitrary, but it's part of a largely dipping rupture, and we would then want to honor
-					// the HW/FW flag of the main rupture. 
-//					return -rX;
-				}
-				return rX;
-			}
-		});
+		// Retain the closest child's native Rx convention. Approx subsections inherit
+		// their parent's trace direction; neither local dip side nor traversal reversal
+		// changes that sign. A rupture-level GC2 calculation remains future work.
+		RuptureSurface surfaceForX = surfaces.get(surfIndexForX);
+		return new SurfaceDistances.PrecomputedLazyX(loc, distanceRup, distanceJB, surfaceForX::getDistanceX);
 	}
 
 	@Override

@@ -64,8 +64,8 @@ final class GriddedSurfaceGeometry {
 						Vector3D normal = down.crossProduct(along);
 						if (normal.getNorm() < 1e-12) continue;
 						normal = normal.normalize();
-						Preconditions.checkArgument(normal.getZ() >= -1e-5,
-								"Overturned or reversed cell (%s,%s)", r, c);
+						// Compare raw normals before choosing their physical upward side.
+						// Reversed winding is valid; opposing tangents within a cell are not.
 						if (reference != null)
 							Preconditions.checkArgument(reference.dotProduct(normal) > 0,
 									"Folded cell (%s,%s)", r, c);
@@ -91,10 +91,10 @@ final class GriddedSurfaceGeometry {
 		Vector3D normal = sharedEdgeNormal(row, col, cellNormal(r, c, u, v));
 		Preconditions.checkState(normal.getNorm() > 1e-12, "Undefined tangent at (%s,%s)", row, col);
 		normal = normal.normalize();
-		Preconditions.checkState(normal.getZ() >= -1e-5,
-				"Overturned or inconsistently ordered cell at (%s,%s)", row, col);
+		if (normal.getZ() < -1e-8)
+			normal = normal.negate();
 		// atan2 retains small dips that acos loses when Z rounds near one.
-		double dip = Math.toDegrees(Math.atan2(Math.hypot(normal.getX(),normal.getY()), Math.max(0d,normal.getZ())));
+		double dip = Math.toDegrees(Math.atan2(Math.hypot(normal.getX(),normal.getY()), Math.abs(normal.getZ())));
 		// Horizontal planes have no unique strike; retain grid ordering there.
 		double strike = normal.getX()*normal.getX()+normal.getY()*normal.getY() < 1e-16
 				? Math.toDegrees(Math.atan2(along.getX(), along.getY()))

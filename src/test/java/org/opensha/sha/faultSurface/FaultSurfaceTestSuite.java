@@ -8,7 +8,8 @@ import org.opensha.sha.faultSurface.cache.TestSurfaceDistanceCaches;
 @Suite.SuiteClasses({
 	TestSurfaceDistanceCaches.class,
 	GeoJSONFaultSectionTest.class,
-	ApproxEvenlyGriddedSurfaceTest.class
+	ApproxEvenlyGriddedSurfaceTest.class,
+	SurfaceOrderingTest.class
 	})
 
 // TODO add quad surface when finalized

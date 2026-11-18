@@ -517,7 +517,17 @@ public final class FaultUtils {
 	 * @return
 	 */
 	public static FaultTrace resampleTrace(FaultTrace trace, int num) {
-		double resampInt = trace.getTraceLength()/num;
+		double traceLength = trace.getTraceLength();
+		if (traceLength == 0d) {
+			// A triangular surface can have an entire boundary collapsed to one point.
+			// It still needs a location at every station along the opposite boundary.
+			for (Location loc : trace)
+				Preconditions.checkState(loc.equals(trace.first()), "Zero-length trace has varying depths");
+			FaultTrace collapsed = new FaultTrace("resampled "+trace.getName());
+			for (int i=0; i<=num; i++) collapsed.add(trace.first());
+			return collapsed;
+		}
+		double resampInt = traceLength/num;
 		FaultTrace resampTrace = new FaultTrace("resampled "+trace.getName());
 		resampTrace.add(trace.get(0));  // add the first location
 		double remainingLength = resampInt;

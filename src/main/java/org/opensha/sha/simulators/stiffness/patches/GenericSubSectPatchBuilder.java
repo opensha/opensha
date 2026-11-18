@@ -27,7 +27,7 @@ public final class GenericSubSectPatchBuilder implements SubSectPatchBuilder {
 	private static final double CORNER_TOLERANCE_METERS = 1e-6;
 	private static final double EXTENT_TOLERANCE_KM = 1e-9;
 	/** Increment when geometry or layout conventions change; included in persistent cache keys. */
-	public static final int VERSION=10;
+	public static final int VERSION=11;
 	private final double spacing;
 	private final int zone;
 	private final char letter;

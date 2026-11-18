@@ -20,6 +20,17 @@ import org.opensha.sha.faultSurface.FaultTrace;
 
 public class FaultUtilsTests {
 
+	@Test public void resamplingCollapsedTipRetainsAllStations() {
+		FaultTrace tip = new FaultTrace("triangular tip");
+		Location point = new Location(34, -118, 2);
+		tip.add(point); tip.add(point);
+		for (int num : new int[] {0, 1, 10}) {
+			FaultTrace resampled = FaultUtils.resampleTrace(tip, num);
+			assertEquals(num+1, resampled.size());
+			for (Location loc : resampled) assertEquals(point, loc);
+		}
+	}
+
 	public FaultUtilsTests() {
 	}
 	

@@ -26,6 +26,12 @@ interior rows. Nominal spacings and average dip do not determine its local
 geometry. Elastic calculations and aggregation are shared. The generic geometry
 still needs real-model plausibility and near-field validation.
 
+Either along-strike node order is supported. Physical patch normals point upward
+on dipping surfaces even when a child dips left of its parent-relative ordering.
+Vertical patches retain the directional convention supplied by grid winding.
+Fold checks compare the original cell tangents before choosing their upward side;
+allowing reversed winding does not allow a folded cell.
+
 All patch-construction classes and package-level tests live in
 `org.opensha.sha.simulators.stiffness.patches`. Geometry/layout helpers remain
 package-private. The calculator's existing nested `PatchAlignment`,
@@ -218,7 +224,7 @@ Real-model plausibility and near-field spacing comparisons remain outstanding.
 
 Plausibility JSON records the configured strategy. Missing or null fields default
 to AUTO; explicit STIRLING and GENERIC fields retain their meaning. Cache filenames
-include the configured mode and a generation version (currently generic v10).
+include the configured mode and a generation version (currently generic v11).
 AUTO and GENERIC keys fingerprint ordered physical patches and mechanisms, so
 mixed-model and surface-geometry changes cannot reuse the same geometry key. Older cache filenames are
 not selected automatically. Explicit loading of an arbitrary cache file remains

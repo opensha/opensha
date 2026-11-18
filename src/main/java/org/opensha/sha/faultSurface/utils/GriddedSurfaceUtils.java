@@ -20,6 +20,7 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
+import org.opensha.commons.util.FaultUtils;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -40,6 +41,34 @@ public class GriddedSurfaceUtils {
 
 	/** minimum depth for Campbell model */
 	public final static double SEIS_DEPTH = 3d;
+
+	/**
+	 * Whether representative physical dip is left of the surface's native edge order.
+	 * This is independent of how a compound rupture traverses the surface. Horizontal
+	 * and vertical faults retain their native directional convention. A single side
+	 * cannot describe every local hanging wall on a strongly twisted surface.
+	 */
+	public static boolean isDippingToLeft(RuptureSurface surface) {
+		double dip = surface.getAveDip();
+		if (dip <= 1e-8 || dip >= 90d-1e-6)
+			return false;
+		// Sampled edges also work for buried simple faults whose getUpperEdge()
+		// cannot return the original trace at its projected depth.
+		FaultTrace edge = surface.getEvenlyDiscritizedUpperEdge();
+		if (edge.getTraceLength() == 0d) {
+			edge = new FaultTrace(null);
+			edge.addAll(surface.getEvenlyDiscritizedLowerEdge());
+		}
+		double strike = edge.getAveStrike();
+		double dipDirection = surface.getAveDipDirection();
+		// Older simple surfaces can leave this summary unspecified even though
+		// their construction follows RHR. Retain that existing convention.
+		if (!Double.isFinite(dipDirection))
+			return false;
+		Preconditions.checkState(Double.isFinite(strike),
+				"Cannot determine physical dip side");
+		return FaultUtils.getAbsAngleDiff((strike+90d)%360d, dipDirection) > 90d;
+	}
 	
 	private static class LazyXCalculator implements Function<Location, Double> {
 		

@@ -297,37 +297,11 @@ public class GeoJSONFaultSection implements FaultSection {
 		
 		checkLoadDeprecatedLowerTraceProperty();
 		
-		if (lowerTrace != null) {
-			// this checks that the lower trace is below the upper trace, and the the right hand rule is followed (if dipping).
-			// it also sets the upper/lower depths, dip, and dip direction as needed (if omitted in the GeoJSON properties).
-			validateLowerTrace(trace, lowerTrace);
-		} else if (!Double.isFinite(upperDepth)) {
-			// upper depth is missing, might be able to infer from upper fault trace
+		if (lowerTrace == null && !Double.isFinite(upperDepth)) {
 			Preconditions.checkState(feature.geometry.isSerializeZeroDepths(),
 					"Can't infer upper depth: upper depth not specified, and fault trace did not specify depths.");
-			// compute average upper depth
-			int num = Integer.max(10, (int)trace.getTraceLength());
-			upperDepth = FaultUtils.resampleTrace(trace, num).stream().map(S -> S.depth).mapToDouble(d->d).average().getAsDouble();
-			properties.set(UPPER_DEPTH, upperDepth);
 		}
-		
-		checkPropFinite(UPPER_DEPTH, upperDepth);
-		FaultUtils.assertValidDepth(upperDepth);
-		checkPropFinite(LOW_DEPTH, lowerDepth);
-		FaultUtils.assertValidDepth(lowerDepth);
-		checkPropFinite(DIP, dip);
-		FaultUtils.assertValidDip(dip);
-		
-		if (!Double.isFinite(dipDirection)) {
-			if (lowerTrace == null) {
-				// use upper trace
-				setDipDirection((float)(trace.getAveStrike()+90d));
-			} else {
-				// calculate between traces
-				ApproxEvenlyGriddedSurface surf = getApproxGriddedSurface(1d, false);
-				setDipDirection((float)surf.getAveDipDirection());
-			}
-		}
+		validateAndComplete();
 
 		cacheCommonValues();
 		
@@ -409,19 +383,8 @@ public class GeoJSONFaultSection implements FaultSection {
 				Preconditions.checkState(geometry.isSerializeZeroDepths(),
 						"Depths must be explicitly supplied in the GeoJSON coordinates array of a lower trace");
 				// TODO: support more than 2 (listric)?
-				double avgUpperDepth = 0d;
-				for (Location loc : trace)
-					avgUpperDepth += loc.depth;
-				avgUpperDepth /= trace.size();
 				lowerTrace = new FaultTrace(name);
 				lowerTrace.addAll(lines.get(1));
-				double avgLowerDepth = 0d;
-				for (Location loc : lowerTrace)
-					avgLowerDepth += loc.depth;
-				avgLowerDepth /= lowerTrace.size();
-				Preconditions.checkState(avgLowerDepth > avgUpperDepth, "MultiLineString supplied with upper and lower traces, "
-						+ "but lower trace (depth="+(float)avgLowerDepth+") is not below upper trace (depth="+(float)avgUpperDepth
-						+"). Were depths supplied in GeoJSON (tuples)?");
 			}
 		} else if (geometry instanceof Polygon) {
 			Region polygon = ((Polygon)geometry).asRegion();
@@ -457,54 +420,83 @@ public class GeoJSONFaultSection implements FaultSection {
 		}
 	}
 	
-	private void validateLowerTrace(FaultTrace upper, FaultTrace lower) {
-		int num = Integer.max(10, (int)Math.max(upper.getTraceLength(), lower.getTraceLength()));
-		
-		// check depth
-		FaultTrace resampledUpper = FaultUtils.resampleTrace(upper, num);
-		double upperDepth = resampledUpper.stream().map(S -> S.depth).mapToDouble(d->d).average().getAsDouble();
-		FaultTrace resampledLower = FaultUtils.resampleTrace(lower, num);
-		double lowerDepth = resampledLower.stream().map(S -> S.depth).mapToDouble(d->d).average().getAsDouble();
-		Preconditions.checkState(lowerDepth > upperDepth,
-				"Upper trace (depth=%s) must be above (less than) lower trace (depth=%s)", upperDepth, lowerDepth);
-		if (Double.isNaN(this.upperDepth)) {
-			this.upperDepth = upperDepth;
-			this.properties.set(UPPER_DEPTH, upperDepth);
+	/**
+	 * Validate a completed section and infer missing geometry summaries. Used by
+	 * loading, generated subsections, and serialization, so those paths accept the
+	 * same geometry. Upper-trace order is a parent coordinate, not an RHR promise.
+	 * Supplied finite summaries may be nominal; they need not equal surface averages.
+	 * Coordinates must be finite with nonnegative depths. Corresponding lower-trace
+	 * stations may have equal depth, but may not lie above the upper trace beyond
+	 * roundoff tolerance. Collapsed boundary tips are valid; zero-area surfaces are not.
+	 */
+	public void validateAndComplete() {
+		Preconditions.checkState(id >= 0, "ID must be >= 0");
+		Preconditions.checkState(!Double.isInfinite(upperDepth) && !Double.isInfinite(lowerDepth)
+				&& !Double.isInfinite(dip) && !Float.isInfinite(dipDirection), "Infinite geometry summary");
+		ApproxEvenlyGriddedSurface.validateTrace(trace, "Upper");
+		// This is also the completion point after callers have edited mutable traces.
+		approxGriddedCache = null;
+		stirlingCache = null;
+		if (lowerTrace != null) {
+			ApproxEvenlyGriddedSurface.validateTrace(lowerTrace, "Lower");
+			FaultTrace aligned = ApproxEvenlyGriddedSurface.alignLowerTrace(trace, lowerTrace);
+			if (aligned != lowerTrace) {
+				lowerTrace = aligned;
+			}
+			FaultTrace[] resampled = ApproxEvenlyGriddedSurface.resampleAndValidateTraces(trace, lowerTrace);
+			if (!Double.isFinite(upperDepth))
+				upperDepth = averageDepth(resampled[0]);
+			if (!Double.isFinite(lowerDepth))
+				lowerDepth = averageDepth(resampled[1]);
+			ApproxEvenlyGriddedSurface surface = getApproxGriddedSurface(1d, false);
+			// Also rejects a wholly collapsed surface, even when dip was supplied.
+			double geometricDip = surface.getAveDip();
+			if (!Double.isFinite(dip))
+				dip = geometricDip;
+			if (!Float.isFinite(dipDirection))
+				setDipDirection((float)surface.getAveDipDirection());
+		} else {
+			if (!Double.isFinite(upperDepth))
+				upperDepth = averageDepth(FaultUtils.resampleTrace(trace, Math.max(10, (int)Math.ceil(trace.getTraceLength()))));
+			// Simple children must inherit this direction to reconstruct the parent.
+			if (!Float.isFinite(dipDirection))
+				setDipDirection((float)(trace.getAveStrike()+90d));
 		}
-		if (Double.isNaN(this.lowerDepth)) {
-			this.lowerDepth = lowerDepth;
-			this.properties.set(UPPER_DEPTH, lowerDepth);
-		}
-		
-		ApproxEvenlyGriddedSurface surf = getApproxGriddedSurface(1d, false);
-		dip = properties.getDouble(DIP, Double.NaN);
-		if (!Double.isFinite(dip)) {
-			// calculate dip from the lower trace
-			dip = surf.getAveDip();
-			properties.set(DIP, dip);
-		}
-		
-		// check right hand rule if dipping
-		// skip the check if basically vertical
-		if (dip < 90d && (dip <= 85 || LocationUtils.horzDistanceFast(upper.first(), lower.first()) > 0.1d
-				|| LocationUtils.horzDistanceFast(upper.last(), lower.last()) > 0.1d)) {
-			double strike = upper.getAveStrike();
-			double simpleDipDir = FaultUtils.getAngleAverage(List.of(
-					LocationUtils.azimuth(upper.first(), lower.first()),
-					LocationUtils.azimuth(upper.last(), lower.last())));
-			double idealDipDir = strike + 90d;
-			while (idealDipDir > 360d)
-				idealDipDir -= 360;
-			double arDiff = FaultUtils.getAbsAngleDiff(idealDipDir, simpleDipDir);
-			Preconditions.checkState(arDiff <= 90d,
-					"Right hand rule violation: dip=%s, dipDir=%s, idealDipDir=%s, diff=%s",
-					dip, simpleDipDir, idealDipDir, arDiff);
-		}
-		
-		if (!Double.isFinite(this.dipDirection))
-			setDipDirection((float)surf.getAveDipDirection());
+		checkPropFinite(UPPER_DEPTH, upperDepth);
+		FaultUtils.assertValidDepth(upperDepth);
+		checkPropFinite(LOW_DEPTH, lowerDepth);
+		FaultUtils.assertValidDepth(lowerDepth);
+		Preconditions.checkState(lowerDepth+ApproxEvenlyGriddedSurface.TRACE_DEPTH_TOLERANCE >= upperDepth,
+				"Lower depth (%s) is above upper depth (%s)", lowerDepth, upperDepth);
+		checkPropFinite(DIP, dip);
+		FaultUtils.assertValidDip(dip);
+		if (lowerTrace == null)
+			Preconditions.checkState(dip > 0d && lowerDepth > upperDepth,
+					"A simple fault needs positive dip and depth extent; supply both traces for a horizontal surface");
+		Preconditions.checkState(Float.isFinite(dipDirection), "Nonfinite dip direction");
+		setDipDirection(dipDirection);
+		properties.set(UPPER_DEPTH, upperDepth);
+		properties.set(LOW_DEPTH, lowerDepth);
+		properties.set(DIP, dip);
 	}
-	
+
+	private static double averageDepth(FaultTrace trace) {
+		return trace.stream().mapToDouble(Location::getDepth).average().getAsDouble();
+	}
+
+	@Override
+	public double getOrigDownDipWidth() {
+		if (lowerTrace == null || dip != 0d)
+			return FaultSection.super.getOrigDownDipWidth();
+		// Depth extent / sin(dip) is undefined for an explicit horizontal surface.
+		ApproxEvenlyGriddedSurface surface = getApproxGriddedSurface(1d, false);
+		double width = 0d;
+		for (int c=0; c<surface.getNumCols(); c++)
+			width += LocationUtils.linearDistanceFast(surface.getLocation(0, c),
+					surface.getLocation(surface.getNumRows()-1, c));
+		return width/surface.getNumCols();
+	}
+
 	private static void checkPropNonNull(String propName, Object value) {
 		Preconditions.checkNotNull(value, "FaultSections must have the '%s' GeoJSON property", propName);
 	}
@@ -578,7 +570,9 @@ public class GeoJSONFaultSection implements FaultSection {
 	}
 
 	public static GeoJSONFaultSection fromFaultSection(FaultSection section){
-		return new GeoJSONFaultSection(section);
+		GeoJSONFaultSection result = new GeoJSONFaultSection(section);
+		result.validateAndComplete();
+		return result;
 	}
 
 	public static GeoJSONFaultSection fromFeature(Feature feature) {
@@ -695,6 +689,7 @@ public class GeoJSONFaultSection implements FaultSection {
 	}
 	
 	public Feature toFeature() {
+		validateAndComplete();
 		Geometry geometry;
 		Preconditions.checkNotNull(trace, "Trace is null");
 		Geometry traceGeom;
@@ -813,10 +808,11 @@ public class GeoJSONFaultSection implements FaultSection {
 	}
 
 	public void setDipDirection(float dipDirection) {
-		while (dipDirection > 360f)
-			dipDirection -= 360f;
-		while (dipDirection < 0)
-			dipDirection += 360f;
+		Preconditions.checkArgument(!Float.isInfinite(dipDirection), "Infinite dip direction");
+		if (Float.isFinite(dipDirection)) {
+			dipDirection %= 360f;
+			if (dipDirection < 0f) dipDirection += 360f;
+		}
 		this.dipDirection = dipDirection;
 		properties.set(DIP_DIR, dipDirection);
 	}
@@ -905,6 +901,7 @@ public class GeoJSONFaultSection implements FaultSection {
 
 	@Override
 	public List<GeoJSONFaultSection> getSubSectionsList(double maxSubSectionLen, int startId, int minSubSections) {
+		validateAndComplete();
 		List<FaultTrace> equalLengthSubsTrace, equalLengthLowerSubsTrace;
 		if (lowerTrace == null) {
 			// simple case
@@ -943,25 +940,17 @@ public class GeoJSONFaultSection implements FaultSection {
 			subSection.setDipDirection(dipDirection);
 			
 			if (lowerTrace != null) {
-				FaultTrace lowerSubTrace = equalLengthLowerSubsTrace.get(i);
-//				System.out.println(myName);
-//				System.out.println("Upper trace az="+subSection.trace.getAveStrike()+": "+subSection.trace);
-//				System.out.println("Lower trace az="+lowerSubTrace.getAveStrike()+": "+lowerSubTrace);
-				// now done separately
-//				subSection.properties.set(LOWER_TRACE, new LineString(lowerSubTrace));
-				subSection.lowerTrace = lowerSubTrace;
-				// calculate new dip
-				subSection.dip = new ApproxEvenlyGriddedSurface(subSection.trace, subSection.lowerTrace,
-						subSection.trace.getTraceLength()/20d).getAveDip();
-				subSection.properties.set(DIP, subSection.dip);
-				// calculate new depth
-				int num = Integer.max(10, (int)Math.max(subSection.trace.getTraceLength(), lowerSubTrace.getTraceLength()));
-				subSection.upperDepth = FaultUtils.resampleTrace(subSection.trace, num).stream().map(S -> S.depth).mapToDouble(d->d).average().getAsDouble();
-				subSection.properties.set(UPPER_DEPTH, subSection.upperDepth);
-				subSection.lowerDepth = FaultUtils.resampleTrace(lowerSubTrace, num).stream().map(S -> S.depth).mapToDouble(d->d).average().getAsDouble();
-				subSection.properties.set(LOW_DEPTH, subSection.lowerDepth);
+				subSection.lowerTrace = equalLengthLowerSubsTrace.get(i);
+				// Only explicit trace pairs determine a child's local orientation.
+				// Simple faults above retain the parent's projection direction.
+				subSection.upperDepth = Double.NaN;
+				subSection.lowerDepth = Double.NaN;
+				subSection.dip = Double.NaN;
+				subSection.dipDirection = Float.NaN;
+				subSection.approxGriddedCache = null;
 			}
-			
+			subSection.validateAndComplete();
+
 			subSection.setZonePolygon(null);
 			
 			subSectionList.add(subSection);

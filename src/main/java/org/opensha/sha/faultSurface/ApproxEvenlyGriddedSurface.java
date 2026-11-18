@@ -18,7 +18,11 @@ import org.opensha.commons.util.FaultUtils;
 import com.google.common.base.Preconditions;
 
 /**
- * This classe represents and approximately evenly gridded surface, where the gridSpacing represents some average value.
+ * An approximately evenly gridded surface, where gridSpacing represents an average value.
+ * Column order follows the supplied upper trace, including locally left-dipping
+ * subsections. Physical strike/dip are calculated independently from cell geometry.
+ * Rx follows the stored upper-trace direction, preserving the parent's sign
+ * convention even where a subsection's physical dip direction changes sides.
  * 
  * We could add methods here like: getMinGridSpacing(), getMaxGridSpacing(), etc.
  * @author field
@@ -44,6 +48,8 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 	private double aveUpperDepth = Double.NaN;
 	// lazily initialized on first call to getAvgRupBottomDepth()
 	private double aveLowerDepth = Double.NaN;
+	// Ten micrometers in km: tolerate interpolation roundoff, not inverted boundaries.
+	static final double TRACE_DEPTH_TOLERANCE = 1e-8;
 
 
 	/**
@@ -68,8 +74,8 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 	 * a straight line between the top and bottom point of each column.  The number of columns is the average length
 	 * the top and bottom trace divided by the aveGridSpacing (plus 1), and the number of rows is the average distance
 	 * between the top and bottom points in each column divided by the aveGridSpacing (plus 1).
-	 * @param numRows
-	 * @param numCols
+	 * @param upperFaultTrace authoritative along-strike ordering
+	 * @param lowerFaultTrace lower boundary; aligned to the upper trace if needed
 	 * @param aveGridSpacing
 	 */
 	public ApproxEvenlyGriddedSurface(FaultTrace upperFaultTrace,FaultTrace lowerFaultTrace, double aveGridSpacing) {
@@ -86,8 +92,8 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 	 * <p>
 	 * If aseisReducesArea is true and aseismicSlipFactor>0, the upper depth will be reduced so that the final area
 	 * is approximately aseismicSlipFactor fraction of the original area.
-	 * @param numRows
-	 * @param numCols
+	 * @param upperFaultTrace authoritative along-strike ordering
+	 * @param lowerFaultTrace lower boundary; aligned to the upper trace if needed
 	 * @param aveGridSpacing
 	 * @param aseisReducesArea if true and aseismicSlipFactor>0, reduce the upper depth by aseismicSlipFactor
 	 * @param aseismicSlipFactor if >0 and aseisReducesArea is true, reduce the upper depth by this factor
@@ -99,15 +105,18 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 		gridSpacingAlong = aveGridSpacing;
 		gridSpacingDown = aveGridSpacing;
 		sameGridSpacing = true;
-		// our checks can flip these, wrap so we don't alter that passed in
+		validateTrace(upperFaultTrace, "Upper");
+		validateTrace(lowerFaultTrace, "Lower");
+		// Own the traces; only the lower trace may be aligned to the upper.
 		FaultTrace tmpUpperFaultTrace = new FaultTrace(upperFaultTrace.getName());
 		tmpUpperFaultTrace.addAll(upperFaultTrace);
 		upperFaultTrace = tmpUpperFaultTrace;
 		FaultTrace tmpLowerFaultTrace = new FaultTrace(lowerFaultTrace.getName());
-		tmpLowerFaultTrace.addAll(lowerFaultTrace);
+		tmpLowerFaultTrace.addAll(alignLowerTrace(upperFaultTrace, lowerFaultTrace));
 		lowerFaultTrace = tmpLowerFaultTrace;
 		this.upperFaultTrace = upperFaultTrace;
 		this.lowerFaultTrace = lowerFaultTrace;
+		resampleAndValidateTraces(upperFaultTrace, lowerFaultTrace);
 		
 		double traceDistFactor;
 		if (aseisReducesArea) {
@@ -124,37 +133,8 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 			traceDistFactor = 1d;
 		}
 
-		// check that the traces are both in the same order
-		double upperAz = upperFaultTrace.getAveStrike();
-		double lowerAz = lowerFaultTrace.getAveStrike();
-		double azDiff = FaultUtils.getAbsAngleDiff(upperAz, lowerAz);
-		if (azDiff > 90d) {
-			lowerFaultTrace.reverse();
-			if(D) System.out.println("Needed to reversed lower trace to comply with upper trace; upperAz="
-					+(float)upperAz+", lowerAz="+(float)lowerAz+", diff="+(float)azDiff);
-		}
-
-		// Now check that Aki-Richards convention is adhered to (fault dips to right)
-		// But also handle the special case where one of the traces is of negligible
-		// length (e.g., a triangular surface or somehow vertical trace) and doesn't
-		// establish a direction.
-		List<Double> endpointDirections = new ArrayList<>();
-		for (int end=0; end<2; end++) {
-			Location top = end == 0 ? upperFaultTrace.first() : upperFaultTrace.last();
-			Location bottom = end == 0 ? lowerFaultTrace.first() : lowerFaultTrace.last();
-			if (LocationUtils.horzDistance(top, bottom) > 1e-9)
-				// there is enough separation to determine the azimuth
-				endpointDirections.add(LocationUtils.azimuth(top, bottom));
-		}
-		if (!endpointDirections.isEmpty()) {
-			double dipDir = FaultUtils.getAngleAverage(endpointDirections);
-			double idealDipDir = (upperAz+90d)%360d;
-			if (FaultUtils.getAbsAngleDiff(idealDipDir, dipDir) > 90d) {
-				upperFaultTrace.reverse();
-				lowerFaultTrace.reverse();
-				if (D) System.out.println("Reversed trace order to follow the right-hand rule");
-			}
-		}
+		// Column order follows the supplied upper trace, including locally left-dipping
+		// children. Independently reversing a child would break its parent's indexing.
 
 		// Retain both boundaries even if either dimension is smaller than the
 		// requested spacing; orientation requires at least one actual grid cell.
@@ -169,6 +149,7 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 		FaultTrace resampLowerTrace = FaultUtils.resampleTrace(lowerFaultTrace, num);
 		Preconditions.checkState(resampUpperTrace.size() == num+1, "Resampled upper has %s but expected %s", resampUpperTrace.size(), num+1);
 		Preconditions.checkState(resampLowerTrace.size() == num+1, "Resampled lower has %s but expected %s", resampLowerTrace.size(), num+1);
+		validateTraceDepths(resampUpperTrace, resampLowerTrace);
 
 		if(D) System.out.println("resample trace lengths: "+resampUpperTrace.size()+" & "+resampLowerTrace.size());
 		// compute ave num columns
@@ -191,6 +172,8 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 		for(int c=0; c<resampUpperTrace.size(); c++) {
 			Location topLoc = resampUpperTrace.get(c);
 			Location botLoc = resampLowerTrace.get(c);
+			if (botLoc.getDepth() < topLoc.getDepth())
+				botLoc = new Location(botLoc.getLatitude(), botLoc.getLongitude(), topLoc.getDepth());
 			LocationVector dir = LocationUtils.vector(topLoc, botLoc);
 			if (aseisReducesArea) {
 				// move the top location toward the bottom loc aseismicSlipFactor fraction
@@ -216,8 +199,8 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 //			double accuracyCheck = LocationUtils.linearDistanceFast(botLoc, this.getLocation(nRows-1,c));
 //			System.out.println("Distance between actual and computed bottom point = "+(float)accuracyCheck);
 			
-			//override last location
-			//this.setLocation(nRows-1, c, botLoc);
+			// Shared subsection boundaries should retain the supplied locations exactly.
+			this.setLocation(nRows-1, c, botLoc);
 		}
 		
 		Location loc1 = resampLowerTrace.get(resampLowerTrace.size()-1);
@@ -302,9 +285,47 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 		avgStrike = Double.NaN;
 		aveUpperDepth = Double.NaN;
 		aveLowerDepth = Double.NaN;
+		clearCache();
 	}
 
+	/** Shared by explicit-trace construction and GeoJSON completion. */
+	static void validateTrace(FaultTrace trace, String label) {
+		Preconditions.checkState(trace != null && trace.size() >= 2, "%s trace needs at least two locations", label);
+		for (Location loc : trace)
+			Preconditions.checkState(loc != null && Double.isFinite(loc.getLatitude())
+					&& Double.isFinite(loc.getLongitude()) && Double.isFinite(loc.getDepth()) && loc.getDepth() >= 0d,
+					"%s trace has an invalid location: %s", label, loc);
+	}
 
+	/** Match lower ends to upper ends without changing the authoritative upper direction. */
+	static FaultTrace alignLowerTrace(FaultTrace upper, FaultTrace lower) {
+		if (FaultUtils.getAbsAngleDiff(upper.getAveStrike(), lower.getAveStrike()) <= 90d
+				|| upper.getTraceLength() == 0d || lower.getTraceLength() == 0d)
+			return lower;
+		FaultTrace aligned = new FaultTrace(lower.getName());
+		aligned.addAll(lower);
+		aligned.reverse();
+		return aligned;
+	}
+
+	/** Use a spacing-independent check so loading and dynamically built sections agree. */
+	static FaultTrace[] resampleAndValidateTraces(FaultTrace upper, FaultTrace lower) {
+		validateTrace(upper, "Upper");
+		validateTrace(lower, "Lower");
+		int num = Math.max(Math.max(10, Math.max(upper.size(), lower.size())-1),
+				(int)Math.ceil(Math.max(upper.getTraceLength(), lower.getTraceLength())));
+		FaultTrace top = FaultUtils.resampleTrace(upper, num);
+		FaultTrace bottom = FaultUtils.resampleTrace(lower, num);
+		validateTraceDepths(top, bottom);
+		return new FaultTrace[] {top, bottom};
+	}
+
+	private static void validateTraceDepths(FaultTrace upper, FaultTrace lower) {
+		for (int i=0; i<upper.size(); i++)
+			Preconditions.checkState(lower.get(i).getDepth()+TRACE_DEPTH_TOLERANCE >= upper.get(i).getDepth(),
+					"Lower trace is above upper trace at station %s: %s < %s km", i,
+					lower.get(i).getDepth(), upper.get(i).getDepth());
+	}
 
 	public void writeXYZ_toFile(String fileName) {
 		try{
@@ -558,7 +579,7 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 
 	@Override
 	public FaultTrace getUpperEdge() {
-		return upperFaultTrace;
+		return upperFaultTrace == null ? getRowAsTrace(0) : upperFaultTrace;
 	}
 
 
