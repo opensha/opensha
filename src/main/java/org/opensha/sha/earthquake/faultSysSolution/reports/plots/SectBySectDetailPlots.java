@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.stream.IntStream;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -46,6 +47,8 @@ import org.opensha.commons.data.uncertainty.UncertainIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
+import org.opensha.commons.geo.LocationUtils;
+import org.opensha.commons.geo.LocationUtils.LocationAverager;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.gui.plot.GeographicMapMaker;
@@ -240,8 +243,29 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		
 		List<String> lines = new ArrayList<>();
 		
+		writeParentSectsMap(resourcesDir, "parent_sections", rupSet.getFaultSectionDataList(), meta.region);
+
+		lines.add("This section includes links to pages with plots for specific parent fault sections.");
+		lines.add("");
+		lines.add("Clickable GeoJSON map to identify fault section names (parent colors are chosen to distinguish nearby sections): "+
+				RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/parent_sections.geojson")
+				+" "+"[Download GeoJSON]("+relPathToResources+"/parent_sections.geojson)");
+		lines.add("");
+
+		lines.addAll(table.build());
+
+		return lines;
+	}
+
+	/**
+	 * Plot deterministic, geographically separated parent colors. Input may be
+	 * subsections or full sections without parent IDs; colors follow list order,
+	 * so section IDs need not be contiguous or equal to list indices.
+	 */
+	public static void writeParentSectsMap(File outputDir, String prefix, List<? extends FaultSection> sects, Region region) throws IOException {
+
 		// make map of parent sections to make clicking easy
-		GeographicMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region) {
+		GeographicMapMaker mapMaker = new GeographicMapMaker(region) {
 
 			@Override
 			protected Feature surfFeature(FaultSection sect, PlotCurveCharacterstics pChar, double opacity) {
@@ -252,48 +276,155 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			protected Feature traceFeature(FaultSection sect, PlotCurveCharacterstics pChar) {
 				return featureLink(super.traceFeature(sect, pChar), sect);
 			}
-			
+
 			private Feature featureLink(Feature feature, FaultSection sect) {
-				feature.properties.set("name", sect.getParentSectionName());
-				feature.properties.set("id", sect.getParentSectionId());
+				String name = sect.getParentSectionName();
+				feature.properties.set("name", sect.getParentSectionId() >= 0 && name != null ? name : sect.getSectionName());
+				feature.properties.set("id", sect.getParentSectionId() >= 0 ? sect.getParentSectionId() : sect.getSectionId());
 				feature.properties.set("subSectID", sect.getSectionId());
 				return feature;
 			}
-			
+
 		};
+		mapMaker.setFaultSections(sects);
 		mapMaker.setWriteGeoJSON(true);
-		mapMaker.setRegion(meta.region);
 		mapMaker.setWritePDFs(false);
-		
-		List<Color> sectColors = new ArrayList<>();
-		for (int s=0; s<rupSet.getNumSections(); s++)
-			sectColors.add(null);
-		// now fill in random colors for each parent section
-		Random rand = new Random(rupSet.getNumSections()*sectsByParent.size());
+
+		mapMaker.plotSectColors(buildParentSectionColors(sects));
+		mapMaker.plot(outputDir, prefix, "Parent Fault Sections");
+	}
+
+	/** Assign deterministic colors in input-list order, keeping each parent's subsections together. */
+	static List<Color> buildParentSectionColors(List<? extends FaultSection> sects) throws IOException {
+		Map<Integer, List<FaultSection>> sectsByParent = sects.stream().collect(
+				Collectors.groupingBy(S -> parentColorKey(S)));
 		List<Integer> sortedIDs = new ArrayList<>(sectsByParent.keySet());
 		Collections.sort(sortedIDs);
-		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, 1d);
+		int count = sortedIDs.size();
+		List<Location> centroids = new ArrayList<>(count);
 		for (int parentID : sortedIDs) {
-			List<FaultSection> sects = sectsByParent.get(parentID);
-			Color color = cpt.getColor(rand.nextFloat());
-			for (FaultSection sect : sects)
-				sectColors.set(sect.getSectionId(), color);
+			LocationAverager avg = new LocationAverager();
+			for (FaultSection sect : sectsByParent.get(parentID)) {
+				FaultTrace trace = sect.getFaultTrace();
+				avg.add(trace.first(), 1d);
+				avg.add(trace.last(), 1d);
+			}
+			centroids.add(avg.getAverage());
 		}
-		mapMaker.plotSectColors(sectColors);
-		mapMaker.plot(resourcesDir, "parent_sections", "Parent Fault Sections");
-		
-		lines.add("This section includes links to pages with plots for specific parent fault sections.");
-		lines.add("");
-		lines.add("Clickable GeoJSON map to identify fault section names (each parent section is plotted in a random color): "+
-				RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/parent_sections.geojson")
-				+" "+"[Download GeoJSON]("+relPathToResources+"/parent_sections.geojson)");
-		lines.add("");
-		
-		lines.addAll(table.build());
-
-		return lines;
+		Random rand = new Random((long)sects.size()*count);
+		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, 1d);
+		float[] parentRands = new float[count];
+		for (int i=0; i<count; i++) parentRands[i] = rand.nextFloat();
+		int[] assignment = improveParentColorAssignment(centroids, parentRands, rand);
+		Map<Integer, Color> parentColors = new HashMap<>();
+		for (int i=0; i<count; i++)
+			parentColors.put(sortedIDs.get(i), cpt.getColor(parentRands[assignment[i]]));
+		List<Color> sectColors = new ArrayList<>(sects.size());
+		for (FaultSection sect : sects) sectColors.add(parentColors.get(parentColorKey(sect)));
+		return sectColors;
 	}
-	
+
+	/** Negative keys separate unparented full sections from parent IDs in mixed input lists. */
+	private static int parentColorKey(FaultSection sect) {
+		// For nonnegative section IDs: 0 -> -1, 1 -> -2, etc. These keys are
+		// internal only; GeoJSON features retain the actual section/parent IDs.
+		return sect.getParentSectionId() >= 0 ? sect.getParentSectionId() : -sect.getSectionId()-1;
+	}
+
+	private static final double PARENT_COLOR_DISTANCE_SCALE_KM = 50d;
+	private static final double PARENT_COLOR_DISTANCE_CUTOFF_KM = 150d;
+	private static final double PARENT_COLOR_VALUE_SCALE = 0.15;
+
+	/**
+	 * Minimize sum w(distance)*similarity(value) by accepting improving pair swaps.
+	 * w=exp(-0.5*(distance/50 km)^2), truncated at 150 km; similarity uses the
+	 * same Gaussian with sigma=0.15 in the CPT's [0,1] coordinate. Thus nearby
+	 * parents are encouraged to occupy separated parts of the perceptually uniform
+	 * rainbow. Swaps preserve the original seeded random values and color counts.
+	 */
+	static int[] improveParentColorAssignment(List<Location> centroids, float[] values, Random rand) {
+		int count = centroids.size();
+		Preconditions.checkArgument(values.length == count);
+		int[] assignment = IntStream.range(0, count).toArray();
+		if (count < 2) return assignment;
+
+		// Each pair is written by exactly one worker. Primitive arrays avoid a
+		// concurrent map and object allocation/lookup in the million-swap loop.
+		double[][] distances = new double[count][count];
+		IntStream.range(0, count).parallel().forEach(i -> {
+			for (int j=i+1; j<count; j++) {
+				double distance = LocationUtils.horzDistanceFast(centroids.get(i), centroids.get(j));
+				distances[i][j] = distance;
+				distances[j][i] = distance;
+			}
+		});
+		int[][] neighbors = new int[count][];
+		double[][] weights = new double[count][];
+		for (int i=0; i<count; i++) {
+			int neighborCount = 0;
+			for (int j=0; j<count; j++) if (j != i && distances[i][j] < PARENT_COLOR_DISTANCE_CUTOFF_KM) neighborCount++;
+			neighbors[i] = new int[neighborCount];
+			weights[i] = new double[neighborCount];
+			int index = 0;
+			for (int j=0; j<count; j++) if (j != i && distances[i][j] < PARENT_COLOR_DISTANCE_CUTOFF_KM) {
+				neighbors[i][index] = j;
+				double scaled = distances[i][j]/PARENT_COLOR_DISTANCE_SCALE_KM;
+				weights[i][index++] = Math.exp(-0.5*scaled*scaled);
+			}
+		}
+		// Precompute similarity in random-number space; colors are drawn from
+		// the CPT only after the final permutation has been selected.
+		double[][] similarities = new double[count][count];
+		for (int i=0; i<count; i++) {
+			for (int j=i; j<count; j++) {
+				double scaled = (values[i]-values[j])/PARENT_COLOR_VALUE_SCALE;
+				double similarity = Math.exp(-0.5*scaled*scaled);
+				similarities[i][j] = similarity;
+				similarities[j][i] = similarity;
+			}
+		}
+		double initialCost = 0d;
+		for (int i=0; i<count; i++) for (int k=0; k<neighbors[i].length; k++) {
+			int j = neighbors[i][k];
+			if (j > i) initialCost += weights[i][k]*similarities[i][j];
+		}
+		double cost = initialCost;
+		int accepted = 0;
+		for (long iter=0; iter<(long)count*1000; iter++) {
+			int first = rand.nextInt(count), second = rand.nextInt(count);
+			if (first == second) continue;
+			double delta = parentColorSwapDelta(first, second, assignment, neighbors, weights, similarities);
+			if (delta < -1e-12) {
+				int swap = assignment[first];
+				assignment[first] = assignment[second];
+				assignment[second] = swap;
+				cost += delta;
+				accepted++;
+			}
+		}
+		System.out.println("Parent map colors: "+count+" parents, "+accepted
+				+" swaps; nearby-color cost "+(float)initialCost+" -> "+(float)cost);
+		return assignment;
+	}
+
+	/** Only edges incident to the swapped parents change; their mutual edge is unchanged. */
+	private static double parentColorSwapDelta(int first, int second, int[] assignment,
+			int[][] neighbors, double[][] weights, double[][] similarities) {
+		double delta = 0d;
+		int firstColor = assignment[first], secondColor = assignment[second];
+		for (int k=0; k<neighbors[first].length; k++) {
+			int neighbor = neighbors[first][k];
+			if (neighbor != second) delta += weights[first][k]
+					*(similarities[secondColor][assignment[neighbor]]-similarities[firstColor][assignment[neighbor]]);
+		}
+		for (int k=0; k<neighbors[second].length; k++) {
+			int neighbor = neighbors[second][k];
+			if (neighbor != first) delta += weights[second][k]
+					*(similarities[firstColor][assignment[neighbor]]-similarities[secondColor][assignment[neighbor]]);
+		}
+		return delta;
+	}
+
 	public void plotSingleParent(File outputDir, ReportMetadata meta, int parentID) throws IOException {
 		FaultSystemRupSet rupSet = meta.primary.rupSet;
 		FaultSystemSolution sol = meta.primary.sol;
