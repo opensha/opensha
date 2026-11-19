@@ -2,6 +2,7 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm27.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -59,7 +60,7 @@ public class NSHM27_InversionScriptWriter {
 			
 //			int samples = 5000;
 //			int samples = 10000;
-			int samples = 20000;
+//			int samples = 20000;
 //			int samples = 50000;
 			// 1 << N = 2^N
 //			int samples = 1 << 9; // 512
@@ -68,6 +69,7 @@ public class NSHM27_InversionScriptWriter {
 //			int samples = 1 << 12; // 4096
 //			int samples = 1 << 13; // 8192
 //			int samples = 1 << 14; // 16384
+			int samples = 1 << 15; // 32768
 			args = new String[] {
 					"--region", NSHM27_SeismicityRegions.AMSAM.name(),
 //					"--region", NSHM27_SeismicityRegions.GNMI.name(),
@@ -77,26 +79,30 @@ public class NSHM27_InversionScriptWriter {
 //					"--hpc-site", HPCConfig.HPCSite.USC_CARC_FMPJ.name(),
 //					"--remote-dir", "/project2/scec_608/kmilner/fss_inversions",
 //					"--nodes", "36",
-////					"--job-time-hours", "48",
-//					"--job-time-hours", "10",
+//					"--job-time-hours", "48",
+////					"--job-time-hours", "10",
 					
 					"--hpc-site", HPCConfig.HPCSite.FRONTERA_FMPJ.name(),
 					"--remote-dir", "/scratch2/00950/kevinm/fss_inversions",
-					"--nodes", "40",
-					"--job-time-hours", "20", // for 20k
-//					"--job-time-hours", "10", // for 8192
+					"--nodes", "30",
+//					"--job-time-hours", "16", // for 20k
+					"--job-time-hours", "30", // for 30k
+//					"--job-time-hours", "8", // for 8192
+//					"--job-time-hours", "4", // for 4096
 //					"--job-time-hours", "48",
 //					"--hazard-time-same-as-inversion",
 					
-//					"--date", "2026_09_10",
+//					"--date", "2026_09_22",
 					
-					"--sampling-method", SamplingMethod.MONTE_CARLO.name(),
+//					"--sampling-method", SamplingMethod.MONTE_CARLO.name(),
 //					"--sampling-method", SamplingMethod.OWEN_SCRAMBLED_SOBOL.name(),
 //					"--sampling-method", SamplingMethod.LATIN_HYPERCUBE.name(),
+					"--sampling-method", SamplingMethod.SOBOL.name(),
 //					"--sampling-method", SamplingMethod.PAIRWISE_OPTIMIZED_LATIN_HYPERCUBE.name(),
 					"--samples", samples+"",
-					"--unique-seed",
-					"--name-add", "20",
+//					"--unique-seed",
+//					"--name-add", "2",
+//					"--name-add", "reserve",
 					
 					"--hazard-grid-spacing", "0.2",
 					"--write-hazard-curves",
@@ -150,7 +156,11 @@ public class NSHM27_InversionScriptWriter {
 				.parallelBranchAverage(true)
 				.build();
 
-		System.err.println("WARNING: still using PRVI25 GMMs until NSHM27-specific models are available");
+		System.err.println("WARNING: still using PRVI25 GMMs; remember to change to temporary global models before gamma model");
+		try {
+			Thread.sleep(Duration.ofSeconds(10));
+		} catch (InterruptedException e) {
+		}
 		HazardConfig hazard = HazardConfig.builder()
 				// set our defaults before cmd
 				.backgroundOption(IncludeBackgroundOption.INCLUDE)
@@ -159,6 +169,10 @@ public class NSHM27_InversionScriptWriter {
 				.gmpe(AttenRelRef.USGS_PRVI_ACTIVE)
 				.gmpe(AttenRelRef.USGS_PRVI_SLAB)
 				.gmpe(AttenRelRef.USGS_PRVI_INTERFACE)
+				// TODO: switch to these before Gamma runs
+//				.gmpe(AttenRelRef.USGS_NSHM23_ACTIVE)
+//				.gmpe(AttenRelRef.USGS_NSHM27_TEMP_INTERFACE)
+//				.gmpe(AttenRelRef.USGS_NSHM27_TEMP_SLAB)
 				.sites(hazardSites)
 				// now allow cmd overrides
 				.forCMD(cmd)
