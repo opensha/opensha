@@ -31,10 +31,6 @@ public class NetRuptureCoulombFilter implements ScalarCoulombPlausibilityFilter 
 	
 	private AggregatedStiffnessCalculator aggCalc;
 	private Range<Float> acceptableRange;
-	
-	// can't use the fitler data shortcut for anything where the final aggregation step involves a median
-	private static EnumSet<AggregationMethod> filterDataAggMethods = EnumSet.complementOf(
-			EnumSet.of(AggregationMethod.GREATER_MEAN_MEDIAN, AggregationMethod.GREATER_SUM_MEDIAN, AggregationMethod.MEDIAN));
 
 	public NetRuptureCoulombFilter(AggregatedStiffnessCalculator aggCalc, float threshold) {
 		this(aggCalc, Range.atLeast(threshold));
