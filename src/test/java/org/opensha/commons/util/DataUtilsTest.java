@@ -15,6 +15,35 @@ import com.google.common.primitives.Doubles;
 @SuppressWarnings("javadoc")
 public class DataUtilsTest {
 
+	@Test
+	public void weightedMedianRespectsWeightsAndHalfWeightTies() {
+		assertEquals(-10, weightedMedian(new double[] {-10, 2, 8}, new double[] {.8, .1, .1}), 0);
+		assertEquals(5, weightedMedian(new double[] {2, 8}, new double[] {.5, .5}), 0);
+		assertEquals(2, weightedMedian(new double[] {9, 1, 2}, new double[] {1, 1, 1}), 0);
+		assertEquals(2.5, weightedMedian(new double[] {4, 1, 3, 2}, new double[] {1, 1, 1, 1}), 0);
+		assertEquals(Double.MAX_VALUE,
+				weightedMedian(new double[] {Double.MAX_VALUE, Double.MAX_VALUE}, new double[] {1, 1}), 0);
+	}
+
+	@Test
+	public void weightedMedianDoesNotMutateInputsOrDependOnWeightUnits() {
+		double[] values = {8, -10, 2};
+		double[] weights = {.1, .8, .1};
+		assertEquals(-10, weightedMedian(values, weights), 0);
+		assertEquals(-10, weightedMedian(values, new double[] {1, 8, 1}), 0);
+		assertArrayEquals(new double[] {8, -10, 2}, values, 0);
+		assertArrayEquals(new double[] {.1, .8, .1}, weights, 0);
+	}
+
+	@Test
+	public void weightedMedianRejectsInvalidSamples() {
+		assertThrows(IllegalArgumentException.class, () -> weightedMedian(new double[0], new double[0]));
+		assertThrows(IllegalArgumentException.class, () -> weightedMedian(new double[] {1}, new double[] {1, 2}));
+		assertThrows(IllegalArgumentException.class, () -> weightedMedian(new double[] {Double.NaN}, new double[] {1}));
+		for (double weight : new double[] {0, -1, Double.NaN, Double.POSITIVE_INFINITY})
+			assertThrows(IllegalArgumentException.class, () -> weightedMedian(new double[] {1}, new double[] {weight}));
+	}
+
 	private double[] dd = {-10, Double.NaN, 0.0, 10};
 	
 	@Test (expected = NullPointerException.class)

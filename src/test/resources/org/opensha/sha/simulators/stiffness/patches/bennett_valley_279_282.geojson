@@ -1,0 +1,115 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": 279,
+      "properties": {
+        "PrimState": "CA",
+        "SecState": null,
+        "Rake": 180,
+        "LowDepth": 7.376202168827064,
+        "UpDepth": 0.0,
+        "Proxy": null,
+        "Linkto2014": 11,
+        "SlipRate": 0.01,
+        "HighRate": 0.2,
+        "LowRate": 0.0,
+        "ParentName": "Bennett Valley",
+        "SlipRateStdDev": 0.05,
+        "DipDir": 52.06017,
+        "DipDeg": 89.67233518138221,
+        "FaultName": "Bennett Valley, Subsection 0",
+        "FaultID": 279,
+        "ParentID": 11,
+        "SubSectIndex": 0,
+        "SubSectIndexAlong": 0,
+        "SubSectIndexDown": -1
+      },
+      "geometry": {
+        "type": "MultiLineString",
+        "coordinates": [
+          [
+            [
+              -122.46963000000001,
+              38.22547000000004,
+              0.0
+            ],
+            [
+              -122.50249164835769,
+              38.258263671752395,
+              0.0
+            ]
+          ],
+          [
+            [
+              -122.46941131351205,
+              38.225563592039286,
+              7.4624853515625
+            ],
+            [
+              -122.50199588214039,
+              38.258684379814845,
+              7.289918986091673
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": 282,
+      "properties": {
+        "PrimState": "CA",
+        "SecState": null,
+        "Rake": 180,
+        "LowDepth": 10.881958859346513,
+        "UpDepth": 0.0,
+        "Proxy": null,
+        "Linkto2014": 11,
+        "SlipRate": 0.01,
+        "HighRate": 0.2,
+        "LowRate": 0.0,
+        "ParentName": "Bennett Valley",
+        "SlipRateStdDev": 0.05,
+        "DipDir": 242.42482,
+        "DipDeg": 89.87790273723812,
+        "FaultName": "Bennett Valley, Subsection 3",
+        "FaultID": 282,
+        "ParentID": 11,
+        "SubSectIndex": 3,
+        "SubSectIndexAlong": 3,
+        "SubSectIndexDown": -1
+      },
+      "geometry": {
+        "type": "MultiLineString",
+        "coordinates": [
+          [
+            [
+              -122.5619579778515,
+              38.33056786451165,
+              0.0
+            ],
+            [
+              -122.5864648459838,
+              38.36761081719827,
+              0.0
+            ]
+          ],
+          [
+            [
+              -122.56230706080035,
+              38.33093896281311,
+              9.562719602046387
+            ],
+            [
+              -122.58719841155968,
+              38.36796427641694,
+              12.201198116646138
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -5,7 +5,7 @@ import java.awt.geom.Path2D;
 import java.util.List;
 
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
-import org.opensha.sha.simulators.stiffness.StiffnessCalc.Patch;
+
 import org.opensha.sha.simulators.stiffness.patches.GriddedSurfaceGeometry.SurfacePoint;
 
 /**
@@ -47,9 +47,9 @@ interface SurfaceReferenceFrame {
 	double[] indices(double x,double y);
 
 	/** Boundary of a physical tangent rectangle in reference coordinates. */
-	default double[][] projectPatchBoundary(Patch patch) {
-		double[][] points=new double[4][];
-		for (int i=0; i<4; i++) points[i]=project(new Vector3D(patch.corner[i]).scalarMultiply(0.001));
+	default double[][] projectPatchBoundary(StiffnessPatch patch) {
+		double[][] points=new double[patch.corner.length][];
+		for (int i=0; i<patch.corner.length; i++) points[i]=project(new Vector3D(patch.corner[i]).scalarMultiply(0.001));
 		return points;
 	}
 }

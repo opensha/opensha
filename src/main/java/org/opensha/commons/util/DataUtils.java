@@ -962,6 +962,41 @@ public class DataUtils {
 			return (lower + upper) * 0.5;
 		}	
 	}
+
+	/**
+	 * Returns the median by cumulative weight without changing either input array.
+	 * Values must be finite and weights must be finite and strictly positive. If
+	 * half the weight falls between two values, their average is returned, preserving
+	 * the usual even-sample median for equal weights. Runtime is O(n log n).
+	 *
+	 * @param values sample values
+	 * @param weights sample weights, in the same order as {@code values}
+	 * @return weighted median
+	 */
+	public static double weightedMedian(double[] values, double[] weights) {
+		checkArgument(values.length > 0 && values.length == weights.length, "Invalid weighted samples");
+		double totalWeight = 0;
+		Integer[] order = new Integer[values.length];
+		for (int i = 0; i < values.length; i++) {
+			checkArgument(Double.isFinite(values[i]), "Nonfinite sample value: %s", values[i]);
+			checkArgument(Double.isFinite(weights[i]) && weights[i] > 0, "Invalid sample weight: %s", weights[i]);
+			totalWeight += weights[i];
+			order[i] = i;
+		}
+		checkArgument(Double.isFinite(totalWeight), "Nonfinite total weight");
+		Arrays.sort(order, (a, b) -> Double.compare(values[a], values[b]));
+		double cumulative = 0;
+		double half = totalWeight / 2;
+		for (int i = 0; i < order.length; i++) {
+			cumulative += weights[order[i]];
+			// Allow for roundoff when independently summed areas divide in half.
+			if (Math.abs(cumulative - half) <= 8 * Math.ulp(totalWeight) && i + 1 < order.length)
+				return 0.5 * values[order[i]] + 0.5 * values[order[i + 1]];
+			if (cumulative > half)
+				return values[order[i]];
+		}
+		return values[order[order.length - 1]];
+	}
 	
 	public static List<Double> commaDoubleSplit(String str) {
 		ArrayList<Double> vals = new ArrayList<Double>();

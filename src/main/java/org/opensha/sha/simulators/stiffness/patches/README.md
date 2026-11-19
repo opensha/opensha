@@ -15,7 +15,7 @@ same returned instance. Mixed models may use different builders per section.
 Surfaces must implement `EvenlyGriddedSurface`; other surface types fail with a
 clear diagnostic.
 
-The strategy-taking constructor still accepts explicit `STIRLING` or `GENERIC`
+The strategy-taking constructor accepts explicit `STIRLING`, `GENERIC`, or `TRIANGULAR`
 overrides. Passing `null` is equivalent to AUTO. `getPatchGenerationStrategy()`
 returns the configured mode, including AUTO, rather than a model-wide resolution.
 
@@ -25,6 +25,149 @@ Stirling surface, and uses only the `EvenlyGriddedSurface` interface, including
 interior rows. Nominal spacings and average dip do not determine its local
 geometry. Elastic calculations and aggregation are shared. The generic geometry
 still needs real-model plausibility and near-field validation.
+
+## Finite triangles
+
+To use the actual surface cells instead of placing tangent rectangles:
+
+```java
+SubSectStiffnessCalculator calc = new SubSectStiffnessCalculator(
+        subSections, 2d, 3e4, 3e4, 0.5,
+        PatchAlignment.FILL_OVERLAP, 0d, PatchGenerationStrategy.TRIANGULAR);
+```
+
+Triangle mode requests the surface at the specified spacing (2 km here), rather
+than the `spacing/10` sampling used to place rectangles. It splits every cell on
+the same diagonal, preserving all supplied boundary nodes. This is a piecewise
+planar approximation to the supplied surface; it does not remesh or refine skinny
+triangles. The initial 3-D cell validation still applies, but no reference plane
+or ribbon projection is needed. A collapsed boundary tip can produce one
+zero-area half-cell, which is omitted. Positive-area halves are retained.
+
+The triangle builder has an overload without alignment; `CENTER` and
+`FILL_OVERLAP` produce identical triangle meshes. The existing `AUTO` behavior
+continues to select between the two rectangular builders. Triangle mode must be
+selected explicitly. Sources have uniform unit slip, and receivers are evaluated at
+their centroids. There are no distant-source approximations or finite-receiver
+averages in this implementation.
+
+`StiffnessPatch` contains shared Cartesian geometry. `RectangularPatch` and
+`TriangularPatch` carry their respective shapes, with `StiffnessCalc.Patch`
+retained as a rectangular compatibility subclass. `PatchLocation` contains the
+geographic counterpart, also available through the existing nested compatibility
+name. Code reading a `PatchLocation.patch` now sees `StiffnessPatch`; rectangle
+length/width require the rectangular subtype, and polygon consumers must allow
+three vertices. In particular, the separate SCEC-VDO colorer's four-corner patch
+assertion must be updated before it can display this mode.
+
+`TriangularDislocationCalc` is a Java port of the Nikkhoo-Walter half-space strain
+equations from cutde 26.3.6, with its MIT attribution retained. It needs no Python
+or native runtime. Coordinates use meters and positive Z upward; the free surface
+is Z=0. Stress and CFF keep the existing compression-positive convention.
+Near-vertical triangle edges expose cancellation in the reference equations.
+`TriangularDislocationExtended` evaluates the same correction with two-double
+arithmetic (about 31 decimal digits) within about 0.57 degrees of vertical.
+Repeated expressions are generated once and reused, without rearranging the
+algebra. For the most extreme edges, within about 0.0057 degrees, the original
+60-digit `TriangularDislocationPrecision` path remains. Exact vertical edges have
+an analytical zero correction and bypass both. Both precision paths keep endpoint
+geometry consistent during subtraction; no vertices are snapped or displaced.
+
+Extended precision is more expensive than ordinary doubles but much cheaper than
+arbitrary precision. It is needed for accuracy: angle-only cutoff reductions
+failed near shallow vertices and on skinny triangles, including CFF sign changes.
+The precision regression tests compare 3,264 combinations of edge angle, size,
+skew, depth, observation location, slip, and Poisson ratio to the 60-digit path.
+Their stress tolerance is `1e-8 * maximum reference tensor component + 1e-9 MPa`
+(the absolute floor is 0.001 Pa for weak signals). This is a tested numerical
+criterion, not a universal bound for arbitrary degenerate geometries. Independent
+arithmetic tests compare the internal `DoubleDouble` operations with 80-digit
+`BigDecimal` results. A real Bennett Valley pair checks interaction signs and
+receiver-area fractions against the original precision path.
+
+Neither precision path regularizes physical stress singularities; the optional
+CFF clipping policy is described below.
+Singular/nonfinite values are rejected by weighted aggregation rather than
+silently counted as negative interactions.
+
+### Unequal-area statistics
+
+The raw `StiffnessDistribution.get(type)` matrix always contains physical stress
+from unit slip on each finite source triangle. Source area is already integrated
+by the elastic kernel; it must not be multiplied into those raw values again.
+`receiverAggregate(SUM)` and the first aggregation-layer `SUM` add these physical
+source contributions directly.
+
+For individual-interaction statistics, let `A0 = spacing²` in square meters.
+The aggregation pipeline uses `q = rawStress / (sourceArea/A0)` and weights
+`(sourceArea/A0)*(receiverArea/A0)`. Thus means/medians compare stresses from a
+common source area, and sign fractions measure represented area instead of
+element counts. After summing sources, receiver statistics use receiver area
+only. A section-pair SUM is therefore
+`sum_receiver (receiverArea/A0) * sum_source rawStress`, preserving the legacy
+equal-patch SUM scale. Changing the reference spacing changes that legacy scale;
+refining a mesh while holding the reference area fixed does not.
+
+`NUM_POSITIVE` and `NUM_NEGATIVE` become equivalent-area counts, and
+`NORM_BY_COUNT`/interaction thresholds use the corresponding weighted interaction
+measure. `COUNT` remains the actual diagnostic number of interactions. The
+weighted interaction measure survives flattening, caching, and later aggregation
+layers. Rectangle mode retains its existing unweighted statistics. Triangle
+caches have a separate strategy/version and an `Interaction Weight` CSV column;
+weighted and unweighted cache files cannot be interchanged. Geometry hashing
+remains disabled, so callers must clear/reversion caches when their inputs change.
+
+`AggregationMethod` defines both weighted and unweighted statistics. Its
+`calculate(values, weights)` overload accepts null weights for ordinary samples.
+`ReceiverDistribution` supplies the stage-specific receiver-area correction and
+diagnostic interaction count. Batch caches use the same definitions and reuse
+intermediate statistics, including the median. Weighted sums and means use Apache
+Commons Math; `DataUtils.weightedMedian` implements the cumulative-area median,
+averaging adjacent values when the weight divides in half. Weighted median
+calculations preserve the original value/weight pairing without changing either
+array.
+
+The reference triangle equations use fixed continuation indentation rather than
+alignment by nesting depth. Formatter guards preserve that layout in Eclipse.
+The precision-algebra generator emits tabs and checks equations independently of
+whitespace, so indentation changes alone do not require regeneration.
+
+### Self-stiffness cap
+
+Triangle mode supports the same positive self-stiffness cap multiplier as
+rectangles; zero leaves CFF uncapped. For source `s` and receiver `r`, triangle
+mode clips each physical CFF contribution to
+`+/- multiplier * abs(selfCFF[r]) * sourceArea[s] / receiverArea[r]`.
+Self-CFF is evaluated at the triangle's own centroid with uniform unit slip and
+cached per receiver. Nonfinite self-CFF is rejected rather than silently disabling
+the cap. Sigma and tau are unchanged; clipping applies only to CFF, before area
+normalization or aggregation.
+
+The area ratio compares interaction and self-CFF per unit source area, using the
+same normalization as the interaction statistics. Equal-area patches recover the
+original limit. Subdividing a source divides its cap allowance among its children,
+instead of giving each child the original full allowance. Rectangular mode keeps
+its existing receiver-only cap.
+
+This does not make clipping invariant under arbitrary remeshing: receiver
+self-stiffness depends on shape and dimensions, and clipping contributions before
+summing can change their cancellation. Genuine edge singularities in the kernel
+are still present; the cap is a CFF clipping policy, not a finite-receiver average.
+Triangle cache version 3 includes this capping convention.
+
+### Validation and regeneration
+
+`StiffnessTestSuite` includes frozen cutde half-space strain cases; comparisons of
+two coplanar triangles against an Okada rectangle; horizontal, vertical, skinny,
+and near-edge cases; mesh-refinement tests for weighted aggregation and cache
+round trips; and the Aubrey, Bare Mountain, and Beaverhead subsection fixtures
+that challenged the projected rectangular layouts.
+
+The tools under `src/test/resources/org/opensha/sha/simulators/stiffness/tools`
+regenerate the frozen cutde reference CSV and both precision variants of the scalar algebra.
+Only oracle regeneration needs Python packages (`cutde==26.3.6` and NumPy).
+`regenerate_triangle_precision.py --check` uses the Python standard library to
+verify that the decimal and two-double expressions still match the ordinary Java kernel.
 
 Either along-strike node order is supported. Physical patch normals point upward
 on dipping surfaces even when a child dips left of its parent-relative ordering.

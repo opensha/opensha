@@ -23,15 +23,15 @@ import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.Stiffness
 import org.opensha.sha.simulators.stiffness.patches.GenericSubSectPatchBuilder;
 
 public class AggregatedStiffnessCache {
-	
+
 	public Map<AggregationMethod, ReceiverDistribution[][][]> patchAggregatedCache;
 	public Map<AggregationMethod, StiffnessAggregation[][]> patchSectAggregatedCache;
 	public StiffnessAggregation[][] fullDistCache;
-	
+
 	private SubSectStiffnessCalculator calc;
 	private List<? extends FaultSection> sects;
 	private StiffnessType type;
-	
+
 	AggregatedStiffnessCache(SubSectStiffnessCalculator calc, StiffnessType type) {
 		this.calc = calc;
 		this.type = type;
@@ -40,13 +40,13 @@ public class AggregatedStiffnessCache {
 		this.patchSectAggregatedCache = new HashMap<>();
 		Preconditions.checkArgument(sects != null && !sects.isEmpty());
 	}
-	
+
 	public synchronized void clear() {
 		fullDistCache = null;
 		patchSectAggregatedCache.clear();
 		patchAggregatedCache.clear();
 	}
-	
+
 	public ReceiverDistribution[] getPatchAggregated(AggregationMethod patchAggMethod, FaultSection source, FaultSection receiver) {
 		ReceiverDistribution[][][] cache = patchAggregatedCache.get(patchAggMethod);
 		int rID = calc.index(receiver);
@@ -55,7 +55,7 @@ public class AggregatedStiffnessCache {
 			return null;
 		return cache[rID][sID];
 	}
-	
+
 	public synchronized void putPatchAggregated(AggregationMethod patchAggMethod, FaultSection source,
 			FaultSection receiver, ReceiverDistribution[] aggregated) {
 		ReceiverDistribution[][][] cache = patchAggregatedCache.get(patchAggMethod);
@@ -69,7 +69,7 @@ public class AggregatedStiffnessCache {
 			cache[ rID] = new ReceiverDistribution[sects.size()][];
 		cache[rID][sID] = aggregated;
 	}
-	
+
 	public StiffnessAggregation getSectAggregated(AggregationMethod patchAggMethod, FaultSection source, FaultSection receiver) {
 		StiffnessAggregation[][] cache;
 		if (patchAggMethod == null)
@@ -82,12 +82,12 @@ public class AggregatedStiffnessCache {
 			return null;
 		return cache[rID][sID];
 	}
-	
+
 	public synchronized void putSectAggregated(AggregationMethod patchAggMethod, FaultSection source,
 			FaultSection receiver, StiffnessAggregation aggregated) {
 		putSectAggregated(patchAggMethod, calc.index(source), calc.index(receiver), aggregated);
 	}
-	
+
 	private void putSectAggregated(AggregationMethod patchAggMethod, int sourceID, int receiverID, StiffnessAggregation aggregated) {
 		StiffnessAggregation[][] cache;
 		if (patchAggMethod == null) {
@@ -107,14 +107,14 @@ public class AggregatedStiffnessCache {
 			cache[receiverID] = new StiffnessAggregation[sects.size()];
 		cache[receiverID][sourceID] = aggregated;
 	}
-	
+
 	public int calcCacheSize() {
 		int size = calcCacheSize(fullDistCache);
 		for (StiffnessAggregation[][] cache : patchSectAggregatedCache.values())
 			size += calcCacheSize(cache);
 		return size;
 	}
-	
+
 	private int calcCacheSize(StiffnessAggregation[][] cache) {
 		if (cache == null)
 			return 0;
@@ -129,24 +129,24 @@ public class AggregatedStiffnessCache {
 		}
 		return cached;
 	}
-	
+
 	public String getCacheFileName() {
 		DecimalFormat df = new DecimalFormat("0.##");
 		String ret = type.name().toLowerCase()+"_cache_"
-			+SectionDistanceAzimuthCalculator.getUniqueSectCacheFileStr(sects)
-			+"_"+df.format(calc.getGridSpacing())+"km_lambda"+df.format(calc.getLameLambda())
-			+"_mu"+df.format(calc.getLameMu())+"_coeff"+(float)calc.getCoeffOfFriction()
-			+"_align"+calc.getPatchAlignment().name();
+				+SectionDistanceAzimuthCalculator.getUniqueSectCacheFileStr(sects)
+				+"_"+df.format(calc.getGridSpacing())+"km_lambda"+df.format(calc.getLameLambda())
+				+"_mu"+df.format(calc.getLameMu())+"_coeff"+(float)calc.getCoeffOfFriction()
+				+"_align"+calc.getPatchAlignment().name();
 		if (calc.getSelfStiffnessCap() > 0)
 			ret += "_stiffCap"+df.format(calc.getSelfStiffnessCap())+"x";
 		ret += "_gen"+calc.getPatchGenerationStrategy().name()+"_v"
 				+calc.getPatchGenerationStrategy().getVersion();
 		// disabled for now; this would require building patches even if all results are cached
-//		if (calc.getPatchGenerationStrategy() != SubSectStiffnessCalculator.PatchGenerationStrategy.STIRLING)
-//			ret += "_geom"+calc.getPatchGeometryFingerprint();
+		//		if (calc.getPatchGenerationStrategy() != SubSectStiffnessCalculator.PatchGenerationStrategy.STIRLING)
+		//			ret += "_geom"+calc.getPatchGeometryFingerprint();
 		return ret+".csv";
 	}
-	
+
 	public void writeCacheFile(File cacheFile) throws IOException {
 		CSVFile<String> csv = new CSVFile<>(true);
 		List<String> line = new ArrayList<>();
@@ -155,13 +155,14 @@ public class AggregatedStiffnessCache {
 		line.add("Receiver Patch Aggregation");
 		for (AggregationMethod method : AggregatedStiffnessCalculator.CACHEABLE_AGG_METHODS)
 			line.add(method.name());
+		if (calc.isAreaWeighted()) line.add("Interaction Weight");
 		csv.addLine(line);
 		writeCacheLines(csv, null, fullDistCache);
 		for (AggregationMethod patchMethod : patchSectAggregatedCache.keySet())
 			writeCacheLines(csv, patchMethod, patchSectAggregatedCache.get(patchMethod));
 		csv.writeToFile(cacheFile);
 	}
-	
+
 	private void writeCacheLines(CSVFile<String> csv, AggregationMethod patchMethod, StiffnessAggregation[][] cache) {
 		if (cache == null)
 			return;
@@ -177,15 +178,16 @@ public class AggregatedStiffnessCache {
 					line.add(patchMethod == null ? "" : patchMethod.name());
 					for (AggregationMethod method : AggregatedStiffnessCalculator.CACHEABLE_AGG_METHODS)
 						line.add(agg.get(method)+"");
+					if (calc.isAreaWeighted()) line.add(Double.toString(agg.getInteractionWeight()));
 					csv.addLine(line);
 				}
 			}
 		}
 	}
-	
+
 	public int loadCacheFile(File cacheFile) throws IOException {
 		System.out.println("Loading "+type+" cache from "+cacheFile.getAbsolutePath()+"...");
-//		CSVFile<String> csv = CSVFile.readFile(cacheFile, true);
+		//		CSVFile<String> csv = CSVFile.readFile(cacheFile, true);
 		BufferedInputStream bis = new BufferedInputStream(new FileInputStream(cacheFile), 1024*64);
 		CSVFile<String> csv = CSVFile.readStream(bis, true);
 		List<String> header = csv.getLine(0);
@@ -193,7 +195,10 @@ public class AggregatedStiffnessCache {
 			System.err.println("Warning: stiffness cache file is invalid, skipping loading");
 			return 0;
 		}
-		AggregationMethod[] methods = new AggregationMethod[header.size()-3];
+		boolean weighted=header.get(header.size()-1).equals("Interaction Weight");
+		if (weighted != calc.isAreaWeighted())
+			throw new IOException("Stiffness cache weighting does not match the calculator: "+cacheFile);
+		AggregationMethod[] methods = new AggregationMethod[header.size()-3-(weighted ? 1 : 0)];
 		if (methods.length != AggregatedStiffnessCalculator.CACHEABLE_AGG_METHODS.size()) {
 			System.err.println("Warning: aggregation methods have changed and cache is now invalid, skipping loading");
 			return 0;
@@ -231,22 +236,26 @@ public class AggregatedStiffnessCache {
 			double[] aggValues = new double[methods.length];
 			for (int i=0; i<methods.length; i++)
 				aggValues[i] = csv.getDouble(row, col++);
-			StiffnessAggregation aggregation = new StiffnessAggregation(methods, aggValues);
+			StiffnessAggregation aggregation=weighted
+					? new StiffnessAggregation(methods,aggValues,csv.getDouble(row,col))
+							: new StiffnessAggregation(methods,aggValues);
 			putSectAggregated(patchAggMethod, sourceID, receiverID, aggregation);
 		}
 		System.out.println("Loaded "+(csv.getNumRows()-1)+" values");
 		return csv.getNumRows()-1;
 	}
-	
+
 	public void copyCacheFrom(AggregatedStiffnessCache o) {
+		Preconditions.checkState(calc.isAreaWeighted() == o.calc.isAreaWeighted(),
+				"Cannot copy between weighted and unweighted stiffness caches");
 		Preconditions.checkState(type == o.type);
 		Preconditions.checkState(sects.size() == o.sects.size());
-		
+
 		copyCacheFrom(null, o.fullDistCache);
 		for (AggregationMethod aggMethod : patchSectAggregatedCache.keySet())
 			copyCacheFrom(aggMethod, o.patchSectAggregatedCache.get(aggMethod));
 	}
-	
+
 	private void copyCacheFrom(AggregationMethod patchAggMethod, StiffnessAggregation[][] cache) {
 		if (cache == null)
 			return;

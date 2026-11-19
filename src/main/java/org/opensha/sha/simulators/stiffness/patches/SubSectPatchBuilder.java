@@ -14,4 +14,9 @@ import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchLoca
  */
 public interface SubSectPatchBuilder {
 	List<PatchLocation> buildPatches(FaultSection section, EvenlyGriddedSurface surface, PatchAlignment alignment);
+
+	/** Convenience entry point for builders whose geometry needs no alignment policy. */
+	default List<PatchLocation> buildPatches(FaultSection section, EvenlyGriddedSurface surface) {
+		return buildPatches(section,surface,PatchAlignment.FILL_OVERLAP);
+	}
 }

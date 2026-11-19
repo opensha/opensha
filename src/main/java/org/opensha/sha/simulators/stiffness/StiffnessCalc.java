@@ -12,21 +12,24 @@ import org.jfree.chart.ui.TextAnchor;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.geo.Location;
-import org.opensha.commons.geo.utm.UTM;
-import org.opensha.commons.geo.utm.WGS84;
 import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.sha.earthquake.FocalMechanism;
+import org.opensha.sha.simulators.stiffness.patches.StiffnessPatch;
+import org.opensha.sha.simulators.stiffness.patches.RectangularPatch;
+import org.opensha.sha.simulators.stiffness.patches.TriangularPatch;
 import org.opensha.sha.simulators.stiffness.OkadaDisplaceStrainCalc.Displacement;
 
 /**
- * This implements the RSQSim stiffness calculations for rectangular patches, translated form
- * C to Java by Kevin Milner in 9/2020. It uses the Okada (1992) displacement calculations.
+ * This implements stiffness calculations for finite rectangular and triangular patches.
+ * The rectangular calculation was translated from
+ * RSQSim C to Java by Kevin Milner in 9/2020 and uses Okada (1992).
+ * Triangles use the analytical Nikkhoo-Walter (2015) half-space solution.
  * 
- * Patches must be rectangular and in Cartesian coordinates in meters (e.g., UTM). The coordinate
+ * Patches use Cartesian coordinates in meters (e.g., UTM). The coordinate
  * system is East, North, Up.
  * 
  * @author kevin
@@ -34,112 +37,16 @@ import org.opensha.sha.simulators.stiffness.OkadaDisplaceStrainCalc.Displacement
  */
 public class StiffnessCalc {
 
-	// coord system is East, North, Up
-	public static class Patch {
-		/** corner[i][j] is the x_j coord. of the i^th corner
-	    for type == OKADA:
-	    corner[0] should be the lower corner in the
-		away-from-strike direction, corner[1] the lower
-		corner in the along-strike direction, corner[2]
-		the upper corner in the along-strike direction and
-		corner[3] the upper corner in the away-from-strike
-		direction */
-		public final double[][] corner;
-		/**
-		 * center point
-		 */
-		public final double[] center;
-		/**
-		 * length in the along-strike direction
-		 */
-		public final double L;
-		/**
-		 * width in the along-dip direction
-		 */
-		public final double W;
-		public final double area;
-		/** as in Aki and Richards; in radians */
-		public final double strike;
-		/** as in Aki and Richards; in radians */
-		public final double dip;
-		/** as in Aki and Richards; in radians */
-		public final double rake;
-		/** upward pointing unit normal vector, i.e. unit
-        vector pointing into hanging wall */
-		public final double[] nu;
-		/** unit slip vector (of hanging wall relative to footwall).  u.nu should probably be zero */
-		public final double[] u;
-		
-		public Patch(Location centerLoc, int utmZone, char utmLetter,
-				double length, double width, FocalMechanism mech) {
-			this(center(centerLoc, utmZone, utmLetter), length, width, mech);
+	/** Compatibility name for the original rectangular patch API. */
+	public static class Patch extends RectangularPatch {
+		public Patch(Location center, int zone, char letter, double length, double width, FocalMechanism mechanism) {
+			super(center, zone, letter, length, width, mechanism);
 		}
-		
-		public Patch(double[] center, double length, double width, FocalMechanism mech) {
-			this.center = center;
-			this.L = length;
-			this.W = width;
-			this.strike = Math.toRadians(mech.getStrike());
-			this.dip= Math.toRadians(mech.getDip());
-			this.rake = Math.toRadians(mech.getRake());
-			this.area = L*W;
-			
-			// calculate corners (from findCorners.c)
-			double[] st = new double[3]; /* unit vector in strike direction */
-			double[] dd = new double[3]; /* unit vector in down-dip direction */
-			int i;
-
-			st[0] = Math.sin(strike);  st[1] = Math.cos(strike); st[2] = 0.0;
-			dd[0] = Math.cos(dip)*Math.cos(strike);  
-			dd[1] = -Math.cos(dip)*Math.sin(strike);
-			dd[2] = -Math.sin(dip);
-			
-			this.corner = new double[4][3];
-			
-			double halfL = 0.5*L;
-			double halfW = 0.5*W;
-
-			for (i=0; i<3; i++) 
-			{
-				corner[0][i] = center[i] - (halfL)*st[i] + (halfW)*dd[i];
-				corner[1][i] = center[i] + (halfL)*st[i] + (halfW)*dd[i];
-				corner[2][i] = center[i] + (halfL)*st[i] - (halfW)*dd[i];
-				corner[3][i] = center[i] - (halfL)*st[i] - (halfW)*dd[i];
-			}
-			
-			// calculate unit vectors (from findNormalAndSlip.c)
-			double[] ud = new double[3]; /* unit vector in up-dip direction */
-			double cosr, sinr;  /* cosine and sine of rake angle */
-			int ic;
-			
-			ud[0] = -Math.cos(dip)*Math.cos(strike);  
-			ud[1] = Math.cos(dip)*Math.sin(strike);
-			ud[2] = Math.sin(dip);
-
-			nu = cross(st, ud);
-
-			cosr = Math.cos(rake);  sinr = Math.sin(rake);
-			u = new double[3];
-			for (ic=0; ic<3; ic++)
-				u[ic] = cosr*st[ic] + sinr*ud[ic];
+		public Patch(double[] center, double length, double width, FocalMechanism mechanism) {
+			super(center, length, width, mechanism);
 		}
 	}
-	
-	private static double[] center(Location loc, int zone, char letter) {
-		WGS84 wgs = new WGS84(loc.getLatitude(), loc.getLongitude());
-		UTM utm = new UTM(wgs, zone, letter);
-		return new double[] { utm.getEasting(), utm.getNorthing(), -1000d*loc.getDepth() };
-	}
-	
-	private static double[] cross(double[] x, double[] y) {
-		double[] z = new double[3];
-		z[0] = x[1]*y[2] - x[2]*y[1];
-		z[1] = x[2]*y[0] - x[0]*y[2];
-		z[2] = x[0]*y[1] - x[1]*y[0];
 
-		return z;
-	}
-	
 	private static final double HALF_PI = 0.5*Math.PI;
 
 	/**
@@ -153,8 +60,31 @@ public class StiffnessCalc {
 	 * @return { sigma, tau }
 	 */
 	public static double[] calcStiffness(double lambda, double mu, Patch source, Patch receiver) {
+		return calcStiffness(lambda, mu, (StiffnessPatch)source, receiver);
+	}
+
+	/** Dispatches by source geometry; receivers are sampled at their centroids. */
+	public static double[] calcStiffness(double lambda, double mu, StiffnessPatch source, StiffnessPatch receiver) {
+		if (source instanceof TriangularPatch) {
+			double poisson = lambda/(2*(lambda+mu));
+			double[] strain = TriangularDislocationCalc.strain(source.corner, receiver.center,
+					((TriangularPatch)source).getKernelSlip(), poisson);
+			double trace = strain[0]+strain[1]+strain[2];
+			double[] stress = {lambda*trace+2*mu*strain[0], 2*mu*strain[3], 2*mu*strain[4],
+					lambda*trace+2*mu*strain[1], 2*mu*strain[5], lambda*trace+2*mu*strain[2]};
+			double[] result = projectStress(stress, receiver.nu, receiver.u);
+			result[0] = -result[0];
+			return result;
+		}
+		if (!(source instanceof RectangularPatch))
+			throw new IllegalArgumentException("Unsupported source patch: "+source.getClass().getName());
+		return calcRectangularStiffness(lambda, mu, (RectangularPatch)source, receiver);
+	}
+
+	private static double[] calcRectangularStiffness(double lambda, double mu,
+			RectangularPatch source, StiffnessPatch receiver) {
 		double alpha = (lambda + mu)/(lambda + 2*mu);
-		
+
 		double theta = HALF_PI - source.strike;
 		double cost = Math.cos(theta);
 		double sint = Math.sin(theta);
@@ -175,18 +105,18 @@ public class StiffnessCalc {
 		double xx = x*cost + y*sint;
 		double yy = -x*sint + y*cost;
 		double zz = z;
-		
+
 		Displacement disp = OkadaDisplaceStrainCalc.dc3d(alpha, xx, yy, zz, c, dipDegree, 0.0, source.L,
 				0.0, source.W, u1, u2, 0.0);
 		if (disp == null)
 			return null;
 
-//		dc3d(alpha, xx, yy, zz, c, dip, 0.0, source.L, 0.0, source.W,
-//				u1, u2, 0.0,
-//				&u[0], &u[1], &u[2],
-//				&du[0][0], &du[1][0], &du[2][0],
-//				&du[0][1], &du[1][1], &du[2][1],
-//				&du[0][2], &du[1][2], &du[2][2]);
+		//		dc3d(alpha, xx, yy, zz, c, dip, 0.0, source.L, 0.0, source.W,
+		//				u1, u2, 0.0,
+		//				&u[0], &u[1], &u[2],
+		//				&du[0][0], &du[1][0], &du[2][0],
+		//				&du[0][1], &du[1][1], &du[2][1],
+		//				&du[0][2], &du[1][2], &du[2][2]);
 
 		double[] Sigma = deformationToStress(disp, lambda, mu);
 
@@ -204,12 +134,12 @@ public class StiffnessCalc {
 
 		/* up until here, extension has been reckoned positive, but in the simulator
         code, compression is reckoned positive, so need to switch sign of Ksigma */
-//		receiver.Ksigma[i] = -receiver.Ksigma[i];
+		//		receiver.Ksigma[i] = -receiver.Ksigma[i];
 		stiffness[0] = -stiffness[0];
 
 		return stiffness;
 	}
-	
+
 	/**
 	 * Calculates Coulomb stress change. Note that sigma should be positive for compression,
 	 * as it is in the stiffness calculation code, and this calculation ignores pore pressure effects.
@@ -224,7 +154,7 @@ public class StiffnessCalc {
 	public static double calcCoulombStress(double tau, double sigma, double coeffOfFriction) {
 		return tau - coeffOfFriction*sigma;
 	}
-	
+
 	/**
 	   given a deformation tensor (i.e. du[i][j] = du_i/dx_j) calculates the
 	   stress tensor.  The stress tensor is stored as a vector with the components
@@ -233,11 +163,11 @@ public class StiffnessCalc {
 	                   (    5)
 	   lambda and mu are Lame's parameters
 	   space needs to already have been allocated for sigma
-	*/
+	 */
 	static double[] deformationToStress(Displacement disp, /* deformation tensor, see above */
 			double lambda, double mu) /* Lame's constants */
 	{
-		
+
 		double[][] ss = new double[3][3]; /* the stress tensor as a 3x3 array */
 		double tre; /* the trace of the strain tensor (which is equal to the trace of du */
 		int i, j, k;
@@ -266,7 +196,7 @@ public class StiffnessCalc {
 
 		return sigma;
 	}
-	
+
 	/**
 	   Given a stress tensor Sigma (as a 6-component vector like: (0 1 2)
 	                                                              (  3 4)
@@ -274,9 +204,9 @@ public class StiffnessCalc {
 	   and a unit normal vector nu to a fault plane and a unit slip vector u (of the
 	   material into which nu points), calculates the normal stress on the
 	   plane (tension positive) and the shear stress in the direction of u
-	   
+
 	   @return {sigma, tau}
-	*/
+	 */
 	static double[] projectStress(double[] Sigma, /* stress tensor as a 6-component vector */
 			double[] nu, /* unit normal */
 			double[] u) /* slip direction (of material into which nu points) */
@@ -308,20 +238,20 @@ public class StiffnessCalc {
 
 		return new double[] { sigma, tau };
 	}
-	
+
 	public static void plot(Patch source, Patch receiver, double lambda, double mu, double coeffOfFriction) {
 		double[] stiffness = calcStiffness(lambda, mu, source, receiver);
 		double sigma = stiffness[0];
 		double tau = stiffness[1];
 		double cff = calcCoulombStress(tau, sigma, coeffOfFriction);
 		System.out.println("sigma="+sigma+", tau="+tau+", cff="+cff);
-		
+
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
-		
+
 		plotPatch(funcs, chars, source, true);
 		plotPatch(funcs, chars, receiver, false);
-		
+
 		double minX = Double.POSITIVE_INFINITY;
 		double maxX = Double.NEGATIVE_INFINITY;
 		double minY = Double.POSITIVE_INFINITY;
@@ -339,16 +269,16 @@ public class StiffnessCalc {
 		double midY = 0.5*(minY + maxY);
 		Range xRange = new Range(midX - halfSpan, midX + halfSpan);
 		Range yRange = new Range(midY - halfSpan, midY + halfSpan);
-		
+
 		PlotSpec spec = new PlotSpec(funcs, chars, " ", "X (km)", "Y (km)");
 		spec.setLegendVisible(true);
-		
+
 		double annY = yRange.getLowerBound() + 0.95 * yRange.getLength();
 		double leftX = xRange.getLowerBound() + 0.05 * xRange.getLength();
 		double centerX = xRange.getLowerBound() + 0.5 * xRange.getLength();
 		double rightX = xRange.getLowerBound() + 0.95 * xRange.getLength();
 		Font annFont = new Font(Font.SANS_SERIF, Font.BOLD, 18);
-		
+
 		DecimalFormat df;
 		double minVal = Math.min(Math.abs(sigma), Math.abs(tau));
 		if (minVal > 10)
@@ -357,27 +287,27 @@ public class StiffnessCalc {
 			df = new DecimalFormat("0.00");
 		else
 			df = new DecimalFormat("0.000");
-		
+
 		XYTextAnnotation sigmaAnn = new XYTextAnnotation("Sigma="+df.format(sigma), leftX, annY);
 		sigmaAnn.setTextAnchor(TextAnchor.TOP_LEFT);
 		sigmaAnn.setFont(annFont);
 		spec.addPlotAnnotation(sigmaAnn);
-		
+
 		XYTextAnnotation tauAnn = new XYTextAnnotation("Tau="+df.format(tau), centerX, annY);
 		tauAnn.setTextAnchor(TextAnchor.TOP_CENTER);
 		tauAnn.setFont(annFont);
 		spec.addPlotAnnotation(tauAnn);
-		
+
 		XYTextAnnotation coulombAnn = new XYTextAnnotation("CFF="+df.format(cff), rightX, annY);
 		coulombAnn.setTextAnchor(TextAnchor.TOP_RIGHT);
 		coulombAnn.setFont(annFont);
 		spec.addPlotAnnotation(coulombAnn);
-		
+
 		GraphWindow gw = new GraphWindow(spec);
 		gw.setAxisRange(xRange, yRange);
 		gw.setDefaultCloseOperation(GraphWindow.EXIT_ON_CLOSE);
 	}
-	
+
 	private static void plotPatch(List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars,
 			Patch patch, boolean isSource) {
 		boolean dipping = (float)patch.dip < (float)(Math.PI/2d);
@@ -391,7 +321,7 @@ public class StiffnessCalc {
 			funcs.add(outline);
 			chars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 1f, color));
 		}
-		
+
 		DefaultXY_DataSet trace = new DefaultXY_DataSet();
 		if (isSource)
 			trace.setName("Source");
@@ -399,22 +329,22 @@ public class StiffnessCalc {
 			trace.setName("Receiver");
 		trace.set(patch.corner[2][0], patch.corner[2][1]);
 		trace.set(patch.corner[3][0], patch.corner[3][1]);
-		
+
 		funcs.add(trace);
 		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, color));
-		
+
 		// slip arrow
 		DefaultXY_DataSet arrow = new DefaultXY_DataSet();
 		arrow.set(patch.center[0], patch.center[1]);
 		double endX = patch.center[0] + 0.4*Math.sin((patch.strike - patch.rake));
 		double endY = patch.center[1] + 0.4*Math.cos((patch.strike - patch.rake));
 		arrow.set(endX, endY);
-		
+
 		if (!isSource)
 			arrow.setName("Rakes");
 		funcs.add(arrow);
 		chars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 3f, Color.BLACK));
-		
+
 		DefaultXY_DataSet center = new DefaultXY_DataSet();
 		center.set(patch.center[0], patch.center[1]);
 		funcs.add(center);
@@ -425,7 +355,7 @@ public class StiffnessCalc {
 		double lambda = 30000;
 		double mu = 30000;
 		double coeffOfFriction = 0.5;
-		
+
 		/*
 		 * 2 stike-slip end-to-end
 		 * 
@@ -440,15 +370,15 @@ public class StiffnessCalc {
 		double[] sourceCenter = { 0d, 0d, -1000d };
 		FocalMechanism sourceMech = new FocalMechanism(0d, 90, 180d);
 		Patch source = new Patch(sourceCenter, 2000d, 2000d, sourceMech);
-		
+
 		double[] receiverCenter = { 0d, 5000d, -1d };
 		FocalMechanism receiverMech = new FocalMechanism(0d, 90, 180d);
 		Patch receiver = new Patch(receiverCenter, 2000d, 2000d, receiverMech);
-//		double[] receiverCenter = sourceCenter;
-//		FocalMechanism receiverMech = sourceMech;
-//		Patch receiver = source;
+		//		double[] receiverCenter = sourceCenter;
+		//		FocalMechanism receiverMech = sourceMech;
+		//		Patch receiver = source;
 		plot(source, receiver, lambda, mu, coeffOfFriction);
-		
+
 		/*
 		 * 2 stike-slip end-to-end
 		 * 
@@ -466,136 +396,136 @@ public class StiffnessCalc {
 		sourceCenter = new double[] { 0d, -1000d, -1000d };
 		sourceMech = new FocalMechanism(0d, 90, 180d);
 		source = new Patch(sourceCenter, 4000d, 2000d, sourceMech);
-		
+
 		receiverCenter = new double[] { 0d, 5000d, -1d };
 		receiverMech = new FocalMechanism(0d, 90, 180d);
 		receiver = new Patch(receiverCenter, 2000d, 2000d, receiverMech);
-//		double[] receiverCenter = sourceCenter;
-//		FocalMechanism receiverMech = sourceMech;
-//		Patch receiver = source;
+		//		double[] receiverCenter = sourceCenter;
+		//		FocalMechanism receiverMech = sourceMech;
+		//		Patch receiver = source;
 		plot(source, receiver, lambda, mu, coeffOfFriction);
-		
-//		/*
-//		 * 2 reverse faults which dip toward each other.
-//		 * 
-//		 * (in these drawings, || is the top of the fault and | is the buried bottom,
-//		 * and hanging wall motion is drawn with an arrow)
-//		 *   source       receiver
-//		 * ||-------|    |-------||
-//		 * ||       |    |       ||
-//		 * ||  <--  |    |  -->  ||
-//		 * ||       |    |       ||
-//		 * ||-------|    |-------||
-//		 * 
-//		 * sigma: -333.9
-//		 * tau: -283.1
-//		 * cff: --116.2
-//		 */
-//		sourceCenter = new double[] { 0d, 0d, -1000d };
-//		sourceMech = new FocalMechanism(0d, 45, 90);
-//		source = new Patch(sourceCenter, 2000d, 2000d, sourceMech);
-//		
-//		receiverCenter = new double[] { 5d, 0d, -1000d };
-//		receiverMech = new FocalMechanism(180d, 45, 90d);
-//		receiver = new Patch(receiverCenter, 2000d, 2000d, receiverMech);
-////		double[] receiverCenter = sourceCenter;
-////		FocalMechanism receiverMech = sourceMech;
-////		Patch receiver = source;
-//		plot(source, receiver, lambda, mu, coeffOfFriction);
-//		
-//		/*
-//		 * 2 reverse faults which dip toward each other. Motion on either will
-//		 * unclamp (sigma <0) the other
-//		 * 
-//		 * (in these drawings, || is the top of the fault and | is the buried bottom,
-//		 * and hanging wall motion is drawn with an arrow)
-//		 *   source       receiver
-//		 * ||-------|    |-------||
-//		 * ||       |    |       ||
-//		 * ||  -->  |    |  <--  ||
-//		 * ||       |    |       ||
-//		 * ||-------|    |-------||
-//		 * 
-//		 * sigma: 
-//		 * tau: 
-//		 * cff: 
-//		 */
-//		sourceCenter = new double[] { 0d, 0d, -1d };
-//		sourceMech = new FocalMechanism(0d, 45, -90d);
-//		source = new Patch(sourceCenter, 2d, 2d, sourceMech);
-//		
-//		receiverCenter = new double[] { 5d, 0d, -1d };
-//		receiverMech = new FocalMechanism(180d, 45, -90d);
-//		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
-//		plot(source, receiver, lambda, mu, coeffOfFriction);
-//		
-//		/*
-//		 * 2 reverse faults which dip toward each other. Motion on either will
-//		 * unclamp (sigma <0) the other
-//		 * 
-//		 * (in these drawings, || is the top of the fault and | is the buried bottom,
-//		 * and hanging wall motion is drawn with an arrow)
-//		 *   source       receiver
-//		 * ||-------|    |-------||
-//		 * ||       |    |       ||
-//		 * ||  -->  |    |  -->  ||
-//		 * ||       |    |       ||
-//		 * ||-------|    |-------||
-//		 * 
-//		 * sigma: 
-//		 * tau: 
-//		 * cff: 
-//		 */
-//		sourceCenter = new double[] { 0d, 0d, -1d };
-//		sourceMech = new FocalMechanism(0d, 45, -90d);
-//		source = new Patch(sourceCenter, 2d, 2d, sourceMech);
-//		
-//		receiverCenter = new double[] { 5d, 0d, -1d };
-//		receiverMech = new FocalMechanism(180d, 45, 90d);
-//		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
-//		plot(source, receiver, lambda, mu, coeffOfFriction);
-//		
-//		/*
-//		 * 2 reverse faults which dip toward each other. Motion on either will
-//		 * unclamp (sigma <0) the other
-//		 * 
-//		 * (in these drawings, || is the top of the fault and | is the buried bottom,
-//		 * and hanging wall motion is drawn with an arrow)
-//		 * 
-//		 *           receiver
-//		 *        ===============
-//		 *             -->
-//		 * 
-//		 * 
-//		 *       ||
-//		 *       || ^
-//		 *       || |
-//		 *       || |
-//		 *       ||
-//		 *     source
-//		 * 
-//		 * sigma: 
-//		 * tau: 
-//		 * cff: 
-//		 */
-//		sourceCenter = new double[] { 0d, 0d, -1d };
-//		sourceMech = new FocalMechanism(0d, 90, 0d);
-//		source = new Patch(sourceCenter, 2d, 2d, sourceMech);
-//		
-//		receiverCenter = new double[] { 1d, 2d, -1d };
-//		receiverMech = new FocalMechanism(90d, 90, 0d);
-//		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
-//		plot(source, receiver, lambda, mu, coeffOfFriction);
-//		
-//		receiverCenter = new double[] { 0.5*Math.sqrt(2), 2d+0.5*Math.sqrt(2), -1d };
-//		receiverMech = new FocalMechanism(45d, 90, 0d);
-//		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
-//		plot(source, receiver, lambda, mu, coeffOfFriction);
-//		
-//		receiverCenter = new double[] { 0.5*Math.sqrt(2), 2d-0.5*Math.sqrt(2), -1d };
-//		receiverMech = new FocalMechanism(135d, 90, 0d);
-//		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
-//		plot(source, receiver, lambda, mu, coeffOfFriction);
+
+		//		/*
+		//		 * 2 reverse faults which dip toward each other.
+		//		 *
+		//		 * (in these drawings, || is the top of the fault and | is the buried bottom,
+		//		 * and hanging wall motion is drawn with an arrow)
+		//		 *   source       receiver
+		//		 * ||-------|    |-------||
+		//		 * ||       |    |       ||
+		//		 * ||  <--  |    |  -->  ||
+		//		 * ||       |    |       ||
+		//		 * ||-------|    |-------||
+		//		 *
+		//		 * sigma: -333.9
+		//		 * tau: -283.1
+		//		 * cff: --116.2
+		//		 */
+		//		sourceCenter = new double[] { 0d, 0d, -1000d };
+		//		sourceMech = new FocalMechanism(0d, 45, 90);
+		//		source = new Patch(sourceCenter, 2000d, 2000d, sourceMech);
+		//
+		//		receiverCenter = new double[] { 5d, 0d, -1000d };
+		//		receiverMech = new FocalMechanism(180d, 45, 90d);
+		//		receiver = new Patch(receiverCenter, 2000d, 2000d, receiverMech);
+		////		double[] receiverCenter = sourceCenter;
+		////		FocalMechanism receiverMech = sourceMech;
+		////		Patch receiver = source;
+		//		plot(source, receiver, lambda, mu, coeffOfFriction);
+		//
+		//		/*
+		//		 * 2 reverse faults which dip toward each other. Motion on either will
+		//		 * unclamp (sigma <0) the other
+		//		 *
+		//		 * (in these drawings, || is the top of the fault and | is the buried bottom,
+		//		 * and hanging wall motion is drawn with an arrow)
+		//		 *   source       receiver
+		//		 * ||-------|    |-------||
+		//		 * ||       |    |       ||
+		//		 * ||  -->  |    |  <--  ||
+		//		 * ||       |    |       ||
+		//		 * ||-------|    |-------||
+		//		 *
+		//		 * sigma:
+		//		 * tau:
+		//		 * cff:
+		//		 */
+		//		sourceCenter = new double[] { 0d, 0d, -1d };
+		//		sourceMech = new FocalMechanism(0d, 45, -90d);
+		//		source = new Patch(sourceCenter, 2d, 2d, sourceMech);
+		//
+		//		receiverCenter = new double[] { 5d, 0d, -1d };
+		//		receiverMech = new FocalMechanism(180d, 45, -90d);
+		//		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
+		//		plot(source, receiver, lambda, mu, coeffOfFriction);
+		//
+		//		/*
+		//		 * 2 reverse faults which dip toward each other. Motion on either will
+		//		 * unclamp (sigma <0) the other
+		//		 *
+		//		 * (in these drawings, || is the top of the fault and | is the buried bottom,
+		//		 * and hanging wall motion is drawn with an arrow)
+		//		 *   source       receiver
+		//		 * ||-------|    |-------||
+		//		 * ||       |    |       ||
+		//		 * ||  -->  |    |  -->  ||
+		//		 * ||       |    |       ||
+		//		 * ||-------|    |-------||
+		//		 *
+		//		 * sigma:
+		//		 * tau:
+		//		 * cff:
+		//		 */
+		//		sourceCenter = new double[] { 0d, 0d, -1d };
+		//		sourceMech = new FocalMechanism(0d, 45, -90d);
+		//		source = new Patch(sourceCenter, 2d, 2d, sourceMech);
+		//
+		//		receiverCenter = new double[] { 5d, 0d, -1d };
+		//		receiverMech = new FocalMechanism(180d, 45, 90d);
+		//		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
+		//		plot(source, receiver, lambda, mu, coeffOfFriction);
+		//
+		//		/*
+		//		 * 2 reverse faults which dip toward each other. Motion on either will
+		//		 * unclamp (sigma <0) the other
+		//		 *
+		//		 * (in these drawings, || is the top of the fault and | is the buried bottom,
+		//		 * and hanging wall motion is drawn with an arrow)
+		//		 *
+		//		 *           receiver
+		//		 *        ===============
+		//		 *             -->
+		//		 *
+		//		 *
+		//		 *       ||
+		//		 *       || ^
+		//		 *       || |
+		//		 *       || |
+		//		 *       ||
+		//		 *     source
+		//		 *
+		//		 * sigma:
+		//		 * tau:
+		//		 * cff:
+		//		 */
+		//		sourceCenter = new double[] { 0d, 0d, -1d };
+		//		sourceMech = new FocalMechanism(0d, 90, 0d);
+		//		source = new Patch(sourceCenter, 2d, 2d, sourceMech);
+		//
+		//		receiverCenter = new double[] { 1d, 2d, -1d };
+		//		receiverMech = new FocalMechanism(90d, 90, 0d);
+		//		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
+		//		plot(source, receiver, lambda, mu, coeffOfFriction);
+		//
+		//		receiverCenter = new double[] { 0.5*Math.sqrt(2), 2d+0.5*Math.sqrt(2), -1d };
+		//		receiverMech = new FocalMechanism(45d, 90, 0d);
+		//		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
+		//		plot(source, receiver, lambda, mu, coeffOfFriction);
+		//
+		//		receiverCenter = new double[] { 0.5*Math.sqrt(2), 2d-0.5*Math.sqrt(2), -1d };
+		//		receiverMech = new FocalMechanism(135d, 90, 0d);
+		//		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
+		//		plot(source, receiver, lambda, mu, coeffOfFriction);
 	}
 
 }

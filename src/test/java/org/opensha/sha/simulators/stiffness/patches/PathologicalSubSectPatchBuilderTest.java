@@ -51,7 +51,7 @@ public class PathologicalSubSectPatchBuilderTest {
 			assertNotNull(self);
 			for (double value : self) assertTrue(Double.isFinite(value));
 			var receiver=new StiffnessCalc.Patch(new Vector3D(patch.center).add(new Vector3D(25000,35000,-1000)).toArray(),
-					patch.L,patch.W,new org.opensha.sha.earthquake.FocalMechanism(10,50,90));
+					((RectangularPatch)patch).L,((RectangularPatch)patch).W,new org.opensha.sha.earthquake.FocalMechanism(10,50,90));
 			double[] stiffness=StiffnessCalc.calcStiffness(30000,30000,patch,receiver);
 			assertNotNull(stiffness);
 			for (double value : stiffness) assertTrue(Double.isFinite(value));

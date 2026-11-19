@@ -92,7 +92,7 @@ public class AutoPatchGenerationTest {
 		}
 	}
 
-	@Test public void mixedModelsAndAutoCacheKeysIncludeGeometry() {
+	@Test public void mixedModelsAndAutoCacheKeysUseStrategyAndVersion() {
 		FaultSection stirling=stirlingSection();
 		FaultSection approximate=withID(GenericSubSectPatchBuilderTest.section(approximateSurface(4)),1);
 		List<FaultSection> sections=List.of(stirling,approximate);
@@ -100,10 +100,10 @@ public class AutoPatchGenerationTest {
 		assertSamePatches(explicit(sections,PatchAlignment.FILL_OVERLAP,PatchGenerationStrategy.STIRLING).buildPatches(stirling),auto.getPatches(stirling));
 		assertSamePatches(explicit(sections,PatchAlignment.FILL_OVERLAP,PatchGenerationStrategy.GENERIC).buildPatches(approximate),auto.getPatches(approximate));
 		String key=auto.getAggregationCache(StiffnessType.CFF).getCacheFileName();
-		assertTrue(key.contains("genAUTO")); assertTrue(key.contains("_geom"));
+		assertTrue(key.contains("genAUTO")); assertFalse(key.contains("_geom"));
 		FaultSection changed=withID(GenericSubSectPatchBuilderTest.section(approximateSurface(5)),1);
 		var other=new SubSectStiffnessCalculator(List.of(stirling,changed),2,30000,30000,0.5);
-		assertNotEquals(key,other.getAggregationCache(StiffnessType.CFF).getCacheFileName());
+		assertEquals(key,other.getAggregationCache(StiffnessType.CFF).getCacheFileName());
 		var explicitGeneric=explicit(sections,PatchAlignment.FILL_OVERLAP,PatchGenerationStrategy.GENERIC);
 		assertNotEquals(key,explicitGeneric.getAggregationCache(StiffnessType.CFF).getCacheFileName());
 	}

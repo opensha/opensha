@@ -15,7 +15,7 @@ import org.apache.commons.math3.optim.nonlinear.scalar.GoalType;
 import org.apache.commons.math3.optim.univariate.BrentOptimizer;
 import org.apache.commons.math3.optim.univariate.SearchInterval;
 import org.apache.commons.math3.optim.univariate.UnivariateObjectiveFunction;
-import org.opensha.sha.simulators.stiffness.StiffnessCalc.Patch;
+
 
 /**
  * A reference sheet curved only along strike, with parallel straight down-dip
@@ -44,12 +44,12 @@ final class RibbonSurfaceReferenceFrame extends AbstractSurfaceReferenceFrame {
 	}
 
 	@Override
-	public double[][] projectPatchBoundary(Patch patch) {
+	public double[][] projectPatchBoundary(StiffnessPatch patch) {
 		if (!curved) return super.projectPatchBoundary(patch);
 		List<double[]> points=new ArrayList<>();
-		for (int i=0; i<4; i++) {
+		for (int i=0; i<patch.corner.length; i++) {
 			Vector3D a=new Vector3D(patch.corner[i]).scalarMultiply(0.001);
-			Vector3D b=new Vector3D(patch.corner[(i+1)%4]).scalarMultiply(0.001);
+			Vector3D b=new Vector3D(patch.corner[(i+1)%patch.corner.length]).scalarMultiply(0.001);
 			double[] pa=project(a),pb=project(b);
 			points.add(pa);
 			subdivideEdge(a,b,pa,pb,points,0);

@@ -192,13 +192,13 @@ public class GenericSubSectPatchBuilderTest {
 			for (double[] corner : p.patch.corner) assertTrue(corner[2] <= 1e-6);
 	}
 
-	@Test public void cacheKeyIncludesGeometryAndStrategy() {
+	@Test public void cacheKeyUsesStrategyAndVersionWithoutBuildingGeometry() {
 		SubSectStiffnessCalculator first=calculator(surface(6,new double[] {4,4,4},new double[] {45,45},5));
 		SubSectStiffnessCalculator second=calculator(surface(6,new double[] {4,4,4},new double[] {60,60},5));
 		String a=first.getAggregationCache(SubSectStiffnessCalculator.StiffnessType.CFF).getCacheFileName();
 		String b=second.getAggregationCache(SubSectStiffnessCalculator.StiffnessType.CFF).getCacheFileName();
 		assertTrue(a.contains("genGENERIC"));
-		assertNotEquals(a,b);
+		assertEquals(a,b);
 		assertEquals(a,first.getAggregationCache(SubSectStiffnessCalculator.StiffnessType.CFF).getCacheFileName());
 	}
 
