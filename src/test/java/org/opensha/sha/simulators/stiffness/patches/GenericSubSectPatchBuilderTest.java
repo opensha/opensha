@@ -152,7 +152,7 @@ public class GenericSubSectPatchBuilderTest {
 
 	@Test public void rowsTerminateAndRestart() {
 		EvenlyGriddedSurface surface=surface(20,new double[] {10,10,2,2,10,10},new double[] {60,60,60,60},5);
-		SurfaceReferenceFrame frame=new SurfaceReferenceFrame(new GriddedSurfaceGeometry(surface,ZONE,LETTER));
+		SurfaceReferenceFrame frame=new PlanarSurfaceReferenceFrame(new GriddedSurfaceGeometry(surface,ZONE,LETTER));
 		List<double[]> intervals=frame.intervals(4,true);
 		assertEquals(2,intervals.size());
 		assertTrue(intervals.get(0)[1] < intervals.get(1)[0]);
@@ -399,10 +399,10 @@ public class GenericSubSectPatchBuilderTest {
 				surface(12,new double[] {0,2,4,6,8},new double[] {45,45,45,45},5),
 				surface(20,new double[] {10,10,2,2,10,10},new double[] {60,60,60,60},5))) {
 			GriddedSurfaceGeometry geometry=new GriddedSurfaceGeometry(surface,ZONE,LETTER);
-			SurfaceReferenceFrame frame=new SurfaceReferenceFrame(geometry);
-			assertEquals(1,frame.minimumEdgeRatio,1e-7);
-			assertEquals(1,frame.minimumAreaRatio,1e-7);
-			assertEquals(0,frame.rmsPlaneDistance,1e-5);
+			SurfaceReferenceFrame frame=new PlanarSurfaceReferenceFrame(geometry);
+			assertEquals(1,frame.minimumEdgeRatio(),1e-7);
+			assertEquals(1,frame.minimumAreaRatio(),1e-7);
+			assertEquals(0,frame.rmsPlaneDistance(),1e-5);
 			for (int r=0; r<geometry.rows-1; r++) for (int c=0; c<geometry.cols-1; c++) {
 				var a=geometry.point(r+0.3,c+0.4);
 				var b=geometry.point(r+0.7,c+0.8);
@@ -415,10 +415,10 @@ public class GenericSubSectPatchBuilderTest {
 
 	@Test public void cutoutDoesNotMoveTheUpperBoundary() {
 		EvenlyGriddedSurface surface=surface(20,new double[] {10,10,2,2,10,10},new double[] {60,60,60,60},5);
-		SurfaceReferenceFrame frame=new SurfaceReferenceFrame(new GriddedSurfaceGeometry(surface,ZONE,LETTER));
-		for (int c=0; c<surface.getNumCols(); c++) assertEquals(0,frame.nodeY[0][c],2e-5);
-		assertEquals(2,frame.nodeY[4][2],2e-5);
-		assertEquals(10,frame.nodeY[4][0],2e-5);
+		SurfaceReferenceFrame frame=new PlanarSurfaceReferenceFrame(new GriddedSurfaceGeometry(surface,ZONE,LETTER));
+		for (int c=0; c<surface.getNumCols(); c++) assertEquals(0,frame.nodeY(0,c),2e-5);
+		assertEquals(2,frame.nodeY(4,2),2e-5);
+		assertEquals(10,frame.nodeY(4,0),2e-5);
 	}
 
 	@Test public void skewedSidesHaveNeutralBoundaryCounts() {
@@ -500,8 +500,8 @@ public class GenericSubSectPatchBuilderTest {
 		Location[] last=new Location[3];
 		for (int c=0; c<3; c++) last[c]=coarse.getLocation(4,c);
 		rows.add(last);
-		SurfaceReferenceFrame a=new SurfaceReferenceFrame(geometry);
-		SurfaceReferenceFrame b=new SurfaceReferenceFrame(new GriddedSurfaceGeometry(nodes(rows.toArray(Location[][]::new)),ZONE,LETTER));
+		SurfaceReferenceFrame a=new PlanarSurfaceReferenceFrame(geometry);
+		SurfaceReferenceFrame b=new PlanarSurfaceReferenceFrame(new GriddedSurfaceGeometry(nodes(rows.toArray(Location[][]::new)),ZONE,LETTER));
 		for (int r=0; r<5; r++) {
 			double[] x=a.project(geometry.point(r,1)),y=b.project(geometry.point(r,1));
 			assertArrayEquals(x,y,0.0001);
@@ -515,7 +515,7 @@ public class GenericSubSectPatchBuilderTest {
 			nodes[r][c]=location(5*Math.cos(angle),5*Math.sin(angle),5+2*r);
 		}
 		try {
-			new SurfaceReferenceFrame(new GriddedSurfaceGeometry(nodes(nodes),ZONE,LETTER));
+			new PlanarSurfaceReferenceFrame(new GriddedSurfaceGeometry(nodes(nodes),ZONE,LETTER));
 			fail("Expected folded projection to be rejected");
 		} catch (IllegalArgumentException expected) {
 			assertTrue(expected.getMessage().contains("projection"));
@@ -605,8 +605,8 @@ public class GenericSubSectPatchBuilderTest {
 				var layout=new GenericSubSectPatchBuilder(2,ZONE,LETTER).buildLayout(surface,90,alignment);
 				for (PatchLocation patch : layout.patches) for (double[] corner : patch.patch.corner) {
 					double x=layout.frame.project(new org.apache.commons.math3.geometry.euclidean.threed.Vector3D(corner).scalarMultiply(0.001))[0];
-					assertTrue(x >= layout.frame.minX-1e-8);
-					assertTrue(x <= layout.frame.maxX+1e-8);
+					assertTrue(x >= layout.frame.minX()-1e-8);
+					assertTrue(x <= layout.frame.maxX()+1e-8);
 				}
 			}
 		}
@@ -627,7 +627,7 @@ public class GenericSubSectPatchBuilderTest {
 				double x=layout.frame.project(new org.apache.commons.math3.geometry.euclidean.threed.Vector3D(corner).scalarMultiply(0.001))[0];
 				min=Math.min(min,x); max=Math.max(max,x);
 			}
-			assertEquals(reverse ? layout.frame.minX : layout.frame.maxX,reverse ? min : max,1e-5);
+			assertEquals(reverse ? layout.frame.minX() : layout.frame.maxX(),reverse ? min : max,1e-5);
 		}
 	}
 
@@ -645,11 +645,11 @@ public class GenericSubSectPatchBuilderTest {
 					min=Math.min(min,x); max=Math.max(max,x);
 				}
 				if (length == 2) {
-					assertEquals(layout.frame.minX,min,1e-8);
-					assertEquals(layout.frame.maxX,max,1e-8);
+					assertEquals(layout.frame.minX(),min,1e-8);
+					assertEquals(layout.frame.maxX(),max,1e-8);
 				} else {
-					assertTrue(min < layout.frame.minX);
-					assertTrue(max > layout.frame.maxX);
+					assertTrue(min < layout.frame.minX());
+					assertTrue(max > layout.frame.maxX());
 				}
 			}
 		}

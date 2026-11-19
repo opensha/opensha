@@ -22,8 +22,8 @@ final class ProjectedGridPatchLayout {
 	ProjectedGridPatchLayout(SurfaceReferenceFrame frame,double spacing,PatchAlignment alignment) {
 		this.frame=frame;
 		this.spacing=spacing;
-		double[] xs=PatchIntervalPlacement.centers(frame.maxX,spacing,alignment);
-		double[] ys=PatchIntervalPlacement.centers(frame.maxY,spacing,alignment);
+		double[] xs=PatchIntervalPlacement.centers(frame.maxX(),spacing,alignment);
+		double[] ys=PatchIntervalPlacement.centers(frame.maxY(),spacing,alignment);
 		for (int r=0; r<ys.length; r++) {
 			if (alignment == PatchAlignment.CENTER) {
 				for (int c=0; c<xs.length; c++) if (frame.contains(xs[c],ys[r])) nodes.add(new Node(r,c,xs[c],ys[r]));

@@ -23,8 +23,8 @@ final class NarrowStripPatchInfill {
 			List<PatchLocation> existing, PatchFactory factory) {
 		List<Candidate> candidates=new ArrayList<>();
 		List<Candidate> previous=java.util.Collections.emptyList();
-		for (double x : PatchIntervalPlacement.centers(frame.maxX-frame.minX, spacing, PatchAlignment.FILL_OVERLAP)) {
-			x+=frame.minX;
+		for (double x : PatchIntervalPlacement.centers(frame.maxX()-frame.minX(), spacing, PatchAlignment.FILL_OVERLAP)) {
+			x+=frame.minX();
 			List<Candidate> current=new ArrayList<>();
 			for (double[] interval : frame.intervals(x, false)) {
 				// Projection cannot lengthen a path, so broad intervals need no

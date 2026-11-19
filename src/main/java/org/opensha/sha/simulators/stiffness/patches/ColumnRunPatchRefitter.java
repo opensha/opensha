@@ -90,7 +90,7 @@ final class ColumnRunPatchRefitter {
 	 */
 	private static List<Column> proposeColumns(SurfaceReferenceFrame frame, double spacing,
 			List<PatchLocation> patches, List<int[]> indices, PatchFactory factory) {
-		GriddedSurfaceGeometry geometry=frame.geometry;
+		GriddedSurfaceGeometry geometry=frame.geometry();
 		double[] middleDistances=new double[geometry.cols];
 		for (int c=1; c<geometry.cols; c++)
 			middleDistances[c]=middleDistances[c-1]+geometry.point((geometry.rows-1)*0.5, c).distance(geometry.point((geometry.rows-1)*0.5, c-1));
@@ -139,7 +139,7 @@ final class ColumnRunPatchRefitter {
 	 */
 	private static List<PatchLocation> fitColumn(SurfaceReferenceFrame frame, double spacing,
 			double col, PatchFactory factory) {
-		GriddedSurfaceGeometry geometry=frame.geometry;
+		GriddedSurfaceGeometry geometry=frame.geometry();
 		double[] widths=new double[geometry.rows];
 		for (int r=1; r<geometry.rows; r++) {
 			Vector3D delta=geometry.point(r, col).subtract(geometry.point(r-1, col));

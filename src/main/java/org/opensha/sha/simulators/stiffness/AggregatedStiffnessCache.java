@@ -140,10 +140,10 @@ public class AggregatedStiffnessCache {
 		if (calc.getSelfStiffnessCap() > 0)
 			ret += "_stiffCap"+df.format(calc.getSelfStiffnessCap())+"x";
 		ret += "_gen"+calc.getPatchGenerationStrategy().name()+"_v"
-				+(calc.getPatchGenerationStrategy() != SubSectStiffnessCalculator.PatchGenerationStrategy.STIRLING
-						? GenericSubSectPatchBuilder.VERSION : 1);
-		if (calc.getPatchGenerationStrategy() != SubSectStiffnessCalculator.PatchGenerationStrategy.STIRLING)
-			ret += "_geom"+calc.getPatchGeometryFingerprint();
+				+calc.getPatchGenerationStrategy().getVersion();
+		// disabled for now; this would require building patches even if all results are cached
+//		if (calc.getPatchGenerationStrategy() != SubSectStiffnessCalculator.PatchGenerationStrategy.STIRLING)
+//			ret += "_geom"+calc.getPatchGeometryFingerprint();
 		return ret+".csv";
 	}
 	

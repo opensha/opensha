@@ -44,14 +44,19 @@ elastic stress calculations remain in the parent stiffness package.
 - `StirlingSubSectPatchBuilder`: original ribbon-based placement and mechanisms.
 - `GriddedSurfaceGeometry`: Cartesian snapshot, four-node interpolation, local
   tangent mechanisms, node depth extrema, cumulative column distances, cell areas.
-- `SurfaceReferenceFrame`: orthogonal coordinates in an area-weighted best-fit
-  plane, with spatially indexed inverse lookup into original bilinear cells.
+- `SurfaceReferenceFrame`: shared reference-map contract, including physical patch footprints.
+- `AbstractSurfaceReferenceFrame`: projected-grid validation, boundary operations,
+  and spatially indexed inverse lookup into original bilinear cells.
+- `BestFitSurfacePlane`: area-weighted plane fit and fixed Cartesian axes.
+- `PlanarSurfaceReferenceFrame`: the original orthogonal best-fit-plane projection.
+- `RibbonSurfaceReferenceFrame`: an experimental curved sheet with the original
+  plane's down-dip direction held fixed.
 - `ProjectedGridPatchLayout`: regular reference rows, evenly fitted side limits,
   logical grid neighbors, and distributed depth-constraint corrections.
 - `GenericSubSectPatchBuilder`: physical rectangles and exact depth-bound checks.
 - `ColumnRunPatchRefitter`: one guarded pass over coherent physical down-dip columns.
 - `NarrowStripPatchInfill`: centered additions only for persistent narrow strips in GENERIC FILL_OVERLAP.
-- `ProjectedPatchFootprint`: shared projection of actual rectangle corners, edge-inclusive
+- `ProjectedPatchFootprint`: mapped physical rectangle boundaries, edge-inclusive
   containment, and fresh mutable area copies for coverage comparisons.
 - `PatchIntervalPlacement`: count and interval-alignment conventions.
 
@@ -99,6 +104,64 @@ and local mechanisms still use the original surface through inverse bilinear
 mapping. Diagnostics report minimum projected/physical edge and area ratios and
 RMS distance to the plane. Folded cells and self-intersecting projected boundaries
 are rejected. Strong curvature may require a future intrinsic unwrapping.
+
+### Experimental fixed-down-dip ribbon
+
+`GenericSubSectPatchBuilder.ReferenceFrameType` selects `PLANAR` or `RIBBON` in
+an optional fourth builder-constructor argument. Existing constructors use the
+single `DEFAULT_REFERENCE_FRAME` constant in `GenericSubSectPatchBuilder`, currently
+`RIBBON`. Ribbon is a preferred frame: rejected reference maps fall back to the
+original planar projection. The selector is deliberately not serialized or added
+to cache filenames. Generation version 12 invalidates older layouts after the
+smoothing and fallback changes. Use separate/empty cache directories when
+comparing exploratory overrides of the frame or smoothing multiplier.
+
+The ribbon keeps the original plane's down-dip axis and coordinate origin. In
+the perpendicular along/normal cross-section, it fits a smooth graph to the middle
+trace. Distance-weighted local linear fits measure the smoothing window along
+the original plane's along-strike axis; trace-length weights reduce dependence on vertex density. The default full window is twice
+the patch width (4 km for 2 km patches). An Akima spline joins the fitted
+samples. Short/coarse windows use linear interpolation where a fit is undefined.
+Endpoints use one-sided fits and tangent extensions, including for protruding
+patch corners. Neither the physical surface nor its tangent mechanisms is smoothed.
+
+Points project independently onto the curved cross-section, retaining their
+fixed down-dip coordinate, and the cross-section is unrolled by arc length.
+Original grid columns are not assigned a single along-strike coordinate. This
+preserves along-strike shear, and the retained global down-dip origin avoids
+straightening planar cutouts. Surfaces within the existing 1 cm plane tolerance
+use the exact planar projection, preserving triangle, skew and cutout layouts.
+
+The experimental graph requires the middle trace to advance monotonically in
+the original along-strike direction. Double-backs, mapped folds, collapsed map
+cells and crossing boundaries throw `ReferenceFrameException`, allowing the
+builder to try PLANAR on the same validated geometry. A successful fallback is
+recorded in diagnostic layouts and reported with the section ID/name by the
+public builder. If both views fail, the error retains both diagnostics.
+
+Original 3D geometry is validated before frame selection. Its errors, unexpected
+numeric/programming failures, and later physical patch-placement failures do not
+trigger fallback. The fallback changes the reference map, not the supplied grid
+or validation tolerances. The ribbon cannot follow curvature that varies
+substantially down dip. The continuous projection is represented by bilinear coordinates at the original grid nodes
+for inverse lookup; coarse input grids therefore introduce interpolation error.
+Closest-point projection can also become ambiguous for sufficiently tight bends.
+
+Physical rectangle edges are adaptively sampled with a 10 cm reference-space
+chord tolerance and a maximum step of a quarter smoothing window. Global extent
+checks use this sampled boundary. Left/right margins can differ under curved
+projection; fitting uses both margins and accounts for the inverse-grid sampling
+error. No physical patch is warped or resized. Footprint/coverage calculations
+remain approximations, especially on coarse or strongly distorted surfaces.
+
+`ReferenceFrameComparison.main(outputDirectory, optionalSubsectionsGeoJSON, optionalSmoothingMultiplier)`
+exports both modes for all eleven original/pathological examples and a strongly
+curved extruded ribbon. The optional real-data argument also exports Bare Mountain
+subsection 175 and Aubrey subsection 148. Each mode/case includes both alignments,
+physical corners, sampled reference footprints, nodes, centers and physical-area-weighted coverage metrics;
+`status.txt` records failed cases; metrics record the actual reference frame and
+whether it was a planar fallback. Comparison metrics use 8-by-8 quadrature per
+input cell; the regular diagnostic exporter retains its 32-by-32 default.
 
 ## Layout and boundary policy
 
@@ -224,9 +287,11 @@ Real-model plausibility and near-field spacing comparisons remain outstanding.
 
 Plausibility JSON records the configured strategy. Missing or null fields default
 to AUTO; explicit STIRLING and GENERIC fields retain their meaning. Cache filenames
-include the configured mode and a generation version (currently generic v11).
-AUTO and GENERIC keys fingerprint ordered physical patches and mechanisms, so
-mixed-model and surface-geometry changes cannot reuse the same geometry key. Older cache filenames are
+include the configured mode and a generation version (currently generic v12).
+The ordered-patch fingerprint is currently disabled for prototyping; cache lookup
+therefore does not build patches. The experimental reference-frame selector adds
+no filename field. Existing cache-key tests that require the disabled fingerprint
+are expected to fail until the cache policy is finalized. Older cache filenames are
 not selected automatically. Explicit loading of an arbitrary cache file remains
 the caller's responsibility. Alignment changes clear self-stiffness and aggregate
 caches.

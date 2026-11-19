@@ -55,18 +55,28 @@ public class GenericPatchDiagnostics {
 	}
 
 	private static void write(Path directory,String name,EvenlyGriddedSurface surface) throws IOException {
+		write(directory,name,surface,GenericSubSectPatchBuilder.ReferenceFrameType.PLANAR,32);
+	}
+
+	static void write(Path directory,String name,EvenlyGriddedSurface surface,
+			GenericSubSectPatchBuilder.ReferenceFrameType type,int coverageSamples) throws IOException {
+		write(directory,name,surface,new GenericSubSectPatchBuilder(2,11,'S',type),coverageSamples);
+	}
+
+	static void write(Path directory,String name,EvenlyGriddedSurface surface,
+			GenericSubSectPatchBuilder builder,int coverageSamples) throws IOException {
 		for (PatchAlignment alignment : PatchAlignment.values()) {
 			String prefix=name+"_"+alignment.name().toLowerCase(Locale.ROOT);
-			GenericSubSectPatchBuilder.Layout layout=new GenericSubSectPatchBuilder(2,11,'S').buildLayout(surface,90,alignment);
-			GriddedSurfaceGeometry geometry=layout.frame.geometry;
+			GenericSubSectPatchBuilder.Layout layout=builder.buildLayout(surface,90,alignment);
+			GriddedSurfaceGeometry geometry=layout.frame.geometry();
 			double area=0;
 			for (int r=0; r<geometry.rows-1; r++) for (int c=0; c<geometry.cols-1; c++) area+=geometry.cellArea(r,c);
 			try (PrintWriter out=new PrintWriter(Files.newBufferedWriter(directory.resolve(prefix+"_nodes.csv")))) {
 				out.println("row,col,x,y,east,north,up");
 				for (int r=0; r<geometry.rows; r++) for (int c=0; c<geometry.cols; c++) {
 					Vector3D p=geometry.point(r,c);
-					out.printf(Locale.ROOT,"%d,%d,%.8f,%.8f,%.8f,%.8f,%.8f%n",r,c,layout.frame.nodeX[r][c],
-							layout.frame.nodeY[r][c],p.getX(),p.getY(),p.getZ());
+					out.printf(Locale.ROOT,"%d,%d,%.8f,%.8f,%.8f,%.8f,%.8f%n",r,c,layout.frame.nodeX(r,c),
+							layout.frame.nodeY(r,c),p.getX(),p.getY(),p.getZ());
 				}
 			}
 			// Approximate represented area by assigning quadrature points to the
@@ -107,16 +117,25 @@ public class GenericPatchDiagnostics {
 					out.printf(Locale.ROOT,"%d,%d,%.8f,%.8f,%.8f,%.8f,%.8f%n",i,c,p[0]/1000,p[1]/1000,p[2]/1000,xy[0],xy[1]);
 				}
 			}
-			ProjectedPatchCoverage coverage=new ProjectedPatchCoverage(layout,2);
+			try (PrintWriter out=new PrintWriter(Files.newBufferedWriter(directory.resolve(prefix+"_footprints.csv")))) {
+				out.println("id,point,x,y");
+				for (int i=0; i<layout.patches.size(); i++) {
+					double[][] boundary=layout.frame.projectPatchBoundary(layout.patches.get(i).patch);
+					for (int j=0; j<boundary.length; j++)
+						out.printf(Locale.ROOT,"%d,%d,%.8f,%.8f%n",i,j,boundary[j][0],boundary[j][1]);
+				}
+			}
+			ProjectedPatchCoverage coverage=new ProjectedPatchCoverage(layout,2,coverageSamples);
 			try (PrintWriter out=new PrintWriter(Files.newBufferedWriter(directory.resolve(prefix+"_metrics.csv")))) {
-				out.println("patches,surface_area,patch_area_ratio,uncovered_fraction,interior_uncovered_fraction,max_gap_distance,min_edge_ratio,min_area_ratio,rms_plane_distance,max_boundary_correction,infill_patches");
-				out.printf(Locale.ROOT,"%d,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%d%n",layout.patches.size(),area,
+				out.println("patches,surface_area,patch_area_ratio,uncovered_fraction,interior_uncovered_fraction,max_gap_distance,min_edge_ratio,min_area_ratio,rms_plane_distance,max_boundary_correction,infill_patches,reference_frame,planar_fallback");
+				out.printf(Locale.ROOT,"%d,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%d,%s,%s%n",layout.patches.size(),area,
 						layout.patches.size()*4/area,coverage.uncoveredArea/area,coverage.interiorUncoveredArea/area,
-						coverage.maximumGapDistance,layout.frame.minimumEdgeRatio,layout.frame.minimumAreaRatio,
-						layout.frame.rmsPlaneDistance,layout.maxBoundaryCorrection,layout.infillCount);
+						coverage.maximumGapDistance,layout.frame.minimumEdgeRatio(),layout.frame.minimumAreaRatio(),
+						layout.frame.rmsPlaneDistance(),layout.maxBoundaryCorrection,layout.infillCount,
+								layout.frame instanceof RibbonSurfaceReferenceFrame ? "RIBBON" : "PLANAR",layout.planarFallbackReason != null);
 			}
 			System.out.printf(Locale.ROOT,"%s: %d patches, surface %.3f km^2, patch/surface area %.3f, min center spacing %.3f km, max boundary correction %.6g km, min edge ratio %.3f, min area ratio %.3f, uncovered %.2f%% (interior %.2f%%), %d infill patches%n",
-					prefix,layout.patches.size(),area,layout.patches.size()*4/area,minNeighbor,layout.maxBoundaryCorrection,layout.frame.minimumEdgeRatio,layout.frame.minimumAreaRatio,100*coverage.uncoveredArea/area,100*coverage.interiorUncoveredArea/area,layout.infillCount);
+					prefix,layout.patches.size(),area,layout.patches.size()*4/area,minNeighbor,layout.maxBoundaryCorrection,layout.frame.minimumEdgeRatio(),layout.frame.minimumAreaRatio(),100*coverage.uncoveredArea/area,100*coverage.interiorUncoveredArea/area,layout.infillCount);
 		}
 	}
 }

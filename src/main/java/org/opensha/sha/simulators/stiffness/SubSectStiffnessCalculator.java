@@ -91,9 +91,19 @@ public class SubSectStiffnessCalculator {
 	/** Geometry interpretation used to construct the fixed-size patches. */
 	public enum PatchGenerationStrategy {
 		/** Choose separately for each supplied surface; this is the default. */
-		AUTO,
-		STIRLING,
-		GENERIC
+		AUTO(GenericSubSectPatchBuilder.VERSION),
+		STIRLING(1),
+		GENERIC(GenericSubSectPatchBuilder.VERSION);
+		
+		private final int version;
+
+		private PatchGenerationStrategy(int version) {
+			this.version = version;
+		}
+		
+		public int getVersion() {
+			return version;
+		}
 	}
 
 	private final PatchGenerationStrategy patchGenerationStrategy;

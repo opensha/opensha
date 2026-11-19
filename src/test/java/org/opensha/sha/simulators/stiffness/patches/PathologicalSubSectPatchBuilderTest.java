@@ -20,7 +20,7 @@ public class PathologicalSubSectPatchBuilderTest {
 	}
 
 	/** Bounds, physical metadata, unit vectors, and a nonsingular remote interaction. */
-	private static void checkPhysicalPatches(GenericSubSectPatchBuilder.Layout layout) {
+	static void checkPhysicalPatches(GenericSubSectPatchBuilder.Layout layout) {
 		assertFalse(layout.patches.isEmpty());
 		for (PatchLocation location : layout.patches) {
 			var patch=location.patch;
@@ -40,12 +40,12 @@ public class PathologicalSubSectPatchBuilderTest {
 				minX=Math.min(minX,x); maxX=Math.max(maxX,x);
 				minDepth=Math.min(minDepth,-corner[2]/1000); maxDepth=Math.max(maxDepth,-corner[2]/1000);
 			}
-			if (maxX-minX <= layout.frame.maxX-layout.frame.minX+1e-9) {
-				assertTrue(minX >= layout.frame.minX-1e-8); assertTrue(maxX <= layout.frame.maxX+1e-8);
+			if (maxX-minX <= layout.frame.maxX()-layout.frame.minX()+1e-9) {
+				assertTrue(minX >= layout.frame.minX()-1e-8); assertTrue(maxX <= layout.frame.maxX()+1e-8);
 			}
-			if (maxDepth-minDepth <= layout.frame.geometry.maxDepth-layout.frame.geometry.minDepth+1e-9) {
-				assertTrue(minDepth >= layout.frame.geometry.minDepth-1e-8);
-				assertTrue(maxDepth <= layout.frame.geometry.maxDepth+1e-8);
+			if (maxDepth-minDepth <= layout.frame.geometry().maxDepth-layout.frame.geometry().minDepth+1e-9) {
+				assertTrue(minDepth >= layout.frame.geometry().minDepth-1e-8);
+				assertTrue(maxDepth <= layout.frame.geometry().maxDepth+1e-8);
 			}
 			double[] self=StiffnessCalc.calcStiffness(30000,30000,patch,patch);
 			assertNotNull(self);
@@ -112,16 +112,16 @@ public class PathologicalSubSectPatchBuilderTest {
 
 	@Test public void unevenTopAndBottomTracesPreservePlanarityAndRestartRows() {
 		var result=layout(PathologicalSurfaceFixtures.unevenTraces(),PatchAlignment.FILL_OVERLAP);
-		assertEquals(1,result.frame.minimumEdgeRatio,1e-7);
-		assertEquals(0,result.frame.rmsPlaneDistance,1e-5);
+		assertEquals(1,result.frame.minimumEdgeRatio(),1e-7);
+		assertEquals(0,result.frame.rmsPlaneDistance(),1e-5);
 		boolean restarted=false;
-		for (double y=0.1; y<result.frame.maxY; y+=0.1)
+		for (double y=0.1; y<result.frame.maxY(); y+=0.1)
 			if (result.frame.intervals(y,true).size() > 1) restarted=true;
 		assertTrue(restarted);
-		assertTrue(java.util.Arrays.stream(result.frame.nodeY[0]).max().getAsDouble()
-				-java.util.Arrays.stream(result.frame.nodeY[0]).min().getAsDouble() > 2);
-		assertTrue(java.util.Arrays.stream(result.frame.nodeY[result.frame.geometry.rows-1]).max().getAsDouble()
-				-java.util.Arrays.stream(result.frame.nodeY[result.frame.geometry.rows-1]).min().getAsDouble() > 1.5);
+		assertTrue(java.util.stream.IntStream.range(0,result.frame.geometry().cols).mapToDouble(c -> result.frame.nodeY(0,c)).max().getAsDouble()
+				-java.util.stream.IntStream.range(0,result.frame.geometry().cols).mapToDouble(c -> result.frame.nodeY(0,c)).min().getAsDouble() > 2);
+		assertTrue(java.util.stream.IntStream.range(0,result.frame.geometry().cols).mapToDouble(c -> result.frame.nodeY(result.frame.geometry().rows-1,c)).max().getAsDouble()
+				-java.util.stream.IntStream.range(0,result.frame.geometry().cols).mapToDouble(c -> result.frame.nodeY(result.frame.geometry().rows-1,c)).min().getAsDouble() > 1.5);
 	}
 
 	@Test public void patchCountTransitionsAndJointUndersizedLimits() {
