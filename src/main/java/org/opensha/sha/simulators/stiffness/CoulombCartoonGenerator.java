@@ -31,7 +31,7 @@ import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.AggregationMethod;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
+import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchGenerationStrategy;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
 import com.google.common.base.Preconditions;
@@ -85,7 +85,7 @@ public class CoulombCartoonGenerator {
 		double mu = 30000;
 		double coeffOfFriction = 0.5;
 		double stiffnessCap = 1d;
-		PatchAlignment alignment = PatchAlignment.FILL_OVERLAP;
+		PatchGenerationStrategy strategy = PatchGenerationStrategy.AUTO;
 		
 ////		CPT cpt = SubSectStiffnessCalculator.getPreferredPosNegCPT(100);
 //		CPT cpt = new CPT(-200d, 200d, Color.BLUE.darker().darker(), Color.BLUE,
@@ -187,7 +187,7 @@ public class CoulombCartoonGenerator {
 					}
 					
 					SubSectStiffnessCalculator stiffCalc = new SubSectStiffnessCalculator(
-							sectsList, gridSpacing, lambda, mu, coeffOfFriction, alignment, stiffnessCap);
+							sectsList, gridSpacing, lambda, mu, coeffOfFriction, strategy, stiffnessCap);
 					AggregatedStiffnessCalculator aggCalc = new AggregatedStiffnessCalculator(
 							mainType, stiffCalc, false, AggregationMethod.SUM, AggregationMethod.SUM);
 					

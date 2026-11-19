@@ -23,7 +23,7 @@ import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.AggregationMethod;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
+import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchGenerationStrategy;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
 import scratch.UCERF3.enumTreeBranches.FaultModels;
@@ -43,7 +43,7 @@ public class U3Comparisons {
 		double mu = 30000;
 		double coeffOfFriction = 0.5;
 		SubSectStiffnessCalculator calc = new SubSectStiffnessCalculator(
-				subSects, 1d, lambda, mu, coeffOfFriction, PatchAlignment.FILL_OVERLAP, 1d);
+				subSects, 1d, lambda, mu, coeffOfFriction, PatchGenerationStrategy.AUTO, 1d);
 		
 		AggregatedStiffnessCalculator tauCalc = new AggregatedStiffnessCalculator(StiffnessType.TAU, calc, false,
 				AggregationMethod.MAX, AggregationMethod.MAX);

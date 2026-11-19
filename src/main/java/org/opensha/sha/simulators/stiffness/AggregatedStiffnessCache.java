@@ -6,7 +6,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -20,7 +19,6 @@ import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.Aggreg
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.ReceiverDistribution;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.StiffnessAggregation;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
-import org.opensha.sha.simulators.stiffness.patches.GenericSubSectPatchBuilder;
 
 public class AggregatedStiffnessCache {
 
@@ -135,15 +133,11 @@ public class AggregatedStiffnessCache {
 		String ret = type.name().toLowerCase()+"_cache_"
 				+SectionDistanceAzimuthCalculator.getUniqueSectCacheFileStr(sects)
 				+"_"+df.format(calc.getGridSpacing())+"km_lambda"+df.format(calc.getLameLambda())
-				+"_mu"+df.format(calc.getLameMu())+"_coeff"+(float)calc.getCoeffOfFriction()
-				+"_align"+calc.getPatchAlignment().name();
+				+"_mu"+df.format(calc.getLameMu())+"_coeff"+(float)calc.getCoeffOfFriction();
 		if (calc.getSelfStiffnessCap() > 0)
 			ret += "_stiffCap"+df.format(calc.getSelfStiffnessCap())+"x";
 		ret += "_gen"+calc.getPatchGenerationStrategy().name()+"_v"
 				+calc.getPatchGenerationStrategy().getVersion();
-		// disabled for now; this would require building patches even if all results are cached
-		//		if (calc.getPatchGenerationStrategy() != SubSectStiffnessCalculator.PatchGenerationStrategy.STIRLING)
-		//			ret += "_geom"+calc.getPatchGeometryFingerprint();
 		return ret+".csv";
 	}
 
@@ -248,6 +242,8 @@ public class AggregatedStiffnessCache {
 	public void copyCacheFrom(AggregatedStiffnessCache o) {
 		Preconditions.checkState(calc.isAreaWeighted() == o.calc.isAreaWeighted(),
 				"Cannot copy between weighted and unweighted stiffness caches");
+		Preconditions.checkState(calc.getPatchGenerationStrategy() == o.calc.getPatchGenerationStrategy(),
+				"Cannot copy stiffness caches between different patch generation strategies");
 		Preconditions.checkState(type == o.type);
 		Preconditions.checkState(sects.size() == o.sects.size());
 

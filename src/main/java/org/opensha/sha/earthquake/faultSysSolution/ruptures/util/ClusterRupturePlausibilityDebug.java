@@ -29,7 +29,7 @@ import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.AggregationMethod;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
+import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchGenerationStrategy;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
 import com.google.common.collect.Range;
@@ -172,7 +172,7 @@ public class ClusterRupturePlausibilityDebug {
 		
 		PlausibilityFilter[] testFilters = null;
 //		SubSectStiffnessCalculator stiffnessCalc = new SubSectStiffnessCalculator(
-//				rupSet.getFaultSectionDataList(), 2d, 3e4, 3e4, 0.5, PatchAlignment.FILL_OVERLAP, 1d);
+//				rupSet.getFaultSectionDataList(), 2d, 3e4, 3e4, 0.5, PatchGenerationStrategy.AUTO, 1d);
 //		PlausibilityFilter[] testFilters = {
 ////				new CumulativeProbabilityFilter(0.02f, new RelativeCoulombProb(
 ////						new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,

@@ -15,11 +15,10 @@ import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.AggregationMethod;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.ReceiverDistribution;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchGenerationStrategy;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchLocation;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessDistribution;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
+import org.opensha.sha.simulators.stiffness.patches.PatchLocation;
 import org.opensha.sha.simulators.stiffness.patches.TriangularPatch;
 
 public class AreaWeightedStiffnessTest {
@@ -97,7 +96,7 @@ public class AreaWeightedStiffnessTest {
 		final int positiveSourcePieces;
 
 		ControlledCalculator(List<FaultSection> sections, int pieces, boolean refineReceiver) {
-			super(sections, 2, 30000, 30000, .5, PatchAlignment.FILL_OVERLAP, 0, PatchGenerationStrategy.TRIANGULAR);
+			super(sections, 2, 30000, 30000, .5, PatchGenerationStrategy.TRIANGULAR, 0);
 			positiveSourcePieces = pieces;
 			source = new ArrayList<>();
 			for (int i = 0; i < pieces; i++)

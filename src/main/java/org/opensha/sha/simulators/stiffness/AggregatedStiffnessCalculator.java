@@ -23,7 +23,6 @@ import org.opensha.commons.util.DataUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessDistribution;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
@@ -1404,8 +1403,6 @@ public class AggregatedStiffnessCalculator {
 		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
 		SubSectStiffnessCalculator calc = new SubSectStiffnessCalculator(
 				subSects, gridSpacing, lambda, mu, coeffOfFriction);
-		calc.setPatchAlignment(PatchAlignment.FILL_OVERLAP);
-		//		calc.setPatchAlignment(PatchAlignment.CENTER);
 
 		AggregatedStiffnessCalculator aggCalc = new AggregatedStiffnessCalculator(StiffnessType.CFF, calc, true,
 				//				AggregationMethod.SUM, AggregationMethod.PASSTHROUGH,

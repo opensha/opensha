@@ -61,7 +61,7 @@ public class StiffnessCalcModule implements TextBackedModule, SubModule<FaultSys
                 lameLambda,
                 lameMu,
                 coeffOfFriction,
-                SubSectStiffnessCalculator.PatchAlignment.FILL_OVERLAP,
+				SubSectStiffnessCalculator.PatchGenerationStrategy.AUTO,
                 1d);
         stiffnessCache = stiffnessCalc.getAggregationCache(SubSectStiffnessCalculator.StiffnessType.CFF);
 

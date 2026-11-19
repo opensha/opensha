@@ -69,7 +69,7 @@ import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCache;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.AggregationMethod;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
+import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchGenerationStrategy;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
 import com.google.common.base.Joiner;
@@ -162,7 +162,7 @@ public class RupSetFilterComparePageGen {
 //		System.exit(0);
 		
 		SubSectStiffnessCalculator stiffnessCalc = new SubSectStiffnessCalculator(
-				rupSet.getFaultSectionDataList(), 2d, 3e4, 3e4, 0.5, PatchAlignment.FILL_OVERLAP, 1d);
+				rupSet.getFaultSectionDataList(), 2d, 3e4, 3e4, 0.5, PatchGenerationStrategy.AUTO, 1d);
 		AggregatedStiffnessCache stiffnessCache = stiffnessCalc.getAggregationCache(StiffnessType.CFF);
 		File stiffnessCacheFile = new File(rupSetsDir, stiffnessCache.getCacheFileName());
 		if (stiffnessCacheFile.exists())

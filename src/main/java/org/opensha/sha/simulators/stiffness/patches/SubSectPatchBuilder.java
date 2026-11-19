@@ -4,19 +4,8 @@ import java.util.List;
 
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchLocation;
 
-/**
- * Constructs fixed-size source/receiver patches from a section's supplied surface.
- * Implementations share the calculator's public patch types and alignment policy;
- * elastic calculations and aggregation remain in the parent stiffness package.
- */
+/** Constructs patches from the supplied surface; elastic kernels and aggregation are separate. */
 public interface SubSectPatchBuilder {
-	List<PatchLocation> buildPatches(FaultSection section, EvenlyGriddedSurface surface, PatchAlignment alignment);
-
-	/** Convenience entry point for builders whose geometry needs no alignment policy. */
-	default List<PatchLocation> buildPatches(FaultSection section, EvenlyGriddedSurface surface) {
-		return buildPatches(section,surface,PatchAlignment.FILL_OVERLAP);
-	}
+	List<PatchLocation> buildPatches(FaultSection section, EvenlyGriddedSurface surface);
 }

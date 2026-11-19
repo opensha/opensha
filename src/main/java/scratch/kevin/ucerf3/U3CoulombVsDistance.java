@@ -30,7 +30,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutof
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
+import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchGenerationStrategy;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
@@ -105,7 +105,7 @@ class U3CoulombVsDistance {
 		double mu = 30000;
 		double coeffOfFriction = 0.5;
 		SubSectStiffnessCalculator calc = new SubSectStiffnessCalculator(
-				subSects, 1d, lambda, mu, coeffOfFriction, PatchAlignment.FILL_OVERLAP, 0d);
+				subSects, 1d, lambda, mu, coeffOfFriction, PatchGenerationStrategy.AUTO, 0d);
 		
 		double testDist = 10d;
 		DistCutoffClosestSectClusterConnectionStrategy connectionStrategy =

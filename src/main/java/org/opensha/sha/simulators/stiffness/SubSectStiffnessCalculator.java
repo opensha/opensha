@@ -14,8 +14,6 @@ import java.util.zip.ZipException;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
-import com.google.common.hash.Hasher;
-import com.google.common.hash.Hashing;
 import org.dom4j.DocumentException;
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.ui.TextAnchor;
@@ -42,10 +40,10 @@ import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.AggregationMethod;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.StiffnessAggregation;
-import org.opensha.sha.simulators.stiffness.patches.StiffnessPatch;
+import org.opensha.sha.simulators.stiffness.patches.PatchLocation;
 import org.opensha.sha.simulators.stiffness.patches.TriangularSubSectPatchBuilder;
-import org.opensha.sha.simulators.stiffness.patches.GenericSubSectPatchBuilder;
 import org.opensha.sha.simulators.stiffness.patches.StirlingSubSectPatchBuilder;
+import org.opensha.sha.simulators.stiffness.patches.StirlingSubSectPatchBuilder.Placement;
 import org.opensha.sha.simulators.stiffness.patches.SubSectPatchBuilder;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 
@@ -62,8 +60,10 @@ import scratch.UCERF3.utils.U3FaultSystemIO;
  */
 public class SubSectStiffnessCalculator {
 
-	/** True when patch statistics use actual areas rather than raw element counts. */
-	public boolean isAreaWeighted() { return patchGenerationStrategy == PatchGenerationStrategy.TRIANGULAR; }
+	/** AUTO weights every interaction consistently, including mixtures of rectangles and triangles. */
+	public boolean isAreaWeighted() {
+		return !patchGenerationStrategy.isStirling();
+	}
 
 	/** Reference equal-patch area, in square meters, used to preserve legacy SUM units. */
 	public double getReferencePatchArea() { return gridSpacing*gridSpacing*1e6; }
@@ -74,28 +74,23 @@ public class SubSectStiffnessCalculator {
 	private int utmZone;
 	private char utmChar;
 
-	public static final PatchAlignment alignment_default = PatchAlignment.FILL_OVERLAP;
-	private PatchAlignment alignment = alignment_default;
-
 	private transient Map<FaultSection, List<PatchLocation>> patchesMap;
 
 	private transient double[][] selfStiffnessCache;
 
 	private transient AggregatedStiffnessCache[] caches;
 
-	/** Compatibility location type; shared geometry lives in the patches package. */
-	public static class PatchLocation extends org.opensha.sha.simulators.stiffness.patches.PatchLocation {
-		public PatchLocation(StiffnessPatch patch, Location center, Location[] corners) {
-			super(patch,center,corners);
-		}
-	}
-
-	/** Geometry interpretation used to construct the fixed-size patches. */
+	/** Geometry interpretation used to construct source and receiver patches. */
 	public enum PatchGenerationStrategy {
-		/** Choose separately for each supplied surface; this is the default. */
-		AUTO(GenericSubSectPatchBuilder.VERSION),
-		STIRLING(1),
-		GENERIC(GenericSubSectPatchBuilder.VERSION),
+		/**
+		 * Stirling rectangles or direct triangles, selected separately for each supplied surface.
+		 * Bump this version when either builder or its kernel/aggregation conventions change.
+		 */
+		AUTO(14),
+		/** Equal-sized overlapping rectangles; rejects any non-Stirling surface. */
+		STIRLING_FILL_OVERLAP(1),
+		/** Equal-sized centered rectangles; rejects any non-Stirling surface. */
+		STIRLING_CENTERED(1),
 		/** Direct finite triangles at the requested surface spacing. */
 		TRIANGULAR(TriangularSubSectPatchBuilder.VERSION);
 
@@ -108,14 +103,13 @@ public class SubSectStiffnessCalculator {
 		public int getVersion() {
 			return version;
 		}
+
+		private boolean isStirling() {
+			return this == STIRLING_FILL_OVERLAP || this == STIRLING_CENTERED;
+		}
 	}
 
 	private final PatchGenerationStrategy patchGenerationStrategy;
-
-	public enum PatchAlignment {
-		CENTER,
-		FILL_OVERLAP
-	}
 
 	private double gridSpacing;
 	private double lameLambda;
@@ -159,50 +153,45 @@ public class SubSectStiffnessCalculator {
 	/**
 	 * 
 	 * @param subSects subsections list
-	 * @param gridSpacing grid spacing used to divide subsections into square patches
+	 * @param gridSpacing nominal rectangle side length or triangular grid-cell spacing in km
 	 * @param lameLambda Lame's first parameter (lambda) in MPa
 	 * @param lameMu Lame's mu (shear modulus, mu) in MPa
 	 * @param coeffOfFriction coefficient of friction for Coulomb calculations
 	 */
 	public SubSectStiffnessCalculator(List<? extends FaultSection> subSects, double gridSpacing,
 			double lameLambda, double lameMu, double coeffOfFriction) {
-		this(subSects, gridSpacing, lameLambda, lameMu, coeffOfFriction, alignment_default, 0d);
+		this(subSects, gridSpacing, lameLambda, lameMu, coeffOfFriction, PatchGenerationStrategy.AUTO, 0d);
 	}
 
 	/**
 	 * 
 	 * @param subSects subsections list
-	 * @param gridSpacing grid spacing used to divide subsections into square patches
+	 * @param gridSpacing nominal rectangle side length or triangular grid-cell spacing in km
 	 * @param lameLambda Lame's first parameter (lambda) in MPa
 	 * @param lameMu Lame's mu (shear modulus, mu) in MPa
 	 * @param coeffOfFriction coefficient of friction for Coulomb calculations
-	 * @param alignment patch alignment algorithm
 	 * @param selfStiffnessCap self-stiffness CFF cap multiplier (bounded positive or negative).
-	 * In triangle mode the receiver's self-CFF limit is scaled by source area / receiver area.
+	 * In AUTO and TRIANGULAR modes the receiver's self-CFF limit is scaled by source area / receiver area.
 	 */
 	public SubSectStiffnessCalculator(List<? extends FaultSection> subSects, double gridSpacing,
-			double lameLambda, double lameMu, double coeffOfFriction, PatchAlignment alignment,
-			double selfStiffnessCap) {
-		this(subSects, gridSpacing, lameLambda, lameMu, coeffOfFriction, alignment,
-				selfStiffnessCap, PatchGenerationStrategy.AUTO);
+			double lameLambda, double lameMu, double coeffOfFriction, double selfStiffnessCap) {
+		this(subSects, gridSpacing, lameLambda, lameMu, coeffOfFriction, PatchGenerationStrategy.AUTO, selfStiffnessCap);
 	}
 
 	/**
 	 * Constructs a calculator with a surface interpretation strategy. A null strategy
-	 * is equivalent to AUTO; explicit STIRLING and GENERIC selections are honored.
+	 * is equivalent to AUTO. Stirling placement is part of the strategy, and cannot change after construction.
 	 */
 	public SubSectStiffnessCalculator(List<? extends FaultSection> subSects, double gridSpacing,
-			double lameLambda, double lameMu, double coeffOfFriction, PatchAlignment alignment,
-			double selfStiffnessCap, PatchGenerationStrategy strategy) {
+			double lameLambda, double lameMu, double coeffOfFriction, PatchGenerationStrategy strategy,
+			double selfStiffnessCap) {
 		Preconditions.checkArgument(Double.isFinite(gridSpacing) && gridSpacing > 0, "Invalid patch spacing: %s", gridSpacing);
 		this.patchGenerationStrategy = strategy == null ? PatchGenerationStrategy.AUTO : strategy;
-		Preconditions.checkNotNull(alignment);
 		this.subSects = subSects;
 		this.gridSpacing = gridSpacing;
 		this.lameLambda = lameLambda;
 		this.lameMu = lameMu;
 		this.coeffOfFriction = coeffOfFriction;
-		this.alignment = alignment;
 		this.selfStiffnessCap = selfStiffnessCap;
 
 		MinMaxAveTracker latTrack = new MinMaxAveTracker();
@@ -244,15 +233,6 @@ public class SubSectStiffnessCalculator {
 		return idToIndexMap == null ? sect.getSectionId() : idToIndexMap.get(sect.getSectionId());
 	}
 
-	public synchronized void setPatchAlignment(PatchAlignment alignment) {
-		if (this.alignment != alignment) {
-			Preconditions.checkNotNull(alignment);
-			patchesMap = null;
-			this.alignment = alignment;
-			clearCaches();
-		}
-	}
-
 	public List<? extends FaultSection> getSubSects() {
 		return subSects;
 	}
@@ -268,24 +248,29 @@ public class SubSectStiffnessCalculator {
 	 * @return
 	 */
 	public List<PatchLocation> buildPatches(FaultSection sect) {
-		// Resolve and build from the same instance, preserving spacing and aseismicity
-		// settings even for section implementations that do not cache their surfaces.
-		RuptureSurface surface = sect.getFaultSurface(
-				patchGenerationStrategy == PatchGenerationStrategy.TRIANGULAR ? gridSpacing : gridSpacing/10d,
-						false, isApplyAseisReduction());
+		// Inspect AUTO surfaces at triangle spacing first. Only Stirling placement
+		// needs a finer grid to recover the legacy centers and local strikes.
+		double surfaceSpacing = patchGenerationStrategy.isStirling()
+				? gridSpacing/10d : gridSpacing;
+		RuptureSurface surface = sect.getFaultSurface(surfaceSpacing, false, isApplyAseisReduction());
 		Preconditions.checkState(surface instanceof EvenlyGriddedSurface,
 				"Patch generation requires EvenlyGriddedSurface; section %s supplies %s",
 				sect.getSectionName(), surface == null ? "null" : surface.getClass().getName());
 		PatchGenerationStrategy resolved = patchGenerationStrategy;
 		if (resolved == PatchGenerationStrategy.AUTO)
 			resolved = surface instanceof StirlingGriddedSurface
-			? PatchGenerationStrategy.STIRLING : PatchGenerationStrategy.GENERIC;
-		if (resolved == PatchGenerationStrategy.TRIANGULAR)
-			return new TriangularSubSectPatchBuilder(utmZone,utmChar).buildPatches(sect,(EvenlyGriddedSurface)surface);
-		SubSectPatchBuilder builder = resolved == PatchGenerationStrategy.STIRLING
-				? new StirlingSubSectPatchBuilder(gridSpacing, utmZone, utmChar)
-						: new GenericSubSectPatchBuilder(gridSpacing, utmZone, utmChar);
-		return builder.buildPatches(sect, (EvenlyGriddedSurface)surface, alignment);
+					? PatchGenerationStrategy.STIRLING_FILL_OVERLAP : PatchGenerationStrategy.TRIANGULAR;
+		if (resolved.isStirling() && surfaceSpacing != gridSpacing/10d) {
+			surface = sect.getFaultSurface(gridSpacing/10d, false, isApplyAseisReduction());
+			Preconditions.checkState(surface instanceof StirlingGriddedSurface,
+					"Section %s changed surface type when requesting Stirling placement spacing",
+					sect.getSectionName());
+		}
+		SubSectPatchBuilder builder = resolved.isStirling()
+				? new StirlingSubSectPatchBuilder(gridSpacing, utmZone, utmChar,
+						resolved == PatchGenerationStrategy.STIRLING_CENTERED ? Placement.CENTERED : Placement.FILL_OVERLAP)
+				: new TriangularSubSectPatchBuilder(utmZone, utmChar);
+		return builder.buildPatches(sect, (EvenlyGriddedSurface)surface);
 	}
 
 	public boolean isApplyAseisReduction() {
@@ -296,27 +281,6 @@ public class SubSectStiffnessCalculator {
 	public PatchGenerationStrategy getPatchGenerationStrategy() {
 		return patchGenerationStrategy;
 	}
-
-	/** Fingerprint of the actual ordered patches, including mechanisms and Cartesian frame. */
-	String getPatchGeometryFingerprint() {
-		checkInitPatches();
-		Hasher hash = Hashing.sha256().newHasher();
-		hash.putInt(utmZone).putChar(utmChar).putBoolean(isApplyAseisReduction());
-		for (FaultSection section : subSects) {
-			List<PatchLocation> patches = patchesMap.get(section);
-			hash.putInt(section.getSectionId()).putInt(patches.size());
-			for (PatchLocation location : patches) {
-				StiffnessPatch patch = location.patch;
-				for (double value : patch.center) hash.putDouble(value);
-				hash.putInt(patch.corner.length);
-				for (double[] corner : patch.corner) for (double value : corner) hash.putDouble(value);
-				hash.putDouble(patch.strike)
-				.putDouble(patch.dip).putDouble(patch.rake);
-			}
-		}
-		return hash.hash().toString();
-	}
-
 
 	private void checkInitPatches() {
 		if (patchesMap == null) {
@@ -377,7 +341,7 @@ public class SubSectStiffnessCalculator {
 
 	/**
 	 * Evaluates physical patch stresses, optionally clipping CFF before aggregation.
-	 * A null self-stiffness array leaves stresses uncapped. Triangle-mode limits
+	 * A null self-stiffness array leaves stresses uncapped. Area-weighted limits
 	 * compare interaction and self-CFF per unit source area; equal-area patches
 	 * recover the original receiver-only limit. Sigma and tau are never clipped.
 	 */
@@ -752,19 +716,12 @@ public class SubSectStiffnessCalculator {
 	}
 
 	/**
-	 * @return self-stiffness cap multiplier; values >0 enable clipping. Triangle-mode
+	 * @return self-stiffness cap multiplier; values >0 enable clipping. Area-weighted
 	 * limits also include source area / receiver area, matching the source-area
-	 * normalization used in aggregation. Rectangular limits retain the receiver-only rule.
+	 * normalization used in aggregation. Explicit Stirling strategies retain the receiver-only rule.
 	 */
 	public double getSelfStiffnessCap() {
 		return selfStiffnessCap;
-	}
-
-	/**
-	 * @return alignment of patches across section surfaces
-	 */
-	public PatchAlignment getPatchAlignment() {
-		return alignment;
 	}
 
 	public static class StiffnessDistribution {
@@ -927,7 +884,6 @@ public class SubSectStiffnessCalculator {
 		//				rupSet.getFaultSectionDataList(), 2d, lambda, mu, coeffOfFriction);
 		SubSectStiffnessCalculator calc = new SubSectStiffnessCalculator(
 				rupSet.getFaultSectionDataList(), 1d, lambda, mu, coeffOfFriction);
-		calc.setPatchAlignment(PatchAlignment.FILL_OVERLAP);
 
 		System.out.println(calc.utmZone+" "+calc.utmChar);
 

@@ -40,7 +40,6 @@ import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.AggregationMethod;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchGenerationStrategy;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
@@ -49,6 +48,7 @@ import com.google.common.collect.BoundType;
 import com.google.common.collect.Range;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonParseException;
 import com.google.gson.TypeAdapter;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
@@ -921,7 +921,6 @@ BranchAverageableModule<PlausibilityConfiguration> {
 			out.name("lameLambda").value(calc.getLameLambda());
 			out.name("lameMu").value(calc.getLameMu());
 			out.name("coeffOfFriction").value(calc.getCoeffOfFriction());
-			out.name("patchAlignment").value(calc.getPatchAlignment().name());
 			out.name("patchGenerationStrategy").value(calc.getPatchGenerationStrategy().name());
 			out.name("selfStiffnessCap").value(calc.getSelfStiffnessCap());
 //			System.out.println("writing sub sect stiffness calc! cap="+calc.getSelfStiffnessCap());
@@ -936,8 +935,8 @@ BranchAverageableModule<PlausibilityConfiguration> {
 			Double coeffOfFriction = null;
 			Double gridSpacing = null;
 			double selfStiffnessCap = 0d;
-			PatchAlignment alignment = SubSectStiffnessCalculator.alignment_default;
-			PatchGenerationStrategy strategy = PatchGenerationStrategy.AUTO;
+			String legacyAlignment = null;
+			PatchGenerationStrategy strategy = null;
 			while (in.hasNext()) {
 				switch (in.nextName()) {
 				case "lameMu":
@@ -955,13 +954,21 @@ BranchAverageableModule<PlausibilityConfiguration> {
 				case "patchGenerationStrategy":
 					if (in.peek() == JsonToken.NULL) {
 						in.nextNull();
-						strategy = PatchGenerationStrategy.AUTO;
+						strategy = null;
 					} else {
-						strategy = PatchGenerationStrategy.valueOf(in.nextString());
+						String name = in.nextString();
+						try {
+							strategy = PatchGenerationStrategy.valueOf(name);
+						} catch (IllegalArgumentException e) {
+							throw new JsonParseException("Unsupported or retired patch generation strategy: "+name, e);
+						}
 					}
 					break;
 				case "patchAlignment":
-					alignment = PatchAlignment.valueOf(in.nextString());
+					if (in.peek() == JsonToken.NULL)
+						in.nextNull();
+					else
+						legacyAlignment = in.nextString();
 					break;
 				case "selfStiffnessCap":
 					selfStiffnessCap = in.nextDouble();
@@ -973,18 +980,29 @@ BranchAverageableModule<PlausibilityConfiguration> {
 				}
 			}
 			in.endObject();
+			// Before strategies were introduced, saved calculators only recorded alignment.
+			// An explicit current strategy takes precedence, independent of JSON field order.
+			if (strategy == null) {
+				if (legacyAlignment == null)
+					strategy = PatchGenerationStrategy.AUTO;
+				else if (legacyAlignment.equals("CENTER"))
+					strategy = PatchGenerationStrategy.STIRLING_CENTERED;
+				else if (legacyAlignment.equals("FILL_OVERLAP"))
+					strategy = PatchGenerationStrategy.STIRLING_FILL_OVERLAP;
+				else
+					throw new JsonParseException("Unknown legacy patchAlignment: "+legacyAlignment);
+			}
 			if (prevCalc != null) {
 				// see if it's the same
 				if (gridSpacing == prevCalc.getGridSpacing() && lambda == prevCalc.getLameLambda()
 						&& mu == prevCalc.getLameMu() && coeffOfFriction == prevCalc.getCoeffOfFriction()
 						&& selfStiffnessCap == prevCalc.getSelfStiffnessCap()
-						&& alignment == prevCalc.getPatchAlignment()
 						&& strategy == prevCalc.getPatchGenerationStrategy()) {
 					return prevCalc;
 				}
 			}
 			SubSectStiffnessCalculator calc = new SubSectStiffnessCalculator(
-					subSects, gridSpacing, lambda, mu, coeffOfFriction, alignment, selfStiffnessCap, strategy);
+					subSects, gridSpacing, lambda, mu, coeffOfFriction, strategy, selfStiffnessCap);
 			prevCalc = calc;
 			return calc;
 		}
@@ -1192,7 +1210,7 @@ BranchAverageableModule<PlausibilityConfiguration> {
 //		builder.u3Cumulatives();
 //		builder.minSectsPerParent(2, true, true);
 		SubSectStiffnessCalculator stiffnessCalc =
-				new SubSectStiffnessCalculator(subSects, 2d, 3e4, 3e4, 0.5, PatchAlignment.FILL_OVERLAP, 1d);
+				new SubSectStiffnessCalculator(subSects, 2d, 3e4, 3e4, 0.5, PatchGenerationStrategy.AUTO, 1d);
 		
 		// common aggregators:
 		AggregatedStiffnessCalculator medSumAgg = new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
@@ -1326,8 +1344,7 @@ BranchAverageableModule<PlausibilityConfiguration> {
 //		builder.u3Azimuth();
 //		builder.u3Cumulatives();
 //		SubSectStiffnessCalculator u3StiffnessCalc =
-//				new SubSectStiffnessCalculator(subSects, 1d, 3e4, 3e4, 0.5, PatchAlignment.FILL_OVERLAP, 1d);
-//		u3StiffnessCalc.setPatchAlignment(PatchAlignment.FILL_OVERLAP);
+//				new SubSectStiffnessCalculator(subSects, 1d, 3e4, 3e4, 0.5, PatchGenerationStrategy.AUTO, 1d);
 //		builder.u3Coulomb(CoulombRates.loadUCERF3CoulombRates(fm), u3StiffnessCalc);
 //		String destFileName = "u3_az_cff_cmls.json";
 		

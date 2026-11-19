@@ -23,7 +23,6 @@ import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.data.Range;
 import org.jfree.chart.ui.TextAnchor;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
-import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
@@ -37,7 +36,6 @@ import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.util.ExceptionUtils;
-import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.cpt.CPTVal;
@@ -53,16 +51,10 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.Cu
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.DirectPathPlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.MinSectsPerParentFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.SimpleAzimuthCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpDistFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.coulomb.ClusterCoulombCompatibilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.ClusterCoulombPathEvaluator;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.CumulativeProbPathEvaluator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.PathEvaluator.PathAddition;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.PathEvaluator.PathNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.PathEvaluator.SectionPathNavigator;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.PathPlausibilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.SectCoulombPathEvaluator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.SectCoulombPathEvaluator.*;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.AbstractRelativeProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.CoulombSectRatioProb;
@@ -87,17 +79,14 @@ import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.AggregationMethod;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchLocation;
+import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchGenerationStrategy;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessDistribution;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
+import org.opensha.sha.simulators.stiffness.patches.PatchLocation;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Ints;
-
-import scratch.UCERF3.U3FaultSystemRupSet;
-import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class RupCartoonGenerator {
 	
@@ -2473,9 +2462,9 @@ public class RupCartoonGenerator {
 		List<FaultSubsectionCluster> clusters = connStrat.getClusters();
 		
 		SubSectStiffnessCalculator stiffCalc = new SubSectStiffnessCalculator(rupBuild.subSectsList, 2d, 30000, 30000,
-				0.5d, PatchAlignment.CENTER, 1d);
+				0.5d, PatchGenerationStrategy.STIRLING_CENTERED, 1d);
 //		SubSectStiffnessCalculator stiffCalc = new SubSectStiffnessCalculator(rupBuild.subSectsList, 2d, 30000, 30000,
-//				0.5d, PatchAlignment.FILL_OVERLAP, 1d);
+//				0.5d, PatchGenerationStrategy.AUTO, 1d);
 		AggregatedStiffnessCalculator aggCalc = new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffCalc, false,
 				AggregationMethod.NUM_POSITIVE, AggregationMethod.FLATTEN, AggregationMethod.FLATTEN, AggregationMethod.NORM_BY_COUNT);
 		

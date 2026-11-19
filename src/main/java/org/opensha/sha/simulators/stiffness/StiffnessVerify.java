@@ -24,7 +24,7 @@ import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.sha.earthquake.FocalMechanism;
-import org.opensha.sha.simulators.stiffness.StiffnessCalc.Patch;
+import org.opensha.sha.simulators.stiffness.patches.RectangularPatch;
 
 import com.google.common.io.Files;
 import com.google.common.io.LittleEndianDataInputStream;
@@ -39,7 +39,7 @@ public class StiffnessVerify {
 		double lambda = 30000;
 		double mu = 30000;
 		
-		List<Patch> patches = new ArrayList<>();
+		List<RectangularPatch> patches = new ArrayList<>();
 		
 		for (String line : Files.readLines(fltFile, Charset.defaultCharset())) {
 			line = line.trim();
@@ -60,7 +60,7 @@ public class StiffnessVerify {
 
 			FocalMechanism focalMechanism = new FocalMechanism(strike, dip, rake);
 			double[] center = { x, y, z };
-			patches.add(new Patch(center, l, w, focalMechanism));
+			patches.add(new RectangularPatch(center, l, w, focalMechanism));
 		}
 		System.out.println("Loaded "+patches.size()+" patches");
 		LittleEndianDataInputStream sigIn = new LittleEndianDataInputStream(
@@ -79,9 +79,9 @@ public class StiffnessVerify {
 		
 		EuclideanDistance distCalc = new EuclideanDistance();
 		for (int i=0; i<patches.size(); i++) {
-			Patch receiver = patches.get(i);
+			RectangularPatch receiver = patches.get(i);
 			for (int j=0; j<patches.size(); j++) {
-				Patch source = patches.get(j);
+				RectangularPatch source = patches.get(j);
 				count++;
 				double[] stiffness = StiffnessCalc.calcStiffness(lambda, mu, source, receiver);
 				double rsSig = sigIn.readDouble();

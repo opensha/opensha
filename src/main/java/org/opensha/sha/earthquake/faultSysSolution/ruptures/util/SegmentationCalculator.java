@@ -78,7 +78,7 @@ import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.AggregationMethod;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
+import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchGenerationStrategy;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
 import com.google.common.base.Preconditions;
@@ -1225,7 +1225,7 @@ public class SegmentationCalculator {
 	
 	private SubSectStiffnessCalculator getStiffnessCalc() {
 		if (stiffnessCalc == null)
-			stiffnessCalc = new SubSectStiffnessCalculator(subSects, 2d, 30000, 30000, 0.5, PatchAlignment.FILL_OVERLAP, 1);
+			stiffnessCalc = new SubSectStiffnessCalculator(subSects, 2d, 30000, 30000, 0.5, PatchGenerationStrategy.AUTO, 1);
 		return stiffnessCalc;
 	}
 	

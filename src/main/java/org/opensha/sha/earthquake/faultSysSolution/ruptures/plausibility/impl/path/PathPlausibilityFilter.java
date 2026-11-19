@@ -430,7 +430,6 @@ public class PathPlausibilityFilter implements PlausibilityFilter {
 //		
 //		SubSectStiffnessCalculator stiffnessCalc = new SubSectStiffnessCalculator(
 //				rupSet.getFaultSectionDataList(), 2d, 3e4, 3e4, 0.5);
-//		stiffnessCalc.setPatchAlignment(PatchAlignment.FILL_OVERLAP);
 //		AggregatedStiffnessCache stiffnessCache = stiffnessCalc.getAggregationCache(StiffnessType.CFF);
 //		File stiffnessCacheFile = new File(rupSetsDir, stiffnessCache.getCacheFileName());
 //		if (stiffnessCacheFile.exists())

@@ -35,7 +35,7 @@ import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCache;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.AggregationMethod;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
+import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchGenerationStrategy;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
 import com.google.common.base.Preconditions;
@@ -879,7 +879,7 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 	public static void main(String[] args) throws IOException {
 		List<? extends FaultSection> subSects = DeformationModels.loadSubSects(FaultModels.FM3_1, DeformationModels.GEOLOGIC);
 		SubSectStiffnessCalculator stiffnessCalc = new SubSectStiffnessCalculator(
-				subSects, 2d, 3e4, 3e4, 0.5, PatchAlignment.FILL_OVERLAP, 1d);
+				subSects, 2d, 3e4, 3e4, 0.5, PatchGenerationStrategy.AUTO, 1d);
 		AggregatedStiffnessCache stiffnessCache = stiffnessCalc.getAggregationCache(StiffnessType.CFF);
 		File rupSetsDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets/");
 		File stiffnessCacheFile = new File(rupSetsDir, stiffnessCache.getCacheFileName());

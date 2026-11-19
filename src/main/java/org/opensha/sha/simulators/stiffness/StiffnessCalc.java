@@ -11,7 +11,6 @@ import org.jfree.data.Range;
 import org.jfree.chart.ui.TextAnchor;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.XY_DataSet;
-import org.opensha.commons.geo.Location;
 import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -37,20 +36,10 @@ import org.opensha.sha.simulators.stiffness.OkadaDisplaceStrainCalc.Displacement
  */
 public class StiffnessCalc {
 
-	/** Compatibility name for the original rectangular patch API. */
-	public static class Patch extends RectangularPatch {
-		public Patch(Location center, int zone, char letter, double length, double width, FocalMechanism mechanism) {
-			super(center, zone, letter, length, width, mechanism);
-		}
-		public Patch(double[] center, double length, double width, FocalMechanism mechanism) {
-			super(center, length, width, mechanism);
-		}
-	}
-
 	private static final double HALF_PI = 0.5*Math.PI;
 
 	/**
-	 * Calculates stiffness between the given source and receiver. Sigma is positive for compression and
+	 * Calculates stiffness using the source shape's kernel at the receiver centroid. Sigma is positive for compression and
 	 * negative for extension (as in RSQSim)
 	 * 
 	 * @param lambda
@@ -59,11 +48,6 @@ public class StiffnessCalc {
 	 * @param receiver
 	 * @return { sigma, tau }
 	 */
-	public static double[] calcStiffness(double lambda, double mu, Patch source, Patch receiver) {
-		return calcStiffness(lambda, mu, (StiffnessPatch)source, receiver);
-	}
-
-	/** Dispatches by source geometry; receivers are sampled at their centroids. */
 	public static double[] calcStiffness(double lambda, double mu, StiffnessPatch source, StiffnessPatch receiver) {
 		if (source instanceof TriangularPatch) {
 			double poisson = lambda/(2*(lambda+mu));
@@ -239,7 +223,8 @@ public class StiffnessCalc {
 		return new double[] { sigma, tau };
 	}
 
-	public static void plot(Patch source, Patch receiver, double lambda, double mu, double coeffOfFriction) {
+	public static void plot(RectangularPatch source, RectangularPatch receiver,
+			double lambda, double mu, double coeffOfFriction) {
 		double[] stiffness = calcStiffness(lambda, mu, source, receiver);
 		double sigma = stiffness[0];
 		double tau = stiffness[1];
@@ -309,7 +294,7 @@ public class StiffnessCalc {
 	}
 
 	private static void plotPatch(List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars,
-			Patch patch, boolean isSource) {
+			RectangularPatch patch, boolean isSource) {
 		boolean dipping = (float)patch.dip < (float)(Math.PI/2d);
 		Color color = isSource ? Color.GREEN.darker() : Color.MAGENTA.darker();
 		if (dipping) {
@@ -369,14 +354,14 @@ public class StiffnessCalc {
 		 */
 		double[] sourceCenter = { 0d, 0d, -1000d };
 		FocalMechanism sourceMech = new FocalMechanism(0d, 90, 180d);
-		Patch source = new Patch(sourceCenter, 2000d, 2000d, sourceMech);
+		RectangularPatch source = new RectangularPatch(sourceCenter, 2000d, 2000d, sourceMech);
 
 		double[] receiverCenter = { 0d, 5000d, -1d };
 		FocalMechanism receiverMech = new FocalMechanism(0d, 90, 180d);
-		Patch receiver = new Patch(receiverCenter, 2000d, 2000d, receiverMech);
+		RectangularPatch receiver = new RectangularPatch(receiverCenter, 2000d, 2000d, receiverMech);
 		//		double[] receiverCenter = sourceCenter;
 		//		FocalMechanism receiverMech = sourceMech;
-		//		Patch receiver = source;
+		//		RectangularPatch receiver = source;
 		plot(source, receiver, lambda, mu, coeffOfFriction);
 
 		/*
@@ -395,14 +380,14 @@ public class StiffnessCalc {
 		 */
 		sourceCenter = new double[] { 0d, -1000d, -1000d };
 		sourceMech = new FocalMechanism(0d, 90, 180d);
-		source = new Patch(sourceCenter, 4000d, 2000d, sourceMech);
+		source = new RectangularPatch(sourceCenter, 4000d, 2000d, sourceMech);
 
 		receiverCenter = new double[] { 0d, 5000d, -1d };
 		receiverMech = new FocalMechanism(0d, 90, 180d);
-		receiver = new Patch(receiverCenter, 2000d, 2000d, receiverMech);
+		receiver = new RectangularPatch(receiverCenter, 2000d, 2000d, receiverMech);
 		//		double[] receiverCenter = sourceCenter;
 		//		FocalMechanism receiverMech = sourceMech;
-		//		Patch receiver = source;
+		//		RectangularPatch receiver = source;
 		plot(source, receiver, lambda, mu, coeffOfFriction);
 
 		//		/*
@@ -423,14 +408,14 @@ public class StiffnessCalc {
 		//		 */
 		//		sourceCenter = new double[] { 0d, 0d, -1000d };
 		//		sourceMech = new FocalMechanism(0d, 45, 90);
-		//		source = new Patch(sourceCenter, 2000d, 2000d, sourceMech);
+		//		source = new RectangularPatch(sourceCenter, 2000d, 2000d, sourceMech);
 		//
 		//		receiverCenter = new double[] { 5d, 0d, -1000d };
 		//		receiverMech = new FocalMechanism(180d, 45, 90d);
-		//		receiver = new Patch(receiverCenter, 2000d, 2000d, receiverMech);
+		//		receiver = new RectangularPatch(receiverCenter, 2000d, 2000d, receiverMech);
 		////		double[] receiverCenter = sourceCenter;
 		////		FocalMechanism receiverMech = sourceMech;
-		////		Patch receiver = source;
+		////		RectangularPatch receiver = source;
 		//		plot(source, receiver, lambda, mu, coeffOfFriction);
 		//
 		//		/*
@@ -452,11 +437,11 @@ public class StiffnessCalc {
 		//		 */
 		//		sourceCenter = new double[] { 0d, 0d, -1d };
 		//		sourceMech = new FocalMechanism(0d, 45, -90d);
-		//		source = new Patch(sourceCenter, 2d, 2d, sourceMech);
+		//		source = new RectangularPatch(sourceCenter, 2d, 2d, sourceMech);
 		//
 		//		receiverCenter = new double[] { 5d, 0d, -1d };
 		//		receiverMech = new FocalMechanism(180d, 45, -90d);
-		//		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
+		//		receiver = new RectangularPatch(receiverCenter, 2d, 2d, receiverMech);
 		//		plot(source, receiver, lambda, mu, coeffOfFriction);
 		//
 		//		/*
@@ -478,11 +463,11 @@ public class StiffnessCalc {
 		//		 */
 		//		sourceCenter = new double[] { 0d, 0d, -1d };
 		//		sourceMech = new FocalMechanism(0d, 45, -90d);
-		//		source = new Patch(sourceCenter, 2d, 2d, sourceMech);
+		//		source = new RectangularPatch(sourceCenter, 2d, 2d, sourceMech);
 		//
 		//		receiverCenter = new double[] { 5d, 0d, -1d };
 		//		receiverMech = new FocalMechanism(180d, 45, 90d);
-		//		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
+		//		receiver = new RectangularPatch(receiverCenter, 2d, 2d, receiverMech);
 		//		plot(source, receiver, lambda, mu, coeffOfFriction);
 		//
 		//		/*
@@ -510,21 +495,21 @@ public class StiffnessCalc {
 		//		 */
 		//		sourceCenter = new double[] { 0d, 0d, -1d };
 		//		sourceMech = new FocalMechanism(0d, 90, 0d);
-		//		source = new Patch(sourceCenter, 2d, 2d, sourceMech);
+		//		source = new RectangularPatch(sourceCenter, 2d, 2d, sourceMech);
 		//
 		//		receiverCenter = new double[] { 1d, 2d, -1d };
 		//		receiverMech = new FocalMechanism(90d, 90, 0d);
-		//		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
+		//		receiver = new RectangularPatch(receiverCenter, 2d, 2d, receiverMech);
 		//		plot(source, receiver, lambda, mu, coeffOfFriction);
 		//
 		//		receiverCenter = new double[] { 0.5*Math.sqrt(2), 2d+0.5*Math.sqrt(2), -1d };
 		//		receiverMech = new FocalMechanism(45d, 90, 0d);
-		//		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
+		//		receiver = new RectangularPatch(receiverCenter, 2d, 2d, receiverMech);
 		//		plot(source, receiver, lambda, mu, coeffOfFriction);
 		//
 		//		receiverCenter = new double[] { 0.5*Math.sqrt(2), 2d-0.5*Math.sqrt(2), -1d };
 		//		receiverMech = new FocalMechanism(135d, 90, 0d);
-		//		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
+		//		receiver = new RectangularPatch(receiverCenter, 2d, 2d, receiverMech);
 		//		plot(source, receiver, lambda, mu, coeffOfFriction);
 	}
 
