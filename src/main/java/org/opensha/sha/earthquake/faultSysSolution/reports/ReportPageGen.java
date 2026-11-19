@@ -131,7 +131,8 @@ public class ReportPageGen {
 			plots.add(new SlipRatePlots());
 			plots.add(new CreepingAndParkfieldReport());
 			plots.add(new RupHistogramPlots(RupHistogramPlots.RUP_SET_SCALARS));
-			plots.add(new PlausibilityFilterPlot());
+			if (level != PlotLevel.DEFAULT)
+				plots.add(new PlausibilityFilterPlot());
 			if (level != PlotLevel.REVIEW)
 				plots.add(new ModulesPlot());
 			plots.add(new FaultSectionConnectionsPlot());
