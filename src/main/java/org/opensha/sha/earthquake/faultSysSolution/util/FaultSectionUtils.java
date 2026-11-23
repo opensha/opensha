@@ -49,6 +49,14 @@ public class FaultSectionUtils {
 	
 	private static FaultSection findSection(List<? extends FaultSection> subSects, boolean parent, String... nameParts) {
 		Preconditions.checkState(nameParts.length > 0);
+		if (nameParts.length == 1) {
+			// look for an exact match first
+			for (FaultSection sect : subSects) {
+				String testName = parent ? sect.getParentSectionName() : sect.getSectionName();
+				if (testName.equalsIgnoreCase(nameParts[0]))
+					return sect;
+			}
+		}
 		FaultSection matchSect = null;
 		String partDebugStr = "[";
 		for (int i=0; i<nameParts.length; i++) {
