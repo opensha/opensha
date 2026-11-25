@@ -163,7 +163,7 @@ extends HttpServlet {
 		Files.write(script, gmtMapScript, Charset.defaultCharset(),
 				StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 		System.out.println("Running command GMT for map: " + plotDirName);
-		RunScript.runScript(new String[] { "/bin/bash", script.toAbsolutePath().toString() });
+		RunScript.runScriptChecked("/bin/bash", script.toAbsolutePath().toString());
 
 		if (gmt instanceof GMT_MapGenerator) {
 			GMT_RenderFiles.writeHtmlMetadata(newDir.toPath(), metadata);
