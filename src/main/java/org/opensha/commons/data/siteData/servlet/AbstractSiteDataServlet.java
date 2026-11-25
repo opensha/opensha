@@ -1,7 +1,6 @@
 package org.opensha.commons.data.siteData.servlet;
 
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -21,6 +20,8 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.util.ServerPrefUtils;
+import org.opensha.commons.util.ServletObjectInput;
+import org.opensha.commons.util.ServletRequestPolicies;
 
 public abstract class AbstractSiteDataServlet<Element> extends HttpServlet {
 	
@@ -68,12 +69,10 @@ public abstract class AbstractSiteDataServlet<Element> extends HttpServlet {
 	public synchronized void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		debug("Handling GET");
 		
-		// get an input stream from the applet
-		ObjectInputStream in = new ObjectInputStream(request.getInputStream());
 		ObjectOutputStream out = new ObjectOutputStream(response.getOutputStream());
 		
-		// get the location or location list object
-		try {
+		// Bound and filter client-supplied locations and provider options before deserializing either.
+		try (ServletObjectInput in = ServletObjectInput.open(request, ServletRequestPolicies.SITE_DATA)) {
 			Object obj = in.readObject();
 			
 			ParameterList serverParams = data.getServerSideParams();
