@@ -1,6 +1,7 @@
 package org.opensha.commons.mapping.gmt;
 
 import java.awt.geom.Point2D;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -8,7 +9,12 @@ import java.util.regex.Pattern;
 
 import org.opensha.commons.exceptions.GMT_MapException;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.mapping.gmt.elements.PSXYPolygon;
+import org.opensha.commons.mapping.gmt.elements.PSXYSymbolSet;
 import org.opensha.commons.mapping.gmt.elements.PSText;
+import org.opensha.commons.mapping.gmt.elements.TopographicSlopeFile;
+import org.opensha.commons.util.ServletWorkLimits;
+import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.cybershake.maps.GMT_InterpolationSettings;
 
 /** Validates HTTP map options before they reach the GMT renderer. */
@@ -26,7 +32,20 @@ public final class GMT_RenderArguments {
 	private GMT_RenderArguments() {}
 
 	public static void validateRemoteMap(GMT_Map map) throws GMT_MapException {
+		validateRemoteMaps(map);
+	}
+
+	/** Applies the per-map checks and counts requested grid work across a batch. */
+	public static void validateRemoteMaps(GMT_Map... maps) throws GMT_MapException {
+		long gridCells = 0;
+		for (GMT_Map map : maps)
+			gridCells += validateMap(map);
+		validateGridWork(gridCells);
+	}
+
+	private static long validateMap(GMT_Map map) throws GMT_MapException {
 		validateSettings(map.getGMT_Params());
+		validatePointCounts(map);
 
 		if (map.getCustomLabel() != null)
 			validatePlotText("Colorbar label", map.getCustomLabel());
@@ -51,10 +70,10 @@ public final class GMT_RenderArguments {
 		if (region == null || !validExtent(region.getMinLat(), region.getMaxLat())
 				|| !validExtent(region.getMinLon(), region.getMaxLon()))
 			throw new GMT_MapException("Invalid map region");
-		requirePositive("Map grid spacing", map.getGriddedDataInc());
 		requirePositive("Map image width", map.getImageWidth());
 		if (map.getDpi() < 0 || !Double.isFinite(map.getContourIncrement()))
 			throw new GMT_MapException("Invalid map resolution or contour interval");
+		validateImageSize(map);
 		if (map.getCPTCustomInterval() != null)
 			requirePositive("Colorbar tick interval", map.getCPTCustomInterval());
 		Double scaleMin = map.getCustomScaleMin();
@@ -63,15 +82,112 @@ public final class GMT_RenderArguments {
 				|| (scaleMin != null && scaleMax != null && scaleMin >= scaleMax))
 			throw new GMT_MapException("Invalid color scale limits");
 
+		long gridCells = estimateGridCells(region, map.getGriddedDataInc(), "Map");
+		TopographicSlopeFile topo = map.getTopoResolution();
+		if (topo != null) {
+			double spacing = map.getGriddedDataInc();
+			// GMT rounds the map extent to its base-grid spacing before topographic resampling.
+			double longitudeSpan = roundedOutward(region.getMaxLon() - region.getMinLon(), spacing);
+			double latitudeSpan = roundedOutward(region.getMaxLat() - region.getMinLat(), spacing);
+			gridCells += estimateGridCells(longitudeSpan, latitudeSpan, topo.resolution() / 3600d, "Topographic");
+		}
 		GMT_InterpolationSettings interpolation = map.getInterpSettings();
 		if (interpolation != null) {
-			requirePositive("Interpolation spacing", interpolation.getInterpSpacing());
+			// The standard renderer uses the base spacing, and CyberShake uses the interpolation spacing.
+			double spacing = Math.min(map.getGriddedDataInc(), interpolation.getInterpSpacing());
+			long cells = estimateGridCells(region, spacing, "Interpolation");
+			if (cells > ServletWorkLimits.INTERPOLATION_CELLS)
+				throw new GMT_MapException("Interpolation grid exceeds the limit of "
+						+ ServletWorkLimits.INTERPOLATION_CELLS + " cells. Increase spacing or select a smaller region.");
+			gridCells += cells;
 			if (!Double.isFinite(interpolation.getConvergenceLimit())
 					|| !Double.isFinite(interpolation.getSearchRadius())
 					|| !validTension(interpolation.getInteriorTension())
 					|| !validTension(interpolation.getExteriorTension()))
 				throw new GMT_MapException("Invalid GMT interpolation settings");
 		}
+		return gridCells;
+	}
+
+	/** Bounds the estimated size of one grid, including nodes along its edges. */
+	public static long estimateGridCells(Region region, double spacing, String label) throws GMT_MapException {
+		return estimateGridCells(region.getMaxLon() - region.getMinLon(), region.getMaxLat() - region.getMinLat(),
+				spacing, label);
+	}
+
+	private static long estimateGridCells(double longitudeSpan, double latitudeSpan, double spacing, String label)
+			throws GMT_MapException {
+		requirePositive(label + " grid spacing", spacing);
+		double width = Math.ceil(longitudeSpan / spacing) + 1;
+		double height = Math.ceil(latitudeSpan / spacing) + 1;
+		double cells = width * height;
+		if (!(cells <= ServletWorkLimits.GRID_CELLS))
+			throw new GMT_MapException(label + " grid exceeds the limit of " + ServletWorkLimits.GRID_CELLS
+					+ " cells. Increase spacing or select a smaller region.");
+		return (long) cells;
+	}
+
+	private static double roundedOutward(double span, double spacing) {
+		return Math.max(span, Math.rint(span / spacing) * spacing);
+	}
+
+	public static void validateGridWork(long gridCells) throws GMT_MapException {
+		if (gridCells > ServletWorkLimits.TOTAL_GRID_CELLS)
+			throw new GMT_MapException("Total render work exceeds the limit of "
+					+ ServletWorkLimits.TOTAL_GRID_CELLS + " estimated grid cells per request");
+	}
+
+	private static void validateImageSize(GMT_Map map) throws GMT_MapException {
+		// Include the letter-size intermediate as well as any image resized to the requested width.
+		double dpi = Math.max(map.getDpi(), 72);
+		double width = Math.max(8.5, map.getImageWidth());
+		validateImageSize(width, width * (11d / 8.5), dpi);
+	}
+
+	/** Checks a renderer's estimated raster dimensions before it builds the script. */
+	public static void validateImageSize(double widthInches, double heightInches, double dpi)
+			throws GMT_MapException {
+		double pixels = Math.ceil(widthInches * dpi) * Math.ceil(heightInches * dpi);
+		if (!(pixels <= ServletWorkLimits.IMAGE_PIXELS))
+			throw new GMT_MapException("Map image exceeds the limit of " + ServletWorkLimits.IMAGE_PIXELS
+					+ " estimated pixels. Reduce the DPI or image width.");
+	}
+
+	private static void validatePointCounts(GMT_Map map) throws GMT_MapException {
+		if (map.getGriddedData() != null && map.getGriddedData().size() > ServletWorkLimits.MAP_POINTS)
+			throw new GMT_MapException("Map data exceeds the limit of " + ServletWorkLimits.MAP_POINTS + " points");
+		validatePalette(map.getCpt());
+		PSXYSymbolSet symbolSet = map.getSymbolSet();
+		long count = (long) size(map.getText()) + size(map.getSymbols()) + size(map.getPolys());
+		if (symbolSet != null) {
+			count += size(symbolSet.getSymbols());
+			validatePalette(symbolSet.getCpt());
+		}
+		checkOverlayCount(count);
+		if (map.getPolys() != null) {
+			for (PSXYPolygon polygon : map.getPolys()) {
+				if (polygon == null || polygon.getPoints() == null)
+					throw new GMT_MapException("Missing map polygon");
+				count += polygon.size();
+				checkOverlayCount(count);
+			}
+		}
+	}
+
+	private static int size(List<?> list) {
+		return list == null ? 0 : list.size();
+	}
+
+	private static void validatePalette(CPT palette) throws GMT_MapException {
+		if (palette != null && palette.size() > ServletWorkLimits.PALETTE_ENTRIES)
+			throw new GMT_MapException("Map palette exceeds the limit of " + ServletWorkLimits.PALETTE_ENTRIES
+					+ " entries");
+	}
+
+	private static void checkOverlayCount(long count) throws GMT_MapException {
+		if (count > ServletWorkLimits.OVERLAY_POINTS)
+			throw new GMT_MapException("Map overlays exceed the limit of " + ServletWorkLimits.OVERLAY_POINTS
+					+ " elements and vertices");
 	}
 
 	private static void validateSettings(Map<String, String> settings) throws GMT_MapException {

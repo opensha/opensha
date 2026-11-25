@@ -14,6 +14,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import javax.servlet.ReadListener;
@@ -30,6 +31,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.impl.BooleanParameter;
+import org.opensha.commons.util.ServletWorkLimits;
 
 public class AbstractSiteDataServletTest {
 
@@ -73,6 +75,18 @@ public class AbstractSiteDataServletTest {
 		try (ObjectInputStream response = submit(enabledOption(), AbstractSiteDataServlet.OP_GET_CLOSEST, location)) {
 			assertEquals(closest, response.readObject());
 		}
+	}
+
+	@Test
+	public void rejectsLargeBatchesBeforeCallingTheProvider() throws Exception {
+		Location location = new Location(34, -118);
+		LocationList locations = new LocationList(Collections.nCopies(ServletWorkLimits.SITE_LOCATIONS + 1, location));
+		try (ObjectInputStream response = submit(enabledOption(), locations)) {
+			assertEquals(Boolean.FALSE, response.readObject());
+			String message = (String) response.readObject();
+			assertTrue(message, message.contains("smaller batches"));
+		}
+		verify(provider, never()).getValues(any(LocationList.class));
 	}
 
 	@Test
