@@ -22,18 +22,15 @@ public class RunScript {
 	 * @param command : command to execute
 	 */
 	public static int runScript(String[] command, String outFile, String errFile) {
-		int i=0;
 		try {
-			// wait for the shell script to end
-			System.out.println("Command to execute: " +command[2]);
-			Process p=Runtime.getRuntime().exec(command);
-			i=displayProcessStatus(p, outFile, errFile);
-		} catch(Exception e) {
-			// if there is some other exception, print the detailed explanation
-			System.out.println("Exception in Executing Shell Script:"+e);
+			System.out.println("Command to execute: " + String.join(" ", command));
+			Process process = Runtime.getRuntime().exec(command);
+			return displayProcessStatus(process, outFile, errFile);
+		} catch (Exception e) {
+			System.out.println("Exception in Executing Shell Script: " + e);
 			e.printStackTrace();
+			return -1;
 		}
-		return i;
 	}
 
 	/**
@@ -43,6 +40,15 @@ public class RunScript {
 	 */
 	public static int runScript(String[] command) {
 		return runScript(command, "", "");
+	}
+
+	/** Runs a script and requires a successful exit before the caller publishes output. */
+	public static void runScriptChecked(String... command) throws IOException {
+		int status = runScript(command);
+		if (status < 0)
+			throw new IOException("Could not run the script to completion");
+		if (status != 0)
+			throw new IOException("Script exited with status " + status);
 	}
 
 	/**

@@ -107,9 +107,7 @@ extends HttpServlet {
 
 			//running the gmtScript file
 			System.out.println("DisaggregationPlotServlet: running disagg script");
-			String[] command = {
-					"sh", "-c", "sh " + gmtScriptFile};
-			RunScript.runScript(command);
+			RunScript.runScriptChecked("/bin/bash", gmtScriptFile.getAbsolutePath());
 			System.out.println("DisaggregationPlotServlet: done running disagg script");
 
 			System.out.println("DisaggregationPlotServlet: zipping output files");

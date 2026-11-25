@@ -151,7 +151,7 @@ extends HttpServlet {
 		Path script = newDir.toPath().resolve(GMT_RenderFiles.SCRIPT_FILE);
 		Files.write(script, scriptLines, Charset.defaultCharset(),
 				StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
-		RunScript.runScript(new String[] { "/bin/bash", script.toAbsolutePath().toString() });
+		RunScript.runScriptChecked("/bin/bash", script.toAbsolutePath().toString());
 
 		GMT_RenderFiles.writeHtmlMetadata(newDir.toPath(), metadata);
 
