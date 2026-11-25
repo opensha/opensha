@@ -30,6 +30,19 @@ public class GMT_RenderFilesTest {
 	public TemporaryFolder temp = new TemporaryFolder();
 
 	@Test
+	public void writesMetadataAsTextWithLegacyLineBreaks() throws IOException {
+		Path output = temp.getRoot().toPath();
+		GMT_RenderFiles.writeHtmlMetadata(output,
+				"Paramètres & settings<br>\nfirst<BR/>second<br />third\nHeading: <h1>example</h1><br title=\"tag\">");
+
+		String page = Files.readString(output.resolve(GMT_RenderFiles.MAP_METADATA_FILE));
+		assertTrue(page.contains("<pre>\nParamètres &amp; settings\nfirst\nsecond\nthird\n"
+				+ "Heading: &lt;h1&gt;example&lt;/h1&gt;&lt;br title=&quot;tag&quot;&gt;</pre>"));
+		assertFalse(page.contains("<h1>"));
+		assertFalse(page.contains("<br title="));
+	}
+
+	@Test
 	public void acceptsLegacyOutputsAndPreservesOptionalFormats() throws Exception {
 		Path output = temp.getRoot().toPath().resolve("gmtData");
 		GMT_Map standard = newMap();
