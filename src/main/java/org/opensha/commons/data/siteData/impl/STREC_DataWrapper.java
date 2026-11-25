@@ -3,7 +3,8 @@ package org.opensha.commons.data.siteData.impl;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -21,7 +22,6 @@ import org.opensha.commons.util.ServerPrefUtils;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
-import com.google.common.io.Files;
 
 public class STREC_DataWrapper extends AbstractSiteData<TectonicRegime> {
 	
@@ -95,14 +95,10 @@ public class STREC_DataWrapper extends AbstractSiteData<TectonicRegime> {
 			return accessor.getValues(locs);
 		if (locs.isEmpty())
 			return new ArrayList<TectonicRegime>();
-		File tempDir = null;
+		File tempDir = Files.createTempDirectory(Path.of("/tmp"), "opensha-strec-").toFile();
 		ArrayList<TectonicRegime> ret = null;
 		
 		try {
-//			tempDir = Files.createTempDir();
-			tempDir = new File("/tmp/opensha_"+System.currentTimeMillis());
-			tempDir.mkdir();
-			
 			if (D) System.out.println("Temp dir: "+tempDir.getAbsolutePath());
 			
 			String args = "--csv-out";
@@ -154,10 +150,9 @@ public class STREC_DataWrapper extends AbstractSiteData<TectonicRegime> {
 			
 			Preconditions.checkState(ret.size() == locs.size(), "Bad output size");
 		} finally {
-			if (tempDir != null) {
-				if (D) System.out.println("Deleting "+tempDir.getAbsolutePath());
-				FileUtils.deleteDirectory(tempDir);
-			}
+			if (D)
+				System.out.println("Deleting " + tempDir.getAbsolutePath());
+			FileUtils.deleteDirectory(tempDir);
 		}
 		return ret;
 	}
