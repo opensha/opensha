@@ -987,19 +987,19 @@ implements DisaggregationCalculatorAPI {
 	/**
 	 * Creates the GMT_Script lines
 	 */
-	public static ArrayList<String> createGMTScriptForDisaggregationPlot(DisaggregationPlotData data, String dir){
+	public static ArrayList<String> createGMTScriptForDisaggregationPlot(DisaggregationPlotData data, String dir) {
+		Preconditions.checkArgument(data != null, "Missing disaggregation plot data");
 		double x_axis_length = 4.5; // in inches
 		double y_axis_length = 4.0; // in inches
 		double z_axis_length = 2.5; // in inches
 
 		int numTicksToDrawForZAxis = 5;
 		// compute z-axis tick spacing & max z value
-		double z_tick = Math.ceil(data.getMaxContrEpsilonForGMT_Plot()/numTicksToDrawForZAxis);
+		double z_tick = Math.ceil(data.getMaxContrEpsilonForGMT_Plot() / numTicksToDrawForZAxis);
 		double maxZVal = z_tick * numTicksToDrawForZAxis;
-		Preconditions.checkState(maxZVal > 0, "disagg max z val must be greater than 0!");
-		ArrayList<String> gmtScriptLines = new ArrayList<String>();
-		// System.out.println(maxContrEpsilonForDisaggrPlot+"\t"+z_grid+"\t"+maxZVal);
-		
+		Preconditions.checkArgument(Double.isFinite(maxZVal) && maxZVal > 0,
+				"Disaggregation Z axis maximum must be finite and positive");
+
 		double dist_binEdges[] = data.getDist_binEdges();
 		double mag_binEdges[] = data.getMag_binEdges();
 		double dist_center[] = data.getDist_center();
@@ -1008,8 +1008,11 @@ implements DisaggregationCalculatorAPI {
 		int numE = data.getNUM_E();
 		
 		double pdf3D[][][] = data.getPdf3D();
-		
-//		data.get
+		validateGMTBins("Distance", dist_center, dist_binEdges);
+		validateGMTBins("Magnitude", mag_center, mag_binEdges);
+		validateGMTContributions(pdf3D, dist_center.length, mag_center.length, numE);
+
+		ArrayList<String> gmtScriptLines = new ArrayList<>();
 
 		float min_dist = (float) dist_binEdges[0];
 		float max_dist = (float) dist_binEdges[dist_binEdges.length-1];
@@ -1060,9 +1063,9 @@ implements DisaggregationCalculatorAPI {
 			"/"+z_tick+":%Contribution:"+"wSnEZ";
 			gmtScriptLines.add("${COMMAND_PATH}echo \"plotting axis\"");
 			gmtScriptLines.add("${COMMAND_PATH}cat << END > temp_segments");
-			//creating the grid lines on Z axis.
-			//System.out.println(z_tick+"   "+maxZVal+"   "+maxContrEpsilonForDisaggrPlot);
-			for (double k = z_tick; k <= maxZVal; k += z_tick) {
+			// Use a fixed tick count so floating-point arithmetic cannot prolong the loop.
+			for (int tick = 1; tick <= numTicksToDrawForZAxis; tick++) {
+				double k = tick * z_tick;
 				gmtScriptLines.add(">");
 				gmtScriptLines.add(min_dist+"  "+ min_mag+" "+k);
 				gmtScriptLines.add(min_dist+"  "+max_mag+"  "+k);
@@ -1162,6 +1165,42 @@ implements DisaggregationCalculatorAPI {
 		return gmtScriptLines;
 	}
 
+	private static void validateGMTBins(String axis, double[] centers, double[] edges) {
+		Preconditions.checkArgument(centers != null && centers.length > 0 && edges != null
+				&& edges.length - 1 == centers.length, "%s bins require one more edge than centers", axis);
+		float min = (float) edges[0];
+		float max = (float) edges[edges.length - 1];
+		Preconditions.checkArgument(Float.isFinite(min) && Float.isFinite(max) && min < max,
+				"%s axis must have finite, increasing bounds", axis);
+		for (int i = 0; i < centers.length; i++) {
+			Preconditions.checkArgument(edges[i] < edges[i + 1]
+					&& centers[i] >= edges[i] && centers[i] <= edges[i + 1], "%s bin %s is invalid", axis, i);
+		}
+	}
+
+	private static void validateGMTContributions(double[][][] contributions, int distances, int magnitudes,
+			int epsilons) {
+		Preconditions.checkArgument(epsilons > 0 && epsilons <= epsilonColors.length,
+				"Invalid disaggregation epsilon bin count: %s", epsilons);
+		Preconditions.checkArgument(contributions != null && contributions.length == distances,
+				"Disaggregation contributions must match the distance bin count");
+		for (double[][] distanceBin : contributions) {
+			Preconditions.checkArgument(distanceBin != null && distanceBin.length == magnitudes,
+					"Disaggregation contributions must match the magnitude bin count");
+			for (double[] magnitudeBin : distanceBin) {
+				Preconditions.checkArgument(magnitudeBin != null && magnitudeBin.length == epsilons,
+						"Disaggregation contributions must match the epsilon bin count");
+				float total = 0f;
+				for (double contribution : magnitudeBin) {
+					float plottedContribution = (float) contribution;
+					Preconditions.checkArgument(Float.isFinite(plottedContribution),
+							"Disaggregation contributions must be finite");
+					total += Math.max(0f, plottedContribution);
+				}
+				Preconditions.checkArgument(Float.isFinite(total), "Disaggregation contribution totals must be finite");
+			}
+		}
+	}
 
 	/**
 	 * sets up the connection with the servlet on the server (gravity.usc.edu)
