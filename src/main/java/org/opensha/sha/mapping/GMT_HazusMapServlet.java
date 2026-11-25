@@ -2,7 +2,6 @@ package org.opensha.sha.mapping;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -26,6 +25,8 @@ import org.opensha.commons.mapping.servlet.GMT_RenderFiles;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.RunScript;
 import org.opensha.commons.util.ServerPrefUtils;
+import org.opensha.commons.util.ServletObjectInput;
+import org.opensha.commons.util.ServletRequestPolicies;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGV_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
@@ -69,22 +70,18 @@ extends HttpServlet {
 				getOutputStream());
 
 		try {
-			// get an input stream from the applet
-			ObjectInputStream inputFromApplet = new ObjectInputStream(request.
-					getInputStream());
+			String dirName;
+			GMT_Map[] maps;
+			String metadata;
+			// Apply the map allowlist to every map in the client-supplied array before rendering.
+			try (ServletObjectInput input = ServletObjectInput.open(request, ServletRequestPolicies.HAZUS)) {
+				dirName = (String) input.readObject();
+				maps = (GMT_Map[]) input.readObject();
+				metadata = (String) input.readObject();
+				// Consume the legacy metadata filename to preserve the request protocol.
+				input.readObject();
+			}
 
-			//receiving the name of the input directory
-			String dirName = (String) inputFromApplet.readObject();
-
-			//gets the object for the GMT_MapGenerator script
-			GMT_Map maps[] = (GMT_Map[])inputFromApplet.readObject();
-
-			//Metadata content: Map Info
-			String metadata = (String) inputFromApplet.readObject();
-
-			// Consume the legacy metadata filename to preserve the request protocol.
-			inputFromApplet.readObject();
-			
 			String mapImagePath = createMap(gmt, maps, dirName, metadata, null);
 			
 			//returns the URL to the folder where map image resides
