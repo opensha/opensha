@@ -1,14 +1,14 @@
 package org.opensha.commons.mapping.servlet;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.nio.charset.Charset;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.regex.Pattern;
 
@@ -50,7 +50,7 @@ import org.opensha.commons.util.ServerPrefUtils;
  * * optional directory name hint (String)
  * * GMT Map specification (GMT_Map)
  * * Metadata (String)
- * * Metadata filename (String)
+ * * Legacy metadata filename (String, ignored)
  * Server ==> Client:
  * * Directory URL path **OR** error message
  * 
@@ -65,7 +65,6 @@ extends HttpServlet {
 	
 	public static final String GMT_URL_PATH = "https://"+ServerPrefUtils.SERVER_PREFS.getHostName()+"/gmtData/";
 	public static final File GMT_DATA_DIR = new File(ServerPrefUtils.SERVER_PREFS.getTempDir(), "gmtData");
-	private final static String GMT_SCRIPT_FILE = "gmtScript.txt";
 	private static final Pattern PLOT_DIR_NAME = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]{0,79}");
 	
 	private GMT_MapGenerator gmt = new GMT_MapGenerator();
@@ -92,10 +91,10 @@ extends HttpServlet {
 			//Metadata content: Map Info
 			String metadata = (String) inputFromApplet.readObject();
 
-			//Name of the Metadata file
-			String metadataFileName = (String) inputFromApplet.readObject();
+			// Consume the legacy metadata filename to preserve the request protocol.
+			inputFromApplet.readObject();
 			
-			String mapImagePath = createMap(gmt, map, dirName, metadata, metadataFileName);
+			String mapImagePath = createMap(gmt, map, dirName, metadata, null);
 			
 			//returns the URL to the folder where map image resides
 			outputToApplet.writeObject(mapImagePath);
@@ -147,46 +146,31 @@ extends HttpServlet {
 	}
 
 	public static String createMap(SecureMapGenerator gmt, GMT_Map map, String plotDirName, String metadata,
-			String metadataFileName) throws IOException, GMT_MapException {
+			String ignoredMetadataFileName) throws IOException, GMT_MapException {
+		GMT_RenderFiles.validateMap(map);
 		File newDir = createPlotDirectory(GMT_DATA_DIR, plotDirName);
 		plotDirName = newDir.getName();
 
-		File gmtScriptFile = new File(newDir, GMT_SCRIPT_FILE);
-		
 		ArrayList<String> gmtMapScript = gmt.getGMT_ScriptLines(map, newDir.getAbsolutePath());
-
-		System.out.println("Writing file and data for map: "+plotDirName);
-		//creating a new gmt script for the user and writing it ot the directory created for the user
-		FileWriter fw = new FileWriter(gmtScriptFile);
-		BufferedWriter bw = new BufferedWriter(fw);
-		int size = gmtMapScript.size();
-		for (int i = 0; i < size; ++i) {
-			bw.write( (String) gmtMapScript.get(i) + "\n");
-		}
-		bw.close();
-
-		// I use the new File().getName() here to  make sure the filename isn't a relative path
-		// that could overwrite something important, like "../../myfile"
-		String metadataFile = newDir + "/" + new File(metadataFileName).getName();
-		//creating the metadata (map Info) file in the new directory created for user
-		fw = new FileWriter(metadataFile);
-		bw = new BufferedWriter(fw);
-		bw.write(" " + (String) metadata + "\n");
-		bw.close();
 
 		//creating the XYZ file from the XYZ file from the XYZ dataSet
 		if (map.getGriddedData() != null) {
 			GeoDataSet griddedData = map.getGriddedData();
 			griddedData.setLatitudeX(true);
-			ArbDiscrGeoDataSet.writeXYZFile(griddedData, newDir + "/" + new File(map.getXyzFileName()).getName());
+			ArbDiscrGeoDataSet.writeXYZFile(griddedData, new File(newDir, map.getXyzFileName()));
 		}
 
-		System.out.println("Running command GMT for map: "+plotDirName);
-		//running the gmtScript file
-		String[] command = {
-//				"sh", "-c", "/bin/bash " + gmtScriptFile+" 2> /dev/null > /dev/null"};
-				"sh", "-c", "/bin/bash " + gmtScriptFile};
-		RunScript.runScript(command);
+		Path script = newDir.toPath().resolve(GMT_RenderFiles.SCRIPT_FILE);
+		Files.write(script, gmtMapScript, Charset.defaultCharset(),
+				StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+		System.out.println("Running command GMT for map: " + plotDirName);
+		RunScript.runScript(new String[] { "/bin/bash", script.toAbsolutePath().toString() });
+
+		// Preserve the legacy metadata names for the GMT and CyberShake clients.
+		String metadataName = gmt instanceof GMT_MapGenerator
+				? GMT_RenderFiles.MAP_METADATA_FILE : GMT_RenderFiles.TEXT_METADATA_FILE;
+		Files.writeString(newDir.toPath().resolve(metadataName), " " + metadata + "\n", Charset.defaultCharset(),
+				StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 
 		System.out.println("Zipping results for map: "+plotDirName);
 		//create the Zip file for all the files generated

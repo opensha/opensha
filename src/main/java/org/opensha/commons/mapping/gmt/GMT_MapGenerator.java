@@ -1411,7 +1411,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 		} else if (map.getCustomGRDPath() != null) {
 			File grdFile = new File(map.getCustomGRDPath());
 			Preconditions.checkState(grdFile.exists(), "File doesn't esist: "+grdFile.getAbsolutePath());
-			grdFileName = grdFile.getAbsolutePath();
+			grdFileName = quoteShellPath(grdFile.getAbsolutePath());
 		}
 		
 		// get color scale limits
@@ -1468,10 +1468,12 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 				commandLine = "${GMT_PATH}grdmask "+maskName+region+" -I"+spacing+" -NNaN/1/1 -G"+maskGRD;
 				gmtCommandLines.add(commandLine+"\n");
 				
-				String unmaskedGRD = "unmasked_"+grdFileName;
-				rmFiles.add(unmaskedGRD);
-				gmtCommandLines.add("mv "+grdFileName+" "+unmaskedGRD);
-				gmtCommandLines.add("${GMT_PATH}grdmath "+unmaskedGRD+" "+maskGRD+" MUL = "+grdFileName+"\n");
+				String maskedGRD = tempFilePrefix + "Masked.grd";
+				rmFiles.add(maskedGRD);
+				gmtCommandLines.add("${GMT_PATH}grdmath "
+						+ grdFileName + " " + maskGRD + " MUL = " + maskedGRD);
+				grdFileName = maskedGRD;
+				grdFileForContour = maskedGRD;
 			}
 			
 			if (!map.isUseGMTSmoothing()) {
@@ -1522,10 +1524,10 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 				} else {
 					Preconditions.checkNotNull(map.getCustomIntenPath());
 					hiResFile = grdFileName;
-					intenFile = map.getCustomIntenPath();
+					intenFile = quoteShellPath(map.getCustomIntenPath());
 				}
 				
-				if (map.isMaskIfNotRectangular() && !map.getRegion().isRectangular()) {
+				if (topoFile != null && map.isMaskIfNotRectangular() && !map.getRegion().isRectangular()) {
 					String maskName = "mask.xy";
 					String maskGRD = "mask.grd";
 					rmFiles.add(maskGRD);
@@ -1718,6 +1720,10 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 		fw.close();
 	}
 	
+	private static String quoteShellPath(String path) {
+		return "'" + path.replace("'", "'\"'\"'") + "'";
+	}
+
 	public static void addCleanup(ArrayList<String> gmtCommandLines, ArrayList<String> rmFiles) {
 		// clean out temp files
 		if (rmFiles.size() > 0) {
