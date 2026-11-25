@@ -100,7 +100,10 @@ public class ServerPrefUtils {
 	public static final ServerPrefs SERVER_PREFS = ServerPrefs.PRODUCTION_PREFS;
 	
 	public static void debug(String debugName, String message) {
-		String date = "[" + df.format(new Date()) + "]";
+		String date;
+		synchronized (df) {
+			date = "[" + df.format(new Date()) + "]";
+		}
 		System.out.println(debugName + " " + date + ": " + message);
 	}
 	

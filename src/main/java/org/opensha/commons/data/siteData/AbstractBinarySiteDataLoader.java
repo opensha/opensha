@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -101,12 +102,20 @@ public abstract class AbstractBinarySiteDataLoader extends AbstractSiteData<Doub
 	 * @param dataFile
 	 * @throws FileNotFoundException
 	 */
-	protected void setDataFile(File dataFile) throws FileNotFoundException {
+	protected synchronized void setDataFile(File dataFile) throws FileNotFoundException {
 		Preconditions.checkNotNull(dataFile, "data file cannot be null.");
 		Preconditions.checkArgument(dataFile.exists(), dataFile.getAbsolutePath()+" doesn't exist!");
-//		System.out.println("Set data file to: "+dataFile.getAbsolutePath());
+		RandomAccessFile replacement = new RandomAccessFile(dataFile, "r");
+		RandomAccessFile previous = file;
+		file = replacement;
 		this.dataFile = dataFile;
-		file = new RandomAccessFile(dataFile, "r");
+		if (previous != null) {
+			try {
+				previous.close();
+			} catch (IOException e) {
+				throw new UncheckedIOException("Could not close the previous site-data file", e);
+			}
+		}
 	}
 	
 	public final Region getApplicableRegion() {
@@ -140,7 +149,7 @@ public abstract class AbstractBinarySiteDataLoader extends AbstractSiteData<Doub
 		}
 	}
 	
-	protected Double getValue(long pos) throws IOException {
+	protected synchronized Double getValue(long pos) throws IOException {
 		if (pos > maxFilePos || pos < 0)
 			return Double.NaN;
 		
