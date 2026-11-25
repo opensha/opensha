@@ -1,11 +1,12 @@
 package org.opensha.sha.mapping;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 
 import javax.servlet.ServletException;
@@ -13,15 +14,20 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.lang3.SystemUtils;
 import org.opensha.commons.data.xyz.ArbDiscrGeoDataSet;
 import org.opensha.commons.data.xyz.GeoDataSet;
 import org.opensha.commons.exceptions.GMT_MapException;
 import org.opensha.commons.mapping.gmt.GMT_Map;
 import org.opensha.commons.mapping.gmt.GMT_MapGenerator;
+import org.opensha.commons.mapping.gmt.GMT_RenderArguments;
+import org.opensha.commons.mapping.servlet.GMT_MapGeneratorServlet;
+import org.opensha.commons.mapping.servlet.GMT_RenderFiles;
+import org.opensha.commons.mapping.servlet.GMT_RenderSlot;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.RunScript;
 import org.opensha.commons.util.ServerPrefUtils;
+import org.opensha.commons.util.ServletObjectInput;
+import org.opensha.commons.util.ServletRequestPolicies;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGV_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
@@ -35,10 +41,10 @@ import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
  * 
  * This is the order of operations:
  * Client ==> Server:
- * * directory name (String), or null for auto dirname
+ * * optional directory name hint (String)
  * * GMT Map specification array (GMT_Map[4])
  * * Metadata (String)
- * * Metadata filename (String)
+ * * Legacy metadata filename (String, ignored)
  * Server ==> Client:
  * * Directory URL path **OR** error message
  * 
@@ -51,7 +57,6 @@ import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
 public class GMT_HazusMapServlet
 extends HttpServlet {
 	
-	private final static String GMT_SCRIPT_FILE = "gmtScript.txt";
 	public static final String GMT_URL_PATH = "https://"+ServerPrefUtils.SERVER_PREFS.getHostName()+"/gmtData/";
 	public static final File GMT_DATA_DIR = new File(ServerPrefUtils.SERVER_PREFS.getTempDir(), "gmtData");
 	
@@ -65,31 +70,20 @@ extends HttpServlet {
 		ObjectOutputStream outputToApplet = new ObjectOutputStream(response.
 				getOutputStream());
 
-		//string that decides the name of the output gmt files
-		String outFile = null;
-
 		try {
-			//all the user gmt stuff will be stored in this directory
-			if (!GMT_DATA_DIR.exists())
-				GMT_DATA_DIR.mkdir();
+			String dirName;
+			GMT_Map[] maps;
+			String metadata;
+			// Apply the map allowlist to every map in the client-supplied array before rendering.
+			try (ServletObjectInput input = ServletObjectInput.open(request, ServletRequestPolicies.HAZUS)) {
+				dirName = (String) input.readObject();
+				maps = (GMT_Map[]) input.readObject();
+				metadata = (String) input.readObject();
+				// Consume the legacy metadata filename to preserve the request protocol.
+				input.readObject();
+			}
 
-			// get an input stream from the applet
-			ObjectInputStream inputFromApplet = new ObjectInputStream(request.
-					getInputStream());
-
-			//receiving the name of the input directory
-			String dirName = (String) inputFromApplet.readObject();
-
-			//gets the object for the GMT_MapGenerator script
-			GMT_Map maps[] = (GMT_Map[])inputFromApplet.readObject();
-
-			//Metadata content: Map Info
-			String metadata = (String) inputFromApplet.readObject();
-
-			//Name of the Metadata file
-			String metadataFileName = (String) inputFromApplet.readObject();
-			
-			String mapImagePath = createMap(gmt, maps, dirName, metadata, metadataFileName);
+			String mapImagePath = createMap(gmt, maps, dirName, metadata, null);
 			
 			//returns the URL to the folder where map image resides
 			outputToApplet.writeObject(mapImagePath);
@@ -110,45 +104,26 @@ extends HttpServlet {
 		doGet(request, response);
 	}
 	
-	public static String createMap(GMT_MapGenerator gmt, GMT_Map maps[], String plotDirName, String metadata,
-			String metadataFileName) throws IOException, GMT_MapException {
-		//Name of the directory in which we are storing all the gmt data for the user
-		File newDir = null;
-		//gets the current time in milliseconds to be the new director for each user
-		String currentMilliSec = "" + System.currentTimeMillis();
-		if (plotDirName != null) {
-			File f = new File(plotDirName);
-			int fileCounter = 1;
-			//checking if the directory already exists then add
-			while (f.exists()) {
-				String tempDirName = plotDirName + fileCounter;
-				f = new File(tempDirName);
-				++fileCounter;
-			}
-			newDir = new File(GMT_DATA_DIR, f.getName());
+	public static String createMap(GMT_MapGenerator gmt, GMT_Map[] maps, String plotDirName, String metadata,
+			String ignoredMetadataFileName) throws IOException, GMT_MapException {
+		try (GMT_RenderSlot slot = GMT_RenderSlot.acquire()) {
+			if (maps == null || maps.length != 4)
+				throw new GMT_MapException("HAZUS requires four map specifications");
+			for (GMT_Map map : maps)
+				GMT_RenderFiles.validateMap(map);
+			GMT_RenderArguments.validateRemoteMaps(maps);
+			return renderMaps(gmt, maps, plotDirName, metadata);
 		}
-		else {
-			plotDirName = currentMilliSec;
-			newDir = new File(GMT_DATA_DIR, currentMilliSec+"");
-		}
+	}
 
-		//create a gmt directory for each user in which all his gmt files will be stored
-		newDir.mkdir();
-		//reading the gmtScript file that user sent as the attachment and create
-		//a new gmt script inside the directory created for the user.
-		//The new gmt script file created also has one minor modification
-		//at the top of the gmt script file I am adding the "cd ... " command so
-		//that it should pick all the gmt related files from the directory created for the user.
-		//reading the gmt script file sent by user as the attachment
+	private static String renderMaps(GMT_MapGenerator gmt, GMT_Map[] maps, String plotDirName, String metadata)
+			throws IOException, GMT_MapException {
+		File newDir = GMT_MapGeneratorServlet.createPlotDirectory(GMT_DATA_DIR, plotDirName);
+		plotDirName = newDir.getName();
 
-		String gmtScriptFile = newDir + "/" + GMT_SCRIPT_FILE;
-		
-		//creating a new gmt script for the user and writing it ot the directory created for the user
-		FileWriter fw = new FileWriter(gmtScriptFile);
-		BufferedWriter bw = new BufferedWriter(fw);
-		
-		ArrayList<String> hazusFileNames = new ArrayList<String>();
-		for (int i=0; i<4; i++) {
+		ArrayList<String> scriptLines = new ArrayList<>();
+		ArrayList<String> hazusFileNames = new ArrayList<>();
+		for (int i = 0; i < maps.length; i++) {
 			GMT_Map map = maps[i];
 			String imt;
 			String hazusPrefix;
@@ -173,32 +148,18 @@ extends HttpServlet {
 			
 			GMT_MapGeneratorForShakeMaps.addHAZUS_Lines(gmtMapScript, map, imt, hazusPrefix);
 			
-			int size = gmtMapScript.size();
-			for (int j = 0; j < size; ++j) {
-				bw.write( (String) gmtMapScript.get(j) + "\n");
-			}
+			scriptLines.addAll(gmtMapScript);
 			
 			GeoDataSet griddedData = map.getGriddedData();
-			//file follows the convention lat, lon and Z value
-			size = griddedData.size();
-			ArbDiscrGeoDataSet.writeXYZFile(griddedData, newDir + "/" + new File(map.getXyzFileName()).getName());
+			ArbDiscrGeoDataSet.writeXYZFile(griddedData, new File(newDir, map.getXyzFileName()));
 		}
 		
-		bw.close();
-		
-		//running the gmtScript file
-		String[] command = {
-				"sh", "-c", "/bin/bash " + gmtScriptFile};
-		RunScript.runScript(command);
+		Path script = newDir.toPath().resolve(GMT_RenderFiles.SCRIPT_FILE);
+		Files.write(script, scriptLines, Charset.defaultCharset(),
+				StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+		RunScript.runScriptChecked("/bin/bash", script.toAbsolutePath().toString());
 
-		// I use the new File().getName() here to  make sure the filename isn't a relative path
-		// that could overwrite something important, like "../../myfile"
-		String metadataFile = newDir + "/" + new File(metadataFileName).getName();
-		//creating the metadata (map Info) file in the new directory created for user
-		fw = new FileWriter(metadataFile);
-		bw = new BufferedWriter(fw);
-		bw.write(" " + (String) metadata + "\n");
-		bw.close();
+		GMT_RenderFiles.writeHtmlMetadata(newDir.toPath(), metadata);
 
 		// create the Zip file for all the files generated
 		FileUtils.createZipFile(newDir.getAbsolutePath());
@@ -209,7 +170,7 @@ extends HttpServlet {
 		
 		//URL path to folder where all GMT related files and map data file for this
 		//calculations reside.
-		String mapImagePath = GMT_URL_PATH + plotDirName + SystemUtils.FILE_SEPARATOR;
+		String mapImagePath = GMT_URL_PATH + plotDirName + "/";
 		
 		return mapImagePath;
 	}

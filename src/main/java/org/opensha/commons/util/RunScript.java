@@ -5,6 +5,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 /**
  * <p>Title: RunScript</p>
  * <p>Description : Accepts the command and runs the shell script
@@ -22,18 +26,15 @@ public class RunScript {
 	 * @param command : command to execute
 	 */
 	public static int runScript(String[] command, String outFile, String errFile) {
-		int i=0;
 		try {
-			// wait for the shell script to end
-			System.out.println("Command to execute: " +command[2]);
-			Process p=Runtime.getRuntime().exec(command);
-			i=displayProcessStatus(p, outFile, errFile);
-		} catch(Exception e) {
-			// if there is some other exception, print the detailed explanation
-			System.out.println("Exception in Executing Shell Script:"+e);
+			System.out.println("Command to execute: " + String.join(" ", command));
+			Process process = Runtime.getRuntime().exec(command);
+			return displayProcessStatus(process, outFile, errFile);
+		} catch (Exception e) {
+			System.out.println("Exception in Executing Shell Script: " + e);
 			e.printStackTrace();
+			return -1;
 		}
-		return i;
 	}
 
 	/**
@@ -43,6 +44,41 @@ public class RunScript {
 	 */
 	public static int runScript(String[] command) {
 		return runScript(command, "", "");
+	}
+
+	/** Runs a script and requires a successful exit before the caller publishes output. */
+	public static void runScriptChecked(String... command) throws IOException {
+		runScriptChecked(ServletWorkLimits.SCRIPT_SECONDS, command);
+	}
+
+	static void runScriptChecked(int seconds, String... command) throws IOException {
+		// The timeout supervisor stops the whole render process group, including the script's native tools.
+		List<String> timed = new ArrayList<>(List.of("/usr/bin/timeout", "--kill-after=5s", "--", seconds + "s"));
+		Collections.addAll(timed, command);
+		System.out.println("Command to execute: " + String.join(" ", command));
+		Process process = new ProcessBuilder(timed).redirectErrorStream(true)
+				.redirectOutput(ProcessBuilder.Redirect.INHERIT).start();
+		int status;
+		try {
+			process.getOutputStream().close();
+			if (!process.waitFor(seconds + 10L, TimeUnit.SECONDS))
+				throw new IOException("Could not stop the script after its " + seconds + " second time limit");
+			status = process.exitValue();
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new IOException("Interrupted while waiting for the script", e);
+		} finally {
+			if (process.isAlive())
+				process.destroy();
+		}
+		if (status == 124)
+			throw new IOException("Script exceeded its " + seconds + " second time limit");
+		if (status == 137)
+			throw new IOException("Script was killed (possibly after its " + seconds + " second time limit)");
+		if (status >= 125 && status <= 127)
+			throw new IOException("Could not run the script to completion");
+		if (status != 0)
+			throw new IOException("Script exited with status " + status);
 	}
 
 	/**
