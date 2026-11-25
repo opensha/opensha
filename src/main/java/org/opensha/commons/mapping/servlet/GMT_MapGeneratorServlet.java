@@ -6,14 +6,17 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.regex.Pattern;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.lang3.SystemUtils;
 import org.opensha.commons.data.xyz.ArbDiscrGeoDataSet;
 import org.opensha.commons.data.xyz.GeoDataSet;
 import org.opensha.commons.exceptions.GMT_MapException;
@@ -23,10 +26,6 @@ import org.opensha.commons.mapping.gmt.SecureMapGenerator;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.RunScript;
 import org.opensha.commons.util.ServerPrefUtils;
-
-import com.google.common.base.Preconditions;
-
-
 
 /**
  * <p>Title: GMT_MapGeneratorServlet </p>
@@ -48,7 +47,7 @@ import com.google.common.base.Preconditions;
  * * ****** NEW VERSION - more secure *******
  * This is the order of operations:
  * Client ==> Server:
- * * directory name (String), or null for auto dirname
+ * * optional directory name hint (String)
  * * GMT Map specification (GMT_Map)
  * * Metadata (String)
  * * Metadata filename (String)
@@ -67,6 +66,7 @@ extends HttpServlet {
 	public static final String GMT_URL_PATH = "https://"+ServerPrefUtils.SERVER_PREFS.getHostName()+"/gmtData/";
 	public static final File GMT_DATA_DIR = new File(ServerPrefUtils.SERVER_PREFS.getTempDir(), "gmtData");
 	private final static String GMT_SCRIPT_FILE = "gmtScript.txt";
+	private static final Pattern PLOT_DIR_NAME = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]{0,79}");
 	
 	private GMT_MapGenerator gmt = new GMT_MapGenerator();
 
@@ -79,11 +79,6 @@ extends HttpServlet {
 				getOutputStream());
 
 		try {
-			//create the main directory if it does not exist already
-			if (!GMT_DATA_DIR.exists())
-				GMT_DATA_DIR.mkdir();
-			Preconditions.checkState(GMT_DATA_DIR.exists());
-
 			// get an input stream from the applet
 			ObjectInputStream inputFromApplet = new ObjectInputStream(request.
 					getInputStream());
@@ -120,53 +115,41 @@ extends HttpServlet {
 		doGet(request, response);
 	}
 	
-	private static File getPlotDir(String plotDirName) {
-		if (plotDirName != null) {
-			File f = new File(GMT_DATA_DIR, plotDirName);
-			int fileCounter = 1;
-			String modPlotDirName = plotDirName;
-			//checking if the directory already exists then add
-			while (f.exists()) {
-				modPlotDirName = plotDirName +"_"+ fileCounter;
-				f = new File(GMT_DATA_DIR, modPlotDirName);
-				++fileCounter;
+	/**
+	 * Creates a new plot directory under a server-controlled parent. A name hint must be one safe path component.
+	 * Missing or invalid hints use a timestamp, and existing names receive a numeric suffix.
+	 */
+	public static File createPlotDirectory(File parentDir, String nameHint) throws IOException {
+		Path parent = parentDir.toPath();
+		if (!Files.isDirectory(parent))
+			Files.createDirectories(parent);
+
+		String baseName = nameHint;
+		if (baseName == null || !PLOT_DIR_NAME.matcher(baseName).matches())
+			baseName = Long.toString(System.currentTimeMillis());
+
+		for (int suffix = 0; ; suffix++) {
+			String name = suffix == 0 ? baseName : baseName + "_" + suffix;
+			try {
+				return Files.createDirectory(parent.resolve(name)).toFile();
+			} catch (FileAlreadyExistsException e) {
+				// Try the next name without reusing an existing directory, file, or symlink.
 			}
-			return f;
-		}
-		else {
-			return createUniqueDir(GMT_DATA_DIR);
 		}
 	}
-	
-	public static synchronized File createUniqueDir(File parentDir) {
-		int count = 0;
-		long millis = System.currentTimeMillis();
-		File newDir = new File(parentDir, millis+"");
-		while (newDir.exists()) {
-			count++;
-			newDir = new File(parentDir, millis+"_"+count);
+
+	public static File createUniqueDir(File parentDir) {
+		try {
+			return createPlotDirectory(parentDir, null);
+		} catch (IOException e) {
+			throw new IllegalStateException("Cannot create a unique map directory under " + parentDir, e);
 		}
-		Preconditions.checkState(!newDir.exists(),
-				"new dir is supposed to be unique but already exists: %s", newDir.getAbsoluteFile());
-		Preconditions.checkState(newDir.mkdir(),
-				"cannot create unique map dir: %s", newDir.getAbsoluteFile());
-		return newDir;
 	}
-	
+
 	public static String createMap(SecureMapGenerator gmt, GMT_Map map, String plotDirName, String metadata,
 			String metadataFileName) throws IOException, GMT_MapException {
-		//Name of the directory in which we are storing all the gmt data for the user
-		File newDir = getPlotDir(plotDirName);
+		File newDir = createPlotDirectory(GMT_DATA_DIR, plotDirName);
 		plotDirName = newDir.getName();
-
-		//create a gmt directory for each user in which all his gmt files will be stored
-		Preconditions.checkState(newDir.exists() || newDir.mkdir());
-		//reading the gmtScript file that user sent as the attachment and create
-		//a new gmt script inside the directory created for the user.
-		//The new gmt script file created also has one minor modification
-		//at the top of the gmt script file I am adding the "cd ... " command so
-		//that it should pick all the gmt related files from the directory created for the user.
-		//reading the gmt script file sent by user as the attachment
 
 		File gmtScriptFile = new File(newDir, GMT_SCRIPT_FILE);
 		
@@ -210,7 +193,7 @@ extends HttpServlet {
 		FileUtils.createZipFile(newDir.getAbsolutePath());
 		//URL path to folder where all GMT related files and map data file for this
 		//calculations reside.
-		String mapImagePath = GMT_URL_PATH+plotDirName + SystemUtils.FILE_SEPARATOR;
+		String mapImagePath = GMT_URL_PATH + plotDirName + "/";
 		
 		System.out.println("DONE. Map URL for '"+plotDirName+"': "+mapImagePath);
 		

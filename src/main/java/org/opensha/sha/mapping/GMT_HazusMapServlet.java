@@ -13,12 +13,12 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.lang3.SystemUtils;
 import org.opensha.commons.data.xyz.ArbDiscrGeoDataSet;
 import org.opensha.commons.data.xyz.GeoDataSet;
 import org.opensha.commons.exceptions.GMT_MapException;
 import org.opensha.commons.mapping.gmt.GMT_Map;
 import org.opensha.commons.mapping.gmt.GMT_MapGenerator;
+import org.opensha.commons.mapping.servlet.GMT_MapGeneratorServlet;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.RunScript;
 import org.opensha.commons.util.ServerPrefUtils;
@@ -35,7 +35,7 @@ import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
  * 
  * This is the order of operations:
  * Client ==> Server:
- * * directory name (String), or null for auto dirname
+ * * optional directory name hint (String)
  * * GMT Map specification array (GMT_Map[4])
  * * Metadata (String)
  * * Metadata filename (String)
@@ -69,10 +69,6 @@ extends HttpServlet {
 		String outFile = null;
 
 		try {
-			//all the user gmt stuff will be stored in this directory
-			if (!GMT_DATA_DIR.exists())
-				GMT_DATA_DIR.mkdir();
-
 			// get an input stream from the applet
 			ObjectInputStream inputFromApplet = new ObjectInputStream(request.
 					getInputStream());
@@ -112,34 +108,8 @@ extends HttpServlet {
 	
 	public static String createMap(GMT_MapGenerator gmt, GMT_Map maps[], String plotDirName, String metadata,
 			String metadataFileName) throws IOException, GMT_MapException {
-		//Name of the directory in which we are storing all the gmt data for the user
-		File newDir = null;
-		//gets the current time in milliseconds to be the new director for each user
-		String currentMilliSec = "" + System.currentTimeMillis();
-		if (plotDirName != null) {
-			File f = new File(plotDirName);
-			int fileCounter = 1;
-			//checking if the directory already exists then add
-			while (f.exists()) {
-				String tempDirName = plotDirName + fileCounter;
-				f = new File(tempDirName);
-				++fileCounter;
-			}
-			newDir = new File(GMT_DATA_DIR, f.getName());
-		}
-		else {
-			plotDirName = currentMilliSec;
-			newDir = new File(GMT_DATA_DIR, currentMilliSec+"");
-		}
-
-		//create a gmt directory for each user in which all his gmt files will be stored
-		newDir.mkdir();
-		//reading the gmtScript file that user sent as the attachment and create
-		//a new gmt script inside the directory created for the user.
-		//The new gmt script file created also has one minor modification
-		//at the top of the gmt script file I am adding the "cd ... " command so
-		//that it should pick all the gmt related files from the directory created for the user.
-		//reading the gmt script file sent by user as the attachment
+		File newDir = GMT_MapGeneratorServlet.createPlotDirectory(GMT_DATA_DIR, plotDirName);
+		plotDirName = newDir.getName();
 
 		String gmtScriptFile = newDir + "/" + GMT_SCRIPT_FILE;
 		
@@ -209,7 +179,7 @@ extends HttpServlet {
 		
 		//URL path to folder where all GMT related files and map data file for this
 		//calculations reside.
-		String mapImagePath = GMT_URL_PATH + plotDirName + SystemUtils.FILE_SEPARATOR;
+		String mapImagePath = GMT_URL_PATH + plotDirName + "/";
 		
 		return mapImagePath;
 	}
