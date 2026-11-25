@@ -22,6 +22,7 @@ import org.opensha.commons.data.xyz.GeoDataSet;
 import org.opensha.commons.exceptions.GMT_MapException;
 import org.opensha.commons.mapping.gmt.GMT_Map;
 import org.opensha.commons.mapping.gmt.GMT_MapGenerator;
+import org.opensha.commons.mapping.gmt.GMT_RenderArguments;
 import org.opensha.commons.mapping.gmt.SecureMapGenerator;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.RunScript;
@@ -148,6 +149,7 @@ extends HttpServlet {
 	public static String createMap(SecureMapGenerator gmt, GMT_Map map, String plotDirName, String metadata,
 			String ignoredMetadataFileName) throws IOException, GMT_MapException {
 		GMT_RenderFiles.validateMap(map);
+		GMT_RenderArguments.validateRemoteMap(map);
 		File newDir = createPlotDirectory(GMT_DATA_DIR, plotDirName);
 		plotDirName = newDir.getName();
 
