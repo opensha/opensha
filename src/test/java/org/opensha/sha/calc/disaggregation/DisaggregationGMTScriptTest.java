@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.List;
 
 import org.junit.Test;
+import org.opensha.commons.util.ServletWorkLimits;
 
 public class DisaggregationGMTScriptTest {
 
@@ -42,6 +43,23 @@ public class DisaggregationGMTScriptTest {
 		wrongContributions.setPdf3D(new double[][][] { { { 60 } } });
 		assertThrows(IllegalArgumentException.class,
 				() -> DisaggregationCalculator.createGMTScriptForDisaggregationPlot(wrongContributions, "."));
+	}
+
+	@Test
+	public void boundsTotalContributionBins() {
+		int side = (int) Math.sqrt(ServletWorkLimits.DISAGG_BINS / 2d) + 1;
+		double[] centers = new double[side];
+		double[] edges = new double[side + 1];
+		for (int i = 0; i < side; i++) {
+			edges[i] = i;
+			centers[i] = i + 0.5;
+		}
+		edges[side] = side;
+		DisaggregationPlotData data = new DisaggregationPlotData(centers, edges, centers, edges,
+				100, 2, new double[side][side][2]);
+		IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+				() -> DisaggregationCalculator.createGMTScriptForDisaggregationPlot(data, "."));
+		assertTrue(error.getMessage().contains("contribution bins"));
 	}
 
 	private static DisaggregationPlotData validData() {

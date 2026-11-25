@@ -19,6 +19,7 @@ import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.commons.util.ServletObjectInput;
 import org.opensha.commons.util.ServletRequestPolicies;
+import org.opensha.commons.util.ServletWorkLimits;
 
 public abstract class AbstractSiteDataServlet<Element> extends HttpServlet {
 
@@ -109,6 +110,9 @@ public abstract class AbstractSiteDataServlet<Element> extends HttpServlet {
 	}
 
 	private static Object decodeLocations(Object value) {
+		if (value instanceof List<?> && ((List<?>) value).size() > ServletWorkLimits.SITE_LOCATIONS)
+			throw new IllegalArgumentException("Site-data requests are limited to "
+					+ ServletWorkLimits.SITE_LOCATIONS + " locations. Split the locations into smaller batches.");
 		if (value instanceof LocationList) {
 			for (Object location : (LocationList) value) {
 				if (!(location instanceof Location))

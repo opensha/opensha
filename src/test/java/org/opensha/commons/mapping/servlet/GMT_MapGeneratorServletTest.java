@@ -1,9 +1,16 @@
 package org.opensha.commons.mapping.servlet;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -13,6 +20,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -22,6 +30,57 @@ public class GMT_MapGeneratorServletTest {
 
 	@Rule
 	public TemporaryFolder temp = new TemporaryFolder();
+
+	@Test
+	public void reportsWhenTheWaitExpires() throws IOException {
+		Path directory = temp.newFolder("renderLocks").toPath();
+		Duration shortWait = Duration.ofMillis(10);
+		try (GMT_RenderSlot first = GMT_RenderSlot.acquire(directory, 1, 1, shortWait)) {
+			for (int i = 0; i < 2; i++) {
+				IOException error = assertThrows(IOException.class,
+						() -> GMT_RenderSlot.acquire(directory, 1, 1, shortWait));
+				assertTrue(error.getMessage().contains("Timed out"));
+			}
+		}
+	}
+
+	@Test
+	public void reportsWhenTheWaitingQueueIsFull() throws IOException {
+		Path directory = temp.newFolder("renderLocks").toPath();
+		Duration shortWait = Duration.ofMillis(10);
+		try (GMT_RenderSlot active = GMT_RenderSlot.acquire(directory, 1, 1, shortWait);
+				FileChannel channel = FileChannel.open(directory.resolve("waiting-0"), StandardOpenOption.CREATE,
+						StandardOpenOption.WRITE);
+				FileLock waiter = channel.lock()) {
+			IOException error = assertThrows(IOException.class,
+					() -> GMT_RenderSlot.acquire(directory, 1, 1, shortWait));
+			assertTrue(error.getMessage().contains("queue is full"));
+		}
+	}
+
+	@Test
+	public void takesAReleasedRenderSlotWithoutClientRetry() throws Exception {
+		Path directory = temp.newFolder("renderLocks").toPath();
+		Duration wait = Duration.ofSeconds(5);
+		ExecutorService worker = Executors.newSingleThreadExecutor();
+		CountDownLatch started = new CountDownLatch(1);
+		try {
+			Future<Boolean> waiting;
+			try (GMT_RenderSlot active = GMT_RenderSlot.acquire(directory, 1, 1, wait)) {
+				waiting = worker.submit(() -> {
+					started.countDown();
+					try (GMT_RenderSlot acquired = GMT_RenderSlot.acquire(directory, 1, 1, wait)) {
+						return true;
+					}
+				});
+				assertTrue(started.await(5, TimeUnit.SECONDS));
+				assertThrows(TimeoutException.class, () -> waiting.get(100, TimeUnit.MILLISECONDS));
+			}
+			assertTrue(waiting.get(5, TimeUnit.SECONDS));
+		} finally {
+			worker.shutdownNow();
+		}
+	}
 
 	@Test
 	public void preservesValidHintAndSkipsExistingName() throws Exception {

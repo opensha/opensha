@@ -22,6 +22,7 @@ import org.opensha.commons.mapping.gmt.GMT_MapGenerator;
 import org.opensha.commons.mapping.gmt.GMT_RenderArguments;
 import org.opensha.commons.mapping.servlet.GMT_MapGeneratorServlet;
 import org.opensha.commons.mapping.servlet.GMT_RenderFiles;
+import org.opensha.commons.mapping.servlet.GMT_RenderSlot;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.RunScript;
 import org.opensha.commons.util.ServerPrefUtils;
@@ -105,13 +106,18 @@ extends HttpServlet {
 	
 	public static String createMap(GMT_MapGenerator gmt, GMT_Map[] maps, String plotDirName, String metadata,
 			String ignoredMetadataFileName) throws IOException, GMT_MapException {
-		if (maps == null || maps.length != 4)
-			throw new GMT_MapException("HAZUS requires four map specifications");
-		for (GMT_Map map : maps) {
-			GMT_RenderFiles.validateMap(map);
-			GMT_RenderArguments.validateRemoteMap(map);
+		try (GMT_RenderSlot slot = GMT_RenderSlot.acquire()) {
+			if (maps == null || maps.length != 4)
+				throw new GMT_MapException("HAZUS requires four map specifications");
+			for (GMT_Map map : maps)
+				GMT_RenderFiles.validateMap(map);
+			GMT_RenderArguments.validateRemoteMaps(maps);
+			return renderMaps(gmt, maps, plotDirName, metadata);
 		}
+	}
 
+	private static String renderMaps(GMT_MapGenerator gmt, GMT_Map[] maps, String plotDirName, String metadata)
+			throws IOException, GMT_MapException {
 		File newDir = GMT_MapGeneratorServlet.createPlotDirectory(GMT_DATA_DIR, plotDirName);
 		plotDirName = newDir.getName();
 

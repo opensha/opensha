@@ -17,6 +17,7 @@ import org.opensha.commons.geo.Region;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.mapping.gmt.elements.PSText;
 import org.opensha.commons.mapping.gmt.elements.PSText.Justify;
+import org.opensha.commons.util.ServletWorkLimits;
 import org.opensha.sha.cybershake.maps.GMT_InterpolationSettings;
 
 public class GMT_RenderArgumentsTest {
@@ -90,6 +91,31 @@ public class GMT_RenderArgumentsTest {
 		GMT_Map colorbar = newMap();
 		colorbar.setCPTCustomInterval(0d);
 		assertThrows(GMT_MapException.class, () -> GMT_RenderArguments.validateRemoteMap(colorbar));
+	}
+
+	@Test
+	public void boundsGridAndRasterWork() throws GMT_MapException {
+		GMT_Map map = newMap();
+		map.setDpi(600);
+		GMT_RenderArguments.validateRemoteMap(map);
+
+		map.setDpi(Integer.MAX_VALUE);
+		GMT_MapException rasterError = assertThrows(GMT_MapException.class,
+				() -> GMT_RenderArguments.validateRemoteMap(map));
+		assertTrue(rasterError.getMessage().contains("pixels"));
+
+		map.setDpi(600);
+		map.setGriddedDataInc(0.00001);
+		GMT_MapException gridError = assertThrows(GMT_MapException.class,
+				() -> GMT_RenderArguments.validateRemoteMap(map));
+		assertTrue(gridError.getMessage().contains("grid exceeds"));
+	}
+
+	@Test
+	public void boundsCombinedGridWork() throws GMT_MapException {
+		GMT_RenderArguments.validateGridWork(ServletWorkLimits.TOTAL_GRID_CELLS);
+		assertThrows(GMT_MapException.class,
+				() -> GMT_RenderArguments.validateGridWork((long) ServletWorkLimits.TOTAL_GRID_CELLS + 1));
 	}
 
 	private static GMT_Map newMap() {

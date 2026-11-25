@@ -22,6 +22,7 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.WarningParameter;
 import org.opensha.commons.util.ServerPrefUtils;
+import org.opensha.commons.util.ServletWorkLimits;
 import org.opensha.sha.calc.AbstractCalculator;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.params.NonSupportedTRT_OptionsParam;
@@ -1227,6 +1228,8 @@ public class DisaggregationCalculator extends AbstractCalculator
 			int epsilons) {
 		Preconditions.checkArgument(epsilons > 0 && epsilons <= epsilonColors.length,
 				"Invalid disaggregation epsilon bin count: %s", epsilons);
+		Preconditions.checkArgument((long) distances * magnitudes <= ServletWorkLimits.DISAGG_BINS / epsilons,
+				"Disaggregation plots are limited to %s contribution bins", ServletWorkLimits.DISAGG_BINS);
 		Preconditions.checkArgument(contributions != null && contributions.length == distances,
 				"Disaggregation contributions must match the distance bin count");
 		for (double[][] distanceBin : contributions) {
