@@ -28,95 +28,6 @@
     <url-pattern>/VulnerabilityServlet</url-pattern>
   </servlet-mapping>
 
-  <!-- ** Fault DB Dervlets ** -->
-  <!-- * DB Access Servlet * -->
-  <servlet>
-    <servlet-name>faultDB_Access</servlet-name>
-    <servlet-class>org.opensha.refFaultParamDb.servlets.DB_AccessServlet</servlet-class>
-    <init-param>
-      <param-name>debug</param-name>
-      <param-value>2</param-value>
-    </init-param>
-    <init-param>
-      <param-name>DbConnectionPropertiesFileName</param-name>
-      <param-value>/usr/share/tomcat/webapps/OpenSHA_master/WEB-INF/DbConnection_Prop.dat</param-value>
-    </init-param>
-    <init-param>
-      <param-name>EmailConfig</param-name>
-      <param-value>/usr/share/tomcat/webapps/OpenSHA_master/WEB-INF/opensha/conf/EmailConfig.txt</param-value>
-    </init-param>
-  </servlet>
-
-  <!-- Mapping -->
-  <servlet-mapping>
-    <servlet-name>faultDB_Access</servlet-name>
-    <url-pattern>/Fault_DB_AccessServlet</url-pattern>
-  </servlet-mapping>
-
-  <!-- * DB Access Servlet Version 3 * -->
-  <servlet>
-    <servlet-name>faultDB_Access3</servlet-name>
-    <servlet-class>org.opensha.refFaultParamDb.servlets.DB_AccessServlet</servlet-class>
-    <init-param>
-      <param-name>debug</param-name>
-      <param-value>2</param-value>
-    </init-param>
-    <init-param>
-      <param-name>DbConnectionPropertiesFileName</param-name>
-      <param-value>/usr/share/tomcat/webapps/OpenSHA_master/WEB-INF/DbConnection_Prop_ver3.dat</param-value>
-    </init-param>
-    <init-param>
-      <param-name>EmailConfig</param-name>
-      <param-value>/usr/share/tomcat/webapps/OpenSHA_master/WEB-INF/opensha/conf/EmailConfig.txt</param-value>
-    </init-param>
-  </servlet>
-
-  <!-- Mapping -->
-  <servlet-mapping>
-    <servlet-name>faultDB_Access3</servlet-name>
-    <url-pattern>/Fault_DB_AccessServlet_Ver3</url-pattern>
-  </servlet-mapping>
-
-  <!-- * Update E-Mail Servlet * -->
-  <servlet>
-    <servlet-name>faultDB_Email</servlet-name>
-    <servlet-class>org.opensha.refFaultParamDb.servlets.RefFaultDB_UpdateEmailServlet</servlet-class>
-    <init-param>
-      <param-name>debug</param-name>
-      <param-value>2</param-value>
-    </init-param>
-    <init-param>
-      <param-name>EmailConfig</param-name>
-      <param-value>/usr/share/tomcat/webapps/OpenSHA_master/WEB-INF/opensha/conf/EmailConfig.txt</param-value>
-    </init-param>
-  </servlet>
-
-  <!-- Mapping -->
-  <servlet-mapping>
-    <servlet-name>faultDB_Email</servlet-name>
-    <url-pattern>/Fault_DB_EmailServlet</url-pattern>
-  </servlet-mapping>
-
-  <!-- * User Account Info Servlet * -->
-  <servlet>
-    <servlet-name>faultDB_Account</servlet-name>
-    <servlet-class>org.opensha.refFaultParamDb.servlets.UserAccountInfoServlet</servlet-class>
-    <init-param>
-      <param-name>debug</param-name>
-      <param-value>2</param-value>
-    </init-param>
-    <init-param>
-      <param-name>EmailConfig</param-name>
-      <param-value>/var/lib/tomcat/webapps/OpenSHA_dev/WEB-INF/conf/EmailConfig.txt</param-value>
-    </init-param>
-  </servlet>
-
-  <!-- Mapping -->
-  <servlet-mapping>
-    <servlet-name>faultDB_Account</servlet-name>
-    <url-pattern>/Fault_DB_AccountServlet</url-pattern>
-  </servlet-mapping>
-
   <!-- ** GMT Web Service ** -->
   <servlet>
     <servlet-name>gmtWS</servlet-name>
@@ -149,22 +60,6 @@
     <url-pattern>/DisaggregationPlotServlet</url-pattern>
   </servlet-mapping>
 
-  <!-- ** GMT Interpolation Service ** -->
-  <servlet>
-    <servlet-name>gmtInterp</servlet-name>
-    <servlet-class>org.opensha.commons.mapping.servlet.GME_InterpolationServlet</servlet-class>
-    <init-param>
-      <param-name>debug</param-name>
-      <param-value>2</param-value>
-    </init-param>
-  </servlet>
-
-  <!-- Mapping -->
-  <servlet-mapping>
-    <servlet-name>gmtInterp</servlet-name>
-    <url-pattern>/GME_InterpolationServlet</url-pattern>
-  </servlet-mapping>
-
   <!-- ** GMT HAZUS Web Service ** -->
   <servlet>
     <servlet-name>gmtHazusWS</servlet-name>
@@ -195,70 +90,6 @@
   <servlet-mapping>
     <servlet-name>csGMTInterpDiff</servlet-name>
     <url-pattern>/CS_InterpDiffMapServlet</url-pattern>
-  </servlet-mapping>
-
-  <!-- ** GMT Server-Side region creation Service ** -->
-  <servlet>
-    <servlet-name>GriddedRegionServlet</servlet-name>
-    <servlet-class>org.opensha.sha.gui.servlets.GriddedRegionServlet</servlet-class>
-    <init-param>
-      <param-name>debug</param-name>
-      <param-value>2</param-value>
-    </init-param>
-  </servlet>
-
-  <!-- Mapping -->
-  <servlet-mapping>
-    <servlet-name>GriddedRegionServlet</servlet-name>
-    <url-pattern>/GriddedRegionServlet</url-pattern>
-  </servlet-mapping>
-
-  <!-- ** GMT Server-Side ShakeMap Calc Servlet ** -->
-  <servlet>
-    <servlet-name>ScenarioShakeMapCalcServlet</servlet-name>
-    <servlet-class>org.opensha.sha.gui.servlets.ScenarioShakeMapCalcServlet</servlet-class>
-    <init-param>
-      <param-name>debug</param-name>
-      <param-value>2</param-value>
-    </init-param>
-  </servlet>
-
-  <!-- Mapping -->
-  <servlet-mapping>
-    <servlet-name>ScenarioShakeMapCalcServlet</servlet-name>
-    <url-pattern>/ScenarioShakeMapCalcServlet</url-pattern>
-  </servlet-mapping>
-
-  <!-- ** GMT Server-Side ShakeMap Gen Servlet ** -->
-  <servlet>
-    <servlet-name>ScenarioShakeMapGeneratorServlet</servlet-name>
-    <servlet-class>org.opensha.sha.gui.servlets.ScenarioShakeMapGeneratorServlet</servlet-class>
-    <init-param>
-      <param-name>debug</param-name>
-      <param-value>2</param-value>
-    </init-param>
-  </servlet>
-
-  <!-- Mapping -->
-  <servlet-mapping>
-    <servlet-name>ScenarioShakeMapGeneratorServlet</servlet-name>
-    <url-pattern>/ScenarioShakeMapGeneratorServlet</url-pattern>
-  </servlet-mapping>
-
-  <!-- ** GMT Server-Side ShakeMap HAZUS Servlet ** -->
-  <servlet>
-    <servlet-name>ScenarioShakeMapForHazusGeneratorServlet</servlet-name>
-    <servlet-class>org.opensha.sha.gui.servlets.ScenarioShakeMapForHazusGeneratorServlet</servlet-class>
-    <init-param>
-      <param-name>debug</param-name>
-      <param-value>2</param-value>
-    </init-param>
-  </servlet>
-
-  <!-- Mapping -->
-  <servlet-mapping>
-    <servlet-name>ScenarioShakeMapForHazusGeneratorServlet</servlet-name>
-    <url-pattern>/ScenarioShakeMapForHazusGeneratorServlet</url-pattern>
   </servlet-mapping>
 
   <!-- ** Site Type Data ** -->
