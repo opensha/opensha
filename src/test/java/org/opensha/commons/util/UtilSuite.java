@@ -9,6 +9,7 @@ import org.opensha.commons.util.binFile.GeolocatedBinaryMesh2DTest;
 @Suite.SuiteClasses({
 	DataUtilsTest.class,
 	FaultUtilsTests.class,
+	ServletObjectInputTest.class,
 	BinaryMesh2DTest.class,
 	GeolocatedBinaryMesh2DTest.class,
 	InterpolateTests.class

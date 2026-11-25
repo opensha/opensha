@@ -335,7 +335,7 @@ public class GMT_MapGeneratorForShakeMaps extends GMT_MapGenerator{
 			GeoDataSet sa10_xyzDataVals, GeoDataSet pga_xyzDataVals,
 			GeoDataSet pgv_xyzDataVals, GMT_Map maps[],String metadata,String dirName) throws RuntimeException{
 
-		String webaddr=null;
+		Object messageFromServlet;
 		try{
 
 			if(D) System.out.println("starting to make connection with servlet");
@@ -378,20 +378,19 @@ public class GMT_MapGeneratorForShakeMaps extends GMT_MapGenerator{
 			ObjectInputStream inputToServlet = new
 			ObjectInputStream(servletConnection.getInputStream());
 
-			Object messageFromServlet = inputToServlet.readObject();
+			messageFromServlet = inputToServlet.readObject();
 			inputToServlet.close();
-			if(messageFromServlet instanceof String){
-				webaddr = (String) messageFromServlet;
-				if (D) System.out.println("Receiving the Input from the Servlet:" +
-						webaddr);
-			}
-			else
-				throw (RuntimeException)messageFromServlet;
 		}catch (Exception e) {
 			e.printStackTrace();
 			throw new RuntimeException("Server is down, please try again later. If the problem persists, make sure"
 					+ " you are using the latest version of our applications.");
 		}
+		// Preserve errors returned by the servlet, including request filtering diagnostics.
+		if (messageFromServlet instanceof RuntimeException)
+			throw (RuntimeException) messageFromServlet;
+		String webaddr = (String) messageFromServlet;
+		if (D)
+			System.out.println("Receiving the Input from the Servlet: " + webaddr);
 		return webaddr;
 	}
 

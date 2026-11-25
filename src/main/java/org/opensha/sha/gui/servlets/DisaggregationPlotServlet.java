@@ -4,7 +4,6 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 
@@ -17,6 +16,8 @@ import org.apache.commons.lang3.SystemUtils;
 import org.opensha.commons.mapping.servlet.GMT_MapGeneratorServlet;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.RunScript;
+import org.opensha.commons.util.ServletObjectInput;
+import org.opensha.commons.util.ServletRequestPolicies;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculator;
 import org.opensha.sha.calc.disaggregation.DisaggregationPlotData;
 
@@ -51,14 +52,18 @@ extends HttpServlet {
 				getOutputStream());
 
 		try {
+			DisaggregationPlotData data;
+			String metadata;
+			// Restrict the classes and sizes of client-supplied plot data before allocating arrays or starting GMT.
+			try (ServletObjectInput input = ServletObjectInput.open(request, ServletRequestPolicies.DISAGGREGATION)) {
+				data = (DisaggregationPlotData) input.readObject();
+				metadata = (String) input.readObject();
+			}
+
 			//create the main directory if it does not exist already
 			if (!GMT_DATA_DIR.exists())
 				GMT_DATA_DIR.mkdir();
 			Preconditions.checkState(GMT_DATA_DIR.exists());
-
-			// get an input stream from the applet
-			ObjectInputStream inputFromApplet = new ObjectInputStream(request.
-					getInputStream());
 
 			//Name of the directory in which we are storing all the gmt data for the user
 			File newDir = GMT_MapGeneratorServlet.createUniqueDir(GMT_DATA_DIR);
@@ -74,16 +79,9 @@ extends HttpServlet {
 
 			File gmtScriptFile = new File(newDir, GMT_SCRIPT_FILE);
 
-			System.out.println("DisaggregationPlotServlet: fetching disagg data");
-			//gets the object for the GMT_MapGenerator script
-			DisaggregationPlotData data = (DisaggregationPlotData)inputFromApplet.readObject();
 			System.out.println("DisaggregationPlotServlet: creating disagg GMT script");
 			ArrayList<String> gmtMapScript =
 					DisaggregationCalculator.createGMTScriptForDisaggregationPlot(data, newDir.getAbsolutePath());
-
-			//Metadata content: Map Info
-			System.out.println("DisaggregationPlotServlet: fetching disagg metadata");
-			String metadata = (String) inputFromApplet.readObject();
 
 			System.out.println("DisaggregationPlotServlet: writing disagg script");
 			//creating a new gmt script for the user and writing it ot the directory created for the user

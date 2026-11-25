@@ -2,7 +2,6 @@ package org.opensha.commons.mapping.servlet;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.nio.charset.Charset;
 import java.nio.file.FileAlreadyExistsException;
@@ -27,6 +26,8 @@ import org.opensha.commons.mapping.gmt.SecureMapGenerator;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.RunScript;
 import org.opensha.commons.util.ServerPrefUtils;
+import org.opensha.commons.util.ServletObjectInput;
+import org.opensha.commons.util.ServletRequestPolicies;
 
 /**
  * <p>Title: GMT_MapGeneratorServlet </p>
@@ -79,22 +80,18 @@ extends HttpServlet {
 				getOutputStream());
 
 		try {
-			// get an input stream from the applet
-			ObjectInputStream inputFromApplet = new ObjectInputStream(request.
-					getInputStream());
+			String dirName;
+			GMT_Map map;
+			String metadata;
+			// The GMT_Map cast happens after deserialization. Filter the entire client-supplied graph as it is read.
+			try (ServletObjectInput input = ServletObjectInput.open(request, ServletRequestPolicies.GMT)) {
+				dirName = (String) input.readObject();
+				map = (GMT_Map) input.readObject();
+				metadata = (String) input.readObject();
+				// Consume the legacy metadata filename to preserve the request protocol.
+				input.readObject();
+			}
 
-			//receiving the name of the input directory
-			String dirName = (String) inputFromApplet.readObject();
-
-			//gets the object for the GMT_MapGenerator script
-			GMT_Map map = (GMT_Map)inputFromApplet.readObject();
-
-			//Metadata content: Map Info
-			String metadata = (String) inputFromApplet.readObject();
-
-			// Consume the legacy metadata filename to preserve the request protocol.
-			inputFromApplet.readObject();
-			
 			String mapImagePath = createMap(gmt, map, dirName, metadata, null);
 			
 			//returns the URL to the folder where map image resides
