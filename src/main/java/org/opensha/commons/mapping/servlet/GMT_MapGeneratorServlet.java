@@ -145,8 +145,16 @@ extends HttpServlet {
 
 	public static String createMap(SecureMapGenerator gmt, GMT_Map map, String plotDirName, String metadata,
 			String ignoredMetadataFileName) throws IOException, GMT_MapException {
-		GMT_RenderFiles.validateMap(map);
-		GMT_RenderArguments.validateRemoteMap(map);
+		try (GMT_RenderSlot slot = GMT_RenderSlot.acquire()) {
+			GMT_RenderFiles.validateMap(map);
+			GMT_RenderArguments.validateRemoteMap(map);
+			gmt.validateRemoteWork(map);
+			return renderMap(gmt, map, plotDirName, metadata);
+		}
+	}
+
+	private static String renderMap(SecureMapGenerator gmt, GMT_Map map, String plotDirName, String metadata)
+			throws IOException, GMT_MapException {
 		File newDir = createPlotDirectory(GMT_DATA_DIR, plotDirName);
 		plotDirName = newDir.getName();
 

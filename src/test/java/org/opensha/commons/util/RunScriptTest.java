@@ -2,12 +2,14 @@ package org.opensha.commons.util;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -16,6 +18,11 @@ public class RunScriptTest {
 
 	@Rule
 	public TemporaryFolder temp = new TemporaryFolder();
+
+	@Before
+	public void assumesTimeoutIsAvailable() {
+		assumeTrue(Files.isExecutable(Path.of("/usr/bin/timeout")));
+	}
 
 	@Test
 	public void executesTwoArgumentsWithASpacedScriptPath() throws IOException {
@@ -47,5 +54,17 @@ public class RunScriptTest {
 		IOException error = assertThrows(IOException.class,
 				() -> RunScript.runScriptChecked(missingExecutable.toString()));
 		assertEquals("Could not run the script to completion", error.getMessage());
+	}
+
+	@Test(timeout = 10000)
+	public void reportsExceededTimeLimit() throws IOException {
+		Path bash = Path.of("/bin/bash");
+		assumeTrue(Files.isExecutable(bash));
+		Path script = temp.newFile("slow render.sh").toPath();
+		Files.writeString(script, "sleep 30\n");
+
+		IOException error = assertThrows(IOException.class,
+				() -> RunScript.runScriptChecked(1, bash.toString(), script.toString()));
+		assertTrue(error.getMessage().contains("time limit"));
 	}
 }
