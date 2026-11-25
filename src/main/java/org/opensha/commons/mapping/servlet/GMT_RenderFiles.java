@@ -1,9 +1,11 @@
 package org.opensha.commons.mapping.servlet;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -12,6 +14,8 @@ import org.opensha.commons.exceptions.GMT_MapException;
 import org.opensha.commons.mapping.gmt.GMT_Map;
 import org.opensha.commons.mapping.gmt.GMT_MapGenerator;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
+
+import com.google.common.html.HtmlEscapers;
 
 /**
  * File policy for HTTP map requests. Custom input paths are relative to the OpenSHA GMT data directory by default.
@@ -28,12 +32,25 @@ public final class GMT_RenderFiles {
 	private static final String CUSTOM_PALETTE_FILE = "cptFile.cpt";
 	private static final Pattern OUTPUT_NAME = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]{0,79}");
 	private static final Pattern INPUT_COMPONENT = Pattern.compile("[A-Za-z0-9._ -]+");
+	private static final Pattern METADATA_LINE_BREAK = Pattern.compile("<br[ \\t]*+(?:/[ \\t]*+)?>\\R?",
+			Pattern.CASE_INSENSITIVE);
 	private static final Set<String> RESERVED_NAMES = Set.of(
 			MAP_METADATA_FILE, TEXT_METADATA_FILE, SCRIPT_FILE.toLowerCase(Locale.ROOT),
 			"gearth.png", "scatter.xyz", "scatter_diffs.xyz", "ratios.xyz",
 			"map_data_interpolated.txt", "map_data_interpolated_differences.txt");
 
 	private GMT_RenderFiles() {}
+
+	/** Publishes metadata as text in a server-generated HTML document. */
+	public static void writeHtmlMetadata(Path outputDirectory, String metadata) throws IOException {
+		// Legacy clients sometimes put a source newline immediately after a <br> tag.
+		String text = METADATA_LINE_BREAK.matcher(String.valueOf(metadata)).replaceAll("\n");
+		String page = "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n"
+				+ "<title>Map details</title>\n</head>\n<body>\n<pre>\n"
+				+ HtmlEscapers.htmlEscaper().escape(text) + "</pre>\n</body>\n</html>\n";
+		Files.writeString(outputDirectory.resolve(MAP_METADATA_FILE), page, StandardCharsets.UTF_8,
+				StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+	}
 
 	public static void validateMap(GMT_Map map) throws GMT_MapException {
 		String inputDirectory = System.getProperty(INPUT_DIRECTORY_PROPERTY, GMT_MapGenerator.OPENSHA_GMT_DATA_PATH);

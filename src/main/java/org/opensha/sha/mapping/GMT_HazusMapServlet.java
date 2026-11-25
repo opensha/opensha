@@ -156,8 +156,7 @@ extends HttpServlet {
 				StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 		RunScript.runScript(new String[] { "/bin/bash", script.toAbsolutePath().toString() });
 
-		Files.writeString(newDir.toPath().resolve(GMT_RenderFiles.MAP_METADATA_FILE), " " + metadata + "\n",
-				Charset.defaultCharset(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+		GMT_RenderFiles.writeHtmlMetadata(newDir.toPath(), metadata);
 
 		// create the Zip file for all the files generated
 		FileUtils.createZipFile(newDir.getAbsolutePath());

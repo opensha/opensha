@@ -168,11 +168,12 @@ extends HttpServlet {
 		System.out.println("Running command GMT for map: " + plotDirName);
 		RunScript.runScript(new String[] { "/bin/bash", script.toAbsolutePath().toString() });
 
-		// Preserve the legacy metadata names for the GMT and CyberShake clients.
-		String metadataName = gmt instanceof GMT_MapGenerator
-				? GMT_RenderFiles.MAP_METADATA_FILE : GMT_RenderFiles.TEXT_METADATA_FILE;
-		Files.writeString(newDir.toPath().resolve(metadataName), " " + metadata + "\n", Charset.defaultCharset(),
-				StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+		if (gmt instanceof GMT_MapGenerator) {
+			GMT_RenderFiles.writeHtmlMetadata(newDir.toPath(), metadata);
+		} else {
+			Files.writeString(newDir.toPath().resolve(GMT_RenderFiles.TEXT_METADATA_FILE), " " + metadata + "\n",
+					Charset.defaultCharset(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+		}
 
 		System.out.println("Zipping results for map: "+plotDirName);
 		//create the Zip file for all the files generated
