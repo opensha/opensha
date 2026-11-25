@@ -17,6 +17,7 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
 import java.util.StringTokenizer;
 
 import org.opensha.commons.data.xyz.ArbDiscrGeoDataSet;
@@ -1207,13 +1208,6 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 		return color.getRed() + "/" + color.getGreen() + "/" + color.getBlue();
 	}
 	
-	private static String stripFormatLabel(String label) {
-		label = label.replaceAll("'", "");
-		label = label.replaceAll(";", "");
-		
-		return "'" + label + "'";
-	}
-	
 	public static void clearEnv() {
 		GMT_PATH = null;
 		GS_PATH = null;
@@ -1346,7 +1340,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 
 		gmtCommandLines.add("#!/bin/bash");
 		gmtCommandLines.add("");
-		gmtCommandLines.add("cd " + dir);
+		gmtCommandLines.add("cd -- " + quoteShellArgument(dir) + " || exit 1");
 		gmtCommandLines.add("");
 		gmtCommandLines.addAll(getGMTPathEnvLines());
 		gmtCommandLines.add("## Plot Script ##");
@@ -1369,9 +1363,12 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 		
 		if (map.getGMT_Params() != null) {
 			gmtCommandLines.add("# GMT Params");
-			for (String name : map.getGMT_Params().keySet()) {
-				String value = map.getGMT_Params().get(name);
-				gmtCommandLines.add("${GMT_PATH}gmtset "+name+" "+value);
+			for (Map.Entry<String, String> setting : map.getGMT_Params().entrySet()) {
+				String name = setting.getKey();
+				String value = setting.getValue();
+				if (name == null || !name.matches("[A-Z][A-Z0-9_]*") || value == null)
+					throw new GMT_MapException("Invalid GMT setting");
+				gmtCommandLines.add("${GMT_PATH}gmtset " + quoteShellArgument(name + "=" + value));
 			}
 			gmtCommandLines.add("");
 		}
@@ -1411,7 +1408,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 		} else if (map.getCustomGRDPath() != null) {
 			File grdFile = new File(map.getCustomGRDPath());
 			Preconditions.checkState(grdFile.exists(), "File doesn't esist: "+grdFile.getAbsolutePath());
-			grdFileName = quoteShellPath(grdFile.getAbsolutePath());
+			grdFileName = quoteShellArgument(grdFile.getAbsolutePath());
 		}
 		
 		// get color scale limits
@@ -1524,7 +1521,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 				} else {
 					Preconditions.checkNotNull(map.getCustomIntenPath());
 					hiResFile = grdFileName;
-					intenFile = quoteShellPath(map.getCustomIntenPath());
+					intenFile = quoteShellArgument(map.getCustomIntenPath());
 				}
 				
 				if (topoFile != null && map.isMaskIfNotRectangular() && !map.getRegion().isRectangular()) {
@@ -1720,8 +1717,8 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 		fw.close();
 	}
 	
-	private static String quoteShellPath(String path) {
-		return "'" + path.replace("'", "'\"'\"'") + "'";
+	private static String quoteShellArgument(String value) {
+		return "'" + value.replace("'", "'\"'\"'") + "'";
 	}
 
 	public static void addCleanup(ArrayList<String> gmtCommandLines, ArrayList<String> rmFiles) {
@@ -1778,7 +1775,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 			gmtCommandLines.add("");
 			gmtCommandLines.add("# Lines/Polygons");
 			String polyFile = "polys.xy";
-			gmtCommandLines.add("${COMMAND_PATH}cat  << END > " + polyFile);
+			gmtCommandLines.add("${COMMAND_PATH}cat << 'END' > " + polyFile);
 			for (int i=0; i<polys.size(); i++) {
 				PSXYPolygon poly = polys.get(i);
 				if (!poly.isValid())
@@ -1841,11 +1838,10 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 			gmtCommandLines.add("");
 			gmtCommandLines.add("# Symbol set");
 			String symbolCPTFile = "symbol_set.cpt";
-			gmtCommandLines.add("${COMMAND_PATH}cat  << END > " + symbolCPTFile);
-			gmtCommandLines.add(symSet.getCpt().toString());
-			gmtCommandLines.add("END");
+			gmtCommandLines.add("printf '%s' " + quoteShellArgument(symSet.getCpt().toString())
+					+ " > " + symbolCPTFile);
 			String symbolFile = "symbol_set.xy";
-			gmtCommandLines.add("${COMMAND_PATH}cat  << END > " + symbolFile);
+			gmtCommandLines.add("${COMMAND_PATH}cat << 'END' > " + symbolFile);
 			List<PSXYSymbol> symbols = symSet.getSymbols();
 			List<Double> vals = symSet.getVals();
 			for (int i=0; i<symbols.size(); i++) {
@@ -1875,9 +1871,10 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 			for (int i=0; i<text.size(); i++) {
 				PSText item = text.get(i);
 				Point2D point = item.getPoint();
-				String line = "echo "+point.getX()+" "+point.getY()+" "+item.getText()
-						+" | ${GMT_PATH}pstext "+item.getFontArg();
-				line += " " + region + proj + " -K -O >> " + psFile;
+				String record = point.getX() + " " + point.getY() + " " + item.getText();
+				String line = "printf '%s\\n' " + quoteShellArgument(record)
+						+ " | ${GMT_PATH}pstext " + quoteShellArgument(item.getFontArg())
+						+ " " + region + proj + " -K -O >> " + quoteShellArgument(psFile);
 				gmtCommandLines.add(line);
 			}
 		}
@@ -1916,7 +1913,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 			scaleLabel = " ";
 		else if (isLog)
 			scaleLabel = "Log10("+scaleLabel+")";
-		scaleLabel = stripFormatLabel(scaleLabel);
+		scaleLabel = quoteShellArgument(scaleLabel);
 		gmtCommandLines.add("# Colorbar/label");
 		if (fontSize != null && fontSize > 0) {
 			String commandLine = "${GMT_PATH}set FONT_LABEL="+fontSize+"p,Helvetica,black";

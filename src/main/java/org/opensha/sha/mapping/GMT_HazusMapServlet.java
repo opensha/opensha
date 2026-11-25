@@ -20,6 +20,7 @@ import org.opensha.commons.data.xyz.GeoDataSet;
 import org.opensha.commons.exceptions.GMT_MapException;
 import org.opensha.commons.mapping.gmt.GMT_Map;
 import org.opensha.commons.mapping.gmt.GMT_MapGenerator;
+import org.opensha.commons.mapping.gmt.GMT_RenderArguments;
 import org.opensha.commons.mapping.servlet.GMT_MapGeneratorServlet;
 import org.opensha.commons.mapping.servlet.GMT_RenderFiles;
 import org.opensha.commons.util.FileUtils;
@@ -109,8 +110,10 @@ extends HttpServlet {
 			String ignoredMetadataFileName) throws IOException, GMT_MapException {
 		if (maps == null || maps.length != 4)
 			throw new GMT_MapException("HAZUS requires four map specifications");
-		for (GMT_Map map : maps)
+		for (GMT_Map map : maps) {
 			GMT_RenderFiles.validateMap(map);
+			GMT_RenderArguments.validateRemoteMap(map);
+		}
 
 		File newDir = GMT_MapGeneratorServlet.createPlotDirectory(GMT_DATA_DIR, plotDirName);
 		plotDirName = newDir.getName();
